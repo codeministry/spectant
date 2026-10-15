@@ -12,23 +12,12 @@ SQLite. Everything runs on the developer's machine. The app ships with its Spec 
 the same parser: spec work starts from the AI chat with the skill, and the app runs alongside for control and
 administration. The skill targets Claude Code first and is meant to work with other agents that understand skills.
 
-## Repository layout
-
-| Path | Holds |
-|------|-------|
-| `core/` | the one parser for the spec format (frontmatter, claims, stages, gates) and the dashboard model |
-| `server/` | the CLI and the loopback HTTP server that embeds the web build into the binary |
-| `web/` | the Angular app (the dashboard UI) |
-| `plugin/` | the Claude Code plugin with the Spec skill — part of the product, built by its own spec; not present yet |
-| `specs/` | the spec-driven work: `constitution.md`, the ideas backlog and one folder per spec, `specs/NNN-slug/` — **untracked** (`.gitignore`), it stays on the developer's machine like the master |
-| `scripts/` | build, embed and repository checks |
-| `tests/` | cross-lane tests: server, CLI, binary, install, read-only and offline checks |
-
 ## Rules in every lane
 
 - **bun and bunx only, never npm or npx.** One package manager keeps the lockfile and the scripts honest.
 - **TypeScript only.** One language across core, server, web and tooling.
-- **Never commit or push from an agent.** A human reviews every change and makes every commit.
+- **Agents commit on a feature branch, push it and open a pull request; a human reviews and merges it.** Never push
+  to `main`, never merge, never force-push.
 - **The master `ISA.md` is untracked and never hand-edited.** It holds private material; specs derive from it and are
   reconciled through the Spec workflow, never by editing it directly.
 - **Nothing individual in a tracked file.** This repository is public; no person, customer, machine, private
@@ -50,19 +39,9 @@ administration. The skill targets Claude Code first and is meant to work with ot
   6. the token measurement: `specs/tokens.jsonl`, one file per repository, rewritten in place by the CLI
      `spectant tokens --yes`, never by a route; without `--yes` it writes nothing (spec 009).
 
-  The first four are user actions in the app and go through `server/src/writes.ts`: the file is read, its sha256
-  compared with the one the client rendered (409 on a mismatch, the file byte-identical), lock sources consulted (423
-  while a session holds the claim), then the target written in place with an fsync — no temp file, no git object,
-  nothing else in the tree. `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create.
-  The first three follow the spec's read source (spec 027): when `specs/NNN-slug/` is tracked and the spec has a
-  worktree of its own, they read and write that worktree's copy and leave the main checkout byte-identical
-  (`WRITE_TABLE[op].root`); the allocation always writes the main checkout.
-  The fifth uses the same in-place primitives and is refused while a spec of the feature still holds an open claim.
-  The sixth uses them too and takes its target from `WRITE_PATHS.tokens`; it belongs to no spec, so no claim holds it.
-  The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every
-  read route and every refused write, and after an accepted one only the files of that write's `WRITE_PATHS` entry
-  may differ, `spectant tokens --yes` included (`-t tokens`); the CLI mark's probes are in `tests/gates.test.ts`
-  (`-t feature`).
+  `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create, and nothing else in the
+  tree changes. How each write is performed and guarded (`server/src/writes.ts`, `tests/readonly.test.ts`) lives in
+  `server/CLAUDE.md` § The write path.
 - **One parser for the spec format, in `core/`.** Every other lane imports it; a second implementation is a defect.
 - **Pin every dependency and tool version.** Reproducible builds and baselines depend on it.
 

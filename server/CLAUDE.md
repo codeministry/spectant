@@ -24,27 +24,6 @@ This lane builds against both seams and does not define what they contain.
 route: builders, `matchSpecPath`, 200 types (core types only), error bodies, write bodies, `SPEC_ROUTE_TABLE`. The
 server, the e2e stub and the web import it; nobody re-types a route. Error codes are kebab-case, `{error: "not-found"}`,
 as every existing route answers (plan 002's `not_found` is superseded). `tests/spec-routes.contract.test.ts` pins it.
-`server/src/spec-routes.ts` serves every GET from the files (one `core/` call per route, ETag/304, the two hash headers,
-404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/`, `.evidence/` and `.design/` (the Design tab's images, spec 004). `writes.contract.ts` (T67) types the two
-POST writes; `writes.ts` (T68) performs them under `gate-route.ts` (T69) and `checkbox-route.ts` (T70), wired into `spec-routes.ts`; `tests/writes.test.ts` holds their probes. Commits come from `git.ts` with the process's one
-`CommitCache` (`commitCache` option); the timeline's ETag folds in `HEAD` when the workspace is a repository of its own.
-Every route of spec 008 has its handler now; the pending family of the contract went with its last route, the bodies
-stay in § Spec 008 bodies. The story page `idea` (`GET`/`HEAD /api/workspaces/:ws/ideas/:slug`, T88) is served by
-`api.ts` from the story folder alone; the allocation `allocate` (`POST /api/workspaces/:ws/ideas/:slug/allocate`, T87) is the
-workspace family's one write, served by `allocate-route.ts` through `writes.ts`; the board query (`GET`/`HEAD`/`PUT
-/api/workspaces/:ws/board-query`, T92) lives in `WORKSPACE_ROUTE_TABLE` (`write: 'PUT'`) and is served from the `board_query`
-table alone (the `db` option; no 409, 404 for an unknown workspace); the library (spec 017) is four workspace routes served by `api.ts`: `GET`/`HEAD /api/workspaces/:ws/library` (core's `readCatalog`, metadata only), `…/library/doc?path=` (one Markdown document of the catalog rendered as a `DocsPage`, 404 for a path the catalog does not list), `…/library/search?q=` (title and full text); reader and search read through the loader's lean `loadCatalogDoc` / `loadCatalogDocs` (core's `catalogDocAt` / `readCatalogDocs` with the worktree `copies`), never the dashboard model, and the search resolves each document once and reads at most 16 files at a time (spec 017, T60, T61, ISC-156.5) and `…/library/asset?path=` (an image below `specs/` through the evidence resolver with `specs/` as the root, `reach: 'tree'`, images only), beside `GET`/`HEAD /proto/:ws/:spec/:folder/*` (one prototype file, `PROTOTYPE_CSP`); the library replaced the tech page's `…/tech` and `…/tech/asset` (T51) and the spec routes `…/evidence` and `…/docs/:name` (T53), whose requests are now the unmatched path's 404 (`tests/library-asset.test.ts`); the e2e stub picks its library with `X-Spectant-Stub-Library: catalog | empty` (`web/e2e/README.md`); the actor names (`GET`/`HEAD`/`PUT /api/actors`, T91) are a
-route of their own, `ACTORS_PATH`, served by `api.ts`'s `actorsApi` over the `actor` table like `/api/settings` (PUT replaces
-the whole mapping); the stage move `transition` (`POST …/specs/:id/transition`, T83) is a registered spec route served by
-`transition-route.ts` through `writes.ts`, and the planning route passes the workflow and every active spec's stage and raw
-`spec.md` hash into `buildPlanning`:
-`markdown-docs.ts` and the raw sha256 of the file's bytes from one read, 404 for an unknown story or a workspace without stories. `writes.contract.ts` holds the four app writes in `WRITE_TABLE` and every file they may touch
-in `WRITE_PATHS`; the fifth path, `WRITE_PATHS.codeReviewFeature`, is the feature-level code-review mark, written by
-the CLI only (`spectant gate code-reviewed F<n> [--root DIR] [--yes]`, T93, `server/src/feature-gate.ts` over
-`writes.ts`' in-place primitives; no route, no `WRITE_TABLE` row): it refuses while a spec of the main feature holds an
-open claim, appends one `code-review → close` event per target, then writes the same `scope: F<n>` mark with the tree
-id of the worktree as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Without `--yes` it
-prints the plan and writes nothing; `tests/gates.test.ts` (`-t feature`) holds its probes.
 
 ## The write path (spec 002)
 
@@ -54,8 +33,21 @@ skill's byte format plus one `review → build` line appended to `events.jsonl`)
 flip on one line of `tasks.md`, line endings kept), the stage move (`stage:` in `spec.md` plus one event line, spec
 008 T82) and the allocation of a story (spec 008 T86: `specs/NNN-slug/` created with `context.md`, `spec.md` and
 `events.jsonl`, and `specs/ideas/<slug>.md` removed; the index `README.md` is not touched, its `Spec` cell is the
-web's or the skill's to fill). Event actors are the viewer's `u:` id, `VIEWER_ACTOR_FALLBACK` without one. The CLI's
-feature-level code-review mark is a further path, never written by a route.
+web's or the skill's to fill). Event actors are the viewer's `u:` id, `VIEWER_ACTOR_FALLBACK` without one.
+
+The CLI adds two further paths, never written by a route, both over `writes.ts`' in-place primitives:
+
+- The feature-level code-review mark, `WRITE_PATHS.codeReviewFeature` (`spectant gate code-reviewed F<n> [--root DIR]
+  [--yes]`, `server/src/feature-gate.ts`; no `WRITE_TABLE` row). It refuses while a spec of the feature still holds an
+  open claim, appends one `code-review → close` event per target, then writes the same `scope: F<n>` mark with the
+  tree id of the worktree as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Without
+  `--yes` it prints the plan and writes nothing; `tests/gates.test.ts` (`-t feature`) holds its probes.
+- The token measurement, `spectant tokens --yes`, takes its target from `WRITE_PATHS.tokens`; it belongs to no spec, so
+  no claim holds it.
+
+The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every
+read route and every refused write, and after an accepted one only the files of that write's `WRITE_PATHS` entry may
+differ, `spectant tokens --yes` included (`-t tokens`).
 
 - The allocation's number is one past the highest taken by a folder in `specs/` or `specs/archive/` and by a branch name
   or a path added to history (`git.ts` `takenSpecNumbers`). A story has no claims, so the allocation never answers
@@ -95,14 +87,9 @@ feature-level code-review mark is a further path, never written by a route.
 - The API never returns an absolute path. It returns only `pathTail`, the last path segment, because the model reaches
   the browser and screenshots (ISC-3).
 
-## Layout
+## Generated files
 
-- `server/src/cli.ts` (with `cli-notes.ts`: `import-notes`, `export-notes`, `db rollback`; `feature-gate.ts`: `gate code-reviewed F<n>`), `http.ts`, `api.ts`, `registry.ts`, `settings.ts`, `notes.ts` (the note store and its routes, spec 002), `paths.ts`, `open-browser.ts`,
-  `services.ts`, `assets.contract.ts`.
 - `server/embedded.gen.ts`: generated by `scripts/embed.ts` and never edited by hand. Regenerate it instead.
-- `scripts/build.ts`, `embed.ts`, `check-leak.ts`, `check-single-core.ts`, `check-version.ts`.
-- `install.sh`: the one-line installer.
-- `tests/`: Bun tests, including `binary.test.ts`, the `install/` container run and `offline-server.ts`.
 
 ## Conventions
 
@@ -139,11 +126,6 @@ feature-level code-review mark is a further path, never written by a route.
 
 ## Git reads
 
-- `server/src/git.ts` `commitsFor(root, folder, {limit 200, timeoutMs 3000, files?, cache?})` runs only `rev-parse HEAD` and `git log -- <folder>` (optional locks off, literal pathspecs, discovery stops at the root), never throws: no repo, no git, failure or deadline → `source: 'none'` + `diagnostic`.
-- `takenSpecNumbers(root, {timeoutMs?, runner?})` runs only `for-each-ref --format=%(refname) refs/heads/ refs/remotes/` and `log --all --no-renames --diff-filter=A --name-only --format= -- specs` under the same environment and root rule, and answers the numbers of `NNN-slug` segments (core's `specNumbersOf`), ascending; never a throw, `source: 'none'` and no number on any failure (T86, ISC-130.2).
-- `userEmail(root, {timeoutMs?, runner?})` runs only `config --get user.email` under the same environment and root rule (repository config, then global; system config off) and answers the trimmed address or null, never a throw (T77, ISC-119); `core/`'s `actorIdOf` turns it into the `u:` id.
-- `worktreeList(root, {timeoutMs?, runner?})` runs only `worktree list --porcelain` and answers the raw text (core's `assignWorktrees` parses it); `aheadOfMain(worktreePath, branch, …)` runs only `rev-list --count main..<branch> --` and `dirty(worktreePath, …)` only `-c core.fsmonitor=false status --porcelain --untracked-files=normal`, both inside the worktree and both for spec worktrees only; every one of them answers empty / null on a missing repository, a gone path, a detached or invalid branch, a missing git, a failure or the deadline, never a throw, and never fetches (spec 027, ISC-174, ISC-175).
-- `trackedSpecPaths(root, folder, {timeoutMs?, runner?})` runs only `ls-files -z -- specs/<folder>` in the main checkout (reads the index, never writes it) and answers the NUL-split paths core's `specSourceOf` decides the read source on; a `specs` link lists as the link or fails, so it reads as untracked; empty on any failure, never a throw (spec 027, T21, ISC-181). The loader's `specSourceFor` is the one per-spec read (tree id in the spec's worktree, ISC-176; copy kinds from the worktree copy, ISC-181) for the dashboard, the spec page and its tabs (`readSpecSource`).
-- `mergedSpecBranches(root, {timeoutMs?, runner?, cache?})` runs only `for-each-ref --format=%(objectname) %(refname) refs/heads/`, `rev-list --first-parent <main> --` (once per cache key) and `merge-base --is-ancestor <tip> <main>` (only for tips off that line) under the same environment and root rule, never fetches: a spec branch is merged when its tip is an ancestor of `main` and not on `main`'s first-parent line, so a fresh or fast-forwarded branch is not; cached on `main`'s tip and the spec branches' names and tips, `source: 'none'` on any failure, never a throw (spec 025, T11, ISC-162.1); the read-only proof is `tests/spec-edges.test.ts -t merged` (`.git/` bytes and mtimes identical) and `tests/readonly.test.ts`.
-- `mergeCommitOf(root, branch, {timeoutMs?, runner?})` runs only `for-each-ref --format=%(objectname) refs/heads/<branch>`, `rev-list --first-parent refs/heads/main --` and `log --ancestry-path --format=%H %cI %P refs/heads/<branch>..refs/heads/main --` under the same environment and root rule, never fetches: the oldest commit on `main`'s first-parent line that has the tip as an ancestor and a second parent, with its committer date; null for a tip on that line, an open branch, a name that is no plain branch name and on any failure, never a throw (spec 027, T25, ISC-175.1). The loader's `timelineWorktreeOf` turns it, `mergedSpecBranches` and `worktree list` into the timeline's `worktree` input (merged or removed), and `readWorktrees` leaves an ended spec worktree (merged branch, gone folder) out of the reading; the read-only proof is `tests/git.test.ts -t mergeCommitOf`, the probe `tests/worktrees.test.ts -t merged`.
+- Every function in `server/src/git.ts` runs only read-only git commands under one environment and root rule, never
+  fetches and never throws: no repository, no git, a failure or the deadline answers `source: 'none'` or empty / null.
 - A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).
