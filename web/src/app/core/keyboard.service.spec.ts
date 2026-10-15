@@ -171,10 +171,31 @@ describe('KeyboardService', () => {
       expect(navigate).toHaveBeenCalledTimes(1);
     });
 
-    it('does nothing outside a spec and a workspace', () => {
+    it('outside a spec and a workspace only g a fires: a spec key does nothing there', () => {
       const { press, navigate } = setup({ url: '/settings', ws: null, specId: null });
-      expect(press('g').defaultPrevented).toBe(false);
-      press('d');
+      press('g');
+      expect(press('d').defaultPrevented).toBe(false);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('g a goes to all workspaces from every page: help, settings, a spec; never from all workspaces itself', () => {
+      const binding = SHORTCUTS.find((b) => b.id === 'go-all');
+      expect(binding && GROUP_CONTEXT[binding.group]).toBe('any');
+      for (const options of [
+        { url: '/help', ws: null, specId: null },
+        { url: '/settings', ws: null, specId: null },
+        { url: '/w/harbor/s/002' },
+        { url: '/w/harbor/planning/board', specId: null },
+      ]) {
+        const { press, navigate } = setup(options);
+        expect(press('g').defaultPrevented, options.url).toBe(true);
+        expect(press('a').defaultPrevented, options.url).toBe(true);
+        expect(navigate, options.url).toHaveBeenCalledWith(['/']);
+        TestBed.resetTestingModule();
+      }
+      const { press, navigate } = setup({ url: '/', ws: null, specId: null });
+      press('g');
+      expect(press('a').defaultPrevented).toBe(false);
       expect(navigate).not.toHaveBeenCalled();
     });
   });

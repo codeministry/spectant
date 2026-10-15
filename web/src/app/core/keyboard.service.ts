@@ -141,7 +141,7 @@ export class KeyboardService {
     const pending = this.goAt;
     this.goAt = null;
     if (pending !== null && now - pending <= G_WINDOW_MS && goKey.has(event.key)) return this.fire(this.pick(goKey, event.key), event);
-    if (event.key === GO_PREFIX && this.goContext()) {
+    if (event.key === GO_PREFIX) {
       this.goAt = now;
       event.preventDefault();
       return true;
@@ -166,11 +166,6 @@ export class KeyboardService {
       const context = GROUP_CONTEXT[binding.group];
       return context === 'any' || context === here;
     });
-  }
-
-  /** `g` is a prefix wherever a `g` sequence is bound: inside a spec and on a workspace dashboard. */
-  private goContext(): boolean {
-    return this.spec() !== null || this.state.ws() !== null;
   }
 
   /**
@@ -216,7 +211,8 @@ export class KeyboardService {
       case 'focus-search':
         return this.focusSearch();
       case 'go-all':
-        if (this.workspace() === null) return false;
+        // Everywhere but on the all-workspaces page itself.
+        if (this.router.url.split(/[?#]/u)[0] === '/') return false;
         void this.router.navigate(['/']);
         return true;
       case 'go-section':
