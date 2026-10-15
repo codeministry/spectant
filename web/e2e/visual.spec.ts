@@ -14,7 +14,6 @@
  */
 import type { Page } from '@playwright/test';
 
-import { DEFAULT_WORKFLOW } from '../../core/src/stage';
 import { atWidth, expect, FIXED_NOW, test, theme, WIDTHS } from './fixtures';
 import { STATE_HEADER, STUB_LIBRARY } from './stub-api';
 
@@ -41,11 +40,9 @@ const VIEWS: readonly View[] = [
     name: 'help',
     path: '/help',
     host: 'app-help-page',
-    // One rendered workflow figure per row of the default table, its nodes labelled from the catalogue.
+    // The one rendered workflow figure (the type select's pick, feature), its nodes labelled from the catalogue.
     drawn: async (page) => {
-      await expect(page.locator('figure[data-workflow-figure] [data-diagram][data-rendered] > .canvas > svg[role="img"]')).toHaveCount(
-        DEFAULT_WORKFLOW.length,
-      );
+      await expect(page.locator('figure[data-workflow-figure] [data-diagram][data-rendered] > .canvas > svg[role="img"]')).toHaveCount(1);
       await expect(page.locator('figure[data-workflow-figure="feature"] [data-diagram] g[data-stage] text').first()).not.toHaveText(
         /^stages\./,
       );

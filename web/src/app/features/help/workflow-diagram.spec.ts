@@ -4,6 +4,8 @@ import { CARD_EDGE } from '../board/board-card';
 import {
   type DiagramLabels,
   FIGURE,
+  type FigureStep,
+  optionalSteps,
   SHIELD_CHECK,
   STAGE_EDGE,
   transitionList,
@@ -13,6 +15,8 @@ import {
 
 const LABELS: DiagramLabels = {
   stage: (stage) => stage.toUpperCase(),
+  design: 'DESIGN',
+  optional: (name) => `${name}?`,
   gateReviewed: 'gate · reviewed mark',
   gateClosed: 'gate · every claim closed',
 };
@@ -26,16 +30,20 @@ const HARBOR_FEATURE: WorkflowRow = {
 
 const ALL_STAGES: readonly WorkflowStage[] = ['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'close-pending', 'code-review', 'close', 'done'];
 
-const node = (layout: WorkflowLayout, stage: WorkflowStage) => {
+/** Spectant's own feature row (spec 028): no code-review stage, build goes straight to close. */
+const NO_REVIEW: WorkflowRow = { type: 'feature', stages: ['plan', 'tasks', 'review', 'build', 'close', 'done'], codeReview: 'none' };
+
+const node = (layout: WorkflowLayout, stage: FigureStep) => {
   const found = layout.nodes.find((n) => n.stage === stage);
   if (!found) throw new Error(`no node ${stage}`);
   return found;
 };
-const mainLine = (layout: WorkflowLayout) => layout.nodes.filter((n) => !n.detour);
+/** The stages on the line, without the optional design pass that leads it. */
+const mainLine = (layout: WorkflowLayout) => layout.nodes.filter((n) => !n.detour && !n.optional);
 const pairs = (layout: WorkflowLayout) => layout.edges.map((e) => `${e.from}→${e.to}:${e.kind}`);
 
 describe('workflowLayout', () => {
-  it('lays the default feature row out left to right, one 32 px node per stage in table order', () => {
+  it('lays the default feature row out left to right, one 32 px node per stage in table order, after the design pass', () => {
     const layout = workflowLayout(defaultWorkflowRow('feature'), LABELS);
     const main = mainLine(layout);
     expect(main.map((n) => n.stage)).toEqual(['plan', 'tasks', 'review', 'build', 'code-review', 'close', 'done']);
@@ -44,7 +52,9 @@ describe('workflowLayout', () => {
     // One horizontal line: the same top, each node one slot to the right of the one before.
     expect(new Set(main.map((n) => n.y)).size).toBe(1);
     main.slice(1).forEach((n, i) => expect(n.x - (main[i]?.x ?? 0)).toBe(FIGURE.nodeWidth + FIGURE.gap));
-    expect(main[0]?.x).toBe(FIGURE.pad);
+    const design = node(layout, 'design');
+    expect([design.x, design.y, design.optional, design.detour, design.label]).toEqual([FIGURE.pad, main[0]?.y, true, false, 'DESIGN?']);
+    expect(main[0]?.x).toBe(FIGURE.pad + FIGURE.optionalWidth + FIGURE.gap);
   });
 
   it('draws the chain, the gates and the blocked loop as edges, from core’s moves', () => {
@@ -58,9 +68,12 @@ describe('workflowLayout', () => {
       'close→done:gate',
       'build→blocked:loop',
       'blocked→build:loop',
-      'close-pending→code-review:branch',
+      'design→plan:optional',
     ]);
-    expect(layout.edges.map(({ from, to }) => ({ from, to }))).toEqual(transitionList(defaultWorkflowRow('feature')).map(({ from, to }) => ({ from, to })));
+    // Every move core lists is drawn, but close-pending's way out: under a per-spec review nothing leads into it.
+    const drawn = layout.edges.filter((e) => e.kind !== 'optional').map(({ from, to }) => ({ from, to }));
+    const moves = transitionList(defaultWorkflowRow('feature')).map(({ from, to }) => ({ from, to }));
+    expect(drawn).toEqual(moves.filter((m) => m.from !== 'close-pending'));
   });
 
   it('puts blocked under build, below the main line, and closes the loop with two arcs', () => {
@@ -90,10 +103,39 @@ describe('workflowLayout', () => {
     expect(pending.x + pending.width + FIGURE.pad).toBeLessThanOrEqual(layout.size.width);
   });
 
-  it('draws close-pending only where core has a move for it: never for a row without code review', () => {
-    // A per-spec review still returns from close-pending to code-review (rowTransitions), without the way in.
-    expect(pairs(workflowLayout(defaultWorkflowRow('feature'), LABELS)).filter((p) => p.includes('close-pending'))).toEqual(['close-pending→code-review:branch']);
+  it('draws close-pending only where a move leads into it: under code_review feature, never under spec or none', () => {
+    // A per-spec review still lists close-pending → code-review (rowTransitions), but no stage reaches close-pending.
+    expect(workflowLayout(defaultWorkflowRow('feature'), LABELS).nodes.some((n) => n.stage === 'close-pending')).toBe(false);
+    expect(workflowLayout(NO_REVIEW, LABELS).nodes.some((n) => n.stage === 'close-pending')).toBe(false);
     expect(workflowLayout(defaultWorkflowRow('chore'), LABELS).nodes.some((n) => n.stage === 'close-pending')).toBe(false);
+  });
+
+  it('lists the optional steps: the design pass but for spike and infra, a voluntary code review where the row has none', () => {
+    expect(optionalSteps(defaultWorkflowRow('feature'))).toEqual([{ step: 'design', from: null, to: 'plan' }]);
+    expect(optionalSteps(defaultWorkflowRow('bug'))).toEqual([{ step: 'design', from: null, to: 'review' }]);
+    expect(optionalSteps(defaultWorkflowRow('spike'))).toEqual([]);
+    expect(optionalSteps(defaultWorkflowRow('infra'))).toEqual([]);
+    expect(optionalSteps(NO_REVIEW)).toEqual([
+      { step: 'design', from: null, to: 'plan' },
+      { step: 'code-review', from: 'build', to: 'close' },
+    ]);
+    expect(optionalSteps(defaultWorkflowRow('chore'))).toEqual([
+      { step: 'design', from: null, to: 'review' },
+      { step: 'code-review', from: 'build', to: 'done' },
+    ]);
+  });
+
+  it('draws a voluntary code review dotted under the line, beside blocked, from build to the stage after it', () => {
+    const layout = workflowLayout(NO_REVIEW, LABELS);
+    expect(mainLine(layout).map((n) => n.stage)).toEqual(NO_REVIEW.stages);
+    const review = node(layout, 'code-review');
+    const blocked = node(layout, 'blocked');
+    expect([review.optional, review.detour, review.gate, review.label]).toEqual([true, true, null, 'CODE-REVIEW?']);
+    expect(review.y).toBe(blocked.y);
+    expect(review.x).toBeGreaterThanOrEqual(blocked.x + blocked.width);
+    expect(pairs(layout)).toEqual(expect.arrayContaining(['build→code-review:optional', 'code-review→close:optional', 'build→close:main']));
+    // The voluntary review moves no stage: the solid chain still runs build → close.
+    expect(pairs(layout).filter((p) => p.endsWith(':optional'))).toEqual(['design→plan:optional', 'build→code-review:optional', 'code-review→close:optional']);
   });
 
   it('marks the two fixed gates: a double-framed node, a shield-check annotation above it, the gate label', () => {

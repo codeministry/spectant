@@ -1,6 +1,7 @@
 /*
- * The lifecycle bands (prototype help `.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted canvas, two bands of four
- * nodes with a 3 px top edge in the node's tone, arrows between them, the loops and the tone legend underneath.
+ * The lifecycle bands (prototype help `.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted canvas, two bands of five
+ * nodes with a 3 px top edge in the node's tone, arrows between them, the loops and the tone legend underneath. An
+ * optional step is dotted all round, its arrow too.
  */
 :host {
   display: block;
@@ -92,6 +93,22 @@
   margin: 0;
 }
 
+.wf-node[data-optional] {
+  border: 1px dashed var(--muted-ink);
+  border-block-start: 3px dotted var(--wf-c);
+  background: color-mix(in srgb, var(--color-base-100) 70%, transparent);
+}
+
+.wf-optional {
+  justify-self: start;
+  padding: 2px 8px;
+  border: 1px dashed var(--muted-ink);
+  border-radius: var(--radius-field);
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .wf-node code {
   color: var(--disp-text);
   font-family: var(--font-mono);
@@ -118,11 +135,15 @@
   color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .wf-file ui-icon {
   flex: none;
+}
+
+.wf-path {
+  min-inline-size: 0;
 }
 
 .wf-gate {
@@ -185,7 +206,7 @@
 
 @container shell (width >= 1120px) {
   .wf-row {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .wf-node:nth-child(2n)::after,
@@ -253,4 +274,9 @@
   block-size: 8px;
   border-radius: var(--radius-selector);
   background: var(--wf-c);
+}
+
+.wf-swatch.optional {
+  border: 1px dashed var(--muted-ink);
+  background: none;
 }

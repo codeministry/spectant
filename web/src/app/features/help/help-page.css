@@ -128,6 +128,14 @@ code {
   color: var(--muted-ink);
 }
 
+/* An optional step of the chain: a dashed pill in muted ink, as the lifecycle draws it. */
+.chain li[data-optional] .pill {
+  border-style: dashed;
+  border-color: var(--muted-ink);
+  background: none;
+  color: var(--muted-ink);
+}
+
 .type-chip {
   display: inline-flex;
   gap: 8px;
@@ -148,7 +156,7 @@ code {
   border-color: var(--track);
 }
 
-/* The workflow head: the heading and the workspace select on one row, the legend under the source line. */
+/* The workflow head: the heading and the workspace and type selects on one row, the legend under the source line. */
 
 .workflow-head {
   display: flex;
@@ -191,6 +199,11 @@ code {
 
 .swatch.dashed {
   border: 1px dashed var(--held);
+}
+
+.swatch.dotted {
+  border: 1px dotted var(--muted-ink);
+  background: none;
 }
 
 .gate-glyph {
@@ -275,6 +288,13 @@ code {
 }
 
 /* Workflows (ISC-123) */
+
+.selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
 
 .workspace {
   display: flex;

@@ -4,14 +4,20 @@
 // places them. Pure: the same row and words give the same model, so the specs assert geometry, not markup.
 //
 // Left to right at every tier: the stages in table order on one line, the build ⇄ blocked loop and the close-pending
-// branch as arcs under it, each fixed gate a double-framed node with a shield-check annotation above it.
-import type { WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
+// branch as arcs under it, each fixed gate a double-framed node with a shield-check annotation above it. The optional
+// steps that move no stage (`optionalSteps`) are dotted: the design pass before the first stage on the line, a
+// voluntary code review under it between build and what follows, where the row has no code-review stage.
+import type { SpecType, WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
 import { rowTransitions } from '../../../../../core/src/stage';
 import { ICONS } from '../../shared/icons/icons';
 
 /** The words a figure shows, from the catalogue so the active language applies. */
 export interface DiagramLabels {
   readonly stage: (stage: WorkflowStage) => string;
+  /** The design pass's name, which is no stage. */
+  readonly design: string;
+  /** An optional step's node label from its name, e.g. `Design (optional)`. */
+  readonly optional: (name: string) => string;
   /** The edge into `build`: it needs the reviewed mark. */
   readonly gateReviewed: string;
   /** The edge into `done`: it needs every claim closed. */
@@ -27,8 +33,36 @@ export interface DiagramTransition {
   readonly gate: GateKind | null;
 }
 
+/** A step a figure draws: a stage of the row, or the design pass, an optional step that is no stage. */
+export type FigureStep = WorkflowStage | 'design';
+
+/**
+ * An optional step: it moves no stage, so core's moves do not list it. `design` is the design pass (`/spec-design`,
+ * design.md) before the row's first stage; `code-review` a voluntary `/spec-code-review` between build and the stage
+ * after it, where the row has no code-review stage (`code_review: none`, or a hand-built row without it).
+ */
+export interface OptionalStep {
+  readonly step: 'design' | 'code-review';
+  /** The stage the step follows; null for the design pass, which comes before the first stage. */
+  readonly from: WorkflowStage | null;
+  readonly to: WorkflowStage;
+}
+
+/** The types the Spec skill's design pass refuses (its `SpecDesign.ts gate`): no viewport to design. */
+const NO_DESIGN: ReadonlySet<SpecType> = new Set<SpecType>(['spike', 'infra']);
+
+/** The optional steps of a row, in drawing order: the design pass first, then the voluntary code review. */
+export function optionalSteps(row: WorkflowRow): readonly OptionalStep[] {
+  const steps: OptionalStep[] = [];
+  const first = row.stages.at(0);
+  if (first !== undefined && !NO_DESIGN.has(row.type)) steps.push({ step: 'design', from: null, to: first });
+  const after = row.stages.at(row.stages.indexOf('build') + 1);
+  if (!row.stages.includes('code-review') && row.stages.includes('build') && after !== undefined) steps.push({ step: 'code-review', from: 'build', to: after });
+  return steps;
+}
+
 /** What a stage does on the board, which picks its left edge: the legend's moving, waits on you, done and detour. */
-export type StageRole = 'idea' | 'queued' | 'moving' | 'waits' | 'detour' | 'done';
+export type StageRole = 'idea' | 'queued' | 'moving' | 'waits' | 'detour' | 'done' | 'optional';
 
 const ROLE: Readonly<Record<WorkflowStage, StageRole>> = {
   idea: 'idea',
@@ -51,6 +85,7 @@ export const ROLE_EDGE: Readonly<Record<StageRole, string>> = {
   waits: 'var(--color-secondary)',
   detour: 'var(--held)',
   done: 'var(--color-accent)',
+  optional: 'var(--track)',
 };
 
 /**
@@ -76,6 +111,8 @@ export const FIGURE = {
   drop: 40,
   blockedWidth: 112,
   pendingWidth: 168,
+  /** An optional step's node: wide enough for its `(optional)` suffix in German. */
+  optionalWidth: 176,
   iconSize: 12,
   /** The gate label's font size; its width is estimated from it, for the canvas size only. */
   gateFont: 11,
@@ -84,14 +121,16 @@ export const FIGURE = {
 } as const;
 
 export interface FigureNode {
-  readonly stage: WorkflowStage;
+  readonly stage: FigureStep;
   readonly label: string;
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
-  /** `blocked` or `close-pending`: drawn dashed under the main line. */
+  /** Drawn under the main line: `blocked`, `close-pending` and the optional code review. */
   readonly detour: boolean;
+  /** An optional step (`optionalSteps`): drawn dotted, it moves no stage. */
+  readonly optional: boolean;
   /** The fixed gate a move into this node passes: drawn with a double frame. */
   readonly gate: GateKind | null;
   readonly role: StageRole;
@@ -101,12 +140,15 @@ export interface FigureNode {
   readonly textY: number;
 }
 
-/** `main` a step of the chain, `gate` a step through a fixed gate, `loop` build ⇄ blocked, `branch` via close-pending. */
-export type EdgeKind = 'main' | 'gate' | 'loop' | 'branch';
+/**
+ * `main` a step of the chain, `gate` a step through a fixed gate, `loop` build ⇄ blocked, `branch` via close-pending,
+ * `optional` into or out of an optional step.
+ */
+export type EdgeKind = 'main' | 'gate' | 'loop' | 'branch' | 'optional';
 
 export interface FigureEdge {
-  readonly from: WorkflowStage;
-  readonly to: WorkflowStage;
+  readonly from: FigureStep;
+  readonly to: FigureStep;
   readonly kind: EdgeKind;
   /** The line up to the arrowhead's base: `M … L …` for a step, `M … Q …` for an arc. */
   readonly path: string;
@@ -117,7 +159,7 @@ export interface FigureEdge {
 export interface FigureGate {
   readonly kind: GateKind;
   /** The gated node. */
-  readonly stage: WorkflowStage;
+  readonly stage: FigureStep;
   readonly label: string;
   /** The shield-check glyph's top-left corner; it is `FIGURE.iconSize` square. */
   readonly iconX: number;
@@ -190,39 +232,52 @@ export function workflowLayout(row: WorkflowRow, labels: DiagramLabels): Workflo
   const gateInto = new Map<WorkflowStage, GateKind>();
   for (const move of moves) if (move.gate !== null && !gateInto.has(move.to)) gateInto.set(move.to, move.gate);
 
+  const optional = optionalSteps(row);
+  const design = optional.find((o) => o.step === 'design');
+  const review = optional.find((o) => o.step === 'code-review');
+
   const mainY = FIGURE.pad + FIGURE.band;
   const detourY = mainY + FIGURE.nodeHeight + FIGURE.drop;
-  const makeNode = (stage: WorkflowStage, x: number, y: number, width: number, detour: boolean): FigureNode => {
-    const role = roleOf(stage);
+  const makeNode = (stage: FigureStep, x: number, y: number, width: number, detour: boolean, isOptional = false): FigureNode => {
+    const role = isOptional || stage === 'design' ? 'optional' : roleOf(stage);
+    const name = stage === 'design' ? labels.design : labels.stage(stage);
     return {
       stage,
-      label: labels.stage(stage),
+      label: isOptional ? labels.optional(name) : name,
       x,
       y,
       width,
       height: FIGURE.nodeHeight,
       detour,
-      gate: detour ? null : (gateInto.get(stage) ?? null),
+      optional: isOptional,
+      gate: detour || isOptional || stage === 'design' ? null : (gateInto.get(stage) ?? null),
       role,
-      edge: STAGE_EDGE[stage],
+      edge: stage === 'design' || isOptional ? ROLE_EDGE.optional : STAGE_EDGE[stage],
       // The 3 px edge bar sits at the left, so the label centres in the room right of it.
       textX: x + width / 2 + 4,
       textY: y + FIGURE.nodeHeight / 2,
     };
   };
 
-  const main = row.stages.map((stage, i) => makeNode(stage, FIGURE.pad + i * (FIGURE.nodeWidth + FIGURE.gap), mainY, FIGURE.nodeWidth, false));
-  const byStage = new Map<WorkflowStage, FigureNode>(main.map((n) => [n.stage, n]));
+  // The design pass leads the line, dotted; the stages follow one slot each.
+  const lead = design ? [makeNode('design', FIGURE.pad, mainY, FIGURE.optionalWidth, false, true)] : [];
+  const start = FIGURE.pad + (design ? FIGURE.optionalWidth + FIGURE.gap : 0);
+  const main = [...lead, ...row.stages.map((stage, i) => makeNode(stage, start + i * (FIGURE.nodeWidth + FIGURE.gap), mainY, FIGURE.nodeWidth, false))];
+  const byStage = new Map<FigureStep, FigureNode>(main.map((n) => [n.stage, n]));
   const build = byStage.get('build');
   const used = new Set(moves.flatMap((m) => [m.from, m.to]));
   const detours: FigureNode[] = [];
   if (build && used.has('blocked')) {
     const blocked = makeNode('blocked', centreX(build) - FIGURE.blockedWidth / 2, detourY, FIGURE.blockedWidth, true);
     detours.push(blocked);
-    if (used.has('close-pending')) {
-      const review = byStage.get('code-review');
-      const wanted = (review ? Math.max(centreX(review), centreX(build) + FIGURE.nodeWidth + FIGURE.gap) : centreX(build) + FIGURE.nodeWidth + FIGURE.gap) - FIGURE.pendingWidth / 2;
-      detours.push(makeNode('close-pending', Math.max(wanted, right(blocked) + FIGURE.pad), detourY, FIGURE.pendingWidth, true));
+    // Close-pending only where a move leads into it (`code_review: feature`); its way out alone is no reason to draw it.
+    const branch = moves.some((m) => m.to === 'close-pending') ? 'close-pending' : review ? 'code-review' : null;
+    if (branch !== null) {
+      const target = branch === 'close-pending' ? byStage.get('code-review') : review && byStage.get(review.to);
+      const width = branch === 'close-pending' ? FIGURE.pendingWidth : FIGURE.optionalWidth;
+      const slot = centreX(build) + FIGURE.nodeWidth + FIGURE.gap;
+      const wanted = (target ? Math.max(centreX(target), slot) : slot) - width / 2;
+      detours.push(makeNode(branch, Math.max(wanted, right(blocked) + FIGURE.pad), detourY, width, true, branch === 'code-review'));
     }
   }
   for (const n of detours) byStage.set(n.stage, n);
@@ -231,8 +286,19 @@ export function workflowLayout(row: WorkflowRow, labels: DiagramLabels): Workflo
   for (const move of moves) {
     const from = byStage.get(move.from);
     const to = byStage.get(move.to);
-    if (!from || !to) continue;
+    if (!from || !to || from.optional || to.optional) continue;
     edges.push({ from: move.from, to: move.to, ...edgeGeometry(from, to), kind: edgeKind(move, from, to) });
+  }
+  // The optional steps' edges: into the first stage from the design pass, through the voluntary code review.
+  const link = (fromStep: FigureStep, toStep: FigureStep): void => {
+    const from = byStage.get(fromStep);
+    const to = byStage.get(toStep);
+    if (from && to) edges.push({ from: fromStep, to: toStep, ...edgeGeometry(from, to), kind: 'optional' });
+  };
+  if (design) link('design', design.to);
+  if (review?.from && byStage.get('code-review')?.optional === true) {
+    link(review.from, 'code-review');
+    link('code-review', review.to);
   }
 
   const gates: FigureGate[] = main.flatMap((n, i): FigureGate[] => {
@@ -262,6 +328,7 @@ export function workflowLayout(row: WorkflowRow, labels: DiagramLabels): Workflo
 }
 
 function edgeKind(move: DiagramTransition, from: FigureNode, to: FigureNode): EdgeKind {
+  if (from.optional || to.optional) return 'optional';
   if (move.gate !== null) return 'gate';
   if (from.stage === 'blocked' || to.stage === 'blocked') return 'loop';
   if (from.detour || to.detour) return 'branch';

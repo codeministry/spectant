@@ -1863,7 +1863,7 @@
       "shotBoard": "The round board of a spec"
     },
     "lifecycle": {
-      "label": "How a feature moves, in eight stages",
+      "label": "How a feature moves: seven stages and three optional steps",
       "continues": "continues",
       "loops": "Loops",
       "bands": {
@@ -1877,35 +1877,49 @@
         }
       },
       "what": {
-        "idea": "A story is shaped into a goal.",
+        "idea": "A story under specs/ideas/ (/spec-idea) becomes a spec folder.",
         "plan": "Claims and fog are written down; the approach follows.",
         "tasks": "Atomic tasks, one claim each.",
         "review": "You release the spec for build.",
         "build": "Agents take claims and close them on their probes.",
-        "code-review": "Code and security review of the tree.",
+        "code-review": "Code and security review of the working tree.",
         "close": "Every claim is closed; the spec closes.",
-        "done": "Phase complete, fog resolved."
+        "done": "Phase complete, fog resolved.",
+        "design": "UI specs: current and target state per viewport, before the plan.",
+        "archive": "The finished spec moves to specs/archive/; its number stays taken."
       },
       "gates": {
         "review": "your gate · reviewed mark",
         "build": "your gate · manual steps, questions",
-        "code-review": "your gate · code-reviewed mark",
         "close": "gate · every claim closed"
       },
       "loopBlocked": "blocked → back to build once you answer the question",
-      "loopStale": "stale code-reviewed mark → run /spec-code-review again",
+      "loopStale": "stale code-reviewed mark → run /spec-code-review again where the workflow asks for one",
       "tones": {
         "start": "start",
         "files": "files written",
         "gate": "your gate",
         "agents": "agents at work",
-        "done": "done"
-      }
+        "done": "done",
+        "optional": "optional"
+      },
+      "steps": {
+        "design": "Design",
+        "archive": "Archive"
+      },
+      "optional": {
+        "design": "optional · UI specs only",
+        "code-review": "optional · as specs/workflow.md says",
+        "archive": "optional · after done"
+      },
+      "loopReviewed": "spec changed after the review → reviewed mark stale → back to review",
+      "loopPending": "code_review: feature → close-pending until the feature’s other specs close, then one code review"
     },
     "moves": {
       "body": "A spec moves through the stages of its type. On the board you drag its card, or open Move to… from the grip; core runs the same transition either way and either moves it or says, under the card, what is missing.",
-      "chain": "The stages of a feature, in the default order",
-      "types": "The workflow of each spec type"
+      "chain": "The steps of a feature in order; dashed ones are optional",
+      "types": "The workflow of each spec type",
+      "optional": "optional"
     },
     "legend": {
       "label": "Legend",
@@ -1913,7 +1927,8 @@
       "waits": "waits on you",
       "done": "done",
       "detour": "detour",
-      "gate": "fixed gate"
+      "gate": "fixed gate",
+      "optional": "optional step"
     },
     "types": {
       "caption": "The files each spec type has",
@@ -1933,13 +1948,16 @@
         "then": "Then"
       },
       "list": {
+        "spec-idea": "Shape a rough idea into a story under specs/ideas/.",
         "spec-new": "Turn a shaped story under specs/ideas/ into a spec folder.",
+        "spec-design": "Design pass for a UI spec: current and target state per viewport in design.md.",
         "spec-plan": "Write plan.md: the how, locked in one question.",
         "spec-tasks": "Break the spec into tasks.md, one claim per task.",
         "spec-review": "Review the spec and record the reviewed mark, the gate into Build.",
         "spec-implement": "Work the tasks until every claim closes on its probe.",
-        "spec-code-review": "Run the code and security review on the working tree.",
+        "spec-code-review": "Run the code and security review on the working tree; required or optional, as specs/workflow.md says.",
         "spec-complete": "Close the spec once every close condition holds.",
+        "spec-archive": "Move a finished spec to specs/archive/; restore brings it back.",
         "spec-status": "Phase, progress and claims of every spec in the repository."
       }
     },
@@ -1970,6 +1988,7 @@
       "heading": "Workflow of {{ws}}",
       "headingDefault": "Default workflow",
       "workspace": "Workspace",
+      "type": "Spec type",
       "defaultCaption": "Default table: no workspace is open.",
       "figure": "Workflow of the type {{type}}",
       "source": {
@@ -1995,8 +2014,13 @@
         "waits": "waits on you",
         "done": "done",
         "detour": "detour",
-        "gate": "fixed gate"
-      }
+        "gate": "fixed gate",
+        "optional": "optional"
+      },
+      "optionalNode": "{{step}} (optional)",
+      "optionalDesign": "optional: Design → {{to}} (/spec-design, UI specs only; moves no stage)",
+      "optionalReview": "optional: {{from}} → Code review → {{to}} (/spec-code-review; moves no stage)",
+      "diagramOptional": "Optional steps: {{steps}}."
     }
   },
   "ideas": {

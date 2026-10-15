@@ -1863,7 +1863,7 @@
       "shotBoard": "Das Round-Board einer Spec"
     },
     "lifecycle": {
-      "label": "Wie sich ein Feature bewegt, in acht Stages",
+      "label": "Wie sich ein Feature bewegt: sieben Stages und drei optionale Schritte",
       "continues": "weiter",
       "loops": "Schleifen",
       "bands": {
@@ -1877,35 +1877,49 @@
         }
       },
       "what": {
-        "idea": "Eine Story wird zum Ziel geformt.",
+        "idea": "Eine Story unter specs/ideas/ (/spec-idea) wird zum Spec-Ordner.",
         "plan": "Claims und Nebel werden festgehalten; der Ansatz folgt.",
         "tasks": "Atomare Tasks, je ein Claim.",
         "review": "Sie geben die Spec zum Bauen frei.",
         "build": "Agenten nehmen Claims und schliessen sie über ihre Proben.",
         "code-review": "Code- und Security-Review des Arbeitsbaums.",
         "close": "Jeder Claim ist geschlossen; die Spec schliesst.",
-        "done": "Phase abgeschlossen, Nebel aufgelöst."
+        "done": "Phase abgeschlossen, Nebel aufgelöst.",
+        "design": "UI-Specs: Ist- und Soll-Zustand je Viewport, vor dem Plan.",
+        "archive": "Die fertige Spec wandert nach specs/archive/; ihre Nummer bleibt vergeben."
       },
       "gates": {
         "review": "Ihr Gate · Reviewed-Marke",
         "build": "Ihr Gate · manuelle Schritte, Fragen",
-        "code-review": "Ihr Gate · Code-reviewed-Marke",
         "close": "Gate · jeder Claim geschlossen"
       },
       "loopBlocked": "blocked → zurück zu Build, sobald Sie die Frage beantworten",
-      "loopStale": "veraltete Code-reviewed-Marke → /spec-code-review erneut ausführen",
+      "loopStale": "veraltete Code-reviewed-Marke → /spec-code-review erneut ausführen, wo der Workflow eines verlangt",
       "tones": {
         "start": "Start",
         "files": "Dateien geschrieben",
         "gate": "Ihr Gate",
         "agents": "Agenten am Werk",
-        "done": "fertig"
-      }
+        "done": "fertig",
+        "optional": "optional"
+      },
+      "steps": {
+        "design": "Design",
+        "archive": "Archiv"
+      },
+      "optional": {
+        "design": "optional · nur UI-Specs",
+        "code-review": "optional · laut specs/workflow.md",
+        "archive": "optional · nach Done"
+      },
+      "loopReviewed": "Spec nach dem Review geändert → Reviewed-Marke veraltet → zurück zu Review",
+      "loopPending": "code_review: feature → close-pending, bis die übrigen Specs des Features schliessen, dann ein Code-Review"
     },
     "moves": {
       "body": "Eine Spec durchläuft die Stages ihres Typs. Auf dem Board ziehen Sie ihre Karte oder öffnen „Verschieben nach…“ am Griff; core führt in beiden Fällen dieselbe Transition aus und verschiebt die Karte oder nennt unter ihr, was noch fehlt.",
-      "chain": "Die Stages eines Features in der Standardreihenfolge",
-      "types": "Der Workflow jedes Spec-Typs"
+      "chain": "Die Schritte eines Features der Reihe nach; gestrichelte sind optional",
+      "types": "Der Workflow jedes Spec-Typs",
+      "optional": "optional"
     },
     "legend": {
       "label": "Legende",
@@ -1913,7 +1927,8 @@
       "waits": "wartet auf Sie",
       "done": "erledigt",
       "detour": "Umweg",
-      "gate": "festes Gate"
+      "gate": "festes Gate",
+      "optional": "optionaler Schritt"
     },
     "types": {
       "caption": "Die Dateien jedes Spec-Typs",
@@ -1933,13 +1948,16 @@
         "then": "Danach"
       },
       "list": {
+        "spec-idea": "Formt eine grobe Idee zu einer Story unter specs/ideas/.",
         "spec-new": "Macht aus einer ausgearbeiteten Story unter specs/ideas/ einen Spec-Ordner.",
+        "spec-design": "Design-Pass für eine UI-Spec: Ist- und Soll-Zustand je Viewport in design.md.",
         "spec-plan": "Schreibt plan.md: das Wie, mit einer Frage festgelegt.",
         "spec-tasks": "Zerlegt die Spec in tasks.md, ein Claim pro Task.",
         "spec-review": "Prüft die Spec und setzt die Review-Marke, das Gate zu Build.",
         "spec-implement": "Arbeitet die Tasks ab, bis jeder Claim auf seine Probe hin schliesst.",
-        "spec-code-review": "Führt das Code- und Security-Review auf dem Arbeitsbaum aus.",
+        "spec-code-review": "Führt das Code- und Security-Review auf dem Arbeitsbaum aus; Pflicht oder optional, wie specs/workflow.md es festlegt.",
         "spec-complete": "Schliesst die Spec, sobald jede Abschlussbedingung erfüllt ist.",
+        "spec-archive": "Verschiebt eine fertige Spec nach specs/archive/; restore holt sie zurück.",
         "spec-status": "Phase, Fortschritt und Claims jeder Spec im Repository."
       }
     },
@@ -1970,6 +1988,7 @@
       "heading": "Workflow von {{ws}}",
       "headingDefault": "Standard-Workflow",
       "workspace": "Workspace",
+      "type": "Spec-Typ",
       "defaultCaption": "Standardtabelle: Es ist kein Workspace geöffnet.",
       "figure": "Workflow des Typs {{type}}",
       "source": {
@@ -1995,8 +2014,13 @@
         "waits": "wartet auf Sie",
         "done": "fertig",
         "detour": "Umweg",
-        "gate": "festes Gate"
-      }
+        "gate": "festes Gate",
+        "optional": "optional"
+      },
+      "optionalNode": "{{step}} (optional)",
+      "optionalDesign": "optional: Design → {{to}} (/spec-design, nur UI-Specs; ändert keine Stage)",
+      "optionalReview": "optional: {{from}} → Code-Review → {{to}} (/spec-code-review; ändert keine Stage)",
+      "diagramOptional": "Optionale Schritte: {{steps}}."
     }
   },
   "ideas": {

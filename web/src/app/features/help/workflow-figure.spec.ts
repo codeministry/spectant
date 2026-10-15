@@ -7,6 +7,8 @@ import { WorkflowFigure } from './workflow-figure';
 
 const LABELS: DiagramLabels = {
   stage: (stage) => `Stage ${stage}`,
+  design: 'Design',
+  optional: (name) => `${name} (optional)`,
   gateReviewed: 'gate · reviewed mark',
   gateClosed: 'gate · every claim closed',
 };
@@ -54,6 +56,11 @@ describe('WorkflowFigure (ISC-123)', () => {
     expect(build?.querySelector('rect.box')?.getAttribute('height')).toBe('32');
     expect((build as SVGGElement | null)?.style.getPropertyValue('--edge')).toBe('var(--color-primary)');
     expect(host.querySelector('g[data-stage="blocked"]')?.hasAttribute('data-detour')).toBe(true);
+    // The design pass leads the line, dotted: an optional step, no detour.
+    const design = host.querySelector('g[data-stage="design"]');
+    expect(design?.hasAttribute('data-optional')).toBe(true);
+    expect(design?.hasAttribute('data-detour')).toBe(false);
+    expect(text(design)).toBe('Design (optional)');
   });
 
   it('double-frames the gated nodes and draws each gate annotation with the shield-check glyph and its label', () => {
@@ -85,6 +92,6 @@ describe('WorkflowFigure (ISC-123)', () => {
     expect(render(false).host.querySelector('[data-workflow-legend]')).toBeNull();
     TestBed.resetTestingModule();
     const legend = render(true).host.querySelector('[data-workflow-legend]');
-    expect([...(legend?.querySelectorAll('li') ?? [])].map(text)).toEqual(['moving', 'waits on you', 'done', 'detour', 'fixed gate']);
+    expect([...(legend?.querySelectorAll('li') ?? [])].map(text)).toEqual(['moving', 'waits on you', 'done', 'detour', 'optional', 'fixed gate']);
   });
 });

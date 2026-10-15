@@ -54,6 +54,11 @@
   background: var(--lane);
 }
 
+.swatch[data-role='optional'] {
+  border: 1px dotted var(--muted-ink);
+  background: none;
+}
+
 /* The canvas: a dotted grid (1 px dots every 16 px, two linear layers) that scrolls sideways when the figure is wider. */
 .canvas {
   overflow-x: auto;
@@ -124,6 +129,20 @@ svg {
   font-weight: 500;
 }
 
+/* An optional step moves no stage: a dotted outline, no fill, its words muted like a detour's. */
+.node[data-optional] .box {
+  fill: var(--color-base-100);
+  stroke: var(--muted-ink);
+  stroke-dasharray: 1.5 3;
+  stroke-linecap: round;
+}
+
+.node[data-optional] text {
+  fill: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .edge .line {
   fill: none;
   stroke: var(--track);
@@ -132,6 +151,11 @@ svg {
 
 .edge .head {
   fill: var(--track);
+}
+
+.edge[data-kind='optional'] .line {
+  stroke-dasharray: 1.5 3;
+  stroke-linecap: round;
 }
 
 .edge[data-kind='gate'] .line {

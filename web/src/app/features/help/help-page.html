@@ -73,9 +73,9 @@
     </table>
   </ui-card>
   <ol class="chain" data-stage-chain [attr.aria-label]="'help.moves.chain' | transloco">
-    @for (stage of chain; track stage; let last = $last) {
-      <li [attr.data-stage]="stage">
-        <span class="pill">{{ 'stages.' + stage | transloco }}</span>
+    @for (step of chain; track step.stage; let last = $last) {
+      <li [attr.data-stage]="step.stage" [attr.data-optional]="step.optional ? '' : null">
+        <span class="pill">{{ step.labelKey | transloco }}@if (step.optional) {<span class="vh"> ({{ 'help.moves.optional' | transloco }})</span>}</span>
         @if (!last) {
           <ui-icon class="chevron" name="chevron-right" [size]="14" />
         }
@@ -104,6 +104,7 @@
           {{ 'help.workflow.headingDefault' | transloco }}
         }
       </h2>
+      <div class="selects">
       <div class="workspace">
         <label for="help-workspace">{{ 'help.workflow.workspace' | transloco }}</label>
         <select
@@ -120,6 +121,15 @@
           }
         </select>
       </div>
+      <div class="workspace">
+        <label for="help-type">{{ 'help.workflow.type' | transloco }}</label>
+        <select id="help-type" class="select select-sm" data-workflow-type #type [value]="selectedType()" (change)="chooseType(type.value)">
+          @for (option of types; track option) {
+            <option [value]="option" [selected]="selectedType() === option">{{ 'types.' + option | transloco }}</option>
+          }
+        </select>
+      </div>
+      </div>
     </div>
     <p class="source" data-workflow-source aria-live="polite">
       @if (sourceLine(); as line) {
@@ -135,6 +145,9 @@
             }
             @case ('dashed') {
               <span class="swatch dashed" aria-hidden="true"></span>
+            }
+            @case ('dotted') {
+              <span class="swatch dotted" aria-hidden="true"></span>
             }
             @case ('gate') {
               <ui-icon class="gate-glyph" name="shield-check" [size]="14" />
@@ -167,6 +180,9 @@
                     <span class="gate">{{ 'help.workflow.gateClosed' | transloco }}</span>
                   }
                 </li>
+              }
+              @for (line of figure.optional; track line) {
+                <li data-optional-move>{{ line }}</li>
               }
             </ol>
           </details>
