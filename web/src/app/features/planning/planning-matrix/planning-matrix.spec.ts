@@ -19,8 +19,8 @@ import { PlanningMatrix } from './planning-matrix';
 
 // T19 · ISC-169 and T21 · ISC-169.1: the matrix lens against every planning golden. Every lane, column, card and
 // number the lens draws is `planningMatrix` of the golden's own (core derives it, `core/tests/relations.test.ts` proves
-// it equal to the live tree's); the view adds only layout: one swimlane at a time over the milestone pills below 640,
-// all lanes from 640, finished features folded to 44 px stripes until opened, archived cards hidden until the archive
+// it equal to the live tree's); the view adds only layout: every lane stacked below 640, all lanes under band rows
+// from 640, no milestone pills at any width, finished features folded to 44 px stripes until opened, archived cards hidden until the archive
 // toggle shows them. Probes:
 // `bun run --cwd web test -- --filter "planning-matrix"` and `… --filter "planning-matrix multi"`.
 
@@ -258,47 +258,32 @@ describe('planning-matrix', () => {
     expect(r.selection.picks.at(-1)).toBe(open?.ref);
   });
 
-  it('compact: one swimlane at a time, the next due milestone by default, the pills switch it through ?m=', async () => {
+  it('compact: every lane stacked in lane order, each with its open cards; finished columns fold to stripe rows', async () => {
     const model = harbor as unknown as PlanningModel;
-    const matrix = planningMatrix(model);
+    const matrix = planningMatrix(model, { archived: false });
     const r = await render(model, 'compact');
     expect(r.el.querySelector('[data-lens-matrix]')?.getAttribute('data-layout')).toBe('single');
-    const pills = [...r.el.querySelectorAll<HTMLButtonElement>('[data-m]')];
-    expect(pills.map((p) => p.getAttribute('data-m'))).toEqual(matrix.lanes.map((l) => (l.ref === null ? 'none' : idOf(l.ref))));
-    pills.forEach((pill, i) => expect(text(pill.querySelector('[data-pill-count]'))).toBe(String(matrix.lanes[i].specCount)));
-    // harbor-0-9 is late, not complete: it is the next due milestone.
-    const next = model.milestones.find((m) => m.state !== 'complete');
-    expect(lanes(r.el).map((l) => l.getAttribute('data-lane'))).toEqual([`milestone:${String(next?.slug)}`]);
-    expect(r.el.querySelector(`[data-m="${String(next?.slug)}"]`)?.getAttribute('aria-pressed')).toBe('true');
-    const none = r.el.querySelector<HTMLButtonElement>('[data-m="none"]');
-    none?.click();
-    await r.stable();
-    expect(new URL(r.router.url, 'http://x').searchParams.get('m')).toBe('none');
-    expect(lanes(r.el).map((l) => l.getAttribute('data-lane'))).toEqual(['none']);
-    const shown = matrix.lanes.find((l) => l.ref === null);
+    expect(lanes(r.el).map((l) => l.getAttribute('data-lane'))).toEqual(matrix.lanes.map((l) => laneKey(l.ref)));
     // Finished columns stay folded to a stripe row until opened, here as on the grid.
-    const open = (cells: ReadonlyArray<readonly LensCard[]>, done: boolean): string[] =>
-      cells.flatMap((cell, i) => (matrix.columns[i].done === done ? cell.map((c) => c.ref) : []));
-    expect(cardsIn(r.el).map((c) => c.getAttribute('data-ref'))).toEqual(open(shown?.cells ?? [], false));
-    const folded = [...r.el.querySelectorAll('[data-stripe]')].map((s) => s.getAttribute('data-stripe'));
-    expect(folded).toEqual(matrix.columns.filter((c, i) => c.done && (shown?.cells[i].length ?? 0) > 0).map((c) => c.ref));
+    const open = matrix.lanes.flatMap((l) => l.cells.flatMap((cell, i) => (matrix.columns[i].done ? [] : cell.map((c) => c.ref))));
+    expect(cardsIn(r.el).map((c) => c.getAttribute('data-ref'))).toEqual(open);
     r.el.querySelector<HTMLButtonElement>('[data-show-done]')?.click();
     await r.stable();
-    expect(cardsIn(r.el).map((c) => c.getAttribute('data-ref'))).toEqual(shown?.cells.flat().map((c) => c.ref));
+    expect(cardsIn(r.el).map((c) => c.getAttribute('data-ref'))).toEqual(matrix.lanes.flatMap((l) => l.cells.flat().map((c) => c.ref)));
   });
 
-  it('compact: a ?m= in the address picks the lane on load; an unknown one falls back to the next due', async () => {
+  it('shows no milestone pills at any width: every lane is on the page, a ?m= in the address changes nothing', async () => {
     const model = harbor as unknown as PlanningModel;
-    let r = await render(model, 'compact', '/?m=harbor-1-0');
-    expect(lanes(r.el).map((l) => l.getAttribute('data-lane'))).toEqual(['milestone:harbor-1-0']);
-    TestBed.resetTestingModule();
-    r = await render(model, 'compact', '/?m=nope');
-    expect(lanes(r.el).map((l) => l.getAttribute('data-lane'))).toEqual(['milestone:harbor-0-9']);
+    for (const tier of ['compact', 'medium', 'wide'] as const) {
+      const r = await render(model, tier, '/?m=harbor-1-0');
+      expect(r.el.querySelectorAll('[data-m], .pills').length, tier).toBe(0);
+      expect(lanes(r.el).length, tier).toBe(planningMatrix(model).lanes.length);
+      TestBed.resetTestingModule();
+    }
   });
 
-  it('a workspace without milestones has only the no-milestone lane and no pills', async () => {
+  it('a workspace without milestones has only the no-milestone lane', async () => {
     const r = await render(lantern as unknown as PlanningModel, 'compact');
-    expect(r.el.querySelectorAll('[data-m]').length).toBe(0);
     expect(lanes(r.el).map((l) => l.getAttribute('data-lane'))).toEqual(['none']);
   });
 
