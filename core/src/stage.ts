@@ -11,7 +11,9 @@
 // Spec 008 adds the workflow's defaults and what derives from a row: the default table (T42, read by workflow.ts, which
 // imports it from here so the two modules form no import cycle), the allowed transitions (T45, ISC-29) and the explicit
 // stage, a frontmatter `stage:` that wins over the derived one when the last event agrees with it (T47, ISC-120), and
-// is one `stage-mismatch` diagnostic when it does not apply (T48). Row 8, `close-pending`, is the detour of
+// is one `stage-mismatch` diagnostic when it does not apply (T48). Spec 040 (T68, ISC-221.2): a confirmed `stage:` that
+// the derived stage has overtaken along the type's row yields to it without a diagnostic, unless the last event was a
+// step back, which holds; the allocation (`from: null`) is no step back. Row 8, `close-pending`, is the detour of
 // `code_review: feature` (T49): a spec whose claims are all closed waits there while a sibling of its main feature is open.
 //
 // Spec 025 (T14, ISC-162.3): a spec whose whole open work hangs on open spec edges (`SpecWait.full`, spec-edges.ts) is
@@ -57,6 +59,11 @@ export interface StageInput {
   readonly explicitStage: string | null;
   /** The `to` of the last valid `events.jsonl` line, in file order; null without events. */
   readonly lastEventTo: WorkflowStage | null;
+  /**
+   * The `from` of that same line (spec 040, ISC-221.2); null for the allocation (`from: null`) and without events. A
+   * step back (`to` before `from` in the type's row) holds an explicit stage the files have overtaken.
+   */
+  readonly lastEventFrom: WorkflowStage | null;
   /** The workspace's workflow; absent, the default table (FORMAT.md § workflow). Decides which stages are explicit. */
   readonly workflow?: Workflow;
   /** How the spec type's code review is done: its row of `workflow` (`codeReviewOf`). Row 7 needs `feature`. */
@@ -559,20 +566,37 @@ type ExplicitVerdict =
   | { readonly kind: 'none' }
   | { readonly kind: 'applies'; readonly stage: Stage }
   | { readonly kind: 'outside'; readonly value: string }
-  | { readonly kind: 'contradicted'; readonly value: string };
+  | { readonly kind: 'contradicted'; readonly value: string }
+  | { readonly kind: 'overtaken'; readonly value: string };
+
+/**
+ * A stage's place along a workflow row (ISC-221.2): its index; the detours sit at `build` (`blocked`) or just past it
+ * (`close-pending`, on the way to the code review); -1 for a stage the row does not run.
+ */
+function placeOf(stage: Stage | WorkflowStage, row: readonly WorkflowStage[]): number {
+  const build = row.indexOf('build');
+  if (stage === 'blocked') return build;
+  if (stage === 'close-pending') return build < 0 ? -1 : build + 0.5;
+  return row.indexOf(stage);
+}
 
 function explicitVerdict(input: StageInput): ExplicitVerdict {
   const value = input.explicitStage;
   if (value === null) return { kind: 'none' };
+  const row = workflowStagesOf(input.type, input.workflow);
   // A detour (`blocked`, `close-pending`), `idea` or an unknown word is in no row, so it is outside as well.
-  if (!isStage(value) || !workflowStagesOf(input.type, input.workflow).some((s) => s === value)) return { kind: 'outside', value };
+  if (!isStage(value) || !row.some((s) => s === value)) return { kind: 'outside', value };
   if (value !== input.lastEventTo) return { kind: 'contradicted', value };
+  // ISC-221.2: the files overtook the allocation or a forward move; only a step back holds against them.
+  const stepBack = input.lastEventFrom !== null && placeOf(value, row) < placeOf(input.lastEventFrom, row);
+  if (!stepBack && placeOf(ruleOf(input).stage, row) > placeOf(value, row)) return { kind: 'overtaken', value };
   return { kind: 'applies', stage: value };
 }
 
 /**
- * The frontmatter `stage:` when it applies: a stage of the spec type's workflow row that equals the last event's `to`;
- * null otherwise, and the stage table decides (`stageSource: derived`); `stageMismatchOf` then names why.
+ * The frontmatter `stage:` when it applies: a stage of the spec type's workflow row that equals the last event's `to`,
+ * unless the derived stage lies further along the row and that event was no step back (ISC-221.2, overtaken); null
+ * otherwise, and the stage table decides (`stageSource: derived`); `stageMismatchOf` then names why.
  */
 export function explicitStageOf(input: StageInput): Stage | null {
   const verdict = explicitVerdict(input);
@@ -587,7 +611,8 @@ export function explicitStageOf(input: StageInput): Stage | null {
  */
 export function stageMismatchOf(input: StageInput, line?: number): Diagnostic | null {
   const verdict = explicitVerdict(input);
-  if (verdict.kind === 'none' || verdict.kind === 'applies') return null;
+  // An overtaken value is no mismatch (ISC-221.2): the event confirmed it, the files have since moved on.
+  if (verdict.kind === 'none' || verdict.kind === 'applies' || verdict.kind === 'overtaken') return null;
   const why =
     verdict.kind === 'outside'
       ? `is not a stage of the ${input.type ?? 'untyped'} workflow (${workflowStagesOf(input.type, input.workflow).join(' · ')})`

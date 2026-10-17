@@ -521,6 +521,7 @@ describe('missing (ISC-155.2)', () => {
         partition: { takeable: 0, open: c.claims, closed: 0, dropped: 0 },
         explicitStage: null,
         lastEventTo: null,
+        lastEventFrom: null,
         codeReview: 'spec',
         mainFeature: null,
         featureSiblingsOpen: [],

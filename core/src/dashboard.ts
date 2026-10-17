@@ -547,6 +547,9 @@ function stageBasisOf(f: SpecFiles, spec: string, id: string, ctx: SpecContext, 
   const events = f.texts.events === undefined ? [] : parseEvents(f.texts.events).events;
   const lastTo = events.at(-1)?.to ?? null;
   const lastEventTo: WorkflowStage | null = lastTo !== null && isWorkflowStage(lastTo) ? lastTo : null;
+  // Its `from` tells a step back from a forward move or the allocation (ISC-221.2).
+  const lastFrom = events.at(-1)?.from ?? null;
+  const lastEventFrom: WorkflowStage | null = lastFrom !== null && isWorkflowStage(lastFrom) ? lastFrom : null;
   // Row 7 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
   const mainFeature = mainFeatureOf(fm.data.isaFeature);
   const featureSiblingsOpen = mainFeature === null ? [] : (ctx.openByFeature.get(mainFeature) ?? []).filter((other) => other !== id);
@@ -568,6 +571,7 @@ function stageBasisOf(f: SpecFiles, spec: string, id: string, ctx: SpecContext, 
     },
     explicitStage: fm.data.stage,
     lastEventTo,
+    lastEventFrom,
     ...(ctx.workflow === undefined ? {} : { workflow: ctx.workflow }),
     codeReview: codeReviewOf(type, ctx.workflow),
     mainFeature,

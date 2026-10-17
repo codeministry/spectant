@@ -449,6 +449,7 @@ function stageInputOf(num: string, text: string, waits: SpecWait | null): StageI
     partition: { takeable: p.takeable.length, open: p.open.length - p.takeable.length, closed: p.closed.length - p.dropped.length, dropped: p.dropped.length },
     explicitStage: null,
     lastEventTo: null,
+    lastEventFrom: null,
     codeReview: 'spec',
     mainFeature: null,
     featureSiblingsOpen: [],

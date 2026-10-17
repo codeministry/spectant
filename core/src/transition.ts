@@ -129,7 +129,9 @@ function gateRefusal(input: TransitionInput, lane: Lane, from: WorkflowStage, st
 function stageInputOf(input: TransitionInput, fm: FrontmatterResult, number: string): StageInput {
   const { texts } = input.files;
   const p = input.partition;
-  const lastTo = texts.events === undefined ? null : (parseEvents(texts.events).events.at(-1)?.to ?? null);
+  const last = texts.events === undefined ? undefined : parseEvents(texts.events).events.at(-1);
+  const lastTo = last?.to ?? null;
+  const lastFrom = last?.from ?? null;
   return {
     number,
     type: fm.data.specType,
@@ -143,6 +145,8 @@ function stageInputOf(input: TransitionInput, fm: FrontmatterResult, number: str
     partition: p,
     explicitStage: fm.data.stage,
     lastEventTo: lastTo !== null && isWorkflowStage(lastTo) ? lastTo : null,
+    // A step back holds an explicit stage the files have overtaken (ISC-221.2).
+    lastEventFrom: lastFrom !== null && isWorkflowStage(lastFrom) ? lastFrom : null,
     workflow: input.workflow,
     // The close-pending row (T49): the type's code review, the main feature and its open siblings as the caller saw them.
     codeReview: codeReviewOf(fm.data.specType, input.workflow),

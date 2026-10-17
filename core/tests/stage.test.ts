@@ -94,6 +94,7 @@ function specInput(rel: string, gates: HandGates): { input: StageInput; blocked:
       // run below, through the real pipeline.
       explicitStage: null,
       lastEventTo: null,
+      lastEventFrom: null,
       codeReview: 'spec',
       mainFeature: null,
       featureSiblingsOpen: [],
@@ -192,6 +193,7 @@ const BASE: StageInput = {
   partition: { takeable: 1, open: 2, closed: 1, dropped: 0 },
   explicitStage: null,
   lastEventTo: null,
+  lastEventFrom: null,
   codeReview: 'spec',
   mainFeature: 'F2',
   featureSiblingsOpen: [],
@@ -983,7 +985,8 @@ describe('explicit stage (T47, ISC-120)', () => {
   });
 
   test('explicit: the workflow passed in decides the row', () => {
-    const refactor: Partial<StageInput> = { type: 'refactor', hasPlan: false };
+    // A step back from build holds `tasks` against the derived build (ISC-221.2).
+    const refactor: Partial<StageInput> = { type: 'refactor', hasPlan: false, lastEventFrom: 'build' };
     const narrowed = parseWorkflow('| type | stages | code_review |\n|---|---|---|\n| refactor | review · build · code-review · close · done | spec |\n');
     expect(stageOf(explicit('tasks', 'tasks', refactor))).toBe('tasks');
     expect(stageOf(explicit('tasks', 'tasks', { ...refactor, workflow: narrowed }))).toBe('build');
@@ -1029,7 +1032,10 @@ describe('explicit stage (T47, ISC-120)', () => {
 function standingIn(type: SpecType, from: WorkflowStage): SpecFiles {
   const explicit = from !== 'blocked';
   const spec = `---\nslug: 010-demo\nspec_type: ${type}\n${explicit ? `stage: ${from}\n` : ''}---\n# 010 — Demo\n`;
-  const events = `{"ts":"2026-03-01T00:00:00Z","from":null,"to":"${explicit ? from : 'review'}","command":"/spec-${type} demo","actor":"u:0123abcd"}\n`;
+  // A step back from `done` puts it there: plan.md, tasks.md and the reviewed mark derive further than `plan`, `tasks`
+  // or `review`, and only a step back holds an explicit stage the files have overtaken (ISC-221.2).
+  const back = explicit && from !== 'done';
+  const events = `{"ts":"2026-03-01T00:00:00Z","from":${back ? '"done"' : 'null'},"to":"${explicit ? from : 'review'}","command":"/spec-${type} demo","actor":"u:0123abcd"}\n`;
   return { folder: '010-demo', texts: { spec, events, plan: '# Plan\n', tasks: '# Tasks\n' } };
 }
 
@@ -1151,6 +1157,81 @@ describe('stage-mismatch (T48, ISC-120.1)', () => {
     expect(mismatches(model, '002-web-console')).toMatchObject([{ code: 'stage-mismatch', subject: 'close-pending', line: 9 }]);
     const row = model.specs.find((s) => s.slug === '002-web-console');
     expect([row?.stage, row?.stageSource]).toEqual(['build', 'derived']);
+  });
+});
+
+// ─── The stale explicit stage (spec 040, T67, ISC-221.2) ───────────────────────────────────────────────────────────
+//
+// Every test name here carries "stale stage", so `bun test core/tests/stage.test.ts -t "stale stage"` runs exactly
+// them. A `stage:` its last event confirms holds while the derived stage is not further along the type's row, or when
+// that event was a step back; otherwise the derived stage applies, and no `stage-mismatch` names it.
+
+describe('stale stage (T67, ISC-221.2)', () => {
+  /** Feature, plan.md and tasks.md present, no reviewed mark: the stage table derives `review`. */
+  const written = (stage: string, from: WorkflowStage | null, to: WorkflowStage, patch: Partial<StageInput> = {}): StageInput =>
+    at({ reviewed: 'missing', explicitStage: stage, lastEventFrom: from, lastEventTo: to, ...patch });
+  const seen = (input: StageInput) => {
+    const got = nextCommandWithReason(input);
+    return [got.stage, got.stageSource, stageMismatchOf(input)];
+  };
+
+  test('stale stage: the allocation (null → plan) with plan.md and tasks.md shows the derived review, no mismatch', () => {
+    expect(seen(written('plan', null, 'plan'))).toEqual(['review', 'derived', null]);
+  });
+
+  test('stale stage: a step back (review → plan) holds the explicit plan, no mismatch', () => {
+    expect(seen(written('plan', 'review', 'plan'))).toEqual(['plan', 'explicit', null]);
+  });
+
+  test('stale stage: a forward move (plan → tasks) that tasks.md has overtaken shows the derived review, no mismatch', () => {
+    expect(seen(written('tasks', 'plan', 'tasks'))).toEqual(['review', 'derived', null]);
+  });
+
+  test('stale stage: a forward move the files have not caught up with holds, the detour of build counting as build', () => {
+    expect(seen(written('build', 'review', 'build'))).toEqual(['build', 'explicit', null]);
+    // Reviewed, every open claim held: the files derive `blocked`, which is not further along than `build`.
+    expect(seen(written('build', 'review', 'build', { reviewed: 'fresh', takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } }))).toEqual([
+      'build',
+      'explicit',
+      null,
+    ]);
+  });
+
+  /** Spec 010 of type feature with plan.md, tasks.md and the given events, its spec.md on `stage: <stage>`. */
+  const demo = (stage: string, events: ReadonlyArray<readonly [WorkflowStage | null, WorkflowStage]>): SpecFiles => ({
+    folder: '010-demo',
+    texts: {
+      spec: `---\nslug: 010-demo\nspec_type: feature\nstage: ${stage}\n---\n# 010 — Demo\n\n- [ ] ISC-1: One claim\n`,
+      events: events.map(([from, to], i) => `${JSON.stringify({ ts: `2026-03-0${i + 1}T00:00:00Z`, from, to, command: '/spec-feature demo', actor: 'u:0123abcd' })}\n`).join(''),
+      plan: '# Plan\n',
+      tasks: '# Tasks\n',
+    },
+  });
+
+  test('stale stage: the dashboard and the transition read the last event the same way', () => {
+    const cases: ReadonlyArray<[SpecFiles, Stage, StageSource]> = [
+      [demo('plan', [[null, 'plan']]), 'review', 'derived'],
+      [demo('plan', [[null, 'plan'], ['plan', 'tasks'], ['tasks', 'review'], ['review', 'plan']]), 'plan', 'explicit'],
+      [demo('tasks', [[null, 'plan'], ['plan', 'tasks']]), 'review', 'derived'],
+    ];
+    // Under the default table: harbor's own feature row runs review before tasks.
+    const tree = { ...readTree('harbor'), workflow: DEFAULT_WF };
+    for (const [files, stage, source] of cases) {
+      const model = buildDashboard({ ...tree, specs: [...tree.specs, files] });
+      const row = model.specs.find((s) => s.slug === '010-demo');
+      expect([row?.stage, row?.stageSource, mismatches(model, '010-demo')]).toEqual([stage, source, []]);
+      const plan = planTransition({
+        files,
+        workflow: DEFAULT_WF,
+        to: 'done',
+        actor: 'u:0123abcd',
+        now: new Date('2026-03-10T08:00:00Z'),
+        reviewed: 'missing',
+        partition: { takeable: 0, open: 1, closed: 0, dropped: 0 },
+        featureSiblingsOpen: [],
+      });
+      expect(plan.from).toBe(stage);
+    }
   });
 });
 
