@@ -82,11 +82,12 @@ export function pathTail(path: string): string {
 
 /**
  * The builder's short form under the run chip (spec 027): the last segment of the run event's worktree
- * (`.claude/worktrees/agent-a1b2` → `agent-a1b2`), else of its session; read from the event, never from git.
+ * (`.claude/worktrees/agent-a1b2` → `agent-a1b2`), else of its session, as for a `dispatch` or `build` that names no
+ * worktree (spec 035, ISC-189); read from the event, never from git.
  */
 export function runShort(run: Pick<TaskRun, 'session' | 'worktree'>): string {
   const last = (text: string, sep: RegExp): string => text.split(sep).filter((part) => part !== '').pop() ?? '';
-  return last(run.worktree, /\//) || last(run.session, /[:/]/) || run.session;
+  return last(run.worktree ?? '', /\//) || last(run.session, /[:/]/) || run.session;
 }
 
 /** A probe cell as written, one enclosing pair of backticks dropped for the mono cell. */

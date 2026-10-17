@@ -1543,17 +1543,27 @@ From `core/fixtures/harbor/.spectant/activity.jsonl`:
 
 **Run events** (spec 027, ISC-179, `locks.ts` `runStates`). A sub-agent working a task in its own worktree writes
 nothing the main checkout shows until its patch lands, so the round reports each step of a task as a line of its own:
-`{ts, event: "dispatch" | "build" | "patch" | "apply", task, session, worktree, claim?}`. `dispatch` is written when
+`{ts, event: "dispatch" | "build" | "patch" | "apply", task, session, worktree?, claim?}`. `dispatch` is written when
 the round's plan sends the task out, `build` when its builder starts in its worktree, `patch` when its patch is pulled,
 `apply` when the patch landed on the spec's branch. `task`, `session` (in the actor grammar above, legacy-checked like
-any other session) and `worktree` are required, as is `ts`; a run event that lacks one is a malformed line and is
-skipped. `claim` is optional and only names the claim; a run event never holds or releases it.
+any other session) and `ts` are required on every run event; a run event that lacks one is a malformed line and is
+skipped. `worktree` is required on `patch` and `apply` only, and a `patch` or `apply` without it is malformed too. On
+`dispatch` and `build` it is optional (spec 035, ISC-189): the builder's worktree does not exist yet when its task is
+dispatched, so the round may write both lines without it, and they are read as usual. `claim` is optional and only
+names the claim; a run event never holds or releases it.
+
+A `dispatch` and a `build` line without `worktree`, both read:
+
+```json
+{"ts":"2026-03-08T15:54:00Z","event":"dispatch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26"}
+{"ts":"2026-03-08T15:55:00Z","event":"build","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26"}
+```
 
 Per task the last run event in file order decides its state: `dispatch` → `dispatched`, `build` → `building`, `patch`
 → `patched`, `apply` → `applied` once `tasks.md` checks the task, else `applied-open` (the patch landed, the tick has
 not). A task dispatched again after an `apply` reads `dispatched` again. Each `TaskRun` carries that last event's
-`session`, `worktree` and `ts`. The log is repository-wide and keyed by task id, so whoever shows one spec passes only
-that spec's run lines.
+`session` and `ts`, and its `worktree` when that event names one; otherwise the run has no `worktree` at all. The log
+is repository-wide and keyed by task id, so whoever shows one spec passes only that spec's run lines.
 
 An event that is none of `claim`, `release` and the four run events is one `activity-event-unknown` warning per file,
 at the first such line, with the event quoted in its text and the line's claim when it names one; that line and every

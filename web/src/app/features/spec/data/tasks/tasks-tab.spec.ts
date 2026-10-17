@@ -10,7 +10,7 @@ import type { LiveFrame } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type TaskCheckResult, type TasksResult } from '../../../../core/api.service';
 import { ToastService } from '../../../../shared/ui/toast/toast';
-import { TasksTab, type TasksBody } from './tasks-tab';
+import { runShort, TasksTab, type TasksBody } from './tasks-tab';
 
 const GOLDEN = golden['specs/002-web-console'] as unknown as TasksBody;
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
@@ -258,5 +258,12 @@ describe('TasksTab spec waits (spec 025, T26, ISC-163)', () => {
     expect(row?.querySelector('[data-task-waits] a[data-blocker="002"]')?.getAttribute('href')).toBe('/w/harbor/s/002');
     expect(row?.querySelector<HTMLInputElement>('[data-task-check]')?.disabled).toBe(true);
     expect(row?.querySelector('[data-sub]')).toBeNull();
+  });
+});
+
+describe('runShort (spec 035, ISC-189)', () => {
+  it('takes the worktree tail when the run names one, else the session tail, as for a dispatch without worktree', () => {
+    expect(runShort({ session: 'a:claude:sess-2/T26', worktree: '.claude/worktrees/agent-a1b2' })).toBe('agent-a1b2');
+    expect(runShort({ session: 'a:claude:sess-2/T26' })).toBe('T26');
   });
 });
