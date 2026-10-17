@@ -1784,6 +1784,11 @@ export interface IdeaRef {
   readonly priority: Priority;
   /** Repository-relative, POSIX separators: `specs/ideas/<slug>.md`. */
   readonly path: string;
+  /**
+   * The story's item state (spec 040, ISC-224): its `idea` item from item-state.ts at the caller's clock and abort age,
+   * set by `withIdeaStates` on the planning payload and by the story route. `readIdeas` has no clock and sets none.
+   */
+  readonly state?: ItemStateInfo;
 }
 
 /**

@@ -529,6 +529,8 @@ describe("the story route (T88, ISC-124.2)", () => {
       milestone: "Harbor 2.0",
       priority: "P3",
       path: "specs/ideas/console-audit-log.md",
+      // Spec 040 (ISC-224): no run is open on the story, so its item offers `/spec new`.
+      state: { kind: "idea", id: "console-audit-log", stage: "idea", state: "open", command: "/spec new console-audit-log", reason: "the story is shaped but has no spec" },
     });
     const bytes = readFileSync(STORY);
     expect(body.hash).toBe(new Bun.CryptoHasher("sha256").update(bytes).digest("hex"));

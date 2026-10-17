@@ -63,7 +63,11 @@ import {
   MIDNIGHT_HEADER,
   MIDNIGHT_STATES,
   RESET_PATH,
+  RUN_HEADER,
   STUB_EDGES,
+  STUB_RUN,
+  type StubRunState,
+  runActivity,
   STUB_LIBRARY,
   STUB_MIDNIGHT,
   STUB_MILESTONE,
@@ -2341,7 +2345,10 @@ describe('stub API: the near-midnight instant via X-Spectant-Stub-Midnight (spec
   });
 
   test('on: the reviewed mark, the gate event and the newest round of harbor 002 carry the instant, in every lock fixture', async () => {
-    for (const locks of LOCK_STATES) {
+    // `runs` (spec 040, T53) serves its own rebuilt tree and refuses every overlay.
+    const runs = await ask(specRoutes.spec(workspace, spec), { headers: { ...on, [LOCKS_HEADER]: 'runs' } });
+    expect({ status: runs.status, error: ((await runs.json()) as Json)['error'] }).toEqual({ status: 400, error: 'stub-runs-with-overlay' });
+    for (const locks of LOCK_STATES.filter((l) => l !== 'runs')) {
       const page = await read<SpecPageModel>(specRoutes.spec(workspace, spec), { ...on, [LOCKS_HEADER]: locks });
       expect(page.gates.reviewed.at).toBe(instant);
       expect(page.gates.reviewed.state).toBe(goldenPage.gates.reviewed.state);
@@ -2388,5 +2395,125 @@ describe('stub API: the near-midnight instant via X-Spectant-Stub-Midnight (spec
     expect(STUB_MILESTONE.target).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(local(STUB_MILESTONE.target, STUB_MIDNIGHT.zones.west.timezoneId).day).toBe(STUB_MILESTONE.misreadWest);
     expect(local(STUB_MILESTONE.target, STUB_MIDNIGHT.zones.east.timezoneId).day).toBe(STUB_MILESTONE.target);
+  });
+});
+
+describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224)', () => {
+  type Headers = Record<string, string>;
+  type Item = { kind: string; id: string; state: string; command?: string; run?: { run: string; command: string; session: string; since: string } };
+  type Row = { id: string; state?: Item };
+  type Holder = { slug: string; stage?: string };
+  const WS = STUB_RUN.workspace.slug;
+  const as = (run?: StubRunState): Headers => ({ [LOCKS_HEADER]: 'runs', ...(run === undefined ? {} : { [RUN_HEADER]: run }) });
+  const read = async <T>(path: string, headers: Headers): Promise<T> => {
+    const res = await ask(path, { headers });
+    expect({ path, status: res.status }).toEqual({ path, status: 200 });
+    return (await res.json()) as T;
+  };
+  const rows = async (headers: Headers): Promise<Row[]> => (await read<{ specs: Row[] }>(`/api/workspaces/${WS}/dashboard`, headers)).specs;
+  const planning = (headers: Headers): Promise<PlanningModel> => read<PlanningModel>(workspaceRoutes.planning(WS), headers);
+  const holderOf = (model: PlanningModel, slug: string): Holder | undefined => {
+    let found: Holder | undefined;
+    const walk = (value: unknown): void => {
+      if (Array.isArray(value)) value.forEach(walk);
+      else if (typeof value === 'object' && value !== null) {
+        const v = value as Json;
+        if (v['slug'] === slug && typeof v['stage'] === 'string') found ??= v as unknown as Holder;
+        Object.values(v).forEach(walk);
+      }
+    };
+    walk(model.features);
+    return found;
+  };
+  /** 003's answers on the four routes: its dashboard row's and page head's state, its board stage and its Tasks tab. */
+  const answersOf = async (headers: Headers): Promise<{ row?: Item; head?: Item; stage?: string; tasks: unknown }> => {
+    const row = (await rows(headers)).find((r) => r.id === STUB_RUN.spec);
+    const page = await read<SpecPageModel>(specRoutes.spec(WS, STUB_RUN.spec), headers);
+    const tasks = await read<unknown>(specRoutes.tasks(WS, STUB_RUN.spec), headers);
+    return { row: row?.state, head: page.head.state as Item | undefined, stage: holderOf(await planning(headers), STUB_RUN.folder)?.stage, tasks };
+  };
+  const OPEN = { kind: 'spec', id: STUB_RUN.spec, state: 'open', command: STUB_RUN.command };
+
+  test('runs: beacon is listed after the default workspaces; without runs it is no workspace', async () => {
+    const list = await read<Json[]>('/api/workspaces', as());
+    expect(list.map((w) => w['slug'])).toEqual(['harbor', 'lantern', WS]);
+    expect(list.at(-1)).toEqual({ slug: WS, name: WS, pathTail: WS, readable: true, counts: golden(WS)['kpis'] });
+    expect((await ask(`/api/workspaces/${WS}/dashboard`)).status).toBe(404);
+    expect((await ask(workspaceRoutes.planning(WS))).status).toBe(404);
+  });
+
+  test('running (and no run header): beacon answers its goldens, rebuilt by core from the log as it is', async () => {
+    for (const headers of [as(), as('running')]) {
+      expect(await read<unknown>(`/api/workspaces/${WS}/dashboard`, headers)).toEqual(golden(WS));
+      const { backlogHash, ...served } = await planning(headers);
+      expect(backlogHash).toBe(EMPTY_SHA256);
+      expect(served).toEqual(golden(`${WS}.planning`) as unknown as PlanningModel);
+      const pages = golden(`${WS}.spec`) as Record<string, SpecPageModel>;
+      const tabs = golden(`${WS}.tasks`) as Record<string, TasksTab | null>;
+      for (const [key, page] of Object.entries(pages)) {
+        const id = page.head.id;
+        expect({ key, page: await read<SpecPageModel>(specRoutes.spec(WS, id), headers) }).toEqual({ key, page });
+        expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: tabs[key] ?? null });
+      }
+    }
+  });
+
+  test('none | running | ended: 003 answers open with its command, running with the run, then what its files give', async () => {
+    const none = await answersOf(as('none'));
+    const running = await answersOf(as('running'));
+    const ended = await answersOf(as('ended'));
+    expect(none.row).toMatchObject(OPEN);
+    expect(none.row?.run).toBeUndefined();
+    expect(running.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'running', run: { run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, since: STUB_RUN.since } });
+    // No file changes with the run's end, so 003 reads its files' row again: open with /spec-tasks 003.
+    expect(ended).toEqual(none);
+    for (const answer of [none, running, ended]) {
+      expect(answer.head).toEqual(answer.row);
+      expect(answer.stage).toBe('tasks');
+      // 003 has no tasks.md yet, in every variant.
+      expect(answer.tasks).toBeNull();
+    }
+    // Only 003's item moves: every other row, and the stories, read the same in all three.
+    const others = async (headers: Headers): Promise<Row[]> => (await rows(headers)).filter((r) => r.id !== STUB_RUN.spec);
+    const stories = async (headers: Headers): Promise<unknown> => (await planning(headers)).ideas.map((i) => [i.slug, i.state]);
+    for (const run of ['none', 'ended'] as const) {
+      expect(await others(as(run))).toEqual(await others(as('running')));
+      expect(await stories(as(run))).toEqual(await stories(as('running')));
+    }
+  });
+
+  test('a task row answers its item in every variant: the tasks of 005 do not move with 003', async () => {
+    const tab = async (run: StubRunState): Promise<unknown[]> => (await read<TasksTab>(specRoutes.tasks(WS, '005'), as(run))).tasks.map((t) => [t.id, t.itemState]);
+    const running = await tab('running');
+    expect(running.length).toBeGreaterThan(0);
+    expect(await tab('none')).toEqual(running);
+    expect(await tab('ended')).toEqual(running);
+  });
+
+  test("the idea page carries the planning payload's story state", async () => {
+    for (const idea of (await planning(as())).ideas) {
+      const page = await read<{ idea: { state?: unknown } }>(workspaceRoutes.idea(WS, idea.slug), as());
+      expect({ slug: idea.slug, state: page.idea.state }).toEqual({ slug: idea.slug, state: idea.state });
+    }
+  });
+
+  test('header errors: an unknown run, a run without the runs locks, runs beside an overlay', async () => {
+    const answer = async (headers: Headers): Promise<[number, unknown]> => {
+      const res = await ask(`/api/workspaces/${WS}/dashboard`, { headers });
+      return [res.status, ((await res.json()) as Json)['error']];
+    };
+    expect(await answer({ ...as(), [RUN_HEADER]: 'paused' })).toEqual([400, 'unknown-stub-run']);
+    expect(await answer({ [RUN_HEADER]: 'none' })).toEqual([400, 'stub-run-without-runs']);
+    expect(await answer({ ...as(), [EDGES_HEADER]: 'waiting' })).toEqual([400, 'stub-runs-with-overlay']);
+    expect(await answer({ ...as(), [WORKTREES_HEADER]: 'on' })).toEqual([400, 'stub-runs-with-overlay']);
+  });
+
+  test('runActivity: none drops the one run-start, ended appends its run-end with outcome ok, running keeps the log', () => {
+    const text = readFileSync(join(FIXTURES, WS, '.spectant', 'activity.jsonl'), 'utf8');
+    expect(runActivity(text, 'running')).toBe(text);
+    expect(runActivity(text, 'none').split('\n').filter((l) => l.includes(STUB_RUN.run))).toEqual([]);
+    const last = JSON.parse(runActivity(text, 'ended').trim().split('\n').at(-1) ?? '{}') as Json;
+    expect(last).toEqual({ ts: STUB_RUN.endedAt, event: 'run-end', run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, spec: STUB_RUN.folder, outcome: 'ok' });
+    expect(() => runActivity('', 'none')).toThrow();
   });
 });

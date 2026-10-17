@@ -777,7 +777,15 @@
           "feature": "F2",
           "milestone": "Harbor 2.0",
           "priority": "P3",
-          "path": "specs/ideas/console-audit-log.md"
+          "path": "specs/ideas/console-audit-log.md",
+          "state": {
+            "kind": "idea",
+            "id": "console-audit-log",
+            "state": "open",
+            "stage": "idea",
+            "command": "/spec new console-audit-log",
+            "reason": "the story is shaped but has no spec"
+          }
         }
       ]
     },
@@ -1304,7 +1312,15 @@
           "feature": "F7",
           "milestone": "Harbor 1.0",
           "priority": "P2",
-          "path": "specs/ideas/registry-webhooks.md"
+          "path": "specs/ideas/registry-webhooks.md",
+          "state": {
+            "kind": "idea",
+            "id": "registry-webhooks",
+            "state": "open",
+            "stage": "idea",
+            "command": "/spec new registry-webhooks",
+            "reason": "the story is shaped but has no spec"
+          }
         }
       ]
     }
@@ -1431,7 +1447,15 @@
           "feature": "F7",
           "milestone": "Harbor 1.0",
           "priority": "P2",
-          "path": "specs/ideas/registry-webhooks.md"
+          "path": "specs/ideas/registry-webhooks.md",
+          "state": {
+            "kind": "idea",
+            "id": "registry-webhooks",
+            "state": "open",
+            "stage": "idea",
+            "command": "/spec new registry-webhooks",
+            "reason": "the story is shaped but has no spec"
+          }
         }
       ]
     }
@@ -1454,7 +1478,15 @@
       "feature": "F2",
       "milestone": "Harbor 2.0",
       "priority": "P3",
-      "path": "specs/ideas/console-audit-log.md"
+      "path": "specs/ideas/console-audit-log.md",
+      "state": {
+        "kind": "idea",
+        "id": "console-audit-log",
+        "state": "open",
+        "stage": "idea",
+        "command": "/spec new console-audit-log",
+        "reason": "the story is shaped but has no spec"
+      }
     },
     {
       "slug": "registry-webhooks",
@@ -1463,7 +1495,15 @@
       "feature": "F7",
       "milestone": "Harbor 1.0",
       "priority": "P2",
-      "path": "specs/ideas/registry-webhooks.md"
+      "path": "specs/ideas/registry-webhooks.md",
+      "state": {
+        "kind": "idea",
+        "id": "registry-webhooks",
+        "state": "open",
+        "stage": "idea",
+        "command": "/spec new registry-webhooks",
+        "reason": "the story is shaped but has no spec"
+      }
     }
   ],
   "recount": {

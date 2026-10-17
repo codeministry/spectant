@@ -32,10 +32,14 @@
  * the detail sidebar reads both from here, so there is no relations route and nothing new is read or written.
  * Spec 025 (T32, ISC-170.1): it also carries the spec edges `resolveEdges` resolves against the reading's merge state
  * (`specEdges`, absent without any), from which the Diagram lens draws its `spec-edge` arrows.
+ * Spec 040 (ISC-224): every story of it (`ideas`, and those under a feature or a milestone) carries its `idea` item as
+ * `IdeaRef.state`, core's `ideaStateOf` over the reading's open runs at the request clock and the `runAbortMinutes`
+ * abort age, attached by `withIdeaStates`: the dashboard model lists no stories, so the board reads them from here.
  *
  * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
- * `matchWorkspacePath` with the same guard order. It reads the story folder alone, never the whole workspace: a story
- * page needs no spec folder or lock source. Each story comes from its read source (`readIdeaSources`, `readRepoFile`,
+ * `matchWorkspacePath` with the same guard order. It reads the story folder and the activity log alone, never the
+ * whole workspace: a story page needs no spec folder, and its state (`idea.state`, spec 040, ISC-224, `ideaStateOf` at
+ * the request clock and abort age) only the open runs. Each story comes from its read source (`readIdeaSources`, `readRepoFile`,
  * spec 039, ISC-209), so a story a spec worktree changed last shows that version and `source` names the worktree; the
  * git facts behind it are the worktree view's, kept while the repository state stands. The slug must be one
  * `readIdeas` lists, so a path out of the folder, the index or a skipped file is a 404 before any file is opened by
@@ -126,6 +130,8 @@ import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePat
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 import { techSectionHeads } from "../../core/src/tech.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
+import { ideaStateOf, withIdeaStates } from "../../core/src/item-state.ts";
+import { readLockSources } from "../../core/src/locks.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
@@ -427,6 +433,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const searchTexts = new Map<string, Map<string, SearchText>>();
   const today = options.today ?? (() => localDate());
   const clock = options.now ?? (() => new Date());
+  /** This request's clock and the abort age as the setting now stands (spec 040, ISC-224), for every item state. */
+  const stateClock = (): StateClock => ({ now: clock(), ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }) });
 
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();
@@ -438,7 +446,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     // The item states at this request's clock and the abort age as the setting now stands (spec 040, ISC-224).
-    const loaded = await load(workspace.path, services, stateDir, { now: clock(), ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }) });
+    const loaded = await load(workspace.path, services, stateDir, stateClock());
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
     return json(req, 200, loaded.model);
   };
@@ -466,7 +474,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       backlog: backlogBytes === null ? null : backlogBytes.toString("utf8"),
       backlogHash: rawSha256(backlogBytes ?? ""),
     });
-    return json(req, 200, model);
+    // Each story's item from its open runs at this request's clock (spec 040, ISC-224).
+    const at = stateClock();
+    const openRuns = reading.input.locks?.openRuns ?? [];
+    return json(req, 200, withIdeaStates(model, model.ideas.map((idea) => ideaStateOf(idea.slug, openRuns, at))));
   };
 
   // The catalog as core's readCatalog builds it, metadata only, never reshaped (header).
@@ -679,9 +690,11 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       const text = bytes.toString("utf8");
       const ref = readIdeas({ ...files, [name]: text }).ideas.find((r) => r.slug === story);
       if (ref === undefined) return json(req, 404, { error: "not-found" });
+      // The story's state from the activity log's open runs alone (spec 040, ISC-224), as the planning route reads it.
+      const { openRuns = [] } = await readLockSources({ repoRoot: root });
       // A story renders as a Docs tab that is not the Design tab: images confined to the workspace, no spec assets.
       const body: WorkspaceRouteResponses["idea"] = {
-        idea: ref,
+        idea: { ...ref, state: ideaStateOf(story, openRuns, stateClock()) },
         page: renderDocsMarkdown(text, docsRenderOptions(root, path, "plan")),
         hash: rawSha256(bytes),
         ...(read.source.kind === "worktree" ? { source: read.source } : {}),

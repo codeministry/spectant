@@ -25,5 +25,8 @@ export function stateInputAt(root: string): ItemStateInput {
   return { workspace, dashboard: buildDashboard(workspace), taskRuns: taskRunsOf(workspace.specs, locks, STATE_NOW), now: STATE_NOW, abortAfterMs: DEFAULT_ABORT_AFTER_MS };
 }
 
+/** Whether `root` is a fixture tree whose lock reading was read up front, so `stateModel(root)` can be built. */
+export const hasStateModel = (root: string): boolean => LOCKS.has(root);
+
 /** The `state` family: every item's state of the tree. */
 export const stateModel = (root: string): readonly ItemStateInfo[] => itemStates(stateInputAt(root));

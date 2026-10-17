@@ -255,7 +255,11 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
     if (errorCode(error) === 'ENOENT' || errorCode(error) === 'ENOTDIR') return ABSENT;
     return { present: false, locks: [], diagnostics: [warning('locks-activity-unreadable', `.spectant/activity.jsonl could not be read (${errorCode(error) || 'error'}).`)], runs: [] };
   }
+  return parseActivity(text);
+}
 
+/** The text of `.spectant/activity.jsonl` read as its source: pure, the one parse `readActivity` and `activityReading` share. */
+function parseActivity(text: string): SourceRead {
   const held = new Map<string, ClaimLock>();
   const diagnostics: LockDiagnostic[] = [];
   const runs: RunLine[] = [];
@@ -380,6 +384,20 @@ export async function readLockSources(input: LockReadInput): Promise<LockReading
     input.lifeosStateDir ? readFrontier(input.repoRoot, input.lifeosStateDir, now) : Promise.resolve(ABSENT),
     readActivity(input.repoRoot),
   ]);
+  return readingOf(frontier, activity);
+}
+
+/**
+ * The reading `readLockSources` gives for a repository whose `.spectant/activity.jsonl` holds `text` and with no
+ * LifeOS state directory, without touching the file system (spec 040, T53): for a caller that holds an edited log in
+ * memory, such as the e2e stub's run variants, so the locks, task runs and open runs stay this module's parse.
+ */
+export function activityReading(text: string): LockReading {
+  return readingOf(ABSENT, parseActivity(text));
+}
+
+/** The two sources' reads as one reading: activity's locks first, frontier's last (a last-wins consumer takes it). */
+function readingOf(frontier: SourceRead, activity: SourceRead): LockReading {
   const sources: AgentLockSource[] = [];
   if (frontier.present) sources.push('frontier');
   if (activity.present) sources.push('activity');

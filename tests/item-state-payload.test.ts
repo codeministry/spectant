@@ -1,5 +1,6 @@
 // The item state in every payload (spec 040, T26-T28, ISC-224): each surface reads an item's state from the API, so
-// the dashboard (spec rows and stories), the spec page head, the claims, the tasks and the live frame each carry it.
+// the dashboard (spec rows and stories), the spec page head, the claims, the tasks and the live frame each carry it,
+// and so do the planning payload's stories and the story page, which the board's and the idea page's cards read.
 // beacon is served at the `state` golden's clock (core/tests/helpers/state-model.ts `STATE_NOW`) with its activity
 // reading and the default abort age, so every item a payload carries equals core's `itemStates` item of that golden;
 // the server derives no state itself. A second case proves the abort age is the setting's, read per request.
@@ -8,12 +9,13 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
-import type { ClaimViewModel, ItemStateInfo, LiveFrame, SpecPageModel, TasksTab } from "../core/src/files.ts";
+import type { ClaimViewModel, IdeaRef, ItemStateInfo, LiveFrame, SpecPageModel, TasksTab } from "../core/src/files.ts";
 import { DEFAULT_ABORT_AFTER_MS } from "../core/src/item-state.ts";
+import type { PlanningModel } from "../core/src/planning.ts";
 import { WORKSPACES_PATH, dashboardApi } from "../server/src/api.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { specRoutes } from "../server/src/spec-routes.contract.ts";
+import { type IdeaPage, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
@@ -87,11 +89,32 @@ describe("state payload (spec 040, ISC-224)", () => {
     expect(ITEMS.some((i) => i.kind === "spec" && (i.state === "running" || i.state === "aborted"))).toBe(true);
   });
 
+  test("the planning payload's stories, under a feature and a milestone too, and each story page carry core's idea item", async () => {
+    const get = serve(DEFAULT_ABORT_AFTER_MS);
+    const planning = (await get(workspaceRoutes.planning(SLUG))) as PlanningModel;
+    const stories: IdeaRef[] = [...planning.ideas, ...planning.features.flatMap((f) => f.ideas), ...planning.milestones.flatMap((m) => m.ideas)];
+    expect(planning.ideas.length).toBeGreaterThan(0);
+    expect(stories.map((idea) => [idea.slug, idea.state])).toEqual(stories.map((idea) => [idea.slug, itemOf("idea", idea.slug)]));
+    for (const idea of planning.ideas) {
+      const page = (await get(workspaceRoutes.idea(SLUG, idea.slug))) as IdeaPage;
+      expect({ story: idea.slug, state: page.idea.state }).toEqual({ story: idea.slug, state: itemOf("idea", idea.slug) });
+    }
+    // Not vacuous: one story has an open run (`/spec new uptime-badges`), the other offers its command.
+    expect(planning.ideas.map((idea) => [idea.slug, idea.state?.state])).toEqual([
+      ["digest-emails", "open"],
+      ["uptime-badges", "running"],
+    ]);
+  });
+
   test("the abort age is the setting's, read per request: a one-minute age turns every open run aborted", async () => {
     const get = serve(60_000);
     const model = (await get(`${WORKSPACES_PATH}/${SLUG}/dashboard`)) as DashboardModel;
     const runs = model.specs.map((row) => row.state).filter((s) => s?.run?.source === "run");
     expect(runs.length).toBeGreaterThan(0);
     expect(runs.map((s) => s?.state)).toEqual(runs.map(() => "aborted"));
+    const planning = (await get(workspaceRoutes.planning(SLUG))) as PlanningModel;
+    expect(planning.ideas.find((idea) => idea.slug === "uptime-badges")?.state?.state).toBe("aborted");
+    const page = (await get(workspaceRoutes.idea(SLUG, "uptime-badges"))) as IdeaPage;
+    expect(page.idea.state?.state).toBe("aborted");
   });
 });

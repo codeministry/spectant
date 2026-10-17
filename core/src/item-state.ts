@@ -50,8 +50,9 @@ import type { Claim } from './claims.ts';
 import type { DashboardInput, DashboardModel, DashboardSpecRow } from './dashboard.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import { parseEvents } from './events.ts';
-import type { ClaimLock, GateState, GateView, ItemKind, ItemRun, ItemState, ItemStateInfo, ItemWaits, MarkState, OpenRun, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun, Workflow } from './files.ts';
+import type { ClaimLock, GateState, GateView, IdeaRef, ItemKind, ItemRun, ItemState, ItemStateInfo, ItemWaits, MarkState, OpenRun, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun, Workflow } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
+import type { PlanningModel } from './planning.ts';
 import { resolveEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
 import { codeReviewOf, fillReason, fillsTemplate, SPEC_RULES, storyStep } from './stage.ts';
@@ -706,7 +707,16 @@ const specNumberOf = (ref: string): string => specIdOf(ref) ?? ref;
 export function runLockOf(openRuns: readonly OpenRun[], target: RunLockTarget, options: { readonly now: Date | number; readonly abortAfterMs?: number }): ItemRun | null {
   const runs =
     'spec' in target ? openRuns.filter((r) => r.spec !== undefined && specNumberOf(r.spec) === specNumberOf(target.spec)) : openRuns.filter((r) => r.idea === target.idea);
-  const ctx: Context = {
+  const live = fromRuns(runs, runContext(openRuns, options));
+  return live?.state === 'running' && live.run !== undefined ? live.run : null;
+}
+
+/** The clock and abort age a decision over open runs alone takes (`runLockOf`, `ideaStateOf`); no spec feeds it. */
+type RunClock = { readonly now: Date | number; readonly abortAfterMs?: number };
+
+/** The context of a decision over open runs alone: the clock, the abort age and the runs, nothing of any spec. */
+function runContext(openRuns: readonly OpenRun[], options: RunClock): Context {
+  return {
     now: typeof options.now === 'number' ? options.now : options.now.getTime(),
     abortAfterMs: options.abortAfterMs ?? DEFAULT_ABORT_AFTER_MS,
     staleAfterMs: DEFAULT_CLAIM_STALE_MS,
@@ -718,6 +728,32 @@ export function runLockOf(openRuns: readonly OpenRun[], target: RunLockTarget, o
     openByFeature: new Map(),
     taskRuns: {},
   };
-  const live = fromRuns(runs, ctx);
-  return live?.state === 'running' && live.run !== undefined ? live.run : null;
+}
+
+// ── the story's state on the planning and story payloads (spec 040, ISC-224) ────────────────────────────────────
+
+/**
+ * The `idea` item of the story `slug` (ISC-224): the item `itemStates` gives that story for the same open runs, clock
+ * and abort age, since a story's state depends on its runs alone. For a caller that holds the open runs but no
+ * dashboard: the story route, and the planning route, whose stories the dashboard model does not list.
+ */
+export function ideaStateOf(slug: string, openRuns: readonly OpenRun[], options: RunClock): ItemStateInfo {
+  return ordered(ideaItem(slug, runContext(openRuns, options)));
+}
+
+/**
+ * The planning model with each story's item on it (spec 040, ISC-224): every `IdeaRef` of the payload, the top-level
+ * `ideas` and those under a feature or a milestone, carries the `idea` item of `items` with its slug as `state`; a
+ * story without one stays as it is. As `withItemStates` for the dashboard: pure, the items come from the caller.
+ */
+export function withIdeaStates(model: PlanningModel, items: readonly ItemStateInfo[]): PlanningModel {
+  const ideas = new Map(items.filter((i) => i.kind === 'idea').map((i) => [i.id, i]));
+  const withState = (list: readonly IdeaRef[]): IdeaRef[] =>
+    list.map((idea) => ((state) => (state === undefined ? idea : { ...idea, state }))(ideas.get(idea.slug)));
+  return {
+    ...model,
+    features: model.features.map((f) => ({ ...f, ideas: withState(f.ideas) })),
+    milestones: model.milestones.map((m) => ({ ...m, ideas: withState(m.ideas) })),
+    ideas: withState(model.ideas),
+  };
 }

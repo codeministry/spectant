@@ -271,7 +271,28 @@
           "feature": "F2",
           "milestone": null,
           "priority": "P2",
-          "path": "specs/ideas/uptime-badges.md"
+          "path": "specs/ideas/uptime-badges.md",
+          "state": {
+            "kind": "idea",
+            "id": "uptime-badges",
+            "state": "running",
+            "stage": "idea",
+            "run": {
+              "run": "r-0308-1445",
+              "command": "/spec new uptime-badges",
+              "session": "a:claude:sess-71",
+              "actor": {
+                "raw": "a:claude:sess-71",
+                "kind": "agent",
+                "id": "a:claude:sess-71",
+                "legacy": false
+              },
+              "since": "2026-03-08T14:45:00Z",
+              "elapsedMs": 900000,
+              "openRuns": 1,
+              "source": "run"
+            }
+          }
         }
       ]
     },
@@ -359,7 +380,15 @@
           "feature": "F3",
           "milestone": null,
           "priority": "P3",
-          "path": "specs/ideas/digest-emails.md"
+          "path": "specs/ideas/digest-emails.md",
+          "state": {
+            "kind": "idea",
+            "id": "digest-emails",
+            "state": "open",
+            "stage": "idea",
+            "command": "/spec new digest-emails",
+            "reason": "the story is shaped but has no spec"
+          }
         }
       ]
     },
@@ -624,7 +653,15 @@
       "feature": "F3",
       "milestone": null,
       "priority": "P3",
-      "path": "specs/ideas/digest-emails.md"
+      "path": "specs/ideas/digest-emails.md",
+      "state": {
+        "kind": "idea",
+        "id": "digest-emails",
+        "state": "open",
+        "stage": "idea",
+        "command": "/spec new digest-emails",
+        "reason": "the story is shaped but has no spec"
+      }
     },
     {
       "slug": "uptime-badges",
@@ -633,7 +670,28 @@
       "feature": "F2",
       "milestone": null,
       "priority": "P2",
-      "path": "specs/ideas/uptime-badges.md"
+      "path": "specs/ideas/uptime-badges.md",
+      "state": {
+        "kind": "idea",
+        "id": "uptime-badges",
+        "state": "running",
+        "stage": "idea",
+        "run": {
+          "run": "r-0308-1445",
+          "command": "/spec new uptime-badges",
+          "session": "a:claude:sess-71",
+          "actor": {
+            "raw": "a:claude:sess-71",
+            "kind": "agent",
+            "id": "a:claude:sess-71",
+            "legacy": false
+          },
+          "since": "2026-03-08T14:45:00Z",
+          "elapsedMs": 900000,
+          "openRuns": 1,
+          "source": "run"
+        }
+      }
     }
   ],
   "recount": {

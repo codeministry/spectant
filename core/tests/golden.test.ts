@@ -58,6 +58,7 @@ import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
 import { planningGantt } from '../src/gantt.ts';
 import { planningModel } from './helpers/planning-model.ts';
+import { planningGolden } from './helpers/planning-golden.ts';
 import { stateModel } from './helpers/state-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
@@ -186,7 +187,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
           ])((texts.get(rel(root, ref.dir)) as SpecFiles).texts),
         ),
       ))(folderTexts(root), readTreeAt(root).constitution),
-  planning: planningModel,
+  planning: planningGolden,
   gantt: (root) => ((model) => planningGantt(model, model.asOf))(planningModel(root)),
   tech: techModel,
   state: stateModel,
