@@ -3,9 +3,7 @@
     <div class="brief-head" data-brief-head>
       <span class="brief-label" data-brief-label>{{ 'brief.label' | transloco }}</span>
       @if (asOf(); as asOf) {
-        <time class="brief-as-of type-meta" data-brief-as-of [attr.datetime]="asOf.iso">{{
-          'brief.asOf' | transloco: { date: asOf.text }
-        }}</time>
+        <ui-time-label class="brief-as-of type-meta" data-brief-as-of key="brief.asOf" timeParam="date" form="date" [value]="asOf" />
       }
       @if (brief.stale) {
         <ui-chip class="brief-stale" data-brief-stale tone="warning" icon="clock">{{ 'brief.stale' | transloco }}</ui-chip>

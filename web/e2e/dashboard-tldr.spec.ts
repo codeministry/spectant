@@ -80,15 +80,17 @@ for (const width of [1440, 390] as const) {
 
       expect(brief.generated, 'harbor golden has a generated date').not.toBeNull();
       const generated = brief.generated as string;
-      const asOf = card.locator('time[data-brief-as-of]');
+      const asOf = card.locator('[data-brief-as-of]');
+      const time = asOf.locator('time');
       await expect(asOf).toBeVisible();
-      await expect(asOf).toHaveAttribute('datetime', generated);
-      // The day as the browser formats it (its own time zone), in the default language of the settings.
+      await expect(time).toHaveAttribute('datetime', generated);
+      // `generated:` is an instant: its local date in the test's zone, in the shared `en` date form `03/07/2026`.
       const day = await page.evaluate(
-        (iso) => new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(Date.parse(iso)),
+        (iso) => new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(Date.parse(iso)),
         generated,
       );
-      await expect(asOf).toContainText(day);
+      await expect(time).toHaveText(day);
+      await expect(asOf).toHaveText(`as of ${day}`);
 
       await expect(card.locator('[data-brief-prose] :is(h1, h2, h3, h4, h5, h6)').first()).toHaveText(
         firstHeading(brief.markdown),

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { formatDate } from '../../../shared/time';
 import { Brief, type BriefModel, TLDR_COMMAND } from './brief';
 
 // The model's `brief` as core builds it (sections included); noon UTC: the same calendar day in every time zone a
@@ -70,16 +71,18 @@ describe('Brief', () => {
     expect(more()?.textContent.trim()).toBe('More…');
   });
 
-  it('heads the card with the TL;DR label, the as-of date in a <time> and the stale chip', async () => {
+  it('heads the card with the TL;DR label, the as-of date in a <time> through the shared formatter and the stale chip', async () => {
     const { host, head } = await render(BRIEF);
     const label = head()?.querySelector('[data-brief-label]');
-    const asOf = head()?.querySelector<HTMLTimeElement>('time[data-brief-as-of]');
+    const asOf = head()?.querySelector('ui-time-label[data-brief-as-of]');
+    const time = asOf?.querySelector<HTMLTimeElement>('ui-time time');
     const stale = head()?.querySelector('ui-chip[data-brief-stale]');
-    const day = new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(GENERATED));
 
     expect(label?.textContent.trim()).toBe('TL;DR');
-    expect(asOf?.getAttribute('datetime')).toBe(GENERATED);
-    expect(asOf?.textContent.trim()).toBe(`as of ${day}`);
+    // `generated:` is an instant, so the Brief shows its local date (form `date`), not a UTC calendar day.
+    expect(time?.getAttribute('datetime')).toBe(GENERATED);
+    expect(time?.textContent).toBe(formatDate(GENERATED, 'en'));
+    expect(asOf?.textContent.trim()).toBe(`as of ${formatDate(GENERATED, 'en')}`);
     expect(stale?.textContent.trim()).toBe('stale');
     expect(stale?.getAttribute('data-tone')).toBe('warning');
     expect(host.getAttribute('data-stale')).toBe('');
@@ -148,9 +151,7 @@ describe('Brief', () => {
     const { fixture, host } = await render(BRIEF);
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    const day = new Intl.DateTimeFormat('de', { dateStyle: 'medium' }).format(new Date(GENERATED));
-
-    expect(host.querySelector('[data-brief-as-of]')?.textContent.trim()).toBe(`Stand ${day}`);
+    expect(host.querySelector('[data-brief-as-of]')?.textContent.trim()).toBe(`Stand ${formatDate(GENERATED, 'de')}`);
     expect(host.querySelector('[data-brief-stale]')?.textContent.trim()).toBe('veraltet');
     expect(host.querySelector('[data-brief-more]')?.textContent.trim()).toBe('Mehr…');
   });

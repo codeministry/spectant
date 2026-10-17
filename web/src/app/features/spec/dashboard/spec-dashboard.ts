@@ -11,6 +11,7 @@ import { OverlapLines } from '../../../layout/spec-head/overlap-lines';
 import { overlapLines, overlapsIn } from '../../dashboard/warnings-panel/overlap';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
+import { UiTimeLabel } from '../../../shared/time';
 import { UiTerm } from '../../../shared/ui/term/term';
 import type { IconName } from '../../../shared/icons/icons';
 import { UiChip } from '../../../shared/ui/chip/chip';
@@ -127,6 +128,7 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
     UiSectionHeader,
     UiSkeleton,
     UiStageTrack,
+    UiTimeLabel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-dashboard.html',
@@ -200,17 +202,6 @@ export class SpecDashboard {
 
   /** At most three reasons (design.md § Next step). */
   protected readonly reasons = computed(() => this.model()?.next.reasons.slice(0, 3) ?? []);
-  /** The prototype eyebrow `NEXT STEP · SINCE 07.03. 10:19 VIA /SPEC-IMPLEMENT` from `next.since` and `next.via`. */
-  protected readonly nextEyebrow = computed(() => {
-    const lang = this.lang();
-    const next = this.model()?.next;
-    const heading = this.transloco.translate('specDashboard.next.heading');
-    if (!next?.since) return heading;
-    const time = new Intl.DateTimeFormat(lang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(next.since));
-    const since = this.transloco.translate(next.via ? 'specDashboard.next.sinceVia' : 'specDashboard.next.since', { time, via: next.via ?? '' });
-    return `${heading} · ${since}`;
-  });
-
   protected readonly stageLabels = computed(() => {
     this.lang();
     return TRACK_STAGES.map((stage) => this.transloco.translate(`stages.${stage}`));
