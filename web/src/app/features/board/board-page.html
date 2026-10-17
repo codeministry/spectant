@@ -215,6 +215,9 @@
                     }
                     <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
                   </span>
+                  @if (band.key !== null && writer.refusalOf(band.key); as refusal) {
+                    <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="writer.dismiss(band.key)" />
+                  }
                 </div>
                 <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
                   @for (card of band.cards; track card.key) {
@@ -467,6 +470,9 @@
                           <span class="band-lock" data-band-lock-hint>{{ 'backlog.board.otherMilestone' | transloco }}</span>
                         }
                       </span>
+                      @if (band.key !== null && writer.refusalOf(band.key); as refusal) {
+                        <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="writer.dismiss(band.key)" />
+                      }
                     </div>
                   }
                 </div>

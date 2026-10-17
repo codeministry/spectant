@@ -274,6 +274,14 @@ h2 {
   outline-offset: -1px;
 }
 
+/* The refusal (ISC-198) under the feature's line, from the content column on, at most 640 px wide. */
+.row > .notice {
+  grid-column: 6 / -1;
+  max-inline-size: 640px;
+  margin-block-end: 8px;
+  cursor: default;
+}
+
 /* The confirmation after a move (ISC-200.1): the row's tint fades, paint only; under reduced motion a static 4 px dot at
  * the row's start instead (the refresh pattern of the KPI band). No transform, so nothing slides into place. */
 .row[data-moved]:not([data-drop])::after {
@@ -532,6 +540,11 @@ h2 {
     grid-row: 2;
     grid-column: 4;
     justify-self: start;
+  }
+
+  .row[data-kind="feature"] > .notice {
+    grid-row: 3;
+    grid-column: 2 / -1;
   }
 
   .row[data-kind="spec"],

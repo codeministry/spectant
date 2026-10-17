@@ -14,7 +14,7 @@
 import type { Locator, Page, Request } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 import { backlogUiBody, EMPTY_BACKLOG_HASH } from './backlog-ui-sequence';
-import { RESET_PATH, SESSION_HEADER } from './stub-api';
+import { RESET_PATH, SESSION_HEADER, WRITE_HEADER } from './stub-api';
 
 const TREE = '/w/harbor/planning/tree';
 const BACKLOG = '/api/workspaces/harbor/backlog';
@@ -146,5 +146,56 @@ test.describe('tree-reorder: priority (T31, ISC-196)', () => {
     expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('tree-chip'), hash: EMPTY_SHA256 });
     await expect(chip.locator('ui-priority')).toHaveAttribute('data-level', 'P1');
     await expect(chip).not.toHaveAttribute('aria-busy', 'true');
+  });
+});
+
+/**
+ * T42 · ISC-198 (`bun run e2e -- tree-reorder.spec board-lanes.spec -g refused`): a write the route refuses as stale
+ * (`X-Spectant-Stub-Write: stale`, the 409 of a changed `specs/backlog.md`) leaves the notice under the feature in the
+ * warning tone, the tree re-reads the planning and keeps no anticipated order or priority; ✕ dismisses the notice.
+ */
+test.describe('tree-reorder: refused (T42, ISC-198)', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  let session = '';
+  test.beforeEach(async ({ page }) => {
+    session = `t037-refused-${test.info().testId}`;
+    await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session, [WRITE_HEADER]: 'stale' });
+  });
+  test.afterEach(async ({ request }) => {
+    await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+  });
+
+  test('refused: a stale move leaves the notice under F1, re-reads the planning and keeps the order', async ({ page }) => {
+    await page.goto(TREE);
+    const row = featureRow(page, HARBOR_1_0, 'F1');
+    await row.focus();
+    const answered = page.waitForResponse((res) => isBacklogWrite(res.request()));
+    const reread = page.waitForRequest((req) => req.method() === 'GET' && new URL(req.url()).pathname === '/api/workspaces/harbor/planning');
+    await page.keyboard.press('Alt+ArrowDown');
+    expect((await answered).status()).toBe(409);
+    await reread;
+    const notice = row.locator('app-refusal-notice');
+    await expect(notice).toHaveAttribute('data-refusal', 'stale');
+    await expect(notice).toContainText('F1 not moved');
+    await expect(notice).toContainText('changed on disk');
+    await expect(notice.locator('ui-notice')).toHaveAttribute('data-tone', 'warning');
+    await expect(row).toHaveAttribute('aria-describedby', /refusal-/u);
+    expect(await idsOf(page, HARBOR_1_0)).toEqual(['F1', 'F2', 'F4']);
+    await notice.locator('[data-dismiss]').click();
+    await expect(page.locator('app-planning-tree app-refusal-notice')).toHaveCount(0);
+  });
+
+  test('refused: a stale priority leaves the notice under F2 and the chip keeps P3', async ({ page }) => {
+    await page.goto(TREE);
+    const row = featureRow(page, HARBOR_1_0, 'F2');
+    const chip = row.locator('[data-priority-chip]');
+    await chip.click();
+    const answered = page.waitForResponse((res) => isBacklogWrite(res.request()));
+    await page.locator('[data-level-entry="P1"]').click();
+    expect((await answered).status()).toBe(409);
+    const notice = row.locator('app-refusal-notice');
+    await expect(notice).toContainText('Priority of F2 not changed');
+    await expect(chip.locator('ui-priority')).toHaveAttribute('data-level', 'P3');
   });
 });

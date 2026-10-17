@@ -278,6 +278,21 @@ h1 {
   max-inline-size: none;
 }
 
+/* A refused band move (ISC-198): the notice right under the band head, held at the scroller's start, at most 480 px. */
+.band-head:has(> .band-notice) {
+  flex-wrap: wrap;
+  block-size: auto;
+  min-block-size: 44px;
+}
+
+.band-notice {
+  position: sticky;
+  inset-inline-start: 0;
+  flex-basis: 100%;
+  max-inline-size: 480px;
+  margin-block-end: 8px;
+}
+
 .band-grip,
 .grip-gap {
   display: inline-grid;

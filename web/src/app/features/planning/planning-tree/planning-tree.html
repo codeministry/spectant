@@ -49,6 +49,7 @@
     @let node = row.node;
     @let feature = row.kind === 'feature';
     @let busy = feature && writer.pending(node.id);
+    @let refusal = feature ? writer.refusalOf(node.id) : null;
     <div
       class="row"
       role="treeitem"
@@ -65,6 +66,7 @@
       [attr.data-moved]="moved() === row.key ? '' : null"
       [attr.aria-busy]="busy ? 'true' : null"
       [attr.aria-keyshortcuts]="feature ? 'Alt+ArrowUp Alt+ArrowDown' : null"
+      [attr.aria-describedby]="refusal ? 'refusal-' + row.key : null"
       [attr.data-kind]="row.kind"
       [attr.data-key]="row.key"
       [attr.data-ref]="node.ref"
@@ -187,6 +189,11 @@
             (chosen)="setPriority(row, $event)"
           />
         </span>
+      }
+      @if (refusal) {
+        <!-- ISC-198: the refusal stays under the feature at its re-read place, part of the treeitem (never an item of the
+             tree of its own) and named by its aria-describedby; the ✕ or the feature's next write closes it. -->
+        <app-refusal-notice class="notice" [id]="'refusal-' + row.key" [refusal]="refusal" (closed)="writer.dismiss(node.id)" />
       }
     </div>
   }

@@ -27,6 +27,7 @@ import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiTerm } from '../../../shared/ui/term/term';
 import { UiLiveRegion } from '../../../shared/ui/live-region/live-region';
+import { RefusalNotice } from '../../../shared/ui/refusal-notice/refusal-notice';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { beforeFor, edgeBefore, featureOrder, groupOf, positionOf, stepBefore, type Target } from '../../backlog/backlog-order';
 import { BacklogWriter, withBacklog } from '../../backlog/backlog-writer.service';
@@ -81,7 +82,7 @@ interface DropMark {
  */
 @Component({
   selector: 'app-planning-tree',
-  imports: [CdkDrag, CdkDragHandle, CdkDropList, PriorityMenu, ReorderMenu, TranslocoPipe, UiIcon, UiIdChip, UiLiveRegion, UiMeter, UiTerm, UiTime],
+  imports: [CdkDrag, CdkDragHandle, CdkDropList, PriorityMenu, RefusalNotice, ReorderMenu, TranslocoPipe, UiIcon, UiIdChip, UiLiveRegion, UiMeter, UiTerm, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The board's drag delays (touch after 350 ms, mouse after 4 px): one feel for every grip of the app (spec 037).
   providers: [{ provide: CDK_DRAG_CONFIG, useValue: BOARD_DRAG_CONFIG }],
@@ -260,7 +261,7 @@ export class PlanningTree {
 
   /** A click on the row selects it, unless it landed on the row's chip or its menu, which are controls of their own. */
   protected onRowClick(row: TreeRow, event: Event): void {
-    if ((event.target as HTMLElement | null)?.closest('.prio')) return;
+    if ((event.target as HTMLElement | null)?.closest('.prio, .notice')) return;
     this.activate(row);
   }
 

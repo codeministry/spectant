@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import type { APIRequestContext, Locator, Page, Request } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
 import { backlogUiBody } from './backlog-ui-sequence';
-import { RESET_PATH, SESSION_HEADER } from './stub-api';
+import { RESET_PATH, SESSION_HEADER, WRITE_HEADER } from './stub-api';
 
 const EN = JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', import.meta.url)), 'utf8')) as {
   backlog: { reorder: { readonly down: string }; board: { readonly otherMilestone: string } };
@@ -271,4 +271,28 @@ test('lanes cards: a card drag on the feature board is still one stage transitio
   const tree = (await (await page.request.get('/api/workspaces/harbor/planning')).json()) as { features: Array<{ holders: Array<{ id: string; stage: string }> }> };
   expect(new Set(tree.features.flatMap((f) => f.holders).filter((h) => h.id === '006').map((h) => h.stage))).toEqual(new Set([to]));
   expect(posts.map((r) => new URL(r.url()).pathname)).toEqual(['/api/workspaces/harbor/specs/006/transition']);
+});
+
+/**
+ * T43 · ISC-198 (`-g refused`): a stale band move (`X-Spectant-Stub-Write: stale`, 409) leaves the notice under the band
+ * head in the warning tone, the board re-reads the planning and keeps the band order; ✕ dismisses the notice.
+ */
+test('refused: a stale band move leaves the notice under the band head, re-reads the planning and keeps the order', async ({ page }) => {
+  await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session, [WRITE_HEADER]: 'stale' });
+  await open(page);
+  const before = await shownBands(page);
+  const grip = gripOf(page, 'F2').first();
+  await grip.focus();
+  const answered = page.waitForResponse((res) => BACKLOG_PATH.test(new URL(res.url()).pathname));
+  const reread = page.waitForRequest((req) => req.method() === 'GET' && new URL(req.url()).pathname === PLANNING_PATH);
+  await page.keyboard.press('Alt+ArrowDown');
+  expect((await answered).status()).toBe(409);
+  await reread;
+  const notice = page.locator(`${HEADS}[data-band="F2"] app-refusal-notice`);
+  await expect(notice).toHaveAttribute('data-refusal', 'stale');
+  await expect(notice).toContainText('F2 not moved');
+  await expect(notice.locator('ui-notice')).toHaveAttribute('data-tone', 'warning');
+  expect(await shownBands(page)).toEqual(before);
+  await notice.locator('[data-dismiss]').click();
+  await expect(page.locator('app-board-page app-refusal-notice[data-band-refusal]')).toHaveCount(0);
 });

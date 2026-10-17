@@ -16,6 +16,7 @@ import { DetailSelection } from '../../../layout/detail-sidebar/selection';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import type { BacklogOp } from '../../../core/api.service';
 import { BacklogWriter, type BacklogOutcome } from '../../backlog/backlog-writer.service';
+import type { BacklogRefusal } from '../../../shared/ui/refusal-notice/refusal';
 import { formatDay } from '../../../shared/time';
 import { PlanningTree } from './planning-tree';
 
@@ -442,8 +443,17 @@ class FakeWriter {
   readonly calls: Array<{ ws: string; op: BacklogOp }> = [];
   readonly held = signal<ReadonlyMap<string, BacklogOp>>(new Map());
   readonly busy = signal(false);
+  readonly refusals = signal<ReadonlyMap<string, BacklogRefusal>>(new Map());
+  readonly dismissed: string[] = [];
   pending(): boolean {
     return false;
+  }
+  refusalOf(feature: string): BacklogRefusal | null {
+    return this.refusals().get(feature) ?? null;
+  }
+  dismiss(feature: string): void {
+    this.dismissed.push(feature);
+    this.refusals.update((all) => new Map([...all].filter(([key]) => key !== feature)));
   }
   move(ws: string, feature: string, before: string | null): Promise<BacklogOutcome> {
     this.calls.push({ ws, op: { op: 'move', feature, before } });
@@ -544,5 +554,33 @@ describe('planning-tree reorder (T23, ISC-195, ISC-195.1)', () => {
     el.querySelector<HTMLButtonElement>('[data-level-entry="P1"]')?.click();
     await stable();
     expect(writer.calls).toEqual([{ ws: 'ferry', op: { op: 'priority', feature: 'F1', priority: 'P1' } }]);
+  });
+});
+
+// T38 · ISC-198: a refused backlog write leaves its notice under the feature's line, inside the treeitem (no item of the
+// tree of its own) and named by the treeitem's aria-describedby; the ✕ dismisses it and never selects the row.
+describe('planning-tree refusal (T38, ISC-198)', () => {
+  const BACKLOG = backlogRanks as unknown as PlanningModel;
+
+  it('tree refusal: the notice stands inside the treeitem of the refused feature with the reason, described by it, and ✕ dismisses it', async () => {
+    const writer = new FakeWriter();
+    writer.refusals.set(new Map([['F1', { op: 'move', feature: 'F1', priority: null, kind: 'refused', reason: 'F1 already stands there: nothing to move' }]]));
+    const { el, selection, stable } = await render(BACKLOG, null, [
+      { provide: BacklogWriter, useValue: writer },
+      { provide: ShellState, useValue: { ws: signal('ferry'), tier: signal('wide') } },
+    ]);
+    const row = el.querySelector<HTMLElement>('[role="treeitem"][data-key="milestone:ferry-1-0/feature:F1"]');
+    const notice = row?.querySelector<HTMLElement>('app-refusal-notice');
+    expect(notice?.textContent).toContain('F1 already stands there: nothing to move');
+    expect(notice?.textContent).toContain(en.backlog.refusal.notMoved.replace('{{id}}', 'F1'));
+    expect(row?.getAttribute('aria-describedby')).toBe(notice?.id);
+    expect(el.querySelectorAll('[role="tree"] > app-refusal-notice')).toHaveLength(0);
+    expect(el.querySelectorAll('app-refusal-notice')).toHaveLength(1);
+    notice?.querySelector<HTMLButtonElement>('[data-dismiss]')?.click();
+    await stable();
+    expect(writer.dismissed).toEqual(['F1']);
+    expect(selection.picks).toEqual([]);
+    expect(el.querySelector('app-refusal-notice')).toBeNull();
+    expect(row?.hasAttribute('aria-describedby')).toBe(false);
   });
 });

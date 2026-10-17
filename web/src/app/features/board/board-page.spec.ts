@@ -611,6 +611,24 @@ describe('board band reorder', () => {
     expect(text(page.querySelector('[data-band-live]'))).toBe('F0 at position 2 of 4, no milestone');
   });
 
+  // T39 · ISC-198: a refused band move leaves the notice under the band head, with core's phrase; nothing anticipated stays.
+  it('board refusal: a 422 leaves the notice under the band head with the reason, the order unmoved, and ✕ dismisses it', async () => {
+    backlogAnswer = { kind: 'answer', answer: { status: 422, body: { error: 'backlog-refused', reason: 'F0 already stands there: nothing to move' } } } as unknown as BacklogResult;
+    const page = await openBands();
+    press(grip(page, 'F0'), 'ArrowDown');
+    await settle();
+    expect(backlogCalls).toEqual(['F0>F6|h1']);
+    expect(ids(page)).toEqual(['F3', 'F2', 'F4', 'F0', 'F5', 'F6', 'F7']);
+    const head = heads(page).find((h) => h.dataset['band'] === 'F0');
+    const notice = head?.querySelector<HTMLElement>('app-refusal-notice[data-band-refusal]');
+    expect(text(notice)).toContain('F0 not moved');
+    expect(text(notice)).toContain('F0 already stands there: nothing to move');
+    expect(notice?.getAttribute('data-refusal')).toBe('refused');
+    notice?.querySelector<HTMLButtonElement>('[data-dismiss]')?.click();
+    await settle();
+    expect(page.querySelector('app-refusal-notice[data-band-refusal]')).toBeNull();
+  });
+
   it('Alt+ArrowUp at the first band of its milestone sends nothing, and a card does not take Alt+arrows', async () => {
     const page = await openBands();
     press(grip(page, 'F2'), 'ArrowUp');
