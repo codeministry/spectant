@@ -4,7 +4,7 @@
  * `STUB_MIDNIGHT.instant` on harbor 002; a zone east of UTC sees it on the next day, a zone west of it at another hour.
  */
 import type { Locator, Page } from '@playwright/test';
-import { atMidnight, atWidth, expect, STUB_MIDNIGHT, test, WIDTHS } from './fixtures';
+import { atMidnight, atWidth, expect, STUB_MIDNIGHT, STUB_MILESTONE, test, WIDTHS } from './fixtures';
 import { MIDNIGHT_HEADER, RESET_PATH, SESSION_HEADER } from './stub-api';
 
 test.use(atWidth(WIDTHS.desktop));
@@ -56,6 +56,51 @@ for (const side of ['east', 'west'] as const) {
       await expect(times).not.toHaveCount(0);
       await expectZone(times, side);
     });
+  });
+}
+
+/** The milestone target 2026-03-15 in the `en` short date form; a zone west of UTC misreading it shows 03/14/2026. */
+const MILESTONE_SHOWN = '03/15/2026';
+
+/** Every `<time>` on the page that carries the milestone's calendar day. */
+function milestoneDays(page: Page): Locator {
+  return page.locator(`time[datetime="${STUB_MILESTONE.target}"]`);
+}
+
+/** The milestone's day reads as itself in the short date form (`en`, the e2e locale), never the day before. */
+async function expectDay(times: Locator): Promise<void> {
+  await expect(times.first()).toBeVisible();
+  for (const time of await times.all()) await expect(time).toHaveText(MILESTONE_SHOWN);
+}
+
+for (const side of ['east', 'west'] as const) {
+  test.describe(`calendar ${side} of UTC (ISC-114.3)`, () => {
+    test.use({ timezoneId: STUB_MIDNIGHT.zones[side].timezoneId });
+
+    test(`calendar: the planning tree shows the milestone's target as that day in the ${side} zone`, async ({ page }) => {
+      await page.goto(STUB_MILESTONE.routes.tree);
+      await expectDay(page.locator('app-planning-tree').locator(milestoneDays(page)));
+    });
+
+    test(`calendar: the planning matrix shows the milestone's target as that day in the ${side} zone`, async ({ page }) => {
+      await page.goto(STUB_MILESTONE.routes.matrix);
+      await expectDay(page.locator('app-planning-matrix').locator(milestoneDays(page)));
+    });
+
+    test(`calendar: the board's milestone swimlane shows the target as that day in the ${side} zone`, async ({ page }) => {
+      await page.goto(STUB_MILESTONE.routes.board);
+      await expectDay(milestoneDays(page));
+    });
+
+    test(`calendar: the palette's milestone entry shows the target as that day in the ${side} zone`, async ({ page }) => {
+      await page.goto(STUB_MILESTONE.routes.pageMenu);
+      await expect(page.locator('header [data-control="palette"]')).toBeVisible();
+      await page.keyboard.press('Meta+k');
+      const palette = page.locator('app-command-palette dialog');
+      await expect(palette.locator('[role="listbox"]')).not.toHaveAttribute('aria-busy', 'true');
+      await expectDay(palette.locator('[data-group="milestones"]').locator(milestoneDays(page)));
+    });
+
   });
 }
 
