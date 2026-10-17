@@ -1576,7 +1576,8 @@ Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sou
   LifeOS no LifeOS path is read (ISC-37).
 - **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks: one JSON object per line,
   `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open. The
-  same file carries the four run events of an implement round (spec 027, ISC-179, below), which hold no claim.
+  same file carries the four run events of an implement round (spec 027, ISC-179, below) and the two run lifecycle
+  events of a command (spec 040, ISC-222, below), none of which holds a claim.
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
@@ -1632,9 +1633,26 @@ which names no claim. A line `{"event":"dispatch","task":"T3","session":"a:claud
 041, one with `"session":"a:claude:sess-9/T3","worktree":".worktrees/042-beta"` for spec 042, and one with
 `"worktree":"wt-3"` and a session of the same form for none.
 
-An event that is none of `claim`, `release` and the four run events is one `activity-event-unknown` warning per file,
-at the first such line, with the event quoted in its text and the line's claim when it names one; that line and every
-later line with an unknown event are skipped, and the lines after them are read as usual. A line with no event at all
+**Run lifecycle events** (spec 040, ISC-222, `locks.ts`). Each command that works on a spec or an idea reports its
+start and its end: `{ts, event: "run-start" | "run-end", run, command, session, spec | idea, outcome?}`. `run` is an
+id written once per invocation, `command` the command as typed (`/spec-tasks 037`), `session` its actor in the grammar
+above (legacy-checked like any other session), and the line names exactly one of `spec` (the spec's number or folder
+name) or `idea` (the story's slug). `outcome` is read on `run-end` only and, when present, is `ok`, `error` or
+`released` (a person ended the run by hand through the app). A line without its `ts`, `run`, `command` or `session`,
+one naming both a spec and an idea or neither, and a `run-end` with any other `outcome` is a malformed line and is
+skipped. Starts and ends pair by `run`: a `run-start` without a later `run-end` of the same `run` is an open run. The
+reading carries the open runs as `openRuns`, in the file order of their starts, each with its `run`, `command`,
+`session`, parsed `actor`, `since` (the start's `ts`), its `spec` or its `idea`, and the start's `line`. A `run-end`
+for a run that is not open, unknown or already ended, is one `locks-activity-run-unmatched` warning at its line, and a
+`run-start` reusing a run id is one `locks-activity-run-duplicate` warning; both lines are skipped. Neither event holds
+a claim, names a task or changes a lock or a task run. Both are additive (ISC-222.2): `openRuns` is set only when the
+log holds at least one `run-start` or `run-end` line, so a log without them reads byte for byte as before, harbor
+included, and `openRuns` is `[]` when every run in it has ended.
+
+An event that is none of `claim`, `release`, the four run events and the two run lifecycle events is one
+`activity-event-unknown` warning per file, at the first such line, with the event quoted in its text and the line's
+claim when it names one; that line and every later line with an unknown event are skipped, and the lines after them
+are read as usual. The warning's text still lists only the six older events, so it reads as it did before spec 040. A line with no event at all
 is a malformed line. In harbor 002, T26 ran all four steps and `tasks.md` checks it, so it reads `applied`; T28 ran
 them too, with one unknown `ponder` line between `build` and `patch`, and is not checked, so it reads `applied-open`.
 That `ponder` line is harbor's one lock diagnostic.
@@ -1659,7 +1677,8 @@ repository's `ISA.md`; only that one directory is read. The file is a JSON objec
 `isa` (the ISA path the session used) optional; a lock whose `isa` resolves to another file, whose content is not that
 object, or whose `ts` is more than two hours old (LifeOS's stale TTL) is not counted and becomes a diagnostic, as do an
 activity line that is not a JSON object with an event, a claim or release line without its claim, session or ts, a run
-event without its task, session, worktree or ts, an unknown event (once per file, above), a claimless run event that
+event without its task, session, worktree or ts, a malformed run lifecycle line, a `run-end` that ends no open run
+and a `run-start` that reuses a run id (above), an unknown event (once per file, above), a claimless run event that
 names no spec (`locks-activity-unassigned`, above), a release of a claim nobody holds and a release by a session that
 does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
 
