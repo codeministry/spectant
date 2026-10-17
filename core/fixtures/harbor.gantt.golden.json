@@ -1,0 +1,148 @@
+{
+  "asOf": "2026-03-20",
+  "axis": {
+    "asOf": "2026-03-20",
+    "end": "2026-05-14",
+    "days": 55,
+    "past": true,
+    "months": [
+      {
+        "month": "2026-03",
+        "from": 0,
+        "days": 12
+      },
+      {
+        "month": "2026-04",
+        "from": 12,
+        "days": 30
+      },
+      {
+        "month": "2026-05",
+        "from": 42,
+        "days": 13
+      }
+    ]
+  },
+  "groups": [
+    {
+      "ref": "milestone:harbor-0-9",
+      "name": "Harbor 0.9",
+      "target": "2026-03-15",
+      "state": "late",
+      "closed": 0,
+      "total": 13,
+      "window": "past",
+      "from": null,
+      "to": null,
+      "mark": "overdue",
+      "lanes": []
+    },
+    {
+      "ref": "milestone:harbor-1-0",
+      "name": "Harbor 1.0",
+      "target": "2026-05-14",
+      "state": "upcoming",
+      "closed": 101,
+      "total": 106,
+      "window": "span",
+      "from": 0,
+      "to": 55,
+      "mark": null,
+      "lanes": []
+    },
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 106,
+      "total": 130,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F0",
+          "id": "F0",
+          "name": "Cross-cutting",
+          "closed": 0,
+          "total": 4,
+          "priority": "P3",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F1",
+          "id": "F1",
+          "name": "Manifest sync",
+          "closed": 46,
+          "total": 46,
+          "priority": "P3",
+          "rank": 2,
+          "mark": null
+        },
+        {
+          "ref": "feature:F2",
+          "id": "F2",
+          "name": "Web console",
+          "closed": 25,
+          "total": 30,
+          "priority": "P3",
+          "rank": 3,
+          "mark": null
+        },
+        {
+          "ref": "feature:F3",
+          "id": "F3",
+          "name": "Config loader rewrite",
+          "closed": 0,
+          "total": 14,
+          "priority": "P3",
+          "rank": 4,
+          "mark": null
+        },
+        {
+          "ref": "feature:F4",
+          "id": "F4",
+          "name": "Retention policies",
+          "closed": 30,
+          "total": 30,
+          "priority": "P3",
+          "rank": 5,
+          "mark": null
+        },
+        {
+          "ref": "feature:F5",
+          "id": "F5",
+          "name": "Mirror credentials",
+          "closed": 2,
+          "total": 2,
+          "priority": "P3",
+          "rank": 6,
+          "mark": null
+        },
+        {
+          "ref": "feature:F6",
+          "id": "F6",
+          "name": "Registry compatibility",
+          "closed": 3,
+          "total": 4,
+          "priority": "P3",
+          "rank": 7,
+          "mark": null
+        },
+        {
+          "ref": "feature:F7",
+          "id": "F7",
+          "name": "Registry webhooks",
+          "closed": 0,
+          "total": 0,
+          "priority": "P3",
+          "rank": 8,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}

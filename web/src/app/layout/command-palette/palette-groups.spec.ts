@@ -20,7 +20,7 @@ import { CLAIMS_GROUP, rankEntries } from './palette-ranking';
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 
 const PLANNING: PlanningBody = {
-  workflow: { rows: [], source: 'default', diagnostics: [] },
+  asOf: '2026-03-20', workflow: { rows: [], source: 'default', diagnostics: [] },
   stages: ['idea', 'plan', 'build', 'done'],
   stageCounts: { idea: 2 },
   ideas: [

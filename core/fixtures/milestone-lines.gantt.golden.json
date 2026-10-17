@@ -1,0 +1,105 @@
+{
+  "asOf": "2026-03-20",
+  "axis": {
+    "asOf": "2026-03-20",
+    "end": "2026-04-30",
+    "days": 41,
+    "past": true,
+    "months": [
+      {
+        "month": "2026-03",
+        "from": 0,
+        "days": 12
+      },
+      {
+        "month": "2026-04",
+        "from": 12,
+        "days": 29
+      }
+    ]
+  },
+  "groups": [
+    {
+      "ref": "milestone:beacon-0-5",
+      "name": "Beacon 0.5",
+      "target": "2026-03-12",
+      "state": "complete",
+      "closed": 3,
+      "total": 3,
+      "window": "past",
+      "from": null,
+      "to": null,
+      "mark": "done",
+      "lanes": [
+        {
+          "ref": "feature:F1",
+          "id": "F1",
+          "name": "Signal intake",
+          "closed": 3,
+          "total": 3,
+          "priority": "P3",
+          "rank": 2,
+          "mark": "done"
+        }
+      ]
+    },
+    {
+      "ref": "milestone:beacon-1-0",
+      "name": "Beacon 1.0",
+      "target": "2026-04-30",
+      "state": "upcoming",
+      "closed": 0,
+      "total": 3,
+      "window": "span",
+      "from": 0,
+      "to": 41,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F2",
+          "id": "F2",
+          "name": "Alert routing",
+          "closed": 0,
+          "total": 3,
+          "priority": "P3",
+          "rank": 3,
+          "mark": null
+        }
+      ]
+    },
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 0,
+      "total": 4,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F0",
+          "id": "F0",
+          "name": "Cross-cutting",
+          "closed": 0,
+          "total": 2,
+          "priority": "P3",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F3",
+          "id": "F3",
+          "name": "Escalation chains",
+          "closed": 0,
+          "total": 2,
+          "priority": "P3",
+          "rank": 4,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}

@@ -21,7 +21,7 @@ const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
   specs,
 });
 const model = (milestones: readonly Milestone[]): PlanningBody => ({
-  workflow: { rows: [], source: 'default', diagnostics: [] },
+  asOf: '2026-03-20', workflow: { rows: [], source: 'default', diagnostics: [] },
   stages: [],
   stageCounts: {},
   ideas: [],

@@ -1,0 +1,125 @@
+{
+  "asOf": "2026-03-20",
+  "axis": {
+    "asOf": "2026-03-20",
+    "end": "2026-06-30",
+    "days": 102,
+    "past": false,
+    "months": [
+      {
+        "month": "2026-03",
+        "from": 0,
+        "days": 12
+      },
+      {
+        "month": "2026-04",
+        "from": 12,
+        "days": 30
+      },
+      {
+        "month": "2026-05",
+        "from": 42,
+        "days": 31
+      },
+      {
+        "month": "2026-06",
+        "from": 73,
+        "days": 29
+      }
+    ]
+  },
+  "groups": [
+    {
+      "ref": "milestone:ferry-1-0",
+      "name": "Ferry 1.0",
+      "target": "2026-04-15",
+      "state": "upcoming",
+      "closed": 3,
+      "total": 4,
+      "window": "span",
+      "from": 0,
+      "to": 26,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F2",
+          "id": "F2",
+          "name": "Timetable",
+          "closed": 2,
+          "total": 2,
+          "priority": "P1",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F1",
+          "id": "F1",
+          "name": "Ticket sales",
+          "closed": 1,
+          "total": 2,
+          "priority": "P3",
+          "rank": 3,
+          "mark": null
+        }
+      ]
+    },
+    {
+      "ref": "milestone:ferry-2-0",
+      "name": "Ferry 2.0",
+      "target": "2026-06-30",
+      "state": "upcoming",
+      "closed": 0,
+      "total": 5,
+      "window": "span",
+      "from": 26,
+      "to": 102,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F3",
+          "id": "F3",
+          "name": "Boarding passes",
+          "closed": 0,
+          "total": 2,
+          "priority": "P2",
+          "rank": 2,
+          "mark": null
+        },
+        {
+          "ref": "feature:F4",
+          "id": "F4",
+          "name": "Crew rota",
+          "closed": 0,
+          "total": 3,
+          "priority": "P3",
+          "rank": 4,
+          "mark": null
+        }
+      ]
+    },
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 0,
+      "total": 2,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F0",
+          "id": "F0",
+          "name": "Cross-cutting",
+          "closed": 0,
+          "total": 2,
+          "priority": "P3",
+          "rank": 5,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}

@@ -14,6 +14,8 @@
 //                                            tree's `.spectant/activity.jsonl` reading (no LifeOS state directory).
 //   <tree>.planning.golden.json  planning    `buildPlanning` (spec 003, ISC-100) over the tree's master and spec
 //                                            folders, clock pinned to PLANNING_NOW (helpers/planning-model.ts).
+//   <tree>.gantt.golden.json     gantt       `planningGantt` (spec 038, ISC-202) of that planning model on its own `asOf`,
+//                                            PLANNING_NOW.
 //   <tree>.tech.golden.json      tech        `readTech` (spec 023, ISC-134) over the tree's `specs/tech.md` and active
 //                                            spec folders; an image exists when its file under `specs/` does.
 //
@@ -44,6 +46,7 @@ import { parseTaskLines } from '../src/tasks.ts';
 import { readTech } from '../src/tech.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
+import { planningGantt } from '../src/gantt.ts';
 import { planningModel } from './helpers/planning-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
@@ -155,6 +158,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
   tasks: (root) => ((texts, constitution) => Object.fromEntries(listSpecs(root).map((ref) => ((t) => [rel(root, ref.dir), t.tasks === undefined ? null : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }) })])((texts.get(rel(root, ref.dir)) as SpecFiles).texts))))(folderTexts(root), readTreeAt(root).constitution),
   planning: planningModel,
+  gantt: (root) => ((model) => planningGantt(model, model.asOf))(planningModel(root)),
   tech: techModel,
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };

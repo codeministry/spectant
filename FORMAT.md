@@ -865,7 +865,11 @@ any block, such as an allocated story, is a holder of the block the first word o
 feature with nothing held, so it moves no count; spec 033); and the milestones from the `## Milestones` block
 together with the features' `Milestone:` lines and the specs' `milestone:` keys, each with its progress, closed over
 total: the sum of its features where the master carries `Milestone:` lines, otherwise across every feature its specs
-touch.
+touch. The tree names the day its milestone states were derived with as `asOf`. **Derived from the tree: the Gantt
+lens** (spec 038, `gantt.ts`): an axis from `asOf` to the latest target, every milestone dated before `asOf` in one
+shared past segment by date (`late` marked overdue, `complete` done), each later one with a window from the previous
+target (the first from `asOf`) to its own, and one lane per feature block in rank order under the milestone its
+`Milestone:` line names; no spec appears in it.
 
 ## `idea` — `../ideas/`, one `specs/ideas/<slug>.md` per story
 

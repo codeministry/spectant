@@ -1544,7 +1544,7 @@ const RESET = '/api/__stub/reset';
 describe('stub API: the Stage-3 board seam (T119)', () => {
   test('the planning tree is the extended golden: workflow, stages, stageCounts, ideas, per holder stage, source, priority, hash, assignee', async () => {
     const tree = (await (await ask(workspaceRoutes.planning(WS))).json()) as Record<string, unknown>;
-    expect(Object.keys(tree)).toEqual(['workflow', 'stages', 'stageCounts', 'features', 'milestones', 'unassignedFeatures', 'ideas', 'recount', 'diagnostics', 'relations', 'backlogHash']);
+    expect(Object.keys(tree)).toEqual(['asOf', 'workflow', 'stages', 'stageCounts', 'features', 'milestones', 'unassignedFeatures', 'ideas', 'recount', 'diagnostics', 'relations', 'backlogHash']);
     const first = (tree as unknown as BoardTree).features.flatMap((f) => f.holders)[0] ?? {};
     for (const key of ['stage', 'stageSource', 'priority', 'hash', 'assignee']) expect(Object.keys(first)).toContain(key);
   });

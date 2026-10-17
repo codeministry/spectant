@@ -26,8 +26,11 @@ describe('planning', () => {
     const workflow = { rows: core.DEFAULT_WORKFLOW, source: 'default' as const, diagnostics: [] };
     const stages = core.boardStages(workflow);
     const stageCounts = Object.fromEntries(stages.map((s) => [s, 0]));
-    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], unassignedFeatures: [], ideas: [], recount: null, diagnostics: [], relations: {} };
-    expect(core.buildPlanning({ master: null, specs: [], archived: [] })).toEqual(empty);
+    // Spec 038: `asOf` is the input's `now`, so the empty model pins it; without `now` it is today's UTC day (below).
+    const asOf = '2026-03-20';
+    const empty: PlanningModel = { asOf, workflow, stages, stageCounts, features: [], milestones: [], unassignedFeatures: [], ideas: [], recount: null, diagnostics: [], relations: {} };
+    expect(core.buildPlanning({ master: null, specs: [], archived: [], now: asOf })).toEqual(empty);
+    expect(core.buildPlanning({ master: null, specs: [], archived: [] }).asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
     // T18: PlanningInput repeats DashboardInput's fields instead of picking them (planning.ts types against no
     // dashboard.ts), so the two must not drift: `tsc` (check:static) fails here when a DashboardInput stops being a
@@ -35,7 +38,7 @@ describe('planning', () => {
     const dashboard: DashboardInput = { master: null, constitution: null, tldr: null, specs: [], archived: [] };
     const input: PlanningInput = dashboard;
     const fields: Pick<DashboardInput, 'master' | 'specs' | 'archived'> = input;
-    expect(core.buildPlanning(fields)).toEqual(empty);
+    expect(core.buildPlanning({ ...fields, now: asOf })).toEqual(empty);
   });
 
   // ISC-100: the tree of every fixture equals its committed golden, claim by claim first (a readable failure names

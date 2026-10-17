@@ -103,7 +103,7 @@ describe('featurePlace (ISC-105)', () => {
    * rule), so 002 is no holder of F8.
    */
   const MODEL: PlanningModel = {
-    workflow: { rows: [], source: 'default', diagnostics: [] },
+    asOf: '2026-03-20', workflow: { rows: [], source: 'default', diagnostics: [] },
     stages: [],
     stageCounts: {},
     ideas: [],

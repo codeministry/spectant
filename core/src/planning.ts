@@ -223,6 +223,12 @@ export interface PlanningMilestone {
 }
 
 export interface PlanningModel {
+  /**
+   * The ISO day `YYYY-MM-DD` the milestone states were derived with (`PlanningInput.now`, else today's UTC date), the
+   * cut-off day of the Gantt lens (spec 038, `planningGantt`): its axis starts here, so the lens and `late` agree on
+   * one day, and fixture goldens carry their pinned date instead of the clock's.
+   */
+  readonly asOf: string;
   /** The workspace's workflow (`specs/workflow.md`, spec 008), the default table when the caller passed none. */
   readonly workflow: Workflow;
   /** The board's columns, `boardStages(workflow)` (T44): `idea` first, the detours right after `build`. */
@@ -576,7 +582,8 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const workflow = input.workflow ?? DEFAULT_PLANNING_WORKFLOW;
   const stages = boardStages(workflow);
   const folders = readFolders(input.specs, input.archived, new Map((input.specStates ?? []).map((s) => [s.slug, s])), input.locks?.locks ?? []);
-  const board = { workflow, stages, stageCounts: stageCounts(stages, folders, ideas.length) };
+  const now = input.now ?? new Date().toISOString().slice(0, 10);
+  const board = { asOf: now, workflow, stages, stageCounts: stageCounts(stages, folders, ideas.length) };
   const specs = folders.map((f) => f.holder);
   if (input.master === null) {
     const relations = buildRelations({ features: [], milestones: [], ideas, specs });
@@ -613,7 +620,6 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
           },
         ],
   );
-  const now = input.now ?? new Date().toISOString().slice(0, 10);
   const byTarget = [...parsed.milestones].sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
   // A feature's `Milestone:` line matches an entry as a spec's `milestone:` does: the exact name of a valid entry. A
   // name on a skipped line, or no entry at all, leaves the feature in the no-milestone group.

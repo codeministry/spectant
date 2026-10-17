@@ -1,0 +1,40 @@
+{
+  "asOf": "2026-03-20",
+  "axis": null,
+  "groups": [
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 4,
+      "total": 12,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F0",
+          "id": "F0",
+          "name": "Cross-cutting",
+          "closed": 0,
+          "total": 2,
+          "priority": "P3",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F1",
+          "id": "F1",
+          "name": "Reading list",
+          "closed": 4,
+          "total": 10,
+          "priority": "P3",
+          "rank": 2,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}
