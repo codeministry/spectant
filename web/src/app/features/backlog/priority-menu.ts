@@ -39,6 +39,7 @@ const LEVELS: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
       [attr.aria-label]="label()"
       [attr.aria-expanded]="open()"
       [attr.aria-busy]="busy() ? 'true' : null"
+      [attr.tabindex]="tabbable() ? null : -1"
       (pointerdown)="openAtPress = open()"
       (click)="toggle()"
     >
@@ -94,6 +95,8 @@ export class PriorityMenu {
   readonly featureTitle = input<string | null>(null);
   /** A priority write is running: the chip is `aria-busy` and the menu stays closed. */
   readonly busy = input(false);
+  /** In the tab order; a roving host (the tree lens) keeps only the active row's chip there. */
+  readonly tabbable = input(true);
   /** The level picked, when it differs from `priority`. */
   readonly chosen = output<Priority>();
 

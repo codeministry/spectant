@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, type Provider, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { PlanningModel } from '../../../../../../core/src/planning';
@@ -13,6 +13,9 @@ import spectant001 from '../../../../../../core/fixtures/spectant-001.planning.g
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
+import { ShellState } from '../../../layout/shell/shell-state.service';
+import type { BacklogOp } from '../../../core/api.service';
+import { BacklogWriter, type BacklogOutcome } from '../../backlog/backlog-writer.service';
 import { formatDay } from '../../../shared/time';
 import { PlanningTree } from './planning-tree';
 
@@ -57,7 +60,7 @@ class Host {
   readonly model = signal<PlanningModel>(harbor as unknown as PlanningModel);
 }
 
-async function render(model: PlanningModel, sel: RelationRef | null = null): Promise<{ el: HTMLElement; selection: FakeSelection; stable: () => Promise<void> }> {
+async function render(model: PlanningModel, sel: RelationRef | null = null, extra: Provider[] = []): Promise<{ el: HTMLElement; selection: FakeSelection; stable: () => Promise<void> }> {
   const selection = new FakeSelection();
   selection.current.set(sel);
   TestBed.configureTestingModule({
@@ -68,7 +71,7 @@ async function render(model: PlanningModel, sel: RelationRef | null = null): Pro
         preloadLangs: true,
       }),
     ],
-    providers: [{ provide: DetailSelection, useValue: selection }],
+    providers: [{ provide: DetailSelection, useValue: selection }, ...extra],
   });
   const fixture = TestBed.createComponent(Host);
   fixture.componentInstance.model.set(model);
@@ -326,7 +329,7 @@ describe('planning-tree milestone header', () => {
     el.querySelector<HTMLButtonElement>('[data-expand-all]')?.click();
     await stable();
     const order = (row: HTMLElement): string[] =>
-      [...row.children].map((child) => ['chev', 'main', 'num', 'bar', 'guides', 'prio'].find((name) => child.classList.contains(name)) ?? child.tagName.toLowerCase());
+      [...row.children].map((child) => ['grip', 'chev', 'main', 'num', 'bar', 'guides', 'prio'].find((name) => child.classList.contains(name)) ?? child.tagName.toLowerCase());
     const part = (node: HTMLElement): string => (node.classList.contains('name') ? 'name' : node.classList.contains('date') ? 'date' : 'flag');
 
     const milestones = rows(el, 'milestone');
@@ -343,7 +346,7 @@ describe('planning-tree milestone header', () => {
     const specs = rows(el, 'spec');
     const claims = rows(el, 'claim');
     expect(features.length * specs.length * claims.length).toBeGreaterThan(0);
-    for (const row of features) expect(order(row)).toEqual(['bar', 'num', 'guides', 'chev', 'main', 'prio']);
+    for (const row of features) expect(order(row)).toEqual(['grip', 'bar', 'num', 'guides', 'chev', 'main', 'prio']);
     for (const row of specs) expect(order(row)).toEqual(['bar', 'num', 'guides', 'chev', 'main']);
     for (const row of claims) expect(order(row)).toEqual(['guides', 'chev', 'main']);
   });
@@ -429,5 +432,117 @@ describe('planning-tree tree rank', () => {
     }
     expect(rows(el, 'feature')).toHaveLength(BACKLOG.features.length);
     for (const kind of ['milestone', 'group', 'spec', 'claim']) for (const row of rows(el, kind)) expect(row.querySelector('ui-priority')).toBeNull();
+  });
+});
+
+// T23 · ISC-195, ISC-195.1: the tree's own controls. Alt+↑/↓ at a feature moves it through the backlog writer within its
+// group and sends nothing at the group's edge; the grip and the chip are in the tab order only in the row holding the
+// tab stop, and Enter at the grip opens "Move" instead of selecting the row. The drag itself is the browser tier's.
+class FakeWriter {
+  readonly calls: Array<{ ws: string; op: BacklogOp }> = [];
+  readonly held = signal<ReadonlyMap<string, BacklogOp>>(new Map());
+  readonly busy = signal(false);
+  pending(): boolean {
+    return false;
+  }
+  move(ws: string, feature: string, before: string | null): Promise<BacklogOutcome> {
+    this.calls.push({ ws, op: { op: 'move', feature, before } });
+    return Promise.resolve('written');
+  }
+  priority(ws: string, feature: string, priority: 'P1' | 'P2' | 'P3' | 'P4'): Promise<BacklogOutcome> {
+    this.calls.push({ ws, op: { op: 'priority', feature, priority } });
+    return Promise.resolve('written');
+  }
+}
+
+describe('planning-tree reorder (T23, ISC-195, ISC-195.1)', () => {
+  const BACKLOG = backlogRanks as unknown as PlanningModel;
+  const setup = async () => {
+    const writer = new FakeWriter();
+    const shell = { ws: signal('ferry'), tier: signal('wide') };
+    const rendered = await render(BACKLOG, null, [
+      { provide: BacklogWriter, useValue: writer },
+      { provide: ShellState, useValue: shell },
+    ]);
+    return { ...rendered, writer };
+  };
+  const featureRow = (el: HTMLElement, id: string): HTMLElement => {
+    const row = rows(el, 'feature').find((candidate) => candidate.querySelector('.fid')?.textContent.trim() === id);
+    if (row === undefined) throw new Error(`no row ${id}`);
+    return row;
+  };
+  const alt = (target: HTMLElement, key: 'ArrowUp' | 'ArrowDown'): KeyboardEvent => {
+    const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  it('Alt+↓ at F2 moves it behind F1, the last of Ferry 1.0 (before null); Alt+↑ at F1 moves it in front of F2', async () => {
+    const { el, writer, stable } = await setup();
+    const down = alt(featureRow(el, 'F2'), 'ArrowDown');
+    expect(down.defaultPrevented).toBe(true);
+    await stable();
+    alt(featureRow(el, 'F1'), 'ArrowUp');
+    await stable();
+    expect(writer.calls).toEqual([
+      { ws: 'ferry', op: { op: 'move', feature: 'F2', before: null } },
+      { ws: 'ferry', op: { op: 'move', feature: 'F1', before: 'F2' } },
+    ]);
+  });
+
+  it('sends nothing for Alt+↑ at the first or Alt+↓ at the last feature of a group, nor at a lone feature', async () => {
+    const { el, writer, stable } = await setup();
+    alt(featureRow(el, 'F2'), 'ArrowUp');
+    alt(featureRow(el, 'F4'), 'ArrowDown');
+    alt(featureRow(el, 'F0'), 'ArrowUp');
+    alt(featureRow(el, 'F0'), 'ArrowDown');
+    await stable();
+    expect(writer.calls).toEqual([]);
+    expect(el.querySelector('ui-live-region')?.textContent).toContain('F0');
+  });
+
+  it('Alt+↑/↓ at a milestone or a spec row moves nothing and does not move the focus', async () => {
+    const { el, writer, stable } = await setup();
+    const head = rows(el, 'milestone').at(0);
+    if (head === undefined) throw new Error('no milestone');
+    const event = alt(head, 'ArrowDown');
+    await stable();
+    expect(event.defaultPrevented).toBe(true);
+    expect(writer.calls).toEqual([]);
+  });
+
+  it('keeps the grip and the chip in the tab order only in the row holding the tab stop', async () => {
+    const { el, stable } = await setup();
+    const row = featureRow(el, 'F1');
+    row.click();
+    await stable();
+    for (const feature of rows(el, 'feature')) {
+      const active = feature.getAttribute('tabindex') === '0';
+      expect(feature.querySelector('[data-grip]')?.getAttribute('tabindex')).toBe(active ? '0' : '-1');
+      expect(feature.querySelector('[data-priority-chip]')?.getAttribute('tabindex') ?? '0').toBe(active ? '0' : '-1');
+    }
+    expect(row.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('Enter at the grip opens "Move" and does not select the row; the grip names the feature and its milestone', async () => {
+    const { el, selection, stable } = await setup();
+    const grip = featureRow(el, 'F1').querySelector<HTMLButtonElement>('[data-grip]');
+    if (grip === null) throw new Error('no grip');
+    expect(grip.getAttribute('aria-label')).toContain('F1');
+    expect(grip.getAttribute('aria-label')).toContain('Ferry 1.0');
+    grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    grip.click();
+    await stable();
+    expect(selection.picks).toEqual([]);
+    expect(grip.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('picking a level at the chip sends the priority for that feature', async () => {
+    const { el, writer, stable } = await setup();
+    featureRow(el, 'F1').querySelector<HTMLButtonElement>('[data-priority-chip]')?.click();
+    await stable();
+    el.querySelector<HTMLButtonElement>('[data-level-entry="P1"]')?.click();
+    await stable();
+    expect(writer.calls).toEqual([{ ws: 'ferry', op: { op: 'priority', feature: 'F1', priority: 'P1' } }]);
   });
 });

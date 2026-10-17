@@ -2104,6 +2104,15 @@
     "priority": {
       "label": "Change priority {{level}} of {{id}}",
       "title": "Priority · {{id}}"
+    },
+    "tree": {
+      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
+      "movedNone": "{{id}} at position {{position}} of {{count}} without a milestone",
+      "atFirst": "{{id}} is already first in {{group}}",
+      "atFirstNone": "{{id}} is already first without a milestone",
+      "atLast": "{{id}} is already last in {{group}}",
+      "atLastNone": "{{id}} is already last without a milestone",
+      "prioritized": "{{id}} now has priority {{level}}"
     }
   },
   "actors": {
