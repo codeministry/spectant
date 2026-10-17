@@ -2301,6 +2301,10 @@
     "edgeAfter": "{{claim}} comes after {{target}}",
     "edgeBlockedBy": "{{claim}} is blocked by {{target}}"
   },
+  "sourceChip": {
+    "text": "from worktree",
+    "title": "Read from the worktree {{path}}, not from the main checkout"
+  },
   "worktreeChip": {
     "name": "Worktree {{path}}, branch {{branch}}",
     "nameDetached": "Worktree {{path}}, detached HEAD",

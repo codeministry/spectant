@@ -34,10 +34,12 @@
  * (`specEdges`, absent without any), from which the Diagram lens draws its `spec-edge` arrows.
  *
  * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
- * `matchWorkspacePath` with the same guard order. It reads the story folder alone (`readIdeaFiles`), never the whole
- * workspace: a story page needs no spec folder, lock source or git call. The slug must be one `readIdeas` lists, so a
- * path out of the folder, the index or a skipped file is a 404 before any file is opened by it; then one read of the
- * file's bytes gives the `IdeaRef` (`readIdeas` over the folder with that text), the page (`renderDocsMarkdown`, images
+ * `matchWorkspacePath` with the same guard order. It reads the story folder alone, never the whole workspace: a story
+ * page needs no spec folder or lock source. Each story comes from its read source (`readIdeaSources`, `readRepoFile`,
+ * spec 039, ISC-209), so a story a spec worktree changed last shows that version and `source` names the worktree; the
+ * git facts behind it are the worktree view's, kept while the repository state stands. The slug must be one
+ * `readIdeas` lists, so a path out of the folder, the index or a skipped file is a 404 before any file is opened by
+ * it; then one read of the file's bytes gives the `IdeaRef` (`readIdeas` over the folder with that text), the page (`renderDocsMarkdown`, images
  * confined to the workspace as on a Docs tab) and `hash`, the raw sha256 hex of those bytes (`rawSha256`, the hash
  * `allocate` checks). The ETag is `json()`'s body hash, and the body carries `hash`, so any byte change revalidates.
  * 404 for an unknown story and for a workspace without stories; 409 with the summary when the folder cannot be read.
@@ -112,15 +114,16 @@
  */
 import type { Database } from "bun:sqlite";
 import { type Stats, readFileSync } from "node:fs";
-import { readFile, realpath, stat } from "node:fs/promises";
+import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
 import { docsRenderOptions } from "../../core/src/evidence.ts";
-import { catalogSourceOf } from "../../core/src/library.ts";
+import { type RepoFileCopy, catalogSourceOf } from "../../core/src/library.ts";
 import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
+import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 import { techSectionHeads } from "../../core/src/tech.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
@@ -161,7 +164,8 @@ import {
   loadDashboard,
   readBytesIfExists,
   readCopies,
-  readIdeaFiles,
+  readIdeaSources,
+  readRepoFile,
   readWorkspaceInput,
   unreadableCode,
   workspaceUnreadable,
@@ -237,6 +241,15 @@ const catalogFileBelow = async (
 const isFolder = async (dir: string): Promise<boolean> => {
   try {
     return (await stat(dir)).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+/** Whether `path` is a regular file now, never through a link; false when it is gone or cannot be read. */
+const isFile = async (path: string): Promise<boolean> => {
+  try {
+    return (await lstat(path)).isFile();
   } catch {
     return false;
   }
@@ -387,7 +400,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       ? loadCatalogDocs
       : async (root: string): Promise<CopiesLoad<{ docs: readonly LibraryDoc[] }>> => {
           const loaded = await injected(root, stateDir);
-          return loaded.readable ? { readable: true, docs: loaded.catalog.docs, copies: loaded.copies ?? {} } : loaded;
+          return loaded.readable ? { readable: true, docs: loaded.catalog.docs, copies: loaded.copies ?? {}, repoFiles: loaded.repoFiles ?? {} } : loaded;
         };
   const docOf =
     injected === undefined
@@ -395,7 +408,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       : async (root: string, path: string | null): Promise<CopiesLoad<{ doc: LibraryDoc | null }>> => {
           const loaded = await docsOf(root);
           if (!loaded.readable) return loaded;
-          return { readable: true, doc: loaded.docs.find((d) => d.path === path) ?? null, copies: loaded.copies };
+          return { readable: true, doc: loaded.docs.find((d) => d.path === path) ?? null, copies: loaded.copies, repoFiles: loaded.repoFiles };
         };
   // The search text of each Markdown document, by workspace root and catalog path; each search keeps only what it saw.
   const searchTexts = new Map<string, Map<string, SearchText>>();
@@ -461,24 +474,27 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
    * folder itself: a copy folder or file whose real path leaves the worktree's `specs/` is `symlink-escape`, which the
    * reader answers 403. A symlink out of the main checkout's `specs/` stays null (404), as before. A copy folder that is
    * gone by now (its worktree removed since the copies were read) falls back to the main checkout's file (spec 041,
-   * ISC-217). `source` names the folder the file was read from, the copy's or main's `specs/`, for the search's text
-   * cache. `realDirOf` lets a search resolve each folder once.
+   * ISC-217). A workspace document whose read source is a spec worktree (`repoFiles`, spec 039, ISC-209) is resolved
+   * below that worktree's `specs/` with its catalog path, and falls back to the main checkout's file when it is gone by
+   * now. `source` names the folder the file was read from, the copy's, the worktree's or main's `specs/`, for the
+   * search's text cache. `realDirOf` lets a search resolve each folder once.
    */
   const catalogFile = async (
     root: string,
     doc: LibraryDoc,
     copies: Readonly<Record<string, string>>,
+    repoFiles: Readonly<Record<string, RepoFileCopy>>,
     realDirOf?: (dir: string) => Promise<string>,
   ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string; source: string } | "symlink-escape" | null> => {
     if (!isReadableDoc(doc)) return null;
     const main = join(root, "specs");
-    const source = catalogSourceOf(root, doc, copies);
+    const source = catalogSourceOf(root, doc, copies, repoFiles);
     const fromCopy = copies[doc.spec] === source.dir;
     let found = fromCopy
       ? await catalogFileBelow(dirname(source.dir), `${basename(source.dir)}/${source.rel}`, realDirOf)
       : await catalogFileBelow(source.dir, source.rel, realDirOf);
-    let from = fromCopy ? source.dir : main;
-    if (fromCopy && found === null && !(await isFolder(source.dir))) {
+    let from = source.dir;
+    if (found === null && from !== main && (!fromCopy || !(await isFolder(source.dir)))) {
       found = await catalogFileBelow(main, doc.path, realDirOf);
       from = main;
     }
@@ -506,7 +522,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
     const loaded = await docOf(workspace.path, path);
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
-    const file = loaded.doc === null ? null : await catalogFile(workspace.path, loaded.doc, loaded.copies);
+    const file = loaded.doc === null ? null : await catalogFile(workspace.path, loaded.doc, loaded.copies, loaded.repoFiles);
     if (file === "symlink-escape") return json(req, 403, { error: "forbidden" }); // a worktree copy linked out (ISC-216.1)
     if (file === null) return json(req, 404, { error: "not-found" });
     let source: string;
@@ -533,11 +549,12 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     root: string,
     doc: LibraryDoc,
     copies: Readonly<Record<string, string>>,
+    repoFiles: Readonly<Record<string, RepoFileCopy>>,
     realDirOf: (dir: string) => Promise<string>,
     previous: ReadonlyMap<string, SearchText>,
     seen: Map<string, SearchText>,
   ): Promise<string | null> => {
-    const file = await catalogFile(root, doc, copies, realDirOf);
+    const file = await catalogFile(root, doc, copies, repoFiles, realDirOf);
     if (file === null || file === "symlink-escape") return null;
     const { mtimeMs, size } = file.stats;
     // Keyed by source and catalog path (spec 041, ISC-217): a spec whose source switched between the copy and main never
@@ -585,7 +602,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       return real;
     };
     const docs = loaded.docs.filter(isReadableDoc);
-    const texts = await mapBounded(docs, SEARCH_READS, (doc) => searchTextOf(root, doc, loaded.copies, realDirOf, previous, seen));
+    const texts = await mapBounded(docs, SEARCH_READS, (doc) => searchTextOf(root, doc, loaded.copies, loaded.repoFiles, realDirOf, previous, seen));
     const hits: LibrarySearchHit[] = [];
     docs.forEach((doc, i) => {
       const text = texts[i] ?? null;
@@ -605,33 +622,43 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const libraryAsset = async (req: Request, slug: string, search: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
-    let first: string | null;
+    let path: string | null;
     try {
-      first = decodeURIComponent(evidencePathQuery(search)).split("/")[0] ?? null;
+      path = decodeURIComponent(evidencePathQuery(search));
     } catch {
-      first = null; // the resolver refuses it below, from the main checkout
+      path = null; // the resolver refuses it below, from the main checkout
     }
+    const first = path?.split("/")[0] ?? null;
     const copy = first === null ? undefined : (await readCopies(workspace.path))[first];
-    const specsDir = copy !== undefined && (await isFolder(copy)) ? dirname(copy) : join(workspace.path, "specs");
+    let specsDir = copy !== undefined && (await isFolder(copy)) ? dirname(copy) : join(workspace.path, "specs");
+    // An image outside every spec folder belongs to the workspace documents and follows `tech.md`'s read source (spec
+    // 039, ISC-209) while the worktree holds it; otherwise it is the main checkout's.
+    if (copy === undefined && path !== null && first !== null && !SPEC_FOLDER.test(first)) {
+      const tech = await readRepoFile(workspace.path, "specs/tech.md");
+      const below = tech.source.kind === "worktree" ? join(workspace.path, tech.source.worktree, "specs") : null;
+      if (below !== null && (await isFile(join(below, ...path.split("/"))))) specsDir = below;
+    }
     return evidenceFileResponse(req, specsDir, search, {
       reach: "tree",
       serves: (mediaType) => mediaType.startsWith("image/"),
     });
   };
 
-  // The story folder alone: no spec folder, lock source or git call feeds a story page (header).
-  const idea = (req: Request, slug: string, story: string): Response => {
+  // The story folder alone: no spec folder or lock source feeds a story page (header).
+  const idea = async (req: Request, slug: string, story: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     const root = workspace.path;
     const unreadable = workspaceUnreadable(root);
     if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
     try {
-      const files = readIdeaFiles(root);
+      // The stories from their read sources (spec 039, ISC-209): a story changed in a spec worktree shows that version.
+      const { files } = await readIdeaSources(root);
       // Only a slug `readIdeas` lists names a file: never a path built from the request alone.
       if (!readIdeas(files).ideas.some((ref) => ref.slug === story)) return json(req, 404, { error: "not-found" });
       const name = `${story}.md`;
-      const path = join(repoFilePath(root, "idea"), name);
+      const read = await readRepoFile(root, `specs/ideas/${name}`);
+      const path = read.absolute;
       const bytes = readBytesIfExists(path);
       if (bytes === null) return json(req, 404, { error: "not-found" });
       // One read: the ref, the page and the hash all describe these bytes, even if the file changed since the listing.
@@ -643,6 +670,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
         idea: ref,
         page: renderDocsMarkdown(text, docsRenderOptions(root, path, "plan")),
         hash: rawSha256(bytes),
+        ...(read.source.kind === "worktree" ? { source: read.source } : {}),
       };
       return json(req, 200, body);
     } catch (error) {

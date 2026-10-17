@@ -9,6 +9,7 @@
       <span class="lib-type" [attr.data-type]="doc.type"><ui-icon [name]="typeIcon(doc)" [size]="12" />{{ 'library.types.' + doc.type | transloco }}</span>
       <ui-chip variant="take" tone="accent">{{ chipLabel(doc.spec) }}</ui-chip>
       <span class="lib-file">{{ filePath(doc) }}</span>
+      <ui-source-chip data-library-source [source]="doc.source" />
       @if (doc.modified; as modified) {
         <ui-time-label class="lib-updated" key="library.reader.updated" timeParam="date" [value]="modified" />
       }

@@ -681,6 +681,14 @@ export interface Worktree {
 export type SpecSource = 'main' | 'worktree';
 
 /**
+ * Where one repository file was read (spec 039, ISC-209): `ISA.md`, `specs/constitution.md`, `specs/tldr.md`,
+ * `specs/workflow.md`, `specs/tech.md` or a story under `specs/ideas/`. `main` is the main checkout; `worktree` names
+ * the spec worktree whose copy was read, by its path relative to the repository root (`.worktrees/NNN-slug`), never
+ * absolute. `core/`'s `repoFileSourceOf` decides it.
+ */
+export type RepoFileSource = { readonly kind: 'main' } | { readonly kind: 'worktree'; readonly worktree: string };
+
+/**
  * How the server read one spec, beside its files (spec 027, T12): the facts only git has, handed to the dashboard per
  * spec folder (`DashboardInput.perSpec`) and to the spec page (`SpecPageInput.read`). Every field is optional; an
  * absent one keeps what a spec without a worktree has.
@@ -1748,6 +1756,12 @@ export interface LibraryDoc {
    * is that folder name, and it is always `ok`, never counted as missing or stale. Absent for every other document.
    */
   readonly archived?: true;
+  /**
+   * Where a workspace document (`constitution.md`, `tech.md`, `tldr.md`, a story) was read when a spec worktree's copy
+   * was read instead of the main checkout's (spec 039, ISC-209); absent for every document read from the main checkout
+   * and for every document of a spec folder, whose source the spec's own row carries.
+   */
+  readonly source?: RepoFileSource;
 }
 
 /** The head of one spec's group in the library: the values of the former tech tabs Status and Specs (ISC-157). */

@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, ViewEncapsulation } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { TranslocoPipe } from '@jsverse/transloco';
+import type { RepoFileSource } from '../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
 import { UiTimeLabel } from '../../../shared/time';
-import { UiCard, UiChip, UiCommandChip } from '../../../shared/ui';
+import { UiCard, UiChip, UiCommandChip, UiSourceChip } from '../../../shared/ui';
 import { nextId } from '../../../shared/ui/overlay/ids';
 
 /**
@@ -18,6 +19,8 @@ export interface BriefModel {
   readonly generated: string | null;
   /** Core's verdict: a spec changed after `generated:`. */
   readonly stale: boolean;
+  /** The spec worktree tldr.md was read from (spec 039, ISC-209); absent when read from the main checkout. */
+  readonly source?: RepoFileSource;
 }
 
 /** The skill command that writes (or refreshes) `specs/tldr.md`. */
@@ -41,7 +44,7 @@ export const TLDR_COMMAND = '/spec-tldr';
  */
 @Component({
   selector: 'app-brief',
-  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip, UiTimeLabel],
+  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip, UiSourceChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {

@@ -1492,8 +1492,33 @@ Everywhere else the source stays `main`, as before spec 027: the spec has no wor
 `specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),
 never as a path under the folder. Spectant's own repository is that case:
 its `specs/` is untracked and linked into every spec worktree, so the worktree's copy is the main checkout's file and
-the source does not change (ISC-181.1). The repository kinds (`constitution`, `master`, `idea`, `workflow`, `tokens`)
-are read from the main checkout in every case.
+the source does not change (ISC-181.1).
+
+**Repository files** (ISC-209). `ISA.md`, `specs/constitution.md`, `specs/tldr.md`, `specs/workflow.md`,
+`specs/tech.md` and each story directly in `specs/ideas/` (`REPO_SOURCE_PATHS`, `core/src/repo-source.ts`) belong to
+no spec, so no single worktree carries them: each is read from the checkout that changed it last. The server gathers
+one candidate per checkout, the main checkout and each live spec worktree of a spec inside the repository: whether the
+file is there (a worktree's only as a regular file, never through a link), whether that checkout's branch tracks it
+(`git ls-files -z -- specs/ ISA.md`), whether its bytes differ from the main checkout's, a digest, and its time. The time
+is the file's mtime when `git status` there lists it as changed, else the committer date of the last commit there that
+touched it (one `git log --no-renames --format=%x01%cI --name-only -z -- <paths>` per checkout, the first date that
+names a path); a merge names no path, so a merged file keeps the date of the commit that changed it. A clean file never
+dates by its mtime, which a checkout rewrites. `repoFileSourceOf` decides:
+
+- A file the main checkout holds without tracking it stays the main checkout's, whatever a worktree holds: an untracked
+  or linked `specs/` never changes the source (ISC-181.1, ISC-210).
+- A worktree competes only with a version that is present, tracked, differs from the main checkout's and has a time.
+  The newest is read when it is newer than the main checkout's own time; on a tie, or when none competes, the main
+  checkout's. A file the main checkout lacks is read from the newest worktree that tracks it, so a story added on a
+  branch is listed before the merge.
+
+The dashboard's brief (`brief.source`), each library document of the workspace (`LibraryDoc.source`) and the story page
+(`IdeaPage.source`) name the worktree as `{ "kind": "worktree", "worktree": ".worktrees/NNN-slug" }` when it was read
+from one; read from the main checkout they carry no `source` key, so a model without a spec worktree is unchanged. An
+image outside every spec folder, such as one `tech.md` shows, is served from the worktree `tech.md` was read from while
+that worktree holds it. The story allocation still writes the main checkout and compares its hash with the main
+checkout's file. The token measurement and the backlog (`tokens`, `backlog`) are read from the main checkout in every
+case.
 
 **In the dashboard model** (`core/src/dashboard.ts`, ISC-175, ISC-176, ISC-181). The server hands `buildDashboard`
 the assignment above as `worktrees`, with `ahead` and `dirty` read, and per spec folder a `SpecRead`

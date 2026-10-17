@@ -290,6 +290,15 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
     expect(updated?.textContent).toBe(`updated ${formatInstant(PLAN.modified ?? '', 'en')}`);
   });
 
+  it('names the spec worktree a workspace document was read from in its head, and nothing for the main checkout (spec 039)', async () => {
+    const fromCopy = await render((host) => host.doc.set({ ...PLAN, source: { kind: 'worktree', worktree: '.worktrees/002-web-console' } }));
+    const chip = fromCopy.querySelector<HTMLElement>('.lib-meta [data-library-source]');
+    expect(chip?.hasAttribute('hidden')).toBe(false);
+    expect(chip?.textContent.replace(/\s+/g, ' ').trim()).toBe('from worktree 002-web-console');
+    const fromMain = await render();
+    expect(fromMain.querySelector('.lib-meta [data-library-source]')?.hasAttribute('hidden')).toBe(true);
+  });
+
   it('sets the table of contents beside the prose at wide', async () => {
     const reader = await render((host) => host.wide.set(true));
     expect(reader.querySelector('nav.docs-toc .docs-toc-list')).not.toBeNull();

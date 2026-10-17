@@ -16,17 +16,21 @@ import { basename, dirname, join } from "node:path";
 import { assignWorktrees } from "../core/src/worktrees.ts";
 import {
   aheadOfMain,
+  changedPaths,
   CommitCache,
   commitsFor,
   defaultGitRunner,
   dirty,
+  lastCommits,
   mergeCommitOf,
   type GitRunner,
   takenSpecNumbers,
+  trackedPlanningPaths,
   trackedSpecPaths,
   userEmail,
   worktreeList,
 } from "../server/src/git.ts";
+import { REPO_SOURCE_PATHS } from "../core/src/repo-source.ts";
 import { loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { DATES, plantWorktreeRepo, type PlantedWorktreeRepo, SPEC_FOLDER, UNCOMMITTED } from "./fixtures/worktree-repo.ts";
 
@@ -677,7 +681,7 @@ describe("aheadOfMain and dirty read a worktree's distance to main and its uncom
     expect(seen.map((s) => s.args)).toEqual([
       ["-C", spec, "rev-list", "--count", "main..feature/027-x", "--"],
       ["-C", spec, "config", "-z", "--get-regexp", "^filter\\."],
-      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=all"],
+      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "-z", "--untracked-files=normal", "--ignore-submodules=all"],
     ]);
     for (const s of seen) {
       expect(s.args).not.toContain("fetch");
@@ -926,7 +930,7 @@ describe("the worktree reads start no command the repository configures (spec 04
     const off = (name: string): string[] => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`];
     expect(calls).toEqual([
       ["-C", repo.worktrees.spec, "config", "-z", "--get-regexp", "^filter\\."],
-      ["-C", repo.worktrees.spec, "-c", "core.fsmonitor=false", ...off("evil"), ...off("evil.proc"), "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=all"],
+      ["-C", repo.worktrees.spec, "-c", "core.fsmonitor=false", ...off("evil"), ...off("evil.proc"), "status", "--porcelain", "-z", "--untracked-files=normal", "--ignore-submodules=all"],
     ]);
   });
 
@@ -938,5 +942,78 @@ describe("the worktree reads start no command the repository configures (spec 04
     expect(calls.some((args) => args.includes("status"))).toBe(false);
     const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" });
     expect(await dirty(repo.worktrees.spec, { runner: failing })).toBeNull();
+  });
+});
+
+// ── the planning reads of a spec worktree (spec 039, T14, ISC-208.1, ISC-209) ─────────────────────────────────────────
+//
+// `trackedPlanningPaths` (`ls-files -z -- specs/ ISA.md`), `changedPaths` (`status --porcelain -z`, optionally below
+// pathspecs) and `lastCommits` (one `log --no-renames --format=%x01%cI --name-only -z`) read inside a worktree what its
+// own branch tracks, changes and last committed. The fixture: `specs/` tracked, the spec worktree's two commits tick
+// T27 in tasks.md (DATES.first) and move spec.md's stage (DATES.second), plus one uncommitted edit of a story.
+describe("planning reads of a spec worktree (spec 039, T14)", () => {
+  const planted: PlantedWorktreeRepo[] = [];
+  afterAll(() => {
+    for (const repo of planted.splice(0)) rmSync(repo.base, { recursive: true, force: true });
+  });
+
+  async function trackedRepo(): Promise<PlantedWorktreeRepo> {
+    const repo = await plantWorktreeRepo({ trackedSpecs: true });
+    planted.push(repo);
+    writeFileSync(join(repo.worktrees.spec, "specs", "ideas", "registry-webhooks.md"), "# Webhooks, edited in the worktree\n");
+    return repo;
+  }
+
+  test("tracked paths, changed paths and last commit dates answer from the worktree's own branch", async () => {
+    const repo = await trackedRepo();
+    const spec = repo.worktrees.spec;
+    const tracked = await trackedPlanningPaths(spec);
+    expect(tracked).toContain("ISA.md");
+    expect(tracked).toContain("specs/tldr.md");
+    expect(tracked).toContain(`specs/${SPEC_FOLDER}/spec.md`);
+    expect(tracked.some((path) => path.startsWith("src/"))).toBe(false);
+    expect(await changedPaths(spec, { pathspecs: REPO_SOURCE_PATHS })).toEqual(["specs/ideas/registry-webhooks.md"]);
+    const all = (await changedPaths(spec)) ?? [];
+    expect(all).toContain("specs/ideas/registry-webhooks.md");
+    expect(all).toContain(UNCOMMITTED);
+    const dates = await lastCommits(spec, ["specs/"]);
+    const at = (path: string): number => Date.parse(dates[path] ?? "");
+    expect(at(`specs/${SPEC_FOLDER}/spec.md`)).toBe(Date.parse(DATES.second));
+    expect(at(`specs/${SPEC_FOLDER}/tasks.md`)).toBe(Date.parse(DATES.first));
+    expect(at("specs/tldr.md")).toBe(Date.parse(DATES.initial));
+  });
+
+  test("a linked specs/ lists nothing under it; a gone worktree, a failing git and a 1 ms deadline answer empty or null", async () => {
+    const linked = await plantWorktreeRepo();
+    planted.push(linked);
+    // The link is untracked and ignored here, so nothing is listed; a tracked link would list as `specs` alone.
+    expect(await trackedPlanningPaths(linked.worktrees.spec)).toEqual([]);
+    const gone = join(linked.base, "gone");
+    expect(await trackedPlanningPaths(gone)).toEqual([]);
+    expect(await changedPaths(gone)).toBeNull();
+    expect(await lastCommits(gone, ["specs/"])).toEqual({});
+    const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "\u00012026-01-01T00:00:00Z\0\nspecs/x.md\0", stderr: "fatal\n" });
+    expect(await lastCommits(linked.worktrees.spec, ["specs/"], { runner: failing })).toEqual({});
+    expect(await trackedPlanningPaths(linked.worktrees.spec, { runner: failing })).toEqual([]);
+    expect(await lastCommits(linked.worktrees.spec, ["specs/"], { timeoutMs: 1, runner: () => new Promise(() => undefined) })).toEqual({});
+  });
+
+  test("the three reads run only ls-files, config, status and log, under the read-only environment, and change no byte", async () => {
+    const repo = await trackedRepo();
+    const spec = repo.worktrees.spec;
+    const before = checksum(repo.root);
+    const seen: string[][] = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push([...args]);
+      expect(env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0" });
+      return defaultGitRunner(args, env, signal);
+    };
+    await trackedPlanningPaths(spec, { runner });
+    await changedPaths(spec, { runner, pathspecs: REPO_SOURCE_PATHS });
+    await lastCommits(spec, REPO_SOURCE_PATHS, { runner });
+    const verbs = seen.map((args) => args.find((a) => ["ls-files", "config", "status", "log"].includes(a)));
+    expect(verbs).toEqual(["ls-files", "config", "status", "log"]);
+    for (const args of seen) expect(args).not.toContain("fetch");
+    expect(checksum(repo.root)).toBe(before);
   });
 });

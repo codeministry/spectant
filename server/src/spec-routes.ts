@@ -33,9 +33,9 @@
  * over `writeTransition` and adds the 422 `transition-refused`. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
  * a workspace is its slug, its name and `pathTail`.
  */
-import { basename, join, relative, sep } from "node:path";
+import { basename, relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
-import { repoFilePath, specFilePath } from "../../core/src/files.ts";
+import { specFilePath } from "../../core/src/files.ts";
 import type { LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
@@ -74,7 +74,7 @@ import {
 import {
   type UnreadableCode,
   readBytesIfExists,
-  readIfExists,
+  readRepoFile,
   readSpecSource,
   resolveWorkspaceSpec,
   readWorktreeView,
@@ -124,12 +124,6 @@ class WorkspaceUnreadable extends Error {
 function unavailable(workspace: Workspace, error: UnreadableCode): Unavailable {
   return { slug: workspace.slug, name: workspace.name, pathTail: basename(workspace.path), readable: false, error, counts: null };
 }
-
-/**
- * The workspace's `specs/constitution.md`. Not `specFilePath(dir, "constitution")`: for an archived spec that names
- * `specs/archive/constitution.md`, and the workspace has one constitution for every spec, as `readWorkspaceInput` reads it.
- */
-const constitutionPath = (root: string): string => join(root, "specs", "constitution.md");
 
 /** The workspace's constitution text as an optional `texts` key, the way the golden families add it. */
 const withConstitution = (files: SpecFiles, constitution: string | null): SpecFiles =>
@@ -222,7 +216,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     const { files, dir } = await readSpecSource(root, ref, reading);
     if (files.texts.spec === undefined) return json(req, 404, NOT_FOUND);
     const source = { ...ref, dir };
-    const constitution = (): string | null => readIfExists(constitutionPath(root));
+    // The constitution and the workflow from their read source (spec 039, ISC-209), as the dashboard reading reads them.
+    const constitution = async (): Promise<string | null> => (await readRepoFile(root, "specs/constitution.md", reading)).text;
 
     switch (match.route) {
       case "timeline": {
@@ -236,7 +231,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         const worktree = await timelineWorktreeOf(root, ref.slug, reading);
         // The type's code review under `specs/workflow.md` (spec 028, ISC-183.2): under `none` the derived stages step
         // build → close without a code-review entry, as the row reads it.
-        const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
+        const workflow = parseWorkflow((await readRepoFile(root, "specs/workflow.md", reading)).text);
         const codeReview = codeReviewOf(parseFrontmatter(files.texts.spec ?? "").data.specType, workflow);
         const timeline = buildTimeline({ files, commits, notes, sessions, worktree, codeReview });
         // With a HEAD the ETag covers it too, so a new commit revalidates even where the body would not change; without
@@ -249,7 +244,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         // One read of the raw bytes: the hash covers exactly the text that was parsed.
         const bytes = readBytesIfExists(specFilePath(dir, "tasks"));
         if (bytes === null) return json(req, 200, null);
-        const text = constitution();
+        const text = await constitution();
         const tab = parseTaskLines({
           tasks: bytes.toString("utf8"),
           ...(text === null ? {} : { constitution: text }),
@@ -265,20 +260,20 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, buildFrames(files));
       case "live": {
         const now = clock();
-        return json(req, 200, buildLiveFrame({ files: withConstitution(files, constitution()), locks: await locksOf(root, now), now, specEdges: await specEdgesOf(root, ref) }));
+        return json(req, 200, buildLiveFrame({ files: withConstitution(files, await constitution()), locks: await locksOf(root, now), now, specEdges: await specEdgesOf(root, ref) }));
       }
       case "gateReviewed": {
         const parsed = parseWriteBody("gateReviewed", await req.text());
         if (!parsed.ok) return json(req, 400, parsed.error);
         const actor = writeActorOf(await viewerActorOf(root));
-        const result = await writeGateReviewed({ root, ref: source, stateDir, now: clock(), body: parsed.body, constitution: constitution(), actor });
+        const result = await writeGateReviewed({ root, ref: source, stateDir, now: clock(), body: parsed.body, constitution: await constitution(), actor });
         return json(req, result.status, result.body);
       }
       case "taskCheck": {
         const parsed = parseWriteBody("taskCheck", await req.text());
         if (!parsed.ok) return json(req, 400, parsed.error);
         const { tid } = match.params;
-        const result = await writeTaskCheck({ root, ref: source, stateDir, now: clock(), tid, body: parsed.body, constitution: constitution() });
+        const result = await writeTaskCheck({ root, ref: source, stateDir, now: clock(), tid, body: parsed.body, constitution: await constitution() });
         return json(req, result.status, result.body);
       }
       case "transition": {

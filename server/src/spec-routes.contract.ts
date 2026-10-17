@@ -65,6 +65,7 @@ import type {
   LibraryDoc,
   LiveFrame,
   LockSource,
+  RepoFileSource,
   SpecPageModel,
   TasksTab,
   TimelineEntry,
@@ -580,6 +581,8 @@ export interface IdeaPage {
   readonly idea: IdeaRef;
   readonly page: DocsPage;
   readonly hash: string;
+  /** The spec worktree the story was read from (spec 039, ISC-209); absent when read from the main checkout. */
+  readonly source?: RepoFileSource;
 }
 
 export type WorkspaceRouteResponse<R extends WorkspaceRouteName> = WorkspaceRouteResponses[R];

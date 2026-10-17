@@ -125,6 +125,24 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
     expect(page.querySelector('form, input, textarea, select, button, [contenteditable]')).toBeNull();
   });
 
+  it('names the spec worktree a story was read from among its chips, and shows none for the main checkout (spec 039)', async () => {
+    setUp((ws, slug) =>
+      ws === 'harbor' && slug === 'console-audit-log'
+        ? Promise.resolve(ok({ ...BODY, source: { kind: 'worktree', worktree: '.worktrees/012-harbor' } }))
+        : stub(ws, slug),
+    );
+    const root = await open('/w/harbor/ideas/console-audit-log');
+    const chip = root.querySelector('[data-idea-chips] [data-idea-chip="source"] ui-source-chip');
+    expect(text(chip)).toBe('from worktree 012-harbor');
+    expect(chip?.querySelector('button')).toBeNull();
+  });
+
+  it('shows no source chip for a story read from the main checkout (spec 039)', async () => {
+    setUp(stub);
+    const root = await open('/w/harbor/ideas/console-audit-log');
+    expect(root.querySelector('[data-idea-chip="source"]')).toBeNull();
+  });
+
   it('links “Show relations” to the detail sidebar on the idea: ?sel=idea:<slug>, the object named (spec 026, T28)', async () => {
     setUp(stub);
     const root = await open('/w/harbor/ideas/console-audit-log');

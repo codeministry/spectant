@@ -99,6 +99,15 @@ describe('Brief', () => {
     expect(invalid.host.querySelector('[data-brief-as-of]')).toBeNull();
   });
 
+  it('names the spec worktree a TL;DR was read from beside its label, and nothing for the main checkout (spec 039)', async () => {
+    const fromCopy = await render({ ...BRIEF, source: { kind: 'worktree', worktree: '.worktrees/012-harbor' } });
+    const chip = fromCopy.head()?.querySelector<HTMLElement>('[data-brief-source]');
+    expect(chip?.hasAttribute('hidden')).toBe(false);
+    expect(chip?.textContent.replace(/\s+/g, ' ').trim()).toBe('from worktree 012-harbor');
+    const fromMain = await render(BRIEF);
+    expect(fromMain.head()?.querySelector('[data-brief-source]')?.hasAttribute('hidden')).toBe(true);
+  });
+
   it('carries the /spec-tldr command chip in the header, apart from the expander', async () => {
     const { host, head, more } = await render(BRIEF);
     const chip = host.querySelector('ui-command-chip[data-brief-command]');

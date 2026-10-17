@@ -687,3 +687,74 @@ describe("ISC-208.1 worktree-only spec: a spec folder only a spec worktree carri
     expect(reading.input.specs.some((f) => f.folder === NEW_FOLDER)).toBe(false);
   });
 });
+
+// ── repo files (spec 039, T13, ISC-209) ──────────────────────────────────────────────────────────────────────────────
+//
+// With `specs/` tracked, a repository file is read from the spec worktree that changed it last. The fixture's spec
+// worktree commits a newer `specs/tldr.md` and `specs/tech.md` (dated `DATES.later`, after main's commit) and changes
+// the story `specs/ideas/registry-webhooks.md` without committing it (dated by its mtime). The dashboard's brief, the
+// library's tech page and the story page carry the worktree's version and name the worktree as their source; the main
+// checkout stays byte-identical.
+
+const WORKTREE_SOURCE = { kind: "worktree", worktree: SPEC_WORKTREE } as const;
+const COPY_TLDR_LINE = "The console (002) is reviewed in its worktree copy.";
+const COPY_TECH_TITLE = "Harbor — technical documentation (worktree copy)";
+const COPY_IDEA_LINE = "Webhooks, drafted further in the worktree copy.";
+
+/** The tracked fixture with the three repository files changed in the spec worktree alone, as described above. */
+async function plantRepoFiles(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true });
+  const specs = join(repo.worktrees.spec, "specs");
+  const edit = (file: string, from: RegExp, to: string): void => {
+    const path = join(specs, file);
+    const text = readFileSync(path, "utf8");
+    if (!from.test(text)) throw new Error(`repo files: ${from.source} not found in ${file}`);
+    writeFileSync(path, text.replace(from, to));
+  };
+  edit("tldr.md", /^<!-- section: overview -->$/m, `<!-- section: overview -->\n${COPY_TLDR_LINE}`);
+  edit("tech.md", /^# Harbor — technical documentation$/m, `# ${COPY_TECH_TITLE}`);
+  expect((await repo.git(repo.worktrees.spec, "commit", "-q", "-m", "specs: tldr and tech in the worktree", "--", "specs/tldr.md", "specs/tech.md")).code).toBe(0);
+  appendFileSync(join(specs, "ideas", "registry-webhooks.md"), `\n${COPY_IDEA_LINE}\n`);
+  return repo;
+}
+
+describe("ISC-209 repo files: a repository file is read from the spec worktree that changed it last", () => {
+  test("repo files: the brief, the library's tech page and the story page carry the worktree's version and name it", async () => {
+    const repo = await plantRepoFiles();
+    const main = join(repo.root, "specs");
+    const before = folderHashes(main);
+
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    expect(dashboard.model.brief?.markdown).toContain(COPY_TLDR_LINE);
+    expect(dashboard.model.brief?.source).toEqual(WORKTREE_SOURCE);
+
+    const tech = await loadCatalogDoc(repo.root, "tech.md");
+    if (!tech.readable) throw new Error("the fixture workspace is unreadable");
+    expect(tech.doc).toMatchObject({ title: COPY_TECH_TITLE, source: WORKTREE_SOURCE });
+    const api = apiFor(repo);
+    const page = await call(api, workspaceRoutes.libraryDoc("harbor", "tech.md"));
+    expect(page.status).toBe(200);
+    expect(JSON.stringify(await page.json())).toContain("(worktree copy)");
+
+    const idea = await call(api, workspaceRoutes.idea("harbor", "registry-webhooks"));
+    expect(idea.status).toBe(200);
+    const body = (await idea.json()) as { source?: unknown; page: unknown };
+    expect(body.source).toEqual(WORKTREE_SOURCE);
+    expect(JSON.stringify(body.page)).toContain(COPY_IDEA_LINE);
+
+    expect(folderHashes(main)).toEqual(before);
+  });
+
+  test("repo files: a version the main checkout committed no earlier stays the main checkout's, without a source", async () => {
+    const repo = await plantRepoFiles();
+    // main commits its own tldr.md at the worktree commit's time (the fixture dates both `DATES.later`): a tie is main's.
+    appendFileSync(join(repo.root, "specs", "tldr.md"), "\nMain moved on.\n");
+    const later = await repo.git(repo.root, "commit", "-q", "-m", "main tldr", "--", "specs/tldr.md");
+    expect(later.code).toBe(0);
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    expect(dashboard.model.brief?.markdown).toContain("Main moved on.");
+    expect(dashboard.model.brief?.source).toBeUndefined();
+  });
+});
