@@ -462,7 +462,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
   });
 
   test("IdeaPage's key list (no golden family yet)", () => {
-    expect(Object.keys(keysOf<IdeaPage>({ idea: "req", page: "req", hash: "req" }))).toEqual(["idea", "page", "hash"]);
+    expect(Object.keys(keysOf<IdeaPage>({ idea: "req", page: "req", hash: "req", source: "opt" }))).toEqual(["idea", "page", "hash", "source"]);
   });
 
   test("GOLDEN_FAMILY.planning names core/fixtures/<tree>.planning.golden.json, whose whole body is a PlanningModel", () => {

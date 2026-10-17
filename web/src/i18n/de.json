@@ -2301,6 +2301,10 @@
     "edgeAfter": "{{claim}} kommt nach {{target}}",
     "edgeBlockedBy": "{{claim}} ist blockiert durch {{target}}"
   },
+  "sourceChip": {
+    "text": "aus Worktree",
+    "title": "Aus dem Worktree {{path}} gelesen, nicht aus dem Haupt-Checkout"
+  },
   "worktreeChip": {
     "name": "Worktree {{path}}, Branch {{branch}}",
     "nameDetached": "Worktree {{path}}, losgelöster HEAD",

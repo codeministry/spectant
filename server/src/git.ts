@@ -269,7 +269,9 @@ export interface TakenNumbers {
  *   of the `NNN-slug` folder shape (`feature/012-tide-tables`) takes its number. The plumbing form of `branch --list`.
  * - `log --all --no-renames --diff-filter=A --name-only --format= -- specs`: every path ever added below `specs/` on
  *   any ref; the folder segment of `specs/NNN-slug/…` and `specs/archive/NNN-slug/…` takes its number, so a spec
- *   deleted or moved since still holds it. `--no-renames` makes an archive move an addition too.
+ *   deleted or moved since still holds it. `--no-renames` makes an archive move an addition too. A spec folder
+ *   committed only on a spec worktree's branch is such an addition, so its number is taken before the merge, whatever
+ *   the branch is called (spec 039, ISC-208.1).
  *
  * Folder segments are read by core's `specNumbersOf`, the one definition of the shape. Never throws: no repository
  * root, no git, a failure or the deadline answer `source: 'none'` with no number; the folders on disk still count.
@@ -358,6 +360,26 @@ export async function trackedSpecPaths(root: string, folder: string, options: Us
 }
 
 /**
+ * The paths git tracks in the worktree at `worktreePath` (absolute) under the repository's planning files, `specs/` and
+ * `ISA.md`, read inside that worktree with `ls-files -z -- specs/ ISA.md` and split on NUL: relative to the worktree,
+ * `/`-separated, unquoted. Its own branch's index answers, so a spec folder committed only on that branch is listed
+ * (spec 039, ISC-208.1, `core/`'s `worktreeOnlySpecs`), and so is each repository file that branch tracks (ISC-209). The
+ * same read as `trackedSpecPaths`: the index read, never written, no lock, fsmonitor off; a linked `specs/` lists as
+ * the link itself, never as a path under it (ISC-181.1).
+ * Never throws: a path without its `.git` (the worktree is gone), no git, a non-zero exit and the deadline answer the
+ * empty list.
+ */
+export async function trackedPlanningPaths(worktreePath: string, options: UserEmailOptions = {}): Promise<string[]> {
+  if (!hasOwnGit(worktreePath)) return [];
+  const runner = options.runner ?? defaultGitRunner;
+  return readWithin<string[]>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, [], async (signal) => {
+    const run = await runner(["-C", worktreePath, ...NO_FSMONITOR, "ls-files", "-z", "--", "specs/", "ISA.md"], gitEnv(worktreePath), signal);
+    if (run?.code !== 0 || signal.aborted) return [];
+    return run.stdout.split("\0").filter((path) => path !== "");
+  });
+}
+
+/**
  * How many commits `branch` holds that `main` does not, read in the worktree at `worktreePath` (absolute) with
  * `rev-list --count main..<branch> --`: the worktree chip's distance to `main` (spec 027, T17, ISC-175). The base is
  * the local `main` by name, as ISC-175 names it; a repository without one answers null, so its chip shows no count.
@@ -396,9 +418,21 @@ export async function aheadOfMain(worktreePath: string, branch: string | null, o
  * deadline answer null.
  */
 export async function dirty(worktreePath: string, options: UserEmailOptions = {}): Promise<boolean | null> {
+  const changed = await changedPaths(worktreePath, options);
+  return changed === null ? null : changed.length > 0;
+}
+
+/**
+ * The paths `git status --porcelain -z` lists in the worktree at `worktreePath` (absolute), the read `dirty` answers
+ * from, under the same guards (no lock, fsmonitor off, filter drivers emptied, submodules ignored, untracked files in
+ * `normal` mode): relative to the worktree, `/`-separated, unquoted; a rename's or copy's original path is left out, its
+ * new path kept. With `pathspecs` only the paths below them (spec 039, ISC-209: which repository files carry an
+ * uncommitted change, dated by their mtime). Never throws: as `dirty`, null where it answers null.
+ */
+export async function changedPaths(worktreePath: string, options: UserEmailOptions & { readonly pathspecs?: readonly string[] } = {}): Promise<string[] | null> {
   if (!hasOwnGit(worktreePath)) return null;
   const runner = options.runner ?? defaultGitRunner;
-  return readWithin<boolean | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
+  return readWithin<string[] | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
     const env = gitEnv(worktreePath);
     // Read through a call each time: the flag turns true while a run is awaited, which a narrowed property would hide.
     const aborted = (): boolean => signal.aborted;
@@ -411,13 +445,57 @@ export async function dirty(worktreePath: string, options: UserEmailOptions = {}
       ...drivers.flatMap((name) => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`]),
       "status",
       "--porcelain",
+      "-z",
       "--untracked-files=normal",
       "--ignore-submodules=all",
+      ...(options.pathspecs === undefined ? [] : ["--", ...options.pathspecs]),
     ];
     const run = await runner(args, env, signal);
     // A failed or killed status may have printed part of a listing; only a complete one answers.
     if (run?.code !== 0 || aborted()) return null;
-    return run.stdout.trim() !== "";
+    return statusPaths(run.stdout);
+  });
+}
+
+/**
+ * The paths of `status --porcelain -z` output: entries `XY <path>` separated by NUL, where a rename or copy (`R` or
+ * `C` in either column) is followed by one more entry, its original path, which is skipped.
+ */
+function statusPaths(stdout: string): string[] {
+  const entries = stdout.split("\0");
+  const paths: string[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i] ?? "";
+    if (entry.length < 4) continue;
+    paths.push(entry.slice(3));
+    if (/[RC]/u.test(entry.slice(0, 2))) i += 1;
+  }
+  return paths;
+}
+
+/**
+ * When each path below `pathspecs` last changed in a commit on the branch checked out at `worktreePath` (absolute):
+ * one `log --no-renames --format=%x01%cI --name-only -z -- <pathspecs>`, newest first, each path dated by the committer
+ * date of the first commit that names it (spec 039, ISC-209). A merge names no path, so a merged file keeps the date of
+ * the commit that changed it. `log` reads objects only: no index, no lock, no fetch, no network.
+ * Never throws: a path without its `.git`, no git, a non-zero exit (a branch without commits included) and the deadline
+ * answer an empty record.
+ */
+export async function lastCommits(worktreePath: string, pathspecs: readonly string[], options: UserEmailOptions = {}): Promise<Record<string, string>> {
+  if (!hasOwnGit(worktreePath) || pathspecs.length === 0) return {};
+  const runner = options.runner ?? defaultGitRunner;
+  return readWithin<Record<string, string>>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, async (signal) => {
+    const args = ["-C", worktreePath, "--no-pager", "log", "--no-renames", "--format=%x01%cI", "--name-only", "-z", "--no-color", "--", ...pathspecs];
+    const run = await runner(args, gitEnv(worktreePath), signal);
+    if (run?.code !== 0 || signal.aborted) return {};
+    const dates: Record<string, string> = {};
+    let date: string | null = null;
+    for (const raw of run.stdout.split("\0")) {
+      const token = raw.startsWith("\n") ? raw.slice(1) : raw;
+      if (token.startsWith("\u0001")) date = token.slice(1);
+      else if (token !== "" && date !== null && dates[token] === undefined) dates[token] = date;
+    }
+    return dates;
   });
 }
 

@@ -21,9 +21,10 @@
 //
 // Worktree copies (spec 027, ISC-181): the caller may name, per active spec, the folder its files are read from
 // (`CatalogOptions.copies`, the server's `WorkspaceReading.copies`). The kinds of `WORKTREE_COPY_KINDS` then come from
-// that folder (the five own Markdown files, `spec.md` for the stale and missing rules, the texts of the stage input);
-// `artifacts/`, `.evidence/`, `.design/` and the workspace documents stay on the main checkout, and every catalog path
-// stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
+// that folder (the five own Markdown files, `spec.md` for the stale and missing rules, the texts of the stage input),
+// and so does every other file of the folder, `artifacts/`, `.evidence/` and `.design/` included (spec 039, ISC-208):
+// the main checkout's folder is not read for such a spec. The workspace documents stay on the main checkout, and every
+// catalog path stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
 import type { Dirent } from 'node:fs';
 import { lstat, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -31,7 +32,18 @@ import { join } from 'node:path';
 import { parseClaims } from './claims.ts';
 import { buildDashboard, type DashboardInput } from './dashboard.ts';
 import { mediaTypeOf } from './evidence.ts';
-import type { FileKind, LibraryCatalog, LibraryDoc, LibraryDocType, LibraryFogLine, LibraryMedia, SpecFiles, SpecGroupHead, TextFileKind } from './files.ts';
+import type {
+  FileKind,
+  LibraryCatalog,
+  LibraryDoc,
+  LibraryDocType,
+  LibraryFogLine,
+  LibraryMedia,
+  RepoFileSource,
+  SpecFiles,
+  SpecGroupHead,
+  TextFileKind,
+} from './files.ts';
 import { DESIGN_ASSETS, FILE_KINDS, repoFilePath } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { readLockSources } from './locks.ts';
@@ -52,12 +64,38 @@ const ARCHIVE_DIR = 'archive';
 export interface CatalogOptions {
   /** Per active spec folder (`NNN-slug`), the absolute folder its `WORKTREE_COPY_KINDS` are read from. */
   readonly copies?: Readonly<Record<string, string>>;
+  /**
+   * Per workspace document read from a spec worktree's copy instead of the main checkout's (spec 039, ISC-209), by its
+   * catalog path (`tech.md`, `tldr.md`, `constitution.md`, `ideas/<name>.md`): the absolute file and its source, as
+   * the server's `readRepoFile` decided. A story named here is listed even when the main checkout lacks it.
+   */
+  readonly repoFiles?: Readonly<Record<string, RepoFileCopy>>;
 }
+
+/** A workspace document's file in a spec worktree (`CatalogOptions.repoFiles`). */
+export interface RepoFileCopy {
+  /** The absolute file, below `<worktree>/specs/`. */
+  readonly absolute: string;
+  readonly source: RepoFileSource;
+}
+
+/** A workspace document with its source when it was read from a worktree's copy (spec 039, ISC-209). */
+const withSource = (doc: LibraryDoc | null, copy: RepoFileCopy | undefined): LibraryDoc | null =>
+  doc === null || copy === undefined ? doc : { ...doc, source: copy.source };
 
 /** The folder one kind of `spec` is read from: its copy's for a `WORKTREE_COPY_KINDS` kind named in `copies`, else main's. */
 function folderOf(root: string, spec: string, kind: FileKind, copies: CatalogOptions['copies']): string {
   const copy = copies?.[spec];
   return copy !== undefined && WORKTREE_COPY_KINDS.includes(kind) ? copy : join(root, SPECS_DIR, spec);
+}
+
+/**
+ * The folder the files of the spec folder `folder` are read from (spec 039, ISC-208): the copy `copies` names for an
+ * active spec (`folder` is the spec itself), else `specs/<folder>` of the main checkout, an archived spec's included.
+ */
+function readDirOf(root: string, spec: string, folder: string, copies: CatalogOptions['copies']): string {
+  const copy = folder === spec ? copies?.[spec] : undefined;
+  return copy ?? join(root, SPECS_DIR, folder);
 }
 
 /**
@@ -332,6 +370,7 @@ async function prototypesIn(dir: string, rel: string, spec: string, candidates: 
  */
 async function specDocs(root: string, spec: string, copies: CatalogOptions['copies'], folder: string = spec): Promise<LibraryDoc[]> {
   const specDir = join(root, SPECS_DIR, folder);
+  const readDir = readDirOf(root, spec, folder, copies);
   const own = await Promise.all(
     SPEC_DOCS.map((kind) => {
       const file = FILE_KINDS[kind].path;
@@ -344,29 +383,35 @@ async function specDocs(root: string, spec: string, copies: CatalogOptions['copi
   const prototypeRoot = `${folder}/${PROTOTYPE_ROOT}`;
   for (const [zone, type] of SPEC_ZONES) {
     // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
-    const files = await filesBelow(join(specDir, zone), `${folder}/${zone}`, new Set([prototypeRoot]));
+    const files = await filesBelow(join(readDir, zone), `${folder}/${zone}`, new Set([prototypeRoot]));
     const docs = await Promise.all(
       files.map(async (path) => {
         const media = mediaOf(path.slice(path.lastIndexOf('/') + 1));
-        return media === null ? null : fileDoc(root, path, type, spec, media);
+        return media === null ? null : fileDoc(root, path, type, spec, media, join(readDir, path.slice(folder.length + 1)));
       }),
     );
     zoned.push(...docs.filter((d): d is LibraryDoc => d !== null).sort(byPath));
   }
-  const candidates = await previewCandidates(specDir);
-  const prototypes = (await prototypesIn(join(specDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates, folder)).sort(byPath);
+  const candidates = await previewCandidates(readDir);
+  const prototypes = (await prototypesIn(join(readDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates, folder)).sort(byPath);
 
   return [...own.filter((d): d is LibraryDoc => d !== null), ...zoned, ...prototypes];
 }
 
 /** The workspace documents: the three files below `specs/`, then each story `specs/ideas/*.md` in name order. */
-async function workspaceDocs(root: string): Promise<LibraryDoc[]> {
-  const fixed = await Promise.all(WORKSPACE_DOCS.map(([path, type]) => fileDoc(root, path, type, WORKSPACE, 'markdown')));
-  const stories = (await entriesOf(join(root, SPECS_DIR, IDEAS_DIR)))
-    .filter((e) => e.isFile() && e.name !== IDEAS_INDEX && mediaOf(e.name) === 'markdown')
-    .map((e) => e.name)
+async function workspaceDocs(root: string, repoFiles: CatalogOptions['repoFiles']): Promise<LibraryDoc[]> {
+  const read = async (path: string, type: LibraryDocType): Promise<LibraryDoc | null> => {
+    const copy = repoFiles?.[path];
+    return withSource(await fileDoc(root, path, type, WORKSPACE, 'markdown', copy?.absolute), copy);
+  };
+  const fixed = await Promise.all(WORKSPACE_DOCS.map(([path, type]) => read(path, type)));
+  const listed = (await entriesOf(join(root, SPECS_DIR, IDEAS_DIR))).filter((e) => e.isFile()).map((e) => e.name);
+  // A story only a worktree carries is listed too (ISC-209).
+  const copied = Object.keys(repoFiles ?? {}).flatMap((path) => (path.startsWith(`${IDEAS_DIR}/`) ? [path.slice(IDEAS_DIR.length + 1)] : []));
+  const stories = [...new Set([...listed, ...copied])]
+    .filter((name) => !name.includes('/') && name !== IDEAS_INDEX && mediaOf(name) === 'markdown')
     .sort(byName);
-  const ideas = await Promise.all(stories.map((name) => fileDoc(root, `${IDEAS_DIR}/${name}`, 'idea', WORKSPACE, 'markdown')));
+  const ideas = await Promise.all(stories.map((name) => read(`${IDEAS_DIR}/${name}`, 'idea')));
   return [...fixed, ...ideas].filter((d): d is LibraryDoc => d !== null);
 }
 
@@ -586,7 +631,7 @@ function groupsOf(input: DashboardInput): { groups: SpecGroupHead[]; fog: Librar
  */
 export async function readCatalog(root: string, input?: DashboardInput, options: CatalogOptions = {}): Promise<LibraryCatalog> {
   const copies = await presentCopies(options.copies);
-  const docs = await readCatalogDocs(root, { copies });
+  const docs = await readCatalogDocs(root, options.repoFiles === undefined ? { copies } : { copies, repoFiles: options.repoFiles });
   const { groups, fog } = groupsOf(input ?? (await stageInputOf(root, activeSpecs(root), copies)));
   return {
     docs,
@@ -597,25 +642,30 @@ export async function readCatalog(root: string, input?: DashboardInput, options:
   };
 }
 
-/** The own Markdown files of a spec by their path below its folder, each with its kind. */
-const OWN_KIND: ReadonlyMap<string, TextFileKind> = new Map(SPEC_DOCS.map((kind) => [FILE_KINDS[kind].path, kind]));
-
 /**
- * Where the file of one catalog document is read (spec 027, ISC-181), as the folder `dir` and the path `rel` below it:
- * a spec's own Markdown file from the worktree copy `copies` names for its spec, the way `readCatalog` listed it;
- * every other document, and every document without a copy, from `<root>/specs` with its catalog path.
+ * Where the file of one catalog document is read (spec 027, ISC-181; spec 039, ISC-208), as the folder `dir` and the
+ * path `rel` below it: every file of a spec folder, its own Markdown files, `artifacts/`, `.evidence/` and `.design/`,
+ * from the worktree copy `copies` names for its spec, the way `readCatalog` listed it; every other document, and every
+ * document without a copy, from `<root>/specs` with its catalog path.
  */
 export function catalogSourceOf(
   root: string,
   doc: Pick<LibraryDoc, 'path' | 'spec'>,
   copies: CatalogOptions['copies'] = {},
+  repoFiles: CatalogOptions['repoFiles'] = {},
 ): { dir: string; rel: string } {
-  const own = doc.spec === WORKSPACE || !doc.path.startsWith(`${doc.spec}/`) ? undefined : OWN_KIND.get(doc.path.slice(doc.spec.length + 1));
+  // A workspace document read from a worktree's copy (spec 039, ISC-209): its path below that worktree's `specs/`.
+  const repoCopy = doc.spec === WORKSPACE ? repoFiles[doc.path] : undefined;
+  if (repoCopy !== undefined) {
+    const below = `/${doc.path}`;
+    if (repoCopy.absolute.endsWith(below)) return { dir: repoCopy.absolute.slice(0, -below.length), rel: doc.path };
+  }
+  const inFolder = doc.spec !== WORKSPACE && doc.path.startsWith(`${doc.spec}/`);
   // A copy by the copies themselves (spec 041, ISC-217), never by comparing folder names: the spec has a copy, and the
-  // kind is one the copy holds.
-  const copy = own === undefined ? undefined : copies[doc.spec];
-  if (own === undefined || copy === undefined || !WORKTREE_COPY_KINDS.includes(own)) return { dir: join(root, SPECS_DIR), rel: doc.path };
-  return { dir: copy, rel: FILE_KINDS[own].path };
+  // path lies in its folder, which the copy holds whole (ISC-208).
+  const copy = inFolder ? copies[doc.spec] : undefined;
+  if (copy === undefined) return { dir: join(root, SPECS_DIR), rel: doc.path };
+  return { dir: copy, rel: doc.path.slice(doc.spec.length + 1) };
 }
 
 /** The active spec folders of the workspace at `root`, as `listSpecs` finds them (real directories, never archived). */
@@ -648,7 +698,7 @@ export async function readCatalogDocs(root: string, options: CatalogOptions = {}
   const copies = await presentCopies(options.copies);
   const slugs = activeSpecs(root);
   const perSpec = await Promise.all(slugs.map((s) => specDocs(root, s, copies)));
-  const judged = await judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()], copies);
+  const judged = await judge(root, slugs, [...(await workspaceDocs(root, options.repoFiles)), ...perSpec.flat()], copies);
   // Archived specs come last and are never judged: no `stale`, no `missing` (ISC-187).
   const archived = await Promise.all(archivedSpecs(root).map((s) => archivedDocs(root, s)));
   return [...judged, ...archived.flat()];
@@ -673,8 +723,7 @@ async function realDirs(base: string, names: readonly string[]): Promise<boolean
  * folder on the way a real directory without a leading dot, the target holding HTML pages directly and no folder above
  * it, from the prototype root down, holding any (it would own the target). Null otherwise.
  */
-async function prototypeAt(root: string, spec: string, subs: readonly string[], folder: string = spec): Promise<LibraryDoc | null> {
-  const specDir = join(root, SPECS_DIR, folder);
+async function prototypeAt(root: string, spec: string, subs: readonly string[], folder: string, specDir: string): Promise<LibraryDoc | null> {
   if (subs.some((s) => s.startsWith('.'))) return null;
   if (!(await realDirs(specDir, [DESIGN_ASSETS, 'prototype', ...subs]))) return null;
   let dir = join(specDir, PROTOTYPE_ROOT);
@@ -689,19 +738,22 @@ async function prototypeAt(root: string, spec: string, subs: readonly string[], 
 }
 
 /** The listed, unjudged document at `path` (relative to `specs/`) by the zone rules, or null. */
-async function docAt(root: string, path: string, copies: CatalogOptions['copies']): Promise<LibraryDoc | null> {
+async function docAt(root: string, path: string, copies: CatalogOptions['copies'], repoFiles?: CatalogOptions['repoFiles']): Promise<LibraryDoc | null> {
   const segments = path.split('/');
   if (!segments.every(plainSegment)) return null;
   const [first = '', ...rest] = segments;
   const specsDir = join(root, SPECS_DIR);
 
+  const repoCopy = repoFiles?.[path];
   if (rest.length === 0) {
     const fixed = WORKSPACE_DOCS.find(([p]) => p === first);
-    return fixed === undefined ? null : fileDoc(root, path, fixed[1], WORKSPACE, 'markdown');
+    return fixed === undefined ? null : withSource(await fileDoc(root, path, fixed[1], WORKSPACE, 'markdown', repoCopy?.absolute), repoCopy);
   }
   if (first === IDEAS_DIR) {
     const name = rest[0] ?? '';
     if (rest.length !== 1 || name.startsWith('.') || name === IDEAS_INDEX || mediaOf(name) !== 'markdown') return null;
+    // A story from a worktree's copy (ISC-209) is that file; one from the main checkout needs its real folder.
+    if (repoCopy !== undefined) return withSource(await fileDoc(root, path, 'idea', WORKSPACE, 'markdown', repoCopy.absolute), repoCopy);
     return (await realDirs(specsDir, [IDEAS_DIR])) ? fileDoc(root, path, 'idea', WORKSPACE, 'markdown') : null;
   }
   if (first === ARCHIVE_DIR) {
@@ -725,6 +777,7 @@ async function specDocAt(
   copies: CatalogOptions['copies'],
 ): Promise<LibraryDoc | null> {
   const specsDir = join(root, SPECS_DIR);
+  const readDir = readDirOf(root, spec, folder, copies);
   if (rest.length === 1) {
     const kind = SPEC_DOCS.find((k) => FILE_KINDS[k].path === rest[0]);
     if (kind === undefined) return null;
@@ -735,12 +788,12 @@ async function specDocAt(
   const zone = SPEC_ZONES.find(([name]) => name === zoneName);
   if (zone === undefined) return null;
   // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
-  if (zoneName === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1), folder);
+  if (zoneName === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1), folder, readDir);
   const name = inside.at(-1) ?? '';
   const media = mediaOf(name);
   if (media === null || inside.some((s) => s.startsWith('.'))) return null;
-  if (!(await realDirs(join(specsDir, folder), [zoneName, ...inside.slice(0, -1)]))) return null;
-  return fileDoc(root, path, zone[1], spec, media);
+  if (!(await realDirs(readDir, [zoneName, ...inside.slice(0, -1)]))) return null;
+  return fileDoc(root, path, zone[1], spec, media, join(readDir, zoneName, ...inside));
 }
 
 /**
@@ -754,7 +807,7 @@ async function specDocAt(
  */
 export async function catalogDocAt(root: string, path: string, options: CatalogOptions = {}): Promise<LibraryDoc | null> {
   const copies = await presentCopies(options.copies);
-  const doc = await docAt(root, path, copies);
+  const doc = await docAt(root, path, copies, options.repoFiles);
   if (doc === null || doc.archived === true) return doc;
   const from = derivesFrom(doc);
   if (from === null) return doc;

@@ -148,6 +148,13 @@ differ, `spectant tokens --yes` included (`-t tokens`).
   `refs/heads/`, the config files, each linked worktree's `HEAD`, index and folder), so a repeat poll, a spec route, a
   library document or a search keystroke starts no git process. An edit that touches no index does not move it: the
   dirty mark follows on the next commit, stage or ref move.
+- The same view carries the facts the read source of a repository file and of a spec only a worktree carries is decided
+  on (spec 039, ISC-208.1, ISC-209), read once per state like the rest: per spec worktree inside the repository
+  `trackedPlanningPaths` (`ls-files -z -- specs/ ISA.md`), per live spec worktree its `changedPaths` (the `status`
+  listing `dirty` answers from, now with `-z`) and `lastCommits` (one `log --no-renames --format=%x01%cI --name-only -z`
+  over `REPO_SOURCE_PATHS`), and the same three in the main checkout, `status` and `log` limited to those paths.
+  `readRepoFile` reads the bytes and, for a changed file, the mtime fresh on each call; `core/`'s `repoFileSourceOf`
+  decides. A timeout leaves a file on the main checkout. `tests/git.test.ts -t "planning reads"` is the read-only proof.
 - Every read inside a worktree that could run a repository-configured command runs without it (ISC-216.2): `status`
   with `core.fsmonitor=false`, each configured filter driver emptied and `--ignore-submodules=all`; `ls-files` with
   `core.fsmonitor=false`.

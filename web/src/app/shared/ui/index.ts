@@ -43,6 +43,7 @@ export { type ScrubberFrame, type ScrubberMarker, UiScrubber } from './scrubber/
 export { UiSectionHeader } from './section-header/section-header';
 export { type SegmentedOption, UiSegmented } from './segmented/segmented';
 export { UiSkeleton } from './skeleton/skeleton';
+export { UiSourceChip } from './source-chip/source-chip';
 export { type StageState, UiStageTrack } from './stage-track/stage-track';
 export { UiStateChip } from './state-chip/state-chip';
 export { UiTerm } from './term/term';

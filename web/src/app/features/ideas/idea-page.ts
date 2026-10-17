@@ -9,7 +9,7 @@ import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
-import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGlyph } from '../../shared/ui';
+import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiSourceChip, UiTypeGlyph } from '../../shared/ui';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 
 /**
@@ -28,7 +28,7 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
  */
 @Component({
   selector: 'app-idea-page',
-  imports: [NotFound, RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiDocProse, UiIcon, UiNotice, UiPageHead, UiPriority, UiSkeleton, UiTypeGlyph],
+  imports: [NotFound, RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiDocProse, UiIcon, UiNotice, UiPageHead, UiPriority, UiSkeleton, UiSourceChip, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'idea', '[attr.data-tier]': 'state.tier()' },
   styleUrls: ['../../layout/detail-sidebar/selection.css'],
@@ -124,6 +124,10 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
               </ui-chip>
             </li>
             <li data-idea-chip="priority"><ui-priority [value]="story.idea.priority" /></li>
+            @if (story.source?.kind === 'worktree') {
+              <!-- Spec 039 (ISC-209): the story was read from a spec worktree's copy, not the main checkout's. -->
+              <li data-idea-chip="source"><ui-source-chip [source]="story.source" /></li>
+            }
           </ul>
         </div>
         <div class="sh-row">

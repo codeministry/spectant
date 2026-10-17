@@ -967,10 +967,10 @@ describe('worktree copy (spec 027, ISC-181)', () => {
     const done = (c: LibraryCatalog): number | undefined => c.groups.find((g) => g.spec === S1)?.tasksDone;
     expect(done(main)).toBe(2);
     expect(done(catalog)).toBe(3);
-    // `artifacts/` stays on the main checkout although the copy has none.
+    // The whole folder comes from the copy (spec 039, ISC-208): its copy has no `artifacts/`, so none is listed.
     const zone = (c: LibraryCatalog): LibraryDoc[] => c.docs.filter((d) => d.path.startsWith(`${S1}/artifacts/`));
-    expect(zone(catalog)).toEqual(zone(main));
-    expect(zone(catalog).length).toBeGreaterThan(0);
+    expect(zone(catalog)).toEqual([]);
+    expect(zone(main).length).toBeGreaterThan(0);
   });
 
   test('worktree copy: without copies, or with copies naming no active spec, the catalog is unchanged', async () => {
@@ -980,14 +980,14 @@ describe('worktree copy (spec 027, ISC-181)', () => {
     expect(await readCatalog(root, undefined, { copies: { '009-gone': copies[S1] as string } })).toEqual(main);
   });
 
-  test('worktree copy: catalogSourceOf reads a spec own file from the copy, everything else from specs/', () => {
+  test('worktree copy: catalogSourceOf reads every file of a spec folder from the copy, everything else from specs/', () => {
     const root = join(tmpdir(), 'w');
     const copy = join(root, '.worktrees', 'one', 'specs', S1);
     const copies = { [S1]: copy };
     const specs = join(root, 'specs');
     expect(catalogSourceOf(root, { path: `${S1}/plan.md`, spec: S1 }, copies)).toEqual({ dir: copy, rel: 'plan.md' });
     expect(catalogSourceOf(root, { path: `${S1}/spec.md`, spec: S1 }, copies)).toEqual({ dir: copy, rel: 'spec.md' });
-    expect(catalogSourceOf(root, { path: `${S1}/artifacts/coverage.md`, spec: S1 }, copies)).toEqual({ dir: specs, rel: `${S1}/artifacts/coverage.md` });
+    expect(catalogSourceOf(root, { path: `${S1}/artifacts/coverage.md`, spec: S1 }, copies)).toEqual({ dir: copy, rel: 'artifacts/coverage.md' });
     expect(catalogSourceOf(root, { path: `${S2}/plan.md`, spec: S2 }, copies)).toEqual({ dir: specs, rel: `${S2}/plan.md` });
     expect(catalogSourceOf(root, { path: 'tech.md', spec: 'workspace' }, copies)).toEqual({ dir: specs, rel: 'tech.md' });
     expect(catalogSourceOf(root, { path: `${S1}/plan.md`, spec: S1 })).toEqual({ dir: specs, rel: `${S1}/plan.md` });

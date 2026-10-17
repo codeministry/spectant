@@ -1480,3 +1480,71 @@ describe("write paths: the backlog is the seventh", () => {
     expect(claude).toMatch(/7\. the feature backlog: `specs\/backlog\.md`[^]*?`specs\/backlog\.events\.jsonl`/);
   });
 });
+
+// ── spec 039: every file kind from the worktree copy, and still no byte changed (T22, ISC-210) ───────────────────────
+//
+// `specs/` tracked, and in the spec worktree of 002 a newer version of each file kind the app reads: a file of the
+// spec folder beside the ISC-181 kinds (`artifacts/T13-routes.md`, `.evidence/bun-test-r3.log`, uncommitted), the
+// repository files `specs/tldr.md` and `specs/tech.md` (committed after main's) and a story (uncommitted); plus a spec
+// folder only a second worktree's branch carries (`050-new-console`). Every read route answers the worktree's version,
+// none main's, and the repository with all its worktrees keeps every byte and mtime, `.git/` included.
+
+const COPY_MARK = "(worktree copy, spec 039)";
+
+describe("ISC-210 worktree-copy reads: every file kind is served from the newer copy, and no byte changes", () => {
+  test("readonly: worktree-copy: spec folder, worktree-only spec and repository files read from the worktree; repo and worktrees byte-identical", async () => {
+    const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs: true });
+    const repo = planted.root;
+    const copy = join(planted.worktrees.spec, "specs");
+    const mark = (file: string, from: RegExp): void => {
+      const path = join(copy, file);
+      const text = readFileSync(path, "utf8");
+      if (!from.test(text)) throw new Error(`worktree-copy: ${from.source} not in ${file}`);
+      writeFileSync(path, text.replace(from, (line) => `${line} ${COPY_MARK}`));
+    };
+    mark(`${SPEC_FOLDER}/artifacts/T13-routes.md`, /^# T13 — routes$/m);
+    writeFileSync(join(copy, SPEC_FOLDER, ".evidence", "bun-test-r3.log"), `log ${COPY_MARK}\n`);
+    mark("tldr.md", /^# TL;DR — harbor$/m);
+    mark("tech.md", /^# Harbor — technical documentation$/m);
+    expect((await planted.git(planted.worktrees.spec, "commit", "-q", "-m", "specs: tldr and tech", "--", "specs/tldr.md", "specs/tech.md")).code).toBe(0);
+    appendFileSync(join(copy, "ideas", "registry-webhooks.md"), `\nWebhooks ${COPY_MARK}\n`);
+    const only = join(repo, ".worktrees", "050-new-console");
+    expect((await planted.git(repo, "worktree", "add", "-q", "-b", "draft/console", ".worktrees/050-new-console")).code).toBe(0);
+    mkdirSync(join(only, "specs", "050-new-console"), { recursive: true });
+    writeFileSync(join(only, "specs", "050-new-console", "spec.md"), `---\ntask: "New console ${COPY_MARK}"\nslug: 050-new-console\nstage: plan\nphase: scoping\nprogress: 0/1\n---\n\n# 050 — new-console\n\n## Claims\n\n- [ ] ISC-90: x\n`);
+    expect((await planted.git(only, "add", "--", "specs/050-new-console/spec.md")).code).toBe(0);
+    expect((await planted.git(only, "commit", "-q", "-m", "specs: new console")).code).toBe(0);
+
+    const before = snapshot(repo);
+    expectWorktreesHashed(before);
+    const { url, stop } = await serve(repo, "039");
+    try {
+      await readEverything(url, [SPEC_ID, "050"]);
+      const get = async (path: string): Promise<string> => {
+        const res = await fetch(`${url}${path}`);
+        expect({ path, status: res.status }).toEqual({ path, status: 200 });
+        return res.text();
+      };
+      const model = JSON.parse(await get(`/api/workspaces/${SLUG}/dashboard`)) as DashboardModel;
+      expect(model.specs.find((row) => row.id === SPEC_ID)?.source).toBe("worktree");
+      expect(model.specs.find((row) => row.id === "050")?.source).toBe("worktree");
+      expect(model.brief?.markdown).toContain(COPY_MARK);
+      for (const path of [
+        workspaceRoutes.libraryDoc(SLUG, `${SPEC_FOLDER}/artifacts/T13-routes.md`),
+        specRoutes.evidenceFile(SLUG, SPEC_ID, ".evidence/bun-test-r3.log"),
+        workspaceRoutes.libraryDoc(SLUG, "tech.md"),
+        workspaceRoutes.libraryDoc(SLUG, "tldr.md"),
+        workspaceRoutes.idea(SLUG, "registry-webhooks"),
+        specRoutes.spec(SLUG, "050"),
+      ]) {
+        expect({ path, copy: (await get(path)).includes(COPY_MARK) }).toEqual({ path, copy: true });
+      }
+      const after = snapshot(repo);
+      expect(changed(before, after, { mtime: true })).toEqual([]);
+      expect(after.checksum).toBe(before.checksum);
+      expect(underGit(after)).toEqual(underGit(before));
+    } finally {
+      await stop();
+    }
+  }, 60_000);
+});

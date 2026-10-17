@@ -7,13 +7,15 @@
 // branch with its worktree, or one checked out in the main checkout, gives none. Merged or removed, the worktree leaves
 // the dashboard reading, so no chip shows. Nothing is written: `events.jsonl` stays byte-identical.
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
+import { composeApi, dashboardApi } from "../server/src/api.ts";
 import type { ApiHandler } from "../server/src/http.ts";
+import { takenSpecNumbers } from "../server/src/git.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes } from "../server/src/spec-routes.contract.ts";
+import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { loadCatalogDoc, loadCatalogDocs, loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { rawSha256 } from "../server/src/writes.ts";
@@ -526,5 +528,261 @@ describe("ISC-216 external path: a worktree outside the repository reaches the b
       expect(body).not.toContain(marker);
       expect(body).not.toContain("../");
     }
+  });
+});
+
+// ── folder copy (spec 039, T3, ISC-208) ──────────────────────────────────────────────────────────────────────────────
+//
+// With `specs/` tracked and a live spec worktree, the whole spec folder is read from the worktree's copy: besides the
+// eight kinds of ISC-181, `artifacts/` and `.evidence/`. The fixture changes one file of each in the copy only (the
+// tracked harbor files `artifacts/T13-routes.md`, `.evidence/bun-test-r3.log` and the image `.evidence/kpi-band-390.png`);
+// the tasks tab, the library reader, the evidence file route and the library's asset route all answer the copy's bytes,
+// and the main checkout's spec folder stays byte-identical.
+
+/** The copy's retitled artifact heading; main keeps harbor's `# T13 — routes`. */
+const COPY_ARTIFACT_TITLE = "T13 — routes (worktree copy)";
+const COPY_LOG = "bun test v1.3.0 — worktree copy\n";
+const COPY_IMAGE = "png bytes of the worktree copy";
+
+/** The tracked fixture with the three files changed in the spec worktree's copy alone. */
+async function plantFolderCopy(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true });
+  const copy = join(repo.worktrees.spec, "specs", SPEC_FOLDER);
+  const artifact = join(copy, "artifacts", "T13-routes.md");
+  writeFileSync(artifact, readFileSync(artifact, "utf8").replace(/^# T13 — routes$/m, `# ${COPY_ARTIFACT_TITLE}`));
+  writeFileSync(join(copy, ".evidence", "bun-test-r3.log"), COPY_LOG);
+  writeFileSync(join(copy, ".evidence", "kpi-band-390.png"), COPY_IMAGE);
+  return repo;
+}
+
+/** Every file below `dir` with its bytes' sha256, so any write shows. */
+function folderHashes(dir: string): string[] {
+  const out: string[] = [];
+  const walk = (d: string, rel: string): void => {
+    for (const entry of readdirSync(d, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const path = join(d, entry.name);
+      if (entry.isDirectory()) walk(path, `${rel}${entry.name}/`);
+      else out.push(`${rel}${entry.name} ${rawSha256(readFileSync(path))}`);
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+
+/** The dashboard and spec routes for the fixture's main checkout, registered alone as `harbor`. */
+function apiFor(repo: PlantedWorktreeRepo): ApiHandler {
+  const registry = openRegistry(mkdtempSync(join(repo.base, "data-")));
+  registries.push(registry);
+  registry.add(repo.root);
+  return composeApi(dashboardApi({ registry, services: () => Promise.resolve([]) }), specRoutesApi({ registry, lifeos: LIFEOS_ABSENT }));
+}
+
+describe("ISC-208 folder copy: every file of a spec folder comes from the worktree copy", () => {
+  test("folder copy: tasks tab, library reader, evidence file route and library asset route answer the copy; main stays byte-identical", async () => {
+    const repo = await plantFolderCopy();
+    const main = join(repo.root, "specs", SPEC_FOLDER);
+    const copy = join(repo.worktrees.spec, "specs", SPEC_FOLDER);
+    const before = folderHashes(main);
+    const api = apiFor(repo);
+
+    // Tasks tab: the copy's tasks.md (ISC-181, unchanged by 039).
+    const tasks = await call(api, specRoutes.tasks("harbor", SPEC_ID));
+    expect(tasks.status).toBe(200);
+    expect(tasks.headers.get(TASKS_HASH_HEADER)).toBe(rawSha256(readFileSync(join(copy, "tasks.md"))));
+
+    // Library: the catalog lists the copy's artifact, and the reader renders it.
+    const listed = await loadCatalogDoc(repo.root, `${SPEC_FOLDER}/artifacts/T13-routes.md`);
+    if (!listed.readable) throw new Error("the fixture workspace is unreadable");
+    expect(listed.doc?.title).toBe(COPY_ARTIFACT_TITLE);
+    const doc = await call(api, workspaceRoutes.libraryDoc("harbor", `${SPEC_FOLDER}/artifacts/T13-routes.md`));
+    expect(doc.status).toBe(200);
+    expect(JSON.stringify(await doc.json())).toContain("worktree copy");
+
+    // Evidence file route: the copy's log.
+    const log = await call(api, specRoutes.evidenceFile("harbor", SPEC_ID, ".evidence/bun-test-r3.log"));
+    expect(log.status).toBe(200);
+    expect(await log.text()).toBe(COPY_LOG);
+
+    // Library asset route: the copy's image.
+    const image = await call(api, workspaceRoutes.libraryAsset("harbor", `${SPEC_FOLDER}/.evidence/kpi-band-390.png`));
+    expect(image.status).toBe(200);
+    expect(await image.text()).toBe(COPY_IMAGE);
+
+    expect(folderHashes(main)).toEqual(before);
+  });
+});
+
+// ── worktree-only spec (spec 039, T7, ISC-208.1) ─────────────────────────────────────────────────────────────────────
+//
+// A spec folder created and committed on a spec branch, in its worktree `.worktrees/050-new-console`, before it reaches
+// `main`. The branch is named `draft/console`, so only the worktree's path names the folder. The dashboard reading lists
+// the spec with source `worktree`, its page answers, its number is taken for an allocation; once the branch is merged
+// and the worktree removed, the same spec reads from the main checkout.
+
+const NEW_FOLDER = "050-new-console";
+const NEW_ID = "050";
+const NEW_WORKTREE = `.worktrees/${NEW_FOLDER}`;
+const NEW_SPEC_MD = `---
+task: "A new console view, started on its branch"
+slug: ${NEW_FOLDER}
+spec_type: feature
+stage: plan
+phase: scoping
+progress: 0/1
+---
+
+# ${NEW_ID} — new-console
+
+## Claims
+
+- [ ] ISC-90: The console lists the new view.
+`;
+
+/** The tracked fixture plus a second spec worktree whose branch alone carries the new spec folder. */
+async function plantWorktreeOnly(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true });
+  expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", "draft/console", NEW_WORKTREE)).code).toBe(0);
+  const worktree = join(repo.root, NEW_WORKTREE);
+  mkdirSync(join(worktree, "specs", NEW_FOLDER), { recursive: true });
+  writeFileSync(join(worktree, "specs", NEW_FOLDER, "spec.md"), NEW_SPEC_MD);
+  expect((await repo.git(worktree, "add", "--", `specs/${NEW_FOLDER}/spec.md`)).code).toBe(0);
+  expect((await repo.git(worktree, "commit", "-q", "-m", "specs: new console")).code).toBe(0);
+  return repo;
+}
+
+describe("ISC-208.1 worktree-only spec: a spec folder only a spec worktree carries is a spec before the merge", () => {
+  test("worktree-only spec: dashboard row and spec page with source worktree, number taken; after the merge, source main", async () => {
+    const repo = await plantWorktreeOnly();
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    expect(reading.input.specs.find((f) => f.folder === NEW_FOLDER)?.texts.spec).toBe(NEW_SPEC_MD);
+    expect(reading.input.perSpec?.[NEW_FOLDER]?.source).toBe("worktree");
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    const row = dashboard.model.specs.find((s) => s.id === NEW_ID);
+    expect(row).toMatchObject({ source: "worktree", main: null });
+    expect(row?.worktree?.path).toBe(NEW_WORKTREE);
+    const page = await call(handlerFor(repo), specRoutes.spec("harbor", NEW_ID));
+    expect(page.status).toBe(200);
+    expect(page.headers.get(SPEC_HASH_HEADER)).toBe(rawSha256(Buffer.from(NEW_SPEC_MD)));
+    expect((await takenSpecNumbers(repo.root)).numbers).toContain(Number(NEW_ID));
+    // Nothing of the new spec is in the main checkout.
+    expect(readdirSync(join(repo.root, "specs"))).not.toContain(NEW_FOLDER);
+
+    // The branch merged into main and its worktree removed: the same spec, now from the main checkout.
+    expect((await repo.git(repo.root, "merge", "-q", "--no-ff", "-m", "Merge draft/console", "draft/console")).code).toBe(0);
+    expect((await repo.git(repo.root, "worktree", "remove", "--force", NEW_WORKTREE)).code).toBe(0);
+    const after = await loadDashboard(repo.root, null);
+    if (!after.readable) throw new Error("the fixture workspace is unreadable");
+    expect(after.model.specs.find((s) => s.id === NEW_ID)).toMatchObject({ source: "main", worktree: null });
+  });
+
+  test("worktree-only spec: a linked specs/ carries no spec of its own", async () => {
+    const repo = await plant();
+    const worktree = join(repo.root, NEW_WORKTREE);
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", "draft/console", NEW_WORKTREE)).code).toBe(0);
+    symlinkSync("../../specs", join(worktree, "specs"));
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    expect(reading.input.specs.some((f) => f.folder === NEW_FOLDER)).toBe(false);
+  });
+});
+
+// ── repo files (spec 039, T13, ISC-209) ──────────────────────────────────────────────────────────────────────────────
+//
+// With `specs/` tracked, a repository file is read from the spec worktree that changed it last. The fixture's spec
+// worktree commits a newer `specs/tldr.md` and `specs/tech.md` (dated `DATES.later`, after main's commit) and changes
+// the story `specs/ideas/registry-webhooks.md` without committing it (dated by its mtime). The dashboard's brief, the
+// library's tech page and the story page carry the worktree's version and name the worktree as their source; the main
+// checkout stays byte-identical.
+
+const WORKTREE_SOURCE = { kind: "worktree", worktree: SPEC_WORKTREE } as const;
+const COPY_TLDR_LINE = "The console (002) is reviewed in its worktree copy.";
+const COPY_TECH_TITLE = "Harbor — technical documentation (worktree copy)";
+const COPY_IDEA_LINE = "Webhooks, drafted further in the worktree copy.";
+
+/** The tracked fixture with the three repository files changed in the spec worktree alone, as described above. */
+async function plantRepoFiles(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true });
+  const specs = join(repo.worktrees.spec, "specs");
+  const edit = (file: string, from: RegExp, to: string): void => {
+    const path = join(specs, file);
+    const text = readFileSync(path, "utf8");
+    if (!from.test(text)) throw new Error(`repo files: ${from.source} not found in ${file}`);
+    writeFileSync(path, text.replace(from, to));
+  };
+  edit("tldr.md", /^<!-- section: overview -->$/m, `<!-- section: overview -->\n${COPY_TLDR_LINE}`);
+  edit("tech.md", /^# Harbor — technical documentation$/m, `# ${COPY_TECH_TITLE}`);
+  expect((await repo.git(repo.worktrees.spec, "commit", "-q", "-m", "specs: tldr and tech in the worktree", "--", "specs/tldr.md", "specs/tech.md")).code).toBe(0);
+  appendFileSync(join(specs, "ideas", "registry-webhooks.md"), `\n${COPY_IDEA_LINE}\n`);
+  return repo;
+}
+
+describe("ISC-209 repo files: a repository file is read from the spec worktree that changed it last", () => {
+  test("repo files: the brief, the library's tech page and the story page carry the worktree's version and name it", async () => {
+    const repo = await plantRepoFiles();
+    const main = join(repo.root, "specs");
+    const before = folderHashes(main);
+
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    expect(dashboard.model.brief?.markdown).toContain(COPY_TLDR_LINE);
+    expect(dashboard.model.brief?.source).toEqual(WORKTREE_SOURCE);
+
+    const tech = await loadCatalogDoc(repo.root, "tech.md");
+    if (!tech.readable) throw new Error("the fixture workspace is unreadable");
+    expect(tech.doc).toMatchObject({ title: COPY_TECH_TITLE, source: WORKTREE_SOURCE });
+    const api = apiFor(repo);
+    const page = await call(api, workspaceRoutes.libraryDoc("harbor", "tech.md"));
+    expect(page.status).toBe(200);
+    expect(JSON.stringify(await page.json())).toContain("(worktree copy)");
+
+    const idea = await call(api, workspaceRoutes.idea("harbor", "registry-webhooks"));
+    expect(idea.status).toBe(200);
+    const body = (await idea.json()) as { source?: unknown; page: unknown };
+    expect(body.source).toEqual(WORKTREE_SOURCE);
+    expect(JSON.stringify(body.page)).toContain(COPY_IDEA_LINE);
+
+    expect(folderHashes(main)).toEqual(before);
+  });
+
+  test("repo files: a version the main checkout committed no earlier stays the main checkout's, without a source", async () => {
+    const repo = await plantRepoFiles();
+    // main commits its own tldr.md at the worktree commit's time (the fixture dates both `DATES.later`): a tie is main's.
+    appendFileSync(join(repo.root, "specs", "tldr.md"), "\nMain moved on.\n");
+    const later = await repo.git(repo.root, "commit", "-q", "-m", "main tldr", "--", "specs/tldr.md");
+    expect(later.code).toBe(0);
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    expect(dashboard.model.brief?.markdown).toContain("Main moved on.");
+    expect(dashboard.model.brief?.source).toBeUndefined();
+  });
+});
+
+// ── conflict (spec 039, T21, ISC-209.1) ──────────────────────────────────────────────────────────────────────────────
+//
+// Two spec worktrees change `specs/tldr.md` differently: the spec worktree of 002 commits one line, a second spec
+// worktree of 004 another. The workspace carries exactly one `worktree-file-conflict` for the file, naming both;
+// which version is read is core's rule (`core/tests/repo-source.test.ts -t conflict`); the fixture dates every
+// commit alike.
+
+describe("ISC-209.1 conflict: two spec worktrees with different versions of one repository file warn once", () => {
+  test("conflict: one worktree-file-conflict for specs/tldr.md naming both worktrees", async () => {
+    const repo = await plant({ trackedSpecs: true });
+    const second = `.worktrees/${OTHER_FOLDER}`;
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", OTHER_BRANCH, second)).code).toBe(0);
+    const write = async (worktree: string, line: string): Promise<void> => {
+      appendFileSync(join(worktree, "specs", "tldr.md"), `\n${line}\n`);
+      expect((await repo.git(worktree, "commit", "-q", "-m", "tldr", "--", "specs/tldr.md")).code).toBe(0);
+    };
+    await write(repo.worktrees.spec, "Line from 002.");
+    await write(join(repo.root, second), "Line from 004.");
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    const conflicts = dashboard.model.diagnostics.filter((d) => d.diagnostic.code === "worktree-file-conflict");
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({ file: "specs/tldr.md", diagnostic: { severity: "warning", subject: "specs/tldr.md" } });
+    expect(conflicts[0]?.diagnostic.message).toContain(SPEC_WORKTREE);
+    expect(conflicts[0]?.diagnostic.message).toContain(second);
   });
 });

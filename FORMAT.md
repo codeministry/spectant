@@ -1463,23 +1463,66 @@ They are assigned as follows; the main checkout `/srv/repo` is not among the wor
 `worktree` only when the spec has a worktree of kind `spec` assigned to it (a builder never counts) and its folder
 `specs/NNN-slug/` is tracked in git. The server asks git with `git ls-files -z -- specs/NNN-slug` in the main checkout
 and hands the listed paths, split on NUL, to `specSourceOf` (`core/src/worktrees.ts`), which counts the folder as
-tracked when one of them lies under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS`, `spec.md`, `plan.md`,
-`tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and `.gates/`, are read from the worktree's copy,
-`<worktree>/specs/NNN-slug/`, and the spec header names that source with the main checkout's stage and progress beside
+tracked when one of them lies under `specs/NNN-slug/`. Then the whole folder is read from the worktree's copy,
+`<worktree>/specs/NNN-slug/`: the kinds in `WORKTREE_COPY_KINDS`, `spec.md`, `plan.md`, `tasks.md`, `context.md`,
+`design.md`, `events.jsonl`, `rounds.jsonl`, `.gates/`, and since spec 039 (ISC-208) `artifacts/` and `.evidence/`,
+plus `.design/`, which is no file kind; the main checkout's folder is not read for that spec. The spec header names that source with the main checkout's stage and progress beside
 it. The three in-place writes to an existing spec, the reviewed mark, a task checkbox and a stage transition, go to
 that same copy under the same hash check against the file of that copy; the main checkout stays byte-identical. A
 write whose source changed since the client rendered it, because a worktree appeared or vanished, is a 409.
 Allocating an idea creates a spec that has no worktree yet, so it always writes in the main checkout. The library's
 documents of the spec follow the same source (`readCatalog` with `copies`, `catalogSourceOf` in `core/src/library.ts`):
-its five Markdown files, their stale and missing judgements and its group head come from the copy, while its
-`artifacts/`, `.evidence/` and `.design/` files stay on the main checkout.
+its five Markdown files, their stale and missing judgements, its group head and its `artifacts/`, `.evidence/` and
+`.design/` files all come from the copy, and so do the files the evidence file route and the library's asset route
+serve for it.
+
+**Specs only a worktree carries** (ISC-208.1). A spec folder created on a spec branch is a spec before it reaches
+`main`. The server runs `git ls-files -z -- specs/` inside each spec worktree of no spec, and `worktreeOnlySpecs`
+(`core/src/worktrees.ts`) takes those answers with the assignment above and the main checkout's folder names. A worktree
+of kind `spec` that belongs to no spec, inside the repository, carries the folder its path `.worktrees/NNN-slug` names
+(else its branch) when its own branch tracks a path below `specs/NNN-slug/`. The number must be free in the main
+checkout, active and archived folders alike, which wins otherwise; of two worktrees naming one number the first in
+git's order wins. Such a spec is assigned its worktree like any other, read from `<worktree>/specs/NNN-slug/` with
+source `worktree` and no `main` beside it (the main checkout has no copy), listed on the board, the dashboard and its
+spec page, and its number counts as taken for an allocation. Once its branch is merged, the folder is in the main
+checkout and the spec reads as every other one. A linked `specs/` lists itself, never a path under it, so it carries
+no such spec.
 
 Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
 `specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),
 never as a path under the folder. Spectant's own repository is that case:
 its `specs/` is untracked and linked into every spec worktree, so the worktree's copy is the main checkout's file and
-the source does not change (ISC-181.1). The repository kinds (`constitution`, `master`, `idea`, `workflow`, `tokens`)
-are read from the main checkout in every case.
+the source does not change (ISC-181.1).
+
+**Repository files** (ISC-209). `ISA.md`, `specs/constitution.md`, `specs/tldr.md`, `specs/workflow.md`,
+`specs/tech.md` and each story directly in `specs/ideas/` (`REPO_SOURCE_PATHS`, `core/src/repo-source.ts`) belong to
+no spec, so no single worktree carries them: each is read from the checkout that changed it last. The server gathers
+one candidate per checkout, the main checkout and each live spec worktree of a spec inside the repository: whether the
+file is there (a worktree's only as a regular file, never through a link), whether that checkout's branch tracks it
+(`git ls-files -z -- specs/ ISA.md`), whether its bytes differ from the main checkout's, a digest, and its time. The time
+is the file's mtime when `git status` there lists it as changed, else the committer date of the last commit there that
+touched it (one `git log --no-renames --format=%x01%cI --name-only -z -- <paths>` per checkout, the first date that
+names a path); a merge names no path, so a merged file keeps the date of the commit that changed it. A clean file never
+dates by its mtime, which a checkout rewrites. `repoFileSourceOf` decides:
+
+- A file the main checkout holds without tracking it stays the main checkout's, whatever a worktree holds: an untracked
+  or linked `specs/` never changes the source (ISC-181.1, ISC-210).
+- A worktree competes only with a version that is present, tracked, differs from the main checkout's and has a time.
+  The newest is read when it is newer than the main checkout's own time; on a tie, or when none competes, the main
+  checkout's. A file the main checkout lacks is read from the newest worktree that tracks it, so a story added on a
+  branch is listed before the merge.
+- When the competing versions are not all the same bytes, two spec worktrees changed the file differently (ISC-209.1):
+  the newest is still read, and the workspace carries exactly one warning `worktree-file-conflict` for the file in the
+  dashboard's `diagnostics`, its `file` and `subject` the path, its message naming every competing worktree. The file
+  belongs to no spec, so no row carries it.
+
+The dashboard's brief (`brief.source`), each library document of the workspace (`LibraryDoc.source`) and the story page
+(`IdeaPage.source`) name the worktree as `{ "kind": "worktree", "worktree": ".worktrees/NNN-slug" }` when it was read
+from one; read from the main checkout they carry no `source` key, so a model without a spec worktree is unchanged. An
+image outside every spec folder, such as one `tech.md` shows, is served from the worktree `tech.md` was read from while
+that worktree holds it. The story allocation still writes the main checkout and compares its hash with the main
+checkout's file. The token measurement and the backlog (`tokens`, `backlog`) are read from the main checkout in every
+case.
 
 **In the dashboard model** (`core/src/dashboard.ts`, ISC-175, ISC-176, ISC-181). The server hands `buildDashboard`
 the assignment above as `worktrees`, with `ahead` and `dirty` read, and per spec folder a `SpecRead`

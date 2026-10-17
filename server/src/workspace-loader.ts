@@ -32,21 +32,37 @@
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
  */
 import { lstatSync, readFileSync, readlinkSync, readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { isAbsolute, join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, LibraryCatalog, LibraryDoc, MergeState, SpecFiles, SpecRead, TextFileKind, TimelineWorktreeInput, Workflow, Worktree } from "../../core/src/files.ts";
+import type {
+  FileDiagnostic,
+  IdeaFiles,
+  LibraryCatalog,
+  LibraryDoc,
+  MergeState,
+  RepoFileSource,
+  SpecFiles,
+  SpecRead,
+  TextFileKind,
+  TimelineWorktreeInput,
+  Workflow,
+  Worktree,
+} from "../../core/src/files.ts";
+import type { Diagnostic } from "../../core/src/diagnostics.ts";
+import { MAIN_SOURCE, REPO_SOURCE_PATHS, type RepoFileCandidate, repoFileSourceOf } from "../../core/src/repo-source.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
-import { specIdOf } from "../../core/src/spec-ref.ts";
+import { SPEC_FOLDER, SPEC_ID, specIdOf, specSlugOf } from "../../core/src/spec-ref.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
-import { catalogDocAt, readCatalog, readCatalogDocs } from "../../core/src/library.ts";
+import { type RepoFileCopy, catalogDocAt, readCatalog, readCatalogDocs } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
-import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
+import { type NotFound, type SpecNotFoundReason, type SpecRef, listSpecs, resolveSpec } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
-import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf } from "../../core/src/worktrees.ts";
-import { type SpecBranch, aheadOfMain, dirty, mapBounded, mergeCommitOf, mergedSpecBranches, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
+import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf, worktreeOnlySpecs } from "../../core/src/worktrees.ts";
+import { type SpecBranch, aheadOfMain, changedPaths, dirty, lastCommits, mapBounded, mergeCommitOf, mergedSpecBranches, trackedPlanningPaths, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
@@ -67,6 +83,8 @@ export type WorkspaceReading =
       input: DashboardInput;
       workflow: Workflow;
       ideas: IdeaFiles;
+      /** Per story file name, the spec worktree it was read from (spec 039, ISC-209); absent for one read from main. */
+      ideaSources: Readonly<Record<string, RepoFileSource>>;
       viewer: string | null;
       diagnostics: readonly FileDiagnostic[];
       copies: Readonly<Record<string, string>>;
@@ -86,7 +104,7 @@ export type DashboardLoad = { readable: true; model: DashboardModel } | { readab
  * the same file; server-internal, never part of a response (ISC-3), absent from a loader that names none.
  */
 export type CatalogLoad =
-  | { readable: true; catalog: LibraryCatalog; copies?: Readonly<Record<string, string>> }
+  | { readable: true; catalog: LibraryCatalog; copies?: Readonly<Record<string, string>>; repoFiles?: Readonly<Record<string, RepoFileCopy>> }
   | { readable: false; error: UnreadableCode };
 
 /** The local listeners of one workspace, given its root and the constitution's port labels. */
@@ -247,8 +265,10 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     const archived: SpecFiles[] = [];
     const perSpec: Record<string, SpecRead> = {};
     const copies: Record<string, string> = {};
-    const refs = listSpecs(root);
-    const { view, branches } = await readWorktreeView(root, refs);
+    const listed = listSpecs(root);
+    const worktreeReading = await readWorktreeView(root, listed);
+    const { view, branches, worktreeOnly } = worktreeReading;
+    const refs = withWorktreeOnly(listed, worktreeOnly);
     const worktrees = view.live.length === 0 ? undefined : { ...view.assignment, worktrees: view.live };
     for (const ref of refs) {
       const main = specFiles(ref.dir, ref.slug);
@@ -263,20 +283,33 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     }
     // The main checkout's tree only where a marked spec compares with it: one without a tree of its own (ISC-176).
     const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined && perSpec[f.folder]?.tree === undefined);
-    const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
+    // The repository files from their read source (spec 039, ISC-209): the main checkout's, or a spec worktree's newer one.
+    const [master, constitution, tldr, workflowFile, ideas] = await Promise.all([
+      readRepoFile(root, "ISA.md", worktreeReading),
+      readRepoFile(root, "specs/constitution.md", worktreeReading),
+      readRepoFile(root, "specs/tldr.md", worktreeReading),
+      readRepoFile(root, "specs/workflow.md", worktreeReading),
+      readIdeaSources(root, worktreeReading),
+    ]);
+    const workflow = parseWorkflow(workflowFile.text);
     const mergeState = mergeStateOf(specs, archived, branches);
+    // Each file's conflict once (ISC-209.1): every repository file is read once in this reading.
+    const sourceDiagnostics = sourceFindings([master, constitution, tldr, workflowFile, ...ideas.reads]);
     return {
       readable: true,
       workflow,
-      ideas: readIdeaFiles(root),
+      ideas: ideas.files,
+      ideaSources: ideas.sources,
       viewer: await viewerActorOf(root),
       diagnostics: workflow.diagnostics.map((diagnostic) => ({ file: WORKFLOW_FILE, diagnostic })),
       copies,
       mergeState,
       input: {
-        master: readIfExists(join(root, "ISA.md")),
-        constitution: readIfExists(join(root, "specs", "constitution.md")),
-        tldr: readIfExists(join(root, "specs", "tldr.md")),
+        master: master.text,
+        constitution: constitution.text,
+        tldr: tldr.text,
+        ...(tldr.source.kind === "worktree" ? { tldrSource: tldr.source } : {}),
+        ...(sourceDiagnostics.length === 0 ? {} : { sourceDiagnostics }),
         specs,
         archived,
         worktreeTree: reviewed ? await worktreeTreeId(root) : null,
@@ -299,6 +332,219 @@ export interface WorktreeReading {
   readonly view: WorktreeView;
   /** Every local spec branch with its merge state (`mergedSpecBranches`, ISC-162.1). */
   readonly branches: readonly SpecBranch[];
+  /**
+   * The spec folders only a live spec worktree carries (spec 039, ISC-208.1, `core/`'s `worktreeOnlySpecs`), as active
+   * spec references whose `dir` is the folder in that worktree, `<root>/<worktree>/specs/NNN-slug`, in number order.
+   */
+  readonly worktreeOnly: readonly SpecRef[];
+  /**
+   * Per spec worktree inside the repository that holds its `.git`, by its path relative to the root: what
+   * `git ls-files -z -- specs/ ISA.md` printed inside it (`trackedPlanningPaths`), the planning files its branch tracks.
+   */
+  readonly planning: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The git facts the read source of a repository file is decided on (spec 039, ISC-209, `readRepoFile`): the main
+   * checkout's, and those of each live spec worktree of a spec inside the repository, in git's order.
+   */
+  readonly repoFacts: RepoFacts;
+}
+
+/** What git says about the repository files (`REPO_SOURCE_PATHS`) in one checkout (spec 039, ISC-209). */
+export interface CheckoutFacts {
+  /** The paths its branch tracks below `specs/` and `ISA.md` (`trackedPlanningPaths`). */
+  readonly tracked: readonly string[];
+  /** The repository files `git status` lists as changed there (`changedPaths`); empty when unknown. */
+  readonly changed: readonly string[];
+  /** Per repository file, the committer date of the last commit there that touched it (`lastCommits`). */
+  readonly lastCommit: Readonly<Record<string, string>>;
+}
+
+/** The repository file facts of the main checkout and of each live spec worktree inside the repository. */
+export interface RepoFacts {
+  readonly main: CheckoutFacts;
+  /** By worktree path relative to the root, in git's order. */
+  readonly worktrees: ReadonlyArray<{ readonly path: string; readonly facts: CheckoutFacts }>;
+}
+
+/**
+ * The active spec references of `listed` (`listSpecs`) and `worktreeOnly` in number order, then the archived ones, as
+ * `listSpecs` orders them (spec 039, ISC-208.1).
+ */
+export function withWorktreeOnly(listed: readonly SpecRef[], worktreeOnly: readonly SpecRef[]): SpecRef[] {
+  if (worktreeOnly.length === 0) return [...listed];
+  const active = [...listed.filter((ref) => !ref.archived), ...worktreeOnly].sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : 1));
+  return [...active, ...listed.filter((ref) => ref.archived)];
+}
+
+/** Whether `path` (relative, `/`-separated) is one of the repository files of `REPO_SOURCE_PATHS`. */
+const isRepoFile = (path: string): boolean =>
+  REPO_SOURCE_PATHS.some((spec) => (spec.endsWith("/") ? path.startsWith(spec) && !path.slice(spec.length).includes("/") : path === spec));
+
+/**
+ * The repository file facts (spec 039, ISC-209): in the main checkout its tracked paths, the repository files its
+ * status lists and their last commits; in each live spec worktree of a spec inside the repository the tracked paths
+ * read for the view (`planning`), its status listing (`statuses`) and its last commits. Every read is `git.ts`'s,
+ * read-only, kept with the view while `repoStateOf` stands.
+ */
+async function readRepoFacts(
+  root: string,
+  live: readonly Worktree[],
+  planning: Readonly<Record<string, readonly string[]>>,
+  statuses: ReadonlyMap<string, readonly string[]>,
+): Promise<RepoFacts> {
+  const own = live.flatMap((w) => (w.kind === "spec" && w.spec !== null && w.path !== null && insideRepository(w.path) && planning[w.path] !== undefined ? [w.path] : []));
+  const [mainTracked, mainChanged, mainCommits, commits] = await Promise.all([
+    trackedPlanningPaths(root),
+    changedPaths(root, { pathspecs: REPO_SOURCE_PATHS }),
+    lastCommits(root, REPO_SOURCE_PATHS),
+    mapBounded(own, WORKTREE_READS, (path) => lastCommits(join(root, path), REPO_SOURCE_PATHS)),
+  ]);
+  return {
+    main: { tracked: mainTracked, changed: mainChanged ?? [], lastCommit: mainCommits },
+    worktrees: own.map((path, i) => ({
+      path,
+      facts: { tracked: planning[path] ?? [], changed: (statuses.get(path) ?? []).filter(isRepoFile), lastCommit: commits[i] ?? {} },
+    })),
+  };
+}
+
+/** One repository file as read (`readRepoFile`): its text, where it was read, and the warnings its sources raise. */
+export interface RepoFileReading {
+  /** The text of the version read; null when that checkout has no such file. */
+  readonly text: string | null;
+  /** The absolute file the text came from; server-internal, never part of a response (ISC-3). */
+  readonly absolute: string;
+  readonly source: RepoFileSource;
+  readonly diagnostics: readonly Diagnostic[];
+}
+
+/** A regular file's bytes, never through a symbolic link; null when absent or anything else. */
+function regularBytes(path: string): Buffer | null {
+  try {
+    return lstatSync(path).isFile() ? readFileSync(path) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The repository file `path` (relative to the root, one of `REPO_SOURCE_PATHS`) from its read source (spec 039,
+ * ISC-209): the server gathers, for the main checkout and each live spec worktree of a spec inside the repository,
+ * whether the file is there, whether that branch tracks it, whether its bytes differ from the main checkout's, a digest
+ * and its time (its mtime when `git status` lists it as changed there, else its last commit there), and `core/`'s
+ * `repoFileSourceOf` decides. A worktree's file is read only as a regular file, never through a link. `reading` is the
+ * caller's `readWorktreeView`, read anew when absent. Nothing is written.
+ */
+export async function readRepoFile(root: string, path: string, reading?: WorktreeReading): Promise<RepoFileReading> {
+  const { repoFacts } = reading ?? (await readWorktreeView(root));
+  const mainAbsolute = join(root, ...path.split("/"));
+  // The main checkout read as before spec 039: a failure other than a missing file propagates.
+  const mainBytes = readBytesIfExists(mainAbsolute);
+  const mainText = mainBytes === null ? null : mainBytes.toString("utf8");
+  const digestOf = (bytes: Buffer | null): string | null => (bytes === null ? null : createHash("sha256").update(bytes).digest("hex"));
+  const timeOf = (absolute: string, facts: CheckoutFacts): string | null => {
+    if (facts.changed.includes(path)) {
+      try {
+        return statSync(absolute).mtime.toISOString();
+      } catch {
+        return null;
+      }
+    }
+    return facts.lastCommit[path] ?? null;
+  };
+  const candidates: RepoFileCandidate[] = [
+    { origin: MAIN_SOURCE, present: mainBytes !== null, tracked: repoFacts.main.tracked.includes(path), differs: false, digest: digestOf(mainBytes), at: mainBytes === null ? null : timeOf(mainAbsolute, repoFacts.main) },
+  ];
+  const texts = new Map<string, { text: string; absolute: string }>();
+  for (const { path: worktree, facts } of repoFacts.worktrees) {
+    const absolute = join(root, worktree, ...path.split("/"));
+    // Only a version its branch tracks can compete; an untracked one is not even read.
+    const bytes = facts.tracked.includes(path) ? regularBytes(absolute) : null;
+    if (bytes !== null) texts.set(worktree, { text: bytes.toString("utf8"), absolute });
+    candidates.push({
+      origin: { kind: "worktree", worktree },
+      present: bytes !== null,
+      tracked: facts.tracked.includes(path),
+      differs: bytes !== null && (mainBytes === null || !bytes.equals(mainBytes)),
+      digest: digestOf(bytes),
+      at: bytes === null ? null : timeOf(absolute, facts),
+    });
+  }
+  const decision = repoFileSourceOf(path, candidates);
+  const chosen = decision.source.kind === "worktree" ? texts.get(decision.source.worktree) : undefined;
+  return chosen === undefined
+    ? { text: mainText, absolute: mainAbsolute, source: MAIN_SOURCE, diagnostics: decision.diagnostics }
+    : { text: chosen.text, absolute: chosen.absolute, source: decision.source, diagnostics: decision.diagnostics };
+}
+
+/** The story folder from the read sources of its files (`readIdeaSources`): the files, and each story's source. */
+export interface IdeaSources {
+  readonly files: IdeaFiles;
+  /** Per file name, the worktree source of a story read from a spec worktree; absent for one read from main. */
+  readonly sources: Readonly<Record<string, RepoFileSource>>;
+  /** Each story as `readRepoFile` read it, for its findings; empty without a spec worktree. */
+  readonly reads: readonly RepoFileReading[];
+}
+
+/**
+ * `specs/ideas/` from the read sources of its files (spec 039, ISC-209): the `*.md` files directly in the main
+ * checkout's folder and those a live spec worktree's branch tracks there, each read by `readRepoFile`, so a story
+ * changed or added in a worktree shows that version. Without a worktree, exactly `readIdeaFiles`.
+ */
+export async function readIdeaSources(root: string, reading?: WorktreeReading): Promise<IdeaSources> {
+  const view = reading ?? (await readWorktreeView(root));
+  const main = readIdeaFiles(root);
+  const ideasDir = REPO_SOURCE_PATHS.find((p) => p.endsWith("/")) ?? "specs/ideas/";
+  const names = new Set(Object.keys(main));
+  for (const { facts } of view.repoFacts.worktrees) {
+    for (const path of facts.tracked) {
+      const name = path.startsWith(ideasDir) ? path.slice(ideasDir.length) : "";
+      if (name.endsWith(".md") && !name.includes("/")) names.add(name);
+    }
+  }
+  if (view.repoFacts.worktrees.length === 0) return { files: main, sources: {}, reads: [] };
+  const files: Record<string, string> = {};
+  const sources: Record<string, RepoFileSource> = {};
+  const reads: RepoFileReading[] = [];
+  for (const name of [...names].sort()) {
+    const read = await readRepoFile(root, `${ideasDir}${name}`, view);
+    reads.push(read);
+    if (read.text === null) continue;
+    files[name] = read.text;
+    if (read.source.kind === "worktree") sources[name] = read.source;
+  }
+  return { files, sources, reads };
+}
+
+/** The findings of repository file reads as workspace diagnostics, each file's conflict once (ISC-209.1). */
+function sourceFindings(reads: readonly RepoFileReading[]): FileDiagnostic[] {
+  const seen = new Set<string>();
+  const out: FileDiagnostic[] = [];
+  for (const read of reads) {
+    for (const diagnostic of read.diagnostics) {
+      const file = diagnostic.subject ?? "";
+      const key = `${diagnostic.code}\0${file}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ file, diagnostic });
+    }
+  }
+  return out;
+}
+
+/**
+ * The spec `id` names in the workspace at `root` as `resolveSpec` finds it, else among the specs only a live spec
+ * worktree carries (spec 039, ISC-208.1), matched by the same three forms: `NNN`, `NNN-slug` or the slug alone.
+ * `reading` is the caller's `readWorktreeView`, read only when the main checkout names nothing.
+ */
+export async function resolveWorkspaceSpec(root: string, id: string, reading?: WorktreeReading): Promise<SpecRef | NotFound<SpecNotFoundReason>> {
+  const found = resolveSpec(root, id);
+  if (found.kind === "spec" || found.reason === "ambiguous") return found;
+  const { worktreeOnly } = reading ?? (await readWorktreeView(root));
+  const matches = worktreeOnly.filter((ref) =>
+    SPEC_ID.test(id) ? ref.id === id : SPEC_FOLDER.test(id) && ref.slug === id ? true : id !== "" && specSlugOf(ref.slug) === id,
+  );
+  return matches.length === 1 && matches[0] !== undefined ? matches[0] : found;
 }
 
 /** Spec worktrees read at once: enough to overlap the git reads, few enough for a workspace with many (ISC-215). */
@@ -331,9 +577,23 @@ export function readWorktreeView(root: string, refs: readonly SpecRef[] = listSp
 
 async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Promise<WorktreeReading> {
   const [porcelain, merge] = await Promise.all([worktreeList(root), mergedSpecBranches(root)]);
-  const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
+  const mainFolders = refs.map((ref) => ref.slug);
+  const listedFirst = assignWorktrees(porcelain, mainFolders);
   // A worktree's folder, joined to the root; null for one outside the repository, whose location core never names.
   const folderOf = (w: Worktree): string | null => (w.path === null ? null : join(root, w.path));
+  // The planning files each spec worktree's branch tracks, read inside it (spec 039): the folders only a worktree
+  // carries (ISC-208.1) and the repository files of ISC-209 are decided on them.
+  const readable = listedFirst.worktrees.flatMap((w) =>
+    w.kind === "spec" && w.path !== null && insideRepository(w.path) && hasGit(join(root, w.path)) ? [w.path] : [],
+  );
+  const paths = await mapBounded(readable, WORKTREE_READS, (path) => trackedPlanningPaths(join(root, path)));
+  const planning: Record<string, readonly string[]> = {};
+  readable.forEach((path, i) => {
+    planning[path] = paths[i] ?? [];
+  });
+  const only = worktreeOnlySpecs(listedFirst.worktrees, mainFolders, planning);
+  // Assigned again with the found folders, so each one's worktree is its spec's like any other (its chip, its source).
+  const assignment = only.length === 0 ? listedFirst : assignWorktrees(porcelain, [...mainFolders, ...only.map((s) => s.slug)]);
   const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
   const merged = merge.branches.filter((b) => b.merged).map((b) => b.branch);
   const present = ofSpec.flatMap((w) => {
@@ -350,13 +610,17 @@ async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Prom
   };
   const split = liveWorktrees(assignment, facts);
   // The live spec worktrees' git facts, a bounded number of worktrees at a time (ISC-215).
+  // The status listing of each live spec worktree answers `dirty` and, below the repository files, `changed` (ISC-209).
+  const statuses = new Map<string, readonly string[]>();
   const live = await mapBounded(split.live, WORKTREE_READS, async (worktree): Promise<Worktree> => {
     if (worktree.kind !== "spec" || worktree.spec === null) return worktree;
     // Outside the repository only `ahead` is read, in the main checkout: the branch names the commits, no folder is read.
     const folder = folderOf(worktree);
-    const [ahead, changed] = await Promise.all([aheadOfMain(folder ?? root, worktree.branch), folder === null ? null : dirty(folder)]);
-    return { ...worktree, ahead, dirty: changed };
+    const [ahead, changed] = await Promise.all([aheadOfMain(folder ?? root, worktree.branch), folder === null ? null : changedPaths(folder)]);
+    if (worktree.path !== null && changed !== null) statuses.set(worktree.path, changed);
+    return { ...worktree, ahead, dirty: changed === null ? null : changed.length > 0 };
   });
+  const repoFacts = await readRepoFacts(root, live, planning, statuses);
   // `ls-files` for the folder of each spec with a live worktree inside the repository, the first in git's order.
   const tracked: Record<string, readonly string[]> = {};
   const listed = new Set<string>();
@@ -368,8 +632,11 @@ async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Prom
   [...listed].forEach((slug, i) => {
     tracked[slug] = lists[i] ?? [];
   });
+  // A folder only a worktree carries is tracked by that worktree's branch: its source is the worktree (ISC-208.1).
+  for (const spec of only) tracked[spec.slug] = (planning[spec.worktree] ?? []).filter((path) => path.startsWith(`specs/${spec.slug}/`));
+  const worktreeOnly = only.map((spec): SpecRef => ({ kind: "spec", id: spec.id, slug: spec.slug, dir: join(root, spec.worktree, "specs", spec.slug), archived: false }));
   const view: WorktreeView = { assignment, live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
-  return { view, branches: merge.branches };
+  return { view, branches: merge.branches, worktreeOnly, planning, repoFacts };
 }
 
 /**
@@ -473,8 +740,10 @@ async function specSourceFor(
   const copyDir = copyDirFor(root, ref, view);
   const copy = copyDir === null ? null : copyFiles(ref.dir, copyDir, ref.slug);
   const files = copy?.texts.spec === undefined ? main : copy;
+  // A spec only the worktree carries (ISC-208.1): its folder is the copy, and the main checkout has none to show beside it.
+  const only = copyDir === ref.dir;
   const read: SpecRead = {
-    ...(files === main ? {} : { source: "worktree" as const, main }),
+    ...(files === main ? {} : only ? { source: "worktree" as const } : { source: "worktree" as const, main }),
     ...(!withTree || files.texts.gateCodeReviewed === undefined ? {} : { tree: await worktreeTreeId(at) }),
   };
   return { files, read: Object.keys(read).length === 0 ? null : read, copy: files === main ? null : copyDir };
@@ -500,9 +769,10 @@ export async function readSpecSource(root: string, ref: SpecRef, reading?: Workt
  * ids and the chip's git facts: one `git worktree list`, one `git ls-files` per spec worktree, no hash. Empty when no
  * spec has a worktree. For the library's reader and search, which need the documents and never a stage.
  */
-async function readCopies(root: string): Promise<Record<string, string>> {
-  const refs = listSpecs(root);
-  const { view } = await readWorktreeView(root, refs);
+export async function readCopies(root: string): Promise<Record<string, string>> {
+  const listed = listSpecs(root);
+  const { view, worktreeOnly } = await readWorktreeView(root, listed);
+  const refs = withWorktreeOnly(listed, worktreeOnly);
   const copies: Record<string, string> = {};
   for (const ref of refs) {
     if (ref.archived || !view.live.some((w) => w.kind === "spec" && w.spec === ref.id)) continue;
@@ -543,7 +813,8 @@ export async function loadCatalog(root: string, lifeosStateDir: string | null = 
   const reading = await readWorkspaceInput(root, lifeosStateDir);
   if (!reading.readable) return reading;
   try {
-    return { readable: true, catalog: await readCatalog(root, reading.input, { copies: reading.copies }), copies: reading.copies };
+    const repoFiles = await readRepoCatalogFiles(root);
+    return { readable: true, catalog: await readCatalog(root, reading.input, { copies: reading.copies, repoFiles }), copies: reading.copies, repoFiles };
   } catch (error) {
     return { readable: false, error: codeOf(error) };
   }
@@ -553,19 +824,45 @@ export async function loadCatalog(root: string, lifeosStateDir: string | null = 
  * What the library's reader and search read with the worktree copies: a value of `read`, or why the workspace cannot
  * be read. The copies are the read sources `loadCatalog` lists the documents from (spec 027, ISC-181).
  */
-export type CopiesLoad<T> = ({ readable: true; copies: Readonly<Record<string, string>> } & T) | { readable: false; error: UnreadableCode };
+export type CopiesLoad<T> =
+  | ({ readable: true; copies: Readonly<Record<string, string>>; repoFiles: Readonly<Record<string, RepoFileCopy>> } & T)
+  | { readable: false; error: UnreadableCode };
+
+/**
+ * The workspace documents of the library read from a spec worktree's copy (spec 039, ISC-209), by catalog path:
+ * `constitution.md`, `tech.md`, `tldr.md` and each story `ideas/<name>.md` whose `readRepoFile` source is a worktree,
+ * with the absolute file and the source. Documents read from the main checkout are not named. `reading` as for
+ * `readRepoFile`.
+ */
+export async function readRepoCatalogFiles(root: string, reading?: WorktreeReading): Promise<Record<string, RepoFileCopy>> {
+  const view = reading ?? (await readWorktreeView(root));
+  const out: Record<string, RepoFileCopy> = {};
+  if (view.repoFacts.worktrees.length === 0) return out;
+  for (const name of ["constitution.md", "tech.md", "tldr.md"]) {
+    const read = await readRepoFile(root, `specs/${name}`, view);
+    if (read.source.kind === "worktree" && read.text !== null) out[name] = { absolute: read.absolute, source: read.source };
+  }
+  const ideas = await readIdeaSources(root, view);
+  for (const [name, source] of Object.entries(ideas.sources)) {
+    if (source.kind === "worktree") out[`ideas/${name}`] = { absolute: join(root, source.worktree, "specs", "ideas", name), source };
+  }
+  return out;
+}
 
 /**
  * `read` over the worktree copies of the workspace at `root`, without the dashboard's reading (ISC-156.5): no stage
  * input, workflow, lock source, worktree hash or chip git fact, and never `buildDashboard`. A workspace that cannot be
  * read is its stable code, checked first, as in `loadCatalog`.
  */
-async function withCopies<T>(root: string, read: (copies: Readonly<Record<string, string>>) => Promise<T>): Promise<CopiesLoad<T>> {
+async function withCopies<T>(
+  root: string,
+  read: (copies: Readonly<Record<string, string>>, repoFiles: Readonly<Record<string, RepoFileCopy>>) => Promise<T>,
+): Promise<CopiesLoad<T>> {
   const unreadable = workspaceUnreadable(root);
   if (unreadable !== null) return { readable: false, error: unreadable };
   try {
-    const copies = await readCopies(root);
-    return { readable: true, copies, ...(await read(copies)) };
+    const [copies, repoFiles] = await Promise.all([readCopies(root), readRepoCatalogFiles(root)]);
+    return { readable: true, copies, repoFiles, ...(await read(copies, repoFiles)) };
   } catch (error) {
     return { readable: false, error: codeOf(error) };
   }
@@ -577,7 +874,7 @@ async function withCopies<T>(root: string, read: (copies: Readonly<Record<string
  * so a spec's own documents come from the same read source as in `loadCatalog`.
  */
 export function loadCatalogDocs(root: string): Promise<CopiesLoad<{ docs: readonly LibraryDoc[] }>> {
-  return withCopies(root, async (copies) => ({ docs: await readCatalogDocs(root, { copies }) }));
+  return withCopies(root, async (copies, repoFiles) => ({ docs: await readCatalogDocs(root, { copies, repoFiles }) }));
 }
 
 /**
@@ -586,7 +883,7 @@ export function loadCatalogDocs(root: string): Promise<CopiesLoad<{ docs: readon
  * Only the folders on the path's way are read, never the tree.
  */
 export function loadCatalogDoc(root: string, path: string | null): Promise<CopiesLoad<{ doc: LibraryDoc | null }>> {
-  return withCopies(root, async (copies) => ({ doc: path === null ? null : await catalogDocAt(root, path, { copies }) }));
+  return withCopies(root, async (copies, repoFiles) => ({ doc: path === null ? null : await catalogDocAt(root, path, { copies, repoFiles }) }));
 }
 
 // ── the worktree tree id ──────────────────────────────────────────────────────────────────────────────

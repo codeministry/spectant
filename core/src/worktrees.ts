@@ -26,7 +26,8 @@
 // checkout; core never asks git and never looks at a file:
 //
 //   - The source is `worktree` only when the worktree is of kind `spec`, belongs to this spec, and git listed at least
-//     one path under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS` come from the worktree's copy.
+//     one path under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS`, the whole spec folder, come from the
+//     worktree's copy (spec 039, ISC-208).
 //   - Everything else is `main`: no worktree, a builder, a worktree of another spec, an empty answer. A symbolic link
 //     is listed as itself, `specs` or `specs/NNN-slug` without a slash after it, never as a path under the folder, so
 //     an untracked or linked `specs/` keeps `main`, Spectant's own repository included.
@@ -212,10 +213,11 @@ export function mainBranchOf(porcelain: string): string | null {
 const SPECS = 'specs';
 
 /**
- * The file kinds read from the worktree's copy `<worktree>/specs/NNN-slug/` when the source is `worktree`: the eight
- * ISC-181 names, `spec.md`, `plan.md`, `tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and
- * `.gates/` (both marks). Every other kind, the repository kinds and `artifacts/` and `.evidence/` among them, stays on
- * the main checkout.
+ * The file kinds read from the worktree's copy `<worktree>/specs/NNN-slug/` when the source is `worktree`: every kind of
+ * the spec folder. The eight ISC-181 names, `spec.md`, `plan.md`, `tasks.md`, `context.md`, `design.md`,
+ * `events.jsonl`, `rounds.jsonl` and `.gates/` (both marks), and since spec 039 (ISC-208) `artifacts/` and `.evidence/`;
+ * the library reads `.design/`, which is no file kind, from the copy too. Only the repository kinds stay on the main
+ * checkout.
  */
 export const WORKTREE_COPY_KINDS: readonly FileKind[] = [
   'spec',
@@ -227,6 +229,8 @@ export const WORKTREE_COPY_KINDS: readonly FileKind[] = [
   'rounds',
   'gateReviewed',
   'gateCodeReviewed',
+  'artifacts',
+  'evidence',
 ];
 
 /** What `specSourceOf` decides on: one spec, its worktree and git's answer about its folder. */
@@ -361,4 +365,53 @@ export function copyDirFor(root: string, ref: SpecFolderRef, view: WorktreeView)
   if (worktree?.path == null || worktree.path === '..' || worktree.path.startsWith('../')) return null;
   const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
   return source === 'worktree' ? [root.replace(/\/+$/u, ''), worktree.path, SPECS, ref.slug].join('/') : null;
+}
+
+// ─── Specs only a worktree carries (spec 039, ISC-208.1) ───────────────────────────────────────────────────────────
+
+/** A spec folder that only a live spec worktree carries: its number, its folder name and the worktree's path. */
+export interface WorktreeOnlySpec {
+  /** `NNN`. */
+  readonly id: string;
+  /** `NNN-slug`, the folder below the worktree's `specs/`. */
+  readonly slug: string;
+  /** The worktree's path relative to the root, `.worktrees/NNN-slug`. */
+  readonly worktree: string;
+}
+
+/** The spec folder name a worktree's path `.worktrees/NNN-slug` names, else its spec branch; null for neither. */
+function folderNameOf(worktree: Worktree): string | null {
+  const parts = worktree.path?.split('/') ?? [];
+  const byPath = parts.length === 2 && parts[0] === SPEC_WORKTREES ? (parts[1] ?? '') : '';
+  if (SPEC_FOLDER.test(byPath)) return byPath;
+  const byBranch = worktree.branch === null ? undefined : SPEC_BRANCH.exec(worktree.branch)?.[1];
+  return byBranch !== undefined && SPEC_FOLDER.test(byBranch) ? byBranch : null;
+}
+
+/**
+ * The spec folders only a spec worktree carries (FORMAT.md § Worktrees). `worktrees` is the listing as `assignWorktrees`
+ * assigned it against `mainFolders`, the main checkout's spec folder names (active and archived); `tracked` holds, per
+ * worktree path, what `git ls-files -z -- specs/` printed inside that worktree, split on NUL. A worktree of kind `spec`
+ * that belongs to no spec, inside the repository, carries the folder its path `.worktrees/NNN-slug` (else its branch)
+ * names when its own branch tracks a path below `specs/NNN-slug/`; a linked `specs/` lists itself and carries nothing
+ * (ISC-181.1). A number the main checkout has stays the main checkout's, and of two worktrees naming one number the
+ * first in git's order wins. In number order.
+ */
+export function worktreeOnlySpecs(
+  worktrees: readonly Worktree[],
+  mainFolders: readonly string[],
+  tracked: Readonly<Record<string, readonly string[]>>,
+): WorktreeOnlySpec[] {
+  const taken = new Set(mainFolders.map(specIdOf).filter((id) => id !== null));
+  const found = new Map<string, WorktreeOnlySpec>();
+  for (const worktree of worktrees) {
+    const path = worktree.path;
+    if (worktree.kind !== 'spec' || worktree.spec !== null || path === null || path === '..' || path.startsWith('../')) continue;
+    const slug = folderNameOf(worktree);
+    const id = slug === null ? null : specIdOf(slug);
+    if (slug === null || id === null || taken.has(id) || found.has(id)) continue;
+    const under = `${SPECS}/${slug}/`;
+    if ((tracked[path] ?? []).some((p) => p.startsWith(under))) found.set(id, { id, slug, worktree: path });
+  }
+  return [...found.values()].sort((a, b) => Number(a.id) - Number(b.id));
 }

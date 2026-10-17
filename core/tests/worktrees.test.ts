@@ -31,12 +31,15 @@
 // families built from what the source picks are byte-identical to the committed goldens (`fixtures.test.ts`,
 // `golden.test.ts`), compared without ever rewriting one. `buildDashboard` takes no worktrees yet; once it does (T12,
 // T19), the same assertion moves onto that input.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, join, relative, sep } from 'node:path';
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
 
 import { buildDashboard, type DashboardInput } from '../src/dashboard.ts';
 import { FILE_KINDS, type SpecFiles, type Worktree } from '../src/files.ts';
+import { catalogSourceOf, readCatalog } from '../src/library.ts';
+import { MAIN_SOURCE, REPO_SOURCE_PATHS, type RepoFileCandidate, repoFileSourceOf } from '../src/repo-source.ts';
 import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
@@ -49,6 +52,7 @@ import {
   relativeTo,
   specSourceOf,
   WORKTREE_COPY_KINDS,
+  worktreeOnlySpecs,
   type WorktreeFacts,
   type WorktreeView,
 } from '../src/worktrees.ts';
@@ -330,7 +334,7 @@ describe('source: where the app reads a spec, the main checkout or the copy in i
     expect(specSourceOf({ folder: '012-harbor', worktree: relay, lsFiles: HARBOR_TRACKED })).toBe('main');
   });
 
-  test('the copy holds the eight the claim names: five Markdown files, two logs and .gates/', () => {
+  test('the copy holds the eight the claim names, five Markdown files, two logs and .gates/, and the two zones of spec 039', () => {
     const paths = WORKTREE_COPY_KINDS.map((kind) => FILE_KINDS[kind].path.replace(/^\.gates\/.*$/u, '.gates/'));
     expect([...new Set(paths)]).toEqual([
       'spec.md',
@@ -341,6 +345,8 @@ describe('source: where the app reads a spec, the main checkout or the copy in i
       'events.jsonl',
       'rounds.jsonl',
       '.gates/',
+      'artifacts/',
+      '.evidence/',
     ]);
     for (const kind of WORKTREE_COPY_KINDS) expect(FILE_KINDS[kind].scope).toBe('spec');
   });
@@ -478,6 +484,32 @@ describe('untracked: an untracked or symlinked specs/ keeps every spec on the ma
   test.each(HARBOR_GOLDEN_FAMILIES)('harbor %s golden: byte-identical with the worktrees present', (family) => {
     const built = harborFamilies(harborReadFrom(() => lsFilesOf('symlink-specs')))[family] ?? '';
     expect(goldenMismatch(readFileSync(goldenPath('harbor', family), 'utf8'), built)).toBeNull();
+  });
+
+  // Spec 039, ISC-210: the two further sources of 039 keep main as well. A linked `specs/` lists, inside a worktree,
+  // nothing or the link itself, never a path under it, so no worktree carries a spec of its own; and a repository file
+  // the main checkout holds untracked stays the main checkout's, whatever a worktree holds.
+  test('untracked: this repository: no spec worktree carries a spec of its own, even with no folder on main', () => {
+    const { worktrees } = assignWorktrees(read('symlink-specs.porcelain'), []);
+    const paths = worktrees.flatMap((w) => (w.path === null ? [] : [w.path]));
+    for (const listed of [lsFilesOf('symlink-specs'), ['specs'], ['specs', 'ISA.md']]) {
+      const tracked = Object.fromEntries(paths.map((path) => [path, listed]));
+      expect(worktreeOnlySpecs(worktrees, [], tracked)).toEqual([]);
+    }
+  });
+
+  test('untracked: every repository file keeps main when the main checkout holds it untracked', () => {
+    const newer = '2026-10-09T09:00:00Z';
+    for (const path of [...REPO_SOURCE_PATHS.filter((p) => !p.endsWith('/')), 'specs/ideas/registry-webhooks.md']) {
+      const candidates: RepoFileCandidate[] = [
+        { origin: MAIN_SOURCE, present: true, tracked: false, differs: false, digest: 'main', at: null },
+        // A linked specs/ in the worktree: the same file through the link, listed by git as the link at most.
+        { origin: { kind: 'worktree', worktree: '.worktrees/012-harbor' }, present: true, tracked: false, differs: false, digest: 'main', at: newer },
+        // Even a tracked, differing, newer version cannot move an untracked main file.
+        { origin: { kind: 'worktree', worktree: '.worktrees/016-audit' }, present: true, tracked: true, differs: true, digest: 'other', at: newer },
+      ];
+      expect(repoFileSourceOf(path, candidates)).toEqual({ source: MAIN_SOURCE, diagnostics: [] });
+    }
   });
 
   test('the comparison bites: a tracked specs/ would read the ticked worktree copies and move every family', () => {
@@ -681,5 +713,108 @@ describe('dirty: a merged spec worktree with an uncommitted change is live (ISC-
   test('the merged worktree with a change stays the read source of its spec', () => {
     const facts = { ...present, merged: ['feature/012-harbor'], dirty: ['.worktrees/012-harbor'] };
     expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': HARBOR_TRACKED }, facts))).toBe(HARBOR_COPY);
+  });
+});
+
+// Spec 039, ISC-208: with a copy, the whole spec folder is read from it. Besides the eight kinds of ISC-181 the copy
+// holds `artifacts/` and `.evidence/` (`WORKTREE_COPY_KINDS`), and the library lists and resolves every file of the
+// folder, those two zones and `.design/` included, from the copy; the main checkout's folder is not read for that spec.
+describe('folder copy (spec 039, ISC-208)', () => {
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  const FOLDER = '012-harbor';
+  const SPEC_MD = '---\ntask: "Harbor"\nslug: 012-harbor\nphase: build\nprogress: 0/1\n---\n\n# 012 — harbor\n\n## Claims\n\n- [ ] ISC-1: x\n';
+
+  /** A workspace whose spec 012 has an `artifacts/` file in main, and a copy whose `artifacts/` and `.evidence/` differ. */
+  const planted = (): { root: string; copy: string } => {
+    const root = mkdtempSync(join(tmpdir(), 'spectant-folder-copy-'));
+    dirs.push(root);
+    const main = join(root, 'specs', FOLDER);
+    mkdirSync(join(main, 'artifacts'), { recursive: true });
+    writeFileSync(join(main, 'spec.md'), SPEC_MD);
+    writeFileSync(join(main, 'artifacts', 'report.md'), '# Report on main\n');
+    writeFileSync(join(main, 'artifacts', 'main-only.md'), '# Only on main\n');
+    const copy = join(root, '.worktrees', FOLDER, 'specs', FOLDER);
+    mkdirSync(join(copy, 'artifacts'), { recursive: true });
+    mkdirSync(join(copy, '.evidence'), { recursive: true });
+    writeFileSync(join(copy, 'spec.md'), SPEC_MD);
+    writeFileSync(join(copy, 'artifacts', 'report.md'), '# Report in the copy\n');
+    writeFileSync(join(copy, '.evidence', 'probe.md'), '# Probe in the copy\n');
+    return { root, copy };
+  };
+
+  test('folder copy: the copy kinds hold artifacts/ and .evidence/ beside the eight of ISC-181', () => {
+    expect(WORKTREE_COPY_KINDS).toContain('artifacts');
+    expect(WORKTREE_COPY_KINDS).toContain('evidence');
+    for (const kind of WORKTREE_COPY_KINDS) expect(FILE_KINDS[kind].scope).toBe('spec');
+  });
+
+  test('folder copy: the catalog lists artifacts/ and .evidence/ of a spec with a copy from the copy', async () => {
+    const { root, copy } = planted();
+    const catalog = await readCatalog(root, undefined, { copies: { [FOLDER]: copy } });
+    const zoned = catalog.docs.filter((d) => d.spec === FOLDER && (d.type === 'artifact' || d.type === 'evidence'));
+    expect(zoned.map((d) => [d.path, d.title])).toEqual([
+      [`${FOLDER}/artifacts/report.md`, 'Report in the copy'],
+      [`${FOLDER}/.evidence/probe.md`, 'Probe in the copy'],
+    ]);
+    // Without the copy, main's two files.
+    const main = await readCatalog(root);
+    expect(main.docs.filter((d) => d.spec === FOLDER && d.type === 'artifact').map((d) => d.title)).toEqual(['Only on main', 'Report on main']);
+  });
+
+  test('folder copy: catalogSourceOf resolves every file of the folder of a spec with a copy into the copy', () => {
+    const { root, copy } = planted();
+    const copies = { [FOLDER]: copy };
+    expect(catalogSourceOf(root, { path: `${FOLDER}/artifacts/report.md`, spec: FOLDER }, copies)).toEqual({ dir: copy, rel: 'artifacts/report.md' });
+    expect(catalogSourceOf(root, { path: `${FOLDER}/.evidence/probe.md`, spec: FOLDER }, copies)).toEqual({ dir: copy, rel: '.evidence/probe.md' });
+    expect(catalogSourceOf(root, { path: `${FOLDER}/.design/prototype/index.html`, spec: FOLDER }, copies)).toEqual({
+      dir: copy,
+      rel: '.design/prototype/index.html',
+    });
+    // No copy: the catalog path below specs/.
+    expect(catalogSourceOf(root, { path: `${FOLDER}/artifacts/report.md`, spec: FOLDER })).toEqual({
+      dir: join(root, 'specs'),
+      rel: `${FOLDER}/artifacts/report.md`,
+    });
+  });
+});
+
+// Spec 039, ISC-208.1: a spec folder only a spec worktree carries. `worktreeOnlySpecs(worktrees, mainFolders, tracked)`
+// takes the listing as `assignWorktrees` assigned it against the main checkout's spec folders, those folder names, and
+// per worktree path what `git ls-files -z -- specs/` printed inside that worktree. A worktree of no spec, inside the
+// repository and not a builder, whose path `.worktrees/NNN-slug` (else its branch) names a folder `NNN-slug`, carries
+// that folder when its own branch tracks a path below `specs/NNN-slug/`. The number must be free in the main checkout,
+// which wins otherwise; one spec per number, the first worktree in git's order.
+describe('worktree-only spec (spec 039, ISC-208.1)', () => {
+  const text = read('spec-worktrees.porcelain');
+  const listing = assignWorktrees(text, SPECS).worktrees;
+  const RETIRED = ['specs/099-retired/context.md', 'specs/099-retired/spec.md'];
+
+  test('worktree-only spec: a worktree whose branch tracks specs/NNN-slug/, which main lacks, carries that spec', () => {
+    const only = worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': [...RETIRED, 'specs/012-harbor/spec.md'] });
+    expect(only).toEqual([{ id: '099', slug: '099-retired', worktree: '.worktrees/099-retired' }]);
+  });
+
+  test('worktree-only spec: without a tracked path under the folder in that worktree, no spec', () => {
+    expect(worktreeOnlySpecs(listing, SPECS, {})).toEqual([]);
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': ['specs/012-harbor/spec.md'] })).toEqual([]);
+    // A linked specs/ lists itself, never a path under it (ISC-181.1).
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': ['specs'] })).toEqual([]);
+    // Another worktree's paths name nothing for this one.
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/scratch': RETIRED })).toEqual([]);
+  });
+
+  test('worktree-only spec: the main checkout wins a number it has, and the assigned worktrees never count', () => {
+    expect(worktreeOnlySpecs(listing, [...SPECS, '099-old'], { '.worktrees/099-retired': RETIRED })).toEqual([]);
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/012-harbor': ['specs/012-harbor/spec.md'] })).toEqual([]);
+  });
+
+  test('worktree-only spec: assigned against the main folders plus the found ones, the worktree belongs to the new spec', () => {
+    const only = worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': RETIRED });
+    const again = assignWorktrees(text, [...SPECS, ...only.map((s) => s.slug)]);
+    expect(again.worktrees.find((w) => w.path === '.worktrees/099-retired')?.spec).toBe('099');
   });
 });

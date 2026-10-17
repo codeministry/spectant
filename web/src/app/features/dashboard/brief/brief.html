@@ -2,6 +2,7 @@
   <ui-card class="brief" data-ui="brief" role="region" [padding]="0" [attr.aria-label]="'brief.title' | transloco">
     <div class="brief-head" data-brief-head>
       <span class="brief-label" data-brief-label>{{ 'brief.label' | transloco }}</span>
+      <ui-source-chip data-brief-source [source]="brief.source" />
       @if (asOf(); as asOf) {
         <ui-time-label class="brief-as-of type-meta" data-brief-as-of key="brief.asOf" timeParam="date" form="date" [value]="asOf" />
       }

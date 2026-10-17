@@ -46,6 +46,7 @@ export * from './tokens.ts';
 export * from './backlog.ts';
 export * from './tech.ts';
 export * from './worktrees.ts';
+export * from './repo-source.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';
 export type * from './library.ts';

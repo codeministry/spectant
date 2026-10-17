@@ -36,6 +36,7 @@ import type {
   MainCopy,
   MergeState,
   Priority,
+  RepoFileSource,
   SpecFiles,
   SpecGates,
   SpecRead,
@@ -186,6 +187,8 @@ export interface DashboardBrief {
   readonly stale: boolean;
   /** Markdown per `<!-- section: key -->`, so the overview can stand in view and the rest fold away. */
   readonly sections: Readonly<Record<string, string>>;
+  /** The spec worktree `specs/tldr.md` was read from (spec 039, ISC-209); absent when read from the main checkout. */
+  readonly source?: RepoFileSource;
 }
 
 /** A local listener that belongs to the workspace, for the live indicator (loopback only). */
@@ -255,6 +258,13 @@ export interface DashboardInput {
   readonly constitution: string | null;
   /** `specs/tldr.md`; null when absent. */
   readonly tldr: string | null;
+  /** Where `tldr` was read (spec 039, ISC-209); absent means the main checkout. */
+  readonly tldrSource?: RepoFileSource;
+  /**
+   * The findings of the repository files' read sources (spec 039, ISC-209.1): one `worktree-file-conflict` per file two
+   * spec worktrees changed differently, already one per file; they join the model's `diagnostics` as they are.
+   */
+  readonly sourceDiagnostics?: readonly FileDiagnostic[];
   /** Folders directly under `specs/`. */
   readonly specs: readonly SpecFiles[];
   /** Folders under `specs/archive/`. */
@@ -959,7 +969,14 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     const tldr = parseTldr(input.tldr);
     note(TLDR_FILE, tldr.diagnostics);
     const state = tldrState({ tldr, specs: rows.map((r) => ({ number: r.id, updated: r.updated, phase: r.phase, lastRound: r.lastRound })) });
-    brief = { markdown: parseFrontmatter(input.tldr).body.trim(), generated: tldr.generated, stale: state.stale, sections: tldr.sections };
+    brief = {
+      markdown: parseFrontmatter(input.tldr).body.trim(),
+      generated: tldr.generated,
+      stale: state.stale,
+      sections: tldr.sections,
+      // Only a worktree copy is named (spec 039, ISC-209), so a brief read from the main checkout stays as it was.
+      ...(input.tldrSource?.kind === 'worktree' ? { source: input.tldrSource } : {}),
+    };
   }
 
   const stageCounts = Object.fromEntries(STAGES.map((stage) => [stage, rows.filter((r) => r.stage === stage).length])) as Record<Stage, number>;
@@ -989,6 +1006,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     .sort((a, b) => a.port - b.port)
     .map((s) => (s.label === null && labels.has(s.port) ? { ...s, label: labels.get(s.port) ?? null } : s));
 
+  diagnostics.push(...(input.sourceDiagnostics ?? []));
   return {
     kpis,
     stageCounts,

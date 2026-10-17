@@ -32,6 +32,7 @@ import { UiDocProse } from '../../shared/ui/doc-prose/doc-prose';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
+import { UiSourceChip } from '../../shared/ui/source-chip/source-chip';
 import { specKey, WORKSPACE_SPEC } from './library-model';
 import { PrototypeCard } from './prototype-card';
 
@@ -251,7 +252,7 @@ export type ReaderContext = 'workspace' | 'spec';
  */
 @Component({
   selector: 'app-library-reader',
-  imports: [PrototypeCard, RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton, UiTimeLabel],
+  imports: [PrototypeCard, RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton, UiSourceChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'lib-reader',
