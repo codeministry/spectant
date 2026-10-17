@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { APIRequestContext, Locator, Page, Request } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
+import { backlogUiBody } from './backlog-ui-sequence';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const EN = JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', import.meta.url)), 'utf8')) as {
@@ -115,7 +116,8 @@ test('lanes keys: Alt+↓ on a band grip sends one move with the backlog hash an
   const answered = page.waitForResponse((r) => r.request().method() === 'POST' && BACKLOG_PATH.test(new URL(r.url()).pathname));
   await gripOf(page, first).focus();
   await page.keyboard.press('Alt+ArrowDown');
-  expect((await sent).postDataJSON()).toEqual({ op: 'move', feature: first, before: third ?? null, hash: planning.backlogHash });
+  expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('board-alt'), hash: planning.backlogHash });
+  expect(backlogUiBody('board-alt')).toEqual({ op: 'move', feature: first, before: third ?? null });
   expect((await answered).status()).toBe(200);
 
   await expect.poll(() => shownBands(page)).toEqual(expect.arrayContaining([second, first]));
@@ -159,7 +161,8 @@ test('lanes menu: a grip click opens "Move", and "Move down" moves the band thro
   await expect(gripOf(page, first)).toHaveAttribute('aria-expanded', 'true');
   const sent = backlogPost(page);
   await page.getByRole('button', { name: EN.backlog.reorder.down, exact: true }).click();
-  expect((await sent).postDataJSON()).toEqual({ op: 'move', feature: first, before: third ?? null, hash: planning.backlogHash });
+  expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('board-menu'), hash: planning.backlogHash });
+  expect(backlogUiBody('board-menu')).toEqual({ op: 'move', feature: first, before: third ?? null });
   await expect.poll(async () => {
     const shown = await shownBands(page);
     return shown.indexOf(first) - shown.indexOf(second);
@@ -220,7 +223,8 @@ test('lanes drag: dragging a band grip below its neighbour sends one move; the b
   await expect(page.locator(`${HEADS}[data-move-group="${group}"][data-band-lock]`)).toHaveCount(0);
   const sent = backlogPost(page);
   await page.mouse.up();
-  expect((await sent).postDataJSON()).toEqual({ op: 'move', feature: first, before: third, hash: planning.backlogHash });
+  expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('board-drag'), hash: planning.backlogHash });
+  expect(backlogUiBody('board-drag')).toEqual({ op: 'move', feature: first, before: third });
   await expect.poll(async () => {
     const shown = await shownBands(page);
     return shown.indexOf(first) - shown.indexOf(second);

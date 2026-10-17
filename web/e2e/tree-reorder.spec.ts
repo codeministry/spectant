@@ -13,12 +13,13 @@
  */
 import type { Locator, Page, Request } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { backlogUiBody, EMPTY_BACKLOG_HASH } from './backlog-ui-sequence';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const TREE = '/w/harbor/planning/tree';
 const BACKLOG = '/api/workspaces/harbor/backlog';
 /** The backlog hash of a tree without `specs/backlog.md`: the sha256 of the empty text. */
-const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+const EMPTY_SHA256 = EMPTY_BACKLOG_HASH;
 const HARBOR_1_0 = 'milestone:harbor-1-0';
 
 const isBacklogWrite = (req: Request): boolean => req.method() === 'POST' && new URL(req.url()).pathname === BACKLOG;
@@ -51,7 +52,7 @@ test.describe('tree-reorder: move (T27, ISC-195)', () => {
     await row.focus();
     const sent = page.waitForRequest(isBacklogWrite);
     await page.keyboard.press('Alt+ArrowDown');
-    expect((await sent).postDataJSON()).toEqual({ op: 'move', feature: 'F1', before: 'F4', hash: EMPTY_SHA256 });
+    expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('tree-alt-down'), hash: EMPTY_SHA256 });
     await expect.poll(() => idsOf(page, HARBOR_1_0)).toEqual(['F2', 'F1', 'F4']);
     await expect(row).toBeFocused();
     await expect(page.locator('app-planning-tree ui-live-region')).toContainText('F1');
@@ -67,7 +68,7 @@ test.describe('tree-reorder: move (T27, ISC-195)', () => {
     await expect.poll(() => idsOf(page, HARBOR_1_0)).toEqual(['F2', 'F1', 'F4']);
     const second = page.waitForRequest(isBacklogWrite);
     await page.keyboard.press('Alt+ArrowDown');
-    expect((await second).postDataJSON()).toEqual({ op: 'move', feature: 'F1', before: null, hash });
+    expect((await second).postDataJSON()).toEqual({ ...backlogUiBody('tree-alt-last'), hash });
     await expect.poll(() => idsOf(page, HARBOR_1_0)).toEqual(['F2', 'F4', 'F1']);
   });
 
@@ -79,7 +80,7 @@ test.describe('tree-reorder: move (T27, ISC-195)', () => {
     await expect(top).toBeVisible();
     const sent = page.waitForRequest(isBacklogWrite);
     await top.click();
-    expect((await sent).postDataJSON()).toEqual({ op: 'move', feature: 'F4', before: 'F1', hash: EMPTY_SHA256 });
+    expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('tree-menu-top'), hash: EMPTY_SHA256 });
     await expect.poll(() => idsOf(page, HARBOR_1_0)).toEqual(['F4', 'F1', 'F2']);
   });
 
@@ -101,7 +102,7 @@ test.describe('tree-reorder: move (T27, ISC-195)', () => {
     await page.mouse.move(from.x + from.width / 2, to.y + 4, { steps: 12 });
     await page.mouse.up();
     await written;
-    expect(sent.map((req) => req.postDataJSON() as unknown)).toEqual([{ op: 'move', feature: 'F7', before: 'F0', hash: EMPTY_SHA256 }]);
+    expect(sent.map((req) => req.postDataJSON() as unknown)).toEqual([{ ...backlogUiBody('tree-drag'), hash: EMPTY_SHA256 }]);
     await expect.poll(() => idsOf(page, 'group')).toEqual(['F7', 'F0', 'F5', 'F6']);
   });
 
@@ -142,7 +143,7 @@ test.describe('tree-reorder: priority (T31, ISC-196)', () => {
     await expect(entry).toBeVisible();
     const sent = page.waitForRequest(isBacklogWrite);
     await entry.click();
-    expect((await sent).postDataJSON()).toEqual({ op: 'priority', feature: 'F2', priority: 'P1', hash: EMPTY_SHA256 });
+    expect((await sent).postDataJSON()).toEqual({ ...backlogUiBody('tree-chip'), hash: EMPTY_SHA256 });
     await expect(chip.locator('ui-priority')).toHaveAttribute('data-level', 'P1');
     await expect(chip).not.toHaveAttribute('aria-busy', 'true');
   });
