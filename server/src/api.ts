@@ -111,7 +111,7 @@
 import type { Database } from "bun:sqlite";
 import { type Stats, readFileSync } from "node:fs";
 import { readFile, realpath, stat } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
@@ -207,13 +207,13 @@ const docNameOf = (type: LibraryDoc["type"]): DocName => (type === "constitution
  * never an escape, and nothing decodes it again. Core's `resolveEvidencePath` takes a raw request and refuses a percent
  * sequence after its one decode, which turned away a listed `run%20retry.md` (code-review finding 7). Its other rules
  * stand here: no control character or backslash, no empty, `.` or `..` segment, the real path below the real `dir`
- * (a symlink out is null) and a regular file.
+ * and a regular file. A real path that leaves `dir` (a symlink out) is `symlink-escape`, anything else unresolved null.
  */
 const catalogFileBelow = async (
   dir: string,
   rel: string,
   realDirOf: (dir: string) => Promise<string> = realpath,
-): Promise<{ real: string; stats: Stats } | null> => {
+): Promise<{ real: string; stats: Stats } | "symlink-escape" | null> => {
   // eslint-disable-next-line no-control-regex -- control characters are exactly what is refused here
   if (rel === "" || /[\u0000-\u001f\u007f\\]/.test(rel)) return null;
   const segments = rel.split("/");
@@ -221,7 +221,7 @@ const catalogFileBelow = async (
   try {
     const realDir = await realDirOf(dir);
     const real = await realpath(join(realDir, ...segments));
-    if (!real.startsWith(realDir + sep)) return null;
+    if (!real.startsWith(realDir + sep)) return "symlink-escape";
     const stats = await stat(real);
     return stats.isFile() ? { real, stats } : null;
   } catch {
@@ -458,17 +458,24 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
    * again): null for a document that is not readable Markdown, or whose real path leaves `specs/` (a symlink out). The
    * document is the catalog's entry in hand, so a request alone never names a file and nothing is looked up by path. A
    * spec's own file comes from its worktree copy when `copies` names one (core's `catalogSourceOf`, spec 027, ISC-181),
-   * confined to that copy's folder the same way. `realDirOf` lets a search resolve each folder once.
+   * resolved from the copy's `specs/` with `NNN-slug/<file>` (spec 041, ISC-216.1), so the confinement covers the copy
+   * folder itself: a copy folder or file whose real path leaves the worktree's `specs/` is `symlink-escape`, which the
+   * reader answers 403. A symlink out of the main checkout's `specs/` stays null (404), as before. `realDirOf` lets a
+   * search resolve each folder once.
    */
   const catalogFile = async (
     root: string,
     doc: LibraryDoc,
     copies: Readonly<Record<string, string>>,
     realDirOf?: (dir: string) => Promise<string>,
-  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string } | null> => {
+  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string } | "symlink-escape" | null> => {
     if (!isReadableDoc(doc)) return null;
     const source = catalogSourceOf(root, doc, copies);
-    const found = await catalogFileBelow(source.dir, source.rel, realDirOf);
+    const fromCopy = copies[doc.spec] === source.dir;
+    const found = fromCopy
+      ? await catalogFileBelow(dirname(source.dir), `${basename(source.dir)}/${source.rel}`, realDirOf)
+      : await catalogFileBelow(source.dir, source.rel, realDirOf);
+    if (found === "symlink-escape") return fromCopy ? found : null;
     // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`; it stays
     // the main checkout's, where a copy's relative images resolve (`artifacts/` and `.design/` are never read from a copy).
     return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical: join(root, "specs", ...doc.path.split("/")) };
@@ -491,6 +498,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const loaded = await docOf(workspace.path, path);
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
     const file = loaded.doc === null ? null : await catalogFile(workspace.path, loaded.doc, loaded.copies);
+    if (file === "symlink-escape") return json(req, 403, { error: "forbidden" }); // a worktree copy linked out (ISC-216.1)
     if (file === null) return json(req, 404, { error: "not-found" });
     let source: string;
     try {
@@ -521,7 +529,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     seen: Map<string, SearchText>,
   ): Promise<string | null> => {
     const file = await catalogFile(root, doc, copies, realDirOf);
-    if (file === null) return null;
+    if (file === null || file === "symlink-escape") return null;
     const { mtimeMs, size } = file.stats;
     const cached = previous.get(doc.path);
     let entry: SearchText;

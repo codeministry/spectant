@@ -626,6 +626,66 @@ describe("the library reads a spec's own documents from its read source (spec 02
   }
 });
 
+// Spec 041 (ISC-216.1): a worktree copy is resolved from `dirname(copy)` with `NNN-slug/<file>`, so the real-path
+// confinement covers the copy folder itself. A copy whose whole `specs/NNN-slug` is a link to a folder outside is
+// refused as a symlink escape: 403 `forbidden` (the contract's body for a `symlink-escape` refusal, as the evidence
+// route answers it), no outside byte in the answer and no search hit. A linked file in the copy never gets that far.
+describe("the library refuses a worktree copy that links out of its specs/ (spec 041, ISC-216.1)", () => {
+  const SECRET = "krakenlantern";
+
+  test("copy symlink escape: a linked file in the copy and a linked copy folder are 403, nothing delivered", async () => {
+    const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs: true });
+    const reg = openRegistry(mkdtempSync(join(root, "data-")));
+    try {
+      const ws = reg.add(planted.root).slug;
+      const handler = dashboardApi({ registry: reg, services: () => Promise.resolve([]) });
+      const get = async (path: string): Promise<Response> => {
+        const url = new URL(`http://127.0.0.1:7717${path}`);
+        const res = await handler(new Request(url.href, { headers: HOST }), url);
+        if (res === null) throw new Error(`the workspace routes declined ${path}`);
+        return res;
+      };
+      const copy = join(planted.worktrees.spec, "specs", SPEC_FOLDER);
+      const refused = async (name: string): Promise<{ name: string; status: number; body: string; leaked: boolean }> => {
+        const res = await get(workspaceRoutes.libraryDoc(ws, `${SPEC_FOLDER}/${name}`));
+        const body = await res.text();
+        return { name, status: res.status, body, leaked: body.includes(SECRET) };
+      };
+      const forbidden = (name: string) => ({ name, status: 403, body: JSON.stringify({ error: "forbidden" }), leaked: false });
+      const hits = async (): Promise<string[]> =>
+        ((await (await get(workspaceRoutes.librarySearch(ws, SECRET))).json()) as WorkspaceRouteResponses["librarySearch"]).hits.map((h) => h.path);
+
+      // (1) One file of the copy, plan.md, is a link to a file outside the worktree. Core's catalog checks every file
+      // with lstat and never follows a link, so it lists the file `missing` and the reader answers 404 before any
+      // resolution: refused upstream, nothing delivered either way.
+      const outsideFile = join(planted.base, "outside-plan.md");
+      writeFileSync(outsideFile, `# Outside\n\nThe ${SECRET} line.\n`);
+      rmSync(join(copy, "plan.md"));
+      symlinkSync(outsideFile, join(copy, "plan.md"));
+      expect(await refused("plan.md")).toEqual({ name: "plan.md", status: 404, body: JSON.stringify({ error: "not-found" }), leaked: false });
+      expect(await hits()).toEqual([]);
+
+      // (2) The copy folder itself, `specs/NNN-slug` in the worktree, is a link to a folder outside the worktree that
+      // holds a full spec folder (spec.md included), so the copy is still the spec's read source and the library
+      // resolves its documents through the link.
+      const outsideDir = join(planted.base, "outside-copy");
+      rmSync(join(copy, "plan.md"));
+      cpSync(copy, outsideDir, { recursive: true });
+      writeFileSync(join(outsideDir, "plan.md"), `# Outside plan\n\nThe ${SECRET} plan.\n`);
+      writeFileSync(join(outsideDir, "spec.md"), `${readFileSync(join(outsideDir, "spec.md"), "utf8")}\nThe ${SECRET} spec.\n`);
+      rmSync(copy, { recursive: true, force: true });
+      symlinkSync(outsideDir, copy);
+      const catalog = (await (await get(workspaceRoutes.library(ws))).json()) as WorkspaceRouteResponses["library"];
+      expect(catalog.docs.some((d) => d.path === `${SPEC_FOLDER}/plan.md`)).toBe(true);
+      for (const name of ["spec.md", "plan.md", "tasks.md"]) expect(await refused(name)).toEqual(forbidden(name));
+      expect(await hits()).toEqual([]);
+    } finally {
+      reg.close();
+      rmSync(planted.base, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
 // Code-review findings 8 and 9 (T60, T61, ISC-156.5): the reader reads only the asked document (core's `catalogDocAt`)
 // and the search only the catalog's documents (core's `readCatalogDocs`), never the dashboard model, and the search
 // resolves each document once, so it grows linearly with the documents. The answers stay byte-identical: the reference

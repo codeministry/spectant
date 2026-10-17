@@ -75,6 +75,8 @@ async function chipWorktrees(repo: PlantedWorktreeRepo): Promise<string[]> {
 describe("ISC-175.1 merged: the timeline derives the end of a spec's worktree from git, the chip goes, nothing is written", () => {
   test("merged: branch merged into main → one derived entry at the merge commit's date, chip gone, events.jsonl byte-identical", async () => {
     const repo = await plant({ merged: true });
+    // A clean worktree: an uncommitted change would keep the merged worktree live (ISC-212.2, `merged edge cases`).
+    rmSync(join(repo.worktrees.spec, UNCOMMITTED));
     const { entries, eventsBefore, eventsAfter } = await worktreeEntries(repo);
     expect(entries).toHaveLength(1);
     const [entry] = entries;
@@ -265,5 +267,65 @@ describe("ISC-212.1 ended everywhere: a merged, still present worktree is read n
     ]);
     const other = (await timelineOf(handler, OTHER_ID)).filter((e) => e.kind === "worktree");
     expect(other.filter((e) => e.worktree?.path === SPEC_WORKTREE)).toEqual([]);
+  });
+});
+
+// ── merged edge cases (spec 041, T9, ISC-212.2) ─────────────────────────────────────────────────────────────────────
+//
+// Three shapes the plain rule "merged ends the worktree" got wrong: a merged worktree that still holds an uncommitted
+// change is live (its chip stays, dirty, and the timeline says nothing of a merge); a spec branch merged while a live
+// worktree of the same spec runs on another, open branch yields no `merged` entry; and when a spec has several
+// branches, the worktree entry's branch and path are those of one and the same worktree.
+
+/** A second branch of spec 002 that never had a worktree; it sorts before `SPEC_BRANCH`, as git lists branches. */
+const DRAFT_BRANCH = `feature/${SPEC_ID}-console-draft`;
+
+/** Commits one new file on `branch`, made from `main` in the main checkout, which ends back on `main`. */
+async function commitOnBranch(repo: PlantedWorktreeRepo, branch: string, file: string): Promise<void> {
+  expect((await repo.git(repo.root, "switch", "-q", "-c", branch)).code).toBe(0);
+  writeFileSync(join(repo.root, "src", file), `// ${branch}\nexport const draft = true;\n`);
+  expect((await repo.git(repo.root, "add", "--", `src/${file}`)).code).toBe(0);
+  expect((await repo.git(repo.root, "commit", "-q", "-m", `console: ${file}`)).code).toBe(0);
+  expect((await repo.git(repo.root, "switch", "-q", "main")).code).toBe(0);
+}
+
+describe("ISC-212.2 merged edge cases: an uncommitted change, a second open branch, branch and path of one worktree", () => {
+  test("merged edge cases: merged worktree with an uncommitted change → the chip stays (dirty), no merged entry", async () => {
+    const repo = await plant({ merged: true });
+    expect((await repo.git(repo.worktrees.spec, "status", "--porcelain")).stdout).toContain(UNCOMMITTED);
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    const chip = (reading.input.worktrees?.worktrees ?? []).filter((w) => w.kind === "spec" && w.spec === SPEC_ID);
+    expect(chip.map((w) => ({ path: w.path, branch: w.branch, dirty: w.dirty }))).toEqual([
+      { path: SPEC_WORKTREE, branch: SPEC_BRANCH, dirty: true },
+    ]);
+    const entries = (await timelineOf(handlerFor(repo), SPEC_ID)).filter((e) => e.kind === "worktree");
+    expect(entries.filter((e) => e.worktree?.state === "merged")).toEqual([]);
+  });
+
+  test("merged edge cases: one spec branch merged beside a live worktree on another, open branch → no merged entry", async () => {
+    const repo = await plant();
+    const merged = `feature/${SPEC_ID}-console-fix`;
+    await commitOnBranch(repo, merged, "fix.ts");
+    expect((await repo.git(repo.root, "merge", "-q", "--no-ff", "-m", `Merge branch '${merged}'`, merged)).code).toBe(0);
+    expect(await chipWorktrees(repo)).toEqual([SPEC_WORKTREE]);
+    const entries = (await timelineOf(handlerFor(repo), SPEC_ID)).filter((e) => e.kind === "worktree");
+    expect(entries.filter((e) => e.worktree?.state === "merged")).toEqual([]);
+  });
+
+  test("merged edge cases: a spec with two branches, one with a worktree → branch and path of the same worktree", async () => {
+    const repo = await plant();
+    await commitOnBranch(repo, DRAFT_BRANCH, "draft-branch.ts");
+    // The spec worktree's folder goes while git still lists it: no live worktree, the spec's work has stopped.
+    rmSync(repo.worktrees.spec, { recursive: true, force: true });
+    const entries = (await timelineOf(handlerFor(repo), SPEC_ID)).filter((e) => e.kind === "worktree");
+    expect(entries.map((e) => e.worktree?.state)).toEqual(["removed"]);
+    const pair = { branch: entries[0]?.worktree?.branch, path: entries[0]?.worktree?.path };
+    // The listed worktree's own pair, or the worktree-less branch with no path; never one branch with another's path.
+    const consistent: Array<{ branch: string | null | undefined; path: string | null | undefined }> = [
+      { branch: SPEC_BRANCH, path: SPEC_WORKTREE },
+      { branch: DRAFT_BRANCH, path: null },
+    ];
+    expect(consistent).toContainEqual(pair);
   });
 });

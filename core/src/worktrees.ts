@@ -244,7 +244,10 @@ export interface WorktreeFacts {
   readonly merged: readonly string[];
   /** The worktree paths whose folder still holds its `.git`. */
   readonly present: readonly string[];
-  /** The worktree paths where `git status --porcelain` printed anything. */
+  /**
+   * The worktree paths where `git status --porcelain` printed anything. A spec worktree listed here does not end by
+   * its merged branch: the uncommitted change is work the merge did not take (ISC-212.2).
+   */
   readonly dirty: readonly string[];
 }
 
@@ -290,23 +293,31 @@ export interface WorktreeView {
  * Splits an assignment by the rule "ended" (FORMAT.md § Worktrees): a spec worktree of a spec has ended when its
  * branch is merged into `main`, its folder is gone, or git lists it as `prunable`. When several apply, the reason is
  * the first of `merged`, `prunable`, `removed`: a merge is the strongest fact, and `prunable` is git's own word for a
- * folder or gitdir that is gone. Builders and worktrees of no spec never end here; they are not read either way.
+ * folder or gitdir that is gone. A merge does not end a worktree whose path is in `facts.dirty`: its uncommitted change
+ * is work the merge did not take, so it stays live until the change is committed or dropped, while `prunable` and
+ * `removed` still end it (ISC-212.2). Builders and worktrees of no spec never end here; they are not read either way.
  */
 export function liveWorktrees(assignment: WorktreeAssignment, facts: WorktreeFacts): LiveWorktrees {
   const merged = new Set(facts.merged);
   const present = new Set(facts.present);
+  const dirty = new Set(facts.dirty);
   const live: Worktree[] = [];
   const ended: EndedWorktree[] = [];
   for (const worktree of assignment.worktrees) {
-    const reason = worktree.kind !== 'spec' || worktree.spec === null ? null : endOf(worktree, merged, present);
+    const reason = worktree.kind !== 'spec' || worktree.spec === null ? null : endOf(worktree, merged, present, dirty);
     if (reason === null) live.push(worktree);
     else ended.push({ worktree, reason });
   }
   return { live, ended };
 }
 
-function endOf(worktree: Worktree, merged: ReadonlySet<string>, present: ReadonlySet<string>): WorktreeEnd | null {
-  if (worktree.branch !== null && merged.has(worktree.branch)) return 'merged';
+function endOf(
+  worktree: Worktree,
+  merged: ReadonlySet<string>,
+  present: ReadonlySet<string>,
+  dirty: ReadonlySet<string>,
+): WorktreeEnd | null {
+  if (worktree.branch !== null && merged.has(worktree.branch) && !dirty.has(worktree.path)) return 'merged';
   if (worktree.prunable === true) return 'prunable';
   if (!present.has(worktree.path)) return 'removed';
   return null;

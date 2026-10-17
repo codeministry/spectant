@@ -565,3 +565,65 @@ describe('copyDirFor: the worktree copy a spec is read from, over the one worktr
     expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': HARBOR_TRACKED }, facts))).toBe(HARBOR_COPY);
   });
 });
+
+// Spec 041, ISC-212.2: a merge alone does not end a spec worktree that still holds an uncommitted change. Its path in
+// `facts.dirty` keeps it live, so the chip stays and its copy is still read; `prunable` and `removed` end it all the
+// same, and a clean merged worktree ends as before. `-t dirty` runs these.
+describe('dirty: a merged spec worktree with an uncommitted change is live (ISC-212.2)', () => {
+  const text = listingOf([
+    { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+    { path: '/srv/repo/.worktrees/014-export', branch: 'feature/014-export' },
+  ]);
+  const present = allPresent(text, SPECS);
+
+  test('merged and dirty: live, not ended', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(text, SPECS), {
+      ...present,
+      merged: ['feature/012-harbor'],
+      dirty: ['.worktrees/012-harbor'],
+    });
+    expect(live.map((w) => w.spec)).toEqual(['012', '014']);
+    expect(ended).toEqual([]);
+  });
+
+  test('merged and clean: still ended with the reason merged', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(text, SPECS), { ...present, merged: ['feature/012-harbor'] });
+    expect(live.map((w) => w.spec)).toEqual(['014']);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([['012', 'merged']]);
+  });
+
+  test("another worktree's change does not keep a merged one live", () => {
+    const { ended } = liveWorktrees(assignWorktrees(text, SPECS), {
+      ...present,
+      merged: ['feature/012-harbor'],
+      dirty: ['.worktrees/014-export'],
+    });
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([['012', 'merged']]);
+  });
+
+  test('merged, dirty and its folder gone: ended with the reason removed', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(text, SPECS), {
+      merged: ['feature/012-harbor'],
+      present: present.present.filter((p) => p !== '.worktrees/012-harbor'),
+      dirty: ['.worktrees/012-harbor'],
+    });
+    expect(live.some((w) => w.spec === '012')).toBe(false);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([['012', 'removed']]);
+  });
+
+  test('merged, dirty and prunable: ended with the reason prunable', () => {
+    const facts = {
+      merged: ['feature/015-ledger'],
+      present: ['.worktrees/012-harbor', '.worktrees/015-ledger'],
+      dirty: ['.worktrees/015-ledger'],
+    };
+    const { live, ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), facts);
+    expect(live.some((w) => w.spec === '015')).toBe(false);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toContainEqual(['015', 'prunable']);
+  });
+
+  test('the merged worktree with a change stays the read source of its spec', () => {
+    const facts = { ...present, merged: ['feature/012-harbor'], dirty: ['.worktrees/012-harbor'] };
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': HARBOR_TRACKED }, facts))).toBe(HARBOR_COPY);
+  });
+});

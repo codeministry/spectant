@@ -313,10 +313,15 @@ export async function readWorktreeView(root: string, refs: readonly SpecRef[] = 
   const [porcelain, merge] = await Promise.all([worktreeList(root), mergedSpecBranches(root)]);
   const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
   const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
+  const merged = merge.branches.filter((b) => b.merged).map((b) => b.branch);
+  const present = ofSpec.filter((w) => hasGit(join(root, w.path)));
+  // A merged worktree still holding uncommitted work stays the spec's (ISC-212.2): only those are asked here.
+  const mergedPresent = present.filter((w) => w.branch !== null && merged.includes(w.branch));
+  const dirtyMerged = await Promise.all(mergedPresent.map((w) => dirty(join(root, w.path))));
   const facts = {
-    merged: merge.branches.filter((b) => b.merged).map((b) => b.branch),
-    present: ofSpec.filter((w) => hasGit(join(root, w.path))).map((w) => w.path),
-    dirty: [],
+    merged,
+    present: present.map((w) => w.path),
+    dirty: mergedPresent.filter((_, i) => dirtyMerged[i] === true).map((w) => w.path),
   };
   const split = liveWorktrees(assignment, facts);
   const live: Worktree[] = [];
@@ -341,13 +346,18 @@ export async function readWorktreeView(root: string, refs: readonly SpecRef[] = 
 /**
  * The timeline's `worktree` input for the spec folder `folder` at `root` (spec 027, T25, ISC-175.1), from git alone:
  *
+ * The spec's branches are those named for it and those its worktrees carry, as the whole workspace assigns them, so the
+ * path wins over the branch here too (ISC-174.1, ISC-212.1); `reading` is the caller's `readWorktreeView`, read anew
+ * when absent.
+ *
+ * - null while a live worktree carries the spec, on whatever branch, a merged one with uncommitted work included
+ *   (ISC-212.2), and when the spec has no branch (nothing to say).
  * - `merged` when one of the spec's branches is merged into `main` (`mergedSpecBranches`, ISC-162.1), dated by its merge
- *   commit (`mergeCommitOf`); a merge commit git cannot name gives no entry rather than an undated one.
- * - `removed` when the spec has a branch, none merged, and no live worktree carries the spec: git lists none, or only
- *   one whose folder is gone, whose path the entry then names. A branch checked out in the main checkout is worked on
- *   there and counts as open. A branch that never had a worktree reads as removed too (principal, 2026-10-14): spec
- *   work runs in a worktree of its own.
- * - null otherwise: no branch (nothing to say), or the worktree lives (the branch is open).
+ *   commit (`mergeCommitOf`); a merge commit git cannot name gives no entry rather than an undated one. A merged branch
+ *   with a worktree is preferred, and branch and path always come from that one worktree (ISC-212.2).
+ * - `removed` when the spec has a branch, none merged: the path and branch of the worktree git still lists for it, if
+ *   any. A branch checked out in the main checkout is worked on there and counts as open. A branch that never had a
+ *   worktree reads as removed too (principal, 2026-10-14): spec work runs in a worktree of its own.
  *
  * Nothing is written: the entry is derived on every read, `events.jsonl` stays byte-identical.
  */
@@ -358,18 +368,21 @@ export async function timelineWorktreeOf(root: string, folder: string, reading?:
   // The spec's worktrees as the whole workspace assigns them, so the path wins over the branch (ISC-174.1).
   const mine = view.assignment.worktrees.filter((w) => w.kind === "spec" && w.spec === spec);
   const own = branches.filter((b) => b.spec === spec || mine.some((w) => w.branch === b.branch));
-  if (own.length === 0) return null;
-  const live = view.live.find((w) => w.kind === "spec" && w.spec === spec);
-  const merged = own.find((b) => b.merged);
+  // A live worktree of the spec, on whatever branch, means the spec is still worked on: no entry (ISC-212.2).
+  if (own.length === 0 || view.live.some((w) => w.kind === "spec" && w.spec === spec)) return null;
+  // Branch and path always come from one worktree when the spec has one for the branch (ISC-212.2).
+  const worktreeOf = (branch: string): Worktree | undefined => mine.find((w) => w.branch === branch);
+  const mergedOwn = own.filter((b) => b.merged);
+  const merged = mergedOwn.find((b) => worktreeOf(b.branch) !== undefined) ?? mergedOwn[0];
   if (merged !== undefined) {
     const commit = await mergeCommitOf(root, merged.branch);
     if (commit === null) return null;
-    const path = (mine.find((w) => w.branch === merged.branch) ?? live)?.path ?? null;
-    return { merged: commit, removed: false, branch: merged.branch, path };
+    return { merged: commit, removed: false, branch: merged.branch, path: worktreeOf(merged.branch)?.path ?? null };
   }
-  if (live !== undefined || own.some((b) => b.branch === view.mainBranch)) return null;
-  const branch = own[0]?.branch ?? null;
-  return { merged: null, removed: true, branch, path: mine[0]?.path ?? null };
+  if (own.some((b) => b.branch === view.mainBranch)) return null;
+  const listed = mine.find((w) => w.branch !== null && own.some((b) => b.branch === w.branch)) ?? mine[0];
+  if (listed !== undefined) return { merged: null, removed: true, branch: listed.branch, path: listed.path };
+  return { merged: null, removed: true, branch: own[0]?.branch ?? null, path: null };
 }
 
 /** How the loader read one active spec (spec 027): its files, the `SpecRead` beside them, and the copy's folder. */
@@ -383,7 +396,7 @@ interface SpecSourceReading {
 }
 
 /** A worktree path inside the repository: the only ones whose files are read (plan 027 § Risks, external paths). */
-const insideRepository = (path: string): boolean => !isAbsolute(path) && path !== ".." && !path.startsWith("../");
+export const insideRepository = (path: string): boolean => !isAbsolute(path) && path !== ".." && !path.startsWith("../");
 
 /** Whether `path` holds its own `.git` (a linked worktree's is a file): a worktree git lists but that is gone is not read. */
 function hasGit(path: string): boolean {
@@ -441,12 +454,13 @@ async function specSourceFor(
 /**
  * One spec's files from its read source, for the routes that read a single spec (the spec page's tabs): the same
  * decision `readWorkspaceInput` makes per spec, so a tab never reads another copy than the row and the head (ISC-181).
- * `dir` is the folder the copy kinds were read from (the worktree copy's, or the main checkout's `ref.dir`).
+ * `dir` is the folder the copy kinds were read from (the worktree copy's, or the main checkout's `ref.dir`). `reading` is the
+ * caller's `readWorktreeView`, read anew when absent.
  */
-export async function readSpecSource(root: string, ref: SpecRef): Promise<{ files: SpecFiles; dir: string }> {
+export async function readSpecSource(root: string, ref: SpecRef, reading?: WorktreeReading): Promise<{ files: SpecFiles; dir: string }> {
   const main = specFiles(ref.dir, ref.slug);
   if (ref.archived) return { files: main, dir: ref.dir };
-  const { view } = await readWorktreeView(root);
+  const { view } = reading ?? (await readWorktreeView(root));
   const source = await specSourceFor(root, ref, main, view);
   return { files: source.files, dir: source.copy ?? ref.dir };
 }

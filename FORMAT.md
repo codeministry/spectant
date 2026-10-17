@@ -1402,7 +1402,9 @@ A spec worktree of a spec has ended when its branch is merged into `main` (the m
 ISC-162.1), when git lists it as `prunable` (ISC-212), or when git still lists it but its folder no longer holds its
 `.git` (`removed`). `liveWorktrees` (`core/src/worktrees.ts`) applies this rule on the facts the server read and names
 one reason per ended worktree; when several apply, `merged` wins over `prunable`, and `prunable` over `removed`.
-Builders and worktrees of no spec never end. An ended worktree is left out of the reading: no chip shows, it is no read
+One exception: a merge does not end a worktree that still holds an uncommitted change (`git status --porcelain` prints
+anything in it), because that change is work the merge did not take; it stays live until the change is committed or
+dropped, while `prunable` and `removed` still end it (ISC-212.2). Builders and worktrees of no spec never end. An ended worktree is left out of the reading: no chip shows, it is no read
 source and no dev service is assigned to it, and the spec reads from the main checkout again (ISC-175.1). The spec's timeline then carries one derived `worktree`
 entry, never a line in `events.jsonl`: `merged`, dated by the merge commit (the oldest commit on `main`'s
 first-parent line with the branch's tip as an ancestor and a second parent), or `removed`, undated, when the spec has a

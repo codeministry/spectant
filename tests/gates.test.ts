@@ -5,7 +5,7 @@
 // refuses and writes nothing; without `--yes` it only prints. `bun test tests/gates.test.ts -t feature` runs them all.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { actorIdOf } from "../core/src/actor-id.ts";
@@ -19,7 +19,7 @@ import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { loadDashboard, readWorkspaceInput, worktreeTreeId } from "../server/src/workspace-loader.ts";
 import { WRITE_PATHS } from "../server/src/writes.contract.ts";
 import { type PlantedWorktreeRepo, SPEC_FOLDER, SPEC_ID, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
@@ -289,5 +289,96 @@ describe("ISC-176 worktree: the code-review mark of a spec with a worktree compa
 
     writeFileSync(mainFile, mainText);
     expect(await states()).toEqual({ [SPEC_FOLDER]: "fresh", [WITHOUT]: "fresh" });
+  });
+});
+
+// The feature-level code-review mark of a spec with a worktree of its own (spec 041, T38, ISC-211), on the fixture of
+// `tests/fixtures/worktree-repo.ts`: spec 002 (main feature F2, its open claims ticked in the master and the spec so the
+// CLI does not refuse) has the worktree `.worktrees/002-web-console`. `spectant gate code-reviewed F2 --yes` must hash
+// that worktree, not the main checkout, and write the mark into the spec's read source: (A) with `specs/` tracked, the
+// worktree's copy `specs/002-web-console/`, the main checkout untouched; (B) with `specs/` untracked and linked into
+// the worktree (this repository's own layout), the main checkout's folder, the same file through the link. The app then
+// reads the mark fresh, stale after a change only in the worktree, and still stale after a further change only in the
+// main checkout. `bun test tests/gates.test.ts -t "cli mark worktree"` runs the group.
+describe("ISC-211 cli mark worktree: spectant gate code-reviewed F<n> marks a spec with a worktree against that worktree", () => {
+  const F2_OPEN = /^- \[ \] (ISC-7[4-8]):/gm;
+
+  /** Ticks F2's open claims ISC-74…78 in `file`; returns whether anything changed. */
+  function closeF2(file: string): boolean {
+    const text = readFileSync(file, "utf8");
+    const ticked = text.replace(F2_OPEN, "- [x] $1:"); // single-core: allow — test setup ticks known claim lines
+    if (ticked === text) return false;
+    writeFileSync(file, ticked);
+    return true;
+  }
+
+  /** Every file of the main checkout, its worktrees, `.claude/` and `.git/` left out. */
+  function mainSnapshot(repo: string): Map<string, string> {
+    const all = snapshot(repo);
+    for (const key of [...all.keys()]) if (/^(\.worktrees|\.claude|\.git)\//.test(key)) all.delete(key);
+    return all;
+  }
+
+  async function stateOf002(repo: string): Promise<string> {
+    const load = await loadDashboard(repo, null);
+    if (!load.readable) throw new Error(`unreadable: ${load.error}`);
+    const row = load.model.specs.find((r) => r.slug === SPEC_FOLDER);
+    if (row === undefined) throw new Error(`no row for ${SPEC_FOLDER}`);
+    return row.gates.codeReviewed.state;
+  }
+
+  function treeOf(markFile: string): string | undefined {
+    const reading = readGateMark("code-reviewed", readFileSync(markFile, "utf8"));
+    expect(reading.diagnostics).toEqual([]);
+    return reading.mark !== null && "tree" in reading.mark ? reading.mark.tree : undefined;
+  }
+
+  async function changeOnlyInWorktreeThenMain(planted: PlantedWorktreeRepo): Promise<void> {
+    const worktreeFile = join(planted.worktrees.spec, "src", "console.ts");
+    writeFileSync(worktreeFile, `${readFileSync(worktreeFile, "utf8")}// reviewed? not this line.\n`);
+    expect(await stateOf002(planted.root)).toBe("stale");
+    const mainFile = join(planted.root, "src", "console.ts");
+    writeFileSync(mainFile, `${readFileSync(mainFile, "utf8")}// a change on main only.\n`);
+    expect(await stateOf002(planted.root)).toBe("stale");
+  }
+
+  test("cli mark worktree (A, tracked specs/): the mark lands in the worktree's copy with the worktree's tree; current → stale → stays stale", async () => {
+    const planted = await plantWorktreeRepo({ parent: root, trackedSpecs: true });
+    const copy = join(planted.worktrees.spec, "specs", SPEC_FOLDER);
+    for (const file of [join(planted.root, "ISA.md"), join(planted.root, "specs", SPEC_FOLDER, "spec.md"), join(planted.worktrees.spec, "ISA.md"), join(copy, "spec.md")]) {
+      expect(closeF2(file)).toBe(true);
+    }
+    const mainBefore = mainSnapshot(planted.root);
+
+    expect(await run(["gate", "code-reviewed", "F2", "--root", planted.root, "--yes"], MANIFEST)).toBe(0);
+    expect(err).toEqual([]);
+
+    const copyMark = join(copy, ".gates", "code-reviewed.json");
+    expect(existsSync(copyMark)).toBe(true);
+    expect(treeOf(copyMark)).toBe((await worktreeTreeId(planted.worktrees.spec)) ?? "no worktree tree");
+    expect(existsSync(join(planted.root, "specs", SPEC_FOLDER, ".gates", "code-reviewed.json"))).toBe(false);
+    expect(changed(mainBefore, mainSnapshot(planted.root))).toEqual([]);
+
+    expect(await stateOf002(planted.root)).toBe("fresh");
+    await changeOnlyInWorktreeThenMain(planted);
+  });
+
+  test("cli mark worktree (B, linked specs/): the mark lands in the main checkout's folder with the worktree's tree; current → stale → stays stale", async () => {
+    const planted = await plantWorktreeRepo({ parent: root });
+    for (const file of [join(planted.root, "ISA.md"), join(planted.root, "specs", SPEC_FOLDER, "spec.md")]) expect(closeF2(file)).toBe(true);
+
+    expect(await run(["gate", "code-reviewed", "F2", "--root", planted.root, "--yes"], MANIFEST)).toBe(0);
+    expect(err).toEqual([]);
+
+    const mainMark = join(planted.root, "specs", SPEC_FOLDER, ".gates", "code-reviewed.json");
+    expect(existsSync(mainMark)).toBe(true);
+    // The worktree links `specs/` to the main checkout's: the same file through the link.
+    expect(readFileSync(join(planted.worktrees.spec, "specs", SPEC_FOLDER, ".gates", "code-reviewed.json"), "utf8")).toBe(readFileSync(mainMark, "utf8"));
+    const worktreeTree = await worktreeTreeId(planted.worktrees.spec);
+    expect(worktreeTree).not.toBe(await worktreeTreeId(planted.root));
+    expect(treeOf(mainMark)).toBe(worktreeTree ?? "no worktree tree");
+
+    expect(await stateOf002(planted.root)).toBe("fresh");
+    await changeOnlyInWorktreeThenMain(planted);
   });
 });

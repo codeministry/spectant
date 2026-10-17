@@ -679,8 +679,10 @@ export interface MergeCommit {
  * The commit that merged `branch` into `main` in `root`'s repository (spec 027, T25, ISC-175.1): the oldest commit on `main`'s first-parent line that has the branch's tip as
  * an ancestor and two or more parents, with its committer date, the moment `main` received the merge. Three reads:
  * `for-each-ref --format=%(objectname) refs/heads/<branch>` for the tip, `rev-list --first-parent refs/heads/main --`
- * for that line and `log --ancestry-path --format=%H %cI %P refs/heads/<branch>..refs/heads/main --` for the commits
- * that descend from the tip, newest first; the last of those on the line with a second parent is the merge commit. A
+ * for that line and `log --ancestry-path --topo-order --reverse --format=%H %cI %P refs/heads/<branch>..refs/heads/main --`
+ * for the commits that descend from the tip, oldest first in topological order (spec 041, ISC-214); the first of those
+ * on the line with a second parent is the merge commit, whatever the committer dates say (a skewed clock can date a
+ * later merge before an earlier one, and a walk in date order then lists it last). A
  * tip on the line itself (fresh, or fast-forwarded into `main`) was brought in by no merge and answers null, as
  * `mergedSpecBranches` reads it unmerged. All three read refs and objects only: no index, no lock (`GIT_OPTIONAL_LOCKS=0` besides), no fetch, no network; the refs are full names, so
  * neither a tag nor a file of the branch's name is read instead.
@@ -707,13 +709,13 @@ export async function mergeCommitOf(root: string, branch: string, options: UserE
     const firstParent = new Set(line.stdout.split("\n").filter((sha) => SHA.test(sha)));
     if (firstParent.has(tip)) return null;
     const range = `refs/heads/${branch}..${MAIN_REF}`;
-    const path = await runner(["-C", root, "log", "--ancestry-path", "--format=%H %cI %P", range, "--"], env, signal);
+    // Oldest first in topology, never by date: a committer clock that runs behind must not move the merge (ISC-214).
+    const path = await runner(["-C", root, "log", "--ancestry-path", "--topo-order", "--reverse", "--format=%H %cI %P", range, "--"], env, signal);
     if (path?.code !== 0 || aborted()) return null;
-    let merge: MergeCommit | null = null;
     for (const entry of path.stdout.split("\n")) {
       const [commit = "", at = "", ...parents] = entry.trim().split(" ");
-      if (firstParent.has(commit) && at !== "" && parents.length >= 2) merge = { commit, at };
+      if (firstParent.has(commit) && at !== "" && parents.length >= 2) return { commit, at };
     }
-    return merge;
+    return null;
   });
 }

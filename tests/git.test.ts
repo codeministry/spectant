@@ -820,7 +820,7 @@ describe("mergeCommitOf names the commit that merged a spec branch into main (sp
     expect(seen.map((s) => s.args)).toEqual([
       ["-C", dir, "for-each-ref", "--format=%(objectname)", "refs/heads/feature/001-x"],
       ["-C", dir, "rev-list", "--first-parent", "refs/heads/main", "--"],
-      ["-C", dir, "log", "--ancestry-path", "--format=%H %cI %P", "refs/heads/feature/001-x..refs/heads/main", "--"],
+      ["-C", dir, "log", "--ancestry-path", "--topo-order", "--reverse", "--format=%H %cI %P", "refs/heads/feature/001-x..refs/heads/main", "--"],
     ]);
     for (const s of seen) expect(s.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
   });
@@ -841,6 +841,27 @@ describe("mergeCommitOf names the commit that merged a spec branch into main (sp
     const before = checksum(dir);
     for (const branch of ["feature/001-x", "feature/002-ff", "feature/003-open"]) await mergeCommitOf(dir, branch);
     await mergeCommitOf(dir, "feature/001-x", { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
+  });
+
+  test("two later merges, one with a clock behind M's → still M, read with --topo-order --reverse, the repository byte- and mtime-identical (spec 041, ISC-214)", async () => {
+    // mergeRepo, then topic/other and topic/side from m2; main merges topic/other at a date before M's (M2) and
+    // topic/side after (M3). A date-order walk reaches M through topic/side before M2 and lists M2 behind M.
+    const { dir, merge } = mergeRepo();
+    for (const name of ["topic/other", "topic/side"]) {
+      git(dir, "2026-02-09T00:00:00Z", "switch", "-q", "-c", name, "main");
+      commit(dir, "2026-02-09T00:00:00Z", name, { [`${basename(name)}.txt`]: `${name}\n` });
+      git(dir, "2026-02-09T00:00:00Z", "switch", "-q", "main");
+    }
+    git(dir, "2026-02-05T12:00:00Z", "merge", "-q", "--no-ff", "-m", "merge other", "topic/other");
+    git(dir, "2026-02-10T00:00:00Z", "merge", "-q", "--no-ff", "-m", "merge side", "topic/side");
+    const before = checksum(dir);
+    const { runner, calls } = countingRunner();
+    const found = await mergeCommitOf(dir, "feature/001-x", { runner });
+    expect(found?.commit).toBe(merge);
+    expect(Date.parse(found?.at ?? "")).toBe(Date.parse("2026-02-06T10:00:00Z"));
+    expect(logCalls(calls)).toBe(1);
+    expect(calls.filter((args) => args.includes("log")).every((args) => args.includes("--topo-order") && args.includes("--reverse"))).toBe(true);
     expect(checksum(dir)).toBe(before);
   });
 });

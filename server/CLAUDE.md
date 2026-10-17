@@ -39,9 +39,13 @@ The CLI adds two further paths, never written by a route, both over `writes.ts`'
 
 - The feature-level code-review mark, `WRITE_PATHS.codeReviewFeature` (`spectant gate code-reviewed F<n> [--root DIR]
   [--yes]`, `server/src/feature-gate.ts`; no `WRITE_TABLE` row). It refuses while a spec of the feature still holds an
-  open claim, appends one `code-review → close` event per target, then writes the same `scope: F<n>` mark with the
-  tree id of the worktree as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Without
-  `--yes` it prints the plan and writes nothing; `tests/gates.test.ts` (`-t feature`) holds its probes.
+  open claim, appends one `code-review → close` event per target, then writes the `scope: F<n>` mark with the tree id
+  of the target's checkout as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Each
+  target is placed by the one worktree view the app reads (spec 041, ISC-211): the event and the mark go into the
+  spec's read source (`readSpecSource`, the worktree copy when `specs/` is tracked there), and the tree, `HEAD` and
+  branch come from the spec's live worktree inside the repository, else from the main checkout. Without `--yes` it
+  prints the plan, with source and checkout per target, and writes nothing; `tests/gates.test.ts` (`-t feature`,
+  `-t "cli mark worktree"`) holds its probes.
 - The token measurement, `spectant tokens --yes`, takes its target from `WRITE_PATHS.tokens`; it belongs to no spec, so
   no claim holds it.
 
