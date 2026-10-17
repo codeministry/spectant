@@ -10,6 +10,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
+import { BacklogWriter } from '../backlog/backlog-writer.service';
 import { planningCounts } from './planning-counts';
 import { PlanningGraph } from './planning-graph/planning-graph';
 import { PlanningMatrix } from './planning-matrix/planning-matrix';
@@ -52,6 +53,9 @@ export class PlanningPage {
   protected readonly missing = this.pageState.missing;
   protected readonly unavailable = this.pageState.unavailable;
   protected readonly model = this.data.planningModel;
+  private readonly writer = inject(BacklogWriter);
+  /** The tree's model: the served one with the backlog writes the route accepted (spec 037), so a move shows on the 200. */
+  protected readonly treeModel = computed(() => this.writer.model() ?? this.model());
   protected readonly counts = computed(() => {
     const model = this.model();
     return model === null ? null : planningCounts(model);

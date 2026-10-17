@@ -61,6 +61,7 @@ import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { tokensCommand } from "../server/src/tokens-cli.ts";
 import { WRITE_PATHS, WRITE_TABLE, writePathsOf } from "../server/src/writes.contract.ts";
 import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { BACKLOG_UI_SEQUENCE, EMPTY_BACKLOG_HASH } from "../web/e2e/backlog-ui-sequence.ts";
 import { BUILDER_WORKTREE, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
@@ -1285,6 +1286,59 @@ describe("ISC-191.2 with the backlog: a refused write changes nothing, an accept
       registry.close();
     }
   });
+});
+
+// Spec 037 (ISC-199, T45): the calls the tree lens and the workspace board send (`web/e2e/backlog-ui-sequence.ts`, the
+// list the e2e takes its expected bodies from) replayed in list order through the real backlog route on one copy of
+// harbor, each with the hash the previous answer named. Every answer is 200, every file but the two of
+// `WRITE_PATHS.backlog` keeps its bytes, `.git/` included (its mtimes too), the log gains one line per call, and no
+// request leaves the process.
+describe("backlog-ui: reordering and prioritising in the tree and on the board change only the backlog files", () => {
+  test("readonly backlog-ui: the UI's backlog calls, replayed on a harbor copy, touch only specs/backlog.md and its log, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "backlog-ui-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const registry = openRegistry(mkdtempSync(join(root, "data-backlog-ui-")));
+    registry.add(copy);
+    const api = dashboardApi({ registry, services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT });
+    const hosts: string[] = [];
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request) => {
+      hosts.push(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return Promise.reject(new Error("no request may leave the process"));
+    }) as typeof fetch);
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: JSON.stringify(body) };
+      const res = await api(new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init }), url);
+      if (res === null) throw new Error(`the workspace routes declined ${path}`);
+      return res;
+    };
+
+    try {
+      const before = snapshot(copy);
+      expect(before.entries.has("specs/backlog.md")).toBe(false);
+      expect(((await (await call(workspaceRoutes.planning(SLUG))).json()) as { backlogHash: string }).backlogHash).toBe(EMPTY_BACKLOG_HASH);
+      let hash: string = EMPTY_BACKLOG_HASH;
+      for (const { id, body } of BACKLOG_UI_SEQUENCE) {
+        const res = await call(workspaceRoutes.backlog(SLUG), "POST", { ...body, hash });
+        const answer = (await res.json()) as { hash?: string };
+        expect({ id, status: res.status }).toEqual({ id, status: 200 });
+        hash = answer.hash ?? "";
+      }
+
+      const after = snapshot(copy);
+      // Bytes everywhere, mtimes under .git/ as well (the specs/ folder's own mtime moves when the two files appear).
+      expect(changed(before, after)).toEqual([...WRITE_PATHS.backlog.writes].sort());
+      expect(changed(before, after, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"))).toEqual([]);
+      expect(underGit(after)).toEqual(underGit(before));
+      const log = readFileSync(join(copy, "specs", "backlog.events.jsonl"), "utf8").split("\n").filter((line) => line !== "");
+      expect(log).toHaveLength(BACKLOG_UI_SEQUENCE.length);
+      expect(sha256(readFileSync(join(copy, "specs", "backlog.md")))).toBe(hash);
+      expect(hosts).toEqual([]);
+    } finally {
+      spy.mockRestore();
+      registry.close();
+    }
+  }, 60_000);
 });
 
 // ISC-192.1: the seventh path is named with exactly its two files, creates no directory, and the root CLAUDE.md lists it.

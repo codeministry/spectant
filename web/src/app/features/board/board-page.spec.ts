@@ -1,4 +1,6 @@
+import { type CdkDrag, type CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { provideHttpClient } from '@angular/common/http';
+import { By } from '@angular/platform-browser';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -21,7 +23,13 @@ const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notMod
 const PLANNING = planningGolden as unknown as PlanningBody;
 const EMPTY: PlanningBody = { ...PLANNING, stageCounts: {}, ideas: [], features: [], milestones: [] };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'putBoardQuery'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'putBoardQuery' | 'backlog'>;
+type BacklogResult = Awaited<ReturnType<ApiClient['backlog']>>;
+
+/** Every backlog write the page sent (spec 037) as `feature>before|hash`, and the fake's answer, a 200 by default. */
+let backlogCalls: string[] = [];
+const WRITTEN = { kind: 'answer', answer: { status: 200, body: { hash: 'h2', event: {} } } } as unknown as BacklogResult;
+let backlogAnswer: BacklogResult = WRITTEN;
 
 let harness: RouterTestingHarness;
 
@@ -61,6 +69,10 @@ async function open(
     putBoardQuery: (ws, query) => {
       saved.push(`${ws}|${query}`);
       return Promise.resolve({ kind: 'ok', body: { query } });
+    },
+    backlog: (_ws, op, hash) => {
+      backlogCalls.push(op.op === 'move' ? `${op.feature}>${op.before ?? 'end'}|${hash}` : `${op.feature}=${op.priority}|${hash}`);
+      return Promise.resolve(backlogAnswer);
     },
   };
   TestBed.configureTestingModule({
@@ -170,7 +182,7 @@ describe('BoardPage (T121, ISC-129)', () => {
   it('renders swimlane bands with 40 px full-width heads when the query groups by feature', async () => {
     const page = await open('/w/harbor/board?group=feature');
     const heads = [...page.querySelectorAll('.band-head')].map((h) => text(h.querySelector('.mono')) || text(h.querySelector('.name')));
-    expect(heads[0]).toBe('F0');
+    expect(heads[0]).toBe('F3');
     expect(heads).toContain('F6');
     expect(heads).toContain('F7');
     const f6 = [...page.querySelectorAll('.band-head')].find((h) => text(h.querySelector('.mono')) === 'F6');
@@ -539,5 +551,130 @@ describe('BoardPage compact (T124, ISC-129.2)', () => {
     const heads = [...page.querySelectorAll('section[data-col="build"] .band-head')].map((h) => text(h.querySelector('.mono')));
     expect(heads).toEqual(['F2', 'F6']);
     expect(text(page.querySelector('.omitted'))).toBe('6 features have no card in Build');
+  });
+});
+
+// Spec 037 · T32-T34 · ISC-197: with feature swimlanes the bands stand in milestone then rank order, "No feature" last,
+// a quiet divider between the milestone groups; each feature band's head starts with a grip button that moves it
+// within its milestone through the backlog route (Alt+↑/↓, its "Move" menu, a drop), on a drop list of its own.
+
+describe('board band reorder', () => {
+  const HASHED = { ...PLANNING, backlogHash: 'h1' } as PlanningBody;
+  /** Harbor with the story `registry-webhooks` taken off F7, so the board holds a band without a feature. */
+  const LOOSE = {
+    ...HASHED,
+    ideas: PLANNING.ideas.map((idea) => (idea.slug === 'registry-webhooks' ? { ...idea, feature: null } : idea)),
+  } as PlanningBody;
+  const openBands = (planning: PlanningBody = HASHED, tier: Tier = 'wide'): Promise<HTMLElement> =>
+    open('/w/harbor/board?group=feature', Promise.resolve(ok(planning)), dashboard, tier);
+  const heads = (page: HTMLElement): HTMLElement[] => [...page.querySelectorAll<HTMLElement>('.band-list > .band-head')];
+  const ids = (page: HTMLElement): string[] => heads(page).map((h) => text(h.querySelector('.bh .mono')) || '-');
+  const grip = (page: HTMLElement, id: string): HTMLButtonElement | null => page.querySelector<HTMLButtonElement>(`[data-band-grip="${id}"]`);
+  const press = (el: Element | null, key: string): void => {
+    el?.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true }));
+  };
+
+  beforeEach(() => {
+    backlogCalls = [];
+    backlogAnswer = WRITTEN;
+  });
+
+  it('orders the bands by milestone, then rank, the band without a feature last, a divider only between milestone groups', async () => {
+    const page = await openBands(LOOSE);
+    expect(ids(page)).toEqual(['F3', 'F2', 'F4', 'F0', 'F5', 'F6', '-']);
+    const dividers = [...page.querySelectorAll<HTMLElement>('[data-band-divider]')].map((d) => text(d));
+    expect(dividers).toHaveLength(2);
+    expect(dividers[0]).toContain('Harbor 1.0');
+    expect(dividers[1]).toContain('No milestone');
+  });
+
+  it('starts every feature band head with a grip button named after the move; the band without a feature keeps an empty slot', async () => {
+    const page = await openBands(LOOSE);
+    const f3 = grip(page, 'F3');
+    expect(f3?.tagName).toBe('BUTTON');
+    expect(f3?.classList.contains('cdk-drag-handle')).toBe(true);
+    expect(f3?.getAttribute('aria-label')).toBe('Move F3 · in Harbor 0.9');
+    expect(grip(page, 'F0')?.getAttribute('aria-label')).toBe('Move F0 · no milestone');
+    expect(heads(page)[0]?.querySelector('.band-sticky')?.firstElementChild).toBe(f3);
+    const loose = heads(page).at(-1);
+    expect(loose?.querySelector('button')).toBeNull();
+    expect(loose?.querySelector('.grip-gap')).not.toBeNull();
+  });
+
+  it('Alt+ArrowDown on a grip moves the band below its neighbour, keeps focus on the grip and announces the place', async () => {
+    const page = await openBands();
+    press(grip(page, 'F0'), 'ArrowDown');
+    await settle();
+    expect(backlogCalls).toEqual(['F0>F6|h1']);
+    expect(ids(page)).toEqual(['F3', 'F2', 'F4', 'F5', 'F0', 'F6', 'F7']);
+    expect(document.activeElement).toBe(grip(page, 'F0'));
+    expect(text(page.querySelector('[data-band-live]'))).toBe('F0 at position 2 of 4, no milestone');
+  });
+
+  // T39 · ISC-198: a refused band move leaves the notice under the band head, with core's phrase; nothing anticipated stays.
+  it('board refusal: a 422 leaves the notice under the band head with the reason, the order unmoved, and ✕ dismisses it', async () => {
+    backlogAnswer = { kind: 'answer', answer: { status: 422, body: { error: 'backlog-refused', reason: 'F0 already stands there: nothing to move' } } } as unknown as BacklogResult;
+    const page = await openBands();
+    press(grip(page, 'F0'), 'ArrowDown');
+    await settle();
+    expect(backlogCalls).toEqual(['F0>F6|h1']);
+    expect(ids(page)).toEqual(['F3', 'F2', 'F4', 'F0', 'F5', 'F6', 'F7']);
+    const head = heads(page).find((h) => h.dataset['band'] === 'F0');
+    const notice = head?.querySelector<HTMLElement>('app-refusal-notice[data-band-refusal]');
+    expect(text(notice)).toContain('F0 not moved');
+    expect(text(notice)).toContain('F0 already stands there: nothing to move');
+    expect(notice?.getAttribute('data-refusal')).toBe('refused');
+    notice?.querySelector<HTMLButtonElement>('[data-dismiss]')?.click();
+    await settle();
+    expect(page.querySelector('app-refusal-notice[data-band-refusal]')).toBeNull();
+  });
+
+  it('Alt+ArrowUp at the first band of its milestone sends nothing, and a card does not take Alt+arrows', async () => {
+    const page = await openBands();
+    press(grip(page, 'F2'), 'ArrowUp');
+    press(page.querySelector('.cell app-board-card'), 'ArrowUp');
+    await settle();
+    expect(backlogCalls).toEqual([]);
+  });
+
+  it('a click on the grip opens the move menu for that band; "Move to the end" sends before null', async () => {
+    const page = await openBands();
+    const f2 = grip(page, 'F2');
+    f2?.click();
+    await settle();
+    expect(f2?.getAttribute('aria-expanded')).toBe('true');
+    expect(f2?.getAttribute('aria-haspopup')).toBe('dialog');
+    page.querySelector<HTMLButtonElement>('app-reorder-menu [data-step="last"]')?.click();
+    await settle();
+    expect(backlogCalls).toEqual(['F2>end|h1']);
+    expect(ids(page).slice(1, 3)).toEqual(['F4', 'F2']);
+    expect(text(page.querySelector('[data-band-live]'))).toBe('F2 at position 2 of 2 in Harbor 1.0');
+  });
+
+  it('a drop in its own milestone takes the gap under the pointer; a drop over another milestone sends nothing', async () => {
+    const page = await openBands();
+    heads(page).forEach((h, i) => {
+      h.getBoundingClientRect = () => ({ top: i * 100, bottom: i * 100 + 44, height: 44, left: 0, right: 400, width: 400, x: 0, y: i * 100 }) as DOMRect;
+    });
+    const bandList = harness.fixture.debugElement.query(By.css('.band-list')).injector.get(CdkDropList);
+    const drop = (feature: string, y: number): void =>
+      bandList.dropped.emit({ item: { data: feature }, dropPoint: { x: 10, y } } as unknown as CdkDragDrop<unknown>);
+    drop('F0', 150);
+    await settle();
+    expect(backlogCalls).toEqual([]);
+    drop('F0', 560);
+    await settle();
+    expect(backlogCalls).toEqual(['F0>F7|h1']);
+  });
+
+  it('keeps the band list apart from the card lists: its own group, and it admits band drags only', async () => {
+    const page = await openBands();
+    const bandList = harness.fixture.debugElement.query(By.css('.band-list')).injector.get(CdkDropList);
+    const pageGroup = harness.fixture.debugElement.query(By.css('app-board-page')).injector.get(CdkDropListGroup);
+    expect((pageGroup as unknown as { _items: Set<unknown> })._items.has(bandList)).toBe(false);
+    expect(bandList.connectedTo).toEqual([]);
+    expect(bandList.enterPredicate({ data: 'F0' } as CdkDrag, bandList)).toBe(true);
+    expect(bandList.enterPredicate({ data: { key: 'spec:006' } } as CdkDrag, bandList)).toBe(false);
+    expect(page.querySelectorAll('.cell.cdk-drop-list').length).toBeGreaterThan(0);
   });
 });

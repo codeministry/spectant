@@ -25,6 +25,8 @@ import { assigneeOf } from '../../core/src/assignee.ts';
 import { allowedTransition, workflowStagesOf } from '../../core/src/stage.ts';
 import { DEFAULT_WORKFLOW, FIXED_GATES, boardStages } from '../../core/src/workflow.ts';
 import { writePathsOf } from '../../server/src/writes.contract.ts';
+import type { PlanningModel } from '../../core/src/planning.ts';
+import { featureOrder } from '../src/app/features/backlog/backlog-order.ts';
 import { atWidth, expect, test } from './fixtures';
 import { LOCKS_HEADER, RESET_PATH, WORKFLOW_PATH } from './stub-api';
 
@@ -1106,8 +1108,10 @@ test.describe('filters', () => {
       await expect(page.locator(TRIGGER('feature'))).toHaveText('Feature');
       await expect(page.locator(ACTIVE_CHIPS)).toHaveCount(0);
       await expect(page.locator(LANE_RADIOS).filter({ hasText: 'Feature' })).toHaveAttribute('aria-checked', 'true');
-      // A band per feature holding a card, in master order, and the band without a feature last when a card has none.
-      const withCards = planning.features.filter((f) => all.some((c) => c.feature === f.id)).map((f) => f.id);
+      // A band per feature holding a card, by milestone and then rank (spec 037, ISC-197), each feature once, and the band
+      // without a feature last when a card has none.
+      const ranked = [...new Set(featureOrder(planning as unknown as PlanningModel).flatMap((group) => group.ids))];
+      const withCards = ranked.filter((id) => all.some((c) => c.feature === id));
       const heads = page.locator(BAND_HEADS);
       await expect(heads).toHaveCount(withCards.length + (all.some((c) => c.feature === null) ? 1 : 0));
       expect((await heads.locator('.mono').allTextContents()).map((t) => t.trim())).toEqual(withCards);

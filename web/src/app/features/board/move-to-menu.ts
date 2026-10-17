@@ -9,7 +9,7 @@ import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { BoardDrag, type DropHint, dropHint } from './board-drag';
 import type { BoardCard, BoardModel } from './board-model';
-import { RefusalNotice } from './refusal-notice';
+import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
 
 /**
  * The stage Shift+← (`-1`) or Shift+→ (`1`) moves a card to (T127): the nearest of its targets (`card.targets`, core's

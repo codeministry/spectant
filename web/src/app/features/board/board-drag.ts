@@ -6,9 +6,10 @@ import type { WorkflowStage } from '../../../../../core/src/files';
 import type { PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { isWorkflowStage } from '../../../../../core/src/stage';
 import { FIXED_GATES } from '../../../../../core/src/workflow';
-import type { AllocateRefused, IdeaAllocated } from '../../../../../server/src/spec-routes.contract';
+import type { IdeaAllocated } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
+import type { BoardRefusal } from '../../shared/ui/refusal-notice/refusal';
 import { ToastService } from '../../shared/ui/toast/toast';
 import type { BoardCard } from './board-model';
 
@@ -80,22 +81,10 @@ export function withMoves(planning: PlanningModel, moves: readonly BoardMove[]):
 }
 
 /**
- * Why a drop did not move its card (T126), shown by `app-refusal-notice` under the card. `stage` is the card's stage
- * when it was refused: once the card stands anywhere else, the notice is gone.
+ * Why a drop did not move its card (T126), shown by `app-refusal-notice` under the card. The type lives beside the
+ * notice in shared/ui since spec 037 (T21) and is re-exported here for the board.
  */
-export type BoardRefusal = {
-  readonly key: string;
-  readonly id: string;
-  readonly stage: WorkflowStage;
-  readonly to: WorkflowStage;
-} & (
-  | { readonly kind: 'refused'; readonly reason: string; readonly command: string | null }
-  | { readonly kind: 'stale' }
-  | { readonly kind: 'locked'; readonly session: string; readonly claim: string }
-  | { readonly kind: 'failed'; readonly status: number }
-  /** T128: the allocation's 422 (`AllocateRefused`); `id` is the story's slug. */
-  | { readonly kind: 'unallocated'; readonly reason: AllocateRefused['reason']; readonly folder: string | null }
-);
+export type { BoardRefusal };
 
 /**
  * What one move from any path came to (T127): `moved` on a 200, `refused` when a refusal now stands for the card,

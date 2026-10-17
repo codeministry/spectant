@@ -26,6 +26,7 @@ import type {
   TimelineEntry,
   Worktree,
 } from '../../core/src/files';
+import type { PlanningModel } from '../../core/src/planning';
 import {
   ACTORS_ALLOW,
   ACTORS_PATH,
@@ -1580,6 +1581,29 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
     expect((await move('006', { to: 'code-review', hash: from?.hash }, { session, headers: NO_LOCKS })).status).toBe(409);
     expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
     expect(holderIn(await boardTree(session), '006-partial-push')).toEqual(from);
+  });
+
+  test('backlog 200 (spec 037, T26): the next planning read of the session carries the new ranks, the priority and the hash; another session and a reset see the golden', async () => {
+    const session = 't037-backlog-rank';
+    const tree = async (s: string): Promise<PlanningModel & { backlogHash: string }> =>
+      (await (await ask(workspaceRoutes.planning(WS), { session: s })).json()) as PlanningModel & { backlogHash: string };
+    const body = (op: object, hash: string): string => JSON.stringify({ ...op, hash });
+    const before = await tree(session);
+    expect(before.features.map((f) => f.id)).toEqual(['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']);
+    const moved = await ask(workspaceRoutes.backlog(WS), { method: 'POST', session, body: body({ op: 'move', feature: 'F1', before: 'F4' }, before.backlogHash) });
+    expect(moved.status).toBe(200);
+    const { hash } = (await moved.json()) as { hash: string };
+    const set = await ask(workspaceRoutes.backlog(WS), { method: 'POST', session, body: body({ op: 'priority', feature: 'F4', priority: 'P1' }, hash) });
+    expect(set.status).toBe(200);
+    const { hash: last } = (await set.json()) as { hash: string };
+    const after = await tree(session);
+    expect(after.backlogHash).toBe(last);
+    expect(after.features.map((f) => `${f.id}#${String(f.rank)}`)).toEqual(['F0#1', 'F2#2', 'F3#3', 'F1#4', 'F4#5', 'F5#6', 'F6#7', 'F7#8']);
+    expect(after.features.find((f) => f.id === 'F4')?.priority).toBe('P1');
+    expect(after.milestones.find((m) => m.slug === 'harbor-1-0')?.features.map((share) => share.id)).toEqual(['F2', 'F1', 'F4']);
+    expect(await (await ask(workspaceRoutes.planning(WS), { session: 't037-other' })).text()).toBe(JSON.stringify({ ...(golden(`${WS}.planning`) as object), backlogHash: EMPTY_SHA256 }));
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect((await tree(session)).backlogHash).toBe(EMPTY_SHA256);
   });
 
   test('transition 409: a hash that is not the holder hash, or X-Spectant-Stub-Write: stale, answers StaleSpec with the current hash', async () => {

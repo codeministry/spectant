@@ -1,11 +1,11 @@
 /**
- * The visual smoke set: six representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
- * since the dark theme changes colours, not layout. 24 baselines that catch an unintended visual change (a cascade
+ * The visual smoke set: seven representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
+ * since the dark theme changes colours, not layout. 28 baselines that catch an unintended visual change (a cascade
  * side effect, a broken tier, a theme token) without pinning every view of every spec; behaviour and structure stay
  * with the e2e and browser tiers.
  *
- *   bun run test:visual                       light, 18 baselines
- *   bun run test:visual -- --theme dark       dark, 6 baselines
+ *   bun run test:visual                       light, 21 baselines
+ *   bun run test:visual -- --theme dark       dark, 7 baselines
  *   bun run test:visual -- board              one page (the group names below)
  *
  * Baselines live under `__screenshots__/chromium/{light,dark}/visual.spec.ts/` and are recorded only in the pinned
@@ -35,6 +35,15 @@ const VIEWS: readonly View[] = [
   { name: 'overview', path: '/', host: 'app-overview-page', state: 'two-workspaces' },
   { name: 'dashboard', path: '/w/harbor', host: 'app-dashboard-page' },
   { name: 'board', path: '/w/harbor/s/002/board', host: 'app-board-tab' },
+  // Spec 037 (ISC-201): the workspace board with feature swimlanes, its band heads with grips and milestone dividers.
+  {
+    name: 'board-lanes',
+    path: '/w/harbor/board?group=feature',
+    host: 'app-board-page',
+    drawn: async (page) => {
+      await expect(page.locator('app-board-page .band-head [data-band-grip]').first()).toBeVisible();
+    },
+  },
   { name: 'status', path: '/w/harbor/s/002/status', host: 'app-status-tab' },
   {
     name: 'help',

@@ -33,7 +33,7 @@
         <app-planning-graph [model]="model" [(archived)]="showArchived" />
       }
       @default {
-        <app-planning-tree [model]="model" [(archived)]="showArchived" />
+        <app-planning-tree [model]="treeModel() ?? model" [(archived)]="showArchived" />
       }
     }
   } @else {

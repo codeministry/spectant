@@ -126,6 +126,21 @@ what it sends, never by a hidden switch:
   stage-table phrase and the spec's next command; allocating `registry-webhooks`, which the story index does not name,
   is `not-in-index`. Reason: these are the refusals the real write gives for the same fixture.
 
+## Driving the backlog writes from an e2e spec
+
+The stub answers `POST …/:ws/backlog` (spec 036) with core's `planBacklogMove` / `planBacklogPriority` over the fixture
+tree's master and `specs/backlog.md` (none on harbor), per `X-Spectant-Stub-Session`; `POST /api/__stub/reset` drops the
+session's writes. After a write the session's next `GET …/planning` carries the new ranks, priorities and
+`backlogHash` (`withBacklogText` in `stub-board.ts`, spec 037 T26), as the real route does. On harbor no feature has a
+`Milestone:` line, so every feature moves within the one no-milestone group of the route, while the tree shows them
+under the milestones their specs name; a milestone boundary is the browser tier's to probe, not the e2e's.
+
+- **200**: send the `backlogHash` the page read (the empty text's sha256 on harbor before any write) and a move or a
+  priority that changes something. Watch the call with `page.waitForRequest`; the stub keeps no call log.
+- **409**: any other hash (`'0'.repeat(64)`), the old hash after a write, or `X-Spectant-Stub-Write: stale`.
+- **422**: a no-op (a move to where the feature stands, its current priority) or an unknown feature, answered with
+  core's reason phrase. The stub never answers 423 here, like the real route.
+
 ## Changing a workflow from an e2e spec
 
 `PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that file

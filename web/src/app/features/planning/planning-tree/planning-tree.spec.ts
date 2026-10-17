@@ -1,8 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, type Provider, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { PlanningModel } from '../../../../../../core/src/planning';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../../core/src/relations';
+import backlogRanks from '../../../../../../core/fixtures/backlog-ranks.planning.golden.json';
 import emptyMaster from '../../../../../../core/fixtures/empty-master.planning.golden.json';
 import harbor from '../../../../../../core/fixtures/harbor.planning.golden.json';
 import lantern from '../../../../../../core/fixtures/lantern.planning.golden.json';
@@ -12,6 +13,10 @@ import spectant001 from '../../../../../../core/fixtures/spectant-001.planning.g
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
+import { ShellState } from '../../../layout/shell/shell-state.service';
+import type { BacklogOp } from '../../../core/api.service';
+import { BacklogWriter, type BacklogOutcome } from '../../backlog/backlog-writer.service';
+import type { BacklogRefusal } from '../../../shared/ui/refusal-notice/refusal';
 import { formatDay } from '../../../shared/time';
 import { PlanningTree } from './planning-tree';
 
@@ -56,7 +61,7 @@ class Host {
   readonly model = signal<PlanningModel>(harbor as unknown as PlanningModel);
 }
 
-async function render(model: PlanningModel, sel: RelationRef | null = null): Promise<{ el: HTMLElement; selection: FakeSelection; stable: () => Promise<void> }> {
+async function render(model: PlanningModel, sel: RelationRef | null = null, extra: Provider[] = []): Promise<{ el: HTMLElement; selection: FakeSelection; stable: () => Promise<void> }> {
   const selection = new FakeSelection();
   selection.current.set(sel);
   TestBed.configureTestingModule({
@@ -67,7 +72,7 @@ async function render(model: PlanningModel, sel: RelationRef | null = null): Pro
         preloadLangs: true,
       }),
     ],
-    providers: [{ provide: DetailSelection, useValue: selection }],
+    providers: [{ provide: DetailSelection, useValue: selection }, ...extra],
   });
   const fixture = TestBed.createComponent(Host);
   fixture.componentInstance.model.set(model);
@@ -272,5 +277,310 @@ describe('planning-tree', () => {
     expect(targets.length).toBeGreaterThan(0);
     expect(times.map((time) => time?.getAttribute('datetime'))).toEqual(targets);
     expect(times.map((time) => time?.textContent)).toEqual(targets.map((target) => formatDay(target, 'en')));
+  });
+});
+
+// T1 · ISC-193: the milestone header. A milestone row is a tinted header on its own grid (chevron, flag, name, date,
+// then fraction and meter at the end, no "MILESTONE" overline, the accessible name starting with "Milestone"); the
+// feature, spec and claim rows keep their grid on the card surface. The unit tier has no cascade, so the stylesheet
+// half reads the component's compiled CSS as text: the tint, the 4 px bar and the display type sit on the milestone
+// rule only, every colour is a theme token, and the stray `--cyan-text`, `--lime-text` and `var(--border)` are gone.
+// Probe: `bun run --cwd web test -- --filter "milestone header"` plus `bun run lint:css`.
+
+interface CssRule {
+  readonly selectors: readonly string[];
+  readonly body: string;
+}
+
+/**
+ * The planning tree's own compiled stylesheet as Angular ships it (`ɵcmp.styles`), with comments, the encapsulation
+ * attributes, the custom-property namespace placeholder (`--%NS%name`) and quotes stripped.
+ */
+function treeCss(): string {
+  const styles = (PlanningTree as unknown as { ɵcmp: { styles: readonly string[] } }).ɵcmp.styles;
+  return styles
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\[_ng(?:content|host)-[^\]]*\]/g, '')
+    .replace(/%NS%/g, '')
+    .replace(/["']/g, '');
+}
+
+/** Every innermost `selector { body }` block (rules inside `@container` and `@media` included), selectors normalised. */
+function cssRules(css: string): CssRule[] {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+    selectors: m[1].split(',').map((s) => s.trim().replace(/\s+/g, ' ')),
+    body: m[2].replace(/\s+/g, ' ').replace(/\s*:\s*/g, ': ').replace(/\s*;\s*/g, '; '),
+  }));
+}
+
+const declared = (rules: readonly CssRule[], selector: string): string =>
+  rules
+    .filter((rule) => rule.selectors.includes(selector))
+    .map((rule) => rule.body)
+    .join(' ');
+
+const MILESTONE = '.row[data-kind=milestone]';
+const GROUP = '.row[data-kind=group]';
+
+describe('planning-tree milestone header', () => {
+  it('milestone header: a milestone row runs chevron, flag, name, date, then fraction and meter; the other rows keep their grid', async () => {
+    const model = FIXTURES['harbor'];
+    const { el, stable } = await render(model);
+    el.querySelector<HTMLButtonElement>('[data-expand-all]')?.click();
+    await stable();
+    const order = (row: HTMLElement): string[] =>
+      [...row.children].map((child) => ['grip', 'chev', 'main', 'num', 'bar', 'guides', 'prio'].find((name) => child.classList.contains(name)) ?? child.tagName.toLowerCase());
+    const part = (node: HTMLElement): string => (node.classList.contains('name') ? 'name' : node.classList.contains('date') ? 'date' : 'flag');
+
+    const milestones = rows(el, 'milestone');
+    expect(milestones.length).toBeGreaterThan(0);
+    for (const row of milestones) {
+      expect(order(row)).toEqual(['chev', 'main', 'num', 'bar']);
+      const parts = [...row.querySelectorAll<HTMLElement>('.main ui-icon[data-icon="flag"], .main .name, .main .date')].map(part);
+      expect(parts).toEqual(row.querySelector('.date') === null ? ['flag', 'name'] : ['flag', 'name', 'date']);
+      expect(row.textContent).not.toMatch(/MILESTONE/);
+      expect(row.textContent.trim().startsWith(en.planning.tree.milestone)).toBe(true);
+    }
+    for (const row of rows(el, 'group')) expect(order(row)).toEqual(['chev', 'main', 'num', 'bar']);
+    const features = rows(el, 'feature');
+    const specs = rows(el, 'spec');
+    const claims = rows(el, 'claim');
+    expect(features.length * specs.length * claims.length).toBeGreaterThan(0);
+    for (const row of features) expect(order(row)).toEqual(['grip', 'bar', 'num', 'guides', 'chev', 'main', 'prio']);
+    for (const row of specs) expect(order(row)).toEqual(['bar', 'num', 'guides', 'chev', 'main']);
+    for (const row of claims) expect(order(row)).toEqual(['guides', 'chev', 'main']);
+  });
+
+  it('milestone header: tint surface, 4 px primary bar and display type on the milestone rule only; the other rows stay on the card', () => {
+    const css = treeCss();
+    const rules = cssRules(css);
+    expect(rules.length).toBeGreaterThan(0);
+
+    const head = declared(rules, MILESTONE);
+    expect(head).toMatch(/background(?:-color)?: var\(--disp-t\)/);
+    expect(head).toMatch(/box-shadow: inset 4px 0 0 var\(--color-primary\)/);
+    expect(head).toMatch(/min-block-size: 56px/);
+    const name = declared(rules, '.name');
+    expect(name).toMatch(/font-family: var\(--font-display\)/);
+    expect(name).toMatch(/font-size: 16px/);
+    expect(name).toMatch(/line-height: 24px/);
+    expect(name).toMatch(/font-weight: 600/);
+    // Text and icons on the tint stand in the content colour: the chevron, the flag, the date and the fraction.
+    for (const piece of ['.chev', '.kind', '.date', '.num']) expect(declared(rules, `${MILESTONE} ${piece}`)).toMatch(/color: var\(--color-base-content\)/);
+    // The ring sits inside, as the card clips everything outside; forced colours keep the 3 px CanvasText edge.
+    expect(declared(rules, `${MILESTONE}:focus-visible`)).toMatch(/outline-offset: -2px/);
+    expect(css).toMatch(/border-inline-start:\s*3px solid canvastext/i);
+
+    // The tint belongs to the milestone row alone: no other row rule paints it, and hover never swaps it away.
+    const rowRules = rules.filter((rule) => rule.selectors.some((s) => s.startsWith('.row') && !s.includes(' ')));
+    for (const rule of rowRules) {
+      if (rule.body.includes('background: var(--disp-t)')) expect(rule.selectors.every((s) => s.includes('milestone'))).toBe(true);
+      if (rule.body.includes('background')) {
+        for (const kind of ['feature', 'spec', 'claim']) expect(rule.selectors.some((s) => s.includes(`[data-kind=${kind}]`))).toBe(false);
+      }
+      if (rule.selectors.some((s) => s.includes(':hover')) && rule.body.includes('background') && !rule.body.includes('var(--disp-t)')) {
+        expect(rule.selectors.every((s) => s.includes(':not([data-kind=milestone])'))).toBe(true);
+      }
+    }
+    expect(declared(rules, '.row')).not.toMatch(/background/);
+    expect(declared(rules, '.tree')).toMatch(/background: var\(--color-base-100\)/);
+
+    // The neutral "No milestone" group: card surface, a track bar, the name in muted ink.
+    const group = declared(rules, GROUP);
+    expect(group).toMatch(/background(?:-color)?: var\(--color-base-100\)/);
+    expect(group).toMatch(/box-shadow: inset 4px 0 0 var\(--track\)/);
+    expect(group).toMatch(/border-block-start-style: dashed/);
+    expect(declared(rules, `${GROUP} .name`)).toMatch(/color: var\(--muted-ink\)/);
+
+    // Every colour is a theme token: the F-ID in `--disp-ink`, the tick and the full fraction in `--clos-ink`, the
+    // hairlines in `--line`; nothing undefined and no hex literal.
+    expect(declared(rules, '.fid')).toMatch(/color: var\(--disp-ink\)/);
+    expect(declared(rules, '.done')).toMatch(/color: var\(--clos-ink\)/);
+    expect(declared(rules, '.row[data-full] .num')).toMatch(/color: var\(--clos-ink\)/);
+    expect(declared(rules, '.row')).toMatch(/border-block-start: 1px solid var\(--line\)/);
+    expect(css).not.toMatch(/--cyan-text|--lime-text|var\(--border\)/);
+    expect(css).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
+
+// T10 · ISC-194: the tree lens shows the features of every milestone and of the "No milestone" group in the rank order
+// of the planning model, each with one priority chip `P1` to `P4` in its own column at the row's end. Probe:
+// `bun run --cwd web test -- --filter "tree rank"`.
+describe('planning-tree tree rank', () => {
+  const BACKLOG = backlogRanks as unknown as PlanningModel;
+
+  it('tree rank: the feature rows stand in rank order under each milestone and the group, as in the golden', async () => {
+    const { el } = await render(BACKLOG);
+    const shown = rows(el).filter((row) => ['milestone', 'group', 'feature'].includes(row.dataset['kind'] ?? ''));
+    expect(shown.map((row) => (row.dataset['kind'] === 'feature' ? row.querySelector('.fid')?.textContent.trim() : row.dataset['key']))).toEqual([
+      'milestone:ferry-1-0',
+      ...(BACKLOG.milestones[0]?.featureIds ?? []),
+      'milestone:ferry-2-0',
+      ...(BACKLOG.milestones[1]?.featureIds ?? []),
+      'group',
+      ...(BACKLOG.unassignedFeatures ?? []),
+    ]);
+  });
+
+  it('tree rank: every feature row carries one priority chip with its level, no other row carries one', async () => {
+    const { el } = await render(BACKLOG);
+    const levels = Object.fromEntries(BACKLOG.features.map((f) => [f.id, f.priority]));
+    for (const row of rows(el, 'feature')) {
+      const chips = row.querySelectorAll('.prio ui-priority');
+      expect(chips).toHaveLength(1);
+      expect(chips.item(0).getAttribute('data-level')).toBe(levels[row.querySelector('.fid')?.textContent.trim() ?? '']);
+    }
+    expect(rows(el, 'feature')).toHaveLength(BACKLOG.features.length);
+    for (const kind of ['milestone', 'group', 'spec', 'claim']) for (const row of rows(el, kind)) expect(row.querySelector('ui-priority')).toBeNull();
+  });
+});
+
+// T23 · ISC-195, ISC-195.1: the tree's own controls. Alt+↑/↓ at a feature moves it through the backlog writer within its
+// group and sends nothing at the group's edge; the grip and the chip are in the tab order only in the row holding the
+// tab stop, and Enter at the grip opens "Move" instead of selecting the row. The drag itself is the browser tier's.
+class FakeWriter {
+  readonly calls: Array<{ ws: string; op: BacklogOp }> = [];
+  readonly held = signal<ReadonlyMap<string, BacklogOp>>(new Map());
+  readonly busy = signal(false);
+  readonly refusals = signal<ReadonlyMap<string, BacklogRefusal>>(new Map());
+  readonly dismissed: string[] = [];
+  pending(): boolean {
+    return false;
+  }
+  refusalOf(feature: string): BacklogRefusal | null {
+    return this.refusals().get(feature) ?? null;
+  }
+  dismiss(feature: string): void {
+    this.dismissed.push(feature);
+    this.refusals.update((all) => new Map([...all].filter(([key]) => key !== feature)));
+  }
+  move(ws: string, feature: string, before: string | null): Promise<BacklogOutcome> {
+    this.calls.push({ ws, op: { op: 'move', feature, before } });
+    return Promise.resolve('written');
+  }
+  priority(ws: string, feature: string, priority: 'P1' | 'P2' | 'P3' | 'P4'): Promise<BacklogOutcome> {
+    this.calls.push({ ws, op: { op: 'priority', feature, priority } });
+    return Promise.resolve('written');
+  }
+}
+
+describe('planning-tree reorder (T23, ISC-195, ISC-195.1)', () => {
+  const BACKLOG = backlogRanks as unknown as PlanningModel;
+  const setup = async () => {
+    const writer = new FakeWriter();
+    const shell = { ws: signal('ferry'), tier: signal('wide') };
+    const rendered = await render(BACKLOG, null, [
+      { provide: BacklogWriter, useValue: writer },
+      { provide: ShellState, useValue: shell },
+    ]);
+    return { ...rendered, writer };
+  };
+  const featureRow = (el: HTMLElement, id: string): HTMLElement => {
+    const row = rows(el, 'feature').find((candidate) => candidate.querySelector('.fid')?.textContent.trim() === id);
+    if (row === undefined) throw new Error(`no row ${id}`);
+    return row;
+  };
+  const alt = (target: HTMLElement, key: 'ArrowUp' | 'ArrowDown'): KeyboardEvent => {
+    const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  it('Alt+↓ at F2 moves it behind F1, the last of Ferry 1.0 (before null); Alt+↑ at F1 moves it in front of F2', async () => {
+    const { el, writer, stable } = await setup();
+    const down = alt(featureRow(el, 'F2'), 'ArrowDown');
+    expect(down.defaultPrevented).toBe(true);
+    await stable();
+    alt(featureRow(el, 'F1'), 'ArrowUp');
+    await stable();
+    expect(writer.calls).toEqual([
+      { ws: 'ferry', op: { op: 'move', feature: 'F2', before: null } },
+      { ws: 'ferry', op: { op: 'move', feature: 'F1', before: 'F2' } },
+    ]);
+  });
+
+  it('sends nothing for Alt+↑ at the first or Alt+↓ at the last feature of a group, nor at a lone feature', async () => {
+    const { el, writer, stable } = await setup();
+    alt(featureRow(el, 'F2'), 'ArrowUp');
+    alt(featureRow(el, 'F4'), 'ArrowDown');
+    alt(featureRow(el, 'F0'), 'ArrowUp');
+    alt(featureRow(el, 'F0'), 'ArrowDown');
+    await stable();
+    expect(writer.calls).toEqual([]);
+    expect(el.querySelector('ui-live-region')?.textContent).toContain('F0');
+  });
+
+  it('Alt+↑/↓ at a milestone or a spec row moves nothing and does not move the focus', async () => {
+    const { el, writer, stable } = await setup();
+    const head = rows(el, 'milestone').at(0);
+    if (head === undefined) throw new Error('no milestone');
+    const event = alt(head, 'ArrowDown');
+    await stable();
+    expect(event.defaultPrevented).toBe(true);
+    expect(writer.calls).toEqual([]);
+  });
+
+  it('keeps the grip and the chip in the tab order only in the row holding the tab stop', async () => {
+    const { el, stable } = await setup();
+    const row = featureRow(el, 'F1');
+    row.click();
+    await stable();
+    for (const feature of rows(el, 'feature')) {
+      const active = feature.getAttribute('tabindex') === '0';
+      expect(feature.querySelector('[data-grip]')?.getAttribute('tabindex')).toBe(active ? '0' : '-1');
+      expect(feature.querySelector('[data-priority-chip]')?.getAttribute('tabindex') ?? '0').toBe(active ? '0' : '-1');
+    }
+    expect(row.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('Enter at the grip opens "Move" and does not select the row; the grip names the feature and its milestone', async () => {
+    const { el, selection, stable } = await setup();
+    const grip = featureRow(el, 'F1').querySelector<HTMLButtonElement>('[data-grip]');
+    if (grip === null) throw new Error('no grip');
+    expect(grip.getAttribute('aria-label')).toContain('F1');
+    expect(grip.getAttribute('aria-label')).toContain('Ferry 1.0');
+    grip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    grip.click();
+    await stable();
+    expect(selection.picks).toEqual([]);
+    expect(grip.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('picking a level at the chip sends the priority for that feature', async () => {
+    const { el, writer, stable } = await setup();
+    featureRow(el, 'F1').querySelector<HTMLButtonElement>('[data-priority-chip]')?.click();
+    await stable();
+    el.querySelector<HTMLButtonElement>('[data-level-entry="P1"]')?.click();
+    await stable();
+    expect(writer.calls).toEqual([{ ws: 'ferry', op: { op: 'priority', feature: 'F1', priority: 'P1' } }]);
+  });
+});
+
+// T38 · ISC-198: a refused backlog write leaves its notice under the feature's line, inside the treeitem (no item of the
+// tree of its own) and named by the treeitem's aria-describedby; the ✕ dismisses it and never selects the row.
+describe('planning-tree refusal (T38, ISC-198)', () => {
+  const BACKLOG = backlogRanks as unknown as PlanningModel;
+
+  it('tree refusal: the notice stands inside the treeitem of the refused feature with the reason, described by it, and ✕ dismisses it', async () => {
+    const writer = new FakeWriter();
+    writer.refusals.set(new Map([['F1', { op: 'move', feature: 'F1', priority: null, kind: 'refused', reason: 'F1 already stands there: nothing to move' }]]));
+    const { el, selection, stable } = await render(BACKLOG, null, [
+      { provide: BacklogWriter, useValue: writer },
+      { provide: ShellState, useValue: { ws: signal('ferry'), tier: signal('wide') } },
+    ]);
+    const row = el.querySelector<HTMLElement>('[role="treeitem"][data-key="milestone:ferry-1-0/feature:F1"]');
+    const notice = row?.querySelector<HTMLElement>('app-refusal-notice');
+    expect(notice?.textContent).toContain('F1 already stands there: nothing to move');
+    expect(notice?.textContent).toContain(en.backlog.refusal.notMoved.replace('{{id}}', 'F1'));
+    expect(row?.getAttribute('aria-describedby')).toBe(notice?.id);
+    expect(el.querySelectorAll('[role="tree"] > app-refusal-notice')).toHaveLength(0);
+    expect(el.querySelectorAll('app-refusal-notice')).toHaveLength(1);
+    notice?.querySelector<HTMLButtonElement>('[data-dismiss]')?.click();
+    await stable();
+    expect(writer.dismissed).toEqual(['F1']);
+    expect(selection.picks).toEqual([]);
+    expect(el.querySelector('app-refusal-notice')).toBeNull();
+    expect(row?.hasAttribute('aria-describedby')).toBe(false);
   });
 });

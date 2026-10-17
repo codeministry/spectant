@@ -21,6 +21,7 @@ import type {
   LiveFrame,
   LiveRound,
   MainCopy,
+  Priority,
   RunCounts,
   RunState,
   SpecPageModel,
@@ -61,6 +62,7 @@ export type BoardCore = {
   backlogFeatures: (master: string) => ReadonlyArray<{ id: string; milestone: string | null }>;
   planBacklogMove: (input: BacklogPlanInput & { before: string | null }) => BacklogPlanResult;
   planBacklogPriority: (input: BacklogPlanInput & { priority: string }) => BacklogPlanResult;
+  parseBacklog: (text: string | null, featureIds: readonly string[]) => { entries: ReadonlyArray<{ feature: string; rank: number; priority: Priority }> };
 };
 
 /** What core's backlog planners take (`core/src/backlog.ts`), opaque past the fields the stub passes. */
@@ -77,6 +79,28 @@ export type BacklogPlanResult = { ok: true; text: string; event: Readonly<Record
 /** A write's 409 `hash-mismatch` (`StaleSpec`, `StaleIdea`): the file named and its raw hash now. */
 export type StaleBody = { error: 'hash-mismatch'; files: readonly string[]; expected: Readonly<Record<string, string>> };
 
+/**
+ * The planning tree with a session's `specs/backlog.md` applied as core's `buildPlanning` applies it (spec 036): every
+ * feature's rank and priority from `parseBacklog` over the master's feature ids, then the features, each milestone's
+ * shares and `featureIds` and the no-milestone group re-sorted by rank. A backlog write moves nothing but ranks and
+ * priorities, so the next read shows it as the real route does without rebuilding the tree (spec 037, T26).
+ */
+export function withBacklogText(core: Pick<BoardCore, 'parseBacklog'>, model: PlanningModel, text: string | null, masterIds: readonly string[]): PlanningModel {
+  const place = new Map(core.parseBacklog(text, masterIds).entries.map((entry) => [entry.feature, entry]));
+  const rank = (id: string): number => place.get(id)?.rank ?? Infinity;
+  const byRank = (a: string, b: string): number => rank(a) - rank(b);
+  const features = model.features
+    .map((feature) => ({ ...feature, rank: rank(feature.id), priority: place.get(feature.id)?.priority ?? feature.priority }))
+    .sort((a, b) => a.rank - b.rank);
+  const milestones = model.milestones.map((milestone) => ({
+    ...milestone,
+    features: [...milestone.features].sort((a, b) => byRank(a.id, b.id)),
+    ...(milestone.featureIds === undefined ? {} : { featureIds: [...milestone.featureIds].sort(byRank) }),
+  }));
+  const unassigned = model.unassignedFeatures === undefined ? {} : { unassignedFeatures: [...model.unassignedFeatures].sort(byRank) };
+  return { ...model, features, milestones, ...unassigned };
+}
+
 /** Core's renderer, the docs options, the stage table and the write contract's helpers, loaded by a computed path (see the header). */
 export function loadBoardCore(): BoardCore {
   const load = createRequire(import.meta.url);
@@ -88,7 +112,7 @@ export function loadBoardCore(): BoardCore {
     BoardCore,
     'specConflict' | 'ideaConflict' | 'blockingLock' | 'writePathsOf' | 'VIEWER_ACTOR_FALLBACK' | 'backlogConflict'
   >;
-  const backlog = load(join(src, 'backlog.ts')) as Pick<BoardCore, 'backlogFeatures' | 'planBacklogMove' | 'planBacklogPriority'>;
+  const backlog = load(join(src, 'backlog.ts')) as Pick<BoardCore, 'backlogFeatures' | 'planBacklogMove' | 'planBacklogPriority' | 'parseBacklog'>;
   return { ...docs, ...evidence, ...stage, ...writes, ...backlog };
 }
 

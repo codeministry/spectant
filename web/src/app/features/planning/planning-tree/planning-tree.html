@@ -36,12 +36,37 @@
   </p>
 }
 
-<div class="tree" role="tree" [attr.aria-label]="'planning.tree.label' | transloco">
+<div
+  class="tree"
+  role="tree"
+  [attr.aria-label]="'planning.tree.label' | transloco"
+  [attr.data-no-drop]="dropAt() === 'none' ? '' : null"
+  cdkDropList
+  cdkDropListSortingDisabled
+  (cdkDropListDropped)="dropped($event)"
+>
   @for (row of rows(); track row.key) {
     @let node = row.node;
+    @let feature = row.kind === 'feature';
+    @let busy = feature && writer.pending(node.id);
+    @let refusal = feature ? writer.refusalOf(node.id) : null;
     <div
       class="row"
       role="treeitem"
+      cdkDrag
+      cdkDragLockAxis="y"
+      [cdkDragData]="row"
+      [cdkDragDisabled]="!feature || writer.busy()"
+      (cdkDragStarted)="dragStarted(row)"
+      (cdkDragMoved)="dragMoved(row, $event)"
+      (cdkDragEnded)="dragEnded()"
+      [attr.data-group]="row.group"
+      [attr.data-drop]="dropSide(row)"
+      [attr.data-held]="busy ? '' : null"
+      [attr.data-moved]="moved() === row.key ? '' : null"
+      [attr.aria-busy]="busy ? 'true' : null"
+      [attr.aria-keyshortcuts]="feature ? 'Alt+ArrowUp Alt+ArrowDown' : null"
+      [attr.aria-describedby]="refusal ? 'refusal-' + row.key : null"
       [attr.data-kind]="row.kind"
       [attr.data-key]="row.key"
       [attr.data-ref]="node.ref"
@@ -52,25 +77,49 @@
       [attr.aria-expanded]="row.expandable ? row.open : null"
       [attr.aria-selected]="node.ref === null ? null : row.look !== null"
       [attr.tabindex]="row.key === tabStop() ? 0 : -1"
-      (click)="activate(row)"
+      (click)="onRowClick(row, $event)"
       (keydown)="onKey($event)"
     >
-      @if (row.kind !== 'claim') {
-        <ui-meter
-          class="bar"
-          size="mini"
-          [value]="node.closed"
-          [max]="node.total"
-          [label]="'planning.milestones.meterLabel' | transloco: { name: node.ref === null ? ('planning.tree.noMilestone' | transloco) : node.id + ' ' + node.title }"
-          [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
-        />
-        <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
+      <!-- A milestone or the "No milestone" group is a header: chevron, flag, name, date, then fraction and meter at
+           the end (spec 037, ISC-193). Every other row leads with its progress, then guides, chevron and content. -->
+      @let head = row.kind === 'milestone' || row.kind === 'group';
+      @if (feature) {
+        <!-- The grip (ISC-195): the drag handle, and on a plain click "Move" (WCAG 2.5.7); in the tab order only in
+             the row holding the tab stop, like the chip. -->
+        <button
+          #grip
+          type="button"
+          class="grip"
+          cdkDragHandle
+          data-grip
+          aria-haspopup="dialog"
+          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+          [attr.aria-label]="(row.group === 'group' ? 'backlog.reorder.titleNone' : 'backlog.reorder.title') | transloco: { id: node.id, group: menuGroupName(row) }"
+          [attr.aria-expanded]="menuState()?.feature === node.id && (menu.expanded())"
+          [attr.tabindex]="row.key === tabStop() ? 0 : -1"
+          (click)="openMenu(row, grip, $event)"
+        >
+          <ui-icon name="grip-vertical" [size]="16" />
+        </button>
       }
-      <span class="guides" aria-hidden="true">
-        @for (guide of row.guides; track guide) {
-          <i></i>
+      @if (!head) {
+        @if (row.kind !== 'claim') {
+          <ui-meter
+            class="bar"
+            size="mini"
+            [value]="node.closed"
+            [max]="node.total"
+            [label]="'planning.milestones.meterLabel' | transloco: { name: node.id + ' ' + node.title }"
+            [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
+          />
+          <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
         }
-      </span>
+        <span class="guides" aria-hidden="true">
+          @for (guide of row.guides; track guide) {
+            <i></i>
+          }
+        </span>
+      }
       @if (row.expandable) {
         <span class="chev" data-toggle aria-hidden="true" (click)="toggle(row, $event)"><ui-icon name="chevron-right" [size]="16" /></span>
       } @else {
@@ -79,9 +128,11 @@
       <span class="main">
         @switch (row.kind) {
           @case ('milestone') {
+            <span class="visually-hidden">{{ 'planning.tree.milestone' | transloco }}</span>
             <ui-icon class="kind" name="flag" [size]="16" />
             <span class="title name">{{ node.title }}</span>
             @if (node.target; as target) {
+              <span class="sep" aria-hidden="true">·</span>
               <span class="date"><ui-time [value]="target" form="day" /></span>
             }
           }
@@ -116,6 +167,47 @@
           }
         }
       </span>
+      @if (head) {
+        <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
+        <ui-meter
+          class="bar"
+          size="mini"
+          [value]="node.closed"
+          [max]="node.total"
+          [label]="'planning.milestones.meterLabel' | transloco: { name: node.ref === null ? ('planning.tree.noMilestone' | transloco) : node.id + ' ' + node.title }"
+          [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
+        />
+      }
+      @if (node.priority; as priority) {
+        <span class="prio">
+          <app-priority-menu
+            [feature]="node.id"
+            [priority]="priority"
+            [featureTitle]="node.title"
+            [busy]="busy"
+            [tabbable]="row.key === tabStop()"
+            (chosen)="setPriority(row, $event)"
+          />
+        </span>
+      }
+      @if (refusal) {
+        <!-- ISC-198: the refusal stays under the feature at its re-read place, part of the treeitem (never an item of the
+             tree of its own) and named by its aria-describedby; the ✕ or the feature's next write closes it. -->
+        <app-refusal-notice class="notice" [id]="'refusal-' + row.key" [refusal]="refusal" (closed)="writer.dismiss(node.id)" />
+      }
     </div>
   }
 </div>
+
+<!-- One "Move" menu for every grip, outside the tree so the tree holds treeitems only. -->
+<app-reorder-menu
+  #menu
+  [feature]="menuState()?.feature ?? ''"
+  [group]="menuState()?.group ?? null"
+  [canUp]="menuState()?.canUp ?? false"
+  [canDown]="menuState()?.canDown ?? false"
+  [position]="menuState()?.position ?? null"
+  [count]="menuState()?.count ?? null"
+  (step)="onStep($event)"
+/>
+<ui-live-region />

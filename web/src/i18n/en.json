@@ -1811,6 +1811,7 @@
     },
     "tree": {
       "label": "Planning tree: milestones, features, specs and claims",
+      "milestone": "Milestone",
       "noMilestone": "No milestone",
       "noMilestoneMeta": "Features without a Milestone: line",
       "noMilestones": "The master names no milestones.",
@@ -2085,6 +2086,45 @@
       "P2": "priority P2",
       "P3": "priority P3",
       "P4": "priority P4"
+    }
+  },
+  "backlog": {
+    "board": {
+      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
+      "movedNone": "{{id}} at position {{position}} of {{count}}, no milestone",
+      "otherMilestone": "Other milestone"
+    },
+    "reorder": {
+      "title": "Move {{id}} · in {{group}}",
+      "titleNone": "Move {{id}} · no milestone",
+      "position": "Position {{position}} of {{count}}",
+      "up": "Move up",
+      "down": "Move down",
+      "first": "Move to the top",
+      "last": "Move to the end of {{group}}",
+      "lastNone": "Move to the end",
+      "atFirst": "already first",
+      "atLast": "already last"
+    },
+    "priority": {
+      "label": "Change priority {{level}} of {{id}}",
+      "title": "Priority · {{id}}"
+    },
+    "tree": {
+      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
+      "movedNone": "{{id}} at position {{position}} of {{count}} without a milestone",
+      "atFirst": "{{id}} is already first in {{group}}",
+      "atFirstNone": "{{id}} is already first without a milestone",
+      "atLast": "{{id}} is already last in {{group}}",
+      "atLastNone": "{{id}} is already last without a milestone",
+      "prioritized": "{{id}} now has priority {{level}}"
+    },
+    "refusal": {
+      "notMoved": "{{id}} not moved",
+      "notPrioritized": "Priority of {{id}} not changed",
+      "stale": "changed on disk · re-read",
+      "failed": "The change could not be written (status {{status}})",
+      "noAnswer": "The change could not be written (no answer)"
     }
   },
   "actors": {

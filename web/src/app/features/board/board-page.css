@@ -214,7 +214,7 @@ h1 {
   display: flex;
   grid-column: 1 / -1;
   align-items: center;
-  block-size: 40px;
+  block-size: 44px;
   margin-block-start: 12px;
   border-block-start: 1px solid var(--line);
 }
@@ -251,6 +251,104 @@ h1 {
 .bh .muted {
   color: var(--muted-ink);
   font-weight: 500;
+}
+
+/*
+ * Spec 037 (T34, ISC-197): feature bands. The heads' own drop list and its group are no boxes, so the heads stay items
+ * of the column grid. A band head is 44 px: [grip 24][F-ID][name][n cards][meter], the grip's hit area 44 × 44.
+ * `.band-drag`, `.band-preview`, `[data-held]` and `[data-move-group]` are the hooks for the drag styling (T35).
+ */
+.band-group,
+.band-list {
+  display: contents;
+}
+
+.band-sticky {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  max-inline-size: 480px;
+}
+
+.band-sticky > .bh {
+  position: static;
+  max-inline-size: none;
+}
+
+/* A refused band move (ISC-198): the notice right under the band head, held at the scroller's start, at most 480 px. */
+.band-head:has(> .band-notice) {
+  flex-wrap: wrap;
+  block-size: auto;
+  min-block-size: 44px;
+}
+
+.band-notice {
+  position: sticky;
+  inset-inline-start: 0;
+  flex-basis: 100%;
+  max-inline-size: 480px;
+  margin-block-end: 8px;
+}
+
+.band-grip,
+.grip-gap {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 44px;
+}
+
+.band-grip {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-ink);
+  cursor: grab;
+  touch-action: none;
+}
+
+.band-grip::before {
+  position: absolute;
+  inset: 0 -10px;
+  content: '';
+}
+
+.band-grip:focus-visible,
+.band-head:hover .band-grip {
+  color: var(--color-base-content);
+}
+
+.band-grip[aria-disabled='true'] {
+  cursor: default;
+}
+
+/* The divider between two milestones' bands: quiet, untinted, not interactive (design 037, decision 6). */
+.band-divider-row {
+  grid-column: 1 / -1;
+}
+
+.band-divider {
+  display: flex;
+  align-items: flex-end;
+  block-size: 32px;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.band-divider-text {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
 }
 
 .cell {

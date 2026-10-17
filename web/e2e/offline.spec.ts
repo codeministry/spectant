@@ -18,8 +18,9 @@
  *   with the object selected, and the workspace board with a selected card;
  * - the chrome: the area menu, the workspace and spec pickers, the shortcut sheet (`?`) and the palette trigger;
  * - every write: the gate confirm (on 003, the harbor spec whose gate is `ready`; 002's is already `done`), a task tick
- *   and untick, a note create, edit and delete, the notes import-notice dismissal, rail collapse and expand, and a
- *   theme change (see `changeTheme`);
+ *   and untick, a note create, edit and delete, the notes import-notice dismissal, rail collapse and expand, the
+ *   backlog writes (spec 037, ISC-199: a feature moved by Alt+↓ and a priority set at its chip in the planning tree, a
+ *   band moved by Alt+↓ on its grip on the feature board, each answered 200), and a theme change (see `changeTheme`);
  * - the library (spec 017, T40, ISC-159.2): the list, the reader on a document with a mermaid figure and a relative
  *   image (`STUB_LIBRARY.reader`), an image document, and a prototype opened in a new tab from its card; that tab then
  *   loads the stub-only page `STUB_LIBRARY.prototype.offline`, which names an external stylesheet, an external script
@@ -430,6 +431,33 @@ for (const theme of ['light', 'dark'] as const) {
         await page.locator('[data-note-confirm] dialog [data-note-delete-confirm]').click();
         expect((await removed).status()).toBe(204);
         await expect(page).toHaveURL(new RegExp(`${SPEC}/notes$`, 'u'));
+      });
+
+      await test.step('write: backlog moves and a priority on the tree and the board (spec 037, ISC-199)', async () => {
+        const backlog = /^\/api\/workspaces\/harbor\/backlog$/u;
+        await page.goto('/w/harbor/planning/tree');
+        const row = (id: string) => page.locator(`[role="treeitem"][data-key="milestone:harbor-1-0/feature:${id}"]`);
+        await expect(row('F1')).toBeVisible();
+        const moved = answered(page, 'POST', backlog);
+        await row('F1').focus();
+        await page.keyboard.press('Alt+ArrowDown');
+        expect((await moved).status()).toBe(200);
+
+        const chip = row('F2').locator('[data-priority-chip]');
+        await chip.click();
+        const prioritised = answered(page, 'POST', backlog);
+        await page.locator('[data-level-entry="P1"]').click();
+        expect((await prioritised).status()).toBe(200);
+        await expect(chip.locator('ui-priority')).toHaveAttribute('data-level', 'P1');
+
+        await page.goto('/w/harbor/board?group=feature');
+        // Harbor 1.0's bands are F2 and F4 (F1 has no card): F2's band steps below F4.
+        const grip = page.locator('[data-band-grip="F2"]');
+        await expect(grip).toBeVisible();
+        const band = answered(page, 'POST', backlog);
+        await grip.focus();
+        await page.keyboard.press('Alt+ArrowDown');
+        expect((await band).status()).toBe(200);
       });
 
       await test.step('write: rail collapse and expand', async () => {
