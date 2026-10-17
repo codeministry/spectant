@@ -1,4 +1,4 @@
-import { CdkDrag, type CdkDragDrop, CdkDragHandle, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkDrag, type CdkDragDrop, CdkDragHandle, type CdkDragMove, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
@@ -448,29 +448,59 @@ export class BoardPage {
    * time. A drop over another move group's band, the band without a feature, or a gap next to itself sends nothing.
    */
   protected bandDropped(event: CdkDragDrop<unknown, unknown, string>): void {
-    const feature = event.item.data;
+    const target = this.bandTarget(event.item.data, event.dropPoint.y);
+    if (target !== null) void this.moveBand(event.item.data, target.before);
+  }
+
+  /**
+   * The move a band drop at `y` would send and the head the drop line sits on (`data-band`, '' for "No feature"), or
+   * null when the point lies over another move group or in a gap next to the band itself.
+   */
+  private bandTarget(feature: string, y: number): { before: Target; line: string } | null {
     const group = this.moveGroupOf(feature);
-    if (group === null) return;
-    const y = event.dropPoint.y;
-    const heads = [...this.host.querySelectorAll<HTMLElement>('.band-list > .band-head:not(.cdk-drag-placeholder)')];
-    const under = heads.filter((head) => head.getBoundingClientRect().top <= y).at(-1) ?? heads.at(0);
-    if (under?.dataset['moveGroup'] !== group) return;
-    const gap = heads.filter((head) => {
-      if (head.dataset['moveGroup'] !== group) return false;
+    if (group === null) return null;
+    // The lifted band's placeholder (a clone of its head) holds its place, so the gaps count as `beforeFor` counts them.
+    const all = [...this.host.querySelectorAll<HTMLElement>('.band-list > .band-head')];
+    const under = all.filter((head) => head.getBoundingClientRect().top <= y).at(-1) ?? all.at(0);
+    if (under?.dataset['moveGroup'] !== group) return null;
+    const own = all.filter((head) => head.dataset['moveGroup'] === group);
+    const gap = own.filter((head) => {
       const rect = head.getBoundingClientRect();
       return rect.top + rect.height / 2 < y;
     }).length;
-    void this.moveBand(feature, beforeFor(this.bandOrder(), group, feature, gap));
+    const before = beforeFor(this.bandOrder(), group, feature, gap);
+    if (before === 'none') return null;
+    const lineHead = own.at(gap) ?? all.at(all.indexOf(own.at(-1) ?? under) + 1);
+    return { before, line: lineHead?.dataset['band'] ?? '' };
   }
 
-  protected bandDragStarted(): void {
+  /** The move group of the lifted band, while one is lifted: other groups' bands are locked (T35). */
+  protected readonly bandDragGroup = signal<string | null>(null);
+  /** The head the drop line sits on while a band is dragged over a gap of its own group; null for no line. */
+  protected readonly bandLine = signal<string | null>(null);
+
+  protected bandDragStarted(group: string | null): void {
     this.dragClick = true;
+    this.bandDragGroup.set(group);
+  }
+
+  protected bandDragMoved(event: CdkDragMove<string | null>): void {
+    const feature = event.source.data;
+    this.bandLine.set(feature === null ? null : (this.bandTarget(feature, event.pointerPosition.y)?.line ?? null));
   }
 
   protected bandDragEnded(): void {
+    this.bandDragGroup.set(null);
+    this.bandLine.set(null);
     setTimeout(() => {
       this.dragClick = false;
     });
+  }
+
+  /** True for a band the lifted band cannot land among: another move group's, or the one without a feature. */
+  protected bandLocked(group: string | null): boolean {
+    const lifted = this.bandDragGroup();
+    return lifted !== null && group !== lifted;
   }
 
   /** Sends the move unless it changes nothing or a write is in flight; then the grip keeps focus and the place is announced. */

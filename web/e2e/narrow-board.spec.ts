@@ -185,12 +185,13 @@ async function boardOverflow(page: Page): Promise<BoardOverflow> {
     if (!scroller || !grid) throw new Error('the workspace board renders no scroller');
     const box = scroller.getBoundingClientRect();
     const gridBox = grid.getBoundingClientRect();
-    const rows: Array<{ head: HTMLElement; cells: HTMLElement[] }> = [];
-    for (const el of grid.children) {
-      if (!(el instanceof HTMLElement)) continue;
-      if (el.classList.contains('band-head')) rows.push({ head: el, cells: [] });
-      else if (el.classList.contains('cell')) rows.at(-1)?.cells.push(el);
-    }
+    // The band heads stand together in their own drop list (spec 037, T32) and every row of cells right under its head's
+    // grid row, so a lane pairs a head with the cells one grid row below it, in band order.
+    const cells = [...grid.querySelectorAll<HTMLElement>(':scope > .cell')];
+    const rows = [...grid.querySelectorAll<HTMLElement>('.band-head')].map((head) => ({
+      head,
+      cells: cells.filter((cell) => Number(cell.style.gridRowStart) === Number(head.style.gridRowStart) + 1),
+    }));
     const sections = [...grid.querySelectorAll<HTMLElement>(':scope > section[data-col]')];
     const columns = sections.map((section) => {
       const head = section.querySelector<HTMLElement>(':scope > header') ?? section;

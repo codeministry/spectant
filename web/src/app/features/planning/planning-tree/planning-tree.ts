@@ -25,7 +25,6 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiTime } from '../../../shared/time';
 import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
-import { UiPriority } from '../../../shared/ui/priority/priority';
 import { UiTerm } from '../../../shared/ui/term/term';
 import { UiLiveRegion } from '../../../shared/ui/live-region/live-region';
 import { ShellState } from '../../../layout/shell/shell-state.service';
@@ -82,7 +81,7 @@ interface DropMark {
  */
 @Component({
   selector: 'app-planning-tree',
-  imports: [CdkDrag, CdkDragHandle, CdkDropList, PriorityMenu, ReorderMenu, TranslocoPipe, UiIcon, UiIdChip, UiLiveRegion, UiMeter, UiPriority, UiTerm, UiTime],
+  imports: [CdkDrag, CdkDragHandle, CdkDropList, PriorityMenu, ReorderMenu, TranslocoPipe, UiIcon, UiIdChip, UiLiveRegion, UiMeter, UiTerm, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The board's drag delays (touch after 350 ms, mouse after 4 px): one feel for every grip of the app (spec 037).
   providers: [{ provide: CDK_DRAG_CONFIG, useValue: BOARD_DRAG_CONFIG }],

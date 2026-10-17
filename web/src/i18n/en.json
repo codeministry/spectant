@@ -2091,7 +2091,8 @@
   "backlog": {
     "board": {
       "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
-      "movedNone": "{{id}} at position {{position}} of {{count}}, no milestone"
+      "movedNone": "{{id}} at position {{position}} of {{count}}, no milestone",
+      "otherMilestone": "Other milestone"
     },
     "reorder": {
       "title": "Move {{id}} · in {{group}}",

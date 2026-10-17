@@ -422,10 +422,14 @@
                       cdkDragPreviewClass="band-preview"
                       [cdkDragData]="band.key"
                       [cdkDragDisabled]="band.moveGroup === null || writer.busy()"
-                      (cdkDragStarted)="bandDragStarted()"
+                      (cdkDragStarted)="bandDragStarted(band.moveGroup)"
+                      (cdkDragMoved)="bandDragMoved($event)"
                       (cdkDragEnded)="bandDragEnded()"
                       [style.grid-row]="band.row"
+                      [attr.data-band]="band.key ?? ''"
                       [attr.data-move-group]="band.moveGroup"
+                      [attr.data-band-lock]="bandLocked(band.moveGroup) ? '' : null"
+                      [attr.data-drop-line]="bandLine() === (band.key ?? '') ? '' : null"
                       [attr.data-held]="held ? '' : null"
                       [attr.aria-busy]="held ? 'true' : null"
                     >
@@ -451,6 +455,9 @@
                           <span class="grip-gap" aria-hidden="true"></span>
                         }
                         <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
+                        @if (bandLocked(band.moveGroup)) {
+                          <span class="band-lock" data-band-lock-hint>{{ 'backlog.board.otherMilestone' | transloco }}</span>
+                        }
                       </span>
                     </div>
                   }
@@ -478,6 +485,7 @@
                     [cdkDropListData]="cell.stage"
                     (cdkDropListDropped)="dropped($event)"
                     [attr.data-drop]="drag.hint(cell.stage)"
+                    [attr.data-band-lock]="bandLocked(band.moveGroup) ? '' : null"
                     [class.stubcell]="cell.stub" [style.grid-row]="band.row + 1" [style.grid-column]="i + 1">
                     @if (!cell.stub && cell.cards.length > 0) {
                       <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
