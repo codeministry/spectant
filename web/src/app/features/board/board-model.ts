@@ -1,4 +1,4 @@
-import type { ActorRef, Priority, SpecType, SpecWait, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
+import type { ActorRef, ItemStateInfo, Priority, SpecType, SpecWait, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
 import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
 import type { Stage } from '../../../../../core/src/stage';
@@ -144,6 +144,8 @@ export interface BoardRow {
   readonly warnings?: ReadonlyArray<{ readonly kind: string }>;
   /** What the spec waits on (spec 025, ISC-163); null or absent when no open spec edge holds its open work. */
   readonly waits?: SpecWait | null;
+  /** The spec's item state (spec 040, ISC-224); absent when the server read it without a clock. */
+  readonly state?: ItemStateInfo | null;
 }
 
 /** The row's worktree warning, which turns the card's worktree chip to the warning tone (spec 027, ISC-174.1). */
@@ -221,6 +223,11 @@ export interface BoardCard {
   readonly waits: SpecWait | null;
   /** The titles of the blocker specs the board knows, by `NNN`, for the chip's accessible name. */
   readonly waitTitles: Readonly<Record<string, string>>;
+  /**
+   * The item's state as the API serves it (spec 040, T48, ISC-224): the dashboard row's `state` for a spec, the planning
+   * story's for an idea; null where the server sent none (no clock), and the card then keeps the reason line.
+   */
+  readonly state: ItemStateInfo | null;
 }
 
 /** A column's stub at medium and wide: empty (with the cards the filters hide), or its card and waiting counts. */
@@ -273,6 +280,8 @@ export interface BoardColumn {
   /** Cards of this stage the filters hide. */
   readonly hidden: number;
   readonly waitingOnYou: number;
+  /** Shown cards whose item state is `running` (spec 040, T48): a folded column's stub says "1 running" so no run hides. */
+  readonly running: number;
   readonly stub: BoardStub;
   /**
    * Drawn as a narrow stub at medium and wide: a column without a shown card unless the viewer opened it, a column with
@@ -457,6 +466,7 @@ export function buildBoard(input: BoardInput): BoardModel {
       worktree: row?.worktree ?? null,
       worktreeMismatch: row?.warnings?.some((w) => w.kind === WORKTREE_MISMATCH) ?? false,
       ...waitsOf(entry?.holder.waits ?? row?.waits ?? null, titleOf),
+      state: row?.state ?? null,
     });
   }
   const ideaCards: BoardCard[] = onBoard.has('idea')
@@ -487,6 +497,7 @@ export function buildBoard(input: BoardInput): BoardModel {
           worktreeMismatch: false,
           waits: null,
           waitTitles: {},
+          state: idea.state ?? null,
         };
       })
     : [];
@@ -545,6 +556,7 @@ export function buildBoard(input: BoardInput): BoardModel {
       cards: shown,
       hidden,
       waitingOnYou,
+      running: shown.filter((c) => c.state?.state === 'running').length,
       stub: shown.length === 0 ? { kind: 'empty', hidden } : { kind: 'cards', cards: shown.length, waitingOnYou },
       folded: shown.length === 0 ? !query.open.includes(stage) : query.fold.includes(stage),
       bands,

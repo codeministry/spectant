@@ -8,6 +8,7 @@ import { DetailSelection, selectedLook } from '../../layout/detail-sidebar/selec
 import { UiIcon } from '../../shared/icons/icon';
 import { UiActorChip } from '../../shared/ui/actor-chip/actor-chip';
 import { UiCard } from '../../shared/ui/card/card';
+import { UiItemState } from '../../shared/ui/item-state/item-state';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import { UiReason } from '../../shared/ui/reason/reason';
 import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
@@ -48,17 +49,19 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   Spec 026 (T26, ISC-171): a plain click, a tap or Enter on it selects the card (`?sel=spec:NNN` / `idea:<slug>`, the
  *   detail sidebar) instead of navigating; Shift+Enter or a shift click opens the page, and a Ctrl/Cmd or middle click
  *   keeps the browser's new-tab default. The link carries `data-ref`, the card `data-selected="card"` while selected.
- * - Spec 025 (T23, ISC-163), a spec an open spec edge holds only: `ui-waits-chip` in its own line right under the title,
- *   above row 3, at every width (the compact one-column board included). Each chip links to its blocker spec, lies over
- *   the stretched title link and so is its own target; the partial scope lives in its accessible name, never visible
- *   on the card. A full hold already stands in Blocked (core sets the stage); the chip names the reason there.
  * - Row 3: the main feature chip `F<n>` (its name in the tooltip), the milestone (muted) and, pushed to the end,
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned. A spec with a worktree
  *   shows the compact `ui-worktree-chip` (`git-branch` · `↑n` · `±`, the branch in its accessible name) right before
  *   the assignee pill (spec 027, ISC-175, design.md § Across viewports 6): not interactive, the card is the tap
  *   target; the warning tone on the row's `worktree-branch-mismatch`. The chip stays compact at every card width
  *   (the host declares no `board-card` container), so the card never grows by a line. No worktree, no chip.
- * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
+ * - Row 4, the state line on every card (spec 040, T48, ISC-224): `ui-item-state` from the card's `state` as the API
+ *   serves it: glyph · "‹Stage› · ‹state›" · details (the copy chip of `open`, a story's `/spec new <slug>` included;
+ *   the specs `waiting` waits on; the locked chip, actor and "since" of `running`, set off as a band like `aborted`).
+ *   Spec 025's `ui-waits-chip` (T23, ISC-163; a spec an open spec edge holds) moved from its own line under the title
+ *   into this line at every width, and is left out where the state is `waiting`, whose line names the blockers already.
+ *   Each chip lies over the stretched title link and so is its own target. The edge stays the stage's. A card without
+ *   a state (a server without a clock) keeps the old row 4 on waiting cards: `ui-reason` compact with the command chip.
  * - The `grip-vertical` zone at the trailing edge is the `cdkDragHandle` (T125): the board page puts `cdkDrag` on this
  *   element and only the grip lifts the card, so the title stays a link. The grip is a button named "Move 008"
  *   (T127): a click without movement, Enter or Space emits `moveMenu` with the grip, and the board opens "Move to…"
@@ -70,7 +73,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
+  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiItemState, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.data-key]': 'card().key',
@@ -111,9 +114,9 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .chip > span { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
     .feat { background: var(--disp-t); color: var(--disp-ink); font-family: var(--font-mono); }
     .ms { border: 1px solid var(--line); color: var(--muted-ink); }
-    ui-reason { position: relative; z-index: 1; }
-    /* Spec 025 (T23): the waits line lies over the stretched title link, so each chip is its own target. */
-    .hold { position: relative; z-index: 1; justify-self: start; }
+    /* Spec 040 (T48): the state line lies over the stretched title link, so its chips and links are their own targets. */
+    .r4 { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
+    .r4[data-run] { padding: 4px 8px; border-radius: var(--radius-field); background: var(--color-base-200); }
     .grip { position: relative; z-index: 1; display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: var(--radius-field); background: none; color: var(--muted-ink); cursor: grab; }
     .grip:active { cursor: grabbing; }
     /* The prototype's wb-grip (spec 024): shown on hover and focus where a fine pointer can hover; always on touch. */
@@ -165,10 +168,6 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
             >{{ c.title }}</a
           >
 
-          @if (c.waits; as wait) {
-            <ui-waits-chip class="hold" data-card-waits [id]="holdId()" [wait]="wait" [ws]="ws()" [titles]="c.waitTitles" />
-          }
-
           @if (c.feature || c.milestone || c.assignee || c.worktree) {
             <div class="r3">
               @if (c.feature; as feature) {
@@ -194,7 +193,19 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
 
           @if (waits(); as reason) {
             <span class="vh" [id]="describedBy()">{{ 'board.workspace.card.waits' | transloco: { reason } }}</span>
-            <ui-reason [compact]="true" [phrase]="reason" [command]="c.command" />
+          }
+          @if (c.state || c.waits || waits()) {
+            <div class="r4" data-card-state [attr.data-run]="c.state?.run ? c.state?.state : null">
+              @if (c.state; as state) {
+                <ui-item-state [info]="state" [ws]="ws()" />
+              }
+              @if (holdShown() && c.waits; as wait) {
+                <ui-waits-chip data-card-waits [id]="holdId()" [wait]="wait" [ws]="ws()" [titles]="c.waitTitles" />
+              }
+              @if (!c.state && waits(); as reason) {
+                <ui-reason [compact]="true" [phrase]="reason" [command]="c.command" />
+              }
+            </div>
           }
         </div>
         <button
@@ -238,8 +249,13 @@ export class BoardCard {
   protected readonly describedBy = computed(() => `bc-${this.card().key}-waits`);
   /** The `waits on NNN` line's id (spec 025, T23): the title link's description names the blockers after the reason. */
   protected readonly holdId = computed(() => `bc-${this.card().key}-hold`);
+  /**
+   * The spec 025 waits chip stands in the state line unless the state is `waiting`, whose line already names what the
+   * item waits on: "waits" appears once on the card (spec 040, T48).
+   */
+  protected readonly holdShown = computed(() => this.card().waits !== null && this.card().state?.state !== 'waiting');
   protected readonly describedByList = computed(() => {
-    const ids = [this.waits() ? this.describedBy() : null, this.card().waits ? this.holdId() : null].filter((id) => id !== null);
+    const ids = [this.waits() ? this.describedBy() : null, this.holdShown() ? this.holdId() : null].filter((id) => id !== null);
     return ids.length === 0 ? null : ids.join(' ');
   });
   protected readonly link = computed(() => {

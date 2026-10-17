@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
+import type { ItemStateInfo } from '../../../../../../core/src/files';
 import { DetailSelection, selectedLook } from '../../../layout/detail-sidebar/selection';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiIdeaChip } from '../../../shared/ui/idea-chip/idea-chip';
+import { UiItemState } from '../../../shared/ui/item-state/item-state';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 
 /** One story as `DashboardModel.ideas.list` carries it; only these fields are read. */
@@ -12,6 +14,8 @@ export interface DashboardIdea {
   readonly feature: string | null;
   readonly milestone: string | null;
   readonly priority: string;
+  /** The story's item state (spec 040, ISC-224); absent when the server read it without a clock. */
+  readonly state?: ItemStateInfo;
 }
 
 /** `DashboardModel.ideas`: the backlog's stories and their count, as served. */
@@ -26,13 +30,17 @@ export interface DashboardIdeas {
  * desktop's closing group of the spec list). Each story is its `ui-idea-chip` with feature and milestone as muted text
  * beside it, in the model's order; the count is the model's. Nothing renders while the model carries no story.
  *
+ * Spec 040 (T50, ISC-224): after the chip and its place, each story's state line `ui-item-state` from the `state` the
+ * model serves: "Idea · open" with the copy chip `/spec new <slug>`, or the run on it with the locked chip, the agent
+ * and "since"; nothing where the server sent no state.
+ *
  * Spec 026 (T28, ISC-171): a plain click (or Enter) on a chip selects the story for the detail sidebar
  * (`?sel=idea:<slug>`), the row taking the selection look; Shift opens the idea page in place, and a Ctrl/Cmd or middle
  * click keeps the browser's new-tab default. The page docks the sidebar, so at wide it stands in for the rail.
  */
 @Component({
   selector: 'app-ideas-panel',
-  imports: [TranslocoPipe, UiCard, UiDisclosure, UiIdeaChip],
+  imports: [TranslocoPipe, UiCard, UiDisclosure, UiIdeaChip, UiItemState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./ideas-panel.css', '../../../layout/detail-sidebar/selection.css'],
   host: { '[attr.data-ideas]': 'ideas().count > 0 ? ideas().count : null', '(click)': 'open($event)' },
@@ -48,6 +56,9 @@ export interface DashboardIdeas {
                 <ui-idea-chip [ws]="ws()" [slug]="idea.slug" [title]="idea.title" [ref]="'idea:' + idea.slug" />
                 @if (where !== '') {
                   <span class="where" data-idea-where>{{ where }}</span>
+                }
+                @if (idea.state; as state) {
+                  <ui-item-state class="state" [info]="state" [ws]="ws()" />
                 }
               </li>
             }

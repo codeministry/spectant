@@ -102,7 +102,8 @@ test.describe('reasons', () => {
       const card = page.locator(`app-board-card[data-key="spec:${slug}"]`);
       await expect(card, `board card ${id}`).toHaveCount(1);
       await expect(card, `board card ${id}`).toHaveAttribute('data-stage', stage);
-      await expectClampedPhrase(card.locator('ui-reason'), phrase, `board card ${id}`);
+      // Spec 040 (T48): the card shows its state line in place of the reason line; the phrase is the link's description.
+      await expect(card.locator('[data-card-state] ui-item-state'), `board card ${id}: state line`).toHaveCount(1);
       // The card's one link is described by the same phrase (T122).
       await expect(card.locator('a.title'), `board card ${id}: link description`).toHaveAccessibleDescription(`waits: ${phrase}`);
       covered++;

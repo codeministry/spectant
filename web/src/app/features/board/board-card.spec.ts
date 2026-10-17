@@ -3,7 +3,8 @@ import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
-import type { Worktree } from '../../../../../core/src/files';
+import beacon from '../../../../../core/fixtures/beacon.golden.json';
+import type { ItemStateInfo, Worktree } from '../../../../../core/src/files';
 import type { PlanningModel } from '../../../../../core/src/planning';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ShellData } from '../../layout/shell/shell-data.service';
@@ -62,12 +63,14 @@ describe('BoardCard (T122, ISC-129)', () => {
     expect(text(described)).toBe('waits: every claim is closed and F6 waits on spec 009');
     expect(text(host.querySelector('.feat'))).toBe('F6');
     expect(host.querySelector('.feat')?.getAttribute('title')).toBe('Feature F6: Registry compatibility');
-    const reason = host.querySelector('ui-reason');
-    expect(reason).not.toBeNull();
-    expect(reason?.hasAttribute('data-compact')).toBe(true);
-    expect(text(reason?.querySelector('.visually-hidden'))).toBe('every claim is closed and F6 waits on spec 009');
-    expect(reason?.querySelector('ui-command-chip')).toBeNull();
-    expect(host.querySelector('ui-actor-chip')?.textContent).toContain('Harbor maintainer');
+    // Spec 040 (T48): the state line replaces the reason line; 008 waits on its sibling 009, without a command.
+    expect(host.querySelector('ui-reason')).toBeNull();
+    const state = host.querySelector<HTMLElement>('[data-card-state] ui-item-state');
+    expect(state?.dataset['state']).toBe('waiting');
+    expect(text(state?.querySelector('[data-item-line]'))).toBe('Close-pending · waiting');
+    expect(text(state?.querySelector('ui-waits-chip a[data-waits]'))).toBe('waits on 009');
+    expect(state?.querySelector('ui-command-chip')).toBeNull();
+    expect(host.querySelector('.r3 ui-actor-chip')?.textContent).toContain('Harbor maintainer');
   });
 
   it('renders 006 with its P1 priority and the violet edge of a wait on you, with the command chip', async () => {
@@ -77,8 +80,9 @@ describe('BoardCard (T122, ISC-129)', () => {
     expect(card?.hasAttribute('data-side')).toBe(true);
     expect(card?.hasAttribute('data-dashed')).toBe(false);
     expect(card?.style.getPropertyValue('--edge')).toBe('var(--color-secondary)');
-    expect(host.querySelector('ui-reason ui-command-chip')).not.toBeNull();
-    expect(host.querySelector('ui-reason ui-command-chip')?.textContent).toContain(cardOf('006').command ?? '-');
+    const chip = host.querySelector('[data-card-state] ui-item-state[data-state="open"] ui-command-chip');
+    expect(chip?.textContent).toContain(cardOf('006').command ?? '-');
+    expect(text(host.querySelector('[data-item-line]'))).toBe('Review · open');
   });
 
   it('renders a story with the dashed card, the idea look (lightbulb, slug) and a link to its idea page', async () => {
@@ -96,6 +100,11 @@ describe('BoardCard (T122, ISC-129)', () => {
     expect(link?.hasAttribute('aria-describedby')).toBe(false);
     expect(host.querySelector('ui-reason')).toBeNull();
     expect(text(host.querySelector('.ms'))).toBe('Harbor 1.0');
+    // Spec 040 (T48): the story's open state carries the chip `/spec new <slug>`.
+    const state = host.querySelector<HTMLElement>('[data-card-state] ui-item-state');
+    expect(state?.dataset['state']).toBe('open');
+    expect(text(state?.querySelector('[data-item-line]'))).toBe('Idea · open');
+    expect(state?.querySelector('ui-command-chip')?.textContent).toContain('/spec new registry-webhooks');
   });
 
   it('shows no assignee chip on a card nobody holds, and the raw id for an unmapped person', async () => {
@@ -234,30 +243,33 @@ describe('BoardCard selection (spec 026, T26, ISC-171)', () => {
 // Spec 025, T23 · ISC-163 (design.md § Workspace board card): a held spec's card carries "waits on NNN" in its own line
 // right under the title, above the feature row; each chip links to its blocker spec on its own, outside the title link;
 // the partial scope stays in the accessible name; a card nothing holds shows no line.
-describe('BoardCard waits line (T23, ISC-163)', () => {
+// Spec 040 (T48) supersedes spec 025 T23's "own line under the title at every width": the waits chip now stands in the
+// state line (row 4), at every width, and is left out where the state is `waiting`, whose line names the blockers.
+describe('BoardCard waits chip in the state line (T23, ISC-163; spec 040 T48)', () => {
   const held = buildBoard({
     planning: planningGolden as unknown as PlanningModel,
     rows: (dashboard.specs as unknown as readonly BoardRow[]).map((row) =>
-      row.id === '008' ? { ...row, waits: { spec: '008', blockers: ['002'], heldTasks: 2, openTasks: 3, full: false } } : row,
+      row.id === '003' || row.id === '008' ? { ...row, waits: { spec: row.id, blockers: ['002'], heldTasks: 2, openTasks: 3, full: false } } : row,
     ),
   });
   const heldCard = (id: string): BoardCardModel => held.cards.find((c) => c.id === id) as BoardCardModel;
 
   it('builds the wait and the blocker title into the card, and nothing for a card no edge holds', () => {
-    const card = heldCard('008');
+    const card = heldCard('003');
     expect(card.waits?.blockers).toEqual(['002']);
     expect(card.waitTitles).toEqual({ '002': heldCard('002').title });
     expect(heldCard('002').waits).toBeNull();
     expect(heldCard('002').waitTitles).toEqual({});
   });
 
-  it('shows the chip in its own line under the title, linked to 002, outside the title link, before the feature row', async () => {
-    const host = await render('008', heldCard('008'));
+  it('shows the chip in the state line after the open state, linked to 002, outside the title link, after the feature row', async () => {
+    const host = await render('003', heldCard('003'));
     const line = host.querySelector<HTMLElement>('ui-waits-chip[data-card-waits]');
     expect(line).not.toBeNull();
     const title = host.querySelector<HTMLAnchorElement>('a.title');
-    expect(title?.nextElementSibling).toBe(line);
-    expect(line?.nextElementSibling?.classList.contains('r3')).toBe(true);
+    expect(line?.parentElement?.hasAttribute('data-card-state')).toBe(true);
+    expect(line?.previousElementSibling?.tagName).toBe('UI-ITEM-STATE');
+    expect(line?.parentElement?.previousElementSibling?.classList.contains('r3')).toBe(true);
     const chip = line?.querySelector<HTMLAnchorElement>('a[data-waits]');
     expect(text(chip)).toBe('waits on 002');
     expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
@@ -267,8 +279,48 @@ describe('BoardCard waits line (T23, ISC-163)', () => {
     expect(title?.getAttribute('aria-describedby')?.split(' ')).toContain(line?.id);
   });
 
-  it('shows no waits line on a card nothing holds', async () => {
+  it('shows no waits chip on a card nothing holds', async () => {
     const host = await render('002', heldCard('002'));
     expect(host.querySelector('ui-waits-chip')).toBeNull();
+  });
+
+  it('says "waits" once on a waiting card: the state line names its blockers, the edge chip stays out', async () => {
+    const host = await render('008', heldCard('008'));
+    expect(host.querySelector('[data-card-waits]')).toBeNull();
+    expect(host.querySelectorAll('ui-waits-chip')).toHaveLength(1);
+    expect(host.querySelector('a.title')?.getAttribute('aria-describedby')).toBe(`bc-${heldCard('008').key}-waits`);
+  });
+});
+
+// Spec 040 (T48, ISC-224): every card shows its state line from the API, a running card its run as a band; a card
+// without a state keeps the reason line; the edge stays the stage's.
+describe('BoardCard state line (spec 040, T48, ISC-224)', () => {
+  const beaconRun = (beacon.specs as unknown as ReadonlyArray<{ id: string; state: ItemStateInfo }>).find((r) => r.id === '003')?.state as ItemStateInfo;
+  const running: BoardCardModel = { ...cardOf('003'), state: beaconRun };
+
+  it('a running card shows "Tasks · running · since 8 min", the locked chip and the agent, banded, on the stage edge', async () => {
+    const host = await render('003', running);
+    const line = host.querySelector<HTMLElement>('[data-card-state]');
+    expect(line?.dataset['run']).toBe('running');
+    expect(text(line?.querySelector('[data-item-line]'))).toBe('Tasks · running · since 8 min');
+    expect(line?.querySelector('ui-command-chip')?.textContent).toContain('/spec-tasks 003');
+    expect(line?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-32');
+    expect(host.querySelector<HTMLElement>('ui-card')?.style.getPropertyValue('--edge')).toBe('var(--track)');
+  });
+
+  it('every harbor card carries the state its row or story serves', () => {
+    for (const c of BOARD.cards) {
+      const served = c.kind === 'idea' ? 'open' : dashboard.specs.find((r) => r.id === c.id)?.state.state;
+      expect(c.state?.state, c.key).toBe(served);
+    }
+  });
+
+  it('a card without a state keeps the reason line on a waiting card, and no state line elsewhere', async () => {
+    const host = await render('008', { ...cardOf('008'), state: null });
+    expect(host.querySelector('ui-item-state')).toBeNull();
+    expect(host.querySelector('[data-card-state] ui-reason')?.hasAttribute('data-compact')).toBe(true);
+    TestBed.resetTestingModule();
+    const plain = await render('002', { ...cardOf('002'), state: null });
+    expect(plain.querySelector('[data-card-state]')).toBeNull();
   });
 });

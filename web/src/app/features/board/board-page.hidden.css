@@ -52,3 +52,13 @@
 :host([data-has-selection]:not([data-tier='compact'])) .scroller {
   padding-inline-end: calc(var(--rail) + 24px);
 }
+
+/* Spec 040 (T48, ISC-224): a folded column with a running card says so under its count, the half glyph above the
+   vertical "1 running", so a run never hides behind a fold. */
+.stub .running {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--disp-ink);
+  font-weight: 600;
+}
