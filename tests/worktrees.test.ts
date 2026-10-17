@@ -12,6 +12,7 @@ import { basename, join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
 import { composeApi, dashboardApi } from "../server/src/api.ts";
 import type { ApiHandler } from "../server/src/http.ts";
+import { takenSpecNumbers } from "../server/src/git.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
@@ -608,5 +609,81 @@ describe("ISC-208 folder copy: every file of a spec folder comes from the worktr
     expect(await image.text()).toBe(COPY_IMAGE);
 
     expect(folderHashes(main)).toEqual(before);
+  });
+});
+
+// ── worktree-only spec (spec 039, T7, ISC-208.1) ─────────────────────────────────────────────────────────────────────
+//
+// A spec folder created and committed on a spec branch, in its worktree `.worktrees/050-new-console`, before it reaches
+// `main`. The branch is named `draft/console`, so only the worktree's path names the folder. The dashboard reading lists
+// the spec with source `worktree`, its page answers, its number is taken for an allocation; once the branch is merged
+// and the worktree removed, the same spec reads from the main checkout.
+
+const NEW_FOLDER = "050-new-console";
+const NEW_ID = "050";
+const NEW_WORKTREE = `.worktrees/${NEW_FOLDER}`;
+const NEW_SPEC_MD = `---
+task: "A new console view, started on its branch"
+slug: ${NEW_FOLDER}
+spec_type: feature
+stage: plan
+phase: scoping
+progress: 0/1
+---
+
+# ${NEW_ID} — new-console
+
+## Claims
+
+- [ ] ISC-90: The console lists the new view.
+`;
+
+/** The tracked fixture plus a second spec worktree whose branch alone carries the new spec folder. */
+async function plantWorktreeOnly(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true });
+  expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", "draft/console", NEW_WORKTREE)).code).toBe(0);
+  const worktree = join(repo.root, NEW_WORKTREE);
+  mkdirSync(join(worktree, "specs", NEW_FOLDER), { recursive: true });
+  writeFileSync(join(worktree, "specs", NEW_FOLDER, "spec.md"), NEW_SPEC_MD);
+  expect((await repo.git(worktree, "add", "--", `specs/${NEW_FOLDER}/spec.md`)).code).toBe(0);
+  expect((await repo.git(worktree, "commit", "-q", "-m", "specs: new console")).code).toBe(0);
+  return repo;
+}
+
+describe("ISC-208.1 worktree-only spec: a spec folder only a spec worktree carries is a spec before the merge", () => {
+  test("worktree-only spec: dashboard row and spec page with source worktree, number taken; after the merge, source main", async () => {
+    const repo = await plantWorktreeOnly();
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    expect(reading.input.specs.find((f) => f.folder === NEW_FOLDER)?.texts.spec).toBe(NEW_SPEC_MD);
+    expect(reading.input.perSpec?.[NEW_FOLDER]?.source).toBe("worktree");
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    const row = dashboard.model.specs.find((s) => s.id === NEW_ID);
+    expect(row).toMatchObject({ source: "worktree", main: null });
+    expect(row?.worktree?.path).toBe(NEW_WORKTREE);
+    const page = await call(handlerFor(repo), specRoutes.spec("harbor", NEW_ID));
+    expect(page.status).toBe(200);
+    expect(page.headers.get(SPEC_HASH_HEADER)).toBe(rawSha256(Buffer.from(NEW_SPEC_MD)));
+    expect((await takenSpecNumbers(repo.root)).numbers).toContain(Number(NEW_ID));
+    // Nothing of the new spec is in the main checkout.
+    expect(readdirSync(join(repo.root, "specs"))).not.toContain(NEW_FOLDER);
+
+    // The branch merged into main and its worktree removed: the same spec, now from the main checkout.
+    expect((await repo.git(repo.root, "merge", "-q", "--no-ff", "-m", "Merge draft/console", "draft/console")).code).toBe(0);
+    expect((await repo.git(repo.root, "worktree", "remove", "--force", NEW_WORKTREE)).code).toBe(0);
+    const after = await loadDashboard(repo.root, null);
+    if (!after.readable) throw new Error("the fixture workspace is unreadable");
+    expect(after.model.specs.find((s) => s.id === NEW_ID)).toMatchObject({ source: "main", worktree: null });
+  });
+
+  test("worktree-only spec: a linked specs/ carries no spec of its own", async () => {
+    const repo = await plant();
+    const worktree = join(repo.root, NEW_WORKTREE);
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", "draft/console", NEW_WORKTREE)).code).toBe(0);
+    symlinkSync("../../specs", join(worktree, "specs"));
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    expect(reading.input.specs.some((f) => f.folder === NEW_FOLDER)).toBe(false);
   });
 });

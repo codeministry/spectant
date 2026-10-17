@@ -269,7 +269,9 @@ export interface TakenNumbers {
  *   of the `NNN-slug` folder shape (`feature/012-tide-tables`) takes its number. The plumbing form of `branch --list`.
  * - `log --all --no-renames --diff-filter=A --name-only --format= -- specs`: every path ever added below `specs/` on
  *   any ref; the folder segment of `specs/NNN-slug/…` and `specs/archive/NNN-slug/…` takes its number, so a spec
- *   deleted or moved since still holds it. `--no-renames` makes an archive move an addition too.
+ *   deleted or moved since still holds it. `--no-renames` makes an archive move an addition too. A spec folder
+ *   committed only on a spec worktree's branch is such an addition, so its number is taken before the merge, whatever
+ *   the branch is called (spec 039, ISC-208.1).
  *
  * Folder segments are read by core's `specNumbersOf`, the one definition of the shape. Never throws: no repository
  * root, no git, a failure or the deadline answer `source: 'none'` with no number; the folders on disk still count.
@@ -352,6 +354,26 @@ export async function trackedSpecPaths(root: string, folder: string, options: Us
     // `ls-files` asks a configured fsmonitor hook for changes as it reads the index (ISC-216.2): off for this read.
     const run = await runner(["-C", root, ...NO_FSMONITOR, "ls-files", "-z", "--", `specs/${folder}`], gitEnv(root), signal);
     // A partial listing is never handed on: a failed or killed run reads as untracked.
+    if (run?.code !== 0 || signal.aborted) return [];
+    return run.stdout.split("\0").filter((path) => path !== "");
+  });
+}
+
+/**
+ * The paths git tracks in the worktree at `worktreePath` (absolute) under the repository's planning files, `specs/` and
+ * `ISA.md`, read inside that worktree with `ls-files -z -- specs/ ISA.md` and split on NUL: relative to the worktree,
+ * `/`-separated, unquoted. Its own branch's index answers, so a spec folder committed only on that branch is listed
+ * (spec 039, ISC-208.1, `core/`'s `worktreeOnlySpecs`), and so is each repository file that branch tracks (ISC-209). The
+ * same read as `trackedSpecPaths`: the index read, never written, no lock, fsmonitor off; a linked `specs/` lists as
+ * the link itself, never as a path under it (ISC-181.1).
+ * Never throws: a path without its `.git` (the worktree is gone), no git, a non-zero exit and the deadline answer the
+ * empty list.
+ */
+export async function trackedPlanningPaths(worktreePath: string, options: UserEmailOptions = {}): Promise<string[]> {
+  if (!hasOwnGit(worktreePath)) return [];
+  const runner = options.runner ?? defaultGitRunner;
+  return readWithin<string[]>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, [], async (signal) => {
+    const run = await runner(["-C", worktreePath, ...NO_FSMONITOR, "ls-files", "-z", "--", "specs/", "ISA.md"], gitEnv(worktreePath), signal);
     if (run?.code !== 0 || signal.aborted) return [];
     return run.stdout.split("\0").filter((path) => path !== "");
   });

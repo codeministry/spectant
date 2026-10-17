@@ -4,8 +4,9 @@
  * a 304.
  *
  * Per request: the loopback guard (403), the method (405 with `Allow: allowFor(route)`), the workspace by slug (404
- * unknown, 409 `Unavailable` when its directory cannot be read, the dashboard's body), the spec by `resolveSpec` (the
- * id `NNN`, the folder name or the bare slug; no match or an ambiguous one is a 404, never another spec), and a folder
+ * unknown, 409 `Unavailable` when its directory cannot be read, the dashboard's body), the spec by
+ * `resolveWorkspaceSpec` (core's `resolveSpec`, then the specs only a spec worktree carries, spec 039 ISC-208.1; the id
+ * `NNN`, the folder name or the bare slug; no match or an ambiguous one is a 404, never another spec), and a folder
  * without `spec.md` is no spec (404). Then one `core/` call per route (every parse is core's, ISC-5):
  *
  * | route | answer |
@@ -41,7 +42,7 @@ import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { buildFrames } from "../../core/src/frames.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
 import { readLockSources } from "../../core/src/locks.ts";
-import { type SpecRef, resolveSpec } from "../../core/src/resolve.ts";
+import type { SpecRef } from "../../core/src/resolve.ts";
 import { buildSpecPage } from "../../core/src/spec.ts";
 import { parseTaskLines } from "../../core/src/tasks.ts";
 import { codeReviewOf } from "../../core/src/stage.ts";
@@ -75,6 +76,7 @@ import {
   readBytesIfExists,
   readIfExists,
   readSpecSource,
+  resolveWorkspaceSpec,
   readWorktreeView,
   readWorkspaceInput,
   timelineWorktreeOf,
@@ -207,7 +209,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     const root = workspace.path;
     const unreadable = workspaceUnreadable(root);
     if (unreadable !== null) throw new WorkspaceUnreadable(unreadable);
-    const ref = resolveSpec(root, match.params.id);
+    const ref = await resolveWorkspaceSpec(root, match.params.id);
     if (ref.kind !== "spec") return json(req, 404, NOT_FOUND);
     if (match.route === "spec") return specPage(req, root, ref);
 

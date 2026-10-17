@@ -39,14 +39,14 @@ import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
 import type { FileDiagnostic, IdeaFiles, LibraryCatalog, LibraryDoc, MergeState, SpecFiles, SpecRead, TextFileKind, TimelineWorktreeInput, Workflow, Worktree } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
-import { specIdOf } from "../../core/src/spec-ref.ts";
+import { SPEC_FOLDER, SPEC_ID, specIdOf, specSlugOf } from "../../core/src/spec-ref.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { catalogDocAt, readCatalog, readCatalogDocs } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
-import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
+import { type NotFound, type SpecNotFoundReason, type SpecRef, listSpecs, resolveSpec } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
-import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf } from "../../core/src/worktrees.ts";
-import { type SpecBranch, aheadOfMain, dirty, mapBounded, mergeCommitOf, mergedSpecBranches, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
+import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf, worktreeOnlySpecs } from "../../core/src/worktrees.ts";
+import { type SpecBranch, aheadOfMain, dirty, mapBounded, mergeCommitOf, mergedSpecBranches, trackedPlanningPaths, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
@@ -247,8 +247,9 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     const archived: SpecFiles[] = [];
     const perSpec: Record<string, SpecRead> = {};
     const copies: Record<string, string> = {};
-    const refs = listSpecs(root);
-    const { view, branches } = await readWorktreeView(root, refs);
+    const listed = listSpecs(root);
+    const { view, branches, worktreeOnly } = await readWorktreeView(root, listed);
+    const refs = withWorktreeOnly(listed, worktreeOnly);
     const worktrees = view.live.length === 0 ? undefined : { ...view.assignment, worktrees: view.live };
     for (const ref of refs) {
       const main = specFiles(ref.dir, ref.slug);
@@ -299,6 +300,41 @@ export interface WorktreeReading {
   readonly view: WorktreeView;
   /** Every local spec branch with its merge state (`mergedSpecBranches`, ISC-162.1). */
   readonly branches: readonly SpecBranch[];
+  /**
+   * The spec folders only a live spec worktree carries (spec 039, ISC-208.1, `core/`'s `worktreeOnlySpecs`), as active
+   * spec references whose `dir` is the folder in that worktree, `<root>/<worktree>/specs/NNN-slug`, in number order.
+   */
+  readonly worktreeOnly: readonly SpecRef[];
+  /**
+   * Per spec worktree inside the repository that holds its `.git`, by its path relative to the root: what
+   * `git ls-files -z -- specs/ ISA.md` printed inside it (`trackedPlanningPaths`), the planning files its branch tracks.
+   */
+  readonly planning: Readonly<Record<string, readonly string[]>>;
+}
+
+/**
+ * The active spec references of `listed` (`listSpecs`) and `worktreeOnly` in number order, then the archived ones, as
+ * `listSpecs` orders them (spec 039, ISC-208.1).
+ */
+export function withWorktreeOnly(listed: readonly SpecRef[], worktreeOnly: readonly SpecRef[]): SpecRef[] {
+  if (worktreeOnly.length === 0) return [...listed];
+  const active = [...listed.filter((ref) => !ref.archived), ...worktreeOnly].sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : 1));
+  return [...active, ...listed.filter((ref) => ref.archived)];
+}
+
+/**
+ * The spec `id` names in the workspace at `root` as `resolveSpec` finds it, else among the specs only a live spec
+ * worktree carries (spec 039, ISC-208.1), matched by the same three forms: `NNN`, `NNN-slug` or the slug alone.
+ * `reading` is the caller's `readWorktreeView`, read only when the main checkout names nothing.
+ */
+export async function resolveWorkspaceSpec(root: string, id: string, reading?: WorktreeReading): Promise<SpecRef | NotFound<SpecNotFoundReason>> {
+  const found = resolveSpec(root, id);
+  if (found.kind === "spec" || found.reason === "ambiguous") return found;
+  const { worktreeOnly } = reading ?? (await readWorktreeView(root));
+  const matches = worktreeOnly.filter((ref) =>
+    SPEC_ID.test(id) ? ref.id === id : SPEC_FOLDER.test(id) && ref.slug === id ? true : id !== "" && specSlugOf(ref.slug) === id,
+  );
+  return matches.length === 1 && matches[0] !== undefined ? matches[0] : found;
 }
 
 /** Spec worktrees read at once: enough to overlap the git reads, few enough for a workspace with many (ISC-215). */
@@ -331,9 +367,23 @@ export function readWorktreeView(root: string, refs: readonly SpecRef[] = listSp
 
 async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Promise<WorktreeReading> {
   const [porcelain, merge] = await Promise.all([worktreeList(root), mergedSpecBranches(root)]);
-  const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
+  const mainFolders = refs.map((ref) => ref.slug);
+  const listedFirst = assignWorktrees(porcelain, mainFolders);
   // A worktree's folder, joined to the root; null for one outside the repository, whose location core never names.
   const folderOf = (w: Worktree): string | null => (w.path === null ? null : join(root, w.path));
+  // The planning files each spec worktree's branch tracks, read inside it (spec 039): the folders only a worktree
+  // carries (ISC-208.1) and the repository files of ISC-209 are decided on them.
+  const readable = listedFirst.worktrees.flatMap((w) =>
+    w.kind === "spec" && w.path !== null && insideRepository(w.path) && hasGit(join(root, w.path)) ? [w.path] : [],
+  );
+  const paths = await mapBounded(readable, WORKTREE_READS, (path) => trackedPlanningPaths(join(root, path)));
+  const planning: Record<string, readonly string[]> = {};
+  readable.forEach((path, i) => {
+    planning[path] = paths[i] ?? [];
+  });
+  const only = worktreeOnlySpecs(listedFirst.worktrees, mainFolders, planning);
+  // Assigned again with the found folders, so each one's worktree is its spec's like any other (its chip, its source).
+  const assignment = only.length === 0 ? listedFirst : assignWorktrees(porcelain, [...mainFolders, ...only.map((s) => s.slug)]);
   const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
   const merged = merge.branches.filter((b) => b.merged).map((b) => b.branch);
   const present = ofSpec.flatMap((w) => {
@@ -368,8 +418,11 @@ async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Prom
   [...listed].forEach((slug, i) => {
     tracked[slug] = lists[i] ?? [];
   });
+  // A folder only a worktree carries is tracked by that worktree's branch: its source is the worktree (ISC-208.1).
+  for (const spec of only) tracked[spec.slug] = (planning[spec.worktree] ?? []).filter((path) => path.startsWith(`specs/${spec.slug}/`));
+  const worktreeOnly = only.map((spec): SpecRef => ({ kind: "spec", id: spec.id, slug: spec.slug, dir: join(root, spec.worktree, "specs", spec.slug), archived: false }));
   const view: WorktreeView = { assignment, live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
-  return { view, branches: merge.branches };
+  return { view, branches: merge.branches, worktreeOnly, planning };
 }
 
 /**
@@ -473,8 +526,10 @@ async function specSourceFor(
   const copyDir = copyDirFor(root, ref, view);
   const copy = copyDir === null ? null : copyFiles(ref.dir, copyDir, ref.slug);
   const files = copy?.texts.spec === undefined ? main : copy;
+  // A spec only the worktree carries (ISC-208.1): its folder is the copy, and the main checkout has none to show beside it.
+  const only = copyDir === ref.dir;
   const read: SpecRead = {
-    ...(files === main ? {} : { source: "worktree" as const, main }),
+    ...(files === main ? {} : only ? { source: "worktree" as const } : { source: "worktree" as const, main }),
     ...(!withTree || files.texts.gateCodeReviewed === undefined ? {} : { tree: await worktreeTreeId(at) }),
   };
   return { files, read: Object.keys(read).length === 0 ? null : read, copy: files === main ? null : copyDir };
@@ -501,8 +556,9 @@ export async function readSpecSource(root: string, ref: SpecRef, reading?: Workt
  * spec has a worktree. For the library's reader and search, which need the documents and never a stage.
  */
 export async function readCopies(root: string): Promise<Record<string, string>> {
-  const refs = listSpecs(root);
-  const { view } = await readWorktreeView(root, refs);
+  const listed = listSpecs(root);
+  const { view, worktreeOnly } = await readWorktreeView(root, listed);
+  const refs = withWorktreeOnly(listed, worktreeOnly);
   const copies: Record<string, string> = {};
   for (const ref of refs) {
     if (ref.archived || !view.live.some((w) => w.kind === "spec" && w.spec === ref.id)) continue;

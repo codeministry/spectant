@@ -1476,6 +1476,18 @@ its five Markdown files, their stale and missing judgements, its group head and 
 `.design/` files all come from the copy, and so do the files the evidence file route and the library's asset route
 serve for it.
 
+**Specs only a worktree carries** (ISC-208.1). A spec folder created on a spec branch is a spec before it reaches
+`main`. The server runs `git ls-files -z -- specs/` inside each spec worktree of no spec, and `worktreeOnlySpecs`
+(`core/src/worktrees.ts`) takes those answers with the assignment above and the main checkout's folder names. A worktree
+of kind `spec` that belongs to no spec, inside the repository, carries the folder its path `.worktrees/NNN-slug` names
+(else its branch) when its own branch tracks a path below `specs/NNN-slug/`. The number must be free in the main
+checkout, active and archived folders alike, which wins otherwise; of two worktrees naming one number the first in
+git's order wins. Such a spec is assigned its worktree like any other, read from `<worktree>/specs/NNN-slug/` with
+source `worktree` and no `main` beside it (the main checkout has no copy), listed on the board, the dashboard and its
+spec page, and its number counts as taken for an allocation. Once its branch is merged, the folder is in the main
+checkout and the spec reads as every other one. A linked `specs/` lists itself, never a path under it, so it carries
+no such spec.
+
 Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
 `specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),
 never as a path under the folder. Spectant's own repository is that case:

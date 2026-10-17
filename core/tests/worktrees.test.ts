@@ -51,6 +51,7 @@ import {
   relativeTo,
   specSourceOf,
   WORKTREE_COPY_KINDS,
+  worktreeOnlySpecs,
   type WorktreeFacts,
   type WorktreeView,
 } from '../src/worktrees.ts';
@@ -751,5 +752,42 @@ describe('folder copy (spec 039, ISC-208)', () => {
       dir: join(root, 'specs'),
       rel: `${FOLDER}/artifacts/report.md`,
     });
+  });
+});
+
+// Spec 039, ISC-208.1: a spec folder only a spec worktree carries. `worktreeOnlySpecs(worktrees, mainFolders, tracked)`
+// takes the listing as `assignWorktrees` assigned it against the main checkout's spec folders, those folder names, and
+// per worktree path what `git ls-files -z -- specs/` printed inside that worktree. A worktree of no spec, inside the
+// repository and not a builder, whose path `.worktrees/NNN-slug` (else its branch) names a folder `NNN-slug`, carries
+// that folder when its own branch tracks a path below `specs/NNN-slug/`. The number must be free in the main checkout,
+// which wins otherwise; one spec per number, the first worktree in git's order.
+describe('worktree-only spec (spec 039, ISC-208.1)', () => {
+  const text = read('spec-worktrees.porcelain');
+  const listing = assignWorktrees(text, SPECS).worktrees;
+  const RETIRED = ['specs/099-retired/context.md', 'specs/099-retired/spec.md'];
+
+  test('worktree-only spec: a worktree whose branch tracks specs/NNN-slug/, which main lacks, carries that spec', () => {
+    const only = worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': [...RETIRED, 'specs/012-harbor/spec.md'] });
+    expect(only).toEqual([{ id: '099', slug: '099-retired', worktree: '.worktrees/099-retired' }]);
+  });
+
+  test('worktree-only spec: without a tracked path under the folder in that worktree, no spec', () => {
+    expect(worktreeOnlySpecs(listing, SPECS, {})).toEqual([]);
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': ['specs/012-harbor/spec.md'] })).toEqual([]);
+    // A linked specs/ lists itself, never a path under it (ISC-181.1).
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': ['specs'] })).toEqual([]);
+    // Another worktree's paths name nothing for this one.
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/scratch': RETIRED })).toEqual([]);
+  });
+
+  test('worktree-only spec: the main checkout wins a number it has, and the assigned worktrees never count', () => {
+    expect(worktreeOnlySpecs(listing, [...SPECS, '099-old'], { '.worktrees/099-retired': RETIRED })).toEqual([]);
+    expect(worktreeOnlySpecs(listing, SPECS, { '.worktrees/012-harbor': ['specs/012-harbor/spec.md'] })).toEqual([]);
+  });
+
+  test('worktree-only spec: assigned against the main folders plus the found ones, the worktree belongs to the new spec', () => {
+    const only = worktreeOnlySpecs(listing, SPECS, { '.worktrees/099-retired': RETIRED });
+    const again = assignWorktrees(text, [...SPECS, ...only.map((s) => s.slug)]);
+    expect(again.worktrees.find((w) => w.path === '.worktrees/099-retired')?.spec).toBe('099');
   });
 });
