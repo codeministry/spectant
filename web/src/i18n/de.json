@@ -2089,6 +2089,10 @@
     }
   },
   "backlog": {
+    "board": {
+      "moved": "{{id}} an Position {{position}} von {{count}} in {{group}}",
+      "movedNone": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein"
+    },
     "reorder": {
       "title": "{{id}} verschieben · in {{group}}",
       "titleNone": "{{id}} verschieben · ohne Meilenstein",

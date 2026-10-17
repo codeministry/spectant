@@ -228,23 +228,40 @@ h2 {
 
 /* The drop line: 2 px primary from the grip column to the chip, with an 8 px dot at its start; on the card it holds
  * 3.77:1 light and 8.91:1 dark. Over another milestone or group there is none, and the cursor says no-drop. */
+.row[data-drop]::before,
 .row[data-drop]::after {
   position: absolute;
-  inset-inline: 16px;
-  block-size: 8px;
-  background:
-    radial-gradient(circle 4px at 4px 50%, var(--color-primary) 4px, transparent 4.5px),
-    linear-gradient(var(--color-primary), var(--color-primary)) 0 50% / 100% 2px no-repeat;
+  background: var(--color-primary);
   content: '';
   pointer-events: none;
 }
 
+.row[data-drop]::after {
+  inset-inline: 16px;
+  block-size: 2px;
+}
+
+.row[data-drop]::before {
+  inset-inline-start: 16px;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+}
+
 .row[data-drop="before"]::after {
-  inset-block-start: -5px;
+  inset-block-start: -1px;
+}
+
+.row[data-drop="before"]::before {
+  inset-block-start: -4px;
 }
 
 .row[data-drop="after"]::after {
-  inset-block-end: -5px;
+  inset-block-end: -1px;
+}
+
+.row[data-drop="after"]::before {
+  inset-block-end: -4px;
 }
 
 .tree[data-no-drop] {

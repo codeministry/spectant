@@ -1,4 +1,4 @@
-import { CdkDrag, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkDrag, type CdkDragDrop, CdkDragHandle, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
@@ -26,12 +26,17 @@ import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { UiTime } from '../../shared/time';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
+import { beforeFor, edgeBefore, type FeatureGroup, featureOrder, groupOf, positionOf, stepBefore, type Target } from '../backlog/backlog-order';
+import { BacklogWriter, withBacklog } from '../backlog/backlog-writer.service';
+import { ReorderMenu, type ReorderStep } from '../backlog/reorder-menu';
 import { planningPageState } from '../planning/planning-page';
 import { BoardCard, CARD_EDGE } from './board-card';
 import { BoardDrag, type BoardDropEvent, provideBoardDrag, withMoves } from './board-drag';
 import { BoardFilters, withoutFilters } from './board-filters';
 import {
   type BoardCard as BoardCardModel,
+  type BandDivider,
+  type BandPlace,
   type BoardColumn,
   type BoardModel,
   type BoardQueryState,
@@ -100,14 +105,21 @@ const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMe
 /** What a band head shows, from a band across the board (medium, wide) or a band of the one column (compact). */
 type BandHead = Pick<BandRow, 'key' | 'label' | 'target' | 'count'>;
 
-/** A swimlane band across the whole board: its head and one cell per column, in column order. */
-interface BandRow {
+/**
+ * A swimlane band across the whole board: its head and one cell per column, in column order. `row` is the grid row of
+ * its head (its cells take the next one); `divider` is the milestone row above it, only between two move groups.
+ */
+interface BandRow extends BandPlace {
   readonly key: string | null;
   readonly label: string | null;
   readonly target: string | null;
   readonly count: number;
+  readonly row: number;
   readonly cells: ReadonlyArray<{ readonly stage: WorkflowStage; readonly stub: boolean; readonly cards: readonly BoardCardModel[] }>;
 }
+
+/** The divider a band shows: the model's, but never above the first band shown (spec 037, design § decision 6). */
+export const dividerShown = (band: BandPlace, first: boolean): BandDivider | null => (first ? null : band.divider);
 
 /**
  * `/w/:ws/board` (spec 008, T121, ISC-129; design 008 § board layout, Tablet 820 and Desktop 1440): the workspace
@@ -149,11 +161,14 @@ interface BandRow {
   imports: [
     AllocateDialog,
     CdkDrag,
+    CdkDragHandle,
     CdkDropList,
+    CdkDropListGroup,
     CdkScrollable,
     MoveToMenu,
     NgTemplateOutlet,
     RefusalNotice,
+    ReorderMenu,
     TranslocoPipe,
     RouterLink,
     NotFound,
@@ -229,9 +244,12 @@ export class BoardPage {
    * the tree does not show yet are applied first (`withMoves`), so a moved card lands on the 200.
    */
   protected readonly board = computed<BoardModel | null>(() => {
-    const planning = this.data.planningModel();
+    // The backlog overlay (spec 037): accepted band moves show on the 200, a move in flight already at its target.
+    const served = this.writer.model();
     const dashboard = this.data.dashboard.value();
-    if (planning === null || dashboard === undefined) return null;
+    if (served === null || dashboard === undefined) return null;
+    const held = [...this.writer.held().values()].filter((op) => op.op === 'move');
+    const planning = held.length === 0 ? served : withBacklog(served, held);
     return buildBoard({
       planning: withMoves(planning, this.drag.moves()),
       rows: boardRowsOf(dashboard.kind === 'ok' ? dashboard.body : null),
@@ -301,30 +319,176 @@ export class BoardPage {
     (this.board()?.columns ?? []).map((c) => (c.folded ? 'var(--board-stub)' : 'minmax(var(--board-col), 1fr)')).join(' '),
   );
 
-  /** The bands across the board in band order (master order, or target order for milestones), the one without last. */
+  /**
+   * The bands across the board in the model's lane order (spec 037, ISC-197: features by milestone, then rank; milestones
+   * in target order), the one without last. Each head takes a grid row, its cells the next, and a divider one above it.
+   */
   protected readonly bands = computed<readonly BandRow[]>(() => {
     const b = this.board();
     if (b === null || b.query.group === 'none') return [];
-    const order: Array<string | null> = [...(b.query.group === 'feature' ? b.options.features.map((f) => f.id) : b.options.milestones), null];
-    return order.flatMap((key): BandRow[] => {
-      const found = b.columns.flatMap((c) => c.bands.filter((band) => band.key === key));
+    let row = 2;
+    return b.lanes.flatMap((lane, i): BandRow[] => {
+      const found = b.columns.flatMap((c) => c.bands.filter((band) => band.key === lane.key));
       const count = found.reduce((n, band) => n + band.count, 0);
       if (count === 0) return [];
+      const divider = dividerShown(lane, i === 0);
+      if (divider !== null) row += 1;
+      const head = row;
+      row += 2;
       return [
         {
-          key,
+          key: lane.key,
+          moveGroup: lane.moveGroup,
+          divider,
+          row: head,
           label: found[0]?.label ?? null,
           target: found[0]?.target ?? null,
           count,
           cells: b.columns.map((c) => ({
             stage: c.stage,
             stub: c.folded,
-            cards: c.bands.find((band) => band.key === key)?.cards ?? [],
+            cards: c.bands.find((band) => band.key === lane.key)?.cards ?? [],
           })),
         },
       ];
     });
   });
+
+  /** The backlog write of a band move (spec 037, T17), shared with the tree lens. */
+  protected readonly writer = inject(BacklogWriter);
+  private readonly bandMenu = viewChild<ReorderMenu>('bandMenu');
+  /** The band whose "Move" menu is open, or was last opened. */
+  protected readonly menuBand = signal<string | null>(null);
+  /** The polite live region's line after a band move: "F8 at position 2 of 10 in Free". */
+  protected readonly bandNews = signal('');
+  /** The band whose grip takes focus after the next render that shows it. */
+  private readonly pendingBandFocus = signal<string | null>(null);
+  protected readonly dividerShown = dividerShown;
+
+  /**
+   * The feature order a band moves in: every milestone of `featureOrder` with only the features the board shows a band
+   * of in that move group, so a step, a menu entry and a drop gap all count the bands the user sees.
+   */
+  protected readonly bandOrder = computed<readonly FeatureGroup[]>(() => {
+    const b = this.board();
+    const model = this.writer.model();
+    if (b === null || model === null || b.query.group !== 'feature') return [];
+    const shown = new Map(b.lanes.flatMap((lane) => (lane.key !== null && lane.moveGroup !== null ? [[lane.key, lane.moveGroup] as const] : [])));
+    return featureOrder(model).map((group) => ({ ...group, ids: group.ids.filter((id) => shown.get(id) === group.key) }));
+  });
+
+  /** The move group of a feature band; null for a feature the board shows no band of. */
+  private moveGroupOf(feature: string): string | null {
+    return this.board()?.lanes.find((lane) => lane.key === feature)?.moveGroup ?? null;
+  }
+
+  /** The milestone name of a move group, null for the "No milestone" group. */
+  private groupName(groupKey: string | null): string | null {
+    return groupKey === null ? null : (groupOf(this.bandOrder(), groupKey)?.name ?? null);
+  }
+
+  /** The grip's name, the menu's title: "Move F8 · in Free", or "· no milestone". */
+  protected gripLabel(feature: string | null): string {
+    const id = feature ?? '';
+    const group = this.groupName(this.moveGroupOf(id));
+    const lang = this.lang();
+    return group === null
+      ? this.transloco.translate('backlog.reorder.titleNone', { id }, lang)
+      : this.transloco.translate('backlog.reorder.title', { id, group }, lang);
+  }
+
+  /** The open menu's band: its group's name, whether it can move up or down, and its place. */
+  protected readonly menuState = computed(() => {
+    const feature = this.menuBand() ?? '';
+    const group = this.moveGroupOf(feature);
+    const order = this.bandOrder();
+    const at = group === null ? null : positionOf(order, group, feature);
+    return {
+      feature,
+      group: this.groupName(group),
+      canUp: at !== null && at.index > 1,
+      canDown: at !== null && at.index < at.count,
+      position: at?.index ?? null,
+      count: at?.count ?? null,
+    };
+  });
+
+  /** True while the "Move" menu is open for `feature`: its grip's `aria-expanded`. */
+  protected menuOpenFor(feature: string | null): boolean {
+    return feature !== null && this.menuBand() === feature && (this.bandMenu()?.expanded() ?? false);
+  }
+
+  /** The band list admits band drags only (their data is the feature id), never a card. */
+  protected readonly bandsOnly = (drag: CdkDrag<unknown>): boolean => typeof drag.data === 'string';
+
+  /** A plain click on a band's grip (no drag): its "Move" menu, anchored to the grip. */
+  protected openBandMenu(feature: string | null, grip: HTMLElement): void {
+    if (this.dragClick || feature === null) return;
+    this.menuBand.set(feature);
+    this.bandMenu()?.show(grip);
+  }
+
+  /** Alt+↑ / Alt+↓ on a band's grip, and the menu's four entries: the move within the band's milestone. */
+  protected bandStep(feature: string | null, step: ReorderStep, event?: Event): void {
+    event?.preventDefault();
+    const group = feature === null ? null : this.moveGroupOf(feature);
+    if (feature === null || group === null) return;
+    const order = this.bandOrder();
+    const before = step === 'up' || step === 'down' ? stepBefore(order, group, feature, step === 'up' ? -1 : 1) : edgeBefore(order, group, feature, step);
+    void this.moveBand(feature, before);
+  }
+
+  /** The menu's chosen entry, for the band it was opened on. */
+  protected bandMenuStep(step: ReorderStep): void {
+    this.bandStep(this.menuBand(), step);
+  }
+
+  /**
+   * A band dropped: the gap under the drop point among the visible heads of the band's own move group, measured at drop
+   * time. A drop over another move group's band, the band without a feature, or a gap next to itself sends nothing.
+   */
+  protected bandDropped(event: CdkDragDrop<unknown, unknown, string>): void {
+    const feature = event.item.data;
+    const group = this.moveGroupOf(feature);
+    if (group === null) return;
+    const y = event.dropPoint.y;
+    const heads = [...this.host.querySelectorAll<HTMLElement>('.band-list > .band-head:not(.cdk-drag-placeholder)')];
+    const under = heads.filter((head) => head.getBoundingClientRect().top <= y).at(-1) ?? heads.at(0);
+    if (under?.dataset['moveGroup'] !== group) return;
+    const gap = heads.filter((head) => {
+      if (head.dataset['moveGroup'] !== group) return false;
+      const rect = head.getBoundingClientRect();
+      return rect.top + rect.height / 2 < y;
+    }).length;
+    void this.moveBand(feature, beforeFor(this.bandOrder(), group, feature, gap));
+  }
+
+  protected bandDragStarted(): void {
+    this.dragClick = true;
+  }
+
+  protected bandDragEnded(): void {
+    setTimeout(() => {
+      this.dragClick = false;
+    });
+  }
+
+  /** Sends the move unless it changes nothing or a write is in flight; then the grip keeps focus and the place is announced. */
+  private async moveBand(feature: string, before: Target): Promise<void> {
+    if (before === 'none' || this.writer.busy()) return;
+    const outcome = await this.writer.move(this.ws(), feature, before);
+    if (outcome === 'written') this.announceBand(feature);
+    this.pendingBandFocus.set(feature);
+  }
+
+  private announceBand(feature: string): void {
+    const group = this.moveGroupOf(feature);
+    const at = group === null ? null : positionOf(this.bandOrder(), group, feature);
+    if (at === null) return;
+    const name = this.groupName(group);
+    const params = { id: feature, position: at.index, count: at.count, group: name };
+    this.bandNews.set(this.transloco.translate(name === null ? 'backlog.board.movedNone' : 'backlog.board.moved', params, this.lang()));
+  }
 
   private readonly menu = viewChild(MoveToMenu);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -378,6 +542,16 @@ export class BoardPage {
       if (!grip) return;
       grip.focus();
       untracked(() => this.pendingFocus.set(null));
+    });
+    // After a band move (spec 037): its grip keeps focus at the band's new place.
+    afterRenderEffect(() => {
+      const feature = this.pendingBandFocus();
+      this.board();
+      if (feature === null) return;
+      const grip = [...this.host.querySelectorAll<HTMLElement>('[data-band-grip]')].find((el) => el.dataset['bandGrip'] === feature);
+      if (!grip) return;
+      grip.focus({ preventScroll: true });
+      untracked(() => this.pendingBandFocus.set(null));
     });
     afterRenderEffect(() => {
       this.board();
