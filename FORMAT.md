@@ -1649,6 +1649,18 @@ a claim, names a task or changes a lock or a task run. Both are additive (ISC-22
 log holds at least one `run-start` or `run-end` line, so a log without them reads byte for byte as before, harbor
 included, and `openRuns` is `[]` when every run in it has ended.
 
+From `core/fixtures/beacon/.spectant/activity.jsonl`: a run that ended with an error, one that ended `ok`, and two
+open runs, one on a spec and one on an idea:
+
+```json
+{"ts":"2026-03-08T12:30:00Z","event":"run-start","run":"r-0308-1230","command":"/spec-plan 002","session":"a:claude:sess-21","spec":"002-status-page"}
+{"ts":"2026-03-08T12:41:00Z","event":"run-end","run":"r-0308-1230","command":"/spec-plan 002","session":"a:claude:sess-21","spec":"002-status-page","outcome":"error"}
+{"ts":"2026-03-08T13:00:00Z","event":"run-start","run":"r-0308-1300","command":"/spec-plan 003","session":"a:claude:sess-31","spec":"003-alert-rules"}
+{"ts":"2026-03-08T13:25:00Z","event":"run-end","run":"r-0308-1300","command":"/spec-plan 003","session":"a:claude:sess-31","spec":"003-alert-rules","outcome":"ok"}
+{"ts":"2026-03-08T14:45:00Z","event":"run-start","run":"r-0308-1445","command":"/spec new uptime-badges","session":"a:claude:sess-71","idea":"uptime-badges"}
+{"ts":"2026-03-08T14:52:00Z","event":"run-start","run":"r-0308-1452","command":"/spec-tasks 003","session":"a:claude:sess-32","spec":"003-alert-rules"}
+```
+
 An event that is none of `claim`, `release`, the four run events and the two run lifecycle events is one
 `activity-event-unknown` warning per file, at the first such line, with the event quoted in its text and the line's
 claim when it names one; that line and every later line with an unknown event are skipped, and the lines after them

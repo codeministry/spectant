@@ -435,6 +435,22 @@ describe('run events: run-start and run-end paired by run (spec 040, ISC-222)', 
     expect(r.diagnostics?.map((d) => [d.code, d.line, d.subject])).toEqual([['actor-legacy', 1, 'principal']]);
     expect(r.openRuns?.map((run) => [run.run, run.actor.legacy])).toEqual([['r-5', true]]);
   });
+
+  // T4: the lines FORMAT.md § Activity and lock lines shows are beacon's own, and they read as the prose says.
+  test('run events: the FORMAT.md example lines are beacon lines and parse into its two open runs', async () => {
+    const format = readFileSync(join(FIXTURES, '..', '..', 'FORMAT.md'), 'utf8');
+    const block = /From `core\/fixtures\/beacon\/\.spectant\/activity\.jsonl`:[\s\S]*?```json\n([\s\S]*?)```/u.exec(format)?.[1] ?? '';
+    const lines = block.split('\n').filter((l) => l !== '');
+    const beacon = readFileSync(join(FIXTURES, 'beacon', '.spectant', 'activity.jsonl'), 'utf8').split('\n');
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(beacon).toContain(line);
+    const r = await readLockSources({ repoRoot: tempRepo(lines.map((l) => JSON.parse(l) as object)) });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.openRuns?.map((run) => [run.run, run.command, run.spec ?? null, run.idea ?? null, run.since])).toEqual([
+      ['r-0308-1445', '/spec new uptime-badges', null, 'uptime-badges', '2026-03-08T14:45:00Z'],
+      ['r-0308-1452', '/spec-tasks 003', '003-alert-rules', null, '2026-03-08T14:52:00Z'],
+    ]);
+  });
 });
 
 // ── spec 040, T5 (ISC-222.2): a log without run lines reads exactly as before ────────────────────────────────────────
