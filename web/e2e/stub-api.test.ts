@@ -26,6 +26,7 @@ import type {
   TimelineEntry,
   Worktree,
 } from '../../core/src/files';
+import type { PlanningModel } from '../../core/src/planning';
 import {
   ACTORS_ALLOW,
   ACTORS_PATH,
