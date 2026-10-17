@@ -157,3 +157,50 @@ for (const lang of ['en', 'de'] as const) {
     });
   });
 }
+
+/** The pages that show dates and times, under the near-midnight overlay so harbor 002 carries one on every surface. */
+const DATED_PAGES = [
+  '/w/harbor',
+  '/w/harbor/s/002',
+  STUB_MIDNIGHT.routes.status,
+  STUB_MIDNIGHT.routes.timeline,
+  '/w/harbor/s/002/notes',
+  STUB_MIDNIGHT.routes.library,
+  STUB_MIDNIGHT.routes.reader,
+  STUB_MILESTONE.routes.tree,
+  STUB_MILESTONE.routes.matrix,
+  STUB_MILESTONE.routes.board,
+] as const;
+
+/**
+ * Every visible text that reads as a date or a clock in the `en` forms (`09/01/2026`, `8:30 AM`) and is not inside a
+ * `<time>` whose `datetime` parses as a date.
+ */
+async function untimed(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const shape = /\b\d{2}\/\d{2}\/\d{4}\b|\b\d{1,2}:\d{2}\s?[AP]M\b/;
+    const found: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent ?? '';
+      const parent = node.parentElement;
+      if (!shape.test(text) || !parent?.checkVisibility()) continue;
+      const time = parent.closest('time');
+      const datetime = time?.getAttribute('datetime') ?? '';
+      if (time === null || Number.isNaN(Date.parse(datetime))) found.push(text.trim());
+    }
+    return found;
+  });
+}
+
+test.describe('datetime-attr (ISC-114.4)', () => {
+  test.use(atMidnight('east'));
+
+  for (const path of DATED_PAGES) {
+    test(`datetime-attr: every date and time on ${path} is a time element with its ISO value`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator('time[datetime]').first()).toBeVisible();
+      expect(await untimed(page)).toEqual([]);
+    });
+  }
+});
