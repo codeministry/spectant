@@ -143,7 +143,7 @@ export async function codeReviewFeature(root: string, feature: string, options: 
     if (ref === undefined) return refuse(`${folder} is no active spec folder`);
     const { dir } = await readSpecSource(root, ref, worktrees);
     const own = worktrees.view.live.find((w) => w.kind === "spec" && w.spec === ref.id);
-    const checkout = own === undefined || !insideRepository(own.path) ? "." : own.path;
+    const checkout = own?.path == null || !insideRepository(own.path) ? "." : own.path;
     places.set(folder, { dir, source: dir === ref.dir ? "main" : "worktree", checkout });
   }
   const placeOf = (folder: string): { dir: string; source: "main" | "worktree"; checkout: string } =>

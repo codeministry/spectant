@@ -317,9 +317,10 @@ function endOf(
   present: ReadonlySet<string>,
   dirty: ReadonlySet<string>,
 ): WorktreeEnd | null {
-  if (worktree.branch !== null && merged.has(worktree.branch) && !dirty.has(worktree.path)) return 'merged';
+  if (worktree.branch !== null && merged.has(worktree.branch) && (worktree.path === null || !dirty.has(worktree.path))) return 'merged';
   if (worktree.prunable === true) return 'prunable';
-  if (!present.has(worktree.path)) return 'removed';
+  // A worktree outside the repository (`path` null) is never looked at; only git's `prunable` says it is gone.
+  if (worktree.path !== null && !present.has(worktree.path)) return 'removed';
   return null;
 }
 
@@ -338,7 +339,7 @@ export interface SpecFolderRef {
  */
 export function copyDirFor(root: string, ref: SpecFolderRef, view: WorktreeView): string | null {
   const worktree = view.live.find((w) => w.kind === 'spec' && w.spec === ref.id) ?? null;
-  if (worktree === null || worktree.path === '..' || worktree.path.startsWith('../')) return null;
+  if (worktree?.path == null || worktree.path === '..' || worktree.path.startsWith('../')) return null;
   const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
   return source === 'worktree' ? [root.replace(/\/+$/u, ''), worktree.path, SPECS, ref.slug].join('/') : null;
 }

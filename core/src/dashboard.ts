@@ -485,7 +485,7 @@ function lockWarning(d: LockDiagnostic): SpecWarning {
  * names both specs and the branch, and `ref` the worktree's path; the chip turns to the warning tone on it.
  */
 function worktreeWarning(d: Diagnostic, worktree: Worktree | null): SpecWarning {
-  return { kind: 'worktree-branch-mismatch', text: d.message, ...(worktree === null ? {} : { ref: worktree.path }) };
+  return { kind: 'worktree-branch-mismatch', text: d.message, ...(worktree?.path == null ? {} : { ref: worktree.path }) };
 }
 
 /**

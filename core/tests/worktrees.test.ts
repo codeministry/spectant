@@ -119,7 +119,7 @@ describe('assign: worktrees from git worktree list --porcelain to the specs of t
     const { worktrees } = assignWorktrees(text, SPECS);
     expect(worktrees).toHaveLength(recordPaths(text).length - 1);
     for (const w of worktrees) {
-      expect(w.path.startsWith('/')).toBe(false);
+      expect(w.path?.startsWith('/')).not.toBe(true);
       expect(w.path).not.toBe('');
     }
   });
@@ -133,7 +133,7 @@ describe('assign: worktrees from git worktree list --porcelain to the specs of t
     const kept = worktrees.filter((w) => w.kind === 'builder');
     expect(kept).toHaveLength(listed);
     for (const w of kept) {
-      expect(w.path.startsWith('.claude/worktrees/')).toBe(true);
+      expect(w.path?.startsWith('.claude/worktrees/')).toBe(true);
       expect(w).toMatchObject({ spec: null, ahead: null, dirty: null });
     }
   });
@@ -442,7 +442,7 @@ describe('untracked: an untracked or symlinked specs/ keeps every spec on the ma
 
 /** The facts of a listing where every worktree's folder is present, nothing is merged and nothing is dirty. */
 function allPresent(porcelain: string, specs: readonly string[]): WorktreeFacts {
-  const present = assignWorktrees(porcelain, specs).worktrees.map((w) => w.path);
+  const present = assignWorktrees(porcelain, specs).worktrees.flatMap((w) => (w.path === null ? [] : [w.path]));
   return { merged: [], present, dirty: [] };
 }
 

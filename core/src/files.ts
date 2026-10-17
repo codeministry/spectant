@@ -647,8 +647,12 @@ export type WorktreeKind = 'spec' | 'builder';
  * in a spec worktree only, read-only, without a fetch and with `GIT_OPTIONAL_LOCKS=0` (ISC-175).
  */
 export interface Worktree {
-  /** Relative to the workspace root, `/`-separated, e.g. `.worktrees/027-worktree-live-view`; never absolute. */
-  readonly path: string;
+  /**
+   * Relative to the workspace root, `/`-separated, e.g. `.worktrees/027-worktree-live-view`; never absolute. Null for a
+   * worktree outside the repository (spec 041, ISC-216): its location never reaches the model, and the browser shows no
+   * path for it; such a worktree is assigned by its branch alone and never read as a folder.
+   */
+  readonly path: string | null;
   /** The checked-out branch without `refs/heads/`, e.g. `feature/027-worktree-live-view`; null on a detached HEAD. */
   readonly branch: string | null;
   /** The `NNN` of the spec the worktree belongs to; null when neither its path nor its branch names one. */

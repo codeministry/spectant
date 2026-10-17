@@ -66,7 +66,7 @@ async function worktreeEntries(repo: PlantedWorktreeRepo): Promise<{ entries: Ti
 }
 
 /** The spec worktrees the dashboard reading hands to `core/` for spec 002: what its chip is made of. */
-async function chipWorktrees(repo: PlantedWorktreeRepo): Promise<string[]> {
+async function chipWorktrees(repo: PlantedWorktreeRepo): Promise<Array<string | null>> {
   const reading = await readWorkspaceInput(repo.root);
   if (!reading.readable) throw new Error("the fixture workspace is unreadable");
   return (reading.input.worktrees?.worktrees ?? []).filter((w) => w.kind === "spec" && w.spec === SPEC_ID).map((w) => w.path);

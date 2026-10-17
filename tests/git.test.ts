@@ -508,7 +508,7 @@ describe("worktreeList reads the raw `git worktree list --porcelain` text (spec 
     const { worktrees, builders, diagnostics } = assignWorktrees(await worktreeList(dir), ["027-x"]);
     expect(builders).toBe(0);
     expect(diagnostics).toEqual([]);
-    expect([...worktrees].sort((a, b) => a.path.localeCompare(b.path))).toEqual([
+    expect([...worktrees].sort((a, b) => (a.path ?? "").localeCompare(b.path ?? ""))).toEqual([
       { path: ".worktrees/027-x", branch: "feature/027-x", spec: "027", ahead: null, dirty: null, kind: "spec" },
       { path: ".worktrees/detached", branch: null, spec: null, ahead: null, dirty: null, kind: "spec" },
     ]);

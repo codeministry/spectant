@@ -255,8 +255,8 @@ type EndState = "merged" | "removed";
 
 /** What the dashboard model and the timeline route say about spec 002's worktree in `repo`. */
 async function worktreeReadings(repo: PlantedWorktreeRepo): Promise<{
-  chip: string[];
-  ended: Array<{ state: EndState; path: string }>;
+  chip: Array<string | null>;
+  ended: Array<{ state: EndState; path: string | null }>;
   entries: TimelineEntry[];
 }> {
   const reading = await readWorkspaceInput(repo.root);

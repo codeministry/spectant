@@ -265,9 +265,9 @@ export function mismatchWarning(worktree: Worktree, branchSpec: string): SpecWar
   return {
     kind: 'worktree-branch-mismatch',
     text:
-      `Worktree ${worktree.path} is on branch ${worktree.branch ?? ''}, which names spec ${branchSpec}; ` +
+      `Worktree ${worktree.path ?? ''} is on branch ${worktree.branch ?? ''}, which names spec ${branchSpec}; ` +
       `its path names spec ${worktree.spec ?? ''}, and the path wins.`,
-    ref: worktree.path,
+    ...(worktree.path === null ? {} : { ref: worktree.path }),
   };
 }
 

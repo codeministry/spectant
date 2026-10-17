@@ -183,6 +183,7 @@ export class UiWorktreeChip {
   });
 
   protected async copyPath(): Promise<void> {
-    if (await writeClipboard(this.worktree().path, this.doc)) this.toast.show(this.t('worktreeChip.copied'));
+    const path = this.worktree().path;
+    if (path !== null && (await writeClipboard(path, this.doc))) this.toast.show(this.t('worktreeChip.copied'));
   }
 }

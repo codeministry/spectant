@@ -312,16 +312,21 @@ export interface WorktreeReading {
 export async function readWorktreeView(root: string, refs: readonly SpecRef[] = listSpecs(root)): Promise<WorktreeReading> {
   const [porcelain, merge] = await Promise.all([worktreeList(root), mergedSpecBranches(root)]);
   const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
+  // A worktree's folder, joined to the root; null for one outside the repository, whose location core never names.
+  const folderOf = (w: Worktree): string | null => (w.path === null ? null : join(root, w.path));
   const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
   const merged = merge.branches.filter((b) => b.merged).map((b) => b.branch);
-  const present = ofSpec.filter((w) => hasGit(join(root, w.path)));
+  const present = ofSpec.flatMap((w) => {
+    const folder = folderOf(w);
+    return folder !== null && w.path !== null && hasGit(folder) ? [{ worktree: w, path: w.path, folder }] : [];
+  });
   // A merged worktree still holding uncommitted work stays the spec's (ISC-212.2): only those are asked here.
-  const mergedPresent = present.filter((w) => w.branch !== null && merged.includes(w.branch));
-  const dirtyMerged = await Promise.all(mergedPresent.map((w) => dirty(join(root, w.path))));
+  const mergedPresent = present.filter(({ worktree: w }) => w.branch !== null && merged.includes(w.branch));
+  const dirtyMerged = await Promise.all(mergedPresent.map(({ folder }) => dirty(folder)));
   const facts = {
     merged,
-    present: present.map((w) => w.path),
-    dirty: mergedPresent.filter((_, i) => dirtyMerged[i] === true).map((w) => w.path),
+    present: present.map(({ path }) => path),
+    dirty: mergedPresent.filter((_, i) => dirtyMerged[i] === true).map(({ path }) => path),
   };
   const split = liveWorktrees(assignment, facts);
   const live: Worktree[] = [];
@@ -331,11 +336,12 @@ export async function readWorktreeView(root: string, refs: readonly SpecRef[] = 
       live.push(worktree);
       continue;
     }
-    const at = join(root, worktree.path);
-    const [ahead, changed] = await Promise.all([aheadOfMain(at, worktree.branch), dirty(at)]);
+    // Outside the repository only `ahead` is read, in the main checkout: the branch names the commits, no folder is read.
+    const folder = folderOf(worktree);
+    const [ahead, changed] = await Promise.all([aheadOfMain(folder ?? root, worktree.branch), folder === null ? null : dirty(folder)]);
     live.push({ ...worktree, ahead, dirty: changed });
     const ref = refs.find((r) => !r.archived && r.id === worktree.spec);
-    if (ref !== undefined && insideRepository(worktree.path) && tracked[ref.slug] === undefined) {
+    if (ref !== undefined && worktree.path !== null && insideRepository(worktree.path) && tracked[ref.slug] === undefined) {
       tracked[ref.slug] = await trackedSpecPaths(root, ref.slug);
     }
   }
@@ -439,7 +445,7 @@ async function specSourceFor(
   withTree = true,
 ): Promise<SpecSourceReading> {
   const worktree = view.live.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
-  if (worktree === null || !insideRepository(worktree.path)) return { files: main, read: null, copy: null };
+  if (worktree?.path == null || !insideRepository(worktree.path)) return { files: main, read: null, copy: null };
   const at = join(root, worktree.path);
   const copyDir = copyDirFor(root, ref, view);
   const copy = copyDir === null ? null : copyFiles(ref.dir, copyDir, ref.slug);
