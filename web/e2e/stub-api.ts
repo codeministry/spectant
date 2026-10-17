@@ -146,10 +146,12 @@ import {
   SPEC_HASH_HEADER,
   isActorMappings,
   isAllocateRequest,
+  isBacklogRequest,
   isBoardQuery,
   isTransitionRequest,
   type ActorMapping,
   type AllocateRefused,
+  type BacklogRefused,
   type BoardQuery,
   type IdeaAllocated,
   type IdeaPage,
@@ -212,6 +214,7 @@ import {
   loadBoardCore,
   movedPlanning,
   overlaidDashboard,
+  rawSha256,
   overlaidPage,
   readStories,
   refusalOf,
@@ -1573,7 +1576,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = (viewOf(req, state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, planningOf(req, match.params.ws));
+    const model = planningOf(req, match.params.ws);
+    // The real route adds the hash of specs/backlog.md (spec 036), the session's after a backlog write.
+    return workspaceJson(req, 200, model && { ...model, backlogHash: rawSha256(backlogTextOf(req, match.params.ws, found.tree.root) ?? '') });
   };
 
   /**
@@ -1885,6 +1890,51 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return workspaceJson(req, 200, { id, folder, files: paths.writes, removed: paths.removes[0] ?? story.path, lockSource } satisfies IdeaAllocated);
   };
 
+  /** The session's `specs/backlog.md` per workspace slug after its backlog writes (spec 036); absent, the fixture's file. */
+  const backlogs = new Map<string, Map<string, string | null>>();
+  const backlogTextOf = (req: Request, ws: string, root: string): string | null => {
+    const own = backlogs.get(sessionOf(req));
+    if (own?.has(ws)) return own.get(ws) ?? null;
+    try {
+      return readFileSync(join(root, 'specs', 'backlog.md'), 'utf8');
+    } catch {
+      return null;
+    }
+  };
+  /**
+   * `POST …/:ws/backlog` (`backlog-route.ts`, `writes.ts` `writeBacklog`), over the fixture tree's own master and
+   * `specs/backlog.md` (none on harbor, so its hash is the empty text's) and the session's earlier writes: 400 for a body
+   * `isBacklogRequest` refuses, 409 `StaleBacklog` for any other hash (or `X-Spectant-Stub-Write: stale`), 422 with
+   * core's reason for a write `planBacklogMove` / `planBacklogPriority` refuses, else 200 with the new hash and the
+   * event by `STUB_PERSON` at `STUB_NOW`. Never 423: the real write reads no lock. The planning tree is not re-ranked
+   * here; the board's rank lens reads the stored text once it exists (spec 037).
+   */
+  const backlogRoute = async (req: Request, state: StubState, outcome: WriteOutcome, ws: string): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'POST') return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('backlog') });
+    const tree = readableTree(req, state, ws);
+    if (tree instanceof Response) return tree;
+    const body = await readJson(req);
+    if (!isBacklogRequest(body)) return workspaceJson(req, 400, { error: 'invalid-body' });
+    const own = backlogs.get(sessionOf(req)) ?? new Map<string, string | null>();
+    const text = backlogTextOf(req, ws, tree.root);
+    const now = rawSha256(text ?? '');
+    const stale = outcome === 'stale' ? { error: 'hash-mismatch', files: ['specs/backlog.md'], expected: { backlog: now } } : board.backlogConflict(body.hash, now);
+    if (stale !== null) return workspaceJson(req, 409, stale);
+    let master: string | null = null;
+    try {
+      master = readFileSync(join(tree.root, 'ISA.md'), 'utf8');
+    } catch {
+      master = null;
+    }
+    const base = { text, features: master === null ? [] : board.backlogFeatures(master), feature: body.feature, actor: STUB_PERSON, now: new Date(STUB_NOW) };
+    const plan = body.op === 'move' ? board.planBacklogMove({ ...base, before: body.before }) : board.planBacklogPriority({ ...base, priority: body.priority });
+    if (!plan.ok) return workspaceJson(req, 422, { error: 'backlog-refused', reason: plan.reason } satisfies BacklogRefused);
+    own.set(ws, plan.text);
+    backlogs.set(sessionOf(req), own);
+    return workspaceJson(req, 200, { hash: rawSha256(plan.text), event: plan.event });
+  };
+
   const settingsRoute = async (req: Request): Promise<Response> => {
     if (!guarded(req)) return settingsError(403, { error: 'forbidden' });
     if (req.method === 'GET' || req.method === 'HEAD') return settingsJson(req, settingsOf(req));
@@ -2190,6 +2240,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       actorLists.delete(sessionOf(req));
       boardQueries.delete(sessionOf(req));
       workflows.delete(sessionOf(req));
+      backlogs.delete(sessionOf(req));
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
@@ -2243,6 +2294,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return settingsError(400, { error: 'unknown-stub-write', write, outcomes: [...WRITE_OUTCOMES] });
     }
     if (family?.route === 'allocate') return allocateRoute(req, requested, locks, write, family);
+    if (family?.route === 'backlog') return backlogRoute(req, requested, write, family.params.ws);
     return specRoute(req, url, requested, locks, write);
   };
   return (req, url) => {

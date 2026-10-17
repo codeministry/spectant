@@ -45,6 +45,14 @@ The CLI adds two further paths, never written by a route, both over `writes.ts`'
 - The token measurement, `spectant tokens --yes`, takes its target from `WRITE_PATHS.tokens`; it belongs to no spec, so
   no claim holds it.
 
+The seventh path is a route again: the feature backlog (spec 036, `WRITE_PATHS.backlog`, `writeBacklog`,
+`backlog-route.ts`), `POST /api/workspaces/:ws/backlog`. It rewrites `specs/backlog.md` in place and appends one line
+to `specs/backlog.events.jsonl`, at the main checkout, under the raw sha256 check (the client's
+`PlanningModel.backlogHash`). It reads no lock source and never answers 423. Reason: the file belongs to no spec and
+no agent writes it, so no claim can hold it, and a lock check would block the backlog during every implementation
+round for nothing. core plans the write (`planBacklogMove`, `planBacklogPriority`); a refusal is 422 `backlog-refused`
+with core's reason, and nothing is written.
+
 The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every
 read route and every refused write, and after an accepted one only the files of that write's `WRITE_PATHS` entry may
 differ, `spectant tokens --yes` included (`-t tokens`).

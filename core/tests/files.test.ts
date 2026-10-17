@@ -22,12 +22,13 @@ const EXPECTED: Record<FileKind, string> = {
   workflow: '../workflow.md',
   tokens: '../tokens.jsonl',
   backlog: '../backlog.md',
+  backlogEvents: '../backlog.events.jsonl',
 };
 
 describe('FILE_KINDS', () => {
-  test('holds exactly the 17 kinds with their paths relative to an active spec folder', () => {
+  test('holds exactly the 18 kinds with their paths relative to an active spec folder', () => {
     const actual = Object.fromEntries(Object.entries(FILE_KINDS).map(([kind, info]) => [kind, info.path]));
-    expect(Object.keys(FILE_KINDS)).toHaveLength(17);
+    expect(Object.keys(FILE_KINDS)).toHaveLength(18);
     expect(actual).toEqual(EXPECTED);
   });
 

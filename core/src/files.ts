@@ -39,11 +39,12 @@ export type FileKind =
   | 'idea'
   | 'workflow'
   | 'tokens'
-  | 'backlog';
+  | 'backlog'
+  | 'backlogEvents';
 
 /**
  * Where a kind lives: `spec` inside the spec folder, `repo` once per repository outside every spec folder (the
- * constitution, the master, the story files, the workflow table, the token measurement and the feature backlog).
+ * constitution, the master, the story files, the workflow table, the token measurement, the feature backlog and its event log).
  */
 export type FileScope = 'spec' | 'repo';
 
@@ -203,18 +204,27 @@ export const FILE_KINDS: Readonly<Record<FileKind, FileKindInfo>> = {
     scope: 'repo',
     repoPath: 'specs/backlog.md',
   },
+  backlogEvents: {
+    path: '../backlog.events.jsonl',
+    description: 'the backlog event log: one JSON line per accepted backlog write {ts, actor, kind, feature, from, to}',
+    required: false,
+    directory: false,
+    scope: 'repo',
+    repoPath: 'specs/backlog.events.jsonl',
+  },
 };
 
 /** The kinds that live once per repository, outside every spec folder. */
-export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow' | 'tokens' | 'backlog';
+export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow' | 'tokens' | 'backlog' | 'backlogEvents';
 
 /**
  * The file kinds a spec folder's `SpecFiles.texts` may carry: every kind but the two directories and the repository
  * kinds of specs 008, 009 and 036 (`idea` is a directory of stories, `workflow` one table per repository, `tokens` one
- * measurement per repository, `backlog` one ranking per repository; their readers take their own input).
+ * measurement per repository, `backlog` one ranking and `backlogEvents` its log per repository; their readers take their
+ * own input).
  * `constitution` and `master` stay for the readers that already take them per spec.
  */
-export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow' | 'tokens' | 'backlog'>;
+export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow' | 'tokens' | 'backlog' | 'backlogEvents'>;
 
 /** `base/rel` normalised (`..` resolved), POSIX separators, no trailing slash. */
 function joinPath(base: string, rel: string): string {

@@ -13,10 +13,23 @@
 //    `P4` are one warning each (`BacklogDiagnosticCode`, ISC-190.1): the first line of a feature counts, an invalid
 //    priority reads as `P3`, and reading goes on.
 //
+// Writing (`planBacklogMove`, `planBacklogPriority`, ISC-191 and ISC-191.1) is planned in memory, as
+// `transition.ts` plans a stage move: the whole new text plus the one event line for `specs/backlog.events.jsonl`, or
+// the reason the write is refused, with neither text nor event. The new text is the full list in rank order with each
+// feature's effective priority (`renderBacklog`): the first write materializes every feature of the master, and the
+// unknown, repeated and invalid lines drop out. What stands before the first entry line (a heading, a comment) is kept;
+// any other line between or after the entries is not. A move takes a feature before another feature of its own
+// milestone, or behind the last one (`before: null`), and reorders only that milestone's features among the ranks they
+// already hold, so no feature of another milestone changes its rank. A feature's milestone is its `Milestone:` line in
+// the master, never the backlog's to change. `server/src/writes.ts` checks the hash and writes; nothing here reads a lock.
+//
 // Browser-safe and pure: no file system, no Node or Bun API. The planning tree (`planning.ts`) and the server's write
 // path call it over text the caller read.
+import { parseActor } from './actor.ts';
+import { parseClaims } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import type { BacklogDiagnosticCode, Priority } from './files.ts';
+import { parseMilestones } from './milestones.ts';
 
 /** A feature's priority in the backlog: the four values of a spec's `priority:` (FORMAT.md), `P3` when absent. */
 export type BacklogPriority = Priority;
@@ -29,6 +42,12 @@ export const DEFAULT_BACKLOG_PRIORITY: BacklogPriority = 'P3';
 
 /** The backlog file relative to the repository root, as a diagnostic names it. */
 export const BACKLOG_FILE = 'specs/backlog.md';
+
+/** The backlog's event log relative to the repository root: one JSON line per accepted write. */
+export const BACKLOG_EVENTS_FILE = 'specs/backlog.events.jsonl';
+
+/** The heading a backlog gets when the first write creates the file. */
+const NEW_PREAMBLE = '# Backlog\n';
 
 /** One feature block of the master with its place in the backlog. */
 export interface BacklogEntry {
@@ -127,4 +146,146 @@ export function parseBacklog(text: string | null, featureIds: readonly string[])
     (e, i): BacklogEntry => ({ ...e, rank: i + 1 }),
   );
   return { entries, diagnostics };
+}
+
+/** A feature block of the master with the milestone it moves within: its `Milestone:` line, null for the no-milestone group. */
+export interface BacklogFeature {
+  readonly id: string;
+  /** The name of a valid `## Milestones` entry the block's line names; null without a line or for an unknown name. */
+  readonly milestone: string | null;
+}
+
+/**
+ * The feature blocks of `master` in master order, each id once, with its milestone group as the planning tree groups
+ * it: a `Milestone:` line naming a valid entry of `## Milestones`, else the no-milestone group.
+ */
+export function backlogFeatures(master: string): BacklogFeature[] {
+  const valid = new Set(parseMilestones(master).milestones.map((m) => m.name));
+  const seen = new Set<string>();
+  return parseClaims(master).features.flatMap((f): BacklogFeature[] => {
+    if (seen.has(f.id)) return [];
+    seen.add(f.id);
+    return [{ id: f.id, milestone: f.milestone !== null && valid.has(f.milestone) ? f.milestone : null }];
+  });
+}
+
+/**
+ * One line of `specs/backlog.events.jsonl`, keys in this order: when, who (actor grammar, ISC-119), which write, the
+ * feature, and the value before and after: the global rank for a `move`, the priority for a `priority`.
+ */
+export type BacklogEvent =
+  | { readonly ts: string; readonly actor: string; readonly kind: 'move'; readonly feature: string; readonly from: number; readonly to: number }
+  | { readonly ts: string; readonly actor: string; readonly kind: 'priority'; readonly feature: string; readonly from: BacklogPriority; readonly to: BacklogPriority };
+
+/** A planned backlog write: the whole new `specs/backlog.md` and its event, or why it is refused. */
+export type BacklogPlan =
+  | {
+      readonly ok: true;
+      readonly text: string;
+      readonly event: BacklogEvent;
+      /** `event` serialized as the line to append, newline included. */
+      readonly line: string;
+    }
+  | { readonly ok: false; readonly reason: string };
+
+interface BacklogWriteBase {
+  /** The current `specs/backlog.md`; null without the file. */
+  readonly text: string | null;
+  /** The master's feature blocks, `backlogFeatures(master)`. */
+  readonly features: readonly BacklogFeature[];
+  readonly feature: string;
+  /** The actor id recorded in the event (actor grammar, `actor.ts`); a legacy value is refused. */
+  readonly actor: string;
+  /** The event's `ts`. */
+  readonly now: Date;
+}
+
+export interface BacklogMoveInput extends BacklogWriteBase {
+  /** The feature of the same milestone to stand before; null to stand behind the milestone's last feature. */
+  readonly before: string | null;
+}
+
+export interface BacklogPriorityInput extends BacklogWriteBase {
+  /** The new priority; anything but `P1` to `P4` is refused. */
+  readonly priority: string;
+}
+
+/** `specs/backlog.md` for `entries` in their order: `preamble` (a heading, a comment), a blank line, one line each. */
+export function renderBacklog(entries: ReadonlyArray<Pick<BacklogEntry, 'feature' | 'priority'>>, preamble: string = NEW_PREAMBLE): string {
+  const head = preamble.replace(/\s+$/, '');
+  const lines = entries.map((e) => `- ${e.feature} · ${e.priority}`);
+  return `${head === '' ? '' : `${head}\n\n`}${lines.join('\n')}\n`;
+}
+
+/** The text before the first entry line of `text`, line endings as LF; the new-file heading when there is no text. */
+function preambleOf(text: string | null): string {
+  if (text === null || text.trim() === '') return NEW_PREAMBLE;
+  const first = rawEntries(text)[0];
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  return first === undefined ? lines.join('\n') : lines.slice(0, first.line - 1).join('\n');
+}
+
+const groupName = (milestone: string | null): string => milestone ?? 'no milestone';
+
+/** What every write checks first: the actor, the time, and the feature; null when all pass. */
+function baseRefusal(input: BacklogWriteBase, known: ReadonlyMap<string, BacklogFeature>): string | null {
+  if (!known.has(input.feature)) return `${input.feature} is not a feature block of the master`;
+  if (parseActor(input.actor).legacy) return `the actor "${input.actor}" is outside the actor grammar`;
+  if (Number.isNaN(input.now.getTime())) return 'the event time is not a valid date';
+  return null;
+}
+
+function accepted(text: string, event: BacklogEvent): BacklogPlan {
+  return { ok: true, text, event, line: `${JSON.stringify(event)}\n` };
+}
+
+/** Plans moving `feature` before `before` (same milestone) or behind its milestone's last feature. Pure. */
+export function planBacklogMove(input: BacklogMoveInput): BacklogPlan {
+  const known = new Map(input.features.map((f) => [f.id, f]));
+  const base = baseRefusal(input, known);
+  if (base !== null) return { ok: false, reason: base };
+  const own = known.get(input.feature);
+  if (input.before !== null) {
+    const target = known.get(input.before);
+    if (target === undefined) return { ok: false, reason: `${input.before} is not a feature block of the master` };
+    if (input.before === input.feature) return { ok: false, reason: `${input.feature} cannot move before itself` };
+    if (target.milestone !== own?.milestone) {
+      const from = own?.milestone ?? null;
+      return {
+        ok: false,
+        reason: `${input.feature} belongs to ${groupName(from)} and ${input.before} to ${groupName(target.milestone)}: a feature moves only within its milestone`,
+      };
+    }
+  }
+  const { entries } = parseBacklog(input.text, input.features.map((f) => f.id));
+  const moved = entries.find((e) => e.feature === input.feature);
+  if (moved === undefined) return { ok: false, reason: `${input.feature} is not a feature block of the master` };
+  // The move reorders the milestone's own features within the ranks they hold: every other feature keeps its rank.
+  const group = own?.milestone ?? null;
+  const slots = entries.flatMap((e, i) => (known.get(e.feature)?.milestone === group ? [i] : []));
+  const members = slots.map((i) => entries[i] as BacklogEntry).filter((e) => e !== moved);
+  const at = input.before === null ? members.length : members.findIndex((e) => e.feature === input.before);
+  const reordered = [...members.slice(0, at), moved, ...members.slice(at)];
+  const order = [...entries];
+  slots.forEach((slot, k) => {
+    order[slot] = reordered[k] as BacklogEntry;
+  });
+  const to = order.indexOf(moved) + 1;
+  if (to === moved.rank) return { ok: false, reason: `${input.feature} already stands there: nothing to move` };
+  return accepted(renderBacklog(order, preambleOf(input.text)), { ts: input.now.toISOString(), actor: input.actor, kind: 'move', feature: input.feature, from: moved.rank, to });
+}
+
+/** Plans setting `feature`'s priority, the order unchanged. Pure. */
+export function planBacklogPriority(input: BacklogPriorityInput): BacklogPlan {
+  const known = new Map(input.features.map((f) => [f.id, f]));
+  const base = baseRefusal(input, known);
+  if (base !== null) return { ok: false, reason: base };
+  const priority = input.priority;
+  if (!isPriority(priority)) return { ok: false, reason: `priority "${priority}" is none of P1 to P4` };
+  const { entries } = parseBacklog(input.text, input.features.map((f) => f.id));
+  const entry = entries.find((e) => e.feature === input.feature);
+  if (entry === undefined) return { ok: false, reason: `${input.feature} is not a feature block of the master` };
+  if (entry.priority === priority) return { ok: false, reason: `${input.feature} already has ${priority}` };
+  const order = entries.map((e) => (e === entry ? { ...e, priority } : e));
+  return accepted(renderBacklog(order, preambleOf(input.text)), { ts: input.now.toISOString(), actor: input.actor, kind: 'priority', feature: input.feature, from: entry.priority, to: priority });
 }

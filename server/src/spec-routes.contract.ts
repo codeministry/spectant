@@ -51,6 +51,7 @@
  */
 import { API_PREFIX } from './assets.contract.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
+import type { BacklogEvent } from '../../core/src/backlog.ts';
 import type { PlanningModel } from '../../core/src/planning.ts';
 import type {
   ClaimLock,
@@ -151,6 +152,11 @@ const WRITE = [200, 400, 403, 404, 405, 409, 423] as const;
  * `hash-mismatch` or the unreadable workspace's `Unavailable`.
  */
 const REFUSABLE_WRITE = [200, 400, 403, 404, 405, 409, 422, 423] as const;
+/**
+ * The backlog write (spec 036): `REFUSABLE_WRITE` without 423, since it reads no lock source. 404 is the unknown
+ * workspace; 409 is `hash-mismatch` or the unreadable workspace's `Unavailable`.
+ */
+const BACKLOG_WRITE = [200, 400, 403, 404, 405, 409, 422] as const;
 /**
  * The app's own state (the database), never a repository file: 400 invalid body, no 409 (spec 008, T91, T92). The
  * board query's 404 is the unknown workspace; the actors route names none.
@@ -257,6 +263,7 @@ export type WorkspaceRouteName =
   | 'idea'
   | 'boardQuery'
   | 'allocate'
+  | 'backlog'
   | 'library'
   | 'libraryDoc'
   | 'librarySearch'
@@ -277,6 +284,7 @@ export interface WorkspaceRouteParams {
   idea: StoryParams;
   boardQuery: WorkspaceParams;
   allocate: StoryParams;
+  backlog: WorkspaceParams;
   library: WorkspaceParams;
   /** The document's `path` is a query value, `LibraryDoc.path` (relative to `specs/`): `evidencePathQuery(url.search)`. */
   libraryDoc: WorkspaceParams;
@@ -297,6 +305,7 @@ export const workspaceRoutes = {
   idea: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}`,
   boardQuery: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/board-query`,
   allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
+  backlog: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/backlog`,
   library: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library`,
   /** `path` is a catalog document's `LibraryDoc.path` (`017-workspace-library/plan.md`, `tech.md`); it travels raw. */
   libraryDoc: (ws: string, path: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library/doc?path=${enc(path)}`,
@@ -307,8 +316,8 @@ export const workspaceRoutes = {
 
 /**
  * `SpecRouteEntry` for a workspace route: the reads are `GET` (and `HEAD`) with the read statuses; the board query
- * (T92) also takes a `PUT` (`write`, `request`) and answers its own statuses; `allocate` (T87) is the one `POST`, with
- * the statuses of a refusable write.
+ * (T92) also takes a `PUT` (`write`, `request`) and answers its own statuses; `allocate` (T87) and `backlog` (spec 036)
+ * are the `POST`s, with the statuses of a refusable write (`backlog` without the 423: it reads no lock).
  */
 export interface WorkspaceRouteEntry {
   readonly route: WorkspaceRouteName;
@@ -335,6 +344,7 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'idea', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug`, statuses: READ, response: 'IdeaPage' },
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
+  { route: 'backlog', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/backlog`, statuses: BACKLOG_WRITE, request: 'BacklogRequest', response: 'BacklogWritten' },
   { route: 'library', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library`, statuses: READ, response: 'LibraryCatalog' },
   { route: 'libraryDoc', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/doc`, statuses: READ, response: 'LibraryDocPage' },
   { route: 'librarySearch', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/search`, statuses: READ, response: 'LibrarySearchResult' },
@@ -343,7 +353,7 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
 
 const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry]));
 
-/** The `Allow` header of a workspace route's 405: `GET, HEAD` for a read (plus its write method if it has one), `POST` for `allocate`. */
+/** The `Allow` header of a workspace route's 405: `GET, HEAD` for a read (plus its write method if it has one), `POST` for `allocate` and `backlog`. */
 export function allowForWorkspace(route: WorkspaceRouteName): string {
   const entry = WORKSPACE_ENTRIES.get(route);
   if (entry === undefined) return '';
@@ -505,6 +515,7 @@ export interface WorkspaceRouteResponses {
   /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */
   boardQuery: BoardQuery;
   allocate: IdeaAllocated;
+  backlog: BacklogWritten;
   /** core's `readCatalog` over the workspace, as it is: metadata only, never a document's content. */
   library: LibraryCatalog;
   /**
@@ -557,6 +568,7 @@ export interface LibrarySearchResult {
 export interface WorkspaceRouteRequests {
   boardQuery: BoardQuery;
   allocate: AllocateRequest;
+  backlog: BacklogRequest;
 }
 
 /**
@@ -594,7 +606,8 @@ export const GOLDEN_FAMILY = {
 
 /**
  * Every `error` code the API sends besides the unreadable-workspace codes. The two refusals are the 422s of the
- * pending writes (`TransitionRefused`, `AllocateRefused`): the file is current, the workflow or the index says no.
+ * pending writes (`TransitionRefused`, `AllocateRefused`, `BacklogRefused`): the file is current, the workflow, the
+ * index or the backlog's rules say no.
  */
 export const API_ERRORS = [
   'not-found',
@@ -605,6 +618,7 @@ export const API_ERRORS = [
   'locked',
   'transition-refused',
   'allocate-refused',
+  'backlog-refused',
 ] as const;
 export type ApiError = (typeof API_ERRORS)[number];
 
@@ -679,7 +693,8 @@ export type WorkspaceRouteError<R extends WorkspaceRouteName = 'planning' | 'ide
   | Forbidden
   | MethodNotAllowed
   | ([R] extends ['boardQuery'] ? InvalidBody : Unavailable)
-  | ([R] extends ['allocate'] ? InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked : never);
+  | ([R] extends ['allocate'] ? InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked : never)
+  | ([R] extends ['backlog'] ? InvalidBody | Conflict<{ readonly backlog: string }> | BacklogRefused : never);
 
 export function isUnavailable(body: unknown): body is Unavailable {
   return typeof body === 'object' && body !== null && (body as { readable?: unknown }).readable === false;
@@ -872,6 +887,33 @@ export interface AllocateRefused {
 }
 
 /**
+ * `POST /api/workspaces/:ws/backlog` (spec 036, ISC-191): move a feature before another feature of its milestone
+ * (`before`, null for behind the milestone's last one), or set its priority. `hash` is the raw sha256 hex of
+ * `specs/backlog.md` as the client read it, `PlanningModel.backlogHash` (the hash of the empty text without the file).
+ * The actor is not the client's to name: the server records the viewer's `u:` id (`VIEWER_ACTOR_FALLBACK` without
+ * one). `priority` is any string here; one other than `P1` to `P4` is the write's 422, not a 400.
+ */
+export type BacklogRequest =
+  | { readonly op: 'move'; readonly feature: string; readonly before: string | null; readonly hash: string }
+  | { readonly op: 'priority'; readonly feature: string; readonly priority: string; readonly hash: string };
+
+/** 200 of the backlog write: `specs/backlog.md`'s new raw hash, for the next write, and the event appended. */
+export interface BacklogWritten {
+  readonly hash: string;
+  readonly event: BacklogEvent;
+}
+
+/**
+ * 422 of the backlog write: the file is current and core's `planBacklogMove` / `planBacklogPriority` say no
+ * (another milestone, an unknown feature, an invalid priority, a write that changes nothing). Both files stay
+ * byte-identical.
+ */
+export interface BacklogRefused {
+  readonly error: 'backlog-refused';
+  readonly reason: string;
+}
+
+/**
  * One person of the actor table (`ActorRow` in `db.ts` without `updatedAt`, pinned by the contract test): the
  * `u:` id, the name the app shows, the git addresses seen for it. `GET /api/actors` answers every row ordered by id;
  * `PUT` takes the whole list (`isActorMappings`), replaces the table with it and answers the list as stored. The
@@ -898,7 +940,7 @@ export type ActorsRequest = readonly ActorMapping[];
 export type ActorsError = Forbidden | MethodNotAllowed | InvalidBody;
 
 /** The 422 codes. */
-export const REFUSAL_ERRORS = ['transition-refused', 'allocate-refused'] as const satisfies readonly ApiError[];
+export const REFUSAL_ERRORS = ['transition-refused', 'allocate-refused', 'backlog-refused'] as const satisfies readonly ApiError[];
 
 const isPlainRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const hasOnlyKeys = (v: Record<string, unknown>, keys: readonly string[]): boolean =>
@@ -914,6 +956,19 @@ export function isAllocateRequest(body: unknown): body is AllocateRequest {
   if (!isPlainRecord(body) || !hasOnlyKeys(body, ['hash'])) return false;
   const { hash } = body;
   return typeof hash === 'string' && HEX64.test(hash);
+}
+
+/** A feature id as a feature heading names it: `F8`, `F1.1`. */
+const FEATURE_ID = /^F\d+(?:\.\d+)?$/;
+const isFeatureId = (v: unknown): v is string => typeof v === 'string' && FEATURE_ID.test(v);
+
+export function isBacklogRequest(body: unknown): body is BacklogRequest {
+  if (!isPlainRecord(body)) return false;
+  const { op, feature, hash, before, priority } = body;
+  if (!isFeatureId(feature) || typeof hash !== 'string' || !HEX64.test(hash)) return false;
+  if (op === 'move') return hasOnlyKeys(body, ['op', 'feature', 'before', 'hash']) && (before === null || isFeatureId(before));
+  if (op === 'priority') return hasOnlyKeys(body, ['op', 'feature', 'priority', 'hash']) && typeof priority === 'string';
+  return false;
 }
 
 export function isActorMapping(body: unknown): body is ActorMapping {

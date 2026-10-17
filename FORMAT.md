@@ -87,8 +87,8 @@ spec is never held to it (`diagrams.ts`).
 
 Beside the thirteen, `FILE_KINDS` holds the repository kinds `idea`, the story files under `specs/ideas/`, and
 `workflow`, the one table `specs/workflow.md` (both spec 008, T37), `tokens`, the one measurement
-`specs/tokens.jsonl` (spec 009, T1), and `backlog`, the one feature ranking `specs/backlog.md` (spec 036), each
-documented in its section below. None belongs to a spec folder, so the
+`specs/tokens.jsonl` (spec 009, T1), and `backlog`, the one feature ranking `specs/backlog.md`, with
+`backlogEvents`, its log `specs/backlog.events.jsonl` (both spec 036), each documented in its section below. None belongs to a spec folder, so the
 table above has no row for them; like `constitution` and `master` they carry `scope: repo` and a path from the
 repository root (`repoFilePath`) beside the path relative to an active spec folder.
 
@@ -1172,6 +1172,19 @@ master, not of the backlog. Types and signatures live in `core/src/backlog.ts` (
   goes on: `backlog-unknown-feature`, a line naming no feature block of the master (skipped);
   `backlog-duplicate`, a second line of one feature (the first one counts); `backlog-priority`, a priority other than
   `P1` to `P4` (read as `P3`). One finding per line.
+- **Writing** is the app's backlog route, `POST /api/workspaces/:ws/backlog`, and nothing else: it writes this file
+  and appends one line to `specs/backlog.events.jsonl` (below), never the master. Two writes are planned in memory
+  (`planBacklogMove`, `planBacklogPriority`): a **move** takes a feature before another feature of its own milestone,
+  or behind the last one, and reorders only that milestone's features among the ranks they already hold, so no feature
+  of another milestone changes its rank; a **priority** sets one feature's priority and keeps the order. Either writes
+  the whole list in rank order with every feature's effective priority (`renderBacklog`): the first write lists every
+  feature block of the master, and unknown, repeated and invalid lines drop out. What stands before the first entry
+  line (a heading, a comment) is kept; any other line between or after the entries is not, and line endings become
+  LF. Without the file the first write starts it with the heading `# Backlog`. A write is refused, with both files left
+  byte-identical, when the feature or the feature it moves before is no block of the master, the two belong to
+  different milestones (the no-milestone group counts as one), the priority is none of `P1` to `P4`, the write would
+  change nothing, or the file changed since the client read it (sha256 compare-and-swap). No lock is read: the file
+  belongs to no spec, and no agent writes it.
 
 The file of the backlog-ranks fixture: F2 and F3 lead with P1 and P2, F9 names no feature block, F1 carries no
 priority, F3's second line is a duplicate, F4's `high` is no priority, and F0 is not listed. It reads as F2 (1, P1),
@@ -1190,6 +1203,30 @@ From `core/fixtures/backlog-ranks/specs/backlog.md`:
 - F1
 - F3 · P4
 - F4 · high
+```
+
+## `backlogEvents` — `../backlog.events.jsonl`, at `specs/backlog.events.jsonl`
+
+The backlog's event log: one JSON line per accepted backlog write, appended by the backlog route in the same write as
+`specs/backlog.md`; a refused write appends nothing. One file per repository, beside the backlog; optional, created by
+the first write. Every change of the backlog through the app is exactly one line, so the log is the order's history;
+a hand edit of `specs/backlog.md` leaves no line. Types live in `core/src/backlog.ts` (`BacklogEvent`).
+
+| Key | Holds |
+|-----|-------|
+| `ts` | ISO 8601 date-time in UTC (`toISOString`) |
+| `actor` | who wrote it, an id of the actor grammar (`u:<8 hex>`, `a:<kind>:<id>`; § `events`); a legacy value is refused |
+| `kind` | `move` or `priority` |
+| `feature` | the feature block, `F<n>` |
+| `from`, `to` | for `move` the global rank before and after (numbers), for `priority` the priority before and after |
+
+Keys stand in this order, one object per line, no blank lines.
+
+From `core/fixtures/backlog-ranks/specs/backlog.events.jsonl`:
+
+```jsonl
+{"ts":"2026-03-09T15:40:00.000Z","actor":"u:3f9c0a7d","kind":"move","feature":"F2","from":2,"to":1}
+{"ts":"2026-03-09T15:41:00.000Z","actor":"u:3f9c0a7d","kind":"priority","feature":"F2","from":"P3","to":"P1"}
 ```
 
 ## The stage table

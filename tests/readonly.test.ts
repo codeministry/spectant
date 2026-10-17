@@ -1227,3 +1227,75 @@ describe("ISC-165 blockers: the spec edges, the merge reads and the overlap warn
     expect([...hosts]).toEqual(["127.0.0.1"]);
   }, 60_000);
 });
+
+// The seventh write path (spec 036, ISC-191.2) under the same guard: the backlog route on its own copy of harbor, which
+// has no specs/backlog.md yet. Every refused write (409, 422, 400) leaves the copy byte-identical with every mtime kept;
+// the accepted move and priority change exactly the files of `WRITE_PATHS.backlog`, never `ISA.md` or `.git/`, and no
+// request leaves the process (`fetch` is never called).
+describe("ISC-191.2 with the backlog: a refused write changes nothing, an accepted one only specs/backlog.md and its log", () => {
+  test("readonly: backlog refusals leave the copy byte-identical; the accepted move and priority touch only WRITE_PATHS.backlog", async () => {
+    const copy = join(mkdtempSync(join(root, "backlog-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const registry = openRegistry(mkdtempSync(join(root, "data-backlog-")));
+    registry.add(copy);
+    const api = dashboardApi({ registry, services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT });
+    const hosts: string[] = [];
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request) => {
+      hosts.push(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return Promise.reject(new Error("no request may leave the process"));
+    }) as typeof fetch);
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) };
+      const res = await api(new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init }), url);
+      if (res === null) throw new Error(`the workspace routes declined ${path}`);
+      return res;
+    };
+    const backlogHash = async (): Promise<string> => ((await (await call(workspaceRoutes.planning(SLUG))).json()) as { backlogHash: string }).backlogHash;
+    const gitChanges = (a: Snapshot, b: Snapshot): string[] => changed(a, b, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"));
+
+    try {
+      const before = snapshot(copy);
+      const hash = await backlogHash();
+      // Refused: 409 (stale hash), 422 (no such feature block, no such priority, a move that changes nothing), 400.
+      const refused: Array<[unknown, number]> = [
+        [{ op: "move", feature: "F7", before: "F0", hash: "0".repeat(64) }, 409],
+        [{ op: "move", feature: "F99", before: null, hash }, 422],
+        [{ op: "priority", feature: "F2", priority: "P9", hash }, 422],
+        [{ op: "move", feature: "F1", before: "F2", hash }, 422],
+        ["not json", 400],
+      ];
+      for (const [body, status] of refused) expect({ body, status: (await call(workspaceRoutes.backlog(SLUG), "POST", body)).status }).toEqual({ body, status });
+      const afterRefused = snapshot(copy);
+      expect(changed(before, afterRefused, { mtime: true })).toEqual([]);
+      expect(afterRefused.checksum).toBe(before.checksum);
+
+      // Accepted: F7 moves before F0, then F2 gets P1; only the two files of WRITE_PATHS.backlog differ.
+      expect((await call(workspaceRoutes.backlog(SLUG), "POST", { op: "move", feature: "F7", before: "F0", hash })).status).toBe(200);
+      expect((await call(workspaceRoutes.backlog(SLUG), "POST", { op: "priority", feature: "F2", priority: "P1", hash: await backlogHash() })).status).toBe(200);
+      const after = snapshot(copy);
+      expect(changed(before, after)).toEqual([...WRITE_PATHS.backlog.writes].sort());
+      expect(WRITE_PATHS.backlog.creates).toBeNull();
+      expect(after.entries.get("ISA.md")).toEqual(before.entries.get("ISA.md"));
+      expect(gitChanges(before, after)).toEqual([]);
+      expect(underGit(after)).toEqual(underGit(before));
+      expect(hosts).toEqual([]);
+    } finally {
+      spy.mockRestore();
+      registry.close();
+    }
+  });
+});
+
+// ISC-192.1: the seventh path is named with exactly its two files, creates no directory, and the root CLAUDE.md lists it.
+describe("write paths: the backlog is the seventh", () => {
+  test("write paths: WRITE_PATHS.backlog names exactly specs/backlog.md and specs/backlog.events.jsonl, creates nothing; CLAUDE.md names the seventh path", () => {
+    expect(WRITE_PATHS.backlog).toEqual({ writes: ["specs/backlog.md", "specs/backlog.events.jsonl"], removes: [], creates: null });
+    expect(Object.keys(WRITE_PATHS)).toHaveLength(7);
+    expect(Object.keys(WRITE_PATHS).at(-1)).toBe("backlog");
+    expect(WRITE_TABLE.backlog).toMatchObject({ root: "main", locked: null });
+    const claude = readFileSync(join(import.meta.dir, "..", "CLAUDE.md"), "utf8");
+    expect(claude).toMatch(/exactly\s+seven\s+write\s+paths/);
+    expect(claude).toMatch(/7\. the feature backlog: `specs\/backlog\.md`[^]*?`specs\/backlog\.events\.jsonl`/);
+  });
+});

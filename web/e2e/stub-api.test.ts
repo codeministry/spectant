@@ -81,6 +81,8 @@ import {
   stubMergeState,
 } from './stub-api';
 
+/** sha256 of the empty text: the backlog hash of a tree without specs/backlog.md (spec 036). */
+const EMPTY_SHA256 = new Bun.CryptoHasher('sha256').update('').digest('hex');
 const FIXTURES = join(import.meta.dir, '..', '..', 'core', 'fixtures');
 const SERVER = join(import.meta.dir, '..', '..', 'server', 'src');
 const ORIGIN = 'http://127.0.0.1:4173';
@@ -263,7 +265,8 @@ describe('stub API: GET /api/workspaces/:slug/planning', () => {
     const res = await ask(planningPath(name));
     expect(res.status).toBe(200);
     const body = await res.text();
-    expect(body).toBe(JSON.stringify(JSON.parse(planningText(name))));
+    // Plus the hash of specs/backlog.md the real route adds (spec 036): neither tree has the file, so the empty text's.
+    expect(body).toBe(JSON.stringify({ ...(JSON.parse(planningText(name)) as object), backlogHash: EMPTY_SHA256 }));
     expect(res.headers.get('Content-Type')).toBe(JSON_ANSWER.contentType);
     expect(res.headers.get('Cache-Control')).toBe(JSON_ANSWER.cacheControl);
     expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
@@ -1292,6 +1295,7 @@ describe('stub API matches the real server handlers byte for byte', () => {
       'idea',
       'boardQuery',
       'allocate',
+      'backlog',
       'library',
       'libraryDoc',
       'librarySearch',
@@ -1535,7 +1539,7 @@ const RESET = '/api/__stub/reset';
 describe('stub API: the Stage-3 board seam (T119)', () => {
   test('the planning tree is the extended golden: workflow, stages, stageCounts, ideas, per holder stage, source, priority, hash, assignee', async () => {
     const tree = (await (await ask(workspaceRoutes.planning(WS))).json()) as Record<string, unknown>;
-    expect(Object.keys(tree)).toEqual(['workflow', 'stages', 'stageCounts', 'features', 'milestones', 'unassignedFeatures', 'ideas', 'recount', 'diagnostics', 'relations']);
+    expect(Object.keys(tree)).toEqual(['workflow', 'stages', 'stageCounts', 'features', 'milestones', 'unassignedFeatures', 'ideas', 'recount', 'diagnostics', 'relations', 'backlogHash']);
     const first = (tree as unknown as BoardTree).features.flatMap((f) => f.holders)[0] ?? {};
     for (const key of ['stage', 'stageSource', 'priority', 'hash', 'assignee']) expect(Object.keys(first)).toContain(key);
   });
@@ -1567,7 +1571,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
     const page = await ask(specRoutes.spec(WS, '006'), { session });
     expect(page.headers.get(SPEC_HASH_HEADER)).toBe(answer.hash);
     expect(((await page.json()) as SpecPageModel).head).toMatchObject({ stage: 'build', stageSource: 'explicit' });
-    expect(await (await ask(workspaceRoutes.planning(WS), { session: 't119-other' })).text()).toBe(JSON.stringify(golden(`${WS}.planning`)));
+    expect(await (await ask(workspaceRoutes.planning(WS), { session: 't119-other' })).text()).toBe(JSON.stringify({ ...(golden(`${WS}.planning`) as object), backlogHash: EMPTY_SHA256 }));
     // The old hash is stale now; the reset restores the golden.
     expect((await move('006', { to: 'code-review', hash: from?.hash }, { session, headers: NO_LOCKS })).status).toBe(409);
     expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
@@ -1753,6 +1757,21 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
         [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
       ],
+      // Spec 036: no 423 (the real write reads no lock); harbor has no specs/backlog.md, so the empty text's hash is current.
+      backlog: (() => {
+        const empty = new Bun.CryptoHasher('sha256').update('').digest('hex');
+        const priority = (hash: string, feature = 'F2'): string => JSON.stringify({ op: 'priority', feature, priority: 'P1', hash });
+        return [
+          [workspaceRoutes.backlog(WS), { method: 'POST', body: priority(empty), session: 't036-backlog-status' }],
+          [workspaceRoutes.backlog(WS), { method: 'POST', body: '{' }],
+          [workspaceRoutes.backlog(WS), { method: 'POST', body: priority(empty), headers: evil }],
+          [workspaceRoutes.backlog('nope'), { method: 'POST', body: priority(empty) }],
+          [workspaceRoutes.backlog(WS), { method: 'GET' }],
+          [workspaceRoutes.backlog(WS), { method: 'POST', body: priority('0'.repeat(64)) }],
+          [workspaceRoutes.backlog('lantern'), { method: 'POST', body: priority(empty), state: 'unreadable' }],
+          [workspaceRoutes.backlog(WS), { method: 'POST', body: priority(empty, 'F99') }],
+        ] satisfies Case[];
+      })(),
       library: reads((ws) => workspaceRoutes.library(ws)),
       libraryDoc: [
         ...reads((ws) => workspaceRoutes.libraryDoc(ws, ws === 'lantern' ? '001-reading-list/plan.md' : '002-web-console/plan.md')),
@@ -1772,6 +1791,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       'idea',
       'boardQuery',
       'allocate',
+      'backlog',
       'library',
       'libraryDoc',
       'librarySearch',
