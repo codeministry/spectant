@@ -18,6 +18,7 @@ import type { PlanningModel } from '../../../../../../core/src/planning';
 import type { RelationRef } from '../../../../../../core/src/relations';
 import { DetailSelection, refSelector, selectedLook, type SelectedLook } from '../../../layout/detail-sidebar/selection';
 import { UiIcon } from '../../../shared/icons/icon';
+import { UiTime } from '../../../shared/time';
 import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiTerm } from '../../../shared/ui/term/term';
@@ -61,7 +62,7 @@ interface TreeRow {
  */
 @Component({
   selector: 'app-planning-tree',
-  imports: [TranslocoPipe, UiIcon, UiIdChip, UiMeter, UiTerm],
+  imports: [TranslocoPipe, UiIcon, UiIdChip, UiMeter, UiTerm, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-lens': 'tree' },
   styleUrls: ['./planning-tree.css', '../../../layout/detail-sidebar/selection.css'],

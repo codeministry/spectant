@@ -3,11 +3,10 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { PlanningMilestone, PlanningModel } from '../../../../../core/src/planning';
 import { UiIcon } from '../../shared/icons/icon';
+import { localDayKey } from '../../shared/time';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiRing } from '../../shared/ui/ring/ring';
-
-const pad2 = (n: number): string => String(n).padStart(2, '0');
 
 /**
  * Today as `YYYY-MM-DD`: the local calendar day, the one the server's `localDate()` derives `state` on
@@ -16,10 +15,7 @@ const pad2 = (n: number): string => String(n).padStart(2, '0');
  */
 export const MILESTONES_TODAY = new InjectionToken<() => string>('MILESTONES_TODAY', {
   providedIn: 'root',
-  factory: () => () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
-  },
+  factory: () => () => localDayKey(new Date()),
 });
 
 const DAY_MS = 86_400_000;

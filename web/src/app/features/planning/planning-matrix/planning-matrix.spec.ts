@@ -15,6 +15,7 @@ import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import type { Tier } from '../../../layout/shell/tier';
+import { formatDay } from '../../../shared/time';
 import { PlanningMatrix } from './planning-matrix';
 
 // T19 · ISC-169 and T21 · ISC-169.1: the matrix lens against every planning golden. Every lane, column, card and
@@ -324,4 +325,33 @@ describe('planning-matrix', () => {
       }
     }
   });
+});
+
+// T23 · ISC-114.3: a lane's target is a calendar day, a `<time>` with the ISO day in the short date form; an undated
+// milestone keeps its word and no `<time>`.
+describe('planning-matrix calendar day', () => {
+  const base = harbor as unknown as PlanningModel;
+  // The second milestone undated, so one lane carries a target and one the undated word.
+  const model: PlanningModel = { ...base, milestones: base.milestones.map((m, i) => (i === 1 ? { ...m, target: null } : m)) };
+
+  for (const tier of ['wide', 'compact'] as const) {
+    it(`shows a lane target as a <time> calendar day and keeps the undated word (${tier})`, async () => {
+      const { el } = await render(model, tier);
+      const milestoneLanes = planningMatrix(model).lanes.filter((l) => l.ref !== null);
+
+      expect(milestoneLanes.some((l) => l.target !== null)).toBe(true);
+      expect(milestoneLanes.some((l) => l.target === null)).toBe(true);
+      for (const l of milestoneLanes) {
+        const meta = lane(el, laneKey(l.ref))?.querySelector('.lane-meta .mono');
+        const time = meta?.querySelector('time');
+        if (l.target === null) {
+          expect(time).toBeNull();
+          expect(text(meta)).toBe(en.planning.milestones.undated);
+        } else {
+          expect(time?.getAttribute('datetime')).toBe(l.target);
+          expect(time?.textContent).toBe(formatDay(l.target, 'en'));
+        }
+      }
+    });
+  }
 });

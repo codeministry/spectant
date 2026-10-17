@@ -11,7 +11,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe } from '@jsverse/transloco';
 import type { TimelineEntry, TimelineKind } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { specLink } from '../../../../layout/shell/areas';
@@ -24,6 +24,7 @@ import { UiIcon } from '../../../../shared/icons/icon';
 import type { IconName } from '../../../../shared/icons/icons';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
+import { localDayKey, UiTime } from '../../../../shared/time';
 import { UiSkeleton } from '../../../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../../../shared/ui/term/term';
 import { toneMark } from '../../../../shared/ui/tone';
@@ -64,25 +65,26 @@ export interface TimelineRow {
   readonly entry: TimelineEntry;
   /** `entry.id`, or `<kind>-<index>` when the source gave none (the list still needs a stable key). */
   readonly key: string;
-  /** `HH:mm` local, empty for a date-only `ts`; null on an undated entry ("date unknown"). */
+  /** The `ts` its clock is shown from (`<ui-time form="clock">`), empty for a date-only `ts`; null on an undated entry ("date unknown"). */
   readonly time: string | null;
 }
 
 export interface TimelineDay {
   /** `YYYY-MM-DD` in local time, `undated` when no entry before an undated one gives a day. */
   readonly key: string;
-  readonly date: Date | null;
+  /**
+   * The ISO value the day heading formats (`<ui-time form="date">`): the first dated entry's `ts`, whose local date is
+   * the group's day; a date-only `ts` as its local midnight. Null for the `undated` group.
+   */
+  readonly ts: string | null;
   readonly rows: readonly TimelineRow[];
 }
 
-const pad = (value: number): string => String(value).padStart(2, '0');
-const dayKey = (date: Date): string => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
-/** A `ts` as a Date, or null when it is empty or unparsable. A date alone (`2026-03-06`) is read as local midnight. */
-function parseTs(ts: string): Date | null {
+/** A `ts` as an ISO value read in local time, or null when it is empty or unparsable. A date alone (`2026-03-06`) is read as local midnight. */
+function localIso(ts: string): string | null {
   if (ts === '') return null;
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(ts) ? new Date(`${ts}T00:00:00`) : new Date(ts);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(ts) ? `${ts}T00:00:00` : ts;
+  return Number.isNaN(Date.parse(iso)) ? null : iso;
 }
 
 /**
@@ -90,15 +92,15 @@ function parseTs(ts: string): Date | null {
  * entry before it, so an undated derived transition stays next to the transition it follows (derived-stages.ts).
  */
 export function groupByDay(entries: readonly TimelineEntry[]): TimelineDay[] {
-  const days: Array<{ key: string; date: Date | null; rows: TimelineRow[] }> = [];
+  const days: Array<{ key: string; ts: string | null; rows: TimelineRow[] }> = [];
   entries.forEach((entry, index) => {
-    const date = parseTs(entry.ts);
-    const time = date === null ? null : entry.ts.includes('T') ? `${pad(date.getHours())}:${pad(date.getMinutes())}` : '';
+    const iso = localIso(entry.ts);
+    const time = iso === null ? null : entry.ts.includes('T') ? entry.ts : '';
     const row: TimelineRow = { entry, key: entry.id ?? `${entry.kind}-${index}`, time };
-    const key = date === null ? (days.at(-1)?.key ?? 'undated') : dayKey(date);
+    const key = iso === null ? (days.at(-1)?.key ?? 'undated') : localDayKey(new Date(iso));
     const last = days.at(-1);
     if (last?.key === key) last.rows.push(row);
-    else days.push({ key, date, rows: [row] });
+    else days.push({ key, ts: iso, rows: [row] });
   });
   return days;
 }
@@ -119,7 +121,7 @@ export function parseKinds(value: string | null): readonly TimelineKind[] {
  */
 @Component({
   selector: 'app-timeline-tab',
-  imports: [NgTemplateOutlet, TranslocoPipe, RouterLink, UiButton, UiChip, UiDisclosure, UiIcon, UiEmptyState, UiNotice, UiRovingItem, UiRovingList, UiSkeleton, UiTerm],
+  imports: [NgTemplateOutlet, TranslocoPipe, RouterLink, UiButton, UiChip, UiDisclosure, UiIcon, UiEmptyState, UiNotice, UiRovingItem, UiRovingList, UiSkeleton, UiTerm, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './timeline-tab.html',
   styleUrl: './timeline-tab.css',
@@ -131,7 +133,6 @@ export class TimelineTab {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly transloco = inject(TranslocoService);
 
   protected readonly markerColor = (kind: TimelineKind): string => MARKER[kind];
   protected worktreeGlyph(entry: TimelineEntry): IconName | null {
@@ -168,7 +169,6 @@ export class TimelineTab {
 
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
   private readonly fragment = toSignal(this.route.fragment, { initialValue: this.route.snapshot.fragment });
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   /** The pressed sources; empty means every source. */
   readonly selected = computed(() => parseKinds(this.query().get('kinds')));
@@ -220,13 +220,6 @@ export class TimelineTab {
   });
 
   protected readonly boardLink = computed(() => specLink(this.state.ws() ?? '', this.state.specId() ?? '', 'board'));
-
-  private readonly dayFormat = computed(
-    () => new Intl.DateTimeFormat(this.lang(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
-  );
-  protected dayLabel(day: TimelineDay): string | null {
-    return day.date === null ? null : this.dayFormat().format(day.date);
-  }
 
   private scrolledTo: string | null = null;
 

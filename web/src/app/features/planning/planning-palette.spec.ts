@@ -132,22 +132,30 @@ describe('planning palette sources', () => {
     expect(features.entries()[1]?.keywords).toContain('epic');
   });
 
-  it('lists only the milestones some spec names, linking to the row by slug, with the date and the state word', async () => {
+  it('lists only the milestones some spec names, linking to the row by slug, with the target as a calendar day and the state word', async () => {
     setUp(ok(NAMED));
     const milestones = byId(await open('/w/harbor'), 'milestones');
-    expect(milestones.entries().map((entry) => [entry.id, entry.label, entry.chip, entry.meta, entry.link])).toEqual([
-      ['milestone-harbor-1-0', 'Harbor 1.0', undefined, '2026-11-30 · upcoming', '/w/harbor/planning/tree?sel=milestone:harbor-1-0'],
+    expect(milestones.entries().map((entry) => [entry.id, entry.label, entry.chip, entry.metaTime, entry.meta, entry.link])).toEqual([
+      [
+        'milestone-harbor-1-0',
+        'Harbor 1.0',
+        undefined,
+        { value: '2026-11-30', form: 'day' },
+        'upcoming',
+        '/w/harbor/planning/tree?sel=milestone:harbor-1-0',
+      ],
     ]);
   });
 
-  it('translates the state word, shows it alone when undated, and recomputes on a language change', async () => {
+  it('translates the state word, leaves an undated milestone without metaTime, and recomputes on a language change', async () => {
     setUp(ok(STATES));
     const milestones = byId(await open('/w/harbor'), 'milestones');
     const metas = (): Array<string | undefined> => milestones.entries().map((entry) => entry.meta);
-    expect(metas()).toEqual(['2026-09-18 · late', '2026-11-30 · upcoming', '2026-08-01 · complete', 'upcoming']);
+    expect(metas()).toEqual(['late', 'upcoming', 'complete', 'upcoming']);
+    expect(milestones.entries().map((entry) => entry.metaTime?.value)).toEqual(['2026-09-18', '2026-11-30', '2026-08-01', undefined]);
 
     TestBed.inject(TranslocoService).setActiveLang('de');
-    expect(metas()).toEqual(['2026-09-18 · überfällig', '2026-11-30 · bevorstehend', '2026-08-01 · abgeschlossen', 'bevorstehend']);
+    expect(metas()).toEqual(['überfällig', 'bevorstehend', 'abgeschlossen', 'bevorstehend']);
   });
 
   it('carries no chip and keeps the state word out of what the filter ranks as an ID', async () => {

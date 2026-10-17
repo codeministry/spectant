@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 
-type GoldenEntry = { readonly kind: string; readonly derived: boolean; readonly id?: string };
+type GoldenEntry = { readonly kind: string; readonly derived: boolean; readonly id?: string; readonly ts: string };
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const golden = JSON.parse(
   readFileSync(new URL('../../core/fixtures/harbor.timeline.golden.json', import.meta.url), 'utf8'),
@@ -59,7 +59,7 @@ test.describe('timeline', () => {
  */
 type SpecGolden = {
   readonly head: { readonly stage: string };
-  readonly next: { readonly command: string | null; readonly reasons: readonly string[] };
+  readonly next: { readonly command: string | null; readonly reasons: readonly string[]; readonly since: string | null; readonly via: string | null };
   readonly waitingOnYou: readonly unknown[];
   readonly gates: Readonly<Record<string, { readonly state: string; readonly files?: readonly string[] }>>;
 };
@@ -109,6 +109,27 @@ test.describe('status tab', () => {
 
     await page.goto('/w/harbor/s/002/status');
     await expect(page.locator('app-status-tab [data-gate-action]')).toHaveAttribute('data-state', 'done');
+  });
+
+  test('since, the newest round and the activity rows show their instant in the shared format (ISC-114.1)', async ({ page }) => {
+    // `en` (the e2e locale) writes an instant `10/01/2026, 2:05 PM` in the test's zone; the datetime stays the ISO value.
+    const instant = /^\d{2}\/\d{2}\/\d{4}, \d{1,2}:\d{2}\s(AM|PM)$/;
+    await page.goto('/w/harbor/s/002/status');
+    const tab = page.locator('app-status-tab');
+
+    const since = tab.locator('[data-since]');
+    await expect(since.locator('time')).toHaveAttribute('datetime', SPEC_002.next.since ?? '');
+    await expect(since.locator('time')).toHaveText(instant);
+    await expect(since).toContainText(SPEC_002.next.via ?? '');
+
+    const round = HARBOR_002.find((entry) => entry.kind === 'round');
+    await expect(tab.locator('[data-round-summary] .when time')).toHaveAttribute('datetime', round?.ts ?? '');
+    await expect(tab.locator('[data-round-summary] .when time')).toHaveText(instant);
+
+    const rows = tab.locator('[data-activity] .when time');
+    await expect(rows).toHaveCount(5);
+    for (const [i, entry] of HARBOR_002.slice(0, 5).entries()) await expect(rows.nth(i)).toHaveAttribute('datetime', entry.ts);
+    for (const text of await rows.allInnerTexts()) expect(text).toMatch(instant);
   });
 
   test('#waiting deep link focuses the heading', async ({ page }) => {

@@ -25,6 +25,7 @@ import { SettingsService } from '../../../core/settings.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiButton } from '../../../shared/ui/button/button';
+import { UiTime, UiTimeLabel } from '../../../shared/time';
 import { UiIconButton } from '../../../shared/ui/button/icon-button';
 import {
   type FilterOption,
@@ -45,7 +46,6 @@ import {
   anchorLabel,
   anchorValue,
   AUTOSAVE_MS,
-  clockTime,
   draftOf,
   excerpt,
   filterNotes,
@@ -54,7 +54,6 @@ import {
   NEW_NOTE,
   nextSaveState,
   type NoteFilter,
-  rowTime,
   saveLabel,
   type SaveEvent,
   type SaveState,
@@ -81,7 +80,7 @@ interface AnchorGroup {
  * - compact and medium stack the list and the editor as two views, the editor with a "← All notes (n)" back link;
  *   wide shows both panes in one card (a 320 px list, the editor filling the rest) and the side-by-side preview.
  * - The editor writes on its own: a debounced `POST` for a new note once its body has text (then the URL becomes the
- *   note's), a debounced `PUT` of the whole draft after that; the state reads "saved · 12:04" from the server's time.
+ *   note's), a debounced `PUT` of the whole draft after that; the state reads "saved · <instant>" from the server's time.
  * - The import notice is dismissed through `/api/settings` (`notesImportDismissed`), never browser storage.
  * - The preview renders through core's one renderer (`core/src/markdown.ts`), which escapes raw HTML.
  *
@@ -106,6 +105,8 @@ interface AnchorGroup {
     UiPopover,
     UiSegmented,
     UiSheet,
+    UiTime,
+    UiTimeLabel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
@@ -174,11 +175,6 @@ export class NotesArea {
   protected readonly selected = computed(() => this.notes().find((note) => note.id === this.noteId()));
   protected readonly editing = computed(() => this.noteId() === NEW_NOTE || this.selected() !== undefined);
 
-  private readonly locale = computed(() => {
-    this.translation();
-    return this.transloco.getActiveLang() === 'de' ? 'de-DE' : 'en-GB';
-  });
-
   protected readonly filterOptions = computed<readonly FilterOption[]>(() => {
     this.translation();
     const labels: Record<NoteFilter, string> =
@@ -190,17 +186,14 @@ export class NotesArea {
     return order.map((key) => ({ key, label: this.transloco.translate(labels[key]), count: filterNotes(all, key, this.spec(), '').length }));
   });
 
-  protected readonly rows = computed(() => {
-    const now = new Date();
-    const locale = this.locale();
-    return this.visible().map((note) => ({
+  protected readonly rows = computed(() =>
+    this.visible().map((note) => ({
       note,
       title: note.title !== '' ? note.title : excerpt(note.body),
       line: note.title !== '' ? excerpt(note.body) : '',
       anchor: anchorLabel(note.anchor, this.spec()),
-      time: rowTime(note.updated, now, locale),
-    }));
-  });
+    })),
+  );
 
   // ─── Editor ────────────────────────────────────────────────────────────────────────────────────────────────────
   /** Which note the editor shows and whether it is loaded: a change re-seeds the draft and the save state. */
@@ -226,11 +219,8 @@ export class NotesArea {
       return note ? { kind: 'saved', at: note.updated } : { kind: 'idle' };
     },
   });
-  protected readonly saveText = computed(() => {
-    this.translation();
-    const label = saveLabel(this.saveState(), (iso) => clockTime(iso, this.locale()));
-    return label ? this.transloco.translate(label.key, label.params) : '';
-  });
+  /** The autosave hint's key and, once saved, the raw instant `<ui-time-label>` formats. */
+  protected readonly saveHint = computed(() => saveLabel(this.saveState()));
 
   protected readonly view = signal<EditorView>('edit');
   protected readonly shownView = computed<EditorView>(() => (this.view() === 'split' && !this.wide() ? 'edit' : this.view()));

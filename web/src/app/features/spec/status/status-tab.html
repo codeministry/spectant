@@ -80,7 +80,7 @@
                 [actors]="actors()"
                 [compact]="tier() === 'compact'"
                 [showCommand]="tier() !== 'wide'"
-                [since]="m.next.since ? ('status.where.since' | transloco: { time: time(m.next.since), via: m.next.via ?? '' }) : null"
+                [since]="m.next.since ? { at: m.next.since, via: m.next.via ?? '' } : null"
               />
               @if (m.next.reasons.length > 1) {
                 <ul class="reasons" data-reasons [attr.aria-label]="'status.where.reasons' | transloco">
@@ -265,7 +265,9 @@
               @if (roundSummary(); as round) {
                 <p class="round-sum" data-round-summary>
                   <b>{{ round.lead }}</b>@if (round.rest) { · {{ round.rest }} }
-                  <time class="when" [attr.datetime]="round.ts || null">{{ time(round.ts) }}</time>
+                  @if (round.ts) {
+                    <ui-time class="when" [value]="round.ts" />
+                  }
                 </p>
               }
               <ul class="rows">
@@ -278,7 +280,9 @@
                     } @else {
                       <span class="row-text">{{ entry.title }}</span>
                     }
-                    <time class="when" [attr.datetime]="entry.ts || null">{{ time(entry.ts) }}</time>
+                    @if (entry.ts) {
+                      <ui-time class="when" [value]="entry.ts" />
+                    }
                   </li>
                 }
               </ul>

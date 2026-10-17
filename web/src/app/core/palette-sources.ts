@@ -10,6 +10,11 @@ export interface PaletteEntry {
   readonly label: string;
   /** A second, muted line: a count, a date, a stage. */
   readonly meta?: string;
+  /**
+   * A time on the muted side, rendered through `<ui-time>` (spec 006): an ISO value and its form, a calendar day
+   * (`YYYY-MM-DD`, a milestone target) or an instant. It stands before `meta`, so a target reads before its state.
+   */
+  readonly metaTime?: { readonly value: string; readonly form: 'day' | 'instant' };
   /** A short chip after the label: a mono id, a state word. */
   readonly chip?: string;
   readonly link: readonly string[] | string;

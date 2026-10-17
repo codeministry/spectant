@@ -179,6 +179,14 @@ describe('BoardPage (T121, ISC-129)', () => {
     expect(page.querySelectorAll('.col .cards')).toHaveLength(0);
   });
 
+  it("writes a milestone band's target as a calendar day in the short date form (spec 006, ISC-114.3)", async () => {
+    const page = await open('/w/harbor/board?group=milestone');
+    const head = [...page.querySelectorAll('.band-head')].find((h) => text(h.querySelector('.name')) === 'Harbor 0.9');
+    const day = head?.querySelector('time');
+    expect(day?.getAttribute('datetime')).toBe('2026-03-15');
+    expect(text(day)).toBe('03/15/2026');
+  });
+
   it('shows the empty state when the tree holds no spec and no story', async () => {
     const page = await open('/w/harbor/board', Promise.resolve(ok(EMPTY)), { specs: [], archive: [] });
     expect(page.querySelector('ui-empty-state')).not.toBeNull();

@@ -10,7 +10,7 @@
       <ui-chip variant="take" tone="accent">{{ chipLabel(doc.spec) }}</ui-chip>
       <span class="lib-file">{{ filePath(doc) }}</span>
       @if (doc.modified; as modified) {
-        <span class="lib-updated">{{ 'library.reader.updated' | transloco: { date: date(modified) } }}</span>
+        <ui-time-label class="lib-updated" key="library.reader.updated" timeParam="date" [value]="modified" />
       }
     </div>
     <h2 class="lib-reader-title">{{ doc.title }}</h2>

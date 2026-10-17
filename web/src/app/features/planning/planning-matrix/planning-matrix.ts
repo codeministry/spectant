@@ -6,6 +6,7 @@ import { type LensCard, type LensColumn, type LensLane, planningMatrix, type Rel
 import { DetailSelection, selectedLook, type SelectedLook } from '../../../layout/detail-sidebar/selection';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
+import { UiTime } from '../../../shared/time';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { CARD_EDGE } from '../../board/board-card';
 import { hasArchivedSpecs } from '../planning-counts';
@@ -60,7 +61,7 @@ interface ViewLane {
  */
 @Component({
   selector: 'app-planning-matrix',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiIcon, UiMeter],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiIcon, UiMeter, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-lens': 'board' },
   styleUrls: ['./planning-matrix.css', '../../../layout/detail-sidebar/selection.css'],

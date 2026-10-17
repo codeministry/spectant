@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, ViewEncapsulation } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
+import { UiTimeLabel } from '../../../shared/time';
 import { UiCard, UiChip, UiCommandChip } from '../../../shared/ui';
 import { nextId } from '../../../shared/ui/overlay/ids';
 
@@ -41,7 +41,7 @@ export const TLDR_COMMAND = '/spec-tldr';
  */
 @Component({
   selector: 'app-brief',
-  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip],
+  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -60,16 +60,14 @@ export class Brief {
   protected readonly bodyId = nextId('brief-body');
 
   private readonly sanitizer = inject(DomSanitizer);
-  private readonly transloco = inject(TranslocoService);
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
-  private readonly dateFormat = computed(() => new Intl.DateTimeFormat(this.lang(), { dateStyle: 'medium' }));
 
-  /** The `generated:` day in the active language; null when absent or no time (core counts that as stale). */
+  /**
+   * The `generated:` instant, shown as its local date by `<ui-time-label form="date">` (spec 006); null when absent or
+   * no time (core counts that as stale).
+   */
   protected readonly asOf = computed(() => {
     const generated = this.brief()?.generated ?? null;
-    if (generated === null) return null;
-    const at = Date.parse(generated);
-    return Number.isNaN(at) ? null : { iso: generated, text: this.dateFormat().format(at) };
+    return generated === null || Number.isNaN(Date.parse(generated)) ? null : generated;
   });
 
   protected readonly html = computed<SafeHtml | null>(() => {

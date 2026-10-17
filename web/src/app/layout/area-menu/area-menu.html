@@ -18,7 +18,18 @@
               <ui-icon class="entry-icon" [name]="page.icon" />
               <span class="entry-name">{{ page.labelKey | transloco }}</span>
               @if (summaries()[page.id]; as summary) {
-                <span class="sub">{{ summary.key | transloco: summary.params }}</span>
+                @if (summary.time; as time) {
+                  <ui-time-label
+                    class="sub"
+                    [key]="summary.key"
+                    [params]="summary.params"
+                    [value]="time.value"
+                    [form]="time.form"
+                    [timeParam]="time.param"
+                  />
+                } @else {
+                  <span class="sub">{{ summary.key | transloco: summary.params }}</span>
+                }
               }
             </a>
           </li>

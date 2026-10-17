@@ -87,8 +87,9 @@
 
         <div class="dash-2">
         <section class="card next" data-section="next">
-          <!-- Prototype `.next-step` (spec 024): the eyebrow is the heading, "NEXT STEP · SINCE … VIA …", no h2 title. -->
-          <h2 class="next-eyebrow type-eyebrow" data-next-eyebrow>{{ nextEyebrow() }}</h2>
+          <!-- Prototype `.next-step` (spec 024): the eyebrow is the heading, "NEXT STEP · SINCE … VIA …", no h2 title.
+               Spec 006: the instant goes through `<ui-time-label>`; the capitals are `type-eyebrow`'s CSS only. -->
+          <h2 class="next-eyebrow type-eyebrow" data-next-eyebrow>{{ 'specDashboard.next.heading' | transloco }}@if (m.next.since; as since) { · <ui-time-label [key]="m.next.via ? 'specDashboard.next.sinceVia' : 'specDashboard.next.since'" [params]="{ via: m.next.via ?? '' }" [value]="since" />}</h2>
           @if (m.next.command; as command) {
             <ui-command-chip
               [command]="command"

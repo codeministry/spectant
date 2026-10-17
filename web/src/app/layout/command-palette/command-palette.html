@@ -66,6 +66,10 @@
               @if (option.status; as status) {
                 <span class="p-status"><span class="dot" aria-hidden="true" [style.background]="status.dot"></span>{{ status.word }}</span>
               }
+              <!-- A time before the meta text, so a milestone target reads before its state word (spec 006). -->
+              @if (option.entry.metaTime; as time) {
+                <span class="meta"><ui-time [value]="time.value" [form]="time.form" /></span>
+              }
               @if (option.entry.meta; as meta) {
                 <span class="meta" [title]="meta" [uiClamp]="meta" [uiClampLines]="option.index === active() ? 3 : 1"></span>
               }

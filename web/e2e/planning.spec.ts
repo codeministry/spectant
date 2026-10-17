@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import type { PlanningModel } from '../../core/src/planning';
-import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
+import { atWidth, expect, headerControl, STUB_MILESTONE, test, WIDTHS } from './fixtures';
 import { EDGES_HEADER, type EdgeState, RESET_PATH, SESSION_HEADER, STUB_EDGES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -109,6 +109,19 @@ test.describe('planning: lenses', () => {
     await expect(page.locator('[data-level="milestones"] [data-count]')).toHaveText(String(milestoneCount));
     await expect(page.locator('[data-level="features"] [data-count]')).toHaveText(String(featureCount));
     await expect(page.locator('[data-level="claims"] [data-count]')).toHaveText(`${String(harbor.recount?.closed)}/${String(harbor.recount?.total)}`);
+  });
+
+  test('lenses: the tree and the matrix show the milestone target as a calendar day, a <time> in the short date form', async ({ page }) => {
+    const ref = `milestone:${STUB_MILESTONE.slug}`;
+    await openPlanning(page, STUB_MILESTONE.routes.tree);
+    const inTree = page.locator(`[role="treeitem"][data-ref="${ref}"] .date time`);
+    await expect(inTree).toHaveAttribute('datetime', STUB_MILESTONE.target);
+    await expect(inTree).toHaveText('03/15/2026');
+
+    await openPlanning(page, STUB_MILESTONE.routes.matrix);
+    const inMatrix = page.locator(`[data-lane="${ref}"] .lane-meta time`);
+    await expect(inMatrix).toHaveAttribute('datetime', STUB_MILESTONE.target);
+    await expect(inMatrix).toHaveText('03/15/2026');
   });
 
   test('lenses: the level headings carry the glossary hints', async ({ page }) => {

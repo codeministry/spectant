@@ -13,8 +13,19 @@
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 
 import { theme } from './env';
+import { MIDNIGHT_HEADER, STUB_MIDNIGHT, STUB_MILESTONE } from './stub-api';
 
-export { expect, theme };
+export { expect, theme, STUB_MIDNIGHT, STUB_MILESTONE };
+
+/**
+ * `test.use(atMidnight('east'))` (spec 006, T4, ISC-114 / ISC-114.3): the browser in `STUB_MIDNIGHT.zones[side]`
+ * (Tokyo east of UTC, Los Angeles west of it) and the stub's near-midnight fixture on, so harbor 002 shows
+ * `STUB_MIDNIGHT.instant` on its reviewed mark, newest round, reviewed event and library spec.md; the zone's `day` and
+ * `hour` are what each must read. The clock stays `FIXED_NOW`, which lies after the instant.
+ */
+export function atMidnight(side: keyof typeof STUB_MIDNIGHT.zones): { timezoneId: string; extraHTTPHeaders: Record<string, string> } {
+  return { timezoneId: STUB_MIDNIGHT.zones[side].timezoneId, extraHTTPHeaders: { [MIDNIGHT_HEADER]: 'on' } };
+}
 
 /** The instant every test sees as "now", unless it sets `clockAt`. A fixed offset keeps it DST-proof. */
 export const FIXED_NOW = '2026-09-01T10:00:00+02:00';

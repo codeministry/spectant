@@ -5,6 +5,7 @@ import planningGolden from '../../../../../../core/fixtures/harbor.planning.gold
 import specGolden from '../../../../../../core/fixtures/harbor.spec.golden.json';
 import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { formatInstant } from '../../../shared/time';
 import { StatusBlock } from './status-block';
 
 const SPECS = specGolden as unknown as Record<string, SpecPageModel>;
@@ -115,5 +116,23 @@ describe('StatusBlock assignee (T133, ISC-131)', () => {
     const { host } = await render('003-config-loader');
     expect(host.querySelector('ui-actor-chip')).toBeNull();
     expect(host.querySelector('[data-unassigned]')?.textContent.trim()).toBe(t('status.unassigned'));
+  });
+});
+
+describe('StatusBlock since (T11, ISC-114.1)', () => {
+  const AT = '2026-10-01T12:05:00.000Z';
+
+  it('renders "since … via …" with the instant as a <time> through the shared formatter', async () => {
+    const { host } = await render('002-web-console', { since: { at: AT, via: '/spec-review' } });
+    const caption = host.querySelector('[data-since]');
+    const time = caption?.querySelector('ui-time time');
+    expect(time?.getAttribute('datetime')).toBe(AT);
+    expect(time?.textContent).toBe(formatInstant(AT, 'en'));
+    expect(caption?.textContent.replace(/\s+/g, ' ').trim()).toBe(`since ${formatInstant(AT, 'en')} via /spec-review`);
+  });
+
+  it('shows no caption without an event into the current stage', async () => {
+    const { host } = await render('002-web-console', { since: null });
+    expect(host.querySelector('[data-since]')).toBeNull();
   });
 });

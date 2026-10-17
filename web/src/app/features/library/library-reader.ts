@@ -24,6 +24,7 @@ import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
+import { UiTimeLabel } from '../../shared/time';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
@@ -55,20 +56,6 @@ const TYPE_ICON: Readonly<Record<LibraryDocType, IconName>> = {
 };
 
 export const typeIcon = (doc: Pick<LibraryDoc, 'type' | 'media'>): IconName => (doc.media === 'image' ? 'image' : TYPE_ICON[doc.type]);
-
-/**
- * A row's short date (design.md 017 § Across viewports): day, month and time, the year only outside the current
- * one, in UTC as every other date of the app's fixtures. The two parts are joined by the catalogue's `library.date`,
- * so English reads "Oct 12, 14:02" and German "12.10. 14:02".
- */
-export function shortDateParts(iso: string, now: Date, locale: string): { readonly date: string; readonly time: string } {
-  const at = new Date(iso);
-  const year = at.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
-  const german = locale.startsWith('de');
-  const date = new Intl.DateTimeFormat(locale, german ? { day: '2-digit', month: '2-digit', year, timeZone: 'UTC' } : { month: 'short', day: 'numeric', year, timeZone: 'UTC' }).format(at);
-  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }).format(at);
-  return { date, time };
-}
 
 /**
  * The command that writes a missing document (design.md 017 § 2.2): `/spec-plan 017` for plan.md, `/spec-tasks 017`
@@ -264,7 +251,7 @@ export type ReaderContext = 'workspace' | 'spec';
  */
 @Component({
   selector: 'app-library-reader',
-  imports: [PrototypeCard, RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
+  imports: [PrototypeCard, RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'lib-reader',
@@ -286,7 +273,6 @@ export class LibraryReader {
   private readonly locationStrategy = inject(LocationStrategy);
   private readonly transloco = inject(TranslocoService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly translation = toSignal(this.transloco.selectTranslation());
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
 
@@ -466,10 +452,6 @@ export class LibraryReader {
   /** The spec chip: the number, or the workspace for a workspace-wide document. */
   protected chipLabel(spec: string): string {
     return spec === WORKSPACE_SPEC ? this.wsName() : specKey(spec);
-  }
-
-  protected date(iso: string): string {
-    return this.transloco.translate('library.date', shortDateParts(iso, new Date(), this.lang()));
   }
 
   /** The document's file (or prototype folder) as the workspace names it: below `specs/`. */

@@ -480,7 +480,7 @@
       <ui-icon name="flag" [size]="14" />
       <span class="name">{{ band.label ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
       @if (band.target; as target) {
-        <span class="mono muted">{{ target }}</span>
+        <ui-time class="mono muted" form="day" [value]="target" />
       }
     }
     <span class="n">{{ (band.count === 1 ? 'board.workspace.swimlanes.cards.one' : 'board.workspace.swimlanes.cards.other') | transloco: { count: band.count } }}</span>

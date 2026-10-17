@@ -4,6 +4,7 @@ import type { SpecHead, SpecNextStep, Workflow } from '../../../../../../core/sr
 import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
 import { UiActorChip } from '../../../shared/ui/actor-chip/actor-chip';
 import { UiReason } from '../../../shared/ui/reason/reason';
+import { UiTimeLabel } from '../../../shared/time';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './status-model';
 
@@ -18,7 +19,7 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
  */
 @Component({
   selector: 'app-status-block',
-  imports: [TranslocoPipe, UiActorChip, UiReason, UiStageTrack],
+  imports: [TranslocoPipe, UiActorChip, UiReason, UiStageTrack, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: 16px; min-inline-size: 0; }
@@ -37,8 +38,8 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
     />
     <p class="stage-line">
       <span class="stage-chip" data-stage [attr.data-value]="head().stage">{{ 'stages.' + head().stage | transloco }}</span>
-      @if (since(); as caption) {
-        <span class="caption" data-since>{{ caption }}</span>
+      @if (since(); as s) {
+        <span class="caption" data-since><ui-time-label key="status.where.since" [params]="{ via: s.via }" [value]="s.at" /></span>
       }
     </p>
     @if (reason(); as r) {
@@ -69,8 +70,8 @@ export class StatusBlock {
   readonly compact = input(false);
   /** False at wide, where the spec head holds the next command's chip. */
   readonly showCommand = input(true);
-  /** "since … via …", formatted by the tab; null without an event into the current stage. */
-  readonly since = input<string | null>(null);
+  /** "since … via …": the ISO instant of the event into the current stage and its command; null without one. */
+  readonly since = input<{ readonly at: string; readonly via: string } | null>(null);
 
   protected readonly track = computed(() => statusTrack(this.head(), this.workflow()));
   protected readonly reason = computed(() => statusReason(this.head(), this.next()));

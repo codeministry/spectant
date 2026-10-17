@@ -135,6 +135,23 @@ test.describe('dashboard', () => {
     const next = page.locator('app-spec-dashboard [data-section="next"]');
     await expect(next.locator('ui-command-chip code')).toHaveText(SPEC.next.command ?? '');
     await expect(next.locator('[data-reason]')).toHaveText(SPEC.next.reasons.slice(0, 3));
+
+    // Spec 006 (ISC-114.2): the eyebrow is heading · "since <instant> via <command>"; the instant is a <time> in the
+    // shared `en` form in the test's zone (`03/04/2026, 10:00 AM`), and the capitals come from CSS alone.
+    const since = SPEC.next.since ?? '';
+    const eyebrow = next.locator('[data-next-eyebrow]');
+    const time = eyebrow.locator('time');
+    const instant = await page.evaluate(
+      (iso) =>
+        new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
+          Date.parse(iso),
+        ),
+      since,
+    );
+    await expect(time).toHaveAttribute('datetime', since);
+    await expect(time).toHaveText(instant);
+    await expect(eyebrow).toHaveText(`Next step · since ${instant} via ${SPEC.next.via ?? ''}`);
+    await expect(eyebrow).toHaveCSS('text-transform', 'uppercase');
   });
 
   test('dashboard lanes keep the model order with their counts', async ({ page }) => {

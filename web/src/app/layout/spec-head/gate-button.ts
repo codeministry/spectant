@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe } from '@jsverse/transloco';
 import type { SpecPageModel } from '../../../../../core/src/files';
 import { REVIEWED_HASH_FILES, type ReviewedHashFile } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
 import { UiIcon } from '../../shared/icons/icon';
+import { UiTimeLabel } from '../../shared/time';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
@@ -34,7 +34,7 @@ type WriteState =
  */
 @Component({
   selector: 'app-gate-button',
-  imports: [TranslocoPipe, UiChip, UiIcon, UiKbd, UiNotice, UiDialog],
+  imports: [TranslocoPipe, UiChip, UiIcon, UiKbd, UiNotice, UiDialog, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-size]': 'size()' },
   styles: `
@@ -94,14 +94,14 @@ type WriteState =
               <ui-icon name="check" [size]="16" />
               {{ 'status.gate.remark' | transloco }}
             </button>
-            <span class="gate-hint" data-gate-hint>{{ 'status.gate.done' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
+            <span class="gate-hint" data-gate-hint><ui-time-label key="status.gate.done" [value]="m.gates.reviewed.at ?? ''" /></span>
           }
           @case ('stale') {
             <button type="button" class="btn btn-sm gate-button stale" data-gate-action data-state="stale" (click)="openDialog()">
               <ui-icon name="triangle-alert" [size]="16" />
               {{ 'status.gate.stale' | transloco }}
             </button>
-            <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.stale' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
+            <span class="gate-hint" data-gate-hint><ui-time-label key="status.gate.hint.stale" [value]="m.gates.reviewed.at ?? ''" /></span>
             @if (m.gates.reviewed.files?.length) {
               <ul class="changed" data-changed-files [attr.aria-label]="'status.gate.changed' | transloco">
                 @for (file of m.gates.reviewed.files; track file) {
@@ -120,7 +120,7 @@ type WriteState =
         }
       </span>
       @if (written(); as at) {
-        <ui-notice tone="info" icon="circle-check" data-gate-written>{{ 'status.gate.written' | transloco: { time: time(at) } }}</ui-notice>
+        <ui-notice tone="info" icon="circle-check" data-gate-written><ui-time-label key="status.gate.written" [value]="at" /></ui-notice>
       }
 
       <ui-dialog [(open)]="dialogOpen" [label]="'status.dialog.heading' | transloco">
@@ -216,8 +216,6 @@ export class GateButton {
   private readonly api = inject(ApiClient);
   private readonly data = inject(ShellData);
   private readonly state = inject(ShellState);
-  private readonly transloco = inject(TranslocoService);
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly specId = this.state.specId;
   protected readonly inline = computed(() => this.size() === 'inline');
@@ -268,13 +266,6 @@ export class GateButton {
   protected readonly write = signal<WriteState>({ kind: 'idle' });
   /** The `at` of the mark this button wrote, shown as the success line until the page is left. */
   protected readonly written = signal<string | null>(null);
-
-  private readonly timeFormat = computed(() => new Intl.DateTimeFormat(this.lang(), { dateStyle: 'medium', timeStyle: 'short' }));
-  protected time(iso: string | null | undefined): string {
-    if (!iso) return '';
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? iso : this.timeFormat().format(date);
-  }
 
   protected openDialog(): void {
     this.write.set({ kind: 'idle' });

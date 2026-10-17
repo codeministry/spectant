@@ -9,7 +9,8 @@ import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
-import { AreaMenu } from './area-menu';
+import { UiTimeLabel } from '../../shared/time';
+import { AreaMenu, milestonesLine } from './area-menu';
 import DASHBOARD_GOLDEN from '../../../../../core/fixtures/harbor.golden.json';
 import PLANNING_GOLDEN from '../../../../../core/fixtures/harbor.planning.golden.json';
 import { boardRowsOf, buildBoard } from '../../features/board/board-model';
@@ -166,6 +167,37 @@ async function render(url: string, tier: Tier = 'wide', open = false): Promise<H
 const pages = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>('nav [data-page]')];
 const attr = (entries: readonly HTMLElement[], name: string) => entries.map((entry) => entry.getAttribute(name));
 const sub = (entry: HTMLElement) => entry.querySelector('.sub')?.textContent.trim() ?? null;
+
+describe('the milestones line (spec 006, ISC-114.3)', () => {
+  it("carries the next milestone's target as a structured calendar day, not as a formatted text", () => {
+    expect(milestonesLine(WITH_MILESTONES.milestones)).toEqual({
+      key: 'shell.pages.summary.milestones',
+      params: { count: 2 },
+      time: { param: 'next', value: '2026-11-30', form: 'day' },
+    });
+  });
+
+  it("renders through the menu's <ui-time-label> as a <time> with the short date, in the key's `next` place", async () => {
+    setUp(ok(WITH_MILESTONES));
+    const line = milestonesLine(WITH_MILESTONES.milestones);
+    const fixture = TestBed.createComponent(UiTimeLabel);
+    fixture.componentRef.setInput('key', line?.key);
+    fixture.componentRef.setInput('params', line?.params);
+    fixture.componentRef.setInput('value', line?.time?.value);
+    fixture.componentRef.setInput('form', line?.time?.form);
+    fixture.componentRef.setInput('timeParam', line?.time?.param);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-30');
+    expect(root.textContent.trim()).toBe('2 milestones · next 11/30/2026');
+  });
+
+  it('names an undated next milestone without a time, and is left out without an open one', () => {
+    const undated = planning([milestone('Harbor 2.0', null, 'upcoming', [holder('003')])]);
+    expect(milestonesLine(undated.milestones)).toEqual({ key: 'shell.pages.summary.milestones', params: { count: 1, next: 'Harbor 2.0' } });
+    expect(milestonesLine(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001')])]).milestones)).toBeNull();
+  });
+});
 
 describe('AreaMenu', () => {
   describe('at workspace scope (T26, ISC-104)', () => {

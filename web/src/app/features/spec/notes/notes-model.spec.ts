@@ -7,7 +7,6 @@ import {
   filterNotes,
   isSavable,
   nextSaveState,
-  rowTime,
   saveLabel,
   type SaveState,
 } from './notes-model';
@@ -91,19 +90,11 @@ describe('notes model: the autosave state', () => {
     expect(nextSaveState({ kind: 'saving' }, { type: 'fail' })).toEqual({ kind: 'failed' });
   });
 
-  it('labels each state with its notes.save key; saved carries the formatted time', () => {
-    const time = (iso: string): string => iso.slice(11, 16);
-    expect(saveLabel({ kind: 'idle' }, time)).toBeNull();
-    expect(saveLabel({ kind: 'pending' }, time)).toEqual({ key: 'notes.save.pending', params: {} });
-    expect(saveLabel({ kind: 'saving' }, time)).toEqual({ key: 'notes.save.saving', params: {} });
-    expect(saveLabel({ kind: 'failed' }, time)).toEqual({ key: 'notes.save.failed', params: {} });
-    expect(saveLabel({ kind: 'saved', at }, time)).toEqual({ key: 'notes.save.saved', params: { time: '15:01' } });
-  });
-
-  it('a row shows the clock time today and the date otherwise', () => {
-    const now = new Date('2026-03-08T16:00:00');
-    expect(rowTime(new Date('2026-03-08T12:04:00').toISOString(), now, 'en-GB')).toBe('12:04');
-    expect(rowTime(new Date('2026-03-06T12:04:00').toISOString(), now, 'en-GB')).toBe('6 Mar');
-    expect(rowTime(new Date('2025-03-06T12:04:00').toISOString(), now, 'en-GB')).toBe('6 Mar 2025');
+  it('labels each state with its notes.save key; saved carries the raw instant, never a formatted text', () => {
+    expect(saveLabel({ kind: 'idle' })).toBeNull();
+    expect(saveLabel({ kind: 'pending' })).toEqual({ key: 'notes.save.pending', at: null });
+    expect(saveLabel({ kind: 'saving' })).toEqual({ key: 'notes.save.saving', at: null });
+    expect(saveLabel({ kind: 'failed' })).toEqual({ key: 'notes.save.failed', at: null });
+    expect(saveLabel({ kind: 'saved', at })).toEqual({ key: 'notes.save.saved', at });
   });
 });

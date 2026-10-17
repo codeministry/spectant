@@ -21,6 +21,10 @@ const note = (kind: 'spec' | 'claim' | 'task'): Note => {
   return found;
 };
 
+/** The instant form in English (spec 006, ISC-114.1), in the test's zone: `10/12/2026, 2:02 PM`. */
+const INSTANT = String.raw`\d{2}/\d{2}/\d{4}, \d{1,2}:\d{2}\s[AP]M`;
+const SAVED = new RegExp(`^saved · ${INSTANT}$`);
+
 const area = (page: Page) => page.locator('app-notes-area');
 const rows = (page: Page) => area(page).locator('[data-note-row]');
 const isWrite = (method: string) => (req: Request): boolean => req.method() === method && new URL(req.url()).pathname.startsWith('/api/workspaces/harbor/notes');
@@ -40,6 +44,10 @@ test.describe('at 1440', () => {
     expect(await rows(page).evaluateAll((els) => els.map((el) => el.getAttribute('data-note')))).toEqual(SEEDED.map((n) => n.id));
     await expect(rows(page).locator('[data-anchor]')).toHaveText(['T1', 'ISC-51', 'Spec 002']);
     await expect(rows(page).first()).toContainText(note('task').title);
+    // Each row's time is a <time> carrying the note's instant, shown in the instant form (spec 006).
+    const times = rows(page).locator('.notes-row-time time');
+    expect(await times.evaluateAll((els) => els.map((el) => el.getAttribute('datetime')))).toEqual(SEEDED.map((n) => n.updated));
+    await expect(times).toHaveText(SEEDED.map(() => new RegExp(`^${INSTANT}$`)));
     await expect(area(page).locator('[data-notes-list]')).toBeVisible();
     await expect(area(page).locator('[data-notes-editor]')).toBeVisible();
 
@@ -77,7 +85,7 @@ test.describe('at 1440', () => {
     const body = (await posted).postDataJSON() as unknown;
     expect(body).toEqual({ anchor: { kind: 'spec', spec: '002' }, title: '', body: 'A fresh thought' });
     await expect(page).toHaveURL(/\/notes\/00000000-0000-4000-8000-\d{12}$/);
-    await expect(area(page).locator('[data-save-state]')).toHaveText(/^saved · \d{2}:\d{2}$/);
+    await expect(area(page).locator('[data-save-state]')).toHaveText(SAVED);
     await expect(rows(page)).toHaveCount(SEEDED.length + 1);
   });
 
@@ -89,7 +97,7 @@ test.describe('at 1440', () => {
     const sent = await put;
     expect(new URL(sent.url()).pathname).toBe(`/api/workspaces/harbor/notes/${target.id}`);
     expect(sent.postDataJSON()).toEqual({ anchor: target.anchor, title: 'Probe the empty state too', body: target.body });
-    await expect(area(page).locator('[data-save-state]')).toHaveText(/^saved · \d{2}:\d{2}$/);
+    await expect(area(page).locator('[data-save-state]')).toHaveText(SAVED);
     await expect(rows(page).first()).toContainText('Probe the empty state too');
   });
 
@@ -192,7 +200,7 @@ test.describe('claim card badge', () => {
     await area(page).locator('[data-anchor-trigger]').click();
     await area(page).locator('[data-anchor-pop] [data-value="claim:002:ISC-52"]').click();
     expect(((await put).postDataJSON() as { anchor: unknown }).anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-52' });
-    await expect(area(page).locator('[data-save-state]')).toHaveText(/^saved · \d{2}:\d{2}$/);
+    await expect(area(page).locator('[data-save-state]')).toHaveText(SAVED);
 
     const counted = page.waitForResponse((res) => new URL(res.url()).pathname === '/api/workspaces/harbor/note-counts');
     await page.goto(CLAIMS);

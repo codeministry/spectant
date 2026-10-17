@@ -12,6 +12,7 @@ import spectant001 from '../../../../../../core/fixtures/spectant-001.planning.g
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
+import { formatDay } from '../../../shared/time';
 import { PlanningTree } from './planning-tree';
 
 // T17 · ISC-168: the tree lens against every planning golden, with and without milestones. Every number a row shows
@@ -260,5 +261,16 @@ describe('planning-tree', () => {
     await stable();
     expect(selection.picks).toEqual([rows(el)[1]?.dataset['ref']]);
     expect(tree.contains(document.activeElement)).toBe(true);
+  });
+
+  it('shows each milestone target as a calendar day: a <time> with the ISO day, in the short date form (ISC-114.3)', async () => {
+    const model = harbor as unknown as PlanningModel;
+    const { el } = await render(model);
+    const targets = model.milestones.map((m) => m.target).filter((t): t is string => t !== null);
+    const times = rows(el, 'milestone').map((row) => row.querySelector('.date time'));
+
+    expect(targets.length).toBeGreaterThan(0);
+    expect(times.map((time) => time?.getAttribute('datetime'))).toEqual(targets);
+    expect(times.map((time) => time?.textContent)).toEqual(targets.map((target) => formatDay(target, 'en')));
   });
 });
