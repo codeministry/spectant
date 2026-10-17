@@ -52,7 +52,7 @@
               @if (a.past) {
                 <span class="past-label" data-past-label>
                   <ui-icon name="clock-alert" [size]="12" />
-                  @if (tier() !== 'compact') {
+                  @if (tier() === 'wide') {
                     <span>{{ 'planning.gantt.past' | transloco }}</span>
                   }
                 </span>
