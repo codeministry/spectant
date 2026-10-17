@@ -4,8 +4,10 @@
 // this module decides; it never runs git itself (FORMAT.md § Worktrees):
 //
 //   - The first record is the main checkout, the workspace root. It is no spec's worktree and is left out; every other
-//     record becomes one `Worktree`, in the order git prints it, its `path` relative to the root and `/`-separated
-//     (`../repo-013` for one outside it), its `branch` without `refs/heads/` (null when detached).
+//     record becomes one `Worktree`, in the order git prints it, its `path` relative to the root and `/`-separated,
+//     its `branch` without `refs/heads/` (null when detached). Both paths are normalised first (`.` dropped, inner `..`
+//     resolved); a worktree outside the repository, a sibling `../repo-013` or a path whose `..` climbs out, carries
+//     `path: null`, so its location never reaches the model or the browser (spec 041, ISC-216).
 //   - A worktree under `.claude/worktrees/`, where the Agent tool puts one per sub-agent task, is a `builder`: counted
 //     in `builders` and never assigned or read, so its `spec` is null whatever its branch.
 //   - Every other worktree is of kind `spec`. It belongs to the spec its path `.worktrees/NNN-slug` names, else to the
@@ -104,16 +106,31 @@ function parseRecords(porcelain: string): PorcelainRecord[] {
   return records;
 }
 
-const segments = (path: string): string[] => path.split('/').filter((part) => part !== '' && part !== '.');
+/**
+ * The segments of an absolute, `/`-separated path with `.` dropped and every `..` resolved as text against the segment
+ * before it, as POSIX does: `/srv/repo/a/./b/../c` is `srv`, `repo`, `a`, `c`, and a `..` at the top stays at `/`.
+ */
+function segments(path: string): string[] {
+  const out: string[] = [];
+  for (const part of path.split('/')) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') out.pop();
+    else out.push(part);
+  }
+  return out;
+}
 
-/** `path` relative to `root`, both absolute and `/`-separated: `.worktrees/012-harbor`, `../repo-013`. */
-function relativeTo(root: string, path: string): string {
+/**
+ * `path` relative to `root`, both absolute and `/`-separated, each normalised first (`.` dropped, inner `..` resolved):
+ * `.worktrees/012-harbor` for `/srv/repo/a/../.worktrees/012-harbor`, `.` for the root itself. Null for a path outside
+ * the root, `/srv/repo-013` or `/srv/repo/a/../../b` alike (spec 041, ISC-216): a location outside the repository is
+ * refused, never named.
+ */
+export function relativeTo(root: string, path: string): string | null {
   const from = segments(root);
   const to = segments(path);
-  let common = 0;
-  while (common < from.length && common < to.length && from[common] === to[common]) common += 1;
-  const up = from.slice(common).map(() => '..');
-  return [...up, ...to.slice(common)].join('/') || '.';
+  if (to.length < from.length || from.some((part, index) => to[index] !== part)) return null;
+  return to.slice(from.length).join('/') || '.';
 }
 
 /** The `NNN` a spec folder name like `012-harbor` carries, when it is one of the workspace's spec numbers. */
@@ -159,15 +176,17 @@ export function assignWorktrees(porcelain: string, specs: readonly string[]): Wo
   const diagnostics: Diagnostic[] = [];
   let builders = 0;
   for (const record of others) {
+    // Null outside the repository: such a worktree is no builder (those sit under `.claude/worktrees/`), has no
+    // `.worktrees/` path, and is assigned by its branch alone.
     const path = relativeTo(main.path, record.path);
-    if (path.startsWith(BUILDER_WORKTREES)) {
+    if (path?.startsWith(BUILDER_WORKTREES) === true) {
       builders += 1;
       worktrees.push({ path, branch: record.branch, spec: null, ahead: null, dirty: null, kind: 'builder' });
       continue;
     }
-    const pathSpec = specOfPath(path, numbers);
+    const pathSpec = path === null ? null : specOfPath(path, numbers);
     const branchSpec = specOfBranch(record.branch, numbers);
-    if (pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
+    if (path !== null && pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
       diagnostics.push(mismatch(record, path, pathSpec, branchSpec));
     }
     const spec = pathSpec ?? branchSpec;

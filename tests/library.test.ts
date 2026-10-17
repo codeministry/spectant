@@ -22,7 +22,7 @@ import type { ApiHandler } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { prototypeApi } from "../server/src/prototype.ts";
 import { type WorkspaceRouteResponses, allowForWorkspace, prototypeFolderOf, prototypeRoute, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { SPEC_FOLDER, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
+import { SPEC_FOLDER, SPEC_WORKTREE, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const LIBRARY = join(import.meta.dir, "..", "core", "fixtures", "library");
 const HOST = { Host: "127.0.0.1:7717" };
@@ -682,6 +682,87 @@ describe("the library refuses a worktree copy that links out of its specs/ (spec
     } finally {
       reg.close();
       rmSync(planted.base, { recursive: true, force: true });
+    }
+  }, 60_000);
+});
+
+// The search over a worktree copy (spec 041, ISC-217): a spec read from its worktree copy (tracked `specs/`) is searched
+// in the copy's version, and the search's text cache keys each text by its source, so a spec whose source switches back
+// to the main checkout is never answered from the copy's cached text, even when both files share size and mtime. A
+// worktree that disappears between reading the copies and reading the catalog leaves the spec's documents from `main`.
+describe("the library search reads each spec from its read source (spec 041, ISC-217)", () => {
+  // Same length, so the copy's and main's plan.md share their size as well as their mtime.
+  const COPY_WORD = "copyonlyfjord";
+  const MAIN_WORD = "mainonlyfjord";
+  const PLAN = `${SPEC_FOLDER}/plan.md`;
+  const planWith = (word: string): string => `# Plan\n\nThe ${word} step.\n`;
+
+  /** A planted repository with tracked `specs/`, plan.md differing between copy and main, both dated alike. */
+  const plantedWithPlans = async () => {
+    const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs: true });
+    const copy = join(planted.worktrees.spec, "specs", SPEC_FOLDER);
+    const main = join(planted.root, "specs", SPEC_FOLDER);
+    writeFileSync(join(copy, "plan.md"), planWith(COPY_WORD));
+    writeFileSync(join(main, "plan.md"), planWith(MAIN_WORD));
+    const at = new Date();
+    utimesSync(join(copy, "plan.md"), at, at);
+    utimesSync(join(main, "plan.md"), at, at);
+    const reg = openRegistry(mkdtempSync(join(root, "data-")));
+    const ws = reg.add(planted.root).slug;
+    const handler = dashboardApi({ registry: reg, services: () => Promise.resolve([]) });
+    const hits = async (q: string): Promise<string[]> => {
+      const url = new URL(`http://127.0.0.1:7717${workspaceRoutes.librarySearch(ws, q)}`);
+      const res = await handler(new Request(url.href, { headers: HOST }), url);
+      if (res === null) throw new Error("the workspace routes declined the search");
+      expect(res.status).toBe(200);
+      return ((await res.json()) as WorkspaceRouteResponses["librarySearch"]).hits.map((h) => h.path);
+    };
+    const done = (): void => {
+      reg.close();
+      rmSync(planted.base, { recursive: true, force: true });
+    };
+    return { planted, copy, main, hits, done };
+  };
+
+  test("copy search: hits the copy's version, and after the source switches to main never the cached copy text", async () => {
+    const { planted, hits, done } = await plantedWithPlans();
+    try {
+      // The spec reads from its live worktree's copy: the copy's word hits, main's does not.
+      expect({ copy: await hits(COPY_WORD), main: await hits(MAIN_WORD) }).toEqual({ copy: [PLAN], main: [] });
+      // The worktree is removed: the spec reads main again. Same catalog path, size and mtime: only the source differs.
+      const removed = await planted.git(planted.root, "worktree", "remove", "--force", SPEC_WORKTREE);
+      expect(removed.code).toBe(0);
+      expect({ copy: await hits(COPY_WORD), main: await hits(MAIN_WORD) }).toEqual({ copy: [], main: [PLAN] });
+    } finally {
+      done();
+    }
+  }, 60_000);
+
+  test("copy search: a worktree gone between the copies read and the catalog read leaves the spec's documents from main", async () => {
+    const { planted, copy, hits, done } = await plantedWithPlans();
+    const readDocs = lib.readCatalogDocs;
+    // The copies are read with the worktree alive; it disappears right before the catalog's documents are read.
+    const between = spyOn(lib, "readCatalogDocs").mockImplementation(async (r, options) => {
+      rmSync(planted.worktrees.spec, { recursive: true, force: true });
+      return readDocs(r, options);
+    });
+    try {
+      expect(await hits(MAIN_WORD)).toEqual([PLAN]);
+      expect(between).toHaveBeenCalled();
+      expect(await hits(COPY_WORD)).toEqual([]);
+    } finally {
+      between.mockRestore();
+    }
+    try {
+      // Core alone: copies naming a folder that is gone list and resolve the spec's documents from main, as without one.
+      const gone = { copies: { [SPEC_FOLDER]: copy } };
+      const own = (docs: ReadonlyArray<{ path: string }>): string[] => docs.map((d) => d.path).filter((p) => p.startsWith(`${SPEC_FOLDER}/`));
+      expect(own(await lib.readCatalogDocs(planted.root, gone))).toEqual(own(await lib.readCatalogDocs(planted.root)));
+      expect(own(await lib.readCatalogDocs(planted.root, gone))).toContain(PLAN);
+      expect(await lib.catalogDocAt(planted.root, PLAN, gone)).toEqual(await lib.catalogDocAt(planted.root, PLAN));
+      expect(lib.catalogSourceOf(planted.root, { path: PLAN, spec: SPEC_FOLDER }, gone.copies)).toEqual({ dir: copy, rel: "plan.md" });
+    } finally {
+      done();
     }
   }, 60_000);
 });

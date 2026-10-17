@@ -80,13 +80,15 @@ const splitBranch = (branch: string): BranchParts => {
 
     <ng-template #details>
       <dl class="details">
-        <div>
-          <dt>{{ 'worktreeChip.path' | transloco }}</dt>
-          <dd class="path">
-            <span class="mono">{{ worktree().path }}</span>
-            <button ui-icon-button class="copy" icon="copy" size="sm" [label]="'worktreeChip.copyPath' | transloco" (click)="copyPath()"></button>
-          </dd>
-        </div>
+        @if (worktree().path; as path) {
+          <div>
+            <dt>{{ 'worktreeChip.path' | transloco }}</dt>
+            <dd class="path">
+              <span class="mono">{{ path }}</span>
+              <button ui-icon-button class="copy" icon="copy" size="sm" [label]="'worktreeChip.copyPath' | transloco" (click)="copyPath()"></button>
+            </dd>
+          </div>
+        }
         <div>
           <dt>{{ 'worktreeChip.branch' | transloco }}</dt>
           <dd class="mono">{{ worktree().branch ?? ('worktreeChip.detached' | transloco) }}</dd>
@@ -109,7 +111,7 @@ const splitBranch = (branch: string): BranchParts => {
     </ng-template>
 
     @if (!interactive()) {
-      <span class="static" [attr.title]="worktree().branch ?? worktree().path">
+      <span class="static" [attr.title]="label()">
         <span class="vh">{{ name() }}</span>
         <ng-container [ngTemplateOutlet]="face" />
       </span>
@@ -172,9 +174,19 @@ export class UiWorktreeChip {
     return this.t(dirty ? 'worktreeChip.changesDirty' : 'worktreeChip.changesClean');
   });
 
-  /** One sentence: where, which branch, how far ahead, whether dirty, and the mismatch the tone shows. */
+  /** The static chip's `title`: the branch, else the path, else the neutral word when the worktree lies outside the repository. */
+  protected readonly label = computed(() => {
+    const { path, branch } = this.worktree();
+    return branch ?? path ?? this.t('worktreeChip.details');
+  });
+
+  /**
+   * One sentence: where, which branch, how far ahead, whether dirty, and the mismatch the tone shows. A worktree outside
+   * the repository has no path in the JSON (spec 041, ISC-216): "where" is then the neutral `worktreeChip.outside`.
+   */
   protected readonly name = computed(() => {
-    const { path, branch, ahead, dirty } = this.worktree();
+    const { branch, ahead, dirty } = this.worktree();
+    const path = this.worktree().path ?? this.t('worktreeChip.outside');
     const parts = [branch === null ? this.t('worktreeChip.nameDetached', { path }) : this.t('worktreeChip.name', { path, branch })];
     if (ahead !== null) parts.push(this.aheadText());
     if (dirty === true) parts.push(this.t('worktreeChip.dirty'));

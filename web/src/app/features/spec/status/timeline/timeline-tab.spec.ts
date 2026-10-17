@@ -299,6 +299,22 @@ describe('TimelineTab worktree entries (spec 027, ISC-175.1)', () => {
     expect(groupOf('worktree-removed')).toBe(groupOf(HARBOR_002[0]?.id ?? ''));
   });
 
+  it('names a removed worktree outside the repository by its branch, and ends the title after its words without one (spec 041, ISC-216)', async () => {
+    const outside = (branch: string | null): TimelineEntry => ({
+      ...REMOVED,
+      id: `worktree-outside-${branch === null ? 'detached' : 'branch'}`,
+      worktree: { state: 'removed', branch, path: null, commit: null },
+    });
+    setUp([HARBOR_002[0], outside('feature/006-partial-push'), outside(null), ...HARBOR_002.slice(1)]);
+    const root = await open('/w/harbor/s/002/timeline');
+    const named = root.querySelector<HTMLElement>('[data-id="worktree-outside-branch"]');
+    expect(text(named?.querySelector('.title .mono[data-worktree-ref]'))).toBe('feature/006-partial-push');
+    const bare = root.querySelector<HTMLElement>('[data-id="worktree-outside-detached"]');
+    expect(text(bare?.querySelector('.title [data-worktree-title]'))).toBe('Worktree removed');
+    expect(bare?.querySelector('[data-worktree-ref]')).toBeNull();
+    expect(text(root)).not.toContain('null');
+  });
+
   it('words both entries in German', async () => {
     setUp(WITH_WORKTREES);
     TestBed.inject(TranslocoService).setActiveLang('de');

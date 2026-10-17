@@ -8,8 +8,12 @@
 // a lock and never write an object, plus `ls-files` (the tracked paths of a spec folder, `trackedSpecPaths`), which
 // reads the index and never writes it, plus `status --porcelain` (a worktree's uncommitted changes, `dirty`), which reads
 // the index and would write a refreshed one back under an optional lock: `GIT_OPTIONAL_LOCKS=0` turns that write off,
-// as it covers any optional lock a future git might take, and `core.fsmonitor=false` keeps status from starting a
-// monitor daemon that would leave its socket in `.git/`. No command fetches or reaches the network. The inherited
+// as it covers any optional lock a future git might take, plus `config -z --get-regexp ^filter\.` (the filter driver
+// names, `dirty`), which reads the configuration and never writes it. `ls-files` and `status` run with
+// `core.fsmonitor=false`, so neither asks a repository's fsmonitor hook nor starts a monitor daemon that would leave its
+// socket in `.git/`, and `status` also with every filter driver's `clean` and `process` emptied and `required` off and
+// with submodules ignored, so a page read starts no command the repository configures (spec 041, ISC-216.2). No
+// command fetches or reaches the network. The inherited
 // `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` are dropped so the environment cannot redirect the read, pathspecs
 // are literal, and discovery stops at the root: a directory without its own `.git` is not read, even inside a repository.
 //
@@ -378,7 +382,8 @@ export async function trackedSpecPaths(root: string, folder: string, options: Us
     return [];
   }
   return readWithin<string[]>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, [], async (signal) => {
-    const run = await runner(["-C", root, "ls-files", "-z", "--", `specs/${folder}`], gitEnv(root), signal);
+    // `ls-files` asks a configured fsmonitor hook for changes as it reads the index (ISC-216.2): off for this read.
+    const run = await runner(["-C", root, ...NO_FSMONITOR, "ls-files", "-z", "--", `specs/${folder}`], gitEnv(root), signal);
     // A partial listing is never handed on: a failed or killed run reads as untracked.
     if (run?.code !== 0 || signal.aborted) return [];
     return run.stdout.split("\0").filter((path) => path !== "");
@@ -412,21 +417,70 @@ export async function aheadOfMain(worktreePath: string, branch: string | null, o
  * ISC-175). Untracked files are read in git's `normal` mode, set explicitly so a `status.showUntrackedFiles` of `all`
  * in the user's config cannot make the read walk every untracked directory and one of `no` cannot hide a new file;
  * never `--untracked-files=all`. `GIT_OPTIONAL_LOCKS=0` keeps status from writing the refreshed index back, and
- * `core.fsmonitor=false` from starting a monitor daemon. No cache: the index's mtime does not move when a file in the
+ * `core.fsmonitor=false` from asking a fsmonitor hook or starting a monitor daemon. A file whose stat data changed is
+ * hashed again, which would run its clean filter: every driver the configuration names (`filterDrivers`, read first in
+ * the worktree) runs with `clean` and `process` emptied and `required` off, so the bytes are compared as they are, and
+ * an LFS-tracked file whose stat data changed may therefore read as dirty. `--ignore-submodules=all`: status would
+ * otherwise run in each submodule under the submodule's own configuration, which no override here reaches; a changed
+ * submodule alone reads as clean (spec 041, ISC-216.2). No cache: the index's mtime does not move when a file in the
  * tree is edited, so a cache keyed on it would keep answering false for a worktree an agent is writing in.
  * Never throws: a relative path or a path without its `.git` (the worktree is gone) answer null without spawning git;
- * no git, a non-zero exit (a pruned gitdir) and the deadline answer null.
+ * no git, a non-zero exit (a pruned gitdir), a failed driver read or a driver name a `-c` cannot carry, and the
+ * deadline answer null.
  */
 export async function dirty(worktreePath: string, options: UserEmailOptions = {}): Promise<boolean | null> {
   if (!hasOwnGit(worktreePath)) return null;
   const runner = options.runner ?? defaultGitRunner;
   return readWithin<boolean | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
-    const args = ["-C", worktreePath, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal"];
-    const run = await runner(args, gitEnv(worktreePath), signal);
+    const env = gitEnv(worktreePath);
+    // Read through a call each time: the flag turns true while a run is awaited, which a narrowed property would hide.
+    const aborted = (): boolean => signal.aborted;
+    const drivers = await filterDrivers(worktreePath, runner, env, signal);
+    if (drivers === null || aborted()) return null;
+    const args = [
+      "-C",
+      worktreePath,
+      ...NO_FSMONITOR,
+      ...drivers.flatMap((name) => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`]),
+      "status",
+      "--porcelain",
+      "--untracked-files=normal",
+      "--ignore-submodules=all",
+    ];
+    const run = await runner(args, env, signal);
     // A failed or killed status may have printed part of a listing; only a complete one answers.
-    if (run?.code !== 0 || signal.aborted) return null;
+    if (run?.code !== 0 || aborted()) return null;
     return run.stdout.trim() !== "";
   });
+}
+
+/** Turns the repository's fsmonitor hook or daemon off for one call: the read never starts a command it configures. */
+const NO_FSMONITOR = ["-c", "core.fsmonitor=false"] as const;
+
+/**
+ * The name of every filter driver the configuration at `path` defines (spec 041, ISC-216.2), read with
+ * `config -z --get-regexp ^filter\.`: the repository's own config, its worktree config, the global one and their
+ * includes (the system config is off as for every read here), each name once. `config` reads and never writes; a key
+ * `filter.<name>.<var>` names the driver `<name>`, dots included. Exit 1 is git's "no key matched", no driver. Null
+ * when git is missing, fails or is killed, or when a name holds `=` or a line break, which a `-c` override could not
+ * carry: the caller then runs no status rather than one with a driver still on.
+ */
+async function filterDrivers(path: string, runner: GitRunner, env: Record<string, string>, signal: AbortSignal): Promise<string[] | null> {
+  const run = await runner(["-C", path, "config", "-z", "--get-regexp", "^filter\\."], env, signal);
+  if (run === null || signal.aborted) return null;
+  if (run.code === 1 && run.stdout === "") return [];
+  if (run.code !== 0) return null;
+  const names = new Set<string>();
+  for (const record of run.stdout.split("\0")) {
+    if (record === "") continue;
+    // `-z` prints `<key>\n<value>`, or the key alone for a key without a value.
+    const key = record.split("\n", 1)[0] ?? "";
+    const name = key.slice("filter.".length, key.lastIndexOf("."));
+    if (!key.startsWith("filter.") || key.lastIndexOf(".") <= "filter".length || name === "") continue;
+    if (/[=\n\r\0]/.test(name)) return null;
+    names.add(name);
+  }
+  return [...names];
 }
 
 /** An absolute path with its own `.git` (a linked worktree's is a file): the root rule of the worktree reads. */

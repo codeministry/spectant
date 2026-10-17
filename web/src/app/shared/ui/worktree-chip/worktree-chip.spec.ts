@@ -253,4 +253,52 @@ describe('UiWorktreeChip', () => {
 
     expect(writeText).toHaveBeenCalledWith('.worktrees/027-worktree-live-view');
   });
+
+  describe('a worktree outside the repository (spec 041, ISC-216)', () => {
+    const OUTSIDE: Worktree = { ...WORKTREE, path: null };
+
+    it('names it outside the repository and leaves the path row and the copy action out of the details', async () => {
+      const { fixture, chip, button } = await render({ worktree: OUTSIDE });
+      expect(button()?.getAttribute('aria-label')).toBe(
+        'Worktree outside the repository, branch feature/027-worktree-live-view, 2 commits ahead of main, uncommitted changes',
+      );
+      button()?.click();
+      await fixture.whenStable();
+
+      const terms = [...chip.querySelectorAll('ui-popover dt')].map((dt) => dt.textContent.trim());
+      expect(terms).toEqual(['Branch', 'Commits', 'Working tree']);
+      expect(chip.querySelector('ui-popover dd.path')).toBeNull();
+      expect(chip.querySelector('ui-popover button.copy')).toBeNull();
+      expect(chip.querySelector('ui-popover .mono:empty')).toBeNull();
+      expect(chip.textContent).not.toContain('null');
+    });
+
+    it('leaves the path out of the compact sheet as well', async () => {
+      const { fixture, chip, button } = await render({ worktree: OUTSIDE, tier: 'compact' });
+      button()?.click();
+      await fixture.whenStable();
+      expect(chip.querySelectorAll('ui-sheet dd')).toHaveLength(3);
+      expect(chip.querySelector('ui-sheet button.copy')).toBeNull();
+    });
+
+    it('titles the static chip with the branch, and with the neutral word when the branch is detached too', async () => {
+      const { fixture, chip } = await render({ worktree: OUTSIDE, interactive: false });
+      expect(chip.querySelector('.static')?.getAttribute('title')).toBe('feature/027-worktree-live-view');
+
+      fixture.componentInstance.worktree.set({ ...OUTSIDE, branch: null });
+      await fixture.whenStable();
+      expect(chip.querySelector('.static')?.getAttribute('title')).toBe('Worktree');
+      expect(chip.querySelector('.static .vh')?.textContent.trim()).toBe(
+        'Worktree outside the repository, detached HEAD, 2 commits ahead of main, uncommitted changes',
+      );
+      expect(chip.textContent).not.toContain('null');
+    });
+
+    it('words it in German', async () => {
+      const { fixture, button } = await render({ worktree: OUTSIDE });
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      await fixture.whenStable();
+      expect(button()?.getAttribute('aria-label')).toContain('Worktree ausserhalb des Repositorys, Branch feature/027-worktree-live-view');
+    });
+  });
 });

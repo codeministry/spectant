@@ -138,11 +138,15 @@ export class TimelineTab {
   protected worktreeGlyph(entry: TimelineEntry): IconName | null {
     return entry.worktree ? WORKTREE_GLYPH[entry.worktree.state] : null;
   }
-  /** What a worktree entry's title names after its words: the branch when merged, the worktree's path when removed. */
+  /**
+   * What a worktree entry's title names after its words: the branch when merged, the worktree's path when removed. A
+   * worktree outside the repository carries no path (spec 041, ISC-216): the branch stands in, and with neither the
+   * title ends after its words.
+   */
   protected worktreeRef(entry: TimelineEntry): string | null {
     const worktree = entry.worktree;
     if (worktree === undefined) return null;
-    return worktree.state === 'merged' ? worktree.branch : worktree.path;
+    return worktree.state === 'merged' ? worktree.branch : (worktree.path ?? worktree.branch);
   }
   protected fileTab(part: string): string | null {
     return FILE_TABS[part] ?? null;

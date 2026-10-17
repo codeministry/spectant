@@ -10,7 +10,7 @@
 // Read-only (ISC-15): the repository, `.git/` included, is hashed before and after with node:fs only; the hash covers
 // bytes, modes and mtimes, so even an index refresh that rewrites identical bytes would show.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { assignWorktrees } from "../core/src/worktrees.ts";
@@ -23,9 +23,12 @@ import {
   mergeCommitOf,
   type GitRunner,
   takenSpecNumbers,
+  trackedSpecPaths,
   userEmail,
   worktreeList,
 } from "../server/src/git.ts";
+import { loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { DATES, plantWorktreeRepo, type PlantedWorktreeRepo, SPEC_FOLDER, UNCOMMITTED } from "./fixtures/worktree-repo.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -665,14 +668,15 @@ describe("aheadOfMain and dirty read a worktree's distance to main and its uncom
     }
   });
 
-  test("runs only `rev-list --count main..<branch>` and `status --porcelain` in the worktree, under the read-only environment, no fetch", async () => {
+  test("runs only `rev-list --count main..<branch>`, `config --get-regexp ^filter\\.` and `status --porcelain` in the worktree, under the read-only environment, no fetch", async () => {
     const { spec } = chipRepo();
     const { runner, seen } = recordingRunner();
     expect(await aheadOfMain(spec, "feature/027-x", { runner })).toBe(2);
     expect(await dirty(spec, { runner })).toBe(true);
     expect(seen.map((s) => s.args)).toEqual([
       ["-C", spec, "rev-list", "--count", "main..feature/027-x", "--"],
-      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal"],
+      ["-C", spec, "config", "-z", "--get-regexp", "^filter\\."],
+      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=all"],
     ]);
     for (const s of seen) {
       expect(s.args).not.toContain("fetch");
@@ -863,5 +867,75 @@ describe("mergeCommitOf names the commit that merged a spec branch into main (sp
     expect(logCalls(calls)).toBe(1);
     expect(calls.filter((args) => args.includes("log")).every((args) => args.includes("--topo-order") && args.includes("--reverse"))).toBe(true);
     expect(checksum(dir)).toBe(before);
+  });
+});
+
+describe("the worktree reads start no command the repository configures (spec 041, ISC-216.2)", () => {
+  /**
+   * The worktree fixture with a clean filter `evil` on every path and a process filter `evil.proc` (a dotted driver
+   * name) on `src/`, both defined in the shared `.git/config` and assigned in `.git/info/attributes`, and
+   * `core.fsmonitor` set to a hook. Each command appends to its own marker file in a directory outside the repository.
+   * Every tracked file of the spec worktree gets a later mtime, so a status that hashes content would run the filters.
+   */
+  async function hookedRepo(): Promise<{ repo: PlantedWorktreeRepo; markers: string }> {
+    const repo = await plantWorktreeRepo({ parent: root });
+    const outside = mkdtempSync(join(root, "hooks-"));
+    const markers = join(outside, "markers");
+    mkdirSync(markers);
+    const script = (name: string, body: string): string => {
+      const path = join(outside, `${name}.sh`);
+      writeFileSync(path, `#!/bin/sh\necho ran >> '${join(markers, name)}'\n${body}`);
+      chmodSync(path, 0o755);
+      return path;
+    };
+    git(repo.root, DATES.later, "config", "core.fsmonitor", script("fsmonitor", "exit 0\n"));
+    git(repo.root, DATES.later, "config", "filter.evil.clean", script("clean", "cat\n"));
+    git(repo.root, DATES.later, "config", "filter.evil.proc.process", script("process", "exit 1\n"));
+    mkdirSync(join(repo.root, ".git/info"), { recursive: true });
+    writeFileSync(join(repo.root, ".git/info/attributes"), "* filter=evil\nsrc/* filter=evil.proc\n");
+    const later = new Date("2031-01-01T00:00:00Z");
+    for (const path of [".gitignore", "generate.ts", "src/console.ts"]) utimesSync(join(repo.worktrees.spec, path), later, later);
+    return { repo, markers };
+  }
+
+  test("no repo hooks: opening the page and reading dirty run neither a filter nor the fsmonitor hook, and change nothing", async () => {
+    const { repo, markers } = await hookedRepo();
+    const before = checksum(repo.root);
+    expect((await readWorkspaceInput(repo.root)).readable).toBe(true);
+    expect((await loadDashboard(repo.root, null)).readable).toBe(true);
+    expect(await dirty(repo.worktrees.spec)).toBe(true);
+    expect(await trackedSpecPaths(repo.root, SPEC_FOLDER)).toEqual([]);
+    expect(readdirSync(markers).join(",")).toBe("");
+    expect(checksum(repo.root)).toBe(before);
+  });
+
+  test("no repo hooks: dirty still reads a real change with the drivers off, and false without one", async () => {
+    const { repo, markers } = await hookedRepo();
+    rmSync(join(repo.worktrees.spec, UNCOMMITTED));
+    expect(await dirty(repo.worktrees.spec)).toBe(false);
+    writeFileSync(join(repo.worktrees.spec, "src/console.ts"), "export const runs = (): string[] => ['edited'];\n");
+    expect(await dirty(repo.worktrees.spec)).toBe(true);
+    expect(readdirSync(markers).join(",")).toBe("");
+  });
+
+  test("no repo hooks: dirty reads the driver names with `config -z --get-regexp`, then runs status with each driver and the monitor off", async () => {
+    const { repo } = await hookedRepo();
+    const { runner, calls } = countingRunner();
+    expect(await dirty(repo.worktrees.spec, { runner })).toBe(true);
+    const off = (name: string): string[] => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`];
+    expect(calls).toEqual([
+      ["-C", repo.worktrees.spec, "config", "-z", "--get-regexp", "^filter\\."],
+      ["-C", repo.worktrees.spec, "-c", "core.fsmonitor=false", ...off("evil"), ...off("evil.proc"), "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=all"],
+    ]);
+  });
+
+  test("no repo hooks: a driver name `-c` cannot carry or a failing config read answers null without running status", async () => {
+    const { repo } = await hookedRepo();
+    git(repo.root, DATES.later, "config", "filter.a=b.clean", "true");
+    const { runner, calls } = countingRunner();
+    expect(await dirty(repo.worktrees.spec, { runner })).toBeNull();
+    expect(calls.some((args) => args.includes("status"))).toBe(false);
+    const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" });
+    expect(await dirty(repo.worktrees.spec, { runner: failing })).toBeNull();
   });
 });

@@ -6,16 +6,16 @@
 // no live worktree carries is one undated entry `removed`, naming the worktree's path while git still lists it; an open
 // branch with its worktree, or one checked out in the main checkout, gives none. Merged or removed, the worktree leaves
 // the dashboard reading, so no chip shows. Nothing is written: `events.jsonl` stays byte-identical.
-import { afterAll, describe, expect, test } from "bun:test";
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { afterAll, describe, expect, spyOn, test } from "bun:test";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { loadCatalogDoc, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { loadCatalogDoc, loadCatalogDocs, readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { rawSha256 } from "../server/src/writes.ts";
 import {
   DATES,
@@ -327,5 +327,177 @@ describe("ISC-212.2 merged edge cases: an uncommitted change, a second open bran
       { branch: DRAFT_BRANCH, path: null },
     ];
     expect(consistent).toContainEqual(pair);
+  });
+});
+
+// ── ISC-215 git spawn budget ─────────────────────────────────────────────────────────────────────────────────────
+//
+// Every git process the server starts is counted at the one place they all pass: `Bun.spawn`, spied for the duration
+// of one read (git.ts' runner and the loader's own `ls-files` for the tree id both spawn through it). The fixture's
+// own git calls run outside those windows. Five spec worktrees: the fixture's 002 plus 003, 004 (the one spec with a
+// code-reviewed mark), 006 and 007, each one commit ahead of `main`.
+
+/** One git process: its arguments after the binary and the directory it reads (`-C` or the spawn's `cwd`). */
+interface GitSpawn {
+  readonly args: readonly string[];
+  readonly at: string | null;
+  /** The subcommand: the first argument after the global options. */
+  readonly command: string;
+}
+
+/** The git processes `read` starts, counted over `Bun.spawn`; every other spawn passes through uncounted. */
+async function gitSpawnsOf<T>(read: () => Promise<T>): Promise<{ value: T; spawns: GitSpawn[] }> {
+  const spawns: GitSpawn[] = [];
+  const original = Bun.spawn;
+  const spy = spyOn(Bun, "spawn").mockImplementation(((first: unknown, options?: { cwd?: string }) => {
+    const cmd = Array.isArray(first) ? (first as string[]) : (first as { cmd: string[] }).cmd;
+    if (cmd.length > 0 && basename(cmd[0] ?? "") === "git") {
+      const args = cmd.slice(1);
+      let i = 0;
+      let at = options?.cwd ?? (Array.isArray(first) ? null : ((first as { cwd?: string }).cwd ?? null));
+      while (i < args.length && (args[i] ?? "").startsWith("-")) {
+        if (args[i] === "-C") at = args[i + 1] ?? at;
+        i += args[i] === "-C" || args[i] === "-c" ? 2 : 1;
+      }
+      spawns.push({ args, at, command: args[i] ?? "" });
+    }
+    return (original as (...a: unknown[]) => unknown)(first, options);
+  }) as unknown as typeof Bun.spawn);
+  try {
+    return { value: await read(), spawns };
+  } finally {
+    spy.mockRestore();
+  }
+}
+
+const countOf = (spawns: readonly GitSpawn[], command: string): number => spawns.filter((s) => s.command === command).length;
+const summary = (spawns: readonly GitSpawn[]): string => spawns.map((s) => s.command).join(",");
+
+/** The spec worktrees the budget repository adds beside the fixture's 002; 004 is harbor's spec with a code-reviewed mark. */
+const BUDGET_SPECS = ["003-config-loader", "004-retention-policies", "006-partial-push", "007-rotate-mirror-token"] as const;
+const MARKED_SPEC = "004-retention-policies";
+
+/** The worktree fixture plus four spec worktrees, each on `feature/<folder>` one commit ahead of `main`. */
+async function plantBudget(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant();
+  for (const folder of BUDGET_SPECS) {
+    const path = `.worktrees/${folder}`;
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", `feature/${folder}`, path)).code).toBe(0);
+    const at = join(repo.root, path);
+    symlinkSync("../../specs", join(at, "specs"));
+    symlinkSync("../../ISA.md", join(at, "ISA.md"));
+    mkdirSync(join(at, "src"), { recursive: true });
+    writeFileSync(join(at, "src", `${folder}.ts`), `// ${folder}: the first step.\nexport const step = 1;\n`);
+    expect((await repo.git(at, "add", "--", `src/${folder}.ts`)).code).toBe(0);
+    expect((await repo.git(at, "commit", "-q", "-m", `${folder}: first step`)).code).toBe(0);
+  }
+  return repo;
+}
+
+/** One poll: the dashboard reading of the workspace. */
+async function poll(repo: PlantedWorktreeRepo): Promise<void> {
+  const reading = await readWorkspaceInput(repo.root);
+  if (!reading.readable) throw new Error("the budget workspace is unreadable");
+}
+
+/** The live spec worktrees of the reading with their `ahead`, by path. */
+async function aheadByPath(repo: PlantedWorktreeRepo): Promise<Record<string, number | null>> {
+  const reading = await readWorkspaceInput(repo.root);
+  if (!reading.readable) throw new Error("the budget workspace is unreadable");
+  const out: Record<string, number | null> = {};
+  for (const w of reading.input.worktrees?.worktrees ?? []) if (w.kind === "spec" && w.path !== null) out[w.path] = w.ahead;
+  return out;
+}
+
+describe("ISC-215 git spawn budget: one worktree list per poll, nothing re-read while HEAD and refs stand", () => {
+  let shared: PlantedWorktreeRepo | null = null;
+  const budgetRepo = async (): Promise<PlantedWorktreeRepo> => (shared ??= await plantBudget());
+
+  test("git spawn budget: the fixture has five live spec worktrees", async () => {
+    const repo = await budgetRepo();
+    const ahead = await aheadByPath(repo);
+    expect(Object.keys(ahead).sort()).toEqual([SPEC_WORKTREE, ...BUDGET_SPECS.map((f) => `.worktrees/${f}`)].sort());
+  });
+
+  test("git spawn budget: a poll calls `git worktree list` exactly once", async () => {
+    const repo = await budgetRepo();
+    const { spawns } = await gitSpawnsOf(() => poll(repo));
+    expect({ worktreeList: countOf(spawns, "worktree"), all: summary(spawns) }).toMatchObject({ worktreeList: 1 });
+  });
+
+  test("git spawn budget: a second poll without a change starts no `status` and no `rev-list`, at most one `worktree list`", async () => {
+    const repo = await budgetRepo();
+    await poll(repo);
+    const { spawns } = await gitSpawnsOf(() => poll(repo));
+    expect({ status: countOf(spawns, "status"), revList: countOf(spawns, "rev-list"), all: summary(spawns) }).toMatchObject({ status: 0, revList: 0 });
+    expect(countOf(spawns, "worktree")).toBeLessThanOrEqual(1);
+  });
+
+  test("git spawn budget: no worktree without a code-reviewed mark is hashed (`ls-files --others` only in 004's)", async () => {
+    const repo = await budgetRepo();
+    const { spawns } = await gitSpawnsOf(() => poll(repo));
+    const hashed = spawns.filter((s) => s.command === "ls-files" && s.args.includes("--others")).map((s) => (s.at === null ? null : s.at.slice(repo.root.length + 1)));
+    for (const path of hashed) expect(path === `.worktrees/${MARKED_SPEC}` || path === "").toBe(true);
+    expect(hashed).not.toContain(SPEC_WORKTREE);
+  });
+
+  test("git spawn budget: after a warm poll the single-spec route starts no git process", async () => {
+    const repo = await budgetRepo();
+    const handler = handlerFor(repo);
+    await poll(repo);
+    // A first request warms the handler's own commit cache; the counted one is the repeat.
+    expect((await call(handler, specRoutes.spec("harbor", SPEC_ID))).status).toBe(200);
+    const { value: res, spawns } = await gitSpawnsOf(() => call(handler, specRoutes.spec("harbor", SPEC_ID)));
+    expect(res.status).toBe(200);
+    expect({ count: spawns.length, all: summary(spawns) }).toMatchObject({ count: 0 });
+  });
+
+  test("git spawn budget: after a warm poll a library document starts no git process", async () => {
+    const repo = await budgetRepo();
+    await poll(repo);
+    const { value: load, spawns } = await gitSpawnsOf(() => loadCatalogDoc(repo.root, `${SPEC_FOLDER}/plan.md`));
+    expect(load.readable).toBe(true);
+    expect({ count: spawns.length, all: summary(spawns) }).toMatchObject({ count: 0 });
+  });
+
+  test("git spawn budget: after a warm poll a search keystroke starts no git process", async () => {
+    const repo = await budgetRepo();
+    await poll(repo);
+    const { value: load, spawns } = await gitSpawnsOf(() => loadCatalogDocs(repo.root));
+    expect(load.readable).toBe(true);
+    expect({ count: spawns.length, all: summary(spawns) }).toMatchObject({ count: 0 });
+  });
+
+  test("git spawn budget: after a warm poll the timeline route gets by with at most three git calls", async () => {
+    const repo = await budgetRepo();
+    await poll(repo);
+    const { value: res, spawns } = await gitSpawnsOf(() => call(handlerFor(repo), specRoutes.timeline("harbor", SPEC_ID)));
+    expect(res.status).toBe(200);
+    expect(spawns.length, summary(spawns)).toBeLessThanOrEqual(3);
+  });
+
+  test("git spawn budget: a merged spec's timeline re-reads no first-parent history while the refs stand, within three calls", async () => {
+    const repo = await plant({ merged: true, removeWorktree: true });
+    const handler = handlerFor(repo);
+    await poll(repo);
+    expect((await timelineOf(handler, SPEC_ID)).filter((e) => e.kind === "worktree").map((e) => e.worktree?.state)).toEqual(["merged"]);
+    const { value: res, spawns } = await gitSpawnsOf(() => call(handler, specRoutes.timeline("harbor", SPEC_ID)));
+    expect(res.status).toBe(200);
+    const firstParent = spawns.filter((s) => s.command === "rev-list" && s.args.includes("--first-parent")).length;
+    expect({ firstParent, all: summary(spawns) }).toMatchObject({ firstParent: 0 });
+    expect(spawns.length, summary(spawns)).toBeLessThanOrEqual(3);
+  });
+
+  test("git spawn budget: a commit in one worktree between polls re-reads its distance, never a stale `ahead`", async () => {
+    const repo = await plantBudget();
+    const path = `.worktrees/${BUDGET_SPECS[0]}`;
+    expect((await aheadByPath(repo))[path]).toBe(1);
+    const at = join(repo.root, path);
+    writeFileSync(join(at, "src", "second.ts"), "export const second = 2;\n");
+    expect((await repo.git(at, "add", "--", "src/second.ts")).code).toBe(0);
+    expect((await repo.git(at, "commit", "-q", "-m", "second step")).code).toBe(0);
+    const { value: ahead, spawns } = await gitSpawnsOf(() => aheadByPath(repo));
+    expect(ahead[path]).toBe(2);
+    expect(spawns.some((s) => s.command === "rev-list" && s.at === at)).toBe(true);
   });
 });

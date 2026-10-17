@@ -3,7 +3,7 @@
 // spec folders of the workspace (`NNN-slug`), and returns `{ worktrees: Worktree[], builders: number, diagnostics }`:
 //
 //   - The first record is the main worktree. Its path is the workspace root; every other path is relative to it,
-//     `/`-separated (`../repo-013` outside it). The main worktree itself is not listed.
+//     `/`-separated, null for one outside it (spec 041, ISC-216). The main worktree itself is not listed.
 //   - Every other record is listed in the order git prints it. One under `.claude/worktrees/` is a `builder`: counted
 //     in `builders`, never assigned (`spec: null`), never read.
 //   - A spec worktree belongs to the spec its path `.worktrees/NNN-slug` names, else to the one its branch
@@ -46,6 +46,7 @@ import {
   copyDirFor,
   liveWorktrees,
   mainBranchOf,
+  relativeTo,
   specSourceOf,
   WORKTREE_COPY_KINDS,
   type WorktreeFacts,
@@ -160,6 +161,61 @@ describe('mismatch: the path and the branch of a worktree name two different spe
     const plain = assignWorktrees(read('spec-worktrees.porcelain'), SPECS);
     expect(plain.worktrees.find((w) => w.path === '.worktrees/scratch')).toMatchObject({ kind: 'spec', spec: null });
     expect(plain.diagnostics).toEqual([]);
+  });
+});
+
+// Spec 041, ISC-216: a worktree's location never leaves the repository. `relativeTo(root, path)` resolves `.` and inner
+// `..` on both sides as text before it compares them, and answers null for a path outside the root, so a path that
+// climbs out through `..` is refused rather than named. `assignWorktrees` gives such a worktree `path: null` and assigns
+// it by its branch alone. `-t relativeTo` runs ISC-216's core part.
+describe('relativeTo: a worktree path is normalised and refused outside the root (ISC-216)', () => {
+  test('a path whose inner .. climbs out of the root is refused', () => {
+    expect(relativeTo('/srv/repo', '/srv/repo/a/../../b')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv/repo/../repo-013')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv/repo-013')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv')).toBeNull();
+    expect(relativeTo('/srv/repo', '/')).toBeNull();
+  });
+
+  test('. and inner .. inside the root are normalised away', () => {
+    expect(relativeTo('/srv/repo', '/srv/repo/a/./b/../c')).toBe('a/c');
+    expect(relativeTo('/srv/repo', '/srv/repo/.worktrees/012-harbor')).toBe('.worktrees/012-harbor');
+    expect(relativeTo('/srv/repo', '/srv/repo/a/../.worktrees/./012-harbor/')).toBe('.worktrees/012-harbor');
+  });
+
+  test('a root with inner .. is normalised too', () => {
+    expect(relativeTo('/srv/other/../repo', '/srv/repo/.worktrees/012-harbor')).toBe('.worktrees/012-harbor');
+    expect(relativeTo('/srv/./repo/', '/srv/repo/a/b')).toBe('a/b');
+    expect(relativeTo('/srv/other/../repo', '/srv/other/x')).toBeNull();
+  });
+
+  test('a worktree outside the repository gets path null and is still assigned by its branch', () => {
+    const text = listingOf([
+      { path: '/srv/repo-013', branch: 'fix/013-relay' },
+      { path: '/srv/repo/../repo-018', branch: 'spike/018-probe' },
+      { path: '/srv/repo/a/../../repo-017', branch: 'chore/017-tidy' },
+      { path: '/srv/repo/.worktrees/x/../012-harbor', branch: 'feature/012-harbor' },
+    ]);
+    const { worktrees, diagnostics } = assignWorktrees(text, SPECS);
+    expect(worktrees.map((w) => [w.path, w.spec, w.kind])).toEqual([
+      [null, '013', 'spec'],
+      [null, '018', 'spec'],
+      [null, null, 'spec'],
+      ['.worktrees/012-harbor', '012', 'spec'],
+    ]);
+    expect(diagnostics).toEqual([]);
+    expect(JSON.stringify(worktrees)).not.toContain('repo-01');
+  });
+
+  test('spec-worktrees.porcelain names none of its three sibling worktrees', () => {
+    const { worktrees } = assignWorktrees(read('spec-worktrees.porcelain'), SPECS);
+    const outside = worktrees.filter((w) => w.path === null);
+    expect(outside.map((w) => [w.branch, w.spec])).toEqual([
+      ['fix/013-relay', '013'],
+      ['chore/017-tidy', null],
+      ['spike/018-probe', '018'],
+    ]);
+    expect(JSON.stringify(worktrees)).not.toContain('..');
   });
 });
 
@@ -536,9 +592,9 @@ describe('copyDirFor: the worktree copy a spec is read from, over the one worktr
     expect(copyDirFor(ROOT, { id: '015', slug: '015-ledger' }, crossed)).toBeNull();
   });
 
-  test('a worktree outside the repository is no source: ../repo-013 keeps main', () => {
+  test('a worktree outside the repository is no source: /srv/repo-013 has no path and keeps main', () => {
     const view = viewOf(read('spec-worktrees.porcelain'), { '013-relay': ['specs/013-relay/spec.md'] });
-    expect(view.live.find((w) => w.spec === '013')).toMatchObject({ path: '../repo-013', kind: 'spec' });
+    expect(view.live.find((w) => w.spec === '013')).toMatchObject({ path: null, kind: 'spec' });
     expect(copyDirFor(ROOT, { id: '013', slug: '013-relay' }, view)).toBeNull();
   });
 

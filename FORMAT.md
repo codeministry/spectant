@@ -1375,7 +1375,9 @@ line: `worktree <absolute path>`, `HEAD <sha>`, then `branch refs/heads/<name>` 
 `locked`, which changes nothing here, and `prunable` (bare or followed by git's reason), which git prints when the
 worktree's folder or gitdir is gone. The first block is the main checkout, the repository root itself: it is no spec's
 worktree. Every other block becomes one `Worktree` (`core/src/files.ts`): `path` relative to the repository root and
-`/`-separated, `branch` without `refs/heads/` (null when detached), `spec` (the `NNN` it belongs to, or null), `kind`
+`/`-separated, both paths normalised first (`.` dropped, inner `..` resolved), or null for a worktree outside the
+repository (spec 041, ISC-216), `branch` without `refs/heads/` (null when detached), `spec` (the `NNN` it belongs to, or
+null), `kind`
 (`builder` or `spec`) and, on a `spec` worktree whose block carries a `prunable` line, `prunable: true` (spec 041,
 ISC-212). The key is absent otherwise, a builder's included, so a listing without a `prunable` spec worktree builds the
 same model as before.
@@ -1387,8 +1389,9 @@ same model as before.
 - **By path.** A worktree at `.worktrees/NNN-slug` of the repository, the folder name a spec folder would carry, belongs
   to spec `NNN`.
 - **By branch.** Otherwise a branch `feature/`, `fix/`, `spike/` or `infra/` followed by `NNN-slug` names spec `NNN`.
-  The path rule needs the worktree inside the repository, so a worktree elsewhere, such as the older sibling layout
-  `../<root>-NNN`, is assigned by its branch alone.
+  The path rule needs the worktree inside the repository, so a worktree elsewhere, a sibling folder beside the
+  repository or a path whose `..` climbs out of it, is assigned by its branch alone. Its `path` is null: its location
+  is never named, neither in the model nor in the JSON the browser gets, and it is never read as a folder (ISC-216).
 - **Path against branch.** When path and branch name two different specs, the path wins and the spec of the path
   carries exactly one `worktree-branch-mismatch` warning (ISC-174.1): the folder is the newer convention, and the branch
   may be the base branch of another spec.

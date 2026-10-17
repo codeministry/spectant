@@ -47,7 +47,7 @@
       "branch": "fix/013-relay",
       "dirty": null,
       "kind": "spec",
-      "path": "../repo-013",
+      "path": null,
       "spec": "013"
     },
     {
@@ -55,7 +55,7 @@
       "branch": "chore/017-tidy",
       "dirty": null,
       "kind": "spec",
-      "path": "../repo-017",
+      "path": null,
       "spec": null
     },
     {
@@ -63,7 +63,7 @@
       "branch": "spike/018-probe",
       "dirty": null,
       "kind": "spec",
-      "path": "../repo-018",
+      "path": null,
       "spec": "018"
     }
   ]

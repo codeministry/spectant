@@ -568,11 +568,14 @@ export function loadCatalogDoc(root: string, path: string | null): Promise<Copie
 
 // ── the worktree tree id ──────────────────────────────────────────────────────────────────────────────
 
-/** The paths `git add -A` would stage: tracked and untracked, `.gitignore`, `info/exclude` and the global excludes applied. */
+/**
+ * The paths `git add -A` would stage: tracked and untracked, `.gitignore`, `info/exclude` and the global excludes applied.
+ * `ls-files` runs the repository's fsmonitor hook, so it is switched off (spec 041, ISC-216.2).
+ */
 async function listedPaths(root: string): Promise<string[] | null> {
   const git = Bun.which("git", { PATH: process.env.PATH ?? "" });
   if (!git) return null;
-  const child = Bun.spawn([git, "ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+  const child = Bun.spawn([git, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     cwd: root,
     env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
     stdin: "ignore",

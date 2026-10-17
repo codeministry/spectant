@@ -2281,6 +2281,7 @@
   "worktreeChip": {
     "name": "Worktree {{path}}, branch {{branch}}",
     "nameDetached": "Worktree {{path}}, detached HEAD",
+    "outside": "outside the repository",
     "ahead": {
       "one": "{{count}} commit ahead of main",
       "other": "{{count}} commits ahead of main"

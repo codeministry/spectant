@@ -91,7 +91,8 @@
  * - `librarySearch`, `GET …/library/search?q=`: the trimmed query, case-insensitive, over each document's rendered page
  *   as plain text, else its title; hits in catalog order, the snippet 40 characters before the first match and 60
  *   after with an ellipsis where cut, or the title for a title-only match. A blank `q` is `{query: '', hits: []}`,
- *   never 400. The plain texts are cached in memory per workspace by catalog path, size and mtime; a search keeps only
+ *   never 400. The plain texts are cached in memory per workspace by source folder (a worktree copy or main's
+ *   `specs/`, spec 041, ISC-217) and catalog path, checked against size and mtime; a search keeps only
  *   the entries of the catalog it read. Each document is resolved once from the entry in hand (no lookup by path), its
  *   real folder once per search, and the files are read `SEARCH_READS` at a time, so a search grows linearly with the
  *   documents (ISC-156.5).
@@ -226,6 +227,15 @@ const catalogFileBelow = async (
     return stats.isFile() ? { real, stats } : null;
   } catch {
     return null;
+  }
+};
+
+/** Whether `dir` is a directory now, through a link; false when it is gone or cannot be read. */
+const isFolder = async (dir: string): Promise<boolean> => {
+  try {
+    return (await stat(dir)).isDirectory();
+  } catch {
+    return false;
   }
 };
 
@@ -460,25 +470,33 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
    * spec's own file comes from its worktree copy when `copies` names one (core's `catalogSourceOf`, spec 027, ISC-181),
    * resolved from the copy's `specs/` with `NNN-slug/<file>` (spec 041, ISC-216.1), so the confinement covers the copy
    * folder itself: a copy folder or file whose real path leaves the worktree's `specs/` is `symlink-escape`, which the
-   * reader answers 403. A symlink out of the main checkout's `specs/` stays null (404), as before. `realDirOf` lets a
-   * search resolve each folder once.
+   * reader answers 403. A symlink out of the main checkout's `specs/` stays null (404), as before. A copy folder that is
+   * gone by now (its worktree removed since the copies were read) falls back to the main checkout's file (spec 041,
+   * ISC-217). `source` names the folder the file was read from, the copy's or main's `specs/`, for the search's text
+   * cache. `realDirOf` lets a search resolve each folder once.
    */
   const catalogFile = async (
     root: string,
     doc: LibraryDoc,
     copies: Readonly<Record<string, string>>,
     realDirOf?: (dir: string) => Promise<string>,
-  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string } | "symlink-escape" | null> => {
+  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string; source: string } | "symlink-escape" | null> => {
     if (!isReadableDoc(doc)) return null;
+    const main = join(root, "specs");
     const source = catalogSourceOf(root, doc, copies);
     const fromCopy = copies[doc.spec] === source.dir;
-    const found = fromCopy
+    let found = fromCopy
       ? await catalogFileBelow(dirname(source.dir), `${basename(source.dir)}/${source.rel}`, realDirOf)
       : await catalogFileBelow(source.dir, source.rel, realDirOf);
-    if (found === "symlink-escape") return fromCopy ? found : null;
+    let from = fromCopy ? source.dir : main;
+    if (fromCopy && found === null && !(await isFolder(source.dir))) {
+      found = await catalogFileBelow(main, doc.path, realDirOf);
+      from = main;
+    }
+    if (found === "symlink-escape") return from !== main ? found : null;
     // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`; it stays
     // the main checkout's, where a copy's relative images resolve (`artifacts/` and `.design/` are never read from a copy).
-    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical: join(root, "specs", ...doc.path.split("/")) };
+    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical: join(main, ...doc.path.split("/")), source: from };
   };
 
   /** A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`. */
@@ -531,7 +549,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const file = await catalogFile(root, doc, copies, realDirOf);
     if (file === null || file === "symlink-escape") return null;
     const { mtimeMs, size } = file.stats;
-    const cached = previous.get(doc.path);
+    // Keyed by source and catalog path (spec 041, ISC-217): a spec whose source switched between the copy and main never
+    // gets the other source's text, even where both files share size and mtime.
+    const key = `${file.source}\0${doc.path}`;
+    const cached = previous.get(key);
     let entry: SearchText;
     if (cached?.mtimeMs === mtimeMs && cached.size === size) entry = cached;
     else {
@@ -542,7 +563,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
         return null;
       }
     }
-    seen.set(doc.path, entry);
+    seen.set(key, entry);
     return entry.text;
   };
 
