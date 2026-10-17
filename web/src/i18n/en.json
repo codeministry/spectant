@@ -1811,6 +1811,7 @@
     },
     "tree": {
       "label": "Planning tree: milestones, features, specs and claims",
+      "milestone": "Milestone",
       "noMilestone": "No milestone",
       "noMilestoneMeta": "Features without a Milestone: line",
       "noMilestones": "The master names no milestones.",

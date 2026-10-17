@@ -1811,6 +1811,7 @@
     },
     "tree": {
       "label": "Planungsbaum: Meilensteine, Features, Specs und Claims",
+      "milestone": "Meilenstein",
       "noMilestone": "ohne Meilenstein",
       "noMilestoneMeta": "Features ohne Meilenstein-Zeile im Master",
       "noMilestones": "Der Master nennt keine Meilensteine.",

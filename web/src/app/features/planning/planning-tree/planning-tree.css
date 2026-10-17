@@ -1,7 +1,10 @@
 /*
  * The tree lens (spec 026, ISC-168; design.md § Tree and § Across viewports): one card holding a flat WAI-ARIA tree.
- * Each level indents 16 px and draws a 1 px guide line in `--border` per ancestor, so the cascade reads without colour.
- * The row grid: guides, chevron (24 px, 44 px hit area), content, a 64 px meter, the fraction in its own 56 px column.
+ * Each level indents 16 px and draws a 1 px guide line in `--line` per ancestor, so the cascade reads without colour.
+ * The row grid: a 64 px meter, the fraction in its own 56 px column, guides, chevron (24 px, 44 px hit area), content.
+ * A milestone row is a tinted header on its own grid (spec 037, ISC-193): chevron, flag, name and date, then the
+ * fraction and the meter at the end, so it reads as the sum of its features; the "No milestone" group keeps that
+ * geometry on the card surface.
  */
 :host {
   display: grid;
@@ -51,7 +54,7 @@ h2 {
   align-items: center;
   min-block-size: 44px;
   padding-inline: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--color-base-100);
   color: var(--color-base-content);
@@ -91,7 +94,7 @@ h2 {
 
 .tree {
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--color-base-100);
 }
@@ -103,7 +106,7 @@ h2 {
   align-items: center;
   min-block-size: 44px;
   padding-inline: 16px;
-  border-block-start: 1px solid var(--border);
+  border-block-start: 1px solid var(--line);
   cursor: pointer;
 }
 
@@ -111,19 +114,34 @@ h2 {
   border-block-start: 0;
 }
 
-.row:hover:not([data-selected]) {
+/* The tint never swaps for the lane under the pointer; every other row shows the lane on hover. */
+.row:not([data-kind="milestone"]):hover:not([data-selected]) {
   background: var(--lane);
 }
 
-.row[data-kind="milestone"] {
+/* The headers: chevron, content (flag, name, date), fraction, meter. The row line above and the next row's line
+ * below frame the tint; the card's top edge carries none. */
+.row[data-kind="milestone"],
+.row[data-kind="group"] {
+  grid-template-columns: 24px minmax(0, 1fr) auto 64px;
   min-block-size: 56px;
-  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.row[data-kind="milestone"] {
+  background: var(--disp-t);
+  box-shadow: inset 4px 0 0 var(--color-primary);
 }
 
 .row[data-kind="group"] {
-  min-block-size: 56px;
   border-block-start-style: dashed;
-  box-shadow: inset 3px 0 0 var(--track);
+  background: var(--color-base-100);
+  box-shadow: inset 4px 0 0 var(--track);
+}
+
+/* The card clips an outer ring (`overflow: hidden`), so the header's ring sits inside. */
+.row[data-kind="milestone"]:focus-visible,
+.row[data-kind="group"]:focus-visible {
+  outline-offset: -2px;
 }
 
 .row[data-kind="feature"] {
@@ -145,7 +163,7 @@ h2 {
 .guides i {
   inline-size: 16px;
   margin-inline-start: 4px;
-  border-inline-start: 1px solid var(--border);
+  border-inline-start: 1px solid var(--line);
 }
 
 .chev {
@@ -191,7 +209,7 @@ h2 {
 
 .name {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 24px;
 }
@@ -207,6 +225,8 @@ h2 {
   font-family: var(--font-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  line-height: 16px;
 }
 
 .date.sub {
@@ -217,19 +237,21 @@ h2 {
   white-space: nowrap;
 }
 
+/* The middle dot between a milestone's name and its date; the date's tone. */
+.sep {
+  flex: none;
+  color: var(--muted-ink);
+}
+
 .kind {
   flex: none;
   color: var(--muted-ink);
 }
 
-.row[data-kind="milestone"] .kind {
-  color: var(--cyan-text);
-}
-
 .fid {
   flex: none;
   min-inline-size: 40px;
-  color: var(--cyan-text);
+  color: var(--disp-ink);
   font-family: var(--font-mono);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -239,7 +261,7 @@ h2 {
 .done,
 .claim-glyph[data-closed] {
   flex: none;
-  color: var(--lime-text);
+  color: var(--clos-ink);
 }
 
 .claim-glyph {
@@ -263,7 +285,7 @@ h2 {
 .chip {
   flex: none;
   padding: 0 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--color-base-content);
   font-size: 11px;
@@ -293,13 +315,44 @@ h2 {
 }
 
 .row[data-full] .num {
-  color: var(--lime-text);
+  color: var(--clos-ink);
+}
+
+/* Every text and icon on the tint stands in the content colour (design.md § Across viewports): muted, accent and
+ * closed inks fall under 4.5:1 there, so a full milestone shows no green fraction. */
+.row[data-kind="milestone"] .chev,
+.row[data-kind="milestone"] .kind,
+.row[data-kind="milestone"] .date,
+.row[data-kind="milestone"] .sep,
+.row[data-kind="milestone"] .num {
+  color: var(--color-base-content);
+}
+
+.row[data-kind="group"] .name {
+  color: var(--muted-ink);
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @container shell (inline-size < 640px) {
   .row {
     grid-template-columns: 48px auto 24px minmax(0, 1fr);
     padding-inline: 8px;
+  }
+
+  .row[data-kind="milestone"],
+  .row[data-kind="group"] {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
   }
 
   .guides {

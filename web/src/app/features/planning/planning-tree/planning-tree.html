@@ -55,22 +55,27 @@
       (click)="activate(row)"
       (keydown)="onKey($event)"
     >
-      @if (row.kind !== 'claim') {
-        <ui-meter
-          class="bar"
-          size="mini"
-          [value]="node.closed"
-          [max]="node.total"
-          [label]="'planning.milestones.meterLabel' | transloco: { name: node.ref === null ? ('planning.tree.noMilestone' | transloco) : node.id + ' ' + node.title }"
-          [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
-        />
-        <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
-      }
-      <span class="guides" aria-hidden="true">
-        @for (guide of row.guides; track guide) {
-          <i></i>
+      <!-- A milestone or the "No milestone" group is a header: chevron, flag, name, date, then fraction and meter at
+           the end (spec 037, ISC-193). Every other row leads with its progress, then guides, chevron and content. -->
+      @let head = row.kind === 'milestone' || row.kind === 'group';
+      @if (!head) {
+        @if (row.kind !== 'claim') {
+          <ui-meter
+            class="bar"
+            size="mini"
+            [value]="node.closed"
+            [max]="node.total"
+            [label]="'planning.milestones.meterLabel' | transloco: { name: node.id + ' ' + node.title }"
+            [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
+          />
+          <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
         }
-      </span>
+        <span class="guides" aria-hidden="true">
+          @for (guide of row.guides; track guide) {
+            <i></i>
+          }
+        </span>
+      }
       @if (row.expandable) {
         <span class="chev" data-toggle aria-hidden="true" (click)="toggle(row, $event)"><ui-icon name="chevron-right" [size]="16" /></span>
       } @else {
@@ -79,9 +84,11 @@
       <span class="main">
         @switch (row.kind) {
           @case ('milestone') {
+            <span class="visually-hidden">{{ 'planning.tree.milestone' | transloco }}</span>
             <ui-icon class="kind" name="flag" [size]="16" />
             <span class="title name">{{ node.title }}</span>
             @if (node.target; as target) {
+              <span class="sep" aria-hidden="true">·</span>
               <span class="date"><ui-time [value]="target" form="day" /></span>
             }
           }
@@ -116,6 +123,17 @@
           }
         }
       </span>
+      @if (head) {
+        <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
+        <ui-meter
+          class="bar"
+          size="mini"
+          [value]="node.closed"
+          [max]="node.total"
+          [label]="'planning.milestones.meterLabel' | transloco: { name: node.ref === null ? ('planning.tree.noMilestone' | transloco) : node.id + ' ' + node.title }"
+          [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
+        />
+      }
     </div>
   }
 </div>
