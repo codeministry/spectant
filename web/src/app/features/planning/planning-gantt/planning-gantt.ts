@@ -27,6 +27,8 @@ const COMPACT_INSET_PX = 32;
 /** A month label needs this much room (compact 32, wider tiers 40); under 20 px per month compact shows quarters. */
 const LABEL_ROOM_PX: Readonly<Record<Tier, number>> = { compact: 32, medium: 40, wide: 40 };
 const QUARTER_BELOW_PX = 20;
+/** The width of one label character at the axis's 11 to 12 px type, for keeping labels apart. */
+const LABEL_CHAR_PX = 7;
 const AVG_MONTH_DAYS = 30.44;
 
 /** One month tick of the axis, positioned in percent of the scale; `label` null where it has no room. */
@@ -137,7 +139,8 @@ export class PlanningGantt {
     const quarters = tier === 'compact' && perDay * AVG_MONTH_DAYS < QUARTER_BELOW_PX;
     const room = LABEL_ROOM_PX[tier];
     const lang = this.lang();
-    let lastLabelAt = Number.NEGATIVE_INFINITY;
+    // Where the last label ends, estimated from its length (11 to 12 px type): the next one keeps clear of it.
+    let lastLabelEnd = Number.NEGATIVE_INFINITY;
     return axis.months.map((m, i): ViewMonth => {
       const year = Number(m.month.slice(0, 4));
       const index = Number(m.month.slice(5, 7)) - 1;
@@ -146,10 +149,12 @@ export class PlanningGantt {
       const partial = i === 0 && m.from === 0 && axis.asOf.slice(8) !== '01';
       const quarterStart = index % 3 === 0;
       let label: string | null = null;
-      if (!partial && at - lastLabelAt >= room && (quarters ? quarterStart : m.days * perDay >= room || i === axis.months.length - 1)) {
+      if (!partial && at >= lastLabelEnd && (quarters ? quarterStart : m.days * perDay >= room || i === axis.months.length - 1)) {
         const short = formatMonth(m.month, lang);
-        label = quarters ? `Q${String(index / 3 + 1)} ${String(year).slice(2)}` : index === 0 || lastLabelAt === Number.NEGATIVE_INFINITY ? `${short} ${String(year)}` : short;
-        lastLabelAt = at;
+        // The year rides on the first label and on January, never at compact, where it would not fit (design.md § Mobile).
+        const withYear = tier !== 'compact' && (index === 0 || lastLabelEnd === Number.NEGATIVE_INFINITY);
+        label = quarters ? `Q${String(index / 3 + 1)} ${String(year).slice(2)}` : withYear ? `${short} ${String(year)}` : short;
+        lastLabelEnd = at + Math.max(room, label.length * LABEL_CHAR_PX + 8);
       }
       return { month: m.month, left: this.pct(m.from), label };
     });
