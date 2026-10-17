@@ -11,10 +11,10 @@
  *
  * | route | answer |
  * |-------|--------|
- * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
+ * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72), the head's `state` the spec's item (spec 040); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
  * | timeline | `buildTimeline({files, commits, worktree})`, commits from `git.ts` `commitsFor`, the worktree from `timelineWorktreeOf`; ETag over body and `HEAD` |
- * | claims | `buildClaimViews({files, locks, specEdges})`, the spec edges resolved over the workspace reading (spec 025) |
- * | tasks | `parseTaskLines` or `null` without tasks.md; header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
+ * | claims | `buildClaimViews({files, locks, specEdges, now})`, the spec edges resolved over the workspace reading (spec 025); each claim's `itemState` at the clock (spec 040) |
+ * | tasks | `parseTaskLines` or `null` without tasks.md, each row's `itemState` its task's item (`itemStates`, spec 040); header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
  * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside `artifacts/`, `.evidence/` and `.design/`, 404 no file |
  * | frames | `buildFrames(files)` |
  * | live | `buildLiveFrame({files + constitution, locks, now, specEdges})`, edges as for claims |
@@ -24,7 +24,8 @@
  *
  * Inputs follow the golden families (`core/tests/golden.test.ts`), so a fixture's answer is its golden value: the
  * folder's own texts for timeline, claims and frames; the constitution added for tasks and live; master and
- * constitution for the spec page. Locks come from `core/`'s `readLockSources`: the repository's
+ * constitution for the spec page. The item states (spec 040, ISC-224) are core's `itemStates` over the workspace reading
+ * (`workspaceItemStates`) at `options.now` with the `runAbortMinutes` abort age, read per request. Locks come from `core/`'s `readLockSources`: the repository's
  * `.spectant/activity.jsonl`, and the LifeOS frontier locks only when `options.lifeos` is present (ISC-37).
  *
  * The two writes (`POST …/gate/reviewed`, `POST …/tasks/:tid/check`): the body through `parseWriteBody` (400), then
@@ -36,7 +37,8 @@
 import { basename, relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
 import { specFilePath } from "../../core/src/files.ts";
-import type { LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
+import type { ItemStateInfo, LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
+import { buildDashboard } from "../../core/src/dashboard.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { buildFrames } from "../../core/src/frames.ts";
@@ -82,6 +84,7 @@ import {
   timelineWorktreeOf,
   unreadableCode,
   viewerActorOf,
+  workspaceItemStates,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
 import { transitionAnswer } from "./transition-route.ts";
@@ -164,10 +167,21 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
    * (its git reads cached as for the dashboard). An unreadable workspace reads as no edges.
    */
   async function specEdgesOf(root: string, ref: SpecRef): Promise<readonly SpecEdge[]> {
+    return (await workspaceOf(root, ref, null)).specEdges;
+  }
+
+  /**
+   * This spec's spec edges and, with a clock, its items (spec 040, ISC-224: the spec, its marks, claims and tasks, by
+   * `ItemStateInfo.spec` or the spec's own id) from one workspace reading. An unreadable workspace reads as neither.
+   */
+  async function workspaceOf(root: string, ref: SpecRef, now: Date | null): Promise<{ specEdges: readonly SpecEdge[]; items: readonly ItemStateInfo[] }> {
     const reading = await readWorkspaceInput(root, stateDir);
-    if (!reading.readable) return [];
-    const { specs, archived, constitution } = reading.input;
-    return resolveEdges({ specs, archived, constitution }, reading.mergeState).edges.filter((e) => e.fromSpec === ref.id);
+    if (!reading.readable) return { specEdges: [], items: [] };
+    const { input } = reading;
+    const specEdges = resolveEdges({ specs: input.specs, archived: input.archived, constitution: input.constitution }, reading.mergeState).edges.filter((e) => e.fromSpec === ref.id);
+    if (now === null) return { specEdges, items: [] };
+    const items = workspaceItemStates(input, buildDashboard(input), { now, ...age() }).filter((i) => i.spec === ref.id || (i.kind === "spec" && i.id === ref.id));
+    return { specEdges, items };
   }
 
   async function specPage(req: Request, root: string, ref: SpecRef): Promise<Response> {
@@ -195,6 +209,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       workflow: reading.workflow,
       // The merge state beside the reading (spec 025): the head's stage and `waits` are the row's (ISC-163).
       mergeState: reading.mergeState,
+      // The spec's item state as the board card has it (spec 040, ISC-224); an archived spec has none.
+      ...((state) => (state === undefined ? {} : { state }))(workspaceItemStates(input, buildDashboard(input), { now: clock(), ...age() }).find((i) => i.kind === "spec" && i.id === ref.id && !ref.archived)),
     });
     // The same hashes the gate write and the transition recompute (`writes.ts`), so a render and its write can only
     // differ by the files: the normalised gate hashes, and spec.md's raw bytes for the stage move (T83). Both over the
@@ -245,19 +261,25 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         // one (no repository of its own) it is the plain body hash of every other route.
         return json(req, 200, timeline, head === null ? {} : { ETag: timelineEtag(timeline, head) });
       }
-      case "claims":
-        return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, clock()), specEdges: await specEdgesOf(root, ref) }));
+      case "claims": {
+        // The clock gives each claim its `itemState` (spec 040, ISC-224), at the claim stale age of the live frame.
+        const now = clock();
+        return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, now), specEdges: await specEdgesOf(root, ref), now }));
+      }
       case "tasks": {
         // One read of the raw bytes: the hash covers exactly the text that was parsed.
         const bytes = readBytesIfExists(specFilePath(dir, "tasks"));
         if (bytes === null) return json(req, 200, null);
         const text = await constitution();
+        const { specEdges, items } = await workspaceOf(root, ref, clock());
         const tab = parseTaskLines({
           tasks: bytes.toString("utf8"),
           ...(text === null ? {} : { constitution: text }),
           ...(files.texts.rounds === undefined ? {} : { rounds: files.texts.rounds }),
           // The spec edges as the claims and live routes read them: a held task carries `waits on NNN` (ISC-162.2).
-          specEdges: await specEdgesOf(root, ref),
+          specEdges,
+          // Each row's `itemState`, the workspace model's item of its task (spec 040, ISC-224).
+          itemStates: items,
         });
         return json(req, 200, tab, { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
       }

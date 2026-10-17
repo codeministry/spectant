@@ -31,6 +31,7 @@ import type {
   FileKind,
   GateView,
   IdeaFiles,
+  ItemStateInfo,
   LockDiagnostic,
   LockReading,
   MainCopy,
@@ -171,6 +172,12 @@ export interface DashboardSpecRow {
    * so the display goes once the edge is met. Additive: null on every row of a workspace without spec edges.
    */
   readonly waits: SpecWait | null;
+  /**
+   * The spec's own item state with its details (spec 040, ISC-224): `open`, `waiting`, `running`, `aborted` or `done`,
+   * set by item-state.ts `withItemStates` from `itemStates` at the caller's clock. `buildDashboard` has no clock and
+   * sets none; the server's loader always does. Its marks, claims and tasks ride the spec page's claims and tasks.
+   */
+  readonly state?: ItemStateInfo;
 }
 
 /** Warnings of one kind across specs, for the warnings panel. */
@@ -221,6 +228,8 @@ export interface DashboardIdea {
   /** The first prose line under `## Goal`, else the slug. */
   readonly title: string;
   readonly priority: Priority;
+  /** The story's item state (spec 040, ISC-224), set by `withItemStates` as on a spec row; absent without a clock. */
+  readonly state?: ItemStateInfo;
 }
 
 /** The stories of the workspace, counted apart from specs and claims. */

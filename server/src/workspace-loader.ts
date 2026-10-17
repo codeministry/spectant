@@ -36,11 +36,14 @@ import { createHash } from "node:crypto";
 import { isAbsolute, join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
+import { itemStates, withItemStates } from "../../core/src/item-state.ts";
+import { taskRunsOf } from "../../core/src/live.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
 import type {
   FileDiagnostic,
   IdeaFiles,
+  ItemStateInfo,
   LibraryCatalog,
   LibraryDoc,
   MergeState,
@@ -783,17 +786,40 @@ export async function readCopies(root: string): Promise<Record<string, string>> 
 }
 
 /**
+ * The clock every item state is derived at (spec 040, ISC-224): `now`, and the age after which an open run reads
+ * `aborted` (the `runAbortMinutes` setting × 60 000, read per request by the caller; core's default when absent).
+ */
+export type StateClock = { readonly now: Date; readonly abortAfterMs?: number };
+
+/**
+ * Every item's state of a workspace reading (spec 040, T26, ISC-224): core's `itemStates` over the reading's input and
+ * the model built from it, each spec's task runs as its live frame folds them (`taskRunsOf`), at `clock`. The server
+ * decides no state itself; the dashboard, the spec page and the tasks route all take their items from here.
+ */
+export function workspaceItemStates(input: DashboardInput, model: DashboardModel, clock: StateClock): ItemStateInfo[] {
+  return itemStates({
+    workspace: input,
+    dashboard: model,
+    taskRuns: input.locks === undefined ? {} : taskRunsOf(input.specs, input.locks, clock.now),
+    now: clock.now,
+    ...(clock.abortAfterMs === undefined ? {} : { abortAfterMs: clock.abortAfterMs }),
+  });
+}
+
+/**
  * The dashboard model of the workspace at `root`. With a `probe`, its listeners become the model's services, labelled
  * from the constitution's `dev_services:`; with `null` the services are empty (the workspace list needs counts only).
- * `lifeosStateDir` as for `readWorkspaceInput`.
+ * `lifeosStateDir` as for `readWorkspaceInput`. Each spec row and story carries its item state at `clock` (spec 040,
+ * ISC-224, core's `withItemStates`); the request's time and core's abort age by default.
  */
-export async function loadDashboard(root: string, probe: ServicesProbe | null, lifeosStateDir: string | null = null): Promise<DashboardLoad> {
+export async function loadDashboard(root: string, probe: ServicesProbe | null, lifeosStateDir: string | null = null, clock: StateClock = { now: new Date() }): Promise<DashboardLoad> {
   const reading = await readWorkspaceInput(root, lifeosStateDir);
   if (!reading.readable) return reading;
   const { input } = reading;
   const labels = input.constitution === null ? new Map<number, string>() : devServiceLabels(input.constitution);
   const probed = probe === null ? [] : await probe(root, labels).catch(() => []);
-  return { readable: true, model: buildDashboard({ ...input, services: probed.map((s) => toLocalService(s, labels)) }) };
+  const model = buildDashboard({ ...input, services: probed.map((s) => toLocalService(s, labels)) });
+  return { readable: true, model: withItemStates(model, workspaceItemStates(input, model, clock)) };
 }
 
 /**

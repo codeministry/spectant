@@ -22,7 +22,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T2",
@@ -45,7 +56,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T3",
@@ -68,7 +90,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "probeMapping": [],
@@ -118,7 +151,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-10, not dispatched"
+        }
       },
       {
         "id": "T2",
@@ -141,7 +182,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-11, not dispatched"
+        }
       },
       {
         "id": "T3",
@@ -164,7 +213,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-12, not dispatched"
+        }
       }
     ],
     "probeMapping": [],
@@ -212,7 +269,14 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "005",
+          "state": "done",
+          "doneAt": "2026-03-08T14:14:00Z"
+        }
       },
       {
         "id": "T2",
@@ -235,7 +299,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T3",
@@ -258,7 +333,30 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T3",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T3",
+            "actor": {
+              "raw": "a:claude:sess-51/T3",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T3",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:32:00Z",
+            "elapsedMs": 1680000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "building"
+        }
       },
       {
         "id": "T4",
@@ -281,7 +379,29 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "005",
+          "state": "aborted",
+          "run": {
+            "run": "a:claude:sess-50/T4",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-50/T4",
+            "actor": {
+              "raw": "a:claude:sess-50/T4",
+              "kind": "subagent",
+              "id": "a:claude:sess-50",
+              "task": "T4",
+              "legacy": false
+            },
+            "since": "2026-03-08T13:41:00Z",
+            "elapsedMs": 4740000,
+            "openRuns": 1,
+            "source": "task-run"
+          }
+        }
       },
       {
         "id": "T5",
@@ -304,7 +424,30 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T5",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T5",
+            "actor": {
+              "raw": "a:claude:sess-51/T5",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T5",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:31:00Z",
+            "elapsedMs": 1740000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "patched"
+        }
       },
       {
         "id": "T6",
@@ -327,7 +470,30 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T6",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T6",
+            "actor": {
+              "raw": "a:claude:sess-51/T6",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T6",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:35:00Z",
+            "elapsedMs": 1500000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "applied-open"
+        }
       },
       {
         "id": "T7",
@@ -352,7 +518,20 @@
         "edges": [
           "T5"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "005",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-18"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "T8",
@@ -375,7 +554,15 @@
         "note": "dropped with ISC-19, see Decisions 2026-03-07",
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "005",
+          "state": "done",
+          "doneAt": "2026-03-07",
+          "closedAs": "struck"
+        }
       }
     ],
     "probeMapping": [],

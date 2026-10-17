@@ -87,7 +87,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "001",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 001",
+        "reason": "the reviewed mark is missing"
+      }
     }
   ],
   "nextUp": [

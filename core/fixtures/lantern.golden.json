@@ -90,7 +90,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "001",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 001",
+        "reason": "ISC-7 and ISC-9 are takeable"
+      }
     },
     {
       "id": "002",
@@ -149,7 +157,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "002",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 002",
+        "reason": "ISC-11 and ISC-12 are takeable"
+      }
     }
   ],
   "nextUp": [

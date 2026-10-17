@@ -87,7 +87,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "009",
+        "state": "open",
+        "stage": "close",
+        "command": "/spec-complete 009",
+        "reason": "every claim is closed and the workflow has no code review"
+      }
     },
     {
       "id": "006",
@@ -147,7 +155,28 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "006",
+        "state": "aborted",
+        "stage": "code-review",
+        "run": {
+          "run": "r-0308-1140",
+          "command": "/spec-code-review 006",
+          "session": "a:claude:sess-61",
+          "actor": {
+            "raw": "a:claude:sess-61",
+            "kind": "agent",
+            "id": "a:claude:sess-61",
+            "legacy": false
+          },
+          "since": "2026-03-08T11:40:00Z",
+          "elapsedMs": 12000000,
+          "openRuns": 1,
+          "source": "run"
+        }
+      }
     },
     {
       "id": "004",
@@ -209,7 +238,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "004",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 004",
+        "reason": "the reviewed mark is stale"
+      }
     },
     {
       "id": "005",
@@ -269,7 +306,28 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "005",
+        "state": "running",
+        "stage": "build",
+        "run": {
+          "run": "r-0308-1440",
+          "command": "/spec-implement 005",
+          "session": "a:claude:sess-52",
+          "actor": {
+            "raw": "a:claude:sess-52",
+            "kind": "agent",
+            "id": "a:claude:sess-52",
+            "legacy": false
+          },
+          "since": "2026-03-08T14:40:00Z",
+          "elapsedMs": 1200000,
+          "openRuns": 2,
+          "source": "run"
+        }
+      }
     },
     {
       "id": "008",
@@ -322,7 +380,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "008",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 008",
+        "reason": "ISC-25 is takeable"
+      }
     },
     {
       "id": "011",
@@ -381,6 +447,19 @@
         "heldTasks": 0,
         "openTasks": 0,
         "full": true
+      },
+      "state": {
+        "kind": "spec",
+        "id": "011",
+        "state": "waiting",
+        "stage": "blocked",
+        "waits": {
+          "specs": [
+            "002"
+          ],
+          "claims": [],
+          "siblings": []
+        }
       }
     },
     {
@@ -434,7 +513,28 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "003",
+        "state": "running",
+        "stage": "tasks",
+        "run": {
+          "run": "r-0308-1452",
+          "command": "/spec-tasks 003",
+          "session": "a:claude:sess-32",
+          "actor": {
+            "raw": "a:claude:sess-32",
+            "kind": "agent",
+            "id": "a:claude:sess-32",
+            "legacy": false
+          },
+          "since": "2026-03-08T14:52:00Z",
+          "elapsedMs": 480000,
+          "openRuns": 1,
+          "source": "run"
+        }
+      }
     },
     {
       "id": "002",
@@ -490,7 +590,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "002",
+        "state": "open",
+        "stage": "plan",
+        "command": "/spec-plan 002",
+        "reason": "a feature spec needs plan.md and it is missing"
+      }
     },
     {
       "id": "007",
@@ -541,7 +649,20 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "007",
+        "state": "waiting",
+        "stage": "close-pending",
+        "waits": {
+          "specs": [],
+          "claims": [],
+          "siblings": [
+            "008"
+          ]
+        }
+      }
     },
     {
       "id": "001",
@@ -602,7 +723,14 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "001",
+        "state": "done",
+        "stage": "done",
+        "doneAt": "2026-03-04T16:00:00Z"
+      }
     },
     {
       "id": "010",
@@ -653,7 +781,18 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "010",
+        "state": "done",
+        "stage": "done",
+        "diagnostic": {
+          "severity": "warning",
+          "code": "item-state-no-date",
+          "message": "spec 010 is done, but the files give no date for it."
+        }
+      }
     }
   ],
   "nextUp": [
@@ -723,14 +862,43 @@
         "milestone": null,
         "slug": "digest-emails",
         "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
-        "priority": "P3"
+        "priority": "P3",
+        "state": {
+          "kind": "idea",
+          "id": "digest-emails",
+          "state": "open",
+          "stage": "idea",
+          "command": "/spec new digest-emails",
+          "reason": "the story is shaped but has no spec"
+        }
       },
       {
         "feature": "F2",
         "milestone": null,
         "slug": "uptime-badges",
         "title": "Each public check offers a small uptime badge a project can embed in its README.",
-        "priority": "P2"
+        "priority": "P2",
+        "state": {
+          "kind": "idea",
+          "id": "uptime-badges",
+          "state": "running",
+          "stage": "idea",
+          "run": {
+            "run": "r-0308-1445",
+            "command": "/spec new uptime-badges",
+            "session": "a:claude:sess-71",
+            "actor": {
+              "raw": "a:claude:sess-71",
+              "kind": "agent",
+              "id": "a:claude:sess-71",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:45:00Z",
+            "elapsedMs": 900000,
+            "openRuns": 1,
+            "source": "run"
+          }
+        }
       }
     ]
   }

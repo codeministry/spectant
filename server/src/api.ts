@@ -156,6 +156,7 @@ import {
   type CopiesLoad,
   type DashboardLoad,
   type ServicesProbe,
+  type StateClock,
   type UnreadableCode,
   type WorkspaceReading,
   loadCatalog,
@@ -276,8 +277,11 @@ export type WorkspaceSummary = {
 
 export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;
-  /** Reads one workspace; `loadDashboard` by default. Tests inject another loader. */
-  loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null) => Promise<DashboardLoad>;
+  /**
+   * Reads one workspace; `loadDashboard` by default. Tests inject another loader. The dashboard route passes `clock`
+   * (spec 040, ISC-224): `now` and the `runAbortMinutes` abort age the rows' and stories' item states are derived at.
+   */
+  loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null, clock?: StateClock) => Promise<DashboardLoad>;
   /**
    * Reads one workspace's files for the planning route; `readWorkspaceInput` by default, the same read `loadDashboard`
    * starts from. Whoever injects `loadWorkspace` injects this too, so both workspace routes answer from one source.
@@ -308,11 +312,15 @@ export type DashboardApiOptions = {
    * declined, so the server's JSON 404 applies; every other route here reads no database.
    */
   db?: Database;
-  /** The allocation's clock (its event's `ts`, `started`, `created`); `new Date()` by default. Tests pin it. */
+  /**
+   * The allocation's clock (its event's `ts`, `started`, `created`) and the dashboard's item-state clock (spec 040,
+   * ISC-224); `new Date()` by default. Tests pin it.
+   */
   now?: () => Date;
   /**
-   * The age after which an open run on a story reads `aborted` and stops locking its allocation (spec 040, ISC-225):
-   * the `runAbortMinutes` setting × 60 000, read per write. Absent, core's default.
+   * The age after which an open run reads `aborted` (spec 040): it stops locking a story's allocation (ISC-225), and
+   * the dashboard's rows and stories read it so (ISC-224). The `runAbortMinutes` setting × 60 000, read per request.
+   * Absent, core's default.
    */
   abortAfterMs?: () => number;
 };
@@ -429,7 +437,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const dashboard = async (req: Request, slug: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
-    const loaded = await load(workspace.path, services, stateDir);
+    // The item states at this request's clock and the abort age as the setting now stands (spec 040, ISC-224).
+    const loaded = await load(workspace.path, services, stateDir, { now: clock(), ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }) });
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
     return json(req, 200, loaded.model);
   };

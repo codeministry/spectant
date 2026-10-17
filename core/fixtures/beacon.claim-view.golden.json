@@ -23,7 +23,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 36
+        "line": 36,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-2",
@@ -47,7 +58,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 37
+        "line": 37,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-3",
@@ -71,7 +93,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 38
+        "line": 38,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-3 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "features": [],
@@ -113,7 +146,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 36
+        "line": 36,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-4",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-5",
@@ -137,7 +178,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 37
+        "line": 37,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-5",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-6",
@@ -161,7 +210,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 38
+        "line": 38,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-6",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "the reviewed mark is missing"
+        }
       }
     ],
     "features": [],
@@ -203,7 +260,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 36
+        "line": 36,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-7",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-8",
@@ -227,7 +292,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 37
+        "line": 37,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-8",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-9",
@@ -251,7 +324,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 38
+        "line": 38,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-9",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "the reviewed mark is missing"
+        }
       }
     ],
     "features": [],
@@ -293,7 +374,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 36
+        "line": 36,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-10",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "the reviewed mark is stale"
+        }
       },
       {
         "id": "ISC-11",
@@ -317,7 +406,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 37
+        "line": 37,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-11",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "the reviewed mark is stale"
+        }
       },
       {
         "id": "ISC-12",
@@ -341,7 +438,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 38
+        "line": 38,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-12",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "the reviewed mark is stale"
+        }
       }
     ],
     "features": [],
@@ -383,7 +488,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 36
+        "line": 36,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-13",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-14",
@@ -407,7 +523,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 37
+        "line": 37,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-14",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-15",
@@ -431,7 +558,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 38
+        "line": 38,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-15",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "ISC-15 is takeable"
+        }
       },
       {
         "id": "ISC-16",
@@ -455,7 +590,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 39
+        "line": 39,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-16",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "ISC-16 is takeable"
+        }
       },
       {
         "id": "ISC-17",
@@ -483,7 +626,20 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 40
+        "line": 40,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-17",
+          "spec": "005",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-18"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "ISC-18",
@@ -507,7 +663,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 41
+        "line": 41,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-18",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "ISC-18 is takeable"
+        }
       },
       {
         "id": "ISC-19",
@@ -533,7 +697,15 @@
           "note": "see Decisions 2026-03-07"
         },
         "noteCount": 0,
-        "line": 42
+        "line": 42,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-19",
+          "spec": "005",
+          "state": "done",
+          "doneAt": "2026-03-07",
+          "closedAs": "dropped"
+        }
       }
     ],
     "features": [],
@@ -575,7 +747,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 31
+        "line": 31,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-20",
+          "spec": "006",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-21",
@@ -599,7 +782,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 32
+        "line": 32,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-21",
+          "spec": "006",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-21 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "features": [],
@@ -641,7 +835,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 31
+        "line": 31,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-22",
+          "spec": "007",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-23",
@@ -665,7 +870,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 32
+        "line": 32,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-23",
+          "spec": "007",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-23 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "features": [],
@@ -707,7 +923,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 31
+        "line": 31,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-24",
+          "spec": "008",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-25",
@@ -733,7 +960,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 32
+        "line": 32,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-25",
+          "spec": "008",
+          "state": "open",
+          "command": "/spec-implement 008",
+          "reason": "ISC-25 is takeable"
+        }
       }
     ],
     "features": [],
@@ -775,7 +1010,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 31
+        "line": 31,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-26",
+          "spec": "009",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-26 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "features": [],
@@ -817,7 +1063,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 31
+        "line": 31,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-27",
+          "spec": "010",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-27 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-28",
@@ -841,7 +1098,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 32
+        "line": 32,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-28",
+          "spec": "010",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-28 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "features": [],
@@ -885,7 +1153,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 31
+        "line": 31,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-29",
+          "spec": "011",
+          "state": "open",
+          "command": "/spec-implement 011",
+          "reason": "ISC-29 is takeable"
+        }
       },
       {
         "id": "ISC-30",
@@ -911,7 +1187,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 32
+        "line": 32,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-30",
+          "spec": "011",
+          "state": "open",
+          "command": "/spec-implement 011",
+          "reason": "ISC-30 is takeable"
+        }
       }
     ],
     "features": [],

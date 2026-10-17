@@ -23,7 +23,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T2",
@@ -49,7 +60,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T3",
@@ -76,7 +98,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T4",
@@ -102,7 +135,18 @@
           "T2",
           "T3"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T5",
@@ -128,7 +172,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T6",
@@ -153,7 +208,18 @@
         "edges": [
           "T2"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T7",
@@ -181,7 +247,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T8",
@@ -207,7 +284,18 @@
         "edges": [
           "T7"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T9",
@@ -234,7 +322,18 @@
         "edges": [
           "T8"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T10",
@@ -259,7 +358,18 @@
         "edges": [
           "T9"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T11",
@@ -289,7 +399,18 @@
         "edges": [
           "T9"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T12",
@@ -314,7 +435,18 @@
         "edges": [
           "T7"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T13",
@@ -339,7 +471,18 @@
         "edges": [
           "T12"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T14",
@@ -363,7 +506,18 @@
           "T3",
           "T8"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T15",
@@ -387,7 +541,18 @@
           "T8",
           "T12"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T16",
@@ -411,7 +576,15 @@
           "T13",
           "T15"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "012",
+          "state": "open",
+          "command": "/spec-implement 012",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       },
       {
         "id": "T17",
@@ -441,7 +614,18 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "probeMapping": [
@@ -593,7 +777,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T2",
@@ -618,7 +813,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T3",
@@ -641,7 +847,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T4",
@@ -666,7 +883,18 @@
         "edges": [
           "T3"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T5",
@@ -691,7 +919,18 @@
         "edges": [
           "T3"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T6",
@@ -716,7 +955,18 @@
         "edges": [
           "T5"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T7",
@@ -741,7 +991,18 @@
         "edges": [
           "T6"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T8",
@@ -766,7 +1027,18 @@
         "edges": [
           "T7"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T9",
@@ -791,7 +1063,18 @@
         "edges": [
           "T4"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T10",
@@ -818,7 +1101,18 @@
         "edges": [
           "T9"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T11",
@@ -845,7 +1139,18 @@
         "edges": [
           "T10"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T12",
@@ -871,7 +1176,18 @@
         "edges": [
           "T10"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T13",
@@ -897,7 +1213,18 @@
           "T11",
           "T12"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T14",
@@ -922,7 +1249,18 @@
         "edges": [
           "T13"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T15",
@@ -945,7 +1283,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T16",
@@ -971,7 +1320,18 @@
         "edges": [
           "T15"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T16 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T17",
@@ -996,7 +1356,18 @@
         "edges": [
           "T16"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T18",
@@ -1023,7 +1394,18 @@
         "edges": [
           "T15"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T18",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T18 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T19",
@@ -1050,7 +1432,18 @@
           "T18",
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T19",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T19 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T20",
@@ -1076,7 +1469,18 @@
           "T19",
           "T14"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T20",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T21",
@@ -1100,7 +1504,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T21",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T21 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T22",
@@ -1127,7 +1542,18 @@
           "T21",
           "T16"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T22",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T23",
@@ -1153,7 +1579,18 @@
           "T22",
           "T17"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T23",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T23 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T24",
@@ -1181,7 +1618,18 @@
           "T21",
           "T18"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T24",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T25",
@@ -1208,7 +1656,18 @@
           "T24",
           "T9"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T25",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T25 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T26",
@@ -1235,7 +1694,18 @@
         "edges": [
           "T25"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T26",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T26 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T27",
@@ -1261,7 +1731,18 @@
         "edges": [
           "T26"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T27",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T27 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T28",
@@ -1288,7 +1769,18 @@
           "T12",
           "T26"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T28",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T28 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T29",
@@ -1314,7 +1806,18 @@
           "T27",
           "T28"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T29 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T30",
@@ -1340,7 +1843,18 @@
           "T22",
           "T16"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T30",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T30 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T31",
@@ -1371,7 +1885,18 @@
           "T20",
           "T29"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T31",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T31 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T32",
@@ -1397,7 +1922,18 @@
           "T30",
           "T31"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T32",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T32 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "probeMapping": [

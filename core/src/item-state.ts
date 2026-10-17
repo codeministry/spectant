@@ -671,6 +671,24 @@ export function itemStates(input: ItemStateInput): ItemStateInfo[] {
   return [...rows.flatMap((row) => specItems(row, files.get(row.slug), ctx)), ...input.dashboard.ideas.list.map((idea) => ideaItem(idea.slug, ctx))].map(ordered);
 }
 
+/**
+ * The dashboard model with each item's state on it (spec 040, T20, ISC-224): every spec row carries its `spec` item as
+ * `state`, every story of `ideas.list` its `idea` item, matched by id and kind; a row or story without one (no
+ * spec.md) stays as it is. The marks, claims and tasks of a spec stay off the row: the board card, the idea card and
+ * the spec head read only these two, and the claim and task rows read theirs from the spec page's claims and tasks
+ * payloads. Pure: the items come from `itemStates` over the same workspace, so this module needs no dashboard import.
+ */
+export function withItemStates(model: DashboardModel, items: readonly ItemStateInfo[]): DashboardModel {
+  const specs = new Map(items.filter((i) => i.kind === 'spec').map((i) => [i.id, i]));
+  const ideas = new Map(items.filter((i) => i.kind === 'idea').map((i) => [i.id, i]));
+  const withState = <T extends object>(entry: T, state: ItemStateInfo | undefined): T => (state === undefined ? entry : { ...entry, state });
+  return {
+    ...model,
+    specs: model.specs.map((row) => withState(row, specs.get(row.id))),
+    ideas: { ...model.ideas, list: model.ideas.list.map((idea) => withState(idea, ideas.get(idea.slug))) },
+  };
+}
+
 // ── the run lock (spec 040, T31, ISC-225) ────────────────────────────────────────────────────────────────────────
 
 /** The item a write lands on, as far as an open run can lock it: a spec by its number or folder name, a story by slug. */

@@ -15,7 +15,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 24
+        "line": 24,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-4",
@@ -31,7 +42,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 25
+        "line": 25,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-4",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-5",
@@ -49,7 +71,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 26
+        "line": 26,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-5",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-5 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "features": [],
@@ -83,7 +116,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 24
+        "line": 24,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-6",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-7",
@@ -103,7 +144,20 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 25
+        "line": 25,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-7",
+          "spec": "002",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-6"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "ISC-8",
@@ -119,7 +173,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 26
+        "line": 26,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-8",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-1",
@@ -135,7 +197,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 27
+        "line": 27,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-1",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "the reviewed mark is missing"
+        }
       }
     ],
     "features": [],
@@ -169,7 +239,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 23
+        "line": 23,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-9",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "the reviewed mark is missing"
+        }
       },
       {
         "id": "ISC-10",
@@ -189,7 +267,20 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 24
+        "line": 24,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-10",
+          "spec": "003",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-9"
+            ],
+            "siblings": []
+          }
+        }
       }
     ],
     "features": [],

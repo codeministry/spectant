@@ -5,12 +5,11 @@
 import { join } from 'node:path';
 
 import { buildDashboard } from '../../src/dashboard.ts';
-import type { ItemStateInfo, LockReading, TaskRun } from '../../src/files.ts';
+import type { ItemStateInfo, LockReading } from '../../src/files.ts';
 import { DEFAULT_ABORT_AFTER_MS, itemStates } from '../../src/item-state.ts';
 import type { ItemStateInput } from '../../src/item-state.ts';
-import { buildLiveFrame } from '../../src/live.ts';
+import { taskRunsOf } from '../../src/live.ts';
 import { readLockSources } from '../../src/locks.ts';
-import { specIdOf } from '../../src/spec-ref.ts';
 import { FIXTURES, fixtureTrees, readTreeAt } from './read-tree.ts';
 
 /** The live family's clock (`LIVE_NOW` in golden.test.ts): beacon's "minutes before the clock" count from it. */
@@ -23,13 +22,7 @@ const LOCKS = new Map(await Promise.all(fixtureTrees().map(async (tree) => [join
 export function stateInputAt(root: string): ItemStateInput {
   const locks = LOCKS.get(root) as LockReading;
   const workspace = { ...readTreeAt(root), locks };
-  const taskRuns: Record<string, readonly TaskRun[]> = {};
-  for (const files of workspace.specs) {
-    if (files.texts.spec === undefined) continue;
-    const frame = buildLiveFrame({ files, locks, now: STATE_NOW });
-    taskRuns[specIdOf(files.folder) ?? files.folder] = frame.cards.flatMap((card) => (card.run == null ? [] : [card.run]));
-  }
-  return { workspace, dashboard: buildDashboard(workspace), taskRuns, now: STATE_NOW, abortAfterMs: DEFAULT_ABORT_AFTER_MS };
+  return { workspace, dashboard: buildDashboard(workspace), taskRuns: taskRunsOf(workspace.specs, locks, STATE_NOW), now: STATE_NOW, abortAfterMs: DEFAULT_ABORT_AFTER_MS };
 }
 
 /** The `state` family: every item's state of the tree. */

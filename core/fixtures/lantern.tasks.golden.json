@@ -22,7 +22,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T2",
@@ -47,7 +58,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T3",
@@ -72,7 +94,18 @@
         "edges": [
           "T1"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T4",
@@ -95,7 +128,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T5",
@@ -118,7 +162,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-7, not dispatched"
+        }
       },
       {
         "id": "T6",
@@ -143,7 +195,20 @@
         "edges": [
           "T5"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-7"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "T7",
@@ -166,7 +231,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-9, not dispatched"
+        }
       },
       {
         "id": "T8",
@@ -191,7 +264,20 @@
         "edges": [
           "T7"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-9"
+            ],
+            "siblings": []
+          }
+        }
       }
     ],
     "probeMapping": [

@@ -280,6 +280,8 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     main: row.main,
     // The row's wait (spec 025, ISC-163): the head's `waits on NNN`, null once the edge is met.
     waits: row.waits,
+    // The spec's item state as the caller derived it (spec 040, ISC-224): the row's `state`, so head and card agree.
+    ...(input.state === undefined ? {} : { state: input.state }),
   };
 
   // The stage phrase first and unchanged: the row's `nextReason` is `reasonOf(step)` (T69, ISC-122.3); the page's own facts follow.

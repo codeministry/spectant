@@ -709,6 +709,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
         uncommittedFiles: "req",
         // spec 008: optional until their fill-ins (T39, T47, T65) set them.
         priority: "opt", stageSource: "opt", assignee: "opt",
+        // spec 040: the spec's item state, as the board card's row carries it (ISC-224)
+        state: "opt",
         // spec 027: the spec's worktree, its read source and the main copy's stage and progress (ISC-175, ISC-181)
         worktree: "opt", source: "opt", main: "opt",
         // spec 025: what the spec waits on, the row's `waits` (ISC-163)
@@ -815,7 +817,8 @@ describe("the dashboard golden (core/fixtures/<tree>.golden.json) is a Dashboard
       kpis: "req", stageCounts: "req", specs: "req", nextUp: "req", warningGroups: "req", archive: "req", brief: "req",
       services: "req", diagnostics: "req", ideas: "req",
     });
-    const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req" });
+    // spec 040: `state`, the story's item state (ISC-224), set by the server's loader at its clock.
+    const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req", state: "opt" });
     expect([
       ...shapeProblems("dashboard", value, model),
       ...shapeProblems("dashboard.ideas", value.ideas, keysOf<DashboardIdeas>({ count: "req", list: "req" })),

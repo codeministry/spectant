@@ -101,7 +101,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "004",
+        "state": "open",
+        "stage": "code-review",
+        "command": "/spec-code-review 004",
+        "reason": "every claim is closed and the code-reviewed mark is stale"
+      }
     },
     {
       "id": "005",
@@ -158,7 +166,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "005",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 005",
+        "reason": "the reviewed mark is missing"
+      }
     },
     {
       "id": "006",
@@ -225,7 +241,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "006",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 006",
+        "reason": "the reviewed mark is stale"
+      }
     },
     {
       "id": "002",
@@ -307,7 +331,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "002",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 002",
+        "reason": "ISC-75, ISC-76 and 1 more are takeable"
+      }
     },
     {
       "id": "009",
@@ -365,7 +397,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "009",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 009",
+        "reason": "ISC-131 is takeable"
+      }
     },
     {
       "id": "003",
@@ -421,7 +461,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "003",
+        "state": "open",
+        "stage": "tasks",
+        "command": "/spec-tasks 003",
+        "reason": "13 claims and no tasks.md"
+      }
     },
     {
       "id": "008",
@@ -477,7 +525,20 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "008",
+        "state": "waiting",
+        "stage": "close-pending",
+        "waits": {
+          "specs": [],
+          "claims": [],
+          "siblings": [
+            "009"
+          ]
+        }
+      }
     },
     {
       "id": "007",
@@ -528,7 +589,18 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "007",
+        "state": "done",
+        "stage": "done",
+        "diagnostic": {
+          "severity": "warning",
+          "code": "item-state-no-date",
+          "message": "spec 007 is done, but the files give no date for it."
+        }
+      }
     }
   ],
   "nextUp": [
@@ -701,14 +773,30 @@
         "milestone": "Harbor 2.0",
         "slug": "console-audit-log",
         "title": "Every change made in the web console is written to an audit log a teammate can read back.",
-        "priority": "P3"
+        "priority": "P3",
+        "state": {
+          "kind": "idea",
+          "id": "console-audit-log",
+          "state": "open",
+          "stage": "idea",
+          "command": "/spec new console-audit-log",
+          "reason": "the story is shaped but has no spec"
+        }
       },
       {
         "feature": "F7",
         "milestone": "Harbor 1.0",
         "slug": "registry-webhooks",
         "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
-        "priority": "P2"
+        "priority": "P2",
+        "state": {
+          "kind": "idea",
+          "id": "registry-webhooks",
+          "state": "open",
+          "stage": "idea",
+          "command": "/spec new registry-webhooks",
+          "reason": "the story is shaped but has no spec"
+        }
       }
     ]
   }

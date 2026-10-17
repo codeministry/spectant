@@ -383,6 +383,11 @@ export interface SpecHead {
   readonly waits?: SpecWait | null;
   /** The main checkout's stage and progress when `source` is `worktree`, the row's `main`; null otherwise. */
   readonly main?: MainCopy | null;
+  /**
+   * The spec's own item state (spec 040, ISC-224), the row's `state`: `SpecPageInput.state` as the caller derived it
+   * with `itemStates` (item-state.ts) at its clock and abort age. Absent when the caller passed none.
+   */
+  readonly state?: ItemStateInfo;
 }
 
 /** Where the idea quote came from: the first sentence of `## Goal`, or frontmatter `task:`. */
@@ -633,6 +638,8 @@ export interface SpecPageInput {
   readonly workflow?: Workflow;
   /** The merge state as the dashboard gets it (`DashboardInput.mergeState`, spec 025), for the row's `waits`. */
   readonly mergeState?: readonly MergeState[];
+  /** The spec's item (`itemStates`, spec 040, ISC-224), carried as `SpecHead.state`; absent, the head carries none. */
+  readonly state?: ItemStateInfo;
 }
 
 // ─── Worktrees (worktrees.ts) ────────────────────────────────────────────────────────────────────────────────────

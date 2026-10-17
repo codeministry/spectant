@@ -48,7 +48,7 @@
 import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, ItemStateInfo, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, TaskRow, TaskRun } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, ItemStateInfo, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
@@ -158,6 +158,20 @@ function taskItemStates(input: LiveFrameInput, claims: readonly Claim[], reviewe
   const claimItems = claimStates({ spec, claims, locks: input.locks.locks, reviewed, specEdges, ...clock });
   const rows = parseTaskLines({ tasks, ...(constitution === undefined ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), specEdges }).tasks;
   return new Map(taskStates({ spec, tasks: rows, claims: claimItems, runs, specEdges, ...clock }).map((item) => [item.id, item]));
+}
+
+/**
+ * Each active spec's task runs (ISC-179) by spec number, as its live frame folds them (`LiveCard.run`): the
+ * `ItemStateInput.taskRuns` every caller of item-state.ts `itemStates` passes (spec 040, ISC-224), so the run events
+ * are matched to a spec's tasks in this one place. A folder without spec.md has none.
+ */
+export function taskRunsOf(specs: readonly SpecFiles[], locks: LockReading, now: Date): Record<string, readonly TaskRun[]> {
+  const out: Record<string, readonly TaskRun[]> = {};
+  for (const files of specs) {
+    if (files.texts.spec === undefined) continue;
+    out[specIdOf(files.folder) ?? files.folder] = buildLiveFrame({ files, locks, now }).cards.flatMap((card) => (card.run == null ? [] : [card.run]));
+  }
+  return out;
 }
 
 /** The run states the round counts, in run order; the group lists them reversed, furthest along first. */
