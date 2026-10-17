@@ -14,6 +14,7 @@ import { ApiClient, type ApiResult } from '../../core/api.service';
 import { RefreshService } from '../../core/refresh.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { formatInstant } from '../../shared/time';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
 import { folderOf, LibraryReader, type ProseLinks, type ReaderContext, resolveRelative, rewriteProse, techReading } from './library-reader';
 
@@ -278,6 +279,15 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
     expect(figure?.querySelector('svg')).not.toBeNull();
     expect(figure?.querySelector('ui-diagram-toolbar')).not.toBeNull();
     expect(reader.querySelector('.lib-reader-title')?.textContent.trim()).toBe('Approach');
+  });
+
+  it('shows when the document changed as a time element in the browser zone (spec 006 T5, ISC-114)', async () => {
+    const reader = await render();
+    const updated = reader.querySelector('.lib-updated');
+    const time = updated?.querySelector('ui-time time');
+    expect(time?.getAttribute('datetime')).toBe(PLAN.modified);
+    expect(time?.textContent).toBe(formatInstant(PLAN.modified ?? '', 'en'));
+    expect(updated?.textContent).toBe(`updated ${formatInstant(PLAN.modified ?? '', 'en')}`);
   });
 
   it('sets the table of contents beside the prose at wide', async () => {

@@ -72,9 +72,25 @@ import {
   WORKSPACE_SPEC,
 } from './library-model';
 
-import { LibraryReader, shortDateParts, typeIcon } from './library-reader';
+import { LibraryReader, typeIcon } from './library-reader';
 
-export { fileName, missingCommand, shortDateParts, typeIcon } from './library-reader';
+export { fileName, missingCommand, typeIcon } from './library-reader';
+
+// removed in T6 (spec 006): moved here unchanged from the reader, which no longer uses it.
+/**
+ * A row's short date (design.md 017 § Across viewports): day, month and time, the year only outside the current
+ * one, in UTC as every other date of the app's fixtures. The two parts are joined by the catalogue's `library.date`,
+ * so English reads "Oct 12, 14:02" and German "12.10. 14:02".
+ */
+export function shortDateParts(iso: string, now: Date, locale: string): { readonly date: string; readonly time: string } {
+  const at = new Date(iso);
+  const year = at.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
+  const german = locale.startsWith('de');
+  const date = new Intl.DateTimeFormat(locale, german ? { day: '2-digit', month: '2-digit', year, timeZone: 'UTC' } : { month: 'short', day: 'numeric', year, timeZone: 'UTC' }).format(at);
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }).format(at);
+  return { date, time };
+}
+
 
 /** The two control counts of the card's first row (design.md 017 § Across viewports; ISC-156.1), in this order. */
 export type ControlKey = 'missing' | 'stale';
