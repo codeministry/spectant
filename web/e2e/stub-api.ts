@@ -224,6 +224,7 @@ import {
   readStories,
   refusalOf,
   rowFor,
+  withBacklogText,
   withRuns,
   withWorktreeEntry,
 } from './stub-board';
@@ -1691,9 +1692,14 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = (viewOf(req, state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    const model = planningOf(req, match.params.ws);
+    const served = planningOf(req, match.params.ws);
+    const text = backlogTextOf(req, match.params.ws, found.tree.root);
+    // After a backlog write of this session the real route reads the new ranks and priorities (spec 037, T26).
+    const written = backlogs.get(sessionOf(req))?.has(match.params.ws) === true;
+    const master = written ? masterOf(found.tree.root) : null;
+    const model = served && master !== null ? withBacklogText(board, served, text, board.backlogFeatures(master).map((f) => f.id)) : served;
     // The real route adds the hash of specs/backlog.md (spec 036), the session's after a backlog write.
-    return workspaceJson(req, 200, model && { ...model, backlogHash: rawSha256(backlogTextOf(req, match.params.ws, found.tree.root) ?? '') });
+    return workspaceJson(req, 200, model && { ...model, backlogHash: rawSha256(text ?? '') });
   };
 
   /**
@@ -2007,6 +2013,14 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return workspaceJson(req, 200, { id, folder, files: paths.writes, removed: paths.removes[0] ?? story.path, lockSource } satisfies IdeaAllocated);
   };
 
+  /** The fixture tree's master, null when it has none. */
+  const masterOf = (root: string): string | null => {
+    try {
+      return readFileSync(join(root, 'ISA.md'), 'utf8');
+    } catch {
+      return null;
+    }
+  };
   /** The session's `specs/backlog.md` per workspace slug after its backlog writes (spec 036); absent, the fixture's file. */
   const backlogs = new Map<string, Map<string, string | null>>();
   const backlogTextOf = (req: Request, ws: string, root: string): string | null => {
@@ -2038,12 +2052,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const now = rawSha256(text ?? '');
     const stale = outcome === 'stale' ? { error: 'hash-mismatch', files: ['specs/backlog.md'], expected: { backlog: now } } : board.backlogConflict(body.hash, now);
     if (stale !== null) return workspaceJson(req, 409, stale);
-    let master: string | null = null;
-    try {
-      master = readFileSync(join(tree.root, 'ISA.md'), 'utf8');
-    } catch {
-      master = null;
-    }
+    const master = masterOf(tree.root);
     const base = { text, features: master === null ? [] : board.backlogFeatures(master), feature: body.feature, actor: STUB_PERSON, now: new Date(STUB_NOW) };
     const plan = body.op === 'move' ? board.planBacklogMove({ ...base, before: body.before }) : board.planBacklogPriority({ ...base, priority: body.priority });
     if (!plan.ok) return workspaceJson(req, 422, { error: 'backlog-refused', reason: plan.reason } satisfies BacklogRefused);
