@@ -2088,6 +2088,24 @@
       "P4": "Priorität P4"
     }
   },
+  "backlog": {
+    "reorder": {
+      "title": "{{id}} verschieben · in {{group}}",
+      "titleNone": "{{id}} verschieben · ohne Meilenstein",
+      "position": "Position {{position}} von {{count}}",
+      "up": "Nach oben",
+      "down": "Nach unten",
+      "first": "An den Anfang",
+      "last": "Ans Ende von {{group}}",
+      "lastNone": "Ans Ende",
+      "atFirst": "steht schon an erster Stelle",
+      "atLast": "steht schon an letzter Stelle"
+    },
+    "priority": {
+      "label": "Priorität {{level}} von {{id}} ändern",
+      "title": "Priorität · {{id}}"
+    }
+  },
   "actors": {
     "legacy": "Altformat",
     "agent": "Agent",
