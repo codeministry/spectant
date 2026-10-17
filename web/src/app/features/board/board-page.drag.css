@@ -205,7 +205,7 @@
     inset: calc(50% - 2px) auto auto 2px;
     inline-size: 4px;
     block-size: 4px;
-    border-radius: 50%;
+    border-radius: var(--radius-selector);
     background: var(--color-primary);
     animation: none;
   }

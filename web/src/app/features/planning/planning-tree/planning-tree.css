@@ -245,7 +245,7 @@ h2 {
   inset-inline-start: 16px;
   inline-size: 8px;
   block-size: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-selector);
 }
 
 .row[data-drop="before"]::after {
@@ -289,7 +289,7 @@ h2 {
     inset: calc(50% - 2px) auto auto 6px;
     inline-size: 4px;
     block-size: 4px;
-    border-radius: 50%;
+    border-radius: var(--radius-selector);
     background: var(--color-primary);
     animation: none;
   }

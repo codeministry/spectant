@@ -2118,6 +2118,13 @@
       "atLast": "{{id}} is already last in {{group}}",
       "atLastNone": "{{id}} is already last without a milestone",
       "prioritized": "{{id}} now has priority {{level}}"
+    },
+    "refusal": {
+      "notMoved": "{{id}} not moved",
+      "notPrioritized": "Priority of {{id}} not changed",
+      "stale": "changed on disk · re-read",
+      "failed": "The change could not be written (status {{status}})",
+      "noAnswer": "The change could not be written (no answer)"
     }
   },
   "actors": {

@@ -2118,6 +2118,13 @@
       "atLast": "{{id}} steht schon an letzter Stelle in {{group}}",
       "atLastNone": "{{id}} steht schon an letzter Stelle ohne Meilenstein",
       "prioritized": "{{id}} hat jetzt Priorität {{level}}"
+    },
+    "refusal": {
+      "notMoved": "{{id}} nicht verschoben",
+      "notPrioritized": "Priorität von {{id}} nicht geändert",
+      "stale": "auf der Festplatte geändert · neu gelesen",
+      "failed": "Die Änderung konnte nicht geschrieben werden (Status {{status}})",
+      "noAnswer": "Die Änderung konnte nicht geschrieben werden (keine Antwort)"
     }
   },
   "actors": {

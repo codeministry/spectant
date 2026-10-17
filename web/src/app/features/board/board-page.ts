@@ -51,7 +51,7 @@ import {
 } from './board-model';
 import { AllocateDialog } from './allocate-dialog';
 import { type MovedCard, MoveToMenu, stepTarget } from './move-to-menu';
-import { RefusalNotice } from './refusal-notice';
+import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
 
 /** Every key the board query owns: a navigation clears the ones the next query leaves out and keeps any other param. */
 const QUERY_KEYS = ['feature', 'milestone', 'type', 'assignee', 'group', 'col', 'q', 'open', 'fold'] as const;

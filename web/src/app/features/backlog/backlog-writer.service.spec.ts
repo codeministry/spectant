@@ -6,7 +6,7 @@ import { ApiClient, type BacklogOp, type PlanningBody, type WriteResult } from '
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { featureOrder } from './backlog-order';
-import { BacklogWriter } from './backlog-writer.service';
+import { BACKLOG_WRITE_TIMEOUT, BacklogWriter } from './backlog-writer.service';
 
 // T17 / T18 · ISC-195, ISC-196: the one backlog write of the tree and the board. A move and a priority send the hash
 // of the last read, the held move stands until the answer, a second write for the same feature meanwhile sends
@@ -36,7 +36,7 @@ let reloads: number;
 let model: ReturnType<typeof signal<PlanningBody | null>>;
 let writer: BacklogWriter;
 
-function setup(served: PlanningBody | null = MODEL): void {
+function setup(served: PlanningBody | null = MODEL, timeout?: number): void {
   calls = [];
   reloads = 0;
   model = signal<PlanningBody | null>(served);
@@ -49,6 +49,7 @@ function setup(served: PlanningBody | null = MODEL): void {
       { provide: ApiClient, useValue: api },
       { provide: ShellData, useValue: data },
       { provide: ShellState, useValue: { ws: signal('ferry').asReadonly() } },
+      ...(timeout === undefined ? [] : [{ provide: BACKLOG_WRITE_TIMEOUT, useValue: timeout }]),
     ],
   });
   writer = TestBed.inject(BacklogWriter);
@@ -184,5 +185,88 @@ describe('backlog writer (T17, T18, ISC-195, ISC-196)', () => {
       expect(priorityShown('F1')).toBe('P3');
       expect(writer.pending('F1')).toBe(false);
     }
+  });
+});
+
+// T19 · ISC-198: a write that is not accepted leaves a refusal for its feature, with the tone's kind: core's phrase
+// verbatim on a 422 (fail), `stale` on a 409 (warning), `failed` with the status on any other answer, no answer, or a
+// write that has not answered within the timeout. Every one re-reads the planning tree and keeps nothing anticipated.
+// The ✕ (`dismiss`) and the next write of that feature close it; a write of another feature leaves it standing.
+describe('backlog writer refusal (T19, T20, ISC-198)', () => {
+  it("a 422 keeps core's phrase verbatim for the feature, re-reads and anticipates nothing", async () => {
+    setup();
+    const outcome = writer.priority('ferry', 'F1', 'P1');
+    calls[0]?.answer(refused);
+    expect(await outcome).toBe('refused');
+    expect(writer.refusalOf('F1')).toEqual({ op: 'priority', feature: 'F1', priority: 'P1', kind: 'refused', reason: 'another milestone' });
+    expect(writer.refusalOf('F2')).toBeNull();
+    expect(writer.refusals().size).toBe(1);
+    expect(reloads).toBe(1);
+    expect(priorityShown('F1')).toBe('P3');
+    expect(writer.pending('F1')).toBe(false);
+  });
+
+  it('a 409 keeps a stale refusal for the moved feature, re-reads and keeps the served order', async () => {
+    setup();
+    const outcome = writer.move('ferry', 'F1', 'F2');
+    calls[0]?.answer(stale);
+    expect(await outcome).toBe('stale');
+    expect(writer.refusalOf('F1')).toEqual({ op: 'move', feature: 'F1', priority: null, kind: 'stale' });
+    expect(reloads).toBe(1);
+    expect(ferry1()).toEqual(['F2', 'F1']);
+  });
+
+  it('no answer and any other status settle as failed with the status, like a refusal', async () => {
+    setup();
+    const first = writer.move('ferry', 'F1', 'F2');
+    calls[0]?.answer({ kind: 'error', status: 0 });
+    expect(await first).toBe('error');
+    expect(writer.refusalOf('F1')).toEqual({ op: 'move', feature: 'F1', priority: null, kind: 'failed', status: 0 });
+    const second = writer.priority('ferry', 'F3', 'P2');
+    calls[1]?.answer({ kind: 'error', status: 500 });
+    expect(await second).toBe('error');
+    expect(writer.refusalOf('F3')).toEqual({ op: 'priority', feature: 'F3', priority: 'P2', kind: 'failed', status: 500 });
+    expect(reloads).toBe(2);
+  });
+
+  it('a write without an answer within the timeout settles as failed with status 0 and frees the held row', async () => {
+    setup(MODEL, 20);
+    const outcome = writer.move('ferry', 'F1', 'F2');
+    expect(writer.pending('F1')).toBe(true);
+    expect(await outcome).toBe('error');
+    expect(writer.refusalOf('F1')).toEqual({ op: 'move', feature: 'F1', priority: null, kind: 'failed', status: 0 });
+    expect(writer.pending('F1')).toBe(false);
+    expect(writer.busy()).toBe(false);
+    expect(reloads).toBe(1);
+    // The late answer changes nothing shown: no overlay, the refusal stands, the tree re-reads once more.
+    calls[0]?.answer(written(H1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ferry1()).toEqual(['F2', 'F1']);
+    expect(writer.refusalOf('F1')?.kind).toBe('failed');
+    expect(reloads).toBe(2);
+  });
+
+  it("the ✕ and the next write of the feature close its refusal; another feature's write and a 200 leave none behind", async () => {
+    setup();
+    const first = writer.move('ferry', 'F1', 'F2');
+    calls[0]?.answer(refused);
+    await first;
+    const other = writer.priority('ferry', 'F3', 'P1');
+    expect(writer.refusalOf('F1')?.kind).toBe('refused');
+    calls[1]?.answer(written(H1));
+    await other;
+    expect(writer.refusalOf('F3')).toBeNull();
+    expect(writer.refusalOf('F1')?.kind).toBe('refused');
+    writer.dismiss('F1');
+    expect(writer.refusalOf('F1')).toBeNull();
+    const again = writer.move('ferry', 'F1', 'F2');
+    calls[2]?.answer(stale);
+    await again;
+    expect(writer.refusalOf('F1')?.kind).toBe('stale');
+    const next = writer.move('ferry', 'F1', null);
+    expect(writer.refusalOf('F1')).toBeNull();
+    calls[3]?.answer(written(H2));
+    await next;
+    expect(writer.refusalOf('F1')).toBeNull();
   });
 });

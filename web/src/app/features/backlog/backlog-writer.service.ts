@@ -1,10 +1,25 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import type { Priority } from '../../../../../core/src/files';
 import type { PlanningModel } from '../../../../../core/src/planning';
 import { ApiClient, type BacklogOp } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import type { BacklogRefusal } from '../../shared/ui/refusal-notice/refusal';
 import { featureOrder } from './backlog-order';
+
+export type { BacklogRefusal };
+
+/**
+ * How long a backlog write may go unanswered, in ms, before the writer settles it as `failed` with status 0 (T20,
+ * ISC-198; plan 037 § Risks): the held row must never stay `aria-busy` for good. Tests provide a shorter one.
+ */
+export const BACKLOG_WRITE_TIMEOUT = new InjectionToken<number>('BACKLOG_WRITE_TIMEOUT', { providedIn: 'root', factory: () => 10_000 });
+
+/** The race marker of a write that did not answer within `BACKLOG_WRITE_TIMEOUT`. */
+const TIMED_OUT = Symbol('timed-out');
+
+/** What a refusal says beyond its write: core's phrase, stale, or the status. */
+type RefusalDetail = { readonly kind: 'refused'; readonly reason: string } | { readonly kind: 'stale' } | { readonly kind: 'failed'; readonly status: number };
 
 /**
  * What one backlog write came to (spec 037): `written` on a 200, `refused` on a 422 (`BacklogRefused`), `stale` on a
@@ -96,14 +111,42 @@ export function withBacklog<M extends PlanningModel>(model: M, ops: readonly Bac
  *   dashed, `aria-busy`) and a second write for that feature is refused locally, without a request.
  * - **200:** the write joins the overlay (`model`), so the new order or priority shows at once, and the planning tree
  *   reloads; the overlay goes inert once the reloaded tree carries the written hash, or any other.
- * - **409, 422, anything else:** the planning tree reloads and nothing anticipated stays: the held op is gone and the
- *   feature's overlay shows nothing more. The notice per feature is T20's (`settle`).
+ * - **409, 422, anything else, no answer within `BACKLOG_WRITE_TIMEOUT`:** the planning tree reloads and nothing
+ *   anticipated stays: the held op is gone and the feature's overlay shows nothing more. The feature keeps a
+ *   `BacklogRefusal` (T20, ISC-198) for `app-refusal-notice`: `refused` with core's phrase (422, fail tone), `stale`
+ *   (409, warning tone), `failed` with the status (fail tone). The ✕ (`dismiss`) and the next write sent for that
+ *   feature close it; refusals belong to the workspace they were earned in.
  */
 @Injectable({ providedIn: 'root' })
 export class BacklogWriter {
   private readonly api = inject(ApiClient);
   private readonly data = inject(ShellData);
   private readonly state = inject(ShellState);
+  private readonly timeout = inject(BACKLOG_WRITE_TIMEOUT);
+
+  /** The refusals with the workspace they were earned in; another workspace shows none of them. */
+  private readonly stored = signal<{ readonly ws: string; readonly all: ReadonlyMap<string, BacklogRefusal> }>({ ws: '', all: new Map() });
+
+  /** The refusal per feature of the current workspace (ISC-198); empty while every write was accepted or dismissed. */
+  readonly refusals = computed<ReadonlyMap<string, BacklogRefusal>>(() => {
+    const stored = this.stored();
+    return stored.ws === this.state.ws() ? stored.all : new Map();
+  });
+
+  /** The feature's standing refusal, null when none stands. */
+  refusalOf(feature: string): BacklogRefusal | null {
+    return this.refusals().get(feature) ?? null;
+  }
+
+  /** The notice's ✕: forget the feature's refusal. */
+  dismiss(feature: string): void {
+    if (!this.stored().all.has(feature)) return;
+    this.stored.update(({ ws, all }) => {
+      const next = new Map(all);
+      next.delete(feature);
+      return { ws, all: next };
+    });
+  }
 
   /** The op in flight per feature (the held move); empty while no write is pending. */
   readonly held = signal<ReadonlyMap<string, BacklogOp>>(new Map());
@@ -153,10 +196,19 @@ export class BacklogWriter {
     if (served === undefined || ws !== this.state.ws() || this.busy()) return 'error';
     const sent = this.live().at(-1)?.written ?? served;
     this.held.update((all) => new Map(all).set(op.feature, op));
-    const result = await this.api.backlog(ws, op, sent);
+    // The next write sent for a feature closes its notice (design 037: "✕ und die nächste Bewegung schliessen").
+    this.dismiss(op.feature);
+    const call = this.api.backlog(ws, op, sent);
+    const result = await this.answerOf(call);
     this.release(op.feature);
-    if (result.kind === 'error') return this.settle(op.feature, 'error');
+    if (result === TIMED_OUT) {
+      // A late answer re-reads the tree once more: whatever the route did, the served tree is the truth.
+      void call.then(() => this.data.planning.reload());
+      return this.settle(ws, op, { kind: 'failed', status: 0 }, 'error');
+    }
+    if (result.kind === 'error') return this.settle(ws, op, { kind: 'failed', status: result.status }, 'error');
     const answer = result.answer;
+    const status: number = answer.status;
     switch (answer.status) {
       case 200:
         // Writes the served tree already shows are dropped here, outside the computed.
@@ -164,11 +216,24 @@ export class BacklogWriter {
         this.data.planning.reload();
         return 'written';
       case 409:
-        return this.settle(op.feature, 'stale');
+        return this.settle(ws, op, { kind: 'stale' }, 'stale');
       case 422:
-        return this.settle(op.feature, 'refused');
+        return this.settle(ws, op, { kind: 'refused', reason: answer.body.reason }, 'refused');
       default:
-        return this.settle(op.feature, 'error');
+        return this.settle(ws, op, { kind: 'failed', status }, 'error');
+    }
+  }
+
+  /** The route's answer, or `TIMED_OUT` once `BACKLOG_WRITE_TIMEOUT` has passed without one. */
+  private async answerOf<T>(call: Promise<T>): Promise<T | typeof TIMED_OUT> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expired = new Promise<typeof TIMED_OUT>((resolve) => {
+      timer = setTimeout(() => resolve(TIMED_OUT), this.timeout);
+    });
+    try {
+      return await Promise.race([call, expired]);
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -181,11 +246,14 @@ export class BacklogWriter {
   }
 
   /**
-   * A write that was not accepted: the feature's overlay shows nothing more and the planning tree reloads, so the row
-   * stands at its re-read place. The seam of T20 (ISC-198), which keeps the refusal per feature here.
+   * A write that was not accepted (T20, ISC-198): the feature's overlay shows nothing more, the planning tree reloads,
+   * so the row stands at its re-read place, and the feature keeps the refusal for its notice.
    */
-  private settle(feature: string, outcome: Exclude<BacklogOutcome, 'written'>): BacklogOutcome {
+  private settle(ws: string, op: BacklogOp, detail: RefusalDetail, outcome: Exclude<BacklogOutcome, 'written'>): BacklogOutcome {
+    const feature = op.feature;
     this.accepted.update((all) => all.map((write) => (write.op.feature === feature ? { ...write, shown: false } : write)));
+    const refusal: BacklogRefusal = { op: op.op, feature, priority: op.op === 'priority' ? op.priority : null, ...detail };
+    this.stored.update((stored) => ({ ws, all: new Map(stored.ws === ws ? stored.all : []).set(feature, refusal) }));
     this.data.planning.reload();
     return outcome;
   }

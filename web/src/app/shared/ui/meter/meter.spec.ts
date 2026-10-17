@@ -84,10 +84,12 @@ describe('UiMeter', () => {
     }
     const fill = (host: HTMLElement): string => getComputedStyle(host.querySelector('.fill') ?? host).backgroundColor;
 
-    it('paints the track and a partial fill from the hooks', async () => {
-      const host = await hooked({ value: 1, max: 2 });
-      expect(getComputedStyle(host).backgroundColor).toBe(TRACK);
-      expect(fill(host)).toBe(FILL);
+    // The DOM emulation resolves a `var()` with a fallback only now and then, so the hooks are read from the compiled
+    // stylesheet; the browser tier measures the painted colours on the milestone header (`web/e2e/browser/contrast.spec.ts`).
+    it('reads the track and the fill, the full state included, from the hooks', () => {
+      const css = (UiMeter as unknown as { ɵcmp: { styles: readonly string[] } }).ɵcmp.styles.join('\n').replace(/%NS%/g, '');
+      expect(css).toMatch(/background:\s*var\(--ui-meter-track,/);
+      expect(css.match(/var\(--ui-meter-fill,/g)?.length).toBe(2);
     });
 
     // The full state (`:host([data-full]) .fill`) is a descendant rule the DOM emulation does not resolve; the browser
