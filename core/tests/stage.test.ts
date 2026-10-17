@@ -662,6 +662,8 @@ const WALK: Readonly<Record<string, readonly Walked[]>> = {
     ['specs/003-escalation-chains', 'plan', '/spec-plan 003', 'a feature spec needs plan.md and it is missing'],
   ],
   'spectant-001': [['specs/001-app-skeleton', 'review', '/spec-review 001', 'the reviewed mark is missing']],
+  // Spec 036: the backlog tree holds a master and specs/backlog.md, no spec folder.
+  'backlog-ranks': [],
 };
 
 interface SpecPageGolden {

@@ -43,8 +43,8 @@ const planning = (milestones: readonly Milestone[]): PlanningBody => ({
   stageCounts: {},
   ideas: [],
   features: [
-    { ideas: [], id: 'F0', name: 'Cross-cutting', why: null, closed: 0, total: 4, claims: [], holders: [], unheld: ['ISC-4'] },
-    { ideas: [], id: 'F2', name: 'Web console', why: null, closed: 25, total: 30, claims: [], holders: [HOLDER], unheld: [] },
+    { ideas: [], id: 'F0', name: 'Cross-cutting', rank: 1, priority: 'P3', why: null, closed: 0, total: 4, claims: [], holders: [], unheld: ['ISC-4'] },
+    { ideas: [], id: 'F2', name: 'Web console', rank: 2, priority: 'P3', why: null, closed: 25, total: 30, claims: [], holders: [HOLDER], unheld: [] },
   ],
   milestones,
   recount: { closed: 25, total: 34 },

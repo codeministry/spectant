@@ -115,6 +115,8 @@
       "id": "F40",
       "name": "Installable as a PWA",
       "why": null,
+      "rank": 1,
+      "priority": "P3",
       "closed": 9,
       "total": 10,
       "claims": [
@@ -212,6 +214,8 @@
       "id": "F41",
       "name": "The debt behind v0.5.0 is paid down without a change in behaviour",
       "why": null,
+      "rank": 2,
+      "priority": "P3",
       "closed": 14,
       "total": 14,
       "claims": [
@@ -344,6 +348,8 @@
       "id": "F50",
       "name": "Chat turn status, bulk delete, and the cited row in view",
       "why": null,
+      "rank": 3,
+      "priority": "P3",
       "closed": 8,
       "total": 8,
       "claims": [

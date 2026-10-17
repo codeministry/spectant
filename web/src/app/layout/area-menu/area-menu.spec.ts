@@ -75,6 +75,8 @@ const feature = (id: string, closed: number, total: number): PlanningBody['featu
   ideas: [],
   id,
   name: `Feature ${id}`,
+  rank: 1,
+  priority: 'P3',
   why: null,
   closed,
   total,

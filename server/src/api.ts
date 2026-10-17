@@ -60,6 +60,11 @@
  * (400, 404 unknown story, 409 stale story, 422 refused, 200). The lock source is `options.lifeos`'s, as on the reads;
  * the clock is `options.now`.
  *
+ * The backlog route (spec 036, ISC-191): `POST /api/workspaces/:ws/backlog` → `BacklogWritten`, matched by the same
+ * `matchWorkspacePath` with the allocation's guard order (403, 405 with `Allow: POST`, 404 unknown workspace, 409 with
+ * the summary when the folder cannot be read), otherwise `backlog-route.ts` (400, 409 stale backlog, 422 refused, 200).
+ * No lock source is read. The planning route serves `backlogHash` from the same raw bytes the write compares.
+ *
  * The library catalog (spec 017 T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, matched by
  * the same `matchWorkspacePath` with the planning route's guard order and statuses (403, 405 with `allowForWorkspace`,
  * 404 unknown workspace, 409 with the summary when the folder cannot be read). It answers core's `readCatalog` through
@@ -109,6 +114,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
+import { backlogAnswer } from "./backlog-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
 import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { catalogSourceOf } from "../../core/src/library.ts";
@@ -418,6 +424,9 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const reading = await read(workspace.path);
     if (!reading.readable) return json(req, 409, summary(workspace, reading));
     const { master, specs, archived, constitution } = reading.input;
+    // The feature backlog (spec 036): text and hash from one read of the bytes, so the hash the client sends back with
+    // a backlog write is the hash of the order it rendered; the hash of the empty text without the file.
+    const backlogBytes = readBytesIfExists(repoFilePath(workspace.path, "backlog"));
     const model: WorkspaceRouteResponses["planning"] = buildPlanning({
       master,
       specs,
@@ -428,6 +437,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       specStates: specStatesOf(workspace.path, reading),
       // The Diagram lens's arrows (spec 025, ISC-170.1): the edges as the dashboard resolves them.
       specEdges: resolveEdges({ specs, archived, constitution }, reading.mergeState).edges,
+      backlog: backlogBytes === null ? null : backlogBytes.toString("utf8"),
+      backlogHash: rawSha256(backlogBytes ?? ""),
     });
     return json(req, 200, model);
   };
@@ -643,6 +654,22 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
   };
 
+  // The backlog write (spec 036): the route layer's 404 and 409 here, everything else in `backlog-route.ts`.
+  const backlog = async (req: Request, slug: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const root = workspace.path;
+    const unreadable = workspaceUnreadable(root);
+    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
+    try {
+      const answer = await backlogAnswer({ root, now: clock(), text: await req.text() });
+      return json(req, answer.status, answer.body);
+    } catch (error) {
+      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
+      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+    }
+  };
+
   return (req, url) => {
     const { pathname } = url;
     const match = DASHBOARD_PATH.exec(pathname);
@@ -657,6 +684,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (workspaceRoute?.route === "allocate") {
       if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("allocate") });
       return allocate(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
+    }
+    if (workspaceRoute?.route === "backlog") {
+      if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("backlog") });
+      return backlog(req, workspaceRoute.params.ws);
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
       const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : ALLOW;

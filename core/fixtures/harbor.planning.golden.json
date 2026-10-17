@@ -115,6 +115,8 @@
       "id": "F0",
       "name": "Cross-cutting",
       "why": "what would sink Harbor whichever feature slipped — a half-written manifest, a silent failure or a leaked credential.",
+      "rank": 1,
+      "priority": "P3",
       "closed": 0,
       "total": 4,
       "claims": [
@@ -177,6 +179,8 @@
       "id": "F1",
       "name": "Manifest sync",
       "why": "one command mirrors every manifest a team depends on into its own registry, and running it again changes nothing.",
+      "rank": 2,
+      "priority": "P3",
       "closed": 46,
       "total": 46,
       "claims": [
@@ -526,6 +530,8 @@
       "id": "F2",
       "name": "Web console",
       "why": "a teammate who never touches the CLI can see what was mirrored, when, and what failed.",
+      "rank": 3,
+      "priority": "P3",
       "closed": 25,
       "total": 30,
       "claims": [
@@ -778,6 +784,8 @@
       "id": "F3",
       "name": "Config loader rewrite",
       "why": "the CLI, the API and the console read one config through one loader, so a setting means the same thing everywhere.",
+      "rank": 4,
+      "priority": "P3",
       "closed": 0,
       "total": 14,
       "claims": [
@@ -917,6 +925,8 @@
       "id": "F4",
       "name": "Retention policies",
       "why": "old manifests go away on a schedule the team wrote down, and nothing still in use ever does.",
+      "rank": 5,
+      "priority": "P3",
       "closed": 30,
       "total": 30,
       "claims": [
@@ -1154,6 +1164,8 @@
       "id": "F5",
       "name": "Mirror credentials",
       "why": "the token Harbor pushes with can be replaced without stopping a scheduled sync.",
+      "rank": 6,
+      "priority": "P3",
       "closed": 2,
       "total": 2,
       "claims": [
@@ -1195,6 +1207,8 @@
       "id": "F6",
       "name": "Registry compatibility",
       "why": "Harbor lists a registry as supported only after a spike has checked it, so a team knows before its first sync what will work.",
+      "rank": 7,
+      "priority": "P3",
       "closed": 3,
       "total": 4,
       "claims": [
@@ -1274,6 +1288,8 @@
       "id": "F7",
       "name": "Registry webhooks",
       "why": "a mirror that reacts when an upstream tag moves, instead of waiting for the next scheduled run.",
+      "rank": 8,
+      "priority": "P3",
       "closed": 0,
       "total": 0,
       "claims": [],

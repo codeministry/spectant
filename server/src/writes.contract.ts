@@ -34,8 +34,11 @@
  * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` |
  * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
  * | allocate | `POST …/ideas/:slug/allocate` (T87) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
+ * | backlog | `POST …/:ws/backlog` (spec 036) | raw `specs/backlog.md`, `PlanningModel.backlogHash` | `BacklogWritten` | `StaleBacklog` | `BacklogRefused` | — |
  *
- * These four are every write the app makes on a user's action. The feature-level code-review mark
+ * These five are every write the app makes on a user's action. The backlog write, the seventh write path, reads no lock
+ * source and never answers 423 (`WRITE_TABLE.backlog.locked` is null): `specs/backlog.md` belongs to no spec, and no
+ * agent writes it. The feature-level code-review mark
  * (`.gates/code-reviewed.json` in each folder of a main feature, plus one event line each) is the fifth write path,
  * `WRITE_PATHS.codeReviewFeature`, but it has no route: the skill triggers it through the CLI (`spectant gate
  * code-reviewed F<n>`, T93, `feature-gate.ts`), never the UI, so it is not in this table. The token measurement
@@ -54,6 +57,7 @@
  * therefore declared here, pinned equal to gates.ts' own by `tests/writes.contract.test.ts`, so the web client imports
  * `writeAnswerOf` directly (spec 008, T111).
  */
+import { parseActor } from '../../core/src/actor.ts';
 import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
 import type { ClaimLock, EventLine, LockSource } from '../../core/src/files.ts';
@@ -71,6 +75,8 @@ import {
 import type {
   AllocateRefused,
   ApiError,
+  BacklogRefused,
+  BacklogWritten,
   Conflict,
   GateReviewedRequest,
   GateReviewedResponse,
@@ -129,11 +135,14 @@ export const EVENTS_PATH = FILE_KINDS.events.path;
 export const TASKS_PATH = FILE_KINDS.tasks.path;
 export const SPEC_PATH = FILE_KINDS.spec.path;
 export const CONTEXT_PATH = FILE_KINDS.context.path;
+/** The backlog and its event log, relative to the repository root (spec 036). */
+export const BACKLOG_PATH = FILE_KINDS.backlog.repoPath ?? '';
+export const BACKLOG_EVENTS_PATH = FILE_KINDS.backlogEvents.repoPath ?? '';
 
 // ─── The four app writes (spec 008, T81) ─────────────────────────────────────────────────────────────────────────
 
-/** Every write the app makes on a user's action, in table order; the first two are `WRITE_ROUTES`. */
-export const WRITE_OPERATIONS = ['gateReviewed', 'taskCheck', 'transition', 'allocate'] as const;
+/** Every write the app makes on a user's action, in table order; the first three are `WRITE_ROUTES`. */
+export const WRITE_OPERATIONS = ['gateReviewed', 'taskCheck', 'transition', 'allocate', 'backlog'] as const;
 export type WriteOperation = (typeof WRITE_OPERATIONS)[number];
 
 export interface WriteTableEntry {
@@ -142,11 +151,14 @@ export interface WriteTableEntry {
   /** `normalised` by `hashForGate` (the reviewed mark), or `raw` file bytes. */
   readonly hash: 'normalised' | 'raw';
   /** The 409 body, by type name: `hash-mismatch` with `files` and `expected`, nothing written. */
-  readonly conflict: 'StaleGate' | 'StaleTasks' | 'StaleSpec' | 'StaleIdea';
+  readonly conflict: 'StaleGate' | 'StaleTasks' | 'StaleSpec' | 'StaleIdea' | 'StaleBacklog';
   /** The 422 body, by type name; null for a write the workflow never refuses. */
-  readonly refused: 'TransitionRefused' | 'AllocateRefused' | null;
-  /** The 423 body, by type name: the same `{error: 'locked', lock}` for every write. */
-  readonly locked: 'Locked';
+  readonly refused: 'TransitionRefused' | 'AllocateRefused' | 'BacklogRefused' | null;
+  /**
+   * The 423 body, by type name: the same `{error: 'locked', lock}` for every write that reads the lock sources; null for
+   * the backlog write, which reads none (spec 036).
+   */
+  readonly locked: 'Locked' | null;
   /**
    * True while its route is registered and served (`SPEC_ROUTE_TABLE`, or `WORKSPACE_ROUTE_TABLE` for `allocate`);
    * false while its route has no handler (every one has since T87).
@@ -159,12 +171,13 @@ export interface WriteTableEntry {
   readonly root: 'source' | 'main';
 }
 
-/** The four writes with their hash, 409, 422 and 423 forms and the root their paths resolve against (the header's table). */
+/** The five writes with their hash, 409, 422 and 423 forms and the root their paths resolve against (the header's table). */
 export const WRITE_TABLE = {
   gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true, root: 'source' },
   taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true, root: 'source' },
   transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true, root: 'source' },
   allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: true, root: 'main' },
+  backlog: { hashFrom: 'PlanningModel.backlogHash', hash: 'raw', conflict: 'StaleBacklog', refused: 'BacklogRefused', locked: null, registered: true, root: 'main' },
 } as const satisfies Record<WriteOperation, WriteTableEntry>;
 
 /**
@@ -204,6 +217,9 @@ export const WRITE_PATHS = {
   // The sixth path (spec 009): the repository's token measurement, rewritten in place only by `spectant tokens --yes`
   // (`tokens-cli.ts`), which takes its target from here. No HTTP write, so no `WriteOperation` and no `WRITE_TABLE` row.
   tokens: { writes: [FILE_KINDS.tokens.repoPath ?? ''], removes: [], creates: null },
+  // The seventh path (spec 036): the feature backlog, rewritten in place, and its event log, appended, by the backlog
+  // route (`writeBacklog`). Once per repository, at the main checkout; it creates no directory.
+  backlog: { writes: [BACKLOG_PATH, BACKLOG_EVENTS_PATH], removes: [], creates: null },
 } as const satisfies Record<WriteOperation | 'codeReviewFeature' | 'tokens', WritePaths>;
 
 /** `WRITE_PATHS[op]` for one spec folder (`NNN-slug`) and, for `allocate`, the story's slug. */
@@ -340,6 +356,12 @@ export interface StaleSpec extends Conflict<{ readonly spec: string }> {
   readonly expected: { readonly spec: string };
 }
 
+/** 409 of the backlog write: `specs/backlog.md` changed since render; its raw hash now. Nothing was written. */
+export interface StaleBacklog extends Conflict<{ readonly backlog: string }> {
+  readonly files: readonly ['specs/backlog.md'];
+  readonly expected: { readonly backlog: string };
+}
+
 /** 409 of the allocation: the story file changed since render; its path and raw hash now. Nothing was written. */
 export interface StaleIdea extends Conflict<{ readonly idea: string }> {
   readonly files: readonly [string];
@@ -351,6 +373,7 @@ export interface WriteOk {
   taskCheck: TaskCheckWritten;
   transition: TransitionWritten;
   allocate: IdeaAllocated;
+  backlog: BacklogWritten;
 }
 
 export interface WriteStale {
@@ -358,17 +381,20 @@ export interface WriteStale {
   taskCheck: StaleTasks;
   transition: StaleSpec;
   allocate: StaleIdea;
+  backlog: StaleBacklog;
 }
 
-/** The 422 of the two writes the workflow or the index may refuse. */
+/** The 422 of the three writes the workflow, the index or the backlog's rules may refuse. */
 export interface WriteRefused {
   transition: TransitionRefused;
   allocate: AllocateRefused;
+  backlog: BacklogRefused;
 }
 
 /**
  * Every answer a write's own logic gives, by status. A `switch (answer.status)` needs no default; the 422 arm exists
- * only for a refusable write, so `WriteAnswer<WriteRoute>` carries it for the transition alone.
+ * only for a refusable write, so `WriteAnswer<WriteRoute>` carries it for the transition alone. The 423 arm stays on
+ * the backlog write's type for `runWrite`'s sake, but `writeBacklog` never answers it and `writeAnswerOf` never fits it.
  */
 export type WriteAnswer<R extends WriteOperation> =
   | { readonly status: 200; readonly body: WriteOk[R] }
@@ -403,6 +429,11 @@ export function ideaConflict(path: string, sent: string, now: string): StaleIdea
   return sent === now ? null : { error: 'hash-mismatch', files: [path], expected: { idea: now } };
 }
 
+/** The backlog write's 409 (raw `specs/backlog.md` hashes), or null when they match. */
+export function backlogConflict(sent: string, now: string): StaleBacklog | null {
+  return sent === now ? null : { error: 'hash-mismatch', files: ['specs/backlog.md'], expected: { backlog: now } };
+}
+
 /**
  * The 423 for the locks held on this spec's claims (the live reading's `locks`), or null when none is held. Any lock
  * blocks either write; the answer names the lock on `claim` (the task's claim; null for the gate) first, then a
@@ -431,9 +462,9 @@ const HEX64 = /^[0-9a-f]{64}$/;
  * `noPropertyAccessFromIndexSignature` admits the dot access this file uses (T111).
  */
 type RecKey =
-  | 'at' | 'checked' | 'claim' | 'command' | 'error' | 'event' | 'expected' | 'files' | 'folder' | 'from' | 'hash'
-  | 'hashes' | 'id' | 'idea' | 'line' | 'lock' | 'lockSource' | 'number' | 'reason' | 'removed' | 'session' | 'since'
-  | 'source' | 'spec' | 'task' | 'tasks' | 'text' | 'to';
+  | 'actor' | 'at' | 'backlog' | 'checked' | 'claim' | 'command' | 'error' | 'event' | 'expected' | 'feature' | 'files'
+  | 'folder' | 'from' | 'hash' | 'hashes' | 'id' | 'idea' | 'kind' | 'line' | 'lock' | 'lockSource' | 'number' | 'reason'
+  | 'removed' | 'session' | 'since' | 'source' | 'spec' | 'task' | 'tasks' | 'text' | 'to' | 'ts';
 type Rec = Partial<Record<RecKey, unknown>>;
 const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isHex = (v: unknown): boolean => typeof v === 'string' && HEX64.test(v);
@@ -489,7 +520,22 @@ function isAllocated(b: Rec): boolean {
   return Array.isArray(files) && files.length === expected.length && expected.every((path, i) => files[i] === path);
 }
 
+const PRIORITIES: readonly unknown[] = ['P1', 'P2', 'P3', 'P4'];
+
+/** The backlog write's event (core's `BacklogEvent`): its six keys in order, an actor of the grammar, ranks or priorities. */
+function isBacklogEvent(v: unknown): boolean {
+  if (!isRec(v)) return false;
+  const keys = ['ts', 'actor', 'kind', 'feature', 'from', 'to'];
+  if (Object.keys(v).join() !== keys.join()) return false;
+  if (typeof v.ts !== 'string' || Number.isNaN(Date.parse(v.ts)) || typeof v.feature !== 'string') return false;
+  if (typeof v.actor !== 'string' || parseActor(v.actor).legacy) return false;
+  const rank = (n: unknown): boolean => Number.isInteger(n) && (n as number) >= 1;
+  if (v.kind === 'move') return rank(v.from) && rank(v.to);
+  return v.kind === 'priority' && PRIORITIES.includes(v.from) && PRIORITIES.includes(v.to);
+}
+
 function isOk(route: WriteOperation, b: Rec): boolean {
+  if (route === 'backlog') return isHex(b.hash) && isBacklogEvent(b.event);
   if (!isLockSource(b.lockSource)) return false;
   if (route === 'gateReviewed') return typeof b.at === 'string' && isHashes(b.hashes) && isReviewedEvent(b.event);
   if (route === 'transition') return isStage(b.from) && isStage(b.to) && isHex(b.hash) && isTransitionEvent(b.event, b.from, b.to);
@@ -511,6 +557,7 @@ function isStale(route: WriteOperation, b: Rec): boolean {
   if (b.error !== 'hash-mismatch' || !isRec(b.expected) || !Array.isArray(b.files)) return false;
   const files = b.files as unknown[];
   if (route === 'allocate') return files.length === 1 && isStoryPath(files[0]) && isHex(b.expected.idea);
+  if (route === 'backlog') return files.length === 1 && files[0] === BACKLOG_PATH && isHex(b.expected.backlog);
   if (!isFileList(files)) return false;
   if (route === 'gateReviewed') return isHashes(b.expected);
   if (route === 'transition') return files.length === 1 && files[0] === SPEC_PATH && isHex(b.expected.spec);
@@ -518,10 +565,11 @@ function isStale(route: WriteOperation, b: Rec): boolean {
 }
 
 /**
- * The two 422s: the transition's (the stage row's phrase and the command that would make the move, or null) and the
+ * The three 422s: the backlog write's (core's reason phrase), the transition's (the stage row's phrase and the command that would make the move, or null) and the
  * allocation's (`folder-exists` or `not-in-index`, with the folder it would create, or null).
  */
 function isRefused(route: WriteOperation, b: Rec): boolean {
+  if (route === 'backlog') return b.error === 'backlog-refused' && typeof b.reason === 'string';
   if (route === 'transition') {
     return b.error === 'transition-refused' && typeof b.reason === 'string' && (b.command === null || typeof b.command === 'string');
   }
@@ -535,8 +583,9 @@ function isRefused(route: WriteOperation, b: Rec): boolean {
 
 /**
  * The answer typed by its status when the body fits it; null for any other status or a body that does not fit. It
- * covers the four app writes (`WriteOperation`): the three spec routes and, since T111, the allocation, so the web
- * client validates every write answer here and nowhere else.
+ * covers the five app writes (`WriteOperation`): the three spec routes and, since T111, the allocation, and since spec
+ * 036 the backlog write, so the web client validates every write answer here and nowhere else. The backlog write has no
+ * 423, so a 423 body never fits it.
  */
 export function writeAnswerOf<R extends WriteOperation>(route: R, status: number, body: unknown): WriteAnswer<R> | null {
   if (!isRec(body)) return null;
@@ -545,6 +594,6 @@ export function writeAnswerOf<R extends WriteOperation>(route: R, status: number
     (status === 400 && body.error === 'invalid-body') ||
     (status === 409 && isStale(route, body)) ||
     (status === 422 && isRefused(route, body)) ||
-    (status === 423 && body.error === 'locked' && isClaimLock(body.lock));
+    (status === 423 && route !== 'backlog' && body.error === 'locked' && isClaimLock(body.lock));
   return fits ? ({ status, body } as unknown as WriteAnswer<R>) : null;
 }

@@ -57,7 +57,7 @@ opening a browser, `--port N` to choose the port.
 ## How it works
 
 - spectant reads the Markdown specs (`specs/`) of each registered repository. The files are the only source of truth.
-- It never changes a registered repository, `.git/` included, except along six write paths, each one an action you
+- It never changes a registered repository, `.git/` included, except along seven write paths, each one an action you
   take:
   1. the reviewed mark: `specs/NNN-slug/.gates/reviewed.json` plus one line in `events.jsonl`;
   2. a task checkbox: one line of `tasks.md`;
@@ -68,10 +68,12 @@ opening a browser, `--port N` to choose the port.
      `events.jsonl` per spec of the feature, written by `spectant gate code-reviewed F<n>` on the command line, never
      from the browser;
   6. the token measurement: `specs/tokens.jsonl`, one file per repository, rewritten by `spectant tokens --yes` on the
-     command line, never from the browser (without `--yes` it only prints what it would write).
+     command line, never from the browser (without `--yes` it only prints what it would write);
+  7. the feature backlog: `specs/backlog.md` rewritten with the features' rank and priority, plus one line in
+     `specs/backlog.events.jsonl`, when you reorder features or set a priority in the app or through the API.
 
   A write from the app is checked against the file you saw (a file changed since is refused and left untouched). Every
-  write to a spec is refused while an agent holds an open claim on it. Every write lands in place: no temp file, no
+  write to a spec is refused while an agent holds an open claim on it; the backlog belongs to no spec and checks no claim. Every write lands in place: no temp file, no
   commit, and `.gates/` and the new spec folder are the only directories it may create.
 - It keeps only a workspace registry and your settings in SQLite, in `$XDG_DATA_HOME/spectant` or `~/.spectant/`.
   Deleting that directory loses nothing a repository says.

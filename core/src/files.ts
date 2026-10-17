@@ -38,11 +38,13 @@ export type FileKind =
   | 'master'
   | 'idea'
   | 'workflow'
-  | 'tokens';
+  | 'tokens'
+  | 'backlog'
+  | 'backlogEvents';
 
 /**
  * Where a kind lives: `spec` inside the spec folder, `repo` once per repository outside every spec folder (the
- * constitution, the master, the story files, the workflow table and the token measurement).
+ * constitution, the master, the story files, the workflow table, the token measurement, the feature backlog and its event log).
  */
 export type FileScope = 'spec' | 'repo';
 
@@ -194,18 +196,35 @@ export const FILE_KINDS: Readonly<Record<FileKind, FileKindInfo>> = {
     scope: 'repo',
     repoPath: 'specs/tokens.jsonl',
   },
+  backlog: {
+    path: '../backlog.md',
+    description: 'the feature backlog: one line per feature block of the master, its position the rank, with a priority P1 to P4',
+    required: false,
+    directory: false,
+    scope: 'repo',
+    repoPath: 'specs/backlog.md',
+  },
+  backlogEvents: {
+    path: '../backlog.events.jsonl',
+    description: 'the backlog event log: one JSON line per accepted backlog write {ts, actor, kind, feature, from, to}',
+    required: false,
+    directory: false,
+    scope: 'repo',
+    repoPath: 'specs/backlog.events.jsonl',
+  },
 };
 
 /** The kinds that live once per repository, outside every spec folder. */
-export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow' | 'tokens';
+export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow' | 'tokens' | 'backlog' | 'backlogEvents';
 
 /**
  * The file kinds a spec folder's `SpecFiles.texts` may carry: every kind but the two directories and the repository
- * kinds of specs 008 and 009 (`idea` is a directory of stories, `workflow` one table per repository, `tokens` one
- * measurement per repository; their readers take their own input). `constitution` and `master` stay for the readers
- * that already take them per spec.
+ * kinds of specs 008, 009 and 036 (`idea` is a directory of stories, `workflow` one table per repository, `tokens` one
+ * measurement per repository, `backlog` one ranking and `backlogEvents` its log per repository; their readers take their
+ * own input).
+ * `constitution` and `master` stay for the readers that already take them per spec.
  */
-export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow' | 'tokens'>;
+export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow' | 'tokens' | 'backlog' | 'backlogEvents'>;
 
 /** `base/rel` normalised (`..` resolved), POSIX separators, no trailing slash. */
 function joinPath(base: string, rel: string): string {
@@ -275,6 +294,14 @@ export interface FileDiagnostic {
  * spec whose `milestone:` differs from its main feature's `Milestone:` (both spec 026).
  */
 export type PlanningMilestoneDiagnosticCode = 'spec-milestone-unknown' | 'feature-milestone-unknown' | 'milestone-mismatch';
+
+/**
+ * The backlog codes of the planning tree's `FileDiagnostic` on `specs/backlog.md` (spec 036, ISC-190.1, `backlog.ts`),
+ * each a warning with its line and the offending value as `subject`: `backlog-unknown-feature`, a line naming no
+ * feature block of the master; `backlog-duplicate`, a second line of one feature (the first one counts);
+ * `backlog-priority`, a priority other than `P1` to `P4` (read as `P3`).
+ */
+export type BacklogDiagnosticCode = 'backlog-unknown-feature' | 'backlog-duplicate' | 'backlog-priority';
 
 /** A commit touching the spec folder, as the server's read-only `git log` passes it in (core runs no subprocess). */
 export interface CommitRecord {

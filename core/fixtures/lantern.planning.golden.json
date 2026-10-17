@@ -115,6 +115,8 @@
       "id": "F0",
       "name": "Cross-cutting",
       "why": "what would break the reader's trust whichever feature slipped — data leaving the device or a private detail in the repository.",
+      "rank": 1,
+      "priority": "P3",
       "closed": 0,
       "total": 2,
       "claims": [
@@ -144,6 +146,8 @@
       "id": "F1",
       "name": "Reading list",
       "why": "a link saved once is found again later and can be read without a connection.",
+      "rank": 2,
+      "priority": "P3",
       "closed": 4,
       "total": 10,
       "claims": [

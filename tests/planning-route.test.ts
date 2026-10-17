@@ -9,6 +9,7 @@
 // board's stages come from the dashboard rows of the route's reading, harbor's activity log included; the golden's
 // stages agree with them (no harbor stage depends on a lock).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,11 +33,16 @@ const HOST = { Host: "127.0.0.1:7717" };
 /** The golden file's text, as written (pretty-printed). */
 const goldenText = (tree: string): string => readFileSync(join(FIXTURES, `${tree}.${GOLDEN_FAMILY.planning}.golden.json`), "utf8");
 
+/** Raw sha256 hex, as the server hashes a file it serves for a write. */
+const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
+
 /**
  * The golden as the route sends it: compact JSON. The server passes the story folder (T79), the workflow and each
- * active spec's stage, source and raw spec.md hash (T83), as the golden is built (T64), so nothing is pinned away.
+ * active spec's stage, source and raw spec.md hash (T83), as the golden is built (T64), so nothing is pinned away. The
+ * one field the route adds is `backlogHash` (spec 036), the hash of `specs/backlog.md`, which the goldens are built
+ * without: for a tree without the file, the hash of the empty text.
  */
-const compact = (golden: string): string => JSON.stringify(JSON.parse(golden));
+const compact = (golden: string, backlog = ""): string => JSON.stringify({ ...(JSON.parse(golden) as object), backlogHash: sha256(backlog) });
 
 let root: string;
 const registries: Registry[] = [];
@@ -54,7 +60,7 @@ let api: ApiHandler;
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "spectant-planning-"));
   api = dashboardApi({
-    registry: registryWith(join(FIXTURES, "harbor"), join(FIXTURES, "lantern"), join(FIXTURES, "milestone-lines")),
+    registry: registryWith(join(FIXTURES, "harbor"), join(FIXTURES, "lantern"), join(FIXTURES, "milestone-lines"), join(FIXTURES, "backlog-ranks")),
     services: () => Promise.resolve([]),
     today: () => PLANNING_NOW,
   });
@@ -128,6 +134,25 @@ describe("GET /api/workspaces/:ws/planning", () => {
     const refs = new Set(Object.keys(relations));
     const dangling = Object.values(relations).flatMap((r) => [...r.parents, ...r.children, ...r.blockers].filter((ref) => !refs.has(ref)));
     expect(dangling).toEqual([]);
+  });
+
+  // Spec 036 (ISC-190, T10/T24): the route reads specs/backlog.md, ranks the features by it, and serves the hash of
+  // the bytes it read for the next backlog write.
+  test("backlog-ranks: the golden too, ranked by specs/backlog.md, with the hash of the file's bytes", async () => {
+    const res = await call(workspaceRoutes.planning("backlog-ranks"));
+    expect(res.status).toBe(200);
+    const backlog = readFileSync(join(FIXTURES, "backlog-ranks", "specs", "backlog.md"), "utf8");
+    const text = await res.text();
+    expect(text).toBe(compact(goldenText("backlog-ranks"), backlog));
+    const body = JSON.parse(text) as PlanningModel;
+    expect(body.features.map((f) => [f.id, f.rank, f.priority])).toEqual([
+      ["F2", 1, "P1"],
+      ["F3", 2, "P2"],
+      ["F1", 3, "P3"],
+      ["F4", 4, "P3"],
+      ["F0", 5, "P3"],
+    ]);
+    expect(body.backlogHash).toBe(sha256(backlog));
   });
 
   test("harbor: every spec folder, archived ones marked, active ones with the board's stage, rides the index", async () => {

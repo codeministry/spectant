@@ -20,6 +20,8 @@
 // `dashboard.ts` or `gates.ts`, so the route contract's `import type { PlanningModel }` typechecks in the web tsconfigs
 // without Node types.
 import { assigneeOf } from './assignee.ts';
+import { BACKLOG_FILE, parseBacklog } from './backlog.ts';
+import type { BacklogPriority } from './backlog.ts';
 import { parseClaims } from './claims.ts';
 import type { Claim, FeatureBlock } from './claims.ts';
 import { parseEvents } from './events.ts';
@@ -140,6 +142,13 @@ export interface PlanningFeature {
   readonly name: string;
   /** The block's `Why:` line without the prefix; null when it has none. */
   readonly why: string | null;
+  /**
+   * The block's 1-based global rank in `specs/backlog.md` (spec 036, `parseBacklog`): listed blocks in file order, then
+   * the unlisted ones in master order. Without the file, the block's position in the master.
+   */
+  readonly rank: number;
+  /** The block's priority in `specs/backlog.md`, `P3` when the file names none or does not list the block. */
+  readonly priority: BacklogPriority;
   /** Closed claims of the block, dropped claims excluded. */
   readonly closed: number;
   /** Claims of the block, dropped claims excluded. */
@@ -195,7 +204,7 @@ export interface PlanningMilestone {
   /** Derived from `closed`, `total`, `target` and the input's `now`; see `MilestoneState`. */
   readonly state: MilestoneState;
   /**
-   * The feature blocks whose `Milestone:` line names this entry (spec 026, ISC-166), in master order: the explicit
+   * The feature blocks whose `Milestone:` line names this entry (spec 026, ISC-166), in rank order (spec 036): the explicit
    * assignment, each block under at most one milestone. Empty when no line names it, as in every master without
    * `Milestone:` lines. Where the master carries any line, these blocks are `features` and their sum the progress.
    * `buildPlanning` always sets it; the type leaves it optional only so the web lane's hand-built planning stubs stay
@@ -203,7 +212,7 @@ export interface PlanningMilestone {
    */
   readonly featureIds?: readonly string[];
   /**
-   * The milestone's shares per feature block, in master order: the blocks of `featureIds` where the master carries any
+   * The milestone's shares per feature block, in rank order: the blocks of `featureIds` where the master carries any
    * `Milestone:` line, otherwise the blocks the milestone's specs hold claims of.
    */
   readonly features: readonly PlanningMilestoneFeature[];
@@ -224,13 +233,16 @@ export interface PlanningModel {
    * source of the board's column counts; a spec whose stage is not a column of the board is counted nowhere.
    */
   readonly stageCounts: Readonly<Partial<Record<WorkflowStage, number>>>;
-  /** Every feature block of the master, in master order, never re-sorted by progress. */
+  /**
+   * Every feature block of the master in rank order (`PlanningFeature.rank`, spec 036), which is master order without
+   * `specs/backlog.md`; never re-sorted by progress or by priority.
+   */
   readonly features: readonly PlanningFeature[];
   /** Target date ascending, undated last; empty when the master has no `## Milestones` block. */
   readonly milestones: readonly PlanningMilestone[];
   /**
    * The no-milestone group (spec 026, ISC-166), shown after every milestone: the ids of the feature blocks no
-   * milestone's `featureIds` lists, in master order. A block lands here without a `Milestone:` line, or when its line
+   * milestone's `featureIds` lists, in rank order (spec 036). A block lands here without a `Milestone:` line, or when its line
    * names no valid entry of the `## Milestones` block (an unknown name, or one on a line `parseMilestones` skipped).
    * Every block of `features` is in exactly one milestone's `featureIds` or here; empty without a master. Always set
    * by `buildPlanning`, optional in the type for the same reason as `PlanningMilestone.featureIds`.
@@ -266,6 +278,12 @@ export interface PlanningModel {
    * passed none or an empty list, so a workspace without spec edges serves the body it served before.
    */
   readonly specEdges?: readonly SpecEdge[];
+  /**
+   * `PlanningInput.backlogHash` as the caller passed it (spec 036): the sha256 of `specs/backlog.md` a backlog write
+   * (`POST /api/workspaces/:ws/backlog`) sends back in `X-Spectant-Backlog-Hash`. Absent when the caller passed none, so
+   * a tree built without it, as every fixture golden is, serves the body it served before.
+   */
+  readonly backlogHash?: string;
 }
 
 /**
@@ -309,6 +327,17 @@ export interface PlanningInput {
    * `spec-edge` arrow.
    */
   readonly specEdges?: readonly SpecEdge[];
+  /**
+   * The text of `specs/backlog.md` (spec 036), which ranks the feature blocks and gives each a priority; absent or
+   * null without the file, and every block then stands at its master position with `P3`.
+   */
+  readonly backlog?: string | null;
+  /**
+   * The raw sha256 hex of the `specs/backlog.md` bytes the caller read, the hash of the empty text without the file
+   * (spec 036): the hash a backlog write sends back to be compared, as `PlanningSpecState.hash` is for spec.md. Hashing
+   * is `node:crypto`, so the caller computes it; carried unchanged as `PlanningModel.backlogHash`.
+   */
+  readonly backlogHash?: string;
 }
 
 /** The file every master diagnostic names, as the dashboard names it. */
@@ -382,15 +411,21 @@ interface ResolvedClaim {
   readonly folder: Folder | undefined;
 }
 
-/** A feature block with every claim resolved once, shared by the feature entry and the milestone rows. */
+/**
+ * A feature block with every claim resolved once, shared by the feature entry and the milestone rows, and its place in
+ * the backlog (spec 036).
+ */
 interface ResolvedBlock {
   readonly block: FeatureBlock;
   readonly claims: readonly ResolvedClaim[];
+  readonly rank: number;
+  readonly priority: BacklogPriority;
 }
 
-function resolveBlock(block: FeatureBlock, claimById: ReadonlyMap<string, Claim>, folders: readonly Folder[]): ResolvedBlock {
+function resolveBlock(block: FeatureBlock, claimById: ReadonlyMap<string, Claim>, folders: readonly Folder[], place: { rank: number; priority: BacklogPriority }): ResolvedBlock {
   return {
     block,
+    ...place,
     claims: block.claims.map((id) => {
       const claim = claimById.get(id);
       return {
@@ -408,12 +443,14 @@ function resolveBlock(block: FeatureBlock, claimById: ReadonlyMap<string, Claim>
  * One feature block with each claim resolved to its holding folder, the block's holders and its progress. A folder in
  * `claimless` (no live claim in any block) holds the block its `isa_feature` names with `held` 0 (spec 033, ISC-186).
  */
-function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: readonly Folder[], claimless: ReadonlySet<Folder>, ideas: readonly IdeaRef[]): PlanningFeature {
+function planningFeature({ block, claims: resolved, rank, priority }: ResolvedBlock, folders: readonly Folder[], claimless: ReadonlySet<Folder>, ideas: readonly IdeaRef[]): PlanningFeature {
   const live = resolved.filter((c) => !c.dropped);
   return {
     id: block.id,
     name: block.name,
     why: block.why,
+    rank,
+    priority,
     closed: live.filter((c) => c.closed).length,
     total: live.length,
     claims: resolved.map(({ id, text, closed, dropped, folder }): PlanningClaim => ({ id, text, closed, dropped, holder: folder?.holder.id ?? null })),
@@ -543,12 +580,19 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const specs = folders.map((f) => f.holder);
   if (input.master === null) {
     const relations = buildRelations({ features: [], milestones: [], ideas, specs });
-    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations, ...specEdgesOf(input) };
+    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations, ...specEdgesOf(input), ...backlogHashOf(input) };
   }
   const master = parseClaims(input.master);
   const claimById = new Map<string, Claim>();
   for (const claim of master.claims) if (!claimById.has(claim.id)) claimById.set(claim.id, claim);
-  const blocks = master.features.map((block) => resolveBlock(block, claimById, folders));
+  // Spec 036: the backlog ranks the blocks, and every list of blocks below (features, a milestone's shares and
+  // `featureIds`, the no-milestone group) follows that order. Without the file the rank is the master position, so
+  // the order is the master's. A block id the master repeats takes the rank of its first block.
+  const backlog = parseBacklog(input.backlog ?? null, master.features.map((f) => f.id));
+  const placeOf = new Map(backlog.entries.map((e) => [e.feature, { rank: e.rank, priority: e.priority }]));
+  const blocks = master.features
+    .map((block, i) => resolveBlock(block, claimById, folders, placeOf.get(block.id) ?? { rank: i + 1, priority: 'P3' }))
+    .sort((a, b) => a.rank - b.rank);
   const parsed = parseMilestones(input.master);
   // A name the master lists on a line `parseMilestones` skipped is known but unusable: the master's own warning names the
   // cause, so the spec gets no second warning, and it joins no milestone (`planningMilestone` matches valid entries only).
@@ -624,7 +668,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
     ...board,
     features,
     milestones,
-    unassignedFeatures: master.features.filter((f) => f.milestone === null || !valid.has(f.milestone)).map((f) => f.id),
+    unassignedFeatures: blocks.map(({ block }) => block).filter((f) => f.milestone === null || !valid.has(f.milestone)).map((f) => f.id),
     ideas,
     recount: master.counted,
     diagnostics: [
@@ -635,10 +679,17 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
       ...mismatches,
       ...stories.diagnostics,
       ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
+      ...backlog.diagnostics.map((diagnostic) => ({ file: BACKLOG_FILE, diagnostic })),
     ],
     relations: buildRelations({ features, milestones, ideas, specs, after }),
     ...specEdgesOf(input),
+    ...backlogHashOf(input),
   };
+}
+
+/** `PlanningModel.backlogHash`: the caller's hash of `specs/backlog.md`, absent when it passed none (spec 036). */
+function backlogHashOf(input: PlanningInput): { backlogHash?: string } {
+  return input.backlogHash === undefined ? {} : { backlogHash: input.backlogHash };
 }
 
 /** `PlanningModel.specEdges`: the caller's resolved spec edges, absent when there are none (spec 025, ISC-170.1). */

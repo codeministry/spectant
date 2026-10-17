@@ -56,7 +56,23 @@ export type BoardCore = {
   blockingLock: (locks: readonly ClaimLock[], claim: string | null) => { error: 'locked'; lock: ClaimLock } | null;
   writePathsOf: (op: 'allocate', folder: string, slug: string) => { writes: readonly string[]; removes: readonly string[] };
   VIEWER_ACTOR_FALLBACK: string;
+  /** `server/src/writes.contract.ts` and `core/src/backlog.ts` (spec 036): the backlog write's 409 and its plan. */
+  backlogConflict: (sent: string, now: string) => StaleBody | null;
+  backlogFeatures: (master: string) => ReadonlyArray<{ id: string; milestone: string | null }>;
+  planBacklogMove: (input: BacklogPlanInput & { before: string | null }) => BacklogPlanResult;
+  planBacklogPriority: (input: BacklogPlanInput & { priority: string }) => BacklogPlanResult;
 };
+
+/** What core's backlog planners take (`core/src/backlog.ts`), opaque past the fields the stub passes. */
+type BacklogPlanInput = {
+  text: string | null;
+  features: ReadonlyArray<{ id: string; milestone: string | null }>;
+  feature: string;
+  actor: string;
+  now: Date;
+};
+/** Core's `BacklogPlan`: the new text and its event, or the reason. */
+export type BacklogPlanResult = { ok: true; text: string; event: Readonly<Record<string, unknown>> } | { ok: false; reason: string };
 
 /** A write's 409 `hash-mismatch` (`StaleSpec`, `StaleIdea`): the file named and its raw hash now. */
 export type StaleBody = { error: 'hash-mismatch'; files: readonly string[]; expected: Readonly<Record<string, string>> };
@@ -70,9 +86,10 @@ export function loadBoardCore(): BoardCore {
   const stage = load(join(src, 'stage.ts')) as Pick<BoardCore, 'rowTransitions' | 'defaultWorkflowRow' | 'SPEC_RULES'>;
   const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'writes.contract.ts')) as Pick<
     BoardCore,
-    'specConflict' | 'ideaConflict' | 'blockingLock' | 'writePathsOf' | 'VIEWER_ACTOR_FALLBACK'
+    'specConflict' | 'ideaConflict' | 'blockingLock' | 'writePathsOf' | 'VIEWER_ACTOR_FALLBACK' | 'backlogConflict'
   >;
-  return { ...docs, ...evidence, ...stage, ...writes };
+  const backlog = load(join(src, 'backlog.ts')) as Pick<BoardCore, 'backlogFeatures' | 'planBacklogMove' | 'planBacklogPriority'>;
+  return { ...docs, ...evidence, ...stage, ...writes, ...backlog };
 }
 
 /** One story of the fixture tree: the planning golden's `IdeaRef`, the file's bytes as text, its raw sha256, the page. */

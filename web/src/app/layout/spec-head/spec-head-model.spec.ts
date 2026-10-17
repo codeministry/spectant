@@ -89,6 +89,8 @@ describe('featurePlace (ISC-105)', () => {
     ideas: [],
     id,
     name: id,
+    rank: 1,
+    priority: 'P3',
     why: null,
     closed: 0,
     total: claims.length,

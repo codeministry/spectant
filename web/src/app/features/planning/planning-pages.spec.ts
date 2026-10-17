@@ -40,7 +40,7 @@ const planning = (milestones: readonly Milestone[]): PlanningBody => ({
   stages: [],
   stageCounts: {},
   ideas: [],
-  features: [{ ideas: [], id: 'F2', name: 'Web console', why: null, closed: 2, total: 4, claims: [], holders: [], unheld: [] }],
+  features: [{ ideas: [], id: 'F2', name: 'Web console', rank: 1, priority: 'P3', why: null, closed: 2, total: 4, claims: [], holders: [], unheld: [] }],
   milestones,
   recount: { closed: 2, total: 4 },
   diagnostics: [],

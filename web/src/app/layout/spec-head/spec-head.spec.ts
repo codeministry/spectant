@@ -42,6 +42,8 @@ const feature = (id: string, name: string, holders: readonly Holder[], claims: r
   ideas: [],
   id,
   name,
+  rank: 1,
+  priority: 'P3',
   why: null,
   closed: 0,
   total: claims.length,

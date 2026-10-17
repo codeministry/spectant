@@ -324,14 +324,14 @@ describe("error codes", () => {
   });
 });
 
-describe("the four app writes (spec 008, T81): the table, the paths each may touch, the 409 and 423 forms", () => {
-  test("the table holds the four operations in order; the registered ones are WRITE_ROUTES and the allocation", () => {
-    expect([...WRITE_OPERATIONS]).toEqual(["gateReviewed", "taskCheck", "transition", "allocate"]);
+describe("the five app writes (spec 008, T81; spec 036): the table, the paths each may touch, the 409 and 423 forms", () => {
+  test("the table holds the five operations in order; the registered ones are WRITE_ROUTES, the allocation and the backlog", () => {
+    expect([...WRITE_OPERATIONS]).toEqual(["gateReviewed", "taskCheck", "transition", "allocate", "backlog"]);
     expect(Object.keys(WRITE_TABLE)).toEqual([...WRITE_OPERATIONS]);
     // Widened to boolean: every entry is registered since the allocation landed (T87), so the literal types agree.
     const registered = (op: WriteOperation): boolean => WRITE_TABLE[op].registered;
-    expect(WRITE_OPERATIONS.filter(registered)).toEqual([...WRITE_ROUTES, "allocate"]);
-    expect(WORKSPACE_ROUTE_TABLE.filter((e) => e.method === "POST").map((e): string => e.route)).toEqual(["allocate"]);
+    expect(WRITE_OPERATIONS.filter(registered)).toEqual([...WRITE_ROUTES, "allocate", "backlog"]);
+    expect(WORKSPACE_ROUTE_TABLE.filter((e) => e.method === "POST").map((e): string => e.route)).toEqual(["allocate", "backlog"]);
     expect<readonly string[]>(WRITE_OPERATIONS.filter((op) => !registered(op))).toEqual([]);
   });
 
@@ -345,11 +345,14 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
       ["taskCheck", TASKS_HASH_HEADER, "raw", "StaleTasks", null, "Locked"],
       ["transition", SPEC_HASH_HEADER, "raw", "StaleSpec", "TransitionRefused", "Locked"],
       ["allocate", "IdeaPage.hash", "raw", "StaleIdea", "AllocateRefused", "Locked"],
+      // Spec 036: the backlog reads no lock source, so it has no 423.
+      ["backlog", "PlanningModel.backlogHash", "raw", "StaleBacklog", "BacklogRefused", null],
     ]);
-    // A refusable write lists 422 on its route; the others do not.
+    // A refusable write lists 422 on its route; the others do not. A write without a 423 form lists no 423.
     for (const op of WRITE_OPERATIONS) {
       const statuses = [...SPEC_ROUTE_TABLE, ...WORKSPACE_ROUTE_TABLE].find((e) => e.route === op)?.statuses ?? [];
-      for (const status of [200, 400, 403, 404, 405, 409, 423]) expect({ op, status, listed: statuses.includes(status) }).toEqual({ op, status, listed: true });
+      for (const status of [200, 400, 403, 404, 405, 409]) expect({ op, status, listed: statuses.includes(status) }).toEqual({ op, status, listed: true });
+      expect({ op, locks: statuses.includes(423) }).toEqual({ op, locks: WRITE_TABLE[op].locked !== null });
       expect({ op, refusable: statuses.includes(422) }).toEqual({ op, refusable: WRITE_TABLE[op].refused !== null });
     }
   });
@@ -363,10 +366,13 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
       allocate: { writes: [folder("context"), folder("spec"), folder("events")], removes: [`${FILE_KINDS.idea.repoPath ?? ""}<slug>.md`], creates: "specs/NNN-slug/" },
       codeReviewFeature: { writes: [folder("gateCodeReviewed"), folder("events")], removes: [], creates: "specs/NNN-slug/.gates/" },
       tokens: { writes: [FILE_KINDS.tokens.repoPath ?? ""], removes: [], creates: null },
+      backlog: { writes: [FILE_KINDS.backlog.repoPath ?? "", FILE_KINDS.backlogEvents.repoPath ?? ""], removes: [], creates: null },
     });
-    // The four app writes, then the two CLI-only paths, each without a table row and without a route: the fifth, the
-    // feature-level code-review mark (T93), and the sixth, the token measurement `spectant tokens --yes` writes.
-    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS, "codeReviewFeature", "tokens"]);
+    // The four app writes of spec 008, then the two CLI-only paths, each without a table row and without a route: the
+    // fifth, the feature-level code-review mark (T93), and the sixth, the token measurement `spectant tokens --yes`
+    // writes; then the seventh, the backlog route's (spec 036), which has a row.
+    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS.filter((op) => op !== "backlog"), "codeReviewFeature", "tokens", "backlog"]);
+    expect(WRITE_PATHS.backlog.writes).toEqual(["specs/backlog.md", "specs/backlog.events.jsonl"]);
     expect(Object.keys(WRITE_TABLE)).not.toContain("codeReviewFeature");
     expect(Object.keys(WRITE_TABLE)).not.toContain("tokens");
     expect(WRITE_PATHS.tokens.writes).toEqual(["specs/tokens.jsonl"]);
@@ -413,7 +419,7 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
   });
 
   test("WriteOperation covers the table at compile time", () => {
-    const ops: Record<WriteOperation, true> = { gateReviewed: true, taskCheck: true, transition: true, allocate: true };
+    const ops: Record<WriteOperation, true> = { gateReviewed: true, taskCheck: true, transition: true, allocate: true, backlog: true };
     expect(Object.keys(ops)).toEqual([...WRITE_OPERATIONS]);
   });
 });
@@ -495,7 +501,7 @@ describe("the documents name every write path", () => {
   test("each document counts the write paths as WRITE_PATHS does, and no longer says two exceptions", () => {
     const total = Object.keys(WRITE_PATHS).length;
     const count: string = NUMBER_WORDS[total] ?? String(total);
-    expect(count).toBe("six");
+    expect(count).toBe("seven");
     for (const { name, text } of docs) {
       // Whitespace as Markdown reads it: a phrase may wrap across a line.
       expect({ name, stale: /exactly\s+two\s+exceptions/i.test(text) }).toEqual({ name, stale: false });

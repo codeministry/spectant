@@ -25,7 +25,7 @@ administration. The skill targets Claude Code first and is meant to work with ot
   untracked planning material in the developer's own language; nothing from them is quoted into a tracked file.
 - **Loopback only; nothing leaves the machine.** The server binds 127.0.0.1 or ::1, and no code path calls an
   external host.
-- **Files in registered repositories are read-only for the app, `.git/` included**, except for exactly six write
+- **Files in registered repositories are read-only for the app, `.git/` included**, except for exactly seven write
   paths, each named with every file it may touch in `WRITE_PATHS` (`server/src/writes.contract.ts`):
   1. the reviewed mark: `specs/NNN-slug/.gates/reviewed.json` plus one line in `events.jsonl` (spec 002);
   2. a task checkbox: one line of `tasks.md` (spec 002);
@@ -37,7 +37,9 @@ administration. The skill targets Claude Code first and is meant to work with ot
      `events.jsonl` per spec of the feature, written by the CLI `spectant gate code-reviewed F<n>`, never by a route
      (spec 008);
   6. the token measurement: `specs/tokens.jsonl`, one file per repository, rewritten in place by the CLI
-     `spectant tokens --yes`, never by a route; without `--yes` it writes nothing (spec 009).
+     `spectant tokens --yes`, never by a route; without `--yes` it writes nothing (spec 009);
+  7. the feature backlog: `specs/backlog.md` rewritten in place plus one line in `specs/backlog.events.jsonl`, through
+     the backlog route, under the sha256 check and without a lock check: the file belongs to no spec (spec 036).
 
   `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create, and nothing else in the
   tree changes. How each write is performed and guarded (`server/src/writes.ts`, `tests/readonly.test.ts`) lives in

@@ -266,7 +266,7 @@ const boardQueryErrors: Equal<WorkspaceRouteError<"boardQuery">, NotFound | Forb
 const boardQueryBodies: Equal<[WorkspaceRouteResponses["boardQuery"], WorkspaceRouteRequests["boardQuery"]], [BoardQuery, BoardQuery]> = true;
 const workspaceFamilies: Equal<
   Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>,
-  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
+  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "backlog" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
 > = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
@@ -300,6 +300,7 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   idea: (ws) => workspaceRoutes.idea(ws, "console-audit-log"),
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
+  backlog: (ws) => workspaceRoutes.backlog(ws),
   library: (ws) => workspaceRoutes.library(ws),
   libraryDoc: (ws) => workspaceRoutes.libraryDoc(ws, "001-lighthouse-map/plan.md"),
   librarySearch: (ws) => workspaceRoutes.librarySearch(ws, "beacon"),
@@ -397,17 +398,23 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(matchSpecPath(workspaceRoutes.idea("harbor", "x"))).toBeNull();
   });
 
-  test("the table lists every workspace builder exactly once: the reads GET with the read statuses (the board query its own PUT), allocate POST as a refusable write", () => {
+  test("the table lists every workspace builder exactly once: the reads GET with the read statuses (the board query its own PUT), allocate POST as a refusable write, backlog POST without 423", () => {
     const routes = WORKSPACE_ROUTE_TABLE.map((entry): string => entry.route);
     expect(routes.length).toBe(new Set(routes).size);
     expect([...routes].sort()).toEqual(Object.keys(workspaceRoutes).sort());
     const read = SPEC_ROUTE_TABLE.find((entry) => entry.route === "spec")?.statuses;
     const write = SPEC_ROUTE_TABLE.find((entry) => entry.route === "transition")?.statuses;
     for (const entry of WORKSPACE_ROUTE_TABLE) {
-      expect(entry.method).toBe(entry.route === "allocate" ? "POST" : "GET");
+      expect(entry.method).toBe(entry.route === "allocate" || entry.route === "backlog" ? "POST" : "GET");
       if (entry.method === "GET") expect(entry.request === undefined).toBe(entry.write === undefined);
       expect(entry.statuses).toEqual(
-        entry.route === "allocate" ? (write ?? []) : entry.write === undefined ? (read ?? []) : [200, 304, 400, 403, 404, 405],
+        entry.route === "allocate"
+          ? (write ?? [])
+          : entry.route === "backlog"
+            ? (write ?? []).filter((status) => status !== 423)
+            : entry.write === undefined
+              ? (read ?? [])
+              : [200, 304, 400, 403, 404, 405],
       );
       expect(matchWorkspacePath(new URL(WORKSPACE_ARGS[entry.route]("harbor"), "http://127.0.0.1").pathname)?.route).toBe(entry.route);
     }
@@ -416,6 +423,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["idea", "GET", `${SPEC_API_ROOT}/:ws/ideas/:slug`, null, null, "IdeaPage"],
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
+      ["backlog", "POST", `${SPEC_API_ROOT}/:ws/backlog`, null, "BacklogRequest", "BacklogWritten"],
       ["library", "GET", `${SPEC_API_ROOT}/:ws/library`, null, null, "LibraryCatalog"],
       ["libraryDoc", "GET", `${SPEC_API_ROOT}/:ws/library/doc`, null, null, "LibraryDocPage"],
       ["librarySearch", "GET", `${SPEC_API_ROOT}/:ws/library/search`, null, null, "LibrarySearchResult"],
@@ -473,6 +481,8 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       relations: "opt",
       // Spec 025 (ISC-170.1): the resolved spec edges, absent without any (no golden tree carries one).
       specEdges: "opt",
+      // Spec 036: the hash of specs/backlog.md the route serves for a backlog write, absent from every golden.
+      backlogHash: "opt",
     });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);
@@ -652,7 +662,7 @@ describe("spec 008 bodies (T81): the shared shapes of the writes and resources",
   });
 
   test("the refusal codes are kebab-case and in API_ERRORS", () => {
-    expect([...REFUSAL_ERRORS]).toEqual(["transition-refused", "allocate-refused"]);
+    expect([...REFUSAL_ERRORS]).toEqual(["transition-refused", "allocate-refused", "backlog-refused"]);
     for (const code of REFUSAL_ERRORS) {
       expect(code).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
       expect(API_ERRORS as readonly string[]).toContain(code);
