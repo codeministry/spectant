@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { PlanningModel } from '../../../../../../core/src/planning';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../../core/src/relations';
+import backlogRanks from '../../../../../../core/fixtures/backlog-ranks.planning.golden.json';
 import emptyMaster from '../../../../../../core/fixtures/empty-master.planning.golden.json';
 import harbor from '../../../../../../core/fixtures/harbor.planning.golden.json';
 import lantern from '../../../../../../core/fixtures/lantern.planning.golden.json';
@@ -325,7 +326,7 @@ describe('planning-tree milestone header', () => {
     el.querySelector<HTMLButtonElement>('[data-expand-all]')?.click();
     await stable();
     const order = (row: HTMLElement): string[] =>
-      [...row.children].map((child) => ['chev', 'main', 'num', 'bar', 'guides'].find((name) => child.classList.contains(name)) ?? child.tagName.toLowerCase());
+      [...row.children].map((child) => ['chev', 'main', 'num', 'bar', 'guides', 'prio'].find((name) => child.classList.contains(name)) ?? child.tagName.toLowerCase());
     const part = (node: HTMLElement): string => (node.classList.contains('name') ? 'name' : node.classList.contains('date') ? 'date' : 'flag');
 
     const milestones = rows(el, 'milestone');
@@ -342,7 +343,8 @@ describe('planning-tree milestone header', () => {
     const specs = rows(el, 'spec');
     const claims = rows(el, 'claim');
     expect(features.length * specs.length * claims.length).toBeGreaterThan(0);
-    for (const row of [...features, ...specs]) expect(order(row)).toEqual(['bar', 'num', 'guides', 'chev', 'main']);
+    for (const row of features) expect(order(row)).toEqual(['bar', 'num', 'guides', 'chev', 'main', 'prio']);
+    for (const row of specs) expect(order(row)).toEqual(['bar', 'num', 'guides', 'chev', 'main']);
     for (const row of claims) expect(order(row)).toEqual(['guides', 'chev', 'main']);
   });
 
@@ -395,5 +397,37 @@ describe('planning-tree milestone header', () => {
     expect(declared(rules, '.row')).toMatch(/border-block-start: 1px solid var\(--line\)/);
     expect(css).not.toMatch(/--cyan-text|--lime-text|var\(--border\)/);
     expect(css).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
+
+// T10 · ISC-194: the tree lens shows the features of every milestone and of the "No milestone" group in the rank order
+// of the planning model, each with one priority chip `P1` to `P4` in its own column at the row's end. Probe:
+// `bun run --cwd web test -- --filter "tree rank"`.
+describe('planning-tree tree rank', () => {
+  const BACKLOG = backlogRanks as unknown as PlanningModel;
+
+  it('tree rank: the feature rows stand in rank order under each milestone and the group, as in the golden', async () => {
+    const { el } = await render(BACKLOG);
+    const shown = rows(el).filter((row) => ['milestone', 'group', 'feature'].includes(row.dataset['kind'] ?? ''));
+    expect(shown.map((row) => (row.dataset['kind'] === 'feature' ? row.querySelector('.fid')?.textContent.trim() : row.dataset['key']))).toEqual([
+      'milestone:ferry-1-0',
+      ...(BACKLOG.milestones[0]?.featureIds ?? []),
+      'milestone:ferry-2-0',
+      ...(BACKLOG.milestones[1]?.featureIds ?? []),
+      'group',
+      ...(BACKLOG.unassignedFeatures ?? []),
+    ]);
+  });
+
+  it('tree rank: every feature row carries one priority chip with its level, no other row carries one', async () => {
+    const { el } = await render(BACKLOG);
+    const levels = Object.fromEntries(BACKLOG.features.map((f) => [f.id, f.priority]));
+    for (const row of rows(el, 'feature')) {
+      const chips = row.querySelectorAll('.prio ui-priority');
+      expect(chips).toHaveLength(1);
+      expect(chips.item(0).getAttribute('data-level')).toBe(levels[row.querySelector('.fid')?.textContent.trim() ?? '']);
+    }
+    expect(rows(el, 'feature')).toHaveLength(BACKLOG.features.length);
+    for (const kind of ['milestone', 'group', 'spec', 'claim']) for (const row of rows(el, kind)) expect(row.querySelector('ui-priority')).toBeNull();
   });
 });

@@ -21,6 +21,7 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiTime } from '../../../shared/time';
 import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
+import { UiPriority } from '../../../shared/ui/priority/priority';
 import { UiTerm } from '../../../shared/ui/term/term';
 import { hasArchivedSpecs, planningCounts } from '../planning-counts';
 import { buildTree, hasEmptyFeatures, pathTo, withoutEmptyFeatures, type TreeKind, type TreeNode } from './tree-nodes';
@@ -62,7 +63,7 @@ interface TreeRow {
  */
 @Component({
   selector: 'app-planning-tree',
-  imports: [TranslocoPipe, UiIcon, UiIdChip, UiMeter, UiTerm, UiTime],
+  imports: [TranslocoPipe, UiIcon, UiIdChip, UiMeter, UiPriority, UiTerm, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-lens': 'tree' },
   styleUrls: ['./planning-tree.css', '../../../layout/detail-sidebar/selection.css'],

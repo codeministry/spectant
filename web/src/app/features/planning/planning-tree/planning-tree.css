@@ -145,7 +145,14 @@ h2 {
 }
 
 .row[data-kind="feature"] {
+  grid-template-columns: 64px 56px auto 24px minmax(0, 1fr) auto;
   min-block-size: 48px;
+}
+
+/* The priority chip (ISC-194) right-aligned in its own last column, so the chips form one edge to scan. */
+.prio {
+  display: inline-flex;
+  justify-self: end;
 }
 
 .row[data-kind="claim"] {
@@ -348,6 +355,10 @@ h2 {
   .row {
     grid-template-columns: 48px auto 24px minmax(0, 1fr);
     padding-inline: 8px;
+  }
+
+  .row[data-kind="feature"] {
+    grid-template-columns: 48px auto 24px minmax(0, 1fr) auto;
   }
 
   .row[data-kind="milestone"],

@@ -134,6 +134,9 @@
           [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
         />
       }
+      @if (node.priority; as priority) {
+        <span class="prio"><ui-priority [value]="priority" /></span>
+      }
     </div>
   }
 </div>
