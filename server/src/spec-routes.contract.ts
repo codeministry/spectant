@@ -619,6 +619,7 @@ export const API_ERRORS = [
   'invalid-body',
   'hash-mismatch',
   'locked',
+  'run-locked',
   'transition-refused',
   'allocate-refused',
   'backlog-refused',

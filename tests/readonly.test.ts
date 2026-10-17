@@ -889,6 +889,59 @@ describe("ISC-130.2 with the allocation: a refused one changes nothing, an accep
   });
 });
 
+// The run lock (spec 040, T32, ISC-225) under the same guard, on its own copy (`.git/` included): with a running run
+// on 003, on 004 and on the story console-audit-log (run lines written before the first snapshot, relative to now, as
+// the routes run on the real clock), the stage move, the reviewed mark, the checkbox and the allocation each answer
+// 423 `run-locked`, and the copy stays byte-identical with every mtime kept.
+describe("ISC-225 run-lock: every write a running run refuses leaves the repository byte-identical, .git/ included", () => {
+  test("readonly run-lock: 423 run-locked on the move, the mark, the tick and the allocation changes no byte or mtime", async () => {
+    const copy = join(mkdtempSync(join(root, "run-lock-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const since = new Date(Date.now() - 5 * 60_000).toISOString();
+    const runs = [
+      { run: "r-003", command: "/spec-tasks 003", spec: "003" },
+      { run: "r-004", command: "/spec-review 004", spec: MARKED_SPEC },
+      { run: "r-idea", command: "/spec-idea console-audit-log", idea: "console-audit-log" },
+    ].map((r) => `${JSON.stringify({ ts: since, event: "run-start", session: "a:claude:sess-9", ...r })}\n`);
+    appendFileSync(join(copy, ".spectant", "activity.jsonl"), runs.join(""));
+    const registry = openRegistry(mkdtempSync(join(root, "data-run-lock-")));
+    registry.add(copy);
+    const specs = specRoutesApi({ registry, lifeos: LIFEOS_ABSENT });
+    const workspace = dashboardApi({ registry, services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT });
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) };
+      const req = (): Request => new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init });
+      const res = (await specs(req(), url)) ?? (await workspace(req(), url));
+      if (res === null) throw new Error(`no route answered ${path}`);
+      return res;
+    };
+    const header = async (id: string, name: string): Promise<string> => (await call(specRoutes.spec(SLUG, id))).headers.get(name) ?? "";
+    const tasksHash = async (id: string): Promise<string> => (await call(specRoutes.tasks(SLUG, id))).headers.get(TASKS_HASH_HEADER) ?? "";
+    const storyHash = async (slug: string): Promise<string> => ((await (await call(workspaceRoutes.idea(SLUG, slug))).json()) as { hash: string }).hash;
+
+    try {
+      const before = snapshot(copy);
+      const locked: Array<[string, unknown]> = [
+        [specRoutes.transition(SLUG, "003"), { to: "review", hash: await header("003", SPEC_HASH_HEADER) }],
+        [specRoutes.gateReviewed(SLUG, "004"), { hashes: parseReviewedHashes(await header("004", REVIEWED_HASHES_HEADER)) }],
+        [specRoutes.taskCheck(SLUG, "004", "T1"), { checked: false, hash: await tasksHash("004") }],
+        [workspaceRoutes.allocate(SLUG, "console-audit-log"), { hash: await storyHash("console-audit-log") }],
+      ];
+      for (const [path, body] of locked) {
+        const res = await call(path, "POST", body);
+        expect({ path, status: res.status, error: ((await res.json()) as { error: string }).error }).toEqual({ path, status: 423, error: "run-locked" });
+      }
+      const after = snapshot(copy);
+      expect(changed(before, after, { mtime: true })).toEqual([]);
+      expect(after.checksum).toBe(before.checksum);
+      expect(underGit(after)).toEqual(underGit(before));
+    } finally {
+      registry.close();
+    }
+  });
+});
+
 // The sixth write path (spec 009, T21, ISC-137.1) under the same guard: `spectant tokens` runs on its own copy against
 // the harbor transcripts. Without `--yes` it only prints the plan, and the copy stays byte-identical with every mtime
 // kept; with `--yes` exactly the files of `WRITE_PATHS.tokens` differ, and `.git/` never changes. The transcript folder

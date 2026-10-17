@@ -28,13 +28,20 @@
  *
  * Spec 008 (T81) adds two writes, declared here and served by later tasks (`WRITE_TABLE`, `WRITE_PATHS`):
  *
- * | write | trigger | client's hash | 200 | 409 `hash-mismatch` | 422 | 423 `locked` |
- * |-------|---------|---------------|-----|---------------------|-----|--------------|
- * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` |
- * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` |
- * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
- * | allocate | `POST …/ideas/:slug/allocate` (T87) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
- * | backlog | `POST …/:ws/backlog` (spec 036) | raw `specs/backlog.md`, `PlanningModel.backlogHash` | `BacklogWritten` | `StaleBacklog` | `BacklogRefused` | — |
+ * | write | trigger | client's hash | 200 | 409 `hash-mismatch` | 422 | 423 `locked` | 423 `run-locked` |
+ * |-------|---------|---------------|-----|---------------------|-----|--------------|------------------|
+ * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` | `RunLocked` |
+ * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` | `RunLocked` |
+ * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` | `RunLocked` |
+ * | allocate | `POST …/ideas/:slug/allocate` (T87) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` | `RunLocked` |
+ * | backlog | `POST …/:ws/backlog` (spec 036) | raw `specs/backlog.md`, `PlanningModel.backlogHash` | `BacklogWritten` | `StaleBacklog` | `BacklogRefused` | — | — |
+ *
+ * The run lock (spec 040, T30, ISC-225): while a run on the write's item is `running` (core's `runLockOf`, the decision
+ * `itemStates` takes; a run on the spec for the first three, a run on the story for the allocation), the write is
+ * refused with 423 `RunLocked`: `{error: 'run-locked', run, command, actor, since}` of the newest running run, nothing
+ * written. An `aborted` run (older than the `runAbortMinutes` setting) locks nothing. The checks keep one order:
+ * 400 → 404 → 409 → 423 (a claim lock's `locked` first, then the run's `run-locked`) → 422 → 200, so a stale hash is
+ * still the plain 409 while a run is open. The allocation's 423 is reachable through the run alone: a story has no claim.
  *
  * These five are every write the app makes on a user's action. The backlog write, the seventh write path, reads no lock
  * source and never answers 423 (`WRITE_TABLE.backlog.locked` is null): `specs/backlog.md` belongs to no spec, and no
@@ -60,7 +67,7 @@
 import { parseActor } from '../../core/src/actor.ts';
 import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
-import type { ClaimLock, EventLine, LockSource } from '../../core/src/files.ts';
+import type { ActorRef, ClaimLock, EventLine, ItemRun, LockSource } from '../../core/src/files.ts';
 import {
   REVIEWED_HASHES_HEADER,
   REVIEWED_HASH_FILES,
@@ -120,7 +127,7 @@ export const writeRoutes = {
 export const WRITE_STATUSES = [200, 400, 409, 423] as const;
 
 /** The error codes only a write sends, all in `API_ERRORS`. */
-export const WRITE_ERRORS = ['invalid-body', 'hash-mismatch', 'locked'] as const satisfies readonly ApiError[];
+export const WRITE_ERRORS = ['invalid-body', 'hash-mismatch', 'locked', 'run-locked'] as const satisfies readonly ApiError[];
 
 /** The GET header each write's hash comes from, on the answer the client rendered. */
 export const WRITE_HASH_HEADER = {
@@ -160,6 +167,11 @@ export interface WriteTableEntry {
    */
   readonly locked: 'Locked' | null;
   /**
+   * The 423 body while a run on the write's item is `running` (spec 040, ISC-225): `RunLocked` for every write on a spec
+   * or a story; null for the backlog write, which belongs to no item a run works on.
+   */
+  readonly runLocked: 'RunLocked' | null;
+  /**
    * True while its route is registered and served (`SPEC_ROUTE_TABLE`, or `WORKSPACE_ROUTE_TABLE` for `allocate`);
    * false while its route has no handler (every one has since T87).
    */
@@ -173,11 +185,11 @@ export interface WriteTableEntry {
 
 /** The five writes with their hash, 409, 422 and 423 forms and the root their paths resolve against (the header's table). */
 export const WRITE_TABLE = {
-  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true, root: 'source' },
-  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true, root: 'source' },
-  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true, root: 'source' },
-  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: true, root: 'main' },
-  backlog: { hashFrom: 'PlanningModel.backlogHash', hash: 'raw', conflict: 'StaleBacklog', refused: 'BacklogRefused', locked: null, registered: true, root: 'main' },
+  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'source' },
+  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'source' },
+  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'source' },
+  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'main' },
+  backlog: { hashFrom: 'PlanningModel.backlogHash', hash: 'raw', conflict: 'StaleBacklog', refused: 'BacklogRefused', locked: null, runLocked: null, registered: true, root: 'main' },
 } as const satisfies Record<WriteOperation, WriteTableEntry>;
 
 /**
@@ -444,6 +456,25 @@ export function blockingLock(locks: readonly ClaimLock[], claim: string | null):
   let best: ClaimLock | null = null;
   for (const l of locks) if (best === null || rank(l) < rank(best)) best = l;
   return best === null ? null : { error: 'locked', lock: best };
+}
+
+/**
+ * 423 while a run on the write's item is `running` (spec 040, ISC-225): the newest running run's id, command, actor
+ * and start, as core's `runLockOf` gives them. Nothing was written. The web client reads it from spec 040's T56 on;
+ * until then `writeAnswerOf` does not fit it, so a client that cannot show it takes it as an unknown failure.
+ */
+export interface RunLocked {
+  readonly error: 'run-locked';
+  readonly run: string;
+  /** `ItemRun.command`: a run line always names one (locks.ts skips a line without), so null only by the model's type. */
+  readonly command: string | null;
+  readonly actor: ActorRef;
+  readonly since: string;
+}
+
+/** The 423 for the run that locks the write's item (core's `runLockOf`), or null when no run is running on it. */
+export function runLockedOf(run: Pick<ItemRun, 'run' | 'command' | 'actor' | 'since'> | null): RunLocked | null {
+  return run === null ? null : { error: 'run-locked', run: run.run, command: run.command, actor: run.actor, since: run.since };
 }
 
 /** The page's words when no lock source is present (ISC-86). */

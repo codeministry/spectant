@@ -22,6 +22,8 @@ export interface CheckboxWriteInput {
   readonly body: TaskCheckRequest;
   /** The workspace's constitution: the lane table the parser reads, and the spec's claims for the lock check. */
   readonly constitution: string | null;
+  /** The run lock's abort age (`WriteInput.abortAfterMs`, spec 040). */
+  readonly abortAfterMs?: number;
 }
 
 const LF = 0x0a;
@@ -52,6 +54,7 @@ export function writeTaskCheck(input: CheckboxWriteInput): Promise<WriteResult<"
     root: input.root,
     stateDir: input.stateDir,
     now: input.now,
+    ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }),
     read: () => {
       const bytes = readBytesIfExists(path);
       if (bytes === null) return null;

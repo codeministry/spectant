@@ -605,3 +605,36 @@ export function itemStates(input: ItemStateInput): ItemStateInfo[] {
   const rows = [...input.dashboard.specs].sort((a, b) => byId(a.id, b.id));
   return [...rows.flatMap((row) => specItems(row, files.get(row.slug), ctx)), ...input.dashboard.ideas.list.map((idea) => ideaItem(idea.slug, ctx))].map(ordered);
 }
+
+// ── the run lock (spec 040, T31, ISC-225) ────────────────────────────────────────────────────────────────────────
+
+/** The item a write lands on, as far as an open run can lock it: a spec by its number or folder name, a story by slug. */
+export type RunLockTarget = { readonly spec: string } | { readonly idea: string };
+
+/** The number a run line or a write names a spec by: `037` as written, `037-slug` by its prefix. */
+const specNumberOf = (ref: string): string => specIdOf(ref) ?? ref;
+
+/**
+ * The run that locks writes on `target` (ISC-225): the newest running run on the item, its `openRuns` counting the
+ * running ones; null when no run is open on it or every open one is `aborted`. The decision is `fromRuns`, the one
+ * `itemStates` takes for a spec or a story, so the item's state and the server's refusal never disagree on the same
+ * reading, `now` and abort age. A spec matches its runs as `runsOnSpec` does: by number, folder name or a ref so prefixed.
+ */
+export function runLockOf(openRuns: readonly OpenRun[], target: RunLockTarget, options: { readonly now: Date | number; readonly abortAfterMs?: number }): ItemRun | null {
+  const runs =
+    'spec' in target ? openRuns.filter((r) => r.spec !== undefined && specNumberOf(r.spec) === specNumberOf(target.spec)) : openRuns.filter((r) => r.idea === target.idea);
+  const ctx: Context = {
+    now: typeof options.now === 'number' ? options.now : options.now.getTime(),
+    abortAfterMs: options.abortAfterMs ?? DEFAULT_ABORT_AFTER_MS,
+    staleAfterMs: DEFAULT_CLAIM_STALE_MS,
+    openRuns,
+    locks: [],
+    workflow: undefined,
+    constitution: null,
+    edges: new Map(),
+    openByFeature: new Map(),
+    taskRuns: {},
+  };
+  const live = fromRuns(runs, ctx);
+  return live?.state === 'running' && live.run !== undefined ? live.run : null;
+}

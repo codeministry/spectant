@@ -320,7 +320,7 @@ describe("error codes", () => {
       expect(code).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
       expect(API_ERRORS as readonly string[]).toContain(code);
     }
-    expect([...WRITE_ERRORS]).toEqual(["invalid-body", "hash-mismatch", "locked"]);
+    expect([...WRITE_ERRORS]).toEqual(["invalid-body", "hash-mismatch", "locked", "run-locked"]);
   });
 });
 
@@ -347,6 +347,14 @@ describe("the five app writes (spec 008, T81; spec 036): the table, the paths ea
       ["allocate", "IdeaPage.hash", "raw", "StaleIdea", "AllocateRefused", "Locked"],
       // Spec 036: the backlog reads no lock source, so it has no 423.
       ["backlog", "PlanningModel.backlogHash", "raw", "StaleBacklog", "BacklogRefused", null],
+    ]);
+    // Spec 040 (ISC-225): every write on a spec or a story has the run lock's 423 beside the claim lock's; the backlog none.
+    expect(WRITE_OPERATIONS.map((op) => [op, WRITE_TABLE[op].runLocked])).toEqual([
+      ["gateReviewed", "RunLocked"],
+      ["taskCheck", "RunLocked"],
+      ["transition", "RunLocked"],
+      ["allocate", "RunLocked"],
+      ["backlog", null],
     ]);
     // A refusable write lists 422 on its route; the others do not. A write without a 423 form lists no 423.
     for (const op of WRITE_OPERATIONS) {

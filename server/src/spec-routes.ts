@@ -104,6 +104,11 @@ export type SpecRoutesOptions = {
    * the timeline carries no note.
    */
   notes?: Pick<NoteStore, "list">;
+  /**
+   * The age after which an open run reads `aborted` and stops locking the writes (spec 040, ISC-225): the
+   * `runAbortMinutes` setting × 60 000, read per write so a changed setting applies at once. Absent, core's default.
+   */
+  abortAfterMs?: () => number;
 };
 
 /** Any path under `/api/workspaces/:ws/specs`: the spec routes own it, so an unknown tab is their 404, not the server's. */
@@ -139,6 +144,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
   const stateDir = options.lifeos?.stateDir ?? null;
   const clock = options.now ?? (() => new Date());
   const cache = options.commitCache ?? new CommitCache();
+  /** The run lock's abort age for one write, as an optional input field. */
+  const age = (): { abortAfterMs?: number } => (options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() });
 
   const locksOf = (root: string, now: Date): Promise<LockReading> => readLockSources({ repoRoot: root, lifeosStateDir: stateDir, now });
 
@@ -266,18 +273,18 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         const parsed = parseWriteBody("gateReviewed", await req.text());
         if (!parsed.ok) return json(req, 400, parsed.error);
         const actor = writeActorOf(await viewerActorOf(root));
-        const result = await writeGateReviewed({ root, ref: source, stateDir, now: clock(), body: parsed.body, constitution: await constitution(), actor });
+        const result = await writeGateReviewed({ root, ref: source, stateDir, now: clock(), body: parsed.body, constitution: await constitution(), actor, ...age() });
         return json(req, result.status, result.body);
       }
       case "taskCheck": {
         const parsed = parseWriteBody("taskCheck", await req.text());
         if (!parsed.ok) return json(req, 400, parsed.error);
         const { tid } = match.params;
-        const result = await writeTaskCheck({ root, ref: source, stateDir, now: clock(), tid, body: parsed.body, constitution: await constitution() });
+        const result = await writeTaskCheck({ root, ref: source, stateDir, now: clock(), tid, body: parsed.body, constitution: await constitution(), ...age() });
         return json(req, result.status, result.body);
       }
       case "transition": {
-        const result = await transitionAnswer({ root, ref: source, stateDir, now: clock(), text: await req.text() });
+        const result = await transitionAnswer({ root, ref: source, stateDir, now: clock(), text: await req.text(), ...age() });
         return json(req, result.status, result.body);
       }
     }

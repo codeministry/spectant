@@ -310,6 +310,11 @@ export type DashboardApiOptions = {
   db?: Database;
   /** The allocation's clock (its event's `ts`, `started`, `created`); `new Date()` by default. Tests pin it. */
   now?: () => Date;
+  /**
+   * The age after which an open run on a story reads `aborted` and stops locking its allocation (spec 040, ISC-225):
+   * the `runAbortMinutes` setting × 60 000, read per write. Absent, core's default.
+   */
+  abortAfterMs?: () => number;
 };
 
 /** The local calendar date of `date` as `YYYY-MM-DD`: the day the user sees, not the UTC one. */
@@ -704,7 +709,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const unreadable = workspaceUnreadable(root);
     if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
     try {
-      const answer = await allocateAnswer({ root, slug: story, stateDir, now: clock(), text: await req.text() });
+      const age = options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() };
+      const answer = await allocateAnswer({ root, slug: story, stateDir, now: clock(), text: await req.text(), ...age });
       return json(req, answer.status, answer.body);
     } catch (error) {
       if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;

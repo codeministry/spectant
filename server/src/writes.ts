@@ -10,7 +10,10 @@
  *    compared with the hash the client rendered. A mismatch is the 409 of `writes.contract.ts`; nothing is written.
  * 3. The locks held on this spec's claims (the live frame's `locks`, so the page and the refusal agree) go through
  *    `blockingLock`: any lock is the 423, naming the task's own claim first. With no source at all the write proceeds
- *    under the hash check alone and the answer carries `lockSource: 'none'` (ISC-86).
+ *    under the hash check alone and the answer carries `lockSource: 'none'` (ISC-86). Strictly after it (spec 040,
+ *    T31, ISC-225) the open runs of the same reading go through core's `runLockOf`: a run `running` on the write's
+ *    item (the spec, or the story for the allocation) is the 423 `run-locked`; an `aborted` one, older than
+ *    `abortAfterMs` (the `runAbortMinutes` setting), locks nothing. The server never decides running itself.
  * 4. The target is written in place: open, write, fsync, close. No temp file, no rename, no git object; `.gates/` is
  *    the one directory that may be created. An event line is appended the same way (`eventAppendBytes`).
  *
@@ -33,6 +36,7 @@ import { parseClaims } from "../../core/src/claims.ts";
 import { type ClaimLock, type LockReading, type LockSource, type MergeState, type SpecFiles, type Workflow, type WorkflowStage, repoFilePath } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { gateState, hashForGate, readGateMark, reviewedGate } from "../../core/src/gates.ts";
+import { type RunLockTarget, runLockOf } from "../../core/src/item-state.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
@@ -59,6 +63,8 @@ import {
   blockingLock,
   eventAppendBytes,
   ideaConflict,
+  runLockedOf,
+  type RunLocked,
   specConflict,
   writeActorOf,
   writePathsOf,
@@ -145,9 +151,17 @@ export interface WriteInput<R extends WriteOperation> {
    * partitions under the same locks.
    */
   readonly read: (locks: LockReading) => WriteRead<R> | null;
+  /** The item an open run locks the write on (ISC-225); the spec of the read's `files` when absent. */
+  readonly runTarget?: RunLockTarget;
+  /** The age after which an open run reads `aborted` (`runAbortMinutes` × 60 000); core's default when absent. */
+  readonly abortAfterMs?: number;
 }
 
-export type WriteResult<R extends WriteOperation> = WriteAnswer<R> | { readonly status: 404; readonly body: NotFound };
+/** A write's answer: its own (`WriteAnswer`), the route layer's 404, or the run lock's 423 (spec 040, ISC-225). */
+export type WriteResult<R extends WriteOperation> =
+  | WriteAnswer<R>
+  | { readonly status: 404; readonly body: NotFound }
+  | { readonly status: 423; readonly body: RunLocked };
 
 /**
  * Runs one write: locks read, then read + compare (409) + lock check (423) + refusal (422) + write, without yielding
@@ -160,6 +174,9 @@ export async function runWrite<R extends WriteOperation>(input: WriteInput<R>): 
   if ("stale" in read) return { status: 409, body: read.stale };
   const locked = blockingLock(specLocks(read.files, reading, input.now), read.claim);
   if (locked !== null) return { status: 423, body: locked };
+  const target = input.runTarget ?? { spec: read.files.folder };
+  const runLocked = runLockedOf(runLockOf(reading.openRuns ?? [], target, { now: input.now, ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }) }));
+  if (runLocked !== null) return { status: 423, body: runLocked };
   if (typeof read.commit !== "function") return { status: 422, body: read.commit.refused } as WriteResult<R>;
   return { status: 200, body: read.commit(reading.source) };
 }
@@ -173,6 +190,8 @@ export interface TransitionWriteInput {
   readonly stateDir: string | null;
   readonly now: Date;
   readonly body: TransitionRequest;
+  /** The run lock's abort age (`WriteInput.abortAfterMs`). */
+  readonly abortAfterMs?: number;
 }
 
 /** What the transition needs of the whole workspace: read before the write's one await, never between compare and write. */
@@ -283,6 +302,7 @@ export async function writeTransition(input: TransitionWriteInput): Promise<Writ
     root: input.root,
     stateDir: input.stateDir,
     now,
+    ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }),
     read: (locks) => {
       const path = join(ref.dir, SPEC_PATH);
       const bytes = readBytesIfExists(path);
@@ -319,6 +339,8 @@ export interface AllocateWriteInput {
   readonly stateDir: string | null;
   readonly now: Date;
   readonly body: AllocateRequest;
+  /** The run lock's abort age (`WriteInput.abortAfterMs`). */
+  readonly abortAfterMs?: number;
 }
 
 /** Whether anything (a file, a folder, a link) already has this name; never follows a link. */
@@ -359,9 +381,10 @@ function fsyncDir(dir: string): void {
  *    `Spec` cell, which FORMAT.md names as the mark of a started story, is the web's or the skill's to fill; until then
  *    the index names a story without a file, which `readIdeas` reports as one `ideas-index` warning.
  *
- * No 423: a story has no claims, so no session can hold a lock on it, and the new folder's claimless `spec.md` gives
- * `blockingLock` nothing to block on. The contract's 423 arm stays (`WRITE_TABLE.allocate.locked`) and is unreachable
- * for this write; `lockSource` still reports the source consulted. A number above 999 has no three-digit folder:
+ * No claim lock's 423: a story has no claims, so no session can hold a lock on it, and the new folder's claimless
+ * `spec.md` gives `blockingLock` nothing to block on. The 423 it can answer is the run lock's (spec 040, ISC-225):
+ * while a run on the story is `running` (`runTarget: {idea: slug}`), 423 `run-locked`, nothing written; an `aborted`
+ * run locks nothing. `lockSource` still reports the source consulted. A number above 999 has no three-digit folder:
  * `allocationOf` throws, the route answers 500.
  */
 export async function writeAllocate(input: AllocateWriteInput): Promise<WriteResult<"allocate">> {
@@ -372,6 +395,8 @@ export async function writeAllocate(input: AllocateWriteInput): Promise<WriteRes
     root,
     stateDir: input.stateDir,
     now,
+    runTarget: { idea: slug },
+    ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }),
     read: () => {
       const stories = readIdeaFiles(root);
       const listed = readIdeas(stories).ideas.find((ref) => ref.slug === slug);

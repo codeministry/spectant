@@ -20,11 +20,14 @@ export interface TransitionRouteInput {
   readonly now: Date;
   /** The request body as sent. */
   readonly text: string;
+  /** The run lock's abort age (`WriteInput.abortAfterMs`, spec 040). */
+  readonly abortAfterMs?: number;
 }
 
 /** The answer of one stage move: 400 for a body that is no `TransitionRequest`, otherwise the write's own answer. */
 export async function transitionAnswer(input: TransitionRouteInput): Promise<WriteResult<"transition">> {
   const parsed = parseWriteBody("transition", input.text);
   if (!parsed.ok) return { status: 400, body: parsed.error };
-  return writeTransition({ root: input.root, ref: input.ref, stateDir: input.stateDir, now: input.now, body: parsed.body });
+  const age = input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs };
+  return writeTransition({ root: input.root, ref: input.ref, stateDir: input.stateDir, now: input.now, body: parsed.body, ...age });
 }
