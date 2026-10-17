@@ -113,6 +113,26 @@ export function buildTree(model: PlanningModel, archived = true): readonly TreeN
   return roots;
 }
 
+/** A feature holds a spec row: one spec at least, and not only archived ones while the archive toggle hides them. */
+const holdsSpec = (node: TreeNode): boolean => node.kind !== 'feature' || node.children.some((child) => child.kind === 'spec');
+
+/** True when the cascade shows a feature without a spec row, the case the empty-feature toggle is offered for. */
+export function hasEmptyFeatures(roots: readonly TreeNode[]): boolean {
+  return roots.some((root) => !holdsSpec(root) || (root.kind !== 'feature' && !root.children.every(holdsSpec)));
+}
+
+/**
+ * The cascade without its empty features (the toggle on): every feature without a spec row leaves, and the "No
+ * milestone" group leaves with its last feature. Milestones stay, even emptied, and every number stays the index's.
+ */
+export function withoutEmptyFeatures(roots: readonly TreeNode[]): readonly TreeNode[] {
+  return roots.flatMap((root) => {
+    if (root.kind === 'feature') return holdsSpec(root) ? [root] : [];
+    const children = root.children.filter(holdsSpec);
+    return root.kind === 'group' && children.length === 0 ? [] : [{ ...root, children }];
+  });
+}
+
 /** The keys of the nodes on the path to `ref` (its ancestors, not itself), wherever it shows; empty when it does not. */
 export function pathTo(roots: readonly TreeNode[], ref: RelationRef | null): ReadonlySet<string> {
   const open = new Set<string>();

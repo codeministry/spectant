@@ -1815,7 +1815,8 @@
       "noMilestoneMeta": "Features ohne Meilenstein-Zeile im Master",
       "noMilestones": "Der Master nennt keine Meilensteine.",
       "expandAll": "Alle aufklappen",
-      "collapseAll": "Alle zuklappen"
+      "collapseAll": "Alle zuklappen",
+      "hideEmpty": "Leere Features ausblenden"
     }
   },
   "sidebar": {

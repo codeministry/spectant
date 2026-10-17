@@ -154,6 +154,29 @@ describe('planning-tree', () => {
         expect([...shown].sort()).toEqual(held.sort());
       });
 
+      it('hides the features without a spec row on the empty-feature toggle, offered only when the tree shows one', async () => {
+        const { el, stable } = await render(model);
+        const holdsSpec = (ref: string): boolean => childrenOf(model, ref, 'spec').some((spec) => entry(model, spec).archived !== true);
+        const before = rows(el, 'feature').map((row) => row.dataset['ref'] ?? '');
+        const toggle = el.querySelector<HTMLButtonElement>('[data-hide-empty]');
+        if (before.every(holdsSpec)) {
+          expect(toggle).toBeNull();
+          return;
+        }
+        expect(toggle?.textContent).toContain(en.planning.tree.hideEmpty);
+        expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+        toggle?.click();
+        await stable();
+        expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+        expect(rows(el, 'feature').map((row) => row.dataset['ref'])).toEqual(before.filter(holdsSpec));
+        // Milestones stay, emptied or not; the "No milestone" group leaves with its last feature.
+        expect(rows(el, 'milestone')).toHaveLength(milestones.length);
+        if (!loose.some((f) => holdsSpec(`feature:${f.id}`))) expect(rows(el, 'group')).toHaveLength(0);
+        toggle?.click();
+        await stable();
+        expect(rows(el, 'feature').map((row) => row.dataset['ref'])).toEqual(before);
+      });
+
       it('expands every level with closed/total from the golden and marks archived specs with the chip', async () => {
         const { el, stable } = await render(model);
         el.querySelector<HTMLButtonElement>('[data-show-archived]')?.click();
