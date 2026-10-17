@@ -7,6 +7,7 @@ import {
   type ActorMapping,
   type ActorsRequest,
   type AllocateRequest,
+  type BacklogRequest,
   type BoardQuery,
   type IdeaPage,
   type LibrarySearchResult,
@@ -36,7 +37,7 @@ import {
   type LibraryDocPage,
 } from '../../../../server/src/spec-routes.contract';
 import { type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
-import type { WorkflowStage } from '../../../../core/src/files';
+import type { Priority, WorkflowStage } from '../../../../core/src/files';
 import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
 
 /**
@@ -44,6 +45,11 @@ import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes
  * fits its status (`writeAnswerOf`, the one validator the server's tests pin too), else `error` with the status: a
  * 403, 404 or 405 of the route layer, a body that does not fit (a 200 included), 0 when no answer came.
  */
+/** A backlog write without its hash (spec 036): move a feature in front of `before` (null: to its group's end), or set its priority. */
+export type BacklogOp =
+  | { readonly op: 'move'; readonly feature: string; readonly before: string | null }
+  | { readonly op: 'priority'; readonly feature: string; readonly priority: Priority };
+
 export type WriteResult<R extends WriteOperation> =
   | { readonly kind: 'answer'; readonly answer: WriteAnswer<R> }
   | { readonly kind: 'error'; readonly status: number };
@@ -259,6 +265,17 @@ export class ApiClient {
   allocate(ws: string, slug: string, hash: string): Promise<WriteResult<'allocate'>> {
     const body: AllocateRequest = { hash };
     return this.write('allocate', workspaceRoutes.allocate(ws, slug), body);
+  }
+
+  /**
+   * T14 · ISC-195, ISC-196: `POST …/:ws/backlog` (spec 036) with a move or a priority and the raw hash of
+   * `specs/backlog.md` the page rendered (`PlanningModel.backlogHash`), both in the body. 200 `BacklogWritten` (the
+   * file's new hash), 409 `StaleBacklog`, 422 `BacklogRefused`, validated like `transition()`; the route never answers
+   * 423, so one is an `error`. Never cached, never retried.
+   */
+  backlog(ws: string, op: BacklogOp, hash: string): Promise<WriteResult<'backlog'>> {
+    const body: BacklogRequest = { ...op, hash };
+    return this.write('backlog', workspaceRoutes.backlog(ws), body);
   }
 
   /** T111: one story of `specs/ideas/` (`IdeaPage`: the ref, the rendered page, the raw hash), ETag-cached. */

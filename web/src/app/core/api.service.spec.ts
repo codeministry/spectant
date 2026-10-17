@@ -245,6 +245,69 @@ describe('ApiClient spec 008 routes', () => {
       expect(api.specHash('harbor', '003')).toBe(HEX_A);
     });
   });
+
+  // T13 · ISC-195: the backlog write of spec 036, `POST …/:ws/backlog` with the op and the raw hash of
+  // `specs/backlog.md` in the body (no header), every answer typed through the contract's `writeAnswerOf`.
+  describe('backlog', () => {
+    const URL = '/api/workspaces/harbor/backlog';
+    const event = { ts: '2026-10-17T10:00:00.000Z', actor: VIEWER, kind: 'move', feature: 'F2', from: 3, to: 1 };
+    const written = { hash: HEX_B, event };
+
+    it('POSTs the move with its hash in the body and answers the validated 200', async () => {
+      const result = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_A);
+      const request = http.expectOne(URL);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({ op: 'move', feature: 'F2', before: 'F1', hash: HEX_A });
+      expect(request.request.headers.keys()).toEqual([]);
+      request.flush(written);
+      expect(await result).toEqual({ kind: 'answer', answer: { status: 200, body: written } });
+    });
+
+    it('POSTs a priority and a move to the end (before null) the same way', async () => {
+      const priority = api.backlog('harbor', { op: 'priority', feature: 'F2', priority: 'P1' }, HEX_A);
+      const first = http.expectOne(URL);
+      expect(first.request.body).toEqual({ op: 'priority', feature: 'F2', priority: 'P1', hash: HEX_A });
+      const set = { hash: HEX_B, event: { ...event, kind: 'priority', from: 'P3', to: 'P1' } };
+      first.flush(set);
+      expect(await priority).toEqual({ kind: 'answer', answer: { status: 200, body: set } });
+
+      const last = api.backlog('harbor', { op: 'move', feature: 'F2', before: null }, HEX_B);
+      const second = http.expectOne(URL);
+      expect(second.request.body).toEqual({ op: 'move', feature: 'F2', before: null, hash: HEX_B });
+      second.flush(written);
+      await last;
+    });
+
+    it('answers the 409 StaleBacklog and the 422 BacklogRefused as typed answers, never cached or retried', async () => {
+      const stale = { error: 'hash-mismatch', files: ['specs/backlog.md'], expected: { backlog: HEX_B } };
+      const conflict = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_A);
+      http.expectOne(URL).flush(stale, { status: 409, statusText: 'Conflict' });
+      expect(await conflict).toEqual({ kind: 'answer', answer: { status: 409, body: stale } });
+
+      const refusal = { error: 'backlog-refused', reason: 'F2 already stands there: nothing to move' };
+      const refused = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_B);
+      http.expectOne(URL).flush(refusal, { status: 422, statusText: 'Unprocessable Entity' });
+      expect(await refused).toEqual({ kind: 'answer', answer: { status: 422, body: refusal } });
+
+      const again = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_B);
+      http.expectOne(URL).flush(written);
+      expect(await again).toEqual({ kind: 'answer', answer: { status: 200, body: written } });
+    });
+
+    it('answers a body that does not fit, a 423 and a network failure as error', async () => {
+      const unfit = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_A);
+      http.expectOne(URL).flush({ hash: 'nope', event });
+      expect(await unfit).toEqual({ kind: 'error', status: 200 });
+
+      const locked = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_A);
+      http.expectOne(URL).flush({ error: 'locked', lock: LOCK }, { status: 423, statusText: 'Locked' });
+      expect(await locked).toEqual({ kind: 'error', status: 423 });
+
+      const offline = api.backlog('harbor', { op: 'move', feature: 'F2', before: 'F1' }, HEX_A);
+      http.expectOne(URL).error(new ProgressEvent('error'));
+      expect(await offline).toEqual({ kind: 'error', status: 0 });
+    });
+  });
 });
 
 describe('ApiClient library routes (spec 017, T25, ISC-156)', () => {
