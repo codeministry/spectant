@@ -92,6 +92,11 @@
  *   (spec 025, T20; absent: `off`, the goldens as they are): 009 waits on 002 whole, 002's web tasks on 006, 002's
  *   ticked T1 names the unknown 042; under `met` the blockers are merged and every wait is gone. A 400 beside
  *   `X-Spectant-Stub-Worktrees: on`.
+ * - `X-Spectant-Stub-Midnight: off | on` (spec 006, T4; absent: `off`, the goldens as they are): `on` puts the
+ *   instant of `STUB_MIDNIGHT`, half an hour before midnight UTC, on harbor 002's reviewed mark, its newest round and
+ *   reviewed event in the timeline, and its spec.md's `modified` in the library catalog; a 400 beside
+ *   `X-Spectant-Stub-Worktrees: on` or `X-Spectant-Stub-Edges`. The milestone day of the same spec is `STUB_MILESTONE`,
+ *   the planning golden's own.
  * - `POST /api/__stub/bump-run?ws=<slug>&spec=<id>&task=<tid>` moves that task's run one run event on for that session
  *   (T33): none → dispatched → building → patched → applied-open (`applied` once tasks.md ticked it); the last stays.
  *   The live frame's body and ETag change as an activity log line would change them. 204; 404 for an unknown
@@ -388,6 +393,101 @@ export function bumpDashboard(model: unknown, by: number): unknown {
 
 /** The stub's clock: the `now` the live goldens were built with; the `at` of every reviewed mark the stub writes. */
 export const STUB_NOW = '2026-03-08T15:00:00Z';
+
+/** The near-midnight fixture (spec 006, T4): `off` serves the goldens as they are, `on` lays `STUB_MIDNIGHT` over harbor. */
+export const MIDNIGHT_STATES = ['off', 'on'] as const;
+export type MidnightState = (typeof MIDNIGHT_STATES)[number];
+export const MIDNIGHT_HEADER = 'X-Spectant-Stub-Midnight';
+
+/**
+ * The near-midnight instant (spec 006, T4, ISC-114): under `X-Spectant-Stub-Midnight: on` harbor 002 carries `instant`,
+ * half an hour before midnight UTC, as
+ *
+ * - the reviewed mark's `at` (`gates.reviewed.at` on the spec page, every lock fixture): the gate button in the spec
+ *   head and the Status tab's gate row;
+ * - the `timeline` entries `round-3` (the newest round) and `gate-reviewed` (the reviewed event): the Status tab's
+ *   round summary and Activity rows, the Timeline tab; both stay the newest, so the order is the golden's;
+ * - the library document `doc`'s `modified`: its date in the Library list and the Reader's "updated" line.
+ *
+ * Nothing else changes (other specs, lantern, the dashboard, the planning tree), and without the header every answer
+ * is the golden's byte for byte, so no other e2e or visual baseline moves. A 400 beside `X-Spectant-Stub-Worktrees: on`
+ * or `X-Spectant-Stub-Edges`. `zones` names a browser zone on each side of UTC with the local day and hour the instant
+ * must show there (`utc` the UTC ones), for `test.use({ timezoneId })`; `routes` the pages that show it. The instant
+ * lies before `FIXED_NOW` (`fixtures.ts`) and away from any DST switch, so the offsets are fixed: Tokyo +9, Los
+ * Angeles -7 (Berlin, the suites' default zone, +2: already the next day).
+ */
+export const STUB_MIDNIGHT = {
+  instant: '2026-08-31T23:30:00Z',
+  golden: 'harbor',
+  workspace: 'harbor',
+  spec: '002',
+  folder: '002-web-console',
+  doc: '002-web-console/spec.md',
+  timeline: ['round-3', 'gate-reviewed'],
+  utc: { day: '2026-08-31', hour: 23 },
+  zones: {
+    east: { timezoneId: 'Asia/Tokyo', day: '2026-09-01', hour: 8 },
+    west: { timezoneId: 'America/Los_Angeles', day: '2026-08-31', hour: 16 },
+  },
+  routes: {
+    library: '/w/harbor/library',
+    reader: '/w/harbor/library#002-web-console/spec.md',
+    status: '/w/harbor/s/002/status',
+    timeline: '/w/harbor/s/002/timeline',
+  },
+} as const;
+
+/**
+ * The calendar day of spec 006 (T4, ISC-114.3): harbor's first open milestone some spec names, `target` as the planning
+ * golden holds it in every stub state (no header needed, nothing is overlaid). A pure day: read as an instant it is
+ * UTC midnight, so a zone west of UTC would show `misreadWest`, the day before; the east shows the day itself. It shows
+ * in the planning tree (`routes.tree`), the planning matrix (`routes.matrix`), the board's milestone swimlanes
+ * (`routes.board`), the command palette's milestone entry (search `name`) and the page menu's milestones summary,
+ * whose "next" is this milestone (`routes.pageMenu`, any harbor page).
+ */
+export const STUB_MILESTONE = {
+  workspace: 'harbor',
+  slug: 'harbor-0-9',
+  name: 'Harbor 0.9',
+  target: '2026-03-15',
+  misreadWest: '2026-03-14',
+  routes: {
+    tree: '/w/harbor/planning/tree',
+    matrix: '/w/harbor/planning/board',
+    board: '/w/harbor/board?group=milestone',
+    pageMenu: '/w/harbor',
+  },
+} as const;
+
+/** Harbor 002 with `STUB_MIDNIGHT.instant` on its reviewed mark and the two timeline entries; a missing one fails loud. */
+function midnightTree(tree: TreeGoldens): TreeGoldens {
+  const { instant, folder, timeline } = STUB_MIDNIGHT;
+  const moved: ReadonlySet<string> = new Set(timeline);
+  const found = tree.specs.find((spec) => spec.key === `specs/${folder}`);
+  if (found?.timeline.filter((entry) => moved.has(entry.id ?? '')).length !== moved.size) {
+    throw new Error(`stub-api: ${tree.golden} has no ${folder} with the timeline entries ${timeline.join(', ')}`);
+  }
+  const marked = (page: SpecPageModel): SpecPageModel => ({ ...page, gates: { ...page.gates, reviewed: { ...page.gates.reviewed, at: instant } } });
+  return {
+    ...tree,
+    specs: tree.specs.map((spec): SpecGoldens => {
+      if (spec !== found) return spec;
+      type Fixture = SpecGoldens['locked'][LockState];
+      const locked = Object.fromEntries(
+        LOCK_STATES.map((s): [LockState, Fixture] => [s, { ...spec.locked[s], spec: marked(spec.locked[s].spec) }]),
+      ) as Record<LockState, Fixture>;
+      const entries = spec.timeline.map((entry) => (moved.has(entry.id ?? '') ? { ...entry, ts: instant } : entry));
+      return { ...spec, spec: marked(spec.spec), timeline: entries, locked };
+    }),
+  };
+}
+
+/** A catalog with `STUB_MIDNIGHT.instant` as the `modified` of `STUB_MIDNIGHT.doc`; texts, prototypes and pages shared. */
+function midnightCatalog(stub: StubCatalog): StubCatalog {
+  const { instant, doc } = STUB_MIDNIGHT;
+  if (!stub.catalog.docs.some((d) => d.path === doc)) throw new Error(`stub-api: the catalog lists no ${doc}`);
+  return { ...stub, catalog: { ...stub.catalog, docs: stub.catalog.docs.map((d) => (d.path === doc ? { ...d, modified: instant } : d)) } };
+}
 
 /** The notes every session starts with (ISC-95): harbor 002, one per anchor kind, newest first as the server lists. */
 // Each seed goes through `seedNote`: `pinned` (notes.contract on main) is on every literal and type-checks on either base.
@@ -1428,7 +1528,22 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   };
   const views = new Map(STUB_STATES.map((s) => [s, view(s)]));
   const viewsOn = new Map(STUB_STATES.map((s) => [s, view(s, true)]));
+  // The near-midnight fixture (spec 006, T4): harbor's tree with `STUB_MIDNIGHT` on 002, built once; its catalog per slug.
+  const midnightGolden = (slug: string): boolean => workspaces.find((w) => w.slug === slug)?.golden === STUB_MIDNIGHT.golden;
+  const midnightOn = (req: Request): boolean => req.headers.get(MIDNIGHT_HEADER) === 'on';
+  const treesMidnight = new Map([...trees].map(([slug, tree]): [string, TreeGoldens] => [slug, midnightGolden(slug) ? midnightTree(tree) : tree]));
+  const viewsMidnight = new Map(STUB_STATES.map((s) => [s, view(s, false, { dashboards, trees: treesMidnight })]));
+  const midnightCatalogs = new Map<string, StubCatalog>();
+  const midnightCatalogOf = (slug: string, base: StubCatalog): StubCatalog => {
+    let found = midnightCatalogs.get(slug);
+    if (found === undefined) {
+      found = midnightCatalog(base);
+      midnightCatalogs.set(slug, found);
+    }
+    return found;
+  };
   const viewOf = (req: Request, state: StubState): StateView => {
+    if (midnightOn(req)) return viewsMidnight.get(state) ?? view(state, false, { dashboards, trees: treesMidnight });
     const edged = edgeViewOf(req);
     if (edged) return edged.views.get(state) ?? view(state, false, edged);
     return (worktreesOn(req) ? viewsOn : views).get(state) ?? view(state, worktreesOn(req));
@@ -1677,7 +1792,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     const tree = readableTree(req, state, match.params.ws);
     if (tree instanceof Response) return tree;
-    const stub = library === 'empty' ? emptyStubCatalog() : await catalogOf(match.params.ws, tree);
+    const ws = match.params.ws;
+    const base = library === 'empty' ? emptyStubCatalog() : await catalogOf(ws, tree);
+    const stub = library !== 'empty' && midnightOn(req) && midnightGolden(ws) ? midnightCatalogOf(ws, base) : base;
     switch (match.route) {
       case 'library':
         return workspaceJson(req, 200, stub.catalog);
@@ -2263,6 +2380,13 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return settingsError(400, { error: 'unknown-stub-edges', edges, states: [...EDGE_STATES] });
     }
     if (edges !== 'off' && worktrees === 'on') return settingsError(400, { error: 'stub-edges-with-worktrees', edges, worktrees });
+    const midnight = req.headers.get(MIDNIGHT_HEADER) ?? 'off';
+    if (!isOneOf(MIDNIGHT_STATES, midnight)) {
+      return settingsError(400, { error: 'unknown-stub-midnight', midnight, states: [...MIDNIGHT_STATES] });
+    }
+    if (midnight === 'on' && (worktrees === 'on' || edges !== 'off')) {
+      return settingsError(400, { error: 'stub-midnight-with-overlay', midnight, worktrees, edges });
+    }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
 
     if (noteAllowFor(pathname) !== null) {

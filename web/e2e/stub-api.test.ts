@@ -59,9 +59,13 @@ import {
   LIBRARY_HEADER,
   LOCKS_HEADER,
   LOCK_STATES,
+  MIDNIGHT_HEADER,
+  MIDNIGHT_STATES,
   RESET_PATH,
   STUB_EDGES,
   STUB_LIBRARY,
+  STUB_MIDNIGHT,
+  STUB_MILESTONE,
   stubEvidencePath,
   stubOfflinePrototypeHtml,
   type LockState,
@@ -2264,5 +2268,101 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
         expect(await live(id, as(edges))).toEqual(familyValue(WS, 'live', folder) as LiveFrame);
       }
     }
+  });
+});
+
+describe('stub API: the near-midnight instant via X-Spectant-Stub-Midnight (spec 006, T4, ISC-114)', () => {
+  type Headers = Record<string, string>;
+  const on: Headers = { [MIDNIGHT_HEADER]: 'on' };
+  const read = async <T>(path: string, headers: Headers = on): Promise<T> => (await (await ask(path, { headers })).json()) as T;
+  const { instant, workspace, spec, folder, doc, timeline } = STUB_MIDNIGHT;
+  const key = `specs/${folder}`;
+  const goldenPage = familyValue(workspace, 'spec', key) as SpecPageModel;
+  const goldenTimeline = familyValue(workspace, 'timeline', key) as TimelineEntry[];
+  /** The local calendar day and hour of `iso` in `timeZone`, as `Intl` reads them. */
+  const local = (iso: string, timeZone: string): { day: string; hour: number } => {
+    const format = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' });
+    const parts = new Map(format.formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
+    const part = (type: Intl.DateTimeFormatPartTypes): string => parts.get(type) ?? '';
+    return { day: `${part('year')}-${part('month')}-${part('day')}`, hour: Number(part('hour')) };
+  };
+
+  test('the instant falls on another day east and west of UTC: the exported zones say which day and hour each shows', () => {
+    const utc = local(instant, 'UTC');
+    const { east, west } = STUB_MIDNIGHT.zones;
+    expect(local(instant, east.timezoneId)).toEqual({ day: east.day, hour: east.hour });
+    expect(local(instant, west.timezoneId)).toEqual({ day: west.day, hour: west.hour });
+    expect(utc).toEqual({ day: STUB_MIDNIGHT.utc.day, hour: STUB_MIDNIGHT.utc.hour });
+    expect(east.day).not.toBe(utc.day);
+    expect(west.hour).not.toBe(utc.hour);
+    expect(east.day).not.toBe(west.day);
+  });
+
+  test('off is the default: absent or "off" serves the goldens as they are; an unknown value or a mix is a loud 400', async () => {
+    const catalog = await read<LibraryCatalog>(workspaceRoutes.library(workspace), {});
+    for (const headers of [{}, { [MIDNIGHT_HEADER]: 'off' }] as Headers[]) {
+      expect(await read<SpecPageModel>(specRoutes.spec(workspace, spec), headers)).toEqual(goldenPage);
+      expect(await read<TimelineEntry[]>(specRoutes.timeline(workspace, spec), headers)).toEqual(goldenTimeline);
+      expect(await read<LibraryCatalog>(workspaceRoutes.library(workspace), headers)).toEqual(catalog);
+    }
+    expect(catalog.docs.find((d) => d.path === doc)?.modified).not.toBe(instant);
+    const bad = await ask(specRoutes.spec(workspace, spec), { headers: { [MIDNIGHT_HEADER]: 'maybe' } });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: 'unknown-stub-midnight', midnight: 'maybe', states: [...MIDNIGHT_STATES] });
+    for (const overlay of [{ [WORKTREES_HEADER]: 'on' }, { [EDGES_HEADER]: 'waiting' }] as Headers[]) {
+      const mixed = await ask(specRoutes.spec(workspace, spec), { headers: { ...on, ...overlay } });
+      expect(mixed.status).toBe(400);
+      expect(((await mixed.json()) as Json)['error']).toBe('stub-midnight-with-overlay');
+    }
+  });
+
+  test('on: the reviewed mark, the gate event and the newest round of harbor 002 carry the instant, in every lock fixture', async () => {
+    for (const locks of LOCK_STATES) {
+      const page = await read<SpecPageModel>(specRoutes.spec(workspace, spec), { ...on, [LOCKS_HEADER]: locks });
+      expect(page.gates.reviewed.at).toBe(instant);
+      expect(page.gates.reviewed.state).toBe(goldenPage.gates.reviewed.state);
+    }
+    const entries = await read<TimelineEntry[]>(specRoutes.timeline(workspace, spec));
+    expect(entries.map((e) => e.id)).toEqual(goldenTimeline.map((e) => e.id));
+    const moved = entries.filter((e) => e.ts === instant);
+    expect(moved.map((e) => e.id)).toEqual([...timeline]);
+    expect(moved.map((e) => e.kind)).toEqual(['round', 'gate']);
+    // Still newest first, so the Status tab's Activity and its round summary show the instant.
+    const times = entries.map((e) => e.ts).filter((ts) => ts !== '');
+    expect(times).toEqual([...times].sort().reverse());
+    const movedIds: ReadonlySet<string> = new Set(timeline);
+    const kept = goldenTimeline.filter((e) => !movedIds.has(e.id ?? ''));
+    expect(entries.filter((e) => e.ts !== instant)).toEqual(kept);
+  });
+
+  test('on: the library document of harbor 002 carries the instant as `modified`, every other document as it was', async () => {
+    const before = await read<LibraryCatalog>(workspaceRoutes.library(workspace), {});
+    const after = await read<LibraryCatalog>(workspaceRoutes.library(workspace));
+    expect(after.docs.find((d) => d.path === doc)?.modified).toBe(instant);
+    const blank = (c: LibraryCatalog): unknown[] => c.docs.map((d) => (d.path === doc ? { ...d, modified: null } : d));
+    expect(blank(after)).toEqual(blank(before));
+    expect({ ...after, docs: [] }).toEqual({ ...before, docs: [] });
+    expect((await ask(workspaceRoutes.libraryDoc(workspace, doc), { headers: on })).status).toBe(200);
+  });
+
+  test('on: lantern and every other harbor spec serve their goldens; the milestone target stays the calendar day it is', async () => {
+    expect(await read<SpecPageModel>(specRoutes.spec(workspace, '003'))).toEqual(familyValue(workspace, 'spec', 'specs/003-config-loader') as SpecPageModel);
+    expect(await read<SpecPageModel>(specRoutes.spec('lantern', '001'))).toEqual(familyValue('lantern', 'spec', 'specs/001-reading-list') as SpecPageModel);
+    type Milestone = { slug: string; name: string; target: string | null; state: string; specs: unknown[] };
+    type Milestones = { milestones: Milestone[] };
+    for (const headers of [{}, on] as Headers[]) {
+      const planning = await read<Milestones>(workspaceRoutes.planning(STUB_MILESTONE.workspace), headers);
+      // The first open milestone some spec names: the one the area menu's summary shows as "next".
+      const next = planning.milestones.find((m) => m.specs.length > 0 && m.state !== 'complete');
+      expect(next && { slug: next.slug, name: next.name, target: next.target }).toEqual({
+        slug: STUB_MILESTONE.slug,
+        name: STUB_MILESTONE.name,
+        target: STUB_MILESTONE.target,
+      });
+    }
+    // A calendar day, not an instant: misread as one (UTC midnight), the west shows the day before, the east the day.
+    expect(STUB_MILESTONE.target).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(local(STUB_MILESTONE.target, STUB_MIDNIGHT.zones.west.timezoneId).day).toBe(STUB_MILESTONE.misreadWest);
+    expect(local(STUB_MILESTONE.target, STUB_MIDNIGHT.zones.east.timezoneId).day).toBe(STUB_MILESTONE.target);
   });
 });
