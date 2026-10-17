@@ -58,6 +58,8 @@ test.beforeEach(async ({ page, request }, info) => {
   session = `board-bounds-${info.testId}`;
   await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
   expect((await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } })).status()).toBe(204);
+  // The narrow cases (ISC-200) open the one-column board themselves: it has no wide band list to wait for.
+  if (info.title.startsWith('narrow')) return;
   await page.goto(BOARD);
   await expect(page.locator(HEADS).first()).toBeVisible();
   expect(await shownBands(page)).toEqual(BANDS);
@@ -124,3 +126,34 @@ test('lanes bounds: Alt+↑ on the first and Alt+↓ on the last band of a miles
   expect(sent).toHaveLength(0);
   expect(await shownBands(page)).toEqual(BANDS);
 });
+
+/**
+ * T50 · ISC-200 (`bun run test:browser -- tree-reorder board-lanes narrow`): at a 600 and a 390 px container the board
+ * with feature swimlanes is one column without horizontal overflow; every band grip is 44 px tall, opens "Move" on a
+ * tap and on Enter, and Escape returns the focus to it.
+ */
+for (const width of [600, 390]) {
+  test.describe(`narrow board at ${String(width)}`, () => {
+    test.use({ ...atWidth(width), hasTouch: true });
+
+    test(`narrow: the board at ${String(width)} has no horizontal overflow and its band grips open "Move" by tap and by Enter`, async ({ page }) => {
+      await page.goto(BOARD);
+      const grip = gripOf(page, 'F2').first();
+      await expect(grip).toBeVisible();
+      const widths = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+      expect(widths[0]).toBe(widths[1]);
+      const box = await grip.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      await grip.tap();
+      const move = page.locator('app-board-page app-reorder-menu ui-sheet dialog[open]');
+      await expect(move).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(move).toHaveCount(0);
+      await grip.focus();
+      await page.keyboard.press('Enter');
+      await expect(move).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(grip).toBeFocused();
+    });
+  });
+}

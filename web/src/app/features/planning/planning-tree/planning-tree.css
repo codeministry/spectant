@@ -486,21 +486,67 @@ h2 {
     padding-inline: 8px;
   }
 
+  .guides {
+    grid-column-start: 3;
+  }
+
+  /* Below 640 a feature is two lines, 72 px (ISC-200, design.md Mobile): the grip over both in a 44 px column, then the
+   * fraction, the chevron and the title; the chip starts the second line under the F-ID. The milestone level draws no
+   * guide line here, the header is the group boundary, which gives the title its width at 390. */
   .row[data-kind="feature"] {
-    grid-template-columns: 24px 48px auto 24px minmax(0, 1fr) auto;
+    grid-template-columns: 44px 48px 24px minmax(0, 1fr);
+    grid-template-rows: 24px 40px;
+    row-gap: 0;
+    min-block-size: 72px;
+    padding-block: 4px;
+    padding-inline: 4px 8px;
+  }
+
+  .row[data-kind="feature"] > .grip {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+    place-self: center;
+    inline-size: 44px;
+    block-size: 44px;
+  }
+
+  .row[data-kind="feature"] > .grip::before {
+    inset: 0;
+  }
+
+  .row[data-kind="feature"] > .guides {
+    display: none;
+  }
+
+  .row[data-kind="feature"] > .chev {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .row[data-kind="feature"] > .main {
+    grid-row: 1;
+    grid-column: 4;
+  }
+
+  .row[data-kind="feature"] > .prio {
+    grid-row: 2;
+    grid-column: 4;
+    justify-self: start;
+  }
+
+  .row[data-kind="spec"],
+  .row[data-kind="claim"] {
+    grid-template-columns: 44px 48px auto 24px minmax(0, 1fr);
   }
 
   .row:not([data-kind="milestone"], [data-kind="group"]) > .num {
-    grid-column-start: 2;
+    grid-row: 1;
+    grid-column: 2;
   }
 
   .row[data-kind="milestone"],
   .row[data-kind="group"] {
     grid-template-columns: 24px minmax(0, 1fr) auto;
-  }
-
-  .guides {
-    grid-column-start: 3;
   }
 
   .row .bar {

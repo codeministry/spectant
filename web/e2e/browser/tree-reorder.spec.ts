@@ -133,3 +133,78 @@ test.describe('tree-reorder bounds (T28, ISC-195.1)', () => {
     await expectOrderUnchanged(page);
   });
 });
+
+/**
+ * T49 · ISC-200 (`bun run test:browser -- tree-reorder board-lanes narrow`): at a 600 and a 390 px container the tree
+ * lens has no horizontal overflow, every feature row is the two-line row of design.md (Mobile) with a 44 × 44 grip,
+ * and grip, chip and their sheets are reachable by touch (a tap) and by keyboard (Tab from the row to the grip, then
+ * to the chip; Enter opens the sheet, Escape returns the focus).
+ */
+for (const width of [WIDTHS.panel, WIDTHS.phone]) {
+  test.describe(`narrow tree at ${String(width)}`, () => {
+    test.use({ ...atWidth(width), hasTouch: true });
+
+    test(`narrow: the tree at ${String(width)} has no horizontal overflow and a 44 px grip in every two-line feature row`, async ({ page }) => {
+      await page.goto(TREE);
+      await expect(featureRow(page, HARBOR_1_0, 'F1')).toBeVisible();
+      const widths = await page.evaluate(() => {
+        const tree = document.querySelector<HTMLElement>('app-planning-tree [role="tree"]');
+        const root = document.documentElement;
+        return { page: [root.scrollWidth, root.clientWidth], tree: [tree?.scrollWidth ?? -1, tree?.clientWidth ?? -2] };
+      });
+      expect(widths.page[0]).toBe(widths.page[1]);
+      expect(widths.tree[0]).toBe(widths.tree[1]);
+      for (const row of await page.locator('app-planning-tree [role="treeitem"][data-kind="feature"]').all()) {
+        const grip = await row.locator('[data-grip]').boundingBox();
+        const box = await row.boundingBox();
+        expect(grip?.width ?? 0).toBeGreaterThanOrEqual(44);
+        expect(grip?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(72);
+      }
+    });
+
+    test(`narrow: at ${String(width)} a tap on the grip opens "Move" and a tap on the chip the priority sheet`, async ({ page }) => {
+      await page.goto(TREE);
+      const row = featureRow(page, HARBOR_1_0, 'F2');
+      await row.locator('[data-grip]').tap();
+      const move = page.locator('app-reorder-menu ui-sheet dialog[open]');
+      await expect(move).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(move).toHaveCount(0);
+      await row.locator('[data-priority-chip]').tap();
+      const sheet = page.locator('app-priority-menu ui-sheet dialog[open]');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.locator('[data-level-entry]')).toHaveCount(4);
+      await page.keyboard.press('Escape');
+      await expect(row.locator('[data-priority-chip]')).toBeFocused();
+    });
+
+  });
+
+  // Keyboard without touch emulation: Chromium's touch mode changes how Tab walks the page.
+  test.describe(`narrow tree keys at ${String(width)}`, () => {
+    test.use(atWidth(width));
+
+    test(`narrow: at ${String(width)} Tab leads from the feature row to its grip and its chip, and Enter on the grip opens "Move"`, async ({ page }) => {
+      await page.goto(TREE);
+      const row = featureRow(page, HARBOR_1_0, 'F2');
+      // The arrow keys carry the tab stop to F2 (a click would select it and open the detail sheet).
+      await page.locator('app-planning-tree [role="treeitem"][tabindex="0"]').focus();
+      for (let i = 0; i < 12 && !(await row.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('ArrowDown');
+      await expect(row).toBeFocused();
+      const grip = row.locator('[data-grip]');
+      // The row with the tab stop renders its grip and chip into the tab order on the next change detection.
+      await expect(grip).toHaveAttribute('tabindex', '0');
+      await page.keyboard.press('Tab');
+      await expect(grip).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(row.locator('[data-priority-chip]')).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(grip).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('app-reorder-menu ui-sheet dialog[open]')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(grip).toBeFocused();
+    });
+  });
+}

@@ -185,7 +185,14 @@
                   <ng-container [ngTemplateOutlet]="dividerTpl" [ngTemplateOutletContext]="{ $implicit: d }" />
                 }
                 <!-- Compact: the grip moves the band through its menu and Alt+↑/↓; the one column's card list holds no band drag. -->
-                <div class="band-head" [attr.data-move-group]="band.moveGroup" [attr.data-held]="band.key !== null && writer.pending(band.key) ? '' : null" [attr.aria-busy]="band.key !== null && writer.pending(band.key) ? 'true' : null">
+                <div
+                  class="band-head"
+                  [attr.data-band]="band.key ?? ''"
+                  [attr.data-move-group]="band.moveGroup"
+                  [attr.data-held]="band.key !== null && writer.pending(band.key) ? '' : null"
+                  [attr.aria-busy]="band.key !== null && writer.pending(band.key) ? 'true' : null"
+                  [attr.data-moved]="band.key !== null && bandMoved() === band.key ? '' : null"
+                >
                   <span class="band-sticky">
                     @if (band.moveGroup !== null) {
                       <button
