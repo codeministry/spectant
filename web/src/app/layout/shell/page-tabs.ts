@@ -50,18 +50,18 @@ export class LibraryTabCount {
 }
 
 /**
- * The planning page's lenses in tab-bar order, Matrix first (spec 026, ISC-167; `/w/:ws/planning/<lens>`,
- * `/w/:ws/planning` opens the matrix). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
+ * The planning page's lenses in tab-bar order, Gantt first where the Matrix stood (spec 026, ISC-167; spec 038,
+ * ISC-203; `/w/:ws/planning/<lens>`, `/w/:ws/planning` opens the Gantt, `/w/:ws/planning/board` redirects to it). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
  */
-export const PLANNING_LENSES = ['board', 'tree', 'graph'] as const;
+export const PLANNING_LENSES = ['gantt', 'tree', 'graph'] as const;
 export type PlanningLensId = (typeof PLANNING_LENSES)[number];
 
 export const isPlanningLensId = (value: unknown): value is PlanningLensId => (PLANNING_LENSES as readonly unknown[]).includes(value);
 
-const LENS_ICONS: Record<PlanningLensId, IconName> = { tree: 'list-tree', board: 'layout-grid', graph: 'share-2' };
+const LENS_ICONS: Record<PlanningLensId, IconName> = { gantt: 'chart-gantt', tree: 'list-tree', graph: 'share-2' };
 
 /** `['/w', ws, 'planning', lens]` as a router link. */
-export const planningLink = (ws: string, lens: PlanningLensId = 'board'): string[] => ['/w', ws, 'planning', lens];
+export const planningLink = (ws: string, lens: PlanningLensId = 'gantt'): string[] => ['/w', ws, 'planning', lens];
 
 /** The lens tabs of workspace `ws`, each with its icon, keeping the selection and milestone query on a switch. */
 export const planningTabs = (ws: string): PageTab[] =>

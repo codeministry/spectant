@@ -792,7 +792,7 @@ const MENU_PAGES = [
   { id: 'specs', icon: 'file-text', name: 'Specs', lands: (path: string) => path === '/w/harbor' },
   { id: 'board', icon: 'square-kanban', name: 'Board', lands: (path: string) => path === '/w/harbor/board' },
   // spec 026 (T15, ISC-167): one Planning entry replaces Features and Milestones and lands on the tree lens.
-  { id: 'planning', icon: 'list-tree', name: 'Planning', lands: (path: string) => path === '/w/harbor/planning/board' },
+  { id: 'planning', icon: 'list-tree', name: 'Planning', lands: (path: string) => path === '/w/harbor/planning/gantt' },
   // spec 017 (T41, ISC-157.1): Tech went into the Library, which stands where Tech stood.
   { id: 'library', icon: 'book', name: 'Library', lands: (path: string) => path === '/w/harbor/library' },
 ] as const;
@@ -961,8 +961,8 @@ test.describe('navigation', () => {
 
     for (const [key, path] of [
       ['b', '/w/harbor/board'],
-      ['f', '/w/harbor/planning/board'],
-      ['m', '/w/harbor/planning/board'],
+      ['f', '/w/harbor/planning/gantt'],
+      ['m', '/w/harbor/planning/gantt'],
     ] as const) {
       test(`g ${key} navigates to ${path} from the workspace`, async ({ page }) => {
         await page.goto('/w/harbor');

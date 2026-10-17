@@ -1664,8 +1664,8 @@
   "planning": {
     "page": {
       "lenses": {
+        "gantt": "Gantt",
         "tree": "Baum",
-        "board": "Matrix",
         "graph": "Diagramm"
       },
       "levels": {
@@ -1674,27 +1674,50 @@
         "specs": "Specs",
         "claims": "Claims"
       },
-      "eyebrowCount": "{{count}} Meilensteine",
-      "meta": "{{milestones}} Meilensteine · {{features}} Features · {{closed}}/{{total}} Claims geschlossen",
+      "eyebrowCount": {
+        "one": "{{count}} Meilenstein",
+        "other": "{{count}} Meilensteine"
+      },
+      "meta": {
+        "one": "{{milestones}} Meilenstein · {{features}} Features · {{closed}}/{{total}} Claims geschlossen",
+        "other": "{{milestones}} Meilensteine · {{features}} Features · {{closed}}/{{total}} Claims geschlossen"
+      },
       "overview": "Übersicht",
       "overviewEmpty": "Noch keine Spec nennt einen Meilenstein.",
       "showArchived": "Archivierte",
       "summary": {
-        "board": "{{lanes}} Swimlanes · {{columns}} Feature-Spalten",
         "graph": "{{milestones}} Meilensteine → {{features}} Features → {{specs}} Specs"
       }
     },
-    "matrix": {
-      "pills": "Meilensteine",
-      "showDone": "Fertige Features",
-      "specs": "{{count}} Specs",
-      "corner": "Meilenstein \\ Feature",
-      "otherChip": "+{{id}}",
-      "noCards": "Noch keine Specs in {{lane}}",
-      "bare": "{{count}} Features ohne Spec in {{lane}}",
-      "openColumn": "{{id}} {{name}}, fertig, Spalte aufklappen"
+    "gantt": {
+      "label": "Gantt: Features nach Meilenstein über die Zeit",
+      "corner": "Feature",
+      "today": "Heute · {{date}}",
+      "past": "Vor heute",
+      "overdue": "überfällig",
+      "overdueSince": "überfällig seit {{date}}",
+      "done": "erledigt",
+      "noMilestone": "Ohne Meilenstein",
+      "noWindow": "kein Zeitfenster",
+      "noWindowLane": "kein Meilenstein-Fenster",
+      "features": {
+        "one": "{{count}} Feature",
+        "other": "{{count}} Features"
+      },
+      "days": "{{count}} T",
+      "boundary": "{{name}} · {{date}}",
+      "quarter": "Q{{quarter}} {{year}}",
+      "emptyAxis": {
+        "heading": "Noch kein Meilenstein mit Zieldatum",
+        "body": "Eine datierte Zeile im Block ## Milestones des Masters zeichnet die Zeitachse; bis dahin stehen alle Features darunter."
+      },
+      "lane": "{{id}} {{name}}, {{closed}} von {{total}} Claims geschlossen, Priorität {{priority}}",
+      "laneMilestone": "Meilenstein {{name}} bis {{date}}",
+      "laneUndated": "Meilenstein {{name}}, ohne Zieldatum",
+      "laneNone": "ohne Meilenstein"
     },
     "graph": {
+      "pills": "Meilensteine",
       "all": "Alle",
       "filters": "Filter",
       "specEdges": "Spec-Kanten",

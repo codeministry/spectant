@@ -520,7 +520,8 @@ describe("ISC-132: the board's reads, the database routes and a refused drop lea
 // the planning route's; the browser side of the same pages is `bun run e2e -- offline`. The copy stays byte-identical,
 // every mtime and `.git/index` kept.
 describe("ISC-173: the planning lenses, the redirects and the sidebar leave the repository byte-identical", () => {
-  test("readonly: planning with its relation index, the sidebar's reads and every planning page change no byte, .git/ included", async () => {
+  // Spec 038 (ISC-206): the Gantt lens and the old matrix address it redirects from are among the pages read here.
+  test("readonly: planning with its relation index, the sidebar's reads and every planning page, the gantt lens and its redirect included, change no byte, .git/ included", async () => {
     const copy = join(mkdtempSync(join(root, "planning-")), SLUG);
     cpSync(repo, copy, { recursive: true });
     const before = snapshot(copy);
@@ -573,12 +574,14 @@ describe("ISC-173: the planning lenses, the redirects and the sidebar leave the 
         expect({ path, status: (await fetch(`${url}${path}`)).status }).toEqual({ path, status: 200 });
       }
 
-      // The pages: the three lenses with an open sidebar, the old addresses the client redirects and the workspace
-      // board with a selected card, each the SPA's index through the fallback.
+      // The pages: the three lenses with an open sidebar (the Gantt lens since spec 038), the old addresses the client
+      // redirects (the Matrix's `/planning/board` among them) and the workspace board with a selected card, each the
+      // SPA's index through the fallback.
       for (const page of [
         `/w/${SLUG}/planning`,
         `/w/${SLUG}/planning/tree?sel=feature:F2`,
-        `/w/${SLUG}/planning/board?sel=spec:003`,
+        `/w/${SLUG}/planning/gantt?sel=feature:F2`,
+        `/w/${SLUG}/planning/board?sel=feature:F2&m=harbor-1-0`,
         `/w/${SLUG}/planning/graph?sel=milestone:harbor-0-9`,
         `/w/${SLUG}/features`,
         `/w/${SLUG}/milestones`,

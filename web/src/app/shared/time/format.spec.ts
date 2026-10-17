@@ -1,4 +1,4 @@
-import { dateTimeFormat, formatClock, formatDate, formatDay, formatInstant, localDayKey, type TimeForm } from './format';
+import { dateTimeFormat, formatClock, formatDate, formatDay, formatDayMonth, formatInstant, formatMonth, localDayKey, type TimeForm } from './format';
 
 /** Intl may put a narrow no-break space before the day period; compare on plain spaces. */
 const plain = (text: string): string => text.replace(/[\u202f\u00a0]/g, ' ');
@@ -51,6 +51,12 @@ describe('shared/time format', () => {
     expect(dateTimeFormat('de', 'instant')).toBe(dateTimeFormat('de', 'instant'));
     expect(dateTimeFormat('de', 'instant')).not.toBe(dateTimeFormat('en', 'instant'));
     expect(dateTimeFormat('de', 'instant')).not.toBe(dateTimeFormat('de', 'clock'));
+  });
+
+  it('names an axis month and a day without its year per language, as that day in every zone (spec 038)', () => {
+    expect([formatMonth('2026-10', 'en'), formatMonth('2026-10', 'de'), formatMonth('2027-03', 'de')]).toEqual(['Oct', 'Okt', 'Mär']);
+    expect([formatDayMonth('2026-03-20', 'en'), formatDayMonth('2026-03-20', 'de')]).toEqual(['Mar 20', '20. März']);
+    expect([formatMonth('not', 'en'), formatDayMonth('not', 'de')]).toEqual(['not', 'not']);
   });
 
   it('returns an unparseable value unchanged instead of throwing', () => {

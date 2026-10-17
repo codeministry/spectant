@@ -1,11 +1,20 @@
 import { afterRenderEffect, computed, inject, type Signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
+import type { RelationRef } from '../../../../../core/src/relations';
 import { SPEC_RULES, type Stage } from '../../../../../core/src/stage';
 import type { SpecRowView } from '../../layout/shell/shell-data.service';
 
 // What the Features and Milestones pages (spec 003, ISC-103 / ISC-104) share. A feature-local helper, not a
 // `shared/ui` primitive: it has exactly these two consumers.
+
+/** The graph's milestone choice in the address (`?m=<slug>`, `none` for the no-milestone lane; spec 026, kept by every lens switch). */
+export const M_PARAM = 'm';
+export const NO_MILESTONE = 'none';
+const MILESTONE_PREFIX = 'milestone:';
+
+/** A lane's `?m=` value: the milestone's slug, or `none` for the no-milestone lane. */
+export const laneParam = (ref: RelationRef | null): string => (ref === null ? NO_MILESTONE : ref.slice(MILESTONE_PREFIX.length));
 
 /** Core's spec stages: the `stage` of each spec row of the stage table (a story's `idea` is none), none written here. */
 const STAGES: ReadonlySet<string> = new Set<string>(SPEC_RULES.map((rule) => rule.stage));

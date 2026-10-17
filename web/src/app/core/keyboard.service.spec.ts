@@ -185,7 +185,7 @@ describe('KeyboardService', () => {
         { url: '/help', ws: null, specId: null },
         { url: '/settings', ws: null, specId: null },
         { url: '/w/harbor/s/002' },
-        { url: '/w/harbor/planning/board', specId: null },
+        { url: '/w/harbor/planning/gantt', specId: null },
       ]) {
         const { press, navigate } = setup(options);
         expect(press('g').defaultPrevented, options.url).toBe(true);

@@ -8,7 +8,7 @@ import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
 
 // The selection contract of the planning views (spec 026, T13/T14, ISC-171). Every view that lets the user pick an
-// object (tree, matrix, graph, workspace board, the dashboard's specs list, the ideas) follows these four rules:
+// object (tree, Gantt, graph, workspace board, the dashboard's specs list, the ideas) follows these four rules:
 //
 // 1. Address. The selection lives only in the URL as `?sel=<type>:<id>`, a core `RelationRef` (`milestone:<slug>`,
 //    `feature:F25`, `spec:025`, `claim:ISC-171`, `idea:<slug>`). Selecting is `DetailSelection.select(ref)` or a link
@@ -19,9 +19,10 @@ import type { Tier } from '../shell/tier';
 // 3. Look. The selected object carries `data-selected="row|card|node"` (`selectedLook(selection, ref, look)`), and the
 //    view adds `layout/detail-sidebar/selection.css` to its `styleUrl`s: a row `--disp-t` with a 3 px inset `--color-primary`
 //    (the prototype's cyan, the app's `disp` family), a card a 2 px `--color-primary` outline at offset 1, a graph node a 2 px `--color-primary` stroke.
-// 4. Presentation. A page whose layout has a rail (the tree lens, the workspace dashboard) calls
-//    `DetailSelection.dock(destroyRef)` for its lifetime: at wide the sidebar then replaces the rail blocks in
-//    `app-rail-slot`. Every other page (matrix, graph, workspace board) docks nothing and gets the floating panel. The
+// 4. Presentation. A page whose layout has a rail (the tree lens, the workspace dashboard, the Gantt lens, whose rail
+//    the shell opens at wide only while something is selected, spec 038) calls `DetailSelection.dock(destroyRef)` for
+//    its lifetime: at wide the sidebar then replaces the rail blocks in `app-rail-slot`. Every other page (graph,
+//    workspace board) docks nothing and gets the floating panel. The
 //    shell mounts `<app-detail-sidebar slot="float" />` once for the non-docked presentations.
 
 /** The query param that holds the selection. */

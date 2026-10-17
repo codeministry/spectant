@@ -1,0 +1,213 @@
+<div
+  class="gantt"
+  data-gantt
+  [attr.data-tier]="tier()"
+  [attr.data-past]="past() ? '' : null"
+  [attr.data-scrolled]="scrolled() ? '' : null"
+  [style.--label]="labelPx() + 'px'"
+  [style.--lead]="leadPx() + 'px'"
+  [style.--min-scale]="minScalePx() + 'px'"
+>
+  @if (axis() === null && !empty()) {
+    <ui-empty-state
+      data-gantt-empty-axis
+      icon="flag"
+      [heading]="'planning.gantt.emptyAxis.heading' | transloco"
+      [body]="'planning.gantt.emptyAxis.body' | transloco"
+    />
+  }
+  @if (empty()) {
+    <ui-empty-state data-gantt-empty icon="layers" [heading]="'planning.features.empty.heading' | transloco" [body]="'planning.features.empty.body' | transloco" />
+  }
+
+  <!-- The lines every time cell draws, so the axis, the group heads and the lanes stand on one grid. -->
+  <ng-template #lines>
+    @if (axis() !== null) {
+      <span class="lead" aria-hidden="true"></span>
+      <span class="lines" aria-hidden="true">
+        @for (m of months(); track m.month) {
+          @if (m.left > 0) {
+            <span class="mline" [style.left.%]="m.left"></span>
+          }
+        }
+        @for (b of boundaries(); track b.ref) {
+          <span class="bline" [style.left.%]="b.left"></span>
+        }
+        <span class="tline"></span>
+      </span>
+    }
+  </ng-template>
+
+  <div class="scroll" #scroll data-gantt-scroll (scroll)="onScroll($event)">
+    <div class="sheet" role="presentation">
+      @if (axis(); as a) {
+        <div class="axis" data-axis aria-hidden="true">
+          @if (tier() !== 'compact') {
+            <span class="corner">
+              <ui-term id="gantt-feature" [hint]="'terms.feature' | transloco">{{ 'planning.gantt.corner' | transloco }}</ui-term>
+            </span>
+          }
+          <span class="time">
+            <span class="lead">
+              @if (a.past) {
+                <span class="past-label" data-past-label>
+                  <ui-icon name="clock-alert" [size]="12" />
+                  @if (tier() !== 'compact') {
+                    <span>{{ 'planning.gantt.past' | transloco }}</span>
+                  }
+                </span>
+              }
+            </span>
+            <span class="scale">
+              <span class="bands">
+                <span class="today" data-today>{{ 'planning.gantt.today' | transloco: { date: todayText() } }}</span>
+                @for (b of boundaries(); track b.ref) {
+                  <span class="boundary" [attr.data-boundary]="b.ref" [style.right.%]="100 - b.left">
+                    @if (tier() === 'compact') {
+                      <span class="diamond"></span>
+                    } @else {
+                      <span class="bname">{{ b.name }} · <ui-time [value]="b.target" form="day" /></span>
+                    }
+                  </span>
+                }
+              </span>
+              <span class="months">
+                @for (m of months(); track m.month) {
+                  <span class="month" [attr.data-month]="m.month" [style.left.%]="m.left">{{ m.label ?? '' }}</span>
+                }
+              </span>
+              <span class="lines">
+                @for (m of months(); track m.month) {
+                  @if (m.left > 0) {
+                    <span class="mline" [style.left.%]="m.left"></span>
+                  }
+                }
+                @for (b of boundaries(); track b.ref) {
+                  <span class="bline" [style.left.%]="b.left"></span>
+                }
+                <span class="tline"></span>
+              </span>
+            </span>
+          </span>
+        </div>
+      }
+
+      <div class="groups" uiRovingList [attr.aria-label]="'planning.gantt.label' | transloco">
+        @for (g of groups(); track g.key) {
+          @let group = g.group;
+          <section
+            class="group"
+            [attr.data-group]="g.key"
+            [attr.data-window]="group.window"
+            [attr.data-mark]="group.mark"
+            [attr.aria-labelledby]="g.headId"
+          >
+            <div class="ghead" data-group-head>
+              <span class="glabel">
+                <ui-icon class="gicon" [name]="group.ref === null ? 'circle-dashed' : 'flag'" [size]="16" />
+                <span class="gname" [id]="g.headId" data-group-name>{{ group.name ?? ('planning.gantt.noMilestone' | transloco) }}</span>
+                @if (group.target; as target) {
+                  <span class="gdate mono"><ui-time [value]="target" form="day" /></span>
+                } @else if (group.ref !== null) {
+                  <span class="gdate">{{ 'planning.milestones.undated' | transloco }}</span>
+                } @else {
+                  <span class="gdate">{{ 'planning.gantt.noWindow' | transloco }}</span>
+                }
+                @if (group.mark; as mark) {
+                  <span
+                    class="gmark"
+                    data-group-mark
+                    [attr.data-mark]="mark"
+                    [title]="mark === 'overdue' ? ('planning.gantt.overdueSince' | transloco: { date: g.targetText }) : ''"
+                  >
+                    <ui-icon [name]="markIcon(mark)" [size]="14" />
+                    @if (mark === 'overdue') {
+                      <span>{{ 'planning.gantt.overdue' | transloco }}</span>
+                    } @else {
+                      <span>{{ 'planning.gantt.done' | transloco }}</span>
+                    }
+                  </span>
+                }
+                <span class="gnum num">
+                  {{ group.closed }}/{{ group.total }}
+                  @if (g.daysLeft !== null && tier() === 'compact') {
+                    <span> · {{ 'planning.gantt.days' | transloco: { count: g.daysLeft } }}</span>
+                  }
+                </span>
+              </span>
+              @if (tier() !== 'compact') {
+                <span class="time" aria-hidden="true">
+                  <ng-container [ngTemplateOutlet]="lines" />
+                  @if (g.bar; as bar) {
+                    <span class="band" [attr.data-window]="bar.window" [style.--l]="bar.left" [style.--w]="bar.width">
+                      <ui-meter size="mini" [value]="group.closed" [max]="group.total" />
+                    </span>
+                  }
+                </span>
+              }
+            </div>
+            <ul class="lanes">
+              @for (v of g.lanes; track v.lane.ref) {
+                @let lane = v.lane;
+                @let where =
+                  group.ref === null
+                    ? ('planning.gantt.laneNone' | transloco)
+                    : group.target === null
+                      ? ('planning.gantt.laneUndated' | transloco: { name: group.name })
+                      : ('planning.gantt.laneMilestone' | transloco: { name: group.name, date: g.targetText });
+                @let markWord = lane.mark === 'overdue' ? ', ' + ('planning.gantt.overdue' | transloco) : lane.mark === 'done' ? ', ' + ('planning.gantt.done' | transloco) : '';
+                <li>
+                  <button
+                    type="button"
+                    class="lane"
+                    uiRovingItem
+                    data-lane
+                    [attr.data-ref]="lane.ref"
+                    [attr.data-mark]="lane.mark"
+                    [attr.data-selected]="v.look"
+                    [attr.aria-current]="v.selected ? 'true' : null"
+                    [attr.aria-label]="('planning.gantt.lane' | transloco: { id: lane.id, name: lane.name, closed: lane.closed, total: lane.total, priority: lane.priority }) + ', ' + where + markWord"
+                    [title]="lane.name"
+                    (click)="select(lane.ref)"
+                  >
+                    <span class="label" data-label>
+                      <span class="lid mono" data-lane-id>{{ lane.id }}</span>
+                      <span class="lname" data-lane-name>{{ lane.name }}</span>
+                      <span class="lmeta">
+                        <ui-priority [value]="lane.priority" />
+                        @if (lane.mark; as mark) {
+                          <ui-icon class="lmark" [name]="markIcon(mark)" [size]="14" />
+                        }
+                        <span class="num" data-num>{{ lane.closed }}/{{ lane.total }}</span>
+                      </span>
+                    </span>
+                    <span class="time" data-time aria-hidden="true">
+                      @if (v.bar !== null || tier() !== 'compact') {
+                        <ng-container [ngTemplateOutlet]="lines" />
+                      }
+                      @if (v.bar; as bar) {
+                        <span
+                          class="bar"
+                          data-bar
+                          [attr.data-window]="bar.window"
+                          [attr.data-from]="bar.from"
+                          [attr.data-to]="bar.to"
+                          [style.--l]="bar.left"
+                          [style.--w]="bar.width"
+                        >
+                          <ui-meter size="lg" [value]="lane.closed" [max]="lane.total" />
+                        </span>
+                      } @else if (tier() === 'compact') {
+                        <span class="no-window" data-no-window>{{ 'planning.gantt.noWindowLane' | transloco }}</span>
+                      }
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    </div>
+  </div>
+</div>

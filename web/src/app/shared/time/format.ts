@@ -69,3 +69,33 @@ export function localDayKey(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
 }
+
+/** The axis forms of a calendar month and of a day within its year (spec 038, the Gantt lens), read in UTC as `day` is. */
+const AXIS_OPTIONS = {
+  month: { month: 'short', timeZone: 'UTC' },
+  dayMonth: { day: 'numeric', month: 'short', timeZone: 'UTC' },
+} as const satisfies Readonly<Record<string, Intl.DateTimeFormatOptions>>;
+const axisCache = new Map<string, Intl.DateTimeFormat>();
+
+function axisFormat(lang: Lang, form: keyof typeof AXIS_OPTIONS): Intl.DateTimeFormat {
+  const key = `${lang}:${form}`;
+  let format = axisCache.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(LOCALE[lang], AXIS_OPTIONS[form]);
+    axisCache.set(key, format);
+  }
+  return format;
+}
+
+/** A month (`YYYY-MM`) as its short name, without the abbreviation dot German adds: `Mar` / `März`, `Oct` / `Okt`. */
+export function formatMonth(isoMonth: string, lang: Lang): string {
+  // Date.parse is lenient (`not-01` parses), so the shape is checked first.
+  const epoch = /^\d{4}-\d{2}$/u.test(isoMonth) ? Date.parse(`${isoMonth}-01`) : Number.NaN;
+  return Number.isNaN(epoch) ? isoMonth : axisFormat(lang, 'month').format(epoch).replace(/\.$/u, '');
+}
+
+/** A calendar day (`YYYY-MM-DD`) without its year, as that day in every zone: `Mar 20` / `20. März`. */
+export function formatDayMonth(isoDate: string, lang: Lang): string {
+  const epoch = Date.parse(isoDate);
+  return Number.isNaN(epoch) ? isoDate : axisFormat(lang, 'dayMonth').format(epoch);
+}

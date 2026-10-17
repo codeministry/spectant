@@ -1,11 +1,12 @@
 /**
  * Spec 026 · T29 · ISC-171 (`bun run e2e -- sidebar`): one detail sidebar, one component, for every object in every
- * view. Choosing a milestone, feature, spec, claim or idea in the tree, the matrix, the graph, on the workspace board,
+ * view. Choosing a milestone, feature, spec, claim or idea in the tree, the Gantt lens, the graph, on the workspace board,
  * in the dashboard's specs list and on the ideas opens `app-detail-sidebar` with the type, id, title, progress and the
  * parents, children and blockers the relation index holds, every entry a link that re-selects. The selection lives in
  * `?sel=`, a reload shows the same sidebar, and Escape closes it and returns focus to the chosen object's `[data-ref]`.
- * Presentations per container tier (design.md § Across viewports): docked on the tree and the dashboard at 1440,
- * floating on the matrix, graph, board and idea page at 1440, a non-modal overlay at 820, a modal sheet at 390.
+ * Presentations per container tier (design.md § Across viewports): docked on the tree, the Gantt lens (spec 038) and
+ * the dashboard at 1440, floating on the graph, board and idea page at 1440, a non-modal overlay at 820, a modal sheet
+ * at 390.
  *
  * Against the stub API: every expected value comes from harbor's planning golden
  * (`core/fixtures/harbor.planning.golden.json`), its `relations` index.
@@ -147,22 +148,15 @@ test.describe('sidebar: wide (1440)', () => {
     await follow(page, firstOf(BLOCKED.blockers), 'docked');
   });
 
-  test('matrix: a feature column floats the sidebar; its milestone parent re-selects; reload; Escape focuses the lane', async ({ page }) => {
-    await page.goto('/w/harbor/planning/board');
-    await page.locator(`button.fh${refSel('feature:F2')}`).click();
-    await expectSidebar(page, 'feature:F2', 'floating');
-    const milestone = firstOf(parentsOf('feature:F2'));
-    await follow(page, milestone, 'floating');
-    await reloadSame(page, milestone, 'floating');
-    await escapeReturns(page, milestone);
-  });
-
-  test('matrix: a spec card floats the sidebar; reload; Escape focuses the card', async ({ page }) => {
-    await page.goto('/w/harbor/planning/board');
-    await page.locator(`button.tcard${refSel('spec:003')}`).click();
-    await expectSidebar(page, 'spec:003', 'floating');
-    await reloadSame(page, 'spec:003', 'floating');
-    await escapeReturns(page, 'spec:003');
+  test('gantt: a feature lane docks the sidebar; reload; Escape focuses the lane; a child link re-selects', async ({ page }) => {
+    await page.goto('/w/harbor/planning/gantt');
+    const lane = page.locator(`app-planning-gantt button[data-lane]${refSel('feature:F2')}`);
+    await lane.click();
+    await expectSidebar(page, 'feature:F2', 'docked');
+    await reloadSame(page, 'feature:F2', 'docked');
+    await escapeReturns(page, 'feature:F2');
+    await lane.click();
+    await follow(page, firstOf(entry('feature:F2').children), 'docked');
   });
 
   test('graph: a milestone node floats the sidebar; reload; Escape focuses the node; a child link re-selects', async ({ page }) => {

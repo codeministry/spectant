@@ -1,11 +1,13 @@
 /**
- * The planning view's visual baselines (spec 026, ISC-172): the three lenses of `/w/harbor/planning/:lens` — tree,
- * matrix (`board`) and diagram (`graph`) — each with the detail sidebar closed and open (`?sel=`: a feature on the
- * tree, a spec on the matrix, a milestone on the diagram), at 390, 820 and 1440, light and dark. 18 baselines per
- * theme. They replace the retired Features and Milestones pages' baselines; both old addresses now redirect here.
+ * The planning view's visual baselines (spec 026, ISC-172; spec 038, ISC-207): the three lenses of
+ * `/w/harbor/planning/:lens` — tree, Gantt (`gantt`, where the Matrix stood) and diagram (`graph`) — each with the
+ * detail sidebar closed and open (`?sel=`: a feature on the tree and on the Gantt lens, a milestone on the diagram), at
+ * 390, 820 and 1440, light and dark. 18 baselines per theme. They replace the retired Features and Milestones pages'
+ * baselines; both old addresses now redirect here, as the Matrix's `/planning/board` does to the Gantt lens.
  *
  *   bun run test:visual -- planning                  light, 18 baselines
  *   bun run test:visual -- planning --theme dark     dark, 18 baselines
+ *   bun run test:visual -- planning-gantt            the Gantt lens's 6 (ISC-207)
  *
  * The dark theme is shot at every width here, unlike the smoke set (`visual.spec.ts`): the sidebar changes form per
  * tier (sheet below 640, overlay up to 1119, docked or floating at 1440), and each form has its own surfaces.
@@ -23,10 +25,12 @@ import { atWidth, expect, FIXED_NOW, test, theme, WIDTHS } from './fixtures';
 const SESSION = 'X-Spectant-Stub-Session';
 
 interface Lens {
-  readonly lens: 'tree' | 'board' | 'graph';
+  readonly lens: 'tree' | 'gantt' | 'graph';
+  /** The test title's prefix; `planning-gantt` names the Gantt group for `-g` (spec 038, ISC-207's probe). */
+  readonly title: string;
   /** The object the open sidebar shows. */
   readonly sel: string;
-  /** The sidebar's form at 1440: docked in the tree's rail, floating over the matrix and the diagram. */
+  /** The sidebar's form at 1440: docked in the rail of the tree and the Gantt lens, floating over the diagram. */
   readonly wide: 'docked' | 'floating';
   /** The lens's host element inside `app-planning-page`. */
   readonly host: string;
@@ -37,20 +41,23 @@ interface Lens {
 const LENSES: readonly Lens[] = [
   {
     lens: 'tree',
+    title: 'planning tree',
     sel: 'feature:F2',
     wide: 'docked',
     host: 'app-planning-tree',
     drawn: (page) => expect(page.locator('app-planning-tree [role="treeitem"]').first()).toBeVisible(),
   },
   {
-    lens: 'board',
-    sel: 'spec:003',
-    wide: 'floating',
-    host: 'app-planning-matrix',
-    drawn: (page) => expect(page.locator('app-planning-matrix [data-lane-name]').first()).toBeVisible(),
+    lens: 'gantt',
+    title: 'planning-gantt',
+    sel: 'feature:F2',
+    wide: 'docked',
+    host: 'app-planning-gantt',
+    drawn: (page) => expect(page.locator('app-planning-gantt button[data-lane]').first()).toBeVisible(),
   },
   {
     lens: 'graph',
+    title: 'planning graph',
     sel: 'milestone:harbor-0-9',
     wide: 'floating',
     host: 'app-planning-graph',
@@ -99,7 +106,7 @@ test.describe('planning', () => {
 
         for (const open of [false, true]) {
           const state = open ? 'sidebar' : 'closed';
-          test(`planning ${lens.lens} ${state} ${String(width)}`, async ({ page, request }, info) => {
+          test(`${lens.title} ${state} ${String(width)}`, async ({ page, request }, info) => {
             const session = `visual-planning-${info.testId}-${String(info.retry)}`;
             await page.setExtraHTTPHeaders({ [SESSION]: session });
             const reset = await request.post('/api/__stub/reset', { headers: { [SESSION]: session } });

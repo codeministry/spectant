@@ -13,7 +13,7 @@ import { UiDiagramToolbar } from '../../../shared/ui/doc-prose/diagram-toolbar';
 import { DiagramZoom, panWithMouse, zoomDiagram } from '../../../shared/ui/doc-prose/diagram-zoom';
 import { capAtNaturalWidth, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from '../../../shared/ui/doc-prose/mermaid';
 import { planningCounts } from '../planning-counts';
-import { laneParam, M_PARAM } from '../planning-matrix/planning-matrix';
+import { laneParam, M_PARAM } from '../planning-page';
 import { GRAPH_CSS, type GraphLabels, graphSource, nodeLines, specEdgeIds } from './graph-source';
 
 /** `?m=all`: every lane drawn, one subgraph each (the `Alle` pill). */
@@ -40,7 +40,7 @@ let nextRenderId = 0;
 /**
  * The graph lens (spec 026, `/w/:ws/planning/graph`, T23, ISC-170): core's `planningGraph` of the planning model drawn
  * by the pinned mermaid as `flowchart LR`, Milestone → Feature → Spec, offline (the lazy chunk of `MERMAID_LOADER`).
- * The view picks the state only: one milestone (`?m=`, shared with the matrix, default the next due milestone) or
+ * The view picks the state only: one milestone (`?m=`, kept across the lenses, default the next due milestone) or
  * `Alle`, archived specs off by default, spec edges on, bundles folded until tapped. Every drawn node is wired back to
  * its lens node by mermaid's DOM id: a node with an object is a focusable button that selects it
  * (`DetailSelection.select`), a bundle toggles its features. The figure carries the zoom toolbar of the Docs diagrams.
@@ -96,7 +96,7 @@ export class PlanningGraph {
   /** The counted state (every lane, archived drawn): its lane nodes name the pills. */
   private readonly lanes = computed(() => planningGraph(this.model()).nodes.filter((n) => n.kind === 'milestone'));
 
-  /** The lane `?m=` names, else the next due milestone (first not complete, as the matrix), else `Alle`. */
+  /** The lane `?m=` names, else the next due milestone (first not complete), else `Alle`. */
   private readonly choice = computed<Choice>(() => {
     const lanes = this.lanes();
     const param = this.param();

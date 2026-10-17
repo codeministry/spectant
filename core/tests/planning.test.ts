@@ -221,18 +221,15 @@ describe('planning: claimless', () => {
     expect(counts(model)).toEqual(counts(without));
   });
 
-  test('claimless: the matrix places the spec in its feature column, a spec without a known block stays unplaced', () => {
-    const matrix = core.planningMatrix(model);
-    expect(matrix.unplaced).toEqual(['spec:004', 'spec:005']);
-    const cellOf = (spec: string): [string | null, string] | undefined => {
-      for (const lane of matrix.lanes) {
-        for (const [i, cell] of lane.cells.entries()) if (cell.some((card) => card.ref === spec)) return [lane.ref, matrix.columns[i]?.ref ?? ''];
-      }
-      return undefined;
-    };
-    expect(cellOf('spec:002')).toEqual(['milestone:beta', 'feature:F2']);
-    expect(cellOf('spec:003')).toEqual([null, 'feature:F3']);
-    expect(core.planningMatrix(without).unplaced).toEqual(['spec:004', 'spec:005']);
+  // Spec 038 removed the Matrix lens; the graph draws the same placement (ISC-186 refined: board, tree and graph).
+  test('claimless: the graph draws the spec under its feature, a spec without a known block draws no node', () => {
+    const graph = core.planningGraph(model);
+    const parentOf = (id: string): string | undefined => graph.edges.find((e) => e.to === id)?.from;
+    expect(graph.nodes.find((n) => n.id === 's_002')?.ref).toBe('spec:002');
+    expect(parentOf('s_002')).toBe('f_beta_F2');
+    expect(parentOf('s_003')).toBe('f__none_F3');
+    expect(graph.nodes.filter((n) => n.ref === 'spec:004' || n.ref === 'spec:005')).toEqual([]);
+    expect(core.planningGraph(without).nodes.filter((n) => n.ref === 'spec:004' || n.ref === 'spec:005')).toEqual([]);
   });
 
   test('claimless: anti, the feature-level code-review mark never targets a spec that holds no live claim', () => {

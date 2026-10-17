@@ -442,7 +442,7 @@ export const STUB_MIDNIGHT = {
  * The calendar day of spec 006 (T4, ISC-114.3): harbor's first open milestone some spec names, `target` as the planning
  * golden holds it in every stub state (no header needed, nothing is overlaid). A pure day: read as an instant it is
  * UTC midnight, so a zone west of UTC would show `misreadWest`, the day before; the east shows the day itself. It shows
- * in the planning tree (`routes.tree`), the planning matrix (`routes.matrix`), the board's milestone swimlanes
+ * in the planning tree (`routes.tree`), the Gantt lens's group head (`routes.gantt`, spec 038), the board's milestone swimlanes
  * (`routes.board`), the command palette's milestone entry (search `name`) and the page menu's milestones summary,
  * whose "next" is this milestone (`routes.pageMenu`, any harbor page).
  */
@@ -454,7 +454,7 @@ export const STUB_MILESTONE = {
   misreadWest: '2026-03-14',
   routes: {
     tree: '/w/harbor/planning/tree',
-    matrix: '/w/harbor/planning/board',
+    gantt: '/w/harbor/planning/gantt',
     board: '/w/harbor/board?group=milestone',
     pageMenu: '/w/harbor',
   },

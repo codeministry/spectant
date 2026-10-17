@@ -92,12 +92,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ideas/idea-page').then((m) => m.IdeaPage),
         data: ideaPage,
       },
-      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the matrix.
+      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the Gantt lens
+      // (spec 038, ISC-203), which took the Matrix lens's place and its role as the default (PR #31).
       // The lenses are componentless children of one lazy page, so a lens switch keeps the page (and its overview).
       {
         path: 'w/:ws/planning',
         children: [
-          { path: '', redirectTo: 'board', pathMatch: 'full' },
+          { path: '', redirectTo: 'gantt', pathMatch: 'full' },
+          // Spec 038 (ISC-203.1): the Matrix lens's address leads to the Gantt lens that replaced it; the query (`?sel=`, `?m=`)
+          // rides along, as a relative redirect keeps it.
+          { path: 'board', redirectTo: 'gantt', pathMatch: 'full' },
           {
             path: '',
             loadComponent: () => import('./features/planning/planning-lens-page').then((m) => m.PlanningPage),

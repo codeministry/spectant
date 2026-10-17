@@ -78,7 +78,7 @@ interface DropMark {
  * glossary hints (ISC-167). Archived specs stay hidden until the archive toggle shows them; the page shares that
  * toggle across its lenses (`archived`, two-way). A second toggle, the tree's own, hides the features without a spec
  * row, so the features with specs stand together (`hideEmpty`). The tree is the lens with a rail: it docks the detail sidebar there at wide for its
- * lifetime, so switching to the matrix or the graph undocks it.
+ * lifetime, so switching to the Gantt or the graph undocks it.
  */
 @Component({
   selector: 'app-planning-tree',

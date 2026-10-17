@@ -82,9 +82,9 @@ for (const side of ['east', 'west'] as const) {
       await expectDay(page.locator('app-planning-tree').locator(milestoneDays(page)));
     });
 
-    test(`calendar: the planning matrix shows the milestone's target as that day in the ${side} zone`, async ({ page }) => {
-      await page.goto(STUB_MILESTONE.routes.matrix);
-      await expectDay(page.locator('app-planning-matrix').locator(milestoneDays(page)));
+    test(`calendar: the Gantt lens shows the milestone's target as that day in the ${side} zone`, async ({ page }) => {
+      await page.goto(STUB_MILESTONE.routes.gantt);
+      await expectDay(page.locator('app-planning-gantt [data-group-head]').locator(milestoneDays(page)));
     });
 
     test(`calendar: the board's milestone swimlane shows the target as that day in the ${side} zone`, async ({ page }) => {
@@ -168,7 +168,7 @@ const DATED_PAGES = [
   STUB_MIDNIGHT.routes.library,
   STUB_MIDNIGHT.routes.reader,
   STUB_MILESTONE.routes.tree,
-  STUB_MILESTONE.routes.matrix,
+  STUB_MILESTONE.routes.gantt,
   STUB_MILESTONE.routes.board,
 ] as const;
 
