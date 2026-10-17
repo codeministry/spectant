@@ -24,6 +24,7 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
+import { UiTime } from '../../shared/time';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { planningPageState } from '../planning/planning-page';
 import { BoardCard, CARD_EDGE } from './board-card';
@@ -169,6 +170,7 @@ interface BandRow {
     UiSheet,
     UiSkeleton,
     UiTerm,
+    UiTime,
     UiWsBadge,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

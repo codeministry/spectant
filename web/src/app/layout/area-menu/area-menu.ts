@@ -1,13 +1,13 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, resource, signal, viewChild } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { ApiClient } from '../../core/api.service';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { ApiClient, type PlanningBody } from '../../core/api.service';
 import { DASHBOARD_GO_KEY } from '../../core/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
 import { UiIcon } from '../../shared/icons/icon';
+import { type UiTimeForm, UiTimeLabel } from '../../shared/time';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
@@ -29,18 +29,40 @@ import { ShellState } from '../shell/shell-state.service';
 /** The params of a workspace page's summary key (`shell.pages.summary.<id>`); null leaves the summary line out. */
 type SummaryParams = Readonly<Record<string, string | number>> | null;
 
-/** A summary line as drawn: its catalogue key (the page's `summaryKey`, or a stand-in while its source loads) and params. */
+/** A summary line's one time (spec 006): the catalogue param it stands in, its ISO value and the form it is shown in. */
+interface SummaryTime {
+  readonly param: string;
+  readonly value: string;
+  readonly form: UiTimeForm;
+}
+
+/**
+ * A summary line as drawn: its catalogue key (the page's `summaryKey`, or a stand-in while its source loads) and params;
+ * a line with a time carries it apart, for `<ui-time-label>` to render as a `<time>` (ISC-114.3, ISC-114.4).
+ */
 interface SummaryLine {
   readonly key: string;
   readonly params: Readonly<Record<string, string | number>>;
+  readonly time?: SummaryTime;
 }
 
 /** The Library's line while the catalog has not answered: a static line, so the menu row never stands without one. */
 export const LIBRARY_SUMMARY_LOADING = 'shell.pages.summary.libraryLoading';
 
-/** `Nov 30` for an ISO date, read as a calendar day (UTC), so no time zone moves it a day. */
-const shortDate = (iso: string, locale: string): string =>
-  new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+/**
+ * Milestones: the entries some spec names, and the next one, the earliest not yet complete (the model sorts by target,
+ * undated last), by its target as a calendar day (`form: 'day'`, so no time zone moves it a day), else its name.
+ * Without an open milestone the key has no word for "next", so the line is left out.
+ */
+export function milestonesLine(milestones: PlanningBody['milestones']): SummaryLine | null {
+  const named = milestones.filter((entry) => entry.specs.length > 0);
+  const next = named.find((entry) => entry.state !== 'complete');
+  if (next === undefined) return null;
+  const key = 'shell.pages.summary.milestones';
+  return next.target === null
+    ? { key, params: { count: named.length, next: next.name } }
+    : { key, params: { count: named.length }, time: { param: 'next', value: next.target, form: 'day' } };
+}
 
 /**
  * The area menu and the page menu (ISC-76, design.md § Area menu and tab bar): one anatomy, two scopes (`scope`). The
@@ -68,7 +90,7 @@ const shortDate = (iso: string, locale: string): string =>
  */
 @Component({
   selector: 'app-area-menu',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiIcon, UiKbd, UiPopover, UiSheet, UiRovingItem, UiRovingList],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiIcon, UiKbd, UiPopover, UiSheet, UiRovingItem, UiRovingList, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './area-menu.css',
   templateUrl: './area-menu.html',
@@ -78,9 +100,7 @@ export class AreaMenu {
   private readonly data = inject(ShellData);
   private readonly api = inject(ApiClient);
   private readonly settings = inject(SettingsService);
-  private readonly transloco = inject(TranslocoService);
   private readonly injector = inject(Injector);
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   /** Which list the menu holds: the open spec's areas, or the workspace's pages (the PAGE select, spec 024 T80). */
   readonly scope = input<'spec' | 'page'>('spec');
@@ -130,7 +150,7 @@ export class AreaMenu {
   });
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
-  private readonly summaryParams = computed<Record<WorkspaceMenuPageId, SummaryParams>>(() => ({
+  private readonly summaryParams = computed<Record<Exclude<WorkspaceMenuPageId, 'milestones'>, SummaryParams>>(() => ({
     specs:
       this.data.dashboard.value()?.kind === 'ok'
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
@@ -138,17 +158,16 @@ export class AreaMenu {
     board: this.boardSummary(),
     planning: this.planningSummary(),
     features: this.featuresSummary(),
-    milestones: this.milestonesSummary(),
     library: this.librarySummary(),
   }));
 
   /**
    * Each page's summary line; null leaves it out. Library always has one: its counts once the catalog answered, the
-   * static line before (and for any answer but `ok`).
+   * static line before (and for any answer but `ok`). Milestones' line carries its day as a time (`milestonesLine`).
    */
   protected readonly summaries = computed<Record<WorkspaceMenuPageId, SummaryLine | null>>(() => {
     const params = this.summaryParams();
-    const line = (id: WorkspaceMenuPageId): SummaryLine | null => {
+    const line = (id: Exclude<WorkspaceMenuPageId, 'milestones'>): SummaryLine | null => {
       const values = params[id];
       return values === null ? null : { key: workspacePageById(id).summaryKey, params: values };
     };
@@ -156,9 +175,10 @@ export class AreaMenu {
       specs: line('specs'),
       board: line('board'),
       planning: line('planning'),
-      // Spec 026: Features and Milestones left the menu for Planning; their ids stay in the type for the old routes.
+      // Spec 026: Features and Milestones left the menu for Planning; their ids stay in the type for the old routes, and
+      // Milestones' line is drawn for a row that shows it (no `WORKSPACE_PAGES` entry does since spec 026).
       features: null,
-      milestones: null,
+      milestones: milestonesLine(this.data.planningModel()?.milestones ?? []),
       library: line('library') ?? { key: LIBRARY_SUMMARY_LOADING, params: {} },
     };
   });
@@ -242,17 +262,5 @@ export class AreaMenu {
     const result = this.catalog.hasValue() ? this.catalog.value() : undefined;
     if (result?.kind !== 'ok') return null;
     return { docs: result.body.docs.length, stale: result.body.stale, missing: result.body.missing };
-  }
-
-  /**
-   * Milestones: the entries some spec names, and the next one, the earliest not yet complete (the model sorts by
-   * target, undated last), by its target date, else its name. Without an open milestone the key has no word for
-   * "next", so the line is left out.
-   */
-  private milestonesSummary(): SummaryParams {
-    const named = (this.data.planningModel()?.milestones ?? []).filter((entry) => entry.specs.length > 0);
-    const next = named.find((entry) => entry.state !== 'complete');
-    if (next === undefined) return null;
-    return { count: named.length, next: next.target === null ? next.name : shortDate(next.target, this.lang()) };
   }
 }
