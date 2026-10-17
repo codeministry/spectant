@@ -189,6 +189,28 @@
   animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
 }
 
+/* The confirmation after a band move (ISC-200.1): the head's tint fades, paint only; under reduced motion a static 4 px
+ * dot at its start instead, as in the tree. */
+.band-head[data-moved] .band-sticky::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-box);
+  content: '';
+  pointer-events: none;
+  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band-head[data-moved] .band-sticky::after {
+    inset: calc(50% - 2px) auto auto 2px;
+    inline-size: 4px;
+    block-size: 4px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    animation: none;
+  }
+}
+
 @media (forced-colors: active) {
   :host([data-dragging]) [data-drop='allowed'],
   .cdk-drag-preview,

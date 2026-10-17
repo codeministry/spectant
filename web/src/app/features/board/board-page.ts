@@ -478,9 +478,12 @@ export class BoardPage {
   protected readonly bandDragGroup = signal<string | null>(null);
   /** The head the drop line sits on while a band is dragged over a gap of its own group; null for no line. */
   protected readonly bandLine = signal<string | null>(null);
+  /** The band a move just landed, for the confirmation: a tint that fades, a static dot under reduced motion (ISC-200.1). */
+  protected readonly bandMoved = signal<string | null>(null);
 
   protected bandDragStarted(group: string | null): void {
     this.dragClick = true;
+    this.bandMoved.set(null);
     this.bandDragGroup.set(group);
   }
 
@@ -507,7 +510,10 @@ export class BoardPage {
   private async moveBand(feature: string, before: Target): Promise<void> {
     if (before === 'none' || this.writer.busy()) return;
     const outcome = await this.writer.move(this.ws(), feature, before);
-    if (outcome === 'written') this.announceBand(feature);
+    if (outcome === 'written') {
+      this.bandMoved.set(feature);
+      this.announceBand(feature);
+    }
     this.pendingBandFocus.set(feature);
   }
 

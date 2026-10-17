@@ -274,6 +274,27 @@ h2 {
   outline-offset: -1px;
 }
 
+/* The confirmation after a move (ISC-200.1): the row's tint fades, paint only; under reduced motion a static 4 px dot at
+ * the row's start instead (the refresh pattern of the KPI band). No transform, so nothing slides into place. */
+.row[data-moved]:not([data-drop])::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row[data-moved]:not([data-drop])::after {
+    inset: calc(50% - 2px) auto auto 6px;
+    inline-size: 4px;
+    block-size: 4px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    animation: none;
+  }
+}
+
 /* The drag preview is the row on the card with the board's outline; the source keeps its place, faded. */
 .row.cdk-drag-preview {
   border: 0;

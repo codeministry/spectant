@@ -430,6 +430,7 @@
                       [attr.data-move-group]="band.moveGroup"
                       [attr.data-band-lock]="bandLocked(band.moveGroup) ? '' : null"
                       [attr.data-drop-line]="bandLine() === (band.key ?? '') ? '' : null"
+                      [attr.data-moved]="band.key !== null && bandMoved() === band.key ? '' : null"
                       [attr.data-held]="held ? '' : null"
                       [attr.aria-busy]="held ? 'true' : null"
                     >

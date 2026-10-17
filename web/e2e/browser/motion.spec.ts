@@ -28,6 +28,7 @@
  * Zero failures under reduce is the threshold.
  */
 import { awaitReady, expect, test } from '../fixtures';
+import { RESET_PATH, SESSION_HEADER } from '../stub-api';
 
 type Page = Parameters<typeof awaitReady>[0];
 type Theme = 'light' | 'dark';
@@ -412,5 +413,69 @@ test.describe('motion', () => {
       expect(onHover.length, 'transitions on a button hover without the preference').toBeGreaterThan(0);
       expect(sweep.length, 'the restarted skeleton sweep without the preference').toBeGreaterThan(0);
     });
+  }
+});
+
+/**
+ * T53 · ISC-200.1 (`bun run test:browser -- motion`, `-g backlog`): a feature moved in the tree lens and a band moved on
+ * the board land without motion under reduced motion. Alt+↓ moves F1 under Harbor 1.0 in the tree and the band F2 on
+ * the board (`?group=feature`), each answered 200 by the stub; afterwards nothing runs on the page or on the moved row,
+ * the recorder saw no transition and no animation with an end time, and the confirmation is the static 4 px dot (the
+ * `::after` of the moved row, `animation-name: none`). The control without the preference sees the tint fade run.
+ */
+type Move = { name: string; path: string; key: string; moved: string; press: string; dot: string };
+const MOVES: readonly Move[] = [
+  {
+    name: 'tree',
+    path: '/w/harbor/planning/tree',
+    key: '[role="treeitem"][data-key="milestone:harbor-1-0/feature:F1"]',
+    press: '[role="treeitem"][data-key="milestone:harbor-1-0/feature:F1"]',
+    moved: '[role="treeitem"][data-moved]',
+    dot: '::after',
+  },
+  {
+    name: 'board',
+    path: '/w/harbor/board?group=feature',
+    key: '.band-head[data-band="F2"]',
+    press: '.band-head[data-band="F2"] [data-band-grip]',
+    moved: '.band-head[data-moved] .band-sticky',
+    dot: '::after',
+  },
+];
+
+test.describe('motion: backlog moves (spec 037, ISC-200.1)', () => {
+  for (const move of MOVES) {
+    for (const preference of ['reduce', 'no-preference'] as const) {
+      test(`backlog ${move.name}: a move lands ${preference === 'reduce' ? 'without motion, the confirmation a static dot' : 'with the tint fade (control)'} · ${preference}`, async ({ page, request }) => {
+        const session = `t037-motion-${move.name}-${preference}`;
+        await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
+        await page.emulateMedia({ reducedMotion: preference });
+        await page.addInitScript(installRecorder);
+        await page.goto(move.path);
+        const target = page.locator(move.press);
+        await expect(target).toBeVisible();
+        await target.focus();
+        await page.evaluate(snapshot, null);
+        const written = page.waitForResponse((res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/workspaces/harbor/backlog');
+        await page.keyboard.press('Alt+ArrowDown');
+        expect((await written).status()).toBe(200);
+        const moved = page.locator(move.moved);
+        await expect(moved).toHaveCount(1);
+        const dot = await moved.evaluate((el, pseudo) => {
+          const style = getComputedStyle(el, pseudo);
+          return { animation: style.animationName, width: style.width };
+        }, move.dot);
+        const snap = await page.evaluate(snapshot, move.moved);
+        await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+        if (preference === 'reduce') {
+          expect(snap.running, 'animations running after the move').toEqual([]);
+          expect(snap.onTarget, 'animations on the moved row').toEqual([]);
+          expect(snap.recorded.filter((r) => r.kind === 'transition' || (r.endTime ?? 0) > 0), 'motion the recorder saw').toEqual([]);
+          expect(dot).toEqual({ animation: 'none', width: '4px' });
+        } else {
+          expect(dot.animation, 'the confirmation without the preference').toBe('ui-tint-fade');
+        }
+      });
+    }
   }
 });

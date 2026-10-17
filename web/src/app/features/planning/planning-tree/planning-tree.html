@@ -62,6 +62,7 @@
       [attr.data-group]="row.group"
       [attr.data-drop]="dropSide(row)"
       [attr.data-held]="busy ? '' : null"
+      [attr.data-moved]="moved() === row.key ? '' : null"
       [attr.aria-busy]="busy ? 'true' : null"
       [attr.aria-keyshortcuts]="feature ? 'Alt+ArrowUp Alt+ArrowDown' : null"
       [attr.data-kind]="row.kind"

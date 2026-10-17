@@ -110,6 +110,8 @@ export class PlanningTree {
   protected readonly dragGroup = signal<string | null>(null);
   /** The drop line during a drag; `none` over a position that is no drop target (another milestone or group). */
   protected readonly dropAt = signal<DropMark | 'none' | null>(null);
+  /** The row a move just landed, for the confirmation: a tint that fades, a static dot under reduced motion (ISC-200.1). */
+  protected readonly moved = signal<string | null>(null);
   /** The feature row whose grip opened "Move". */
   private readonly menuRow = signal<TreeRow | null>(null);
 
@@ -376,6 +378,7 @@ export class PlanningTree {
     const outcome = await this.writer.move(ws, row.node.id, before);
     if (held) this.dragHeld.set(null);
     if (outcome !== 'written') return;
+    this.moved.set(row.key);
     afterNextRender(
       () => {
         this.moveTo(row.key);
@@ -403,6 +406,7 @@ export class PlanningTree {
   }
 
   protected dragStarted(row: TreeRow): void {
+    this.moved.set(null);
     this.dragGroup.set(row.group);
     this.dropAt.set(null);
   }
