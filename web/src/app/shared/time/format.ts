@@ -13,10 +13,13 @@ const LOCALE: Readonly<Record<Lang, string>> = { de: 'de-DE', en: 'en-US' };
 
 const DATE_PART: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
 
-const OPTIONS: Readonly<Record<TimeForm, Intl.DateTimeFormatOptions>> = {
-  instant: { ...DATE_PART, hour: 'numeric', minute: '2-digit' },
-  date: DATE_PART,
-  clock: { timeStyle: 'short' },
+/** German writes the hour with two digits, as its short clock does (`09:05`); English as its clock does (`9:05 AM`). */
+const HOUR: Readonly<Record<Lang, Intl.DateTimeFormatOptions['hour']>> = { de: '2-digit', en: 'numeric' };
+
+const OPTIONS: Readonly<Record<TimeForm, (lang: Lang) => Intl.DateTimeFormatOptions>> = {
+  instant: (lang) => ({ ...DATE_PART, hour: HOUR[lang], minute: '2-digit' }),
+  date: () => DATE_PART,
+  clock: () => ({ timeStyle: 'short' }),
 };
 
 const cache = new Map<string, Intl.DateTimeFormat>();
@@ -26,7 +29,7 @@ export function dateTimeFormat(lang: Lang, form: TimeForm): Intl.DateTimeFormat 
   const key = `${lang}:${form}`;
   let format = cache.get(key);
   if (!format) {
-    format = new Intl.DateTimeFormat(LOCALE[lang], OPTIONS[form]);
+    format = new Intl.DateTimeFormat(LOCALE[lang], OPTIONS[form](lang));
     cache.set(key, format);
   }
   return format;

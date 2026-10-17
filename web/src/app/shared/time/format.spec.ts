@@ -22,6 +22,14 @@ describe('shared/time format', () => {
     expect(plain(formatClock(LOCAL_AFTERNOON, 'en'))).toBe('2:05 PM');
   });
 
+  it('keeps one hour form per language: German two-digit, English as the clock writes it (ISC-114.1)', () => {
+    const morning = new Date(2026, 9, 1, 9, 5).toISOString();
+    expect(plain(formatInstant(morning, 'de'))).toBe('01.10.2026, 09:05');
+    expect(plain(formatClock(morning, 'de'))).toBe('09:05');
+    expect(plain(formatInstant(morning, 'en'))).toBe('10/01/2026, 9:05 AM');
+    expect(plain(formatClock(morning, 'en'))).toBe('9:05 AM');
+  });
+
   it('sets no time zone on any format object, so the browser default applies', () => {
     const browserZone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
     const forms: readonly TimeForm[] = ['instant', 'date', 'clock'];
