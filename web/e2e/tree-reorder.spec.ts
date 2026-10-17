@@ -37,8 +37,8 @@ test.describe('tree-reorder: move (T27, ISC-195)', () => {
   test.use(atWidth(WIDTHS.desktop));
 
   let session = '';
-  test.beforeEach(({}, info) => {
-    session = `t037-tree-${info.testId}`;
+  test.beforeEach(() => {
+    session = `t037-tree-${test.info().testId}`;
   });
   test.afterEach(async ({ request }) => {
     await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
@@ -126,8 +126,8 @@ test.describe('tree-reorder: priority (T31, ISC-196)', () => {
   test.use(atWidth(WIDTHS.desktop));
 
   let session = '';
-  test.beforeEach(({}, info) => {
-    session = `t037-chip-${info.testId}`;
+  test.beforeEach(() => {
+    session = `t037-chip-${test.info().testId}`;
   });
   test.afterEach(async ({ request }) => {
     await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
