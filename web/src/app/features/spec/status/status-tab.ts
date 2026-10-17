@@ -2,7 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe } from '@jsverse/transloco';
 import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
 import { ApiClient } from '../../../core/api.service';
 import { specLink } from '../../../layout/shell/areas';
@@ -11,6 +11,7 @@ import { ShellState } from '../../../layout/shell/shell-state.service';
 import { GateButton } from '../../../layout/spec-head/gate-button';
 import { type GateAction, gateAction, pathSegments } from '../../../layout/spec-head/spec-head-model';
 import { UiIcon } from '../../../shared/icons/icon';
+import { UiTime } from '../../../shared/time';
 import { UiButton } from '../../../shared/ui/button/button';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiNotice } from '../../../shared/ui/notice/notice';
@@ -60,6 +61,7 @@ const OPEN_ORDER: readonly string[] = ['takeable', 'taken', 'blocked', 'open'];
     UiRing,
     UiSectionHeader,
     UiSkeleton,
+    UiTime,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-tab.html',
@@ -72,9 +74,6 @@ export class StatusTab {
   private readonly state = inject(ShellState);
   private readonly route = inject(ActivatedRoute);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly transloco = inject(TranslocoService);
-
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly fragment = toSignal(this.route.fragment, { initialValue: this.route.snapshot.fragment });
 
   protected readonly tier = this.state.tier;
@@ -176,13 +175,6 @@ export class StatusTab {
     const model = this.model();
     return model ? gateAction(model.gates.reviewed, this.lock()) : null;
   });
-
-  private readonly timeFormat = computed(() => new Intl.DateTimeFormat(this.lang(), { dateStyle: 'medium', timeStyle: 'short' }));
-  protected time(iso: string | null | undefined): string {
-    if (!iso) return '';
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? iso : this.timeFormat().format(date);
-  }
 
   protected gateTone(state: GateState): Tone {
     return GATE_TONE[state];

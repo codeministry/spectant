@@ -8,7 +8,8 @@ import type { TimelineEntry } from '../../../../../../../core/src/files';
 import golden from '../../../../../../../core/fixtures/harbor.timeline.golden.json';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult } from '../../../../core/api.service';
-import { TimelineTab } from './timeline-tab';
+import { formatClock, formatDate, localDayKey } from '../../../../shared/time';
+import { groupByDay, TimelineTab } from './timeline-tab';
 
 const TIMELINES = golden as unknown as Record<string, readonly TimelineEntry[]>;
 /** What the stub serves for `/w/harbor/s/002/timeline`: 3 rounds, 4 recorded stage entries, 1 gate, 1 decision. */
@@ -16,7 +17,7 @@ const HARBOR_002 = TIMELINES['specs/002-web-console'] ?? [];
 /** Spec 004's strand: its stages are derived from the files, three of them undated. */
 const HARBOR_004 = TIMELINES['specs/004-retention-policies'] ?? [];
 /** The local day of an ISO `ts`, as the tab groups by it. */
-const localDay = (ts: string): string => new Date(ts).toDateString();
+const localDay = (ts: string): string => localDayKey(new Date(ts));
 
 type FakeApi = Pick<ApiClient, 'timeline'>;
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
@@ -102,11 +103,42 @@ describe('TimelineTab (T55, ISC-80, ISC-36)', () => {
     const root = await open('/w/harbor/s/002/timeline');
     const groups = [...root.querySelectorAll<HTMLElement>('[data-day]')];
     expect(HARBOR_002.every((entry) => entry.ts !== '')).toBe(true);
-    expect(groups).toHaveLength(new Set(HARBOR_002.map((entry) => localDay(entry.ts))).size);
+    expect(groups.map((group) => group.dataset['day'])).toEqual([...new Set(HARBOR_002.map((entry) => localDay(entry.ts)))]);
     const round1Group = groups.find((group) => group.querySelector('[data-id="round-1"]'));
     const ids = [...(round1Group?.querySelectorAll<HTMLElement>('[data-entry]') ?? [])].map((el) => el.dataset['id']);
     const round1 = HARBOR_002.find((entry) => entry.id === 'round-1');
     expect(ids).toEqual(HARBOR_002.filter((entry) => localDay(entry.ts) === localDay(round1?.ts ?? '')).map((entry) => entry.id));
+  });
+
+  for (const lang of ['en', 'de'] as const) {
+    it(`heads each day with its date alone and gives each row its clock alone, both in a <time> (ISC-114.1, ${lang})`, async () => {
+      setUp();
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const root = await open('/w/harbor/s/002/timeline');
+      const groups = [...root.querySelectorAll<HTMLElement>('[data-day]')];
+      expect(groups.length).toBeGreaterThan(1);
+      for (const group of groups) {
+        // The header formats the first entry of its day; that entry's local date is the group's day.
+        const first = HARBOR_002.find((entry) => entry.id === group.querySelector<HTMLElement>('[data-entry]')?.dataset['id']);
+        const heading = group.querySelector('.day-label time');
+        expect(heading?.getAttribute('datetime')).toBe(first?.ts);
+        expect(heading?.textContent.trim()).toBe(formatDate(first?.ts ?? '', lang));
+      }
+      for (const entry of HARBOR_002) {
+        const time = root.querySelector(`[data-id="${entry.id ?? ''}"] .time time`);
+        expect(time?.getAttribute('datetime'), entry.id).toBe(entry.ts);
+        expect(time?.textContent.trim(), entry.id).toBe(formatClock(entry.ts, lang));
+      }
+    });
+  }
+
+  it('reads a date-only ts as its local day: the header names that day, the row shows no clock', () => {
+    const entry = { ...HARBOR_002[0], id: 'dated', ts: '2026-03-06' } as TimelineEntry;
+    const [day] = groupByDay([entry]);
+    expect(day.key).toBe('2026-03-06');
+    expect(day.ts).toBe('2026-03-06T00:00:00');
+    expect(formatDate(day.ts ?? '', 'en')).toBe('03/06/2026');
+    expect(day.rows[0]?.time).toBe('');
   });
 
   it('puts an undated stage entry in the group of the entry before it', async () => {

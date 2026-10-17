@@ -46,10 +46,18 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await page.goto('/w/harbor/s/002/status');
       const gate = page.locator(GATE);
       await expect(gate).toHaveAttribute('data-state', 'done');
-      // The time is `Intl` in the UI language; its date part carries the year of `gates.reviewed.at`.
       // spec 024: prototype value (principal: the prototype wins) — the time and the session stand in the `.gate-hint` under the button.
+      // spec 006: the shared format in the test's zone (Europe/Berlin, en): `gates.reviewed.at` 2026-03-07T15:30:00Z.
       await expect(gate).toContainText(/Re-mark/u);
-      await expect(page.locator(`${HEAD} [data-gate-hint]`)).toContainText(/Reviewed .*2026/u);
+      const hint = page.locator(`${HEAD} [data-gate-hint]`);
+      await expect(hint).toHaveText('Reviewed 03/07/2026, 4:30 PM');
+      await expect(hint.locator('time')).toHaveAttribute('datetime', goldens['specs/002-web-console']?.gates.reviewed.at ?? '');
+    });
+
+    test('006 names the time of its stale mark in the shared format', async ({ page }) => {
+      await page.goto('/w/harbor/s/006');
+      // `gates.reviewed.at` 2026-03-08T12:00:00Z in Europe/Berlin.
+      await expect(page.locator(`${HEAD} [data-gate-hint]`)).toHaveText('reviewed 03/08/2026, 1:00 PM · changed since');
     });
 
     test.describe('under a frontier lock', () => {
@@ -101,7 +109,10 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         await expect(dialog).toBeHidden();
-        await expect(page.locator(`${HEAD} [data-gate-written]`)).toBeVisible();
+        const written = page.locator(`${HEAD} [data-gate-written]`);
+        await expect(written).toBeVisible();
+        await expect(written).toContainText(/^Reviewed mark written \d{2}\/\d{2}\/\d{4}, \d{1,2}:\d{2} [AP]M\.$/u);
+        await expect(written.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/u);
         await expect(page.locator(GATE)).toHaveAttribute('data-state', 'done');
       });
     });

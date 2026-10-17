@@ -53,7 +53,13 @@
       <ol class="strand" [class.is-dashed]="derivedOnly()" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
         @for (day of days(); track day.key) {
           <li class="day" [attr.data-day]="day.key">
-            <h3 class="day-label">{{ dayLabel(day) ?? ('timeline.dateUnknown' | transloco) }}</h3>
+            <h3 class="day-label">
+              @if (day.ts; as ts) {
+                <ui-time [value]="ts" form="date" />
+              } @else {
+                {{ 'timeline.dateUnknown' | transloco }}
+              }
+            </h3>
             <ol class="entries">
               @for (row of day.rows; track row.key) {
                 <li
@@ -74,8 +80,8 @@
                       <span class="no-date" data-no-date>{{ 'timeline.worktree.noDate' | transloco }}</span>
                     } @else if (row.time === null) {
                       {{ 'timeline.dateUnknown' | transloco }}
-                    } @else {
-                      <time [attr.datetime]="row.entry.ts">{{ row.time }}</time>
+                    } @else if (row.time !== '') {
+                      <ui-time [value]="row.time" form="clock" />
                     }
                   </span>
                   <span
