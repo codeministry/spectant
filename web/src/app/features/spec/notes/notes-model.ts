@@ -97,26 +97,20 @@ export function nextSaveState(state: SaveState, event: SaveEvent): SaveState {
   }
 }
 
-/** The i18n key under `notes.save.*` and its params; null shows nothing. `time` formats the saved instant. */
-export function saveLabel(state: SaveState, time: (iso: string) => string): { readonly key: string; readonly params: Record<string, string> } | null {
+/** What the autosave hint shows: the `notes.save.*` key and, for `saved`, the raw instant that `<ui-time-label>` formats. */
+export interface SaveLabel {
+  readonly key: string;
+  readonly at: string | null;
+}
+
+/** The autosave hint for a state; null shows nothing. The time stays an ISO string: `shared/time` formats it (ISC-114.2). */
+export function saveLabel(state: SaveState): SaveLabel | null {
   switch (state.kind) {
     case 'idle':
       return null;
     case 'saved':
-      return { key: 'notes.save.saved', params: { time: time(state.at) } };
+      return { key: 'notes.save.saved', at: state.at };
     default:
-      return { key: `notes.save.${state.kind}`, params: {} };
+      return { key: `notes.save.${state.kind}`, at: null };
   }
-}
-
-/** `12:04` in the given locale, 24-hour where the locale uses it. */
-export const clockTime = (iso: string, locale: string): string =>
-  new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
-
-/** A row's updated time: the clock time today, else the day and month (and the year when it is not this year's). */
-export function rowTime(iso: string, now: Date, locale: string): string {
-  const at = new Date(iso);
-  if (at.toDateString() === now.toDateString()) return clockTime(iso, locale);
-  const year = at.getFullYear() === now.getFullYear() ? undefined : 'numeric';
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year }).format(at);
 }

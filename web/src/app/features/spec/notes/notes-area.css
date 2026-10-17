@@ -218,6 +218,11 @@ app-notes-area .notes-save {
   font-variant-numeric: tabular-nums;
 }
 
+/* The instant form (spec 006) is longer than the old short date: it stays on one line beside the anchor chip. */
+app-notes-area .notes-row-time {
+  white-space: nowrap;
+}
+
 app-notes-area .notes-delete {
   margin-inline-start: auto;
   color: var(--muted-ink);

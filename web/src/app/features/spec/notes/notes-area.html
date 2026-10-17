@@ -59,7 +59,7 @@
                   } @else {
                     <span class="notes-anchor-none" data-anchor data-kind="none">{{ 'notes.anchor.unanchored' | transloco }}</span>
                   }
-                  <time class="notes-row-time" [attr.datetime]="row.note.updated">{{ row.time }}</time>
+                  <ui-time class="notes-row-time" [value]="row.note.updated" />
                 </span>
                 @if (row.line) {
                   <span class="notes-row-line">{{ row.line }}</span>
@@ -123,7 +123,11 @@
             <ui-icon name="arrow-left" [size]="16" />{{ 'notes.anchor.spec' | transloco: { spec: returnSpec() } }}
           </a>
           <span class="notes-local">{{ 'notes.editor.local' | transloco }}</span>
-          <span class="notes-save" data-save-state [attr.data-state]="saveState().kind" role="status">{{ saveText() }}</span>
+          <span class="notes-save" data-save-state [attr.data-state]="saveState().kind" role="status">
+            @if (saveHint(); as hint) {
+              @if (hint.at; as at) {<ui-time-label [key]="hint.key" [value]="at" />} @else {{{ hint.key | transloco }}}
+            }
+          </span>
           <button type="button" ui-icon-button icon="trash" class="notes-delete" data-note-delete [label]="'notes.editor.delete' | transloco" (click)="confirmOpen.set(true)"></button>
         </div>
 
