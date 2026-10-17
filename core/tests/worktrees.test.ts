@@ -41,7 +41,16 @@ import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
 import { buildSpecPage } from '../src/spec.ts';
-import { assignWorktrees, liveWorktrees, specSourceOf, WORKTREE_COPY_KINDS } from '../src/worktrees.ts';
+import {
+  assignWorktrees,
+  copyDirFor,
+  liveWorktrees,
+  mainBranchOf,
+  specSourceOf,
+  WORKTREE_COPY_KINDS,
+  type WorktreeFacts,
+  type WorktreeView,
+} from '../src/worktrees.ts';
 import { DASHBOARD_FAMILY, goldenMismatch, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
@@ -421,5 +430,138 @@ describe('untracked: an untracked or symlinked specs/ keeps every spec on the ma
       const built = tracked[family] ?? '';
       expect(goldenMismatch(readFileSync(goldenPath('harbor', family), 'utf8'), built)).not.toBeNull();
     }
+  });
+});
+
+// Spec 041, ISC-212.1: the folder a spec is read from, decided once for every caller. `copyDirFor(root, ref, view)`
+// takes the workspace root, the spec's number and folder name, and the `WorktreeView` the server builds from one
+// listing (`assignWorktrees`, `liveWorktrees`, `mainBranchOf` and the `ls-files` answers). It returns
+// `<root>/<worktree>/specs/NNN-slug` only for the spec's first live spec worktree in git's order, inside the
+// repository, when `specSourceOf` names `worktree` for it; null otherwise. The views below are built from the fixture's
+// listings the way the server builds them, so the tests exercise the model the server hands over. `-t copyDirFor`.
+
+/** The facts of a listing where every worktree's folder is present, nothing is merged and nothing is dirty. */
+function allPresent(porcelain: string, specs: readonly string[]): WorktreeFacts {
+  const present = assignWorktrees(porcelain, specs).worktrees.map((w) => w.path);
+  return { merged: [], present, dirty: [] };
+}
+
+/** The view the server builds from one listing, its git facts and the `ls-files` answer per spec folder. */
+function viewOf(
+  porcelain: string,
+  tracked: Readonly<Record<string, readonly string[]>>,
+  facts: WorktreeFacts = allPresent(porcelain, SPECS),
+): WorktreeView {
+  const assignment = assignWorktrees(porcelain, SPECS);
+  const { live, ended } = liveWorktrees(assignment, facts);
+  return { assignment, live, ended, mainBranch: mainBranchOf(porcelain), tracked };
+}
+
+/** A listing at `/srv/repo` with the given worktrees after the main checkout, as git prints it. */
+const listingOf = (records: ReadonlyArray<{ path: string; branch: string }>): string =>
+  [{ path: '/srv/repo', branch: 'main' }, ...records]
+    .map(({ path, branch }, i) => `worktree ${path}\nHEAD ${i.toString(16).padStart(40, '0')}\nbranch refs/heads/${branch}\n\n`)
+    .join('');
+
+const ROOT = '/srv/repo';
+const HARBOR_REF = { id: '012', slug: '012-harbor' } as const;
+const HARBOR_COPY = '/srv/repo/.worktrees/012-harbor/specs/012-harbor';
+
+describe('copyDirFor: the worktree copy a spec is read from, over the one worktree view (ISC-212.1)', () => {
+  test('a live spec worktree of the spec and a tracked path under specs/NNN-slug/ read from its copy', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '012-harbor': HARBOR_TRACKED });
+    expect(copyDirFor(ROOT, HARBOR_REF, view)).toBe(HARBOR_COPY);
+  });
+
+  test('a worktree assigned by its branch alone reads from its own path', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '016-audit': ['specs/016-audit/spec.md'] });
+    expect(copyDirFor(ROOT, { id: '016', slug: '016-audit' }, view)).toBe('/srv/repo/.worktrees/infra-ci/specs/016-audit');
+  });
+
+  test('a trailing slash on the root is not doubled', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '012-harbor': HARBOR_TRACKED });
+    expect(copyDirFor('/srv/repo/', HARBOR_REF, view)).toBe(HARBOR_COPY);
+    expect(copyDirFor('/srv/repo//', HARBOR_REF, view)).toBe(HARBOR_COPY);
+  });
+
+  test('untracked: no entry, an empty answer or only the link itself keeps main', () => {
+    const text = read('spec-worktrees.porcelain');
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, {}))).toBeNull();
+    for (const lsFiles of [[], ['specs'], ['specs/012-harbor'], ['specs/012-harbor-old/spec.md'], lsFilesOf('symlink-specs')]) {
+      expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': lsFiles }))).toBeNull();
+    }
+  });
+
+  test("this repository's layout: specs linked into every spec worktree keeps every spec on main", () => {
+    const text = read('symlink-specs.porcelain');
+    const tracked = { '012-harbor': lsFilesOf('symlink-specs'), '016-audit': lsFilesOf('symlink-specs') };
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, tracked))).toBeNull();
+    expect(copyDirFor(ROOT, { id: '016', slug: '016-audit' }, viewOf(text, tracked))).toBeNull();
+  });
+
+  test('an ended spec worktree is no source: merged, removed or prunable', () => {
+    const text = read('spec-worktrees.porcelain');
+    const tracked = { '012-harbor': HARBOR_TRACKED };
+    const present = allPresent(text, SPECS);
+    const merged = viewOf(text, tracked, { ...present, merged: ['feature/012-harbor'] });
+    const removed = viewOf(text, tracked, { ...present, present: present.present.filter((p) => p !== '.worktrees/012-harbor') });
+    for (const view of [merged, removed]) {
+      expect(view.ended.map(({ worktree }) => worktree.spec)).toContain('012');
+      expect(view.live.some((w) => w.spec === '012')).toBe(false);
+      expect(copyDirFor(ROOT, HARBOR_REF, view)).toBeNull();
+    }
+
+    const prunable = read('prunable.porcelain');
+    const export_ = { id: '014', slug: '014-export' } as const;
+    const pruned = viewOf(prunable, { '014-export': ['specs/014-export/spec.md'] });
+    expect(pruned.ended.map(({ worktree, reason }) => [worktree.spec, reason])).toContainEqual(['014', 'prunable']);
+    expect(copyDirFor(ROOT, export_, pruned)).toBeNull();
+    // The same listing still reads harbor's copy: only the ended worktree is left out.
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(prunable, { '012-harbor': HARBOR_TRACKED }))).toBe(HARBOR_COPY);
+  });
+
+  test('a builder is no source, even on the spec branch', () => {
+    const text = listingOf([{ path: '/srv/repo/.claude/worktrees/agent-4c7e0a3d', branch: 'feature/012-harbor' }]);
+    const view = viewOf(text, { '012-harbor': HARBOR_TRACKED });
+    expect(view.live.map((w) => w.kind)).toEqual(['builder']);
+    expect(copyDirFor(ROOT, HARBOR_REF, view)).toBeNull();
+  });
+
+  test('a worktree of another spec is no source', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '015-ledger': ['specs/015-ledger/spec.md'] });
+    expect(view.live.some((w) => w.spec === '015')).toBe(false);
+    expect(copyDirFor(ROOT, { id: '015', slug: '015-ledger' }, view)).toBeNull();
+    // A tracked entry filed under the wrong folder does not lend another spec's worktree either.
+    const crossed = viewOf(read('spec-worktrees.porcelain'), { '015-ledger': HARBOR_TRACKED });
+    expect(copyDirFor(ROOT, { id: '015', slug: '015-ledger' }, crossed)).toBeNull();
+  });
+
+  test('a worktree outside the repository is no source: ../repo-013 keeps main', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '013-relay': ['specs/013-relay/spec.md'] });
+    expect(view.live.find((w) => w.spec === '013')).toMatchObject({ path: '../repo-013', kind: 'spec' });
+    expect(copyDirFor(ROOT, { id: '013', slug: '013-relay' }, view)).toBeNull();
+  });
+
+  test('two live worktrees of the same spec: the first in git order, as the dashboard chip shows', () => {
+    const tracked = { '012-harbor': HARBOR_TRACKED };
+    const first = listingOf([
+      { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+      { path: '/srv/repo/.worktrees/harbor-fix', branch: 'fix/012-harbor' },
+    ]);
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(first, tracked))).toBe(HARBOR_COPY);
+    const second = listingOf([
+      { path: '/srv/repo/.worktrees/harbor-fix', branch: 'fix/012-harbor' },
+      { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+    ]);
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(second, tracked))).toBe('/srv/repo/.worktrees/harbor-fix/specs/012-harbor');
+  });
+
+  test('the first live one wins once the first in git order has ended', () => {
+    const text = listingOf([
+      { path: '/srv/repo/.worktrees/harbor-fix', branch: 'fix/012-harbor' },
+      { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+    ]);
+    const facts = { ...allPresent(text, SPECS), merged: ['fix/012-harbor'] };
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': HARBOR_TRACKED }, facts))).toBe(HARBOR_COPY);
   });
 });

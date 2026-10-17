@@ -18,13 +18,15 @@
  * repository root (`.git` directly in the folder) with at least one active spec that carries a code-reviewed mark;
  * anything else, or a git that is missing or fails, is `null`, which `core/` reads as "tree id unavailable".
  * The worktrees (spec 027, ISC-175) come from `git.ts`'s read-only `worktree list`, `rev-list --count` and `status`
- * (`readWorktrees`); `core/`'s `assignWorktrees` decides which spec each belongs to. A spec with a worktree of its own
- * is read per spec (`specSourceFor`): its code-reviewed mark compares with the tree id computed in that worktree
- * (ISC-176), and when git tracks its folder (`ls-files`, `trackedSpecPaths`) its files come from the worktree's copy,
- * with the main checkout's copy beside them (ISC-181); both go to `core/` as `DashboardInput.perSpec`. A spec worktree
- * whose branch is merged into `main` or whose folder is gone is no longer the spec's: it is left out, so no chip shows
- * and the spec reads from the main checkout again, and the timeline carries the derived entry instead
- * (`timelineWorktreeOf`, ISC-175.1).
+ * in one reading every caller shares (`readWorktreeView`, spec 041): `core/`'s `assignWorktrees` decides which spec each
+ * belongs to and `liveWorktrees` which have ended. A spec with a live worktree of its own is read per spec
+ * (`specSourceFor`): its code-reviewed mark compares with the tree id computed in that worktree (ISC-176), and when git
+ * tracks its folder (`ls-files`, `trackedSpecPaths`) its files come from the worktree's copy (`copyDirFor`), with the
+ * main checkout's copy beside them (ISC-181); both go to `core/` as `DashboardInput.perSpec`. A spec worktree whose
+ * branch is merged into `main`, whose folder is gone or that git lists as `prunable` is no longer the spec's: the
+ * dashboard, the spec tabs and their writes, the library and the timeline all leave it out, so no chip shows and the
+ * spec reads from the main checkout again, and the timeline carries the derived entry instead (`timelineWorktreeOf`,
+ * ISC-175.1, ISC-212.1).
  *
  * An unreadable workspace (gone, not a directory, no permission) is a `{readable: false, error}` value with a stable
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
@@ -43,7 +45,7 @@ import { catalogDocAt, readCatalog, readCatalogDocs } from "../../core/src/libra
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
-import { WORKTREE_COPY_KINDS, type WorktreeAssignment, assignWorktrees, mainBranchOf, specSourceOf } from "../../core/src/worktrees.ts";
+import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf } from "../../core/src/worktrees.ts";
 import { type SpecBranch, aheadOfMain, dirty, mergeCommitOf, mergedSpecBranches, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
@@ -242,15 +244,15 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     const perSpec: Record<string, SpecRead> = {};
     const copies: Record<string, string> = {};
     const refs = listSpecs(root);
-    const branches = (await mergedSpecBranches(root)).branches;
-    const worktrees = await readWorktrees(root, refs.map((ref) => ref.slug), branches);
+    const { view, branches } = await readWorktreeView(root, refs);
+    const worktrees = view.live.length === 0 ? undefined : { ...view.assignment, worktrees: view.live };
     for (const ref of refs) {
       const main = specFiles(ref.dir, ref.slug);
       if (ref.archived) {
         archived.push(main);
         continue;
       }
-      const source = await specSourceFor(root, ref, main, worktrees);
+      const source = await specSourceFor(root, ref, main, view);
       specs.push(source.files);
       if (source.read !== null) perSpec[ref.slug] = source.read;
       if (source.copy !== null) copies[ref.slug] = source.copy;
@@ -288,37 +290,52 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
 
 // ── the worktrees (spec 027) ─────────────────────────────────────────────────────────────────────────
 
-/**
- * The worktrees of the workspace at `root` (spec 027, T19, ISC-175): `git worktree list --porcelain`, assigned to the
- * spec `folders` by `core/`'s `assignWorktrees`, with the chip's two git facts read inside each worktree of kind `spec`
- * that belongs to a spec: `ahead` (`rev-list --count main..<branch>`) and `dirty` (`status --porcelain`), through
- * `git.ts`, which never fetches and runs with `GIT_OPTIONAL_LOCKS=0`. A builder is counted and never read, and a
- * worktree of no spec has no chip to fill, so both keep their nulls. One worktree after the other, each with its two
- * reads side by side: a workspace has a handful. A spec's worktree that has ended is left out (ISC-175.1): its branch is
- * one of `branches` read as merged, or its folder is gone while git still lists it (`prunable`). Undefined when git
- * lists nothing beside the main checkout (no repository of its own, no git, a failure) or nothing is left, so such an
- * input is the same as before spec 027.
- */
-async function readWorktrees(root: string, folders: readonly string[], branches: readonly SpecBranch[]): Promise<WorktreeAssignment | undefined> {
-  const assignment = assignWorktrees(await worktreeList(root), folders);
-  const merged = new Set(branches.filter((b) => b.merged).map((b) => b.branch));
-  const worktrees: Worktree[] = [];
-  for (const worktree of assignment.worktrees) {
-    if (worktree.kind !== "spec" || worktree.spec === null) {
-      worktrees.push(worktree);
-      continue;
-    }
-    if (ended(root, worktree, merged)) continue;
-    const at = join(root, worktree.path);
-    const [ahead, changed] = await Promise.all([aheadOfMain(at, worktree.branch), dirty(at)]);
-    worktrees.push({ ...worktree, ahead, dirty: changed });
-  }
-  return worktrees.length === 0 ? undefined : { ...assignment, worktrees };
+/** The worktree view of a workspace and the spec branches it was decided on (`readWorktreeView`). */
+export interface WorktreeReading {
+  readonly view: WorktreeView;
+  /** Every local spec branch with its merge state (`mergedSpecBranches`, ISC-162.1). */
+  readonly branches: readonly SpecBranch[];
 }
 
-/** A spec worktree that is no longer the spec's: its branch merged into `main`, or its folder gone (ISC-175.1). */
-function ended(root: string, worktree: Worktree, merged: ReadonlySet<string>): boolean {
-  return (worktree.branch !== null && merged.has(worktree.branch)) || !hasGit(join(root, worktree.path));
+/**
+ * The one reading of the worktrees of the workspace at `root` (spec 041, ISC-212.1) that the dashboard, the spec tabs
+ * with their three writes, the library and the timeline share: `git worktree list --porcelain` once, assigned to every
+ * spec folder of `refs` (active and archived) by `core/`'s `assignWorktrees`, split by `core/`'s `liveWorktrees` into
+ * live and ended worktrees on the merge state of the spec branches and on whether each folder still holds its `.git`.
+ * Each live spec worktree of a spec gets the chip's two git facts, read inside it: `ahead` (`rev-list --count
+ * main..<branch>`) and `dirty` (`status --porcelain`); a builder and a worktree of no spec keep their nulls. For each
+ * live spec worktree inside the repository, `tracked` holds what `git ls-files -z -- specs/<folder>` printed in the
+ * main checkout for the spec's active folder, `copyDirFor`'s input. Every git call goes through `git.ts`: read-only,
+ * no fetch, `GIT_OPTIONAL_LOCKS=0`. A listing with nothing beside the main checkout yields an empty view, as before
+ * spec 027.
+ */
+export async function readWorktreeView(root: string, refs: readonly SpecRef[] = listSpecs(root)): Promise<WorktreeReading> {
+  const [porcelain, merge] = await Promise.all([worktreeList(root), mergedSpecBranches(root)]);
+  const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
+  const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
+  const facts = {
+    merged: merge.branches.filter((b) => b.merged).map((b) => b.branch),
+    present: ofSpec.filter((w) => hasGit(join(root, w.path))).map((w) => w.path),
+    dirty: [],
+  };
+  const split = liveWorktrees(assignment, facts);
+  const live: Worktree[] = [];
+  const tracked: Record<string, readonly string[]> = {};
+  for (const worktree of split.live) {
+    if (worktree.kind !== "spec" || worktree.spec === null) {
+      live.push(worktree);
+      continue;
+    }
+    const at = join(root, worktree.path);
+    const [ahead, changed] = await Promise.all([aheadOfMain(at, worktree.branch), dirty(at)]);
+    live.push({ ...worktree, ahead, dirty: changed });
+    const ref = refs.find((r) => !r.archived && r.id === worktree.spec);
+    if (ref !== undefined && insideRepository(worktree.path) && tracked[ref.slug] === undefined) {
+      tracked[ref.slug] = await trackedSpecPaths(root, ref.slug);
+    }
+  }
+  const view: WorktreeView = { assignment, live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
+  return { view, branches: merge.branches };
 }
 
 /**
@@ -334,14 +351,15 @@ function ended(root: string, worktree: Worktree, merged: ReadonlySet<string>): b
  *
  * Nothing is written: the entry is derived on every read, `events.jsonl` stays byte-identical.
  */
-export async function timelineWorktreeOf(root: string, folder: string): Promise<TimelineWorktreeInput | null> {
+export async function timelineWorktreeOf(root: string, folder: string, reading?: WorktreeReading): Promise<TimelineWorktreeInput | null> {
   const spec = specIdOf(folder);
   if (spec === null) return null;
-  const own = (await mergedSpecBranches(root)).branches.filter((b) => b.spec === spec);
+  const { view, branches } = reading ?? (await readWorktreeView(root));
+  // The spec's worktrees as the whole workspace assigns them, so the path wins over the branch (ISC-174.1).
+  const mine = view.assignment.worktrees.filter((w) => w.kind === "spec" && w.spec === spec);
+  const own = branches.filter((b) => b.spec === spec || mine.some((w) => w.branch === b.branch));
   if (own.length === 0) return null;
-  const porcelain = await worktreeList(root);
-  const mine = assignWorktrees(porcelain, [folder]).worktrees.filter((w) => w.kind === "spec" && w.spec === spec);
-  const live = mine.find((w) => hasGit(join(root, w.path)));
+  const live = view.live.find((w) => w.kind === "spec" && w.spec === spec);
   const merged = own.find((b) => b.merged);
   if (merged !== undefined) {
     const commit = await mergeCommitOf(root, merged.branch);
@@ -349,8 +367,7 @@ export async function timelineWorktreeOf(root: string, folder: string): Promise<
     const path = (mine.find((w) => w.branch === merged.branch) ?? live)?.path ?? null;
     return { merged: commit, removed: false, branch: merged.branch, path };
   }
-  const main = mainBranchOf(porcelain);
-  if (live !== undefined || own.some((b) => b.branch === main)) return null;
+  if (live !== undefined || own.some((b) => b.branch === view.mainBranch)) return null;
   const branch = own[0]?.branch ?? null;
   return { merged: null, removed: true, branch, path: mine[0]?.path ?? null };
 }
@@ -405,17 +422,14 @@ async function specSourceFor(
   root: string,
   ref: Pick<SpecRef, "id" | "slug" | "dir">,
   main: SpecFiles,
-  assignment: WorktreeAssignment | undefined,
+  view: WorktreeView,
   withTree = true,
 ): Promise<SpecSourceReading> {
-  const worktree = assignment?.worktrees.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
-  if (worktree === null || !insideRepository(worktree.path) || !hasGit(join(root, worktree.path))) {
-    return { files: main, read: null, copy: null };
-  }
+  const worktree = view.live.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
+  if (worktree === null || !insideRepository(worktree.path)) return { files: main, read: null, copy: null };
   const at = join(root, worktree.path);
-  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: await trackedSpecPaths(root, ref.slug) });
-  const copyDir = join(at, "specs", ref.slug);
-  const copy = source === "worktree" ? copyFiles(ref.dir, copyDir, ref.slug) : null;
+  const copyDir = copyDirFor(root, ref, view);
+  const copy = copyDir === null ? null : copyFiles(ref.dir, copyDir, ref.slug);
   const files = copy?.texts.spec === undefined ? main : copy;
   const read: SpecRead = {
     ...(files === main ? {} : { source: "worktree" as const, main }),
@@ -432,8 +446,8 @@ async function specSourceFor(
 export async function readSpecSource(root: string, ref: SpecRef): Promise<{ files: SpecFiles; dir: string }> {
   const main = specFiles(ref.dir, ref.slug);
   if (ref.archived) return { files: main, dir: ref.dir };
-  const assignment = assignWorktrees(await worktreeList(root), listSpecs(root).map((r) => r.slug));
-  const source = await specSourceFor(root, ref, main, assignment);
+  const { view } = await readWorktreeView(root);
+  const source = await specSourceFor(root, ref, main, view);
   return { files: source.files, dir: source.copy ?? ref.dir };
 }
 
@@ -445,11 +459,11 @@ export async function readSpecSource(root: string, ref: SpecRef): Promise<{ file
  */
 async function readCopies(root: string): Promise<Record<string, string>> {
   const refs = listSpecs(root);
-  const assignment = assignWorktrees(await worktreeList(root), refs.map((ref) => ref.slug));
+  const { view } = await readWorktreeView(root, refs);
   const copies: Record<string, string> = {};
   for (const ref of refs) {
-    if (ref.archived || !assignment.worktrees.some((w) => w.kind === "spec" && w.spec === ref.id)) continue;
-    const source = await specSourceFor(root, ref, specFiles(ref.dir, ref.slug), assignment, false);
+    if (ref.archived || !view.live.some((w) => w.kind === "spec" && w.spec === ref.id)) continue;
+    const source = await specSourceFor(root, ref, specFiles(ref.dir, ref.slug), view, false);
     if (source.copy !== null) copies[ref.slug] = source.copy;
   }
   return copies;

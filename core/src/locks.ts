@@ -25,7 +25,10 @@
 //    malformed and skipped, and so is a `patch` or `apply` without `worktree`; a `dispatch` or `build` may name none,
 //    since the builder's worktree does not exist yet when its task is dispatched (spec 035, ISC-189), and its run then
 //    carries no `worktree` key. An event that is none of the six raises one `activity-event-unknown` warning per
-//    file, at its first line; that line and every later unknown one are skipped, and the file is read on.
+//    file, at its first line; that line and every later unknown one are skipped, and the file is read on. A run event
+//    without `claim` is assigned to a spec by its session ref `a:<kind>:spec-NNN/…`, else by its worktree
+//    `.worktrees/NNN-slug` (`runSpecOf`, spec 041, ISC-213); one that names neither is kept on `runs`, counts for no
+//    spec and raises a `locks-activity-unassigned` warning at its line.
 //
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
 // With no state directory given, nothing outside `repoRoot` is touched (ISC-37).
@@ -54,6 +57,20 @@ type RunLine = NonNullable<LockReading['runs']>[number];
 const RUN_STATE: Readonly<Record<RunEvent, RunState>> = { dispatch: 'dispatched', build: 'building', patch: 'patched', apply: 'applied' };
 
 const isRunEvent = (event: string): event is RunEvent => Object.hasOwn(RUN_STATE, event);
+
+/** A spec session ref: an agent session whose id is `spec-NNN`, alone or with its task (`a:claude:spec-041/T3`). */
+const SPEC_SESSION = /^a:[^:/]+:spec-(\d{3})(?:\/|$)/u;
+
+/** A spec worktree: `.worktrees/NNN-slug`, relative or as the tail of a longer path, with an optional trailing `/`. */
+const SPEC_WORKTREE = /(?:^|\/)\.worktrees\/(\d{3})-[^/]+\/?$/u;
+
+/**
+ * The spec number `NNN` a run line names without its claim (spec 041, ISC-213): from its session ref
+ * `a:<kind>:spec-NNN/…`, else from its worktree `.worktrees/NNN-slug`; null when it names neither. Pure.
+ */
+export function runSpecOf(run: { readonly session: string; readonly worktree?: string }): string | null {
+  return SPEC_SESSION.exec(run.session)?.[1] ?? (run.worktree === undefined ? null : (SPEC_WORKTREE.exec(run.worktree)?.[1] ?? null));
+}
 
 const byId = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true });
 const byClaim = (a: ClaimLock, b: ClaimLock) => byId(a.claim, b.claim);
@@ -209,7 +226,13 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
         return;
       }
       actors.push({ ref: parseActor(session), line, ...claimOf(entry) });
-      runs.push({ event, task, session, ...(filled(worktree) ? { worktree } : {}), ts, ...claimOf(entry) });
+      const run: RunLine = { event, task, session, ...(filled(worktree) ? { worktree } : {}), ts, ...claimOf(entry) };
+      // Without a claim only its spec session or spec worktree assigns the line to a spec (spec 041, ISC-213).
+      if (run.claim === undefined && runSpecOf(run) === null) {
+        const message = `The ${event} line of ${task} names no claim, no spec session (a:<kind>:spec-NNN/…) and no spec worktree (.worktrees/NNN-slug); it counts for no spec.`;
+        diagnostics.push(warning('locks-activity-unassigned', message, { line }));
+      }
+      runs.push(run);
       return;
     }
     if (!filled(claim) || !filled(session) || !filled(ts)) {

@@ -1571,6 +1571,15 @@ not). A task dispatched again after an `apply` reads `dispatched` again. Each `T
 `session` and `ts`, and its `worktree` when that event names one; otherwise the run has no `worktree` at all. The log
 is repository-wide and keyed by task id, so whoever shows one spec passes only that spec's run lines.
 
+A run event without `claim` belongs to the spec it names otherwise (spec 041, ISC-213): to spec `NNN` when its
+`session` is a spec session ref `a:<kind>:spec-NNN` or `a:<kind>:spec-NNN/<task>`, else when its `worktree` is the spec
+worktree `.worktrees/NNN-slug` (relative, or as the tail of a longer path); the session ref wins when both name a spec.
+Two specs with the same task id therefore each see only their own claimless lines. A claimless run event that names
+neither is still read and kept, counts for no spec, and raises one `locks-activity-unassigned` warning at its line,
+which names no claim. A line `{"event":"dispatch","task":"T3","session":"a:claude:spec-041/T3",…}` counts for spec
+041, one with `"session":"a:claude:sess-9/T3","worktree":".worktrees/042-beta"` for spec 042, and one with
+`"worktree":"wt-3"` and a session of the same form for none.
+
 An event that is none of `claim`, `release` and the four run events is one `activity-event-unknown` warning per file,
 at the first such line, with the event quoted in its text and the line's claim when it names one; that line and every
 later line with an unknown event are skipped, and the lines after them are read as usual. A line with no event at all
@@ -1598,8 +1607,9 @@ repository's `ISA.md`; only that one directory is read. The file is a JSON objec
 `isa` (the ISA path the session used) optional; a lock whose `isa` resolves to another file, whose content is not that
 object, or whose `ts` is more than two hours old (LifeOS's stale TTL) is not counted and becomes a diagnostic, as do an
 activity line that is not a JSON object with an event, a claim or release line without its claim, session or ts, a run
-event without its task, session, worktree or ts, an unknown event (once per file, above), a release of a claim nobody
-holds and a release by a session that does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
+event without its task, session, worktree or ts, an unknown event (once per file, above), a claimless run event that
+names no spec (`locks-activity-unassigned`, above), a release of a claim nobody holds and a release by a session that
+does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
 
 ```json
 {"session":"spec-002-ISC-75","ts":"2026-03-08T15:30:00.000Z","isa":"/srv/repo/ISA.md"}
@@ -1626,8 +1636,9 @@ operator steps). The clock is the caller's: the frame's `ts` is the time it was 
 Last, the run events (spec 027, ISC-179.1): every card but an `absent` one whose task a run event of this spec names
 carries `run`, the task's `TaskRun` (`{task, state, session, worktree, ts}`, above); a card without one has no `run`
 field. The log is repository-wide and keyed by task id, so a run line counts for a spec only when its task is one of
-the spec's tasks and, when the line names a claim, that claim is the task's own; a line without a claim is matched by
-its task id alone. The run is additive, the card's `state` stays what the layers above made it. The frame's `inRound`
+the spec's tasks and, when the line names a claim, that claim is the task's own; a line without a claim counts only
+when its spec session ref or spec worktree names this spec's number (above), and one naming neither counts nowhere.
+The run is additive, the card's `state` stays what the layers above made it. The frame's `inRound`
 is the group "in round n": `cards` holds the cards with a run whose task `tasks.md` has not checked, furthest along
 first (`applied-open`, `patched`, `building`, `dispatched`), board order within each; `lanes` counts them per lane, in
 board order, and `total` for the whole board, both only for states above 0 and in run order; `round` is the round the

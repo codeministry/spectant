@@ -407,8 +407,10 @@ describe('run states on the live frame (spec 027, ISC-179.1)', () => {
     expect(frame004.inRound).toEqual({ round: null, cards: [], lanes: {}, total: {} });
     const foreign = frameOf(reading([line('apply', 'T28', 'ISC-122'), line('dispatch', 'T4', 'ISC-999'), line('dispatch', 'T99', null)]));
     expect(foreign.cards.some((c) => 'run' in c)).toBe(false);
-    // A line without a claim is matched by its task id alone.
-    expect(card(frameOf(reading([line('dispatch', 'T29', null)])), 'T29').run?.state).toBe('dispatched');
+    // A line without a claim counts only for the spec its session ref or worktree names (spec 041, ISC-213).
+    const named = (worktree: string): Run => ({ ...line('dispatch', 'T29', null), worktree });
+    expect(card(frameOf(reading([named('.worktrees/002-web-console')])), 'T29').run?.state).toBe('dispatched');
+    expect(card(frameOf(reading([named('.worktrees/004-retention-policies')])), 'T29').run).toBeUndefined();
   });
 
   test('a reading without run lines leaves every card as before and the round empty', () => {

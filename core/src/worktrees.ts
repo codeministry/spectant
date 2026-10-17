@@ -29,6 +29,16 @@
 //     is listed as itself, `specs` or `specs/NNN-slug` without a slash after it, never as a path under the folder, so
 //     an untracked or linked `specs/` keeps `main`, Spectant's own repository included.
 //
+// And it holds the one reading of the worktrees every caller shares (spec 041, ISC-212.1), so dashboard, spec tabs and
+// their writes, library and timeline never disagree on a spec's worktree; the server builds the `WorktreeView` once
+// from the listing and the git facts it read:
+//
+//   - `liveWorktrees` applies the rule "ended": a spec worktree of a spec has ended when its branch is merged into
+//     `main`, its folder is gone, or git lists it as `prunable`. Builders and worktrees of no spec never end here.
+//   - `copyDirFor` names the folder a spec is read from, `<root>/<worktree>/specs/NNN-slug`: only for the spec's first
+//     live spec worktree in git's order (the one the dashboard chip shows), only inside the repository, and only when
+//     `specSourceOf` names `worktree` for it. Otherwise null, and the spec reads from the main checkout.
+//
 // Pure and browser-safe like `planning.ts`: text in, model out, no file system, no git, no Node or Bun API. Malformed
 // lines are skipped, never thrown on: a listing git did not print yields no worktrees rather than an empty page.
 import type { Diagnostic } from './diagnostics.ts';

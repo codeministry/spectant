@@ -25,8 +25,11 @@
 //                     carries `run`, the TaskRun `runStates` (locks.ts) folds from the reading's run lines: `apply`
 //                     reads `applied` once tasks.md checks the task, else `applied-open`. The log is repository-wide
 //                     and keyed by task id, so a run line counts here only for a task of this spec (a tasks.md line,
-//                     else a carried card) and, when it names a claim, only when that claim is the task's own. The run
-//                     is additive: the card's state stays what layers 1–3 made it. A card without a run has no `run`.
+//                     else a carried card) and, when it names a claim, only when that claim is the task's own; a line
+//                     without a claim only when its session ref `a:<kind>:spec-NNN/…`, else its worktree
+//                     `.worktrees/NNN-slug`, names this spec's number (spec 041, ISC-213), so a line naming neither
+//                     counts for no spec. The run is additive: the card's state stays what layers 1–3 made it. A card
+//                     without a run has no `run`.
 //
 // The frame adds the agents rail (one entry per session holding a lock here, oldest lock first), the Needs you list
 // (question, concerns, open operator steps) and the round group `inRound`: the cards with a run whose task tasks.md has
@@ -45,7 +48,8 @@ import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
 import type { MarkState } from './gates.ts';
-import { runStates } from './locks.ts';
+import { runSpecOf, runStates } from './locks.ts';
+import { specIdOf } from './spec-ref.ts';
 import { heldLocks } from './status.ts';
 import { specEdgeHold, takeableSet } from './takeable.ts';
 import { parseTaskLines } from './tasks.ts';
@@ -88,7 +92,7 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   };
   // Layer 4: the run, after every other field (CARD_KEYS order).
   const ticked = new Set(rows.filter((r) => r.state === 'done').map((r) => r.id));
-  const runs = specRuns(reading, rows, overlaid, ticked);
+  const runs = specRuns(reading, specIdOf(files.folder), rows, overlaid, ticked);
   const cards: LiveCard[] = overlaid.map((card): LiveCard => {
     const live = lockLayer(card);
     const run = card.state === 'absent' ? undefined : runs.get(card.task);
@@ -122,11 +126,12 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
 /**
  * Layer 4: this spec's runs by task id. A run line counts for a task of this spec (a tasks.md line, else a carried
  * card) and, when it names a claim, only when that claim is the task's own, so another spec's `T26` stays out; a line
- * without a claim is matched by its task id alone. tasks.md's checked boxes decide `applied` over `applied-open`.
+ * without a claim only when its spec session or spec worktree names `specId` (`runSpecOf`, spec 041, ISC-213).
+ * tasks.md's checked boxes decide `applied` over `applied-open`.
  */
-function specRuns(reading: LockReading, rows: readonly TaskRow[], cards: readonly FrameCard[], ticked: ReadonlySet<string>): Map<string, TaskRun> {
+function specRuns(reading: LockReading, specId: string | null, rows: readonly TaskRow[], cards: readonly FrameCard[], ticked: ReadonlySet<string>): Map<string, TaskRun> {
   const claimOf = new Map<string, string>(rows.length === 0 ? cards.map((c) => [c.task, c.claim]) : rows.map((r) => [r.id, r.claim]));
-  const ours = (reading.runs ?? []).filter((r) => claimOf.has(r.task) && (r.claim === undefined || r.claim === claimOf.get(r.task)));
+  const ours = (reading.runs ?? []).filter((r) => claimOf.has(r.task) && (r.claim === undefined ? specId !== null && runSpecOf(r) === specId : r.claim === claimOf.get(r.task)));
   return new Map(runStates({ ...reading, runs: ours }, ticked).map((run) => [run.task, run]));
 }
 

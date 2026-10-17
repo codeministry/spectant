@@ -476,7 +476,10 @@ export interface SpecGates {
 }
 
 /**
- * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. `worktree-branch-mismatch`: the
+ * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. It carries every
+ * `locks-activity-*` code, `locks-activity-unassigned` included: a run line without a claim that names neither a spec
+ * session `a:<kind>:spec-NNN/…` nor a spec worktree `.worktrees/NNN-slug` and so counts for no spec (spec 041,
+ * ISC-213). `worktree-branch-mismatch`: the
  * path and the branch of the spec's worktree name two different specs, and the path won (spec 027, ISC-174.1).
  * `activity-event-unknown`: `.spectant/activity.jsonl` holds an event that is neither `claim`, `release` nor a
  * `RunEvent`; the file is read on (ISC-179). `spec-overlap`: two open specs change the same file by their plan or task
