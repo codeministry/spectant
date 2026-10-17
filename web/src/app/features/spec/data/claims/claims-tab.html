@@ -52,21 +52,24 @@
         [attr.aria-labelledby]="'claim-' + claim.id + '-id'"
       >
         <div class="head">
-          <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">
-            @if (claim.state === 'taken') {
-              <ui-icon name="lock" [size]="14" />
-            } @else {
-              {{ glyphOf(claim) }}
-            }
-          </span>
+          @let item = items().get(claim.id);
+          @if (!item) {
+            <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">
+              @if (claim.state === 'taken') {
+                <ui-icon name="lock" [size]="14" />
+              } @else {
+                {{ glyphOf(claim) }}
+              }
+            </span>
+          }
           <ui-id-chip [id]="'claim-' + claim.id + '-id'">{{ claim.id }}</ui-id-chip>
           @if (claim.kind !== 'normal') {
             <ui-chip data-chip="kind" tone="secondary">{{ 'claims.kinds.' + claim.kind | transloco }}</ui-chip>
           }
-          @if (claim.state === 'blocked') {
+          @if (!item && claim.state === 'blocked') {
             <ui-chip data-chip="blocked" tone="error">{{ 'claims.states.blocked' | transloco }}</ui-chip>
           }
-          @if (claim.lock; as lock) {
+          @if (!item && claim.lock) {
             <ui-chip data-chip="lock" tone="primary" [dot]="true">{{ 'claims.states.taken' | transloco }}</ui-chip>
           }
           @let notes = noteCount(claim.id);
@@ -79,10 +82,27 @@
               ><ui-icon name="sticky-note" [size]="14" />{{ notes }}</a
             >
           }
-          @if (claim.state !== 'blocked' && !claim.lock) {
+          @if (item) {
+            @if (!item.run) {
+              <ui-item-state class="item-state" [info]="item" [ws]="shell.ws() ?? ''" />
+            }
+          } @else if (claim.state !== 'blocked' && !claim.lock) {
             <ui-chip class="st" data-chip="state" [attr.data-st]="claim.state" [icon]="chipIcon(claim.state)">{{ 'claims.states.' + claim.state | transloco }}</ui-chip>
           }
         </div>
+
+        @if (item?.run; as run) {
+          <!-- spec 040 (T51): the lock line as a band in the state's tint, the state line with actor and duration. -->
+          <div class="taken-line band" data-session [attr.data-state]="item?.state">
+            @if (item) {
+              <ui-item-state [info]="item" [ws]="shell.ws() ?? ''" />
+            }
+            <span class="mono">{{ run.session }}</span>
+            @if (item?.state === 'aborted') {
+              <span class="muted" data-no-release>{{ 'itemState.abortedFor' | transloco: { duration: durationOf(run.elapsedMs) } }}</span>
+            }
+          </div>
+        }
 
         @if (claim.state === 'dropped') {
           <p class="text-row">
@@ -96,7 +116,7 @@
           <p class="text-row"><span class="text">{{ claim.text }}</span></p>
         }
 
-        @if (claim.lock; as lock) {
+        @if (item ? null : claim.lock; as lock) {
           <p class="taken-line" data-session>
             <span class="agent-dot" aria-hidden="true"></span>
             <span class="mono">{{ lock.session }}</span>

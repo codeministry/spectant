@@ -29,7 +29,8 @@ const SPLIT = '\u0000';
  *
  * A chip "2 runs" stands behind the line when more than one run is open. A diagnostic is the quiet note in place of
  * the missing detail, never an invented value. Content marked `uiItemStateAction` is projected beside a run's details
- * (the release button of T62). `block` is the status block's form: details one per row, nothing hidden.
+ * (the release button of T62). `block` is the status block's form: details one per row, nothing hidden, and a running
+ * run's start beside its duration (T49).
  */
 @Component({
   selector: 'ui-item-state',
@@ -82,7 +83,7 @@ const SPLIT = '\u0000';
             <ui-command-chip [command]="command" />
           }
           @if (info().reason; as reason) {
-            <span class="muted" [class.vh]="!block()">{{ reason }}</span>
+            <span class="muted" data-phrase [class.vh]="!block()">{{ reason }}</span>
           }
         }
         @case ('waiting') {
@@ -99,6 +100,9 @@ const SPLIT = '\u0000';
               <ui-command-chip [command]="command" [lockedBy]="run" />
             }
             <ui-actor-chip [actor]="run.actor" [active]="true" />
+            @if (block()) {
+              <span class="muted" data-started>{{ started()[0] }}<ui-time [value]="run.since" />{{ started()[1] }}</span>
+            }
           }
           @if (info().detail; as detail) {
             <span class="muted" data-detail>{{ detail }}</span>

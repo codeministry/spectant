@@ -1,7 +1,7 @@
 /**
  * T154 · ISC-122.3: one reason phrase per waiting stage, the same on the three surfaces that show it. For every harbor
  * spec whose stage is in core's `WAITING_STAGES`, the dashboard row (`ui-reason[data-reason]`, T137), the status block
- * of its spec page (`app-status-block ui-reason`, T132) and its card on the workspace board (`app-board-card`, T122)
+ * of its spec page (`app-status-block [data-phrase]`, T132, spec 040 T49) and its card on the workspace board (`app-board-card`, T122)
  * carry the golden row's `nextReason` verbatim. `bun run --cwd web e2e -- reasons`.
  *
  * The row and the card show the phrase in `ui-reason`'s compact variant, clamped to one line at a whole word by
@@ -84,10 +84,11 @@ test.describe('reasons', () => {
     let covered = 0;
     for (const { id, phrase } of WAITING) {
       await page.goto(`/w/harbor/s/${id}/status`);
-      const reason = page.locator('app-status-block ui-reason');
+      // Spec 040 (T49): the block form of the state line carries the phrase (open), or the block below it (waiting).
+      await expect(page.locator('app-status-block ui-item-state'), `status block ${id}: the block variant`).toHaveAttribute('data-block', '');
+      const reason = page.locator('app-status-block [data-phrase]');
       await expect(reason, `status block ${id}`).toHaveCount(1);
-      await expect(reason, `status block ${id}: the block variant`).toHaveAttribute('data-block', '');
-      await expect.poll(() => shownText(reason.locator('.phrase')), { message: `status block ${id}` }).toBe(phrase);
+      await expect.poll(() => shownText(reason), { message: `status block ${id}` }).toBe(phrase);
       covered++;
     }
     expect(covered).toBeGreaterThanOrEqual(MIN_COVERED);

@@ -11,7 +11,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { ClaimGlyphState, ClaimView, ClaimViewModel } from '../../../../../../../core/src/files';
+import type { ClaimGlyphState, ClaimView, ClaimViewModel, ItemStateInfo } from '../../../../../../../core/src/files';
 import { type NoteCounts, noteCountFor } from '../../../../../../../server/src/notes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
@@ -22,6 +22,8 @@ import { chipIcon } from '../../../../shared/ui/chip/chip-icons';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiIdChip } from '../../../../shared/ui/id-chip/id-chip';
+import { elapsedText } from '../../../../shared/ui/item-state/duration';
+import { UiItemState } from '../../../../shared/ui/item-state/item-state';
 import { type RelativeFormat, UiRelativeTime } from '../../../../shared/ui/relative-time/relative-time';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
 import { UiSectionHeader } from '../../../../shared/ui/section-header/section-header';
@@ -96,6 +98,7 @@ const FOLD_KEEP = 3;
     UiFilterChips,
     UiIcon,
     UiIdChip,
+    UiItemState,
     UiRelativeTime,
     UiRovingItem,
     UiRovingList,
@@ -158,6 +161,25 @@ export class ClaimsTab {
     const result = this.result();
     return result?.kind === 'ok' ? result.body : null;
   });
+
+  /**
+   * Spec 040 (T51, ISC-224): each claim's `itemState` as the API serves it, by id; a claim without one (an older
+   * payload) keeps the glyph and chips it had. A held lock's detail `taken` only repeats `running`, so the line drops it.
+   */
+  protected readonly items = computed<ReadonlyMap<string, ItemStateInfo>>(() => {
+    const items = new Map<string, ItemStateInfo>();
+    for (const claim of this.model()?.claims ?? []) {
+      const item = claim.itemState;
+      if (item) items.set(claim.id, item.detail === 'taken' ? { ...item, detail: undefined } : item);
+    }
+    return items;
+  });
+
+  protected durationOf(elapsedMs: number): string {
+    const { key, params } = elapsedText(elapsedMs);
+    return this.transloco.translate(key, params);
+  }
+
   protected readonly failed = computed(() => {
     const result = this.result();
     return this.claims.error() !== undefined || (result !== undefined && result.kind !== 'ok');

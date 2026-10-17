@@ -58,7 +58,7 @@ test.describe('timeline', () => {
  * where every section stacks. `bun run e2e -- status -g "status tab"`.
  */
 type SpecGolden = {
-  readonly head: { readonly stage: string };
+  readonly head: { readonly stage: string; readonly state?: { readonly reason?: string } };
   readonly next: { readonly command: string | null; readonly reasons: readonly string[]; readonly since: string | null; readonly via: string | null };
   readonly waitingOnYou: readonly unknown[];
   readonly gates: Readonly<Record<string, { readonly state: string; readonly files?: readonly string[] }>>;
@@ -84,7 +84,8 @@ test.describe('status tab', () => {
     // The stage chip of the status block; the stage track's segments carry `data-stage` too, keyed by their stage.
     await expect(tab.locator('.stage-chip[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
     await expect(tab.locator('[data-next-command]')).toContainText(SPEC_002.next.command ?? '');
-    await expect(tab.locator('ui-reason .phrase')).toHaveText(SPEC_002.next.reasons[0] ?? '');
+    // Spec 040 (T49): the block shows the reason of the head's item state, not the first of `next.reasons`.
+    await expect(tab.locator('app-status-block [data-phrase]')).toHaveText(SPEC_002.head.state?.reason ?? '');
     await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons.slice(1)]);
     await expect(tab.locator('[data-waiting-row]')).toHaveCount(SPEC_002.waitingOnYou.length);
     await expect(tab.locator('ui-stage-track li[aria-current="step"]')).toHaveCount(1);

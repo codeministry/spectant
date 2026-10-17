@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
+import type { ItemStateInfo, SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
 import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
 import { UiActorChip } from '../../../shared/ui/actor-chip/actor-chip';
+import { UiItemState } from '../../../shared/ui/item-state/item-state';
 import { UiReason } from '../../../shared/ui/reason/reason';
+import { UiStateChip } from '../../../shared/ui/state-chip/state-chip';
 import { UiTimeLabel } from '../../../shared/time';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './status-model';
@@ -16,10 +18,15 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
  * spec head holds the canonical chip), or the done line on a done spec; and a wrapping meta line with the assignee as
  * `ui-actor-chip` (muted "unassigned" when nobody is) and the stage source as a muted hint. Everything is read from
  * the spec payload and the planning tree as served; nothing is derived here.
+ *
+ * Spec 040 (T49, ISC-224): when the head carries the spec's `state`, the state chip stands beside the stage chip and
+ * `ui-item-state`'s block form replaces the reason block: open with the reason and the command chip, waiting with its
+ * links, running with the locked chip, the agent, "since …" and the start, aborted on its warning band, done with the
+ * date. Without `state` (an older payload) the reason block stays as it was.
  */
 @Component({
   selector: 'app-status-block',
-  imports: [TranslocoPipe, UiActorChip, UiReason, UiStageTrack, UiTimeLabel],
+  imports: [TranslocoPipe, UiActorChip, UiItemState, UiReason, UiStageTrack, UiStateChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: 16px; min-inline-size: 0; }
@@ -27,6 +34,7 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
     .stage-chip { padding: 2px 8px; border: 1px solid var(--line); border-radius: var(--radius-selector); color: var(--disp-ink); font-size: 12px; font-weight: 600; line-height: 16px; }
     .caption, .muted { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
     .done { margin: 0; color: var(--muted-ink); }
+    .phrase { margin: 0; color: var(--muted-ink); font-size: 15px; line-height: 24px; }
   `,
   template: `
     <ui-stage-track
@@ -38,11 +46,20 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
     />
     <p class="stage-line">
       <span class="stage-chip" data-stage [attr.data-value]="head().stage">{{ 'stages.' + head().stage | transloco }}</span>
+      @if (stateChip(); as state) {
+        <ui-state-chip data-state-chip [state]="state" family="item" />
+      }
       @if (since(); as s) {
         <span class="caption" data-since><ui-time-label key="status.where.since" [params]="{ via: s.via }" [value]="s.at" /></span>
       }
     </p>
-    @if (reason(); as r) {
+    @if (item(); as item) {
+      <ui-item-state block [info]="item" [ws]="ws()" [attr.data-next-command]="item.state === 'open' && item.command ? '' : null" />
+      @if (item.state === 'waiting' && reason(); as r) {
+        <!-- ISC-122.3: a waiting stage's phrase stays verbatim in the block; the state line names what it waits on. -->
+        <p class="phrase" data-phrase>{{ r.phrase }}</p>
+      }
+    } @else if (reason(); as r) {
       <ui-reason [block]="true" [phrase]="r.phrase" [command]="command()" [attr.data-next-command]="command() ? '' : null" />
     } @else {
       <p class="done" data-done>{{ 'status.where.done' | transloco }}</p>
@@ -72,6 +89,26 @@ export class StatusBlock {
   readonly showCommand = input(true);
   /** "since … via …": the ISO instant of the event into the current stage and its command; null without one. */
   readonly since = input<{ readonly at: string; readonly via: string } | null>(null);
+
+  /** The workspace slug, for the links of a waiting spec's state line. */
+  readonly ws = input('');
+
+  /**
+   * The spec's item as the head carries it (spec 040, ISC-224); at wide an open command stays with the spec head, so
+   * the block drops only that chip. A run's command stays: it names the run that locks the chip. Null on an older
+   * payload without `state`, which keeps the reason block.
+   */
+  protected readonly item = computed<ItemStateInfo | null>(() => {
+    const state = this.head().state;
+    if (!state) return null;
+    return state.state === 'open' && !this.showCommand() ? { ...state, command: undefined } : state;
+  });
+
+  /** The state chip beside the stage chip; none when the stage already says done. */
+  protected readonly stateChip = computed(() => {
+    const state = this.head().state;
+    return !state || (state.state === 'done' && state.stage === 'done') ? null : state.state;
+  });
 
   protected readonly track = computed(() => statusTrack(this.head(), this.workflow()));
   protected readonly reason = computed(() => statusReason(this.head(), this.next()));
