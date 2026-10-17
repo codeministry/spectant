@@ -37,6 +37,8 @@ export const SettingsSchema = {
   railCollapsed: { default: false, validate: isBoolean },
   /** Spec 002, ISC-95: the Notes area's import notice was dismissed. */
   notesImportDismissed: { default: false, validate: isBoolean },
+  /** Spec 040, ISC-222.1: an open run older than this many minutes reads `aborted` and no longer locks its item. */
+  runAbortMinutes: { default: 120, validate: integerIn(5, 1440) },
 } as const satisfies Record<string, SettingSpec<unknown>>;
 
 type Schema = typeof SettingsSchema;

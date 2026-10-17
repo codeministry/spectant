@@ -661,7 +661,7 @@ describe('stub API: the library (spec 017, T3)', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false };
+  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 

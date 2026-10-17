@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting, type TestRequest } fro
 import { TestBed } from '@angular/core/testing';
 import { DEFAULT_SETTINGS, type Settings, SETTINGS_URL, SettingsService } from './settings.service';
 
-const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true };
+const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90 };
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -28,7 +28,7 @@ describe('SettingsService', () => {
   });
 
   it('exposes the schema defaults until the server answers', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 });
     expect(service.settings()).toEqual(DEFAULT_SETTINGS);
   });
 
