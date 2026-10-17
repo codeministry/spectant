@@ -1,0 +1,184 @@
+[
+  {
+    "kind": "spec",
+    "id": "001",
+    "state": "done",
+    "stage": "done",
+    "doneAt": "2026-03-05T15:00:00Z"
+  },
+  {
+    "kind": "review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-review 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-code-review 001",
+    "reason": "the code-reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-3",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-3 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-4",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-4 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-5",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-5 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "002",
+    "state": "open",
+    "stage": "plan",
+    "command": "/spec-plan 002",
+    "reason": "a feature spec needs plan.md and it is missing"
+  },
+  {
+    "kind": "review-mark",
+    "id": "002",
+    "spec": "002",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "002"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "002",
+    "spec": "002",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "002"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-6",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-7",
+    "spec": "002",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-6"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-8",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-1",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "spec",
+    "id": "003",
+    "state": "open",
+    "stage": "plan",
+    "command": "/spec-plan 003",
+    "reason": "a feature spec needs plan.md and it is missing"
+  },
+  {
+    "kind": "review-mark",
+    "id": "003",
+    "spec": "003",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "003"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "003",
+    "spec": "003",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "003"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-9",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-10",
+    "spec": "003",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-9"
+      ],
+      "siblings": []
+    }
+  }
+]

@@ -20,8 +20,11 @@
 // not on `build` even with a takeable claim; it falls through to row 11, `blocked`, with the reason `waits on {specs}`.
 // A spec with takeable work beside the held keeps its stage. A claim an open spec edge holds is not takeable
 // (`StageInput.edgeHeld`, ISC-162.2): when only such claims would be takeable, the spec stands in row 11 the same way.
+//
+// Spec 040 (T8, ISC-221): every row names the item state it yields while no run is open (`StageRule.state`): `waiting`
+// for `close-pending` and `blocked`, `done` for both `done` rows, `open` with the row's command for every other row.
 import type { Diagnostic } from './diagnostics.ts';
-import type { CodeReviewMode, MarkState, SpecType, SpecWait, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
+import type { CodeReviewMode, ItemState, MarkState, SpecType, SpecWait, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
 import type { Progress } from './frontmatter.ts';
 
 export type Stage = 'plan' | 'tasks' | 'review' | 'build' | 'blocked' | 'code-review' | 'close-pending' | 'close' | 'done';
@@ -169,6 +172,13 @@ export interface ReasonFill {
  */
 export type StageSubject = 'spec' | 'story';
 
+/**
+ * The item state a row of the stage table yields while no run is open on the item (spec 040, T8, ISC-221): `open` where
+ * a command lies with the user, `waiting` where the spec hangs on other items, `done` on the two done rows. A run is
+ * never a row's state; `itemStates` (item-state.ts) lays it over this one.
+ */
+export type RuleState = Extract<ItemState, 'open' | 'waiting' | 'done'>;
+
 /** The columns every row has. */
 interface StageRuleColumns {
   readonly subject: StageSubject;
@@ -178,6 +188,12 @@ interface StageRuleColumns {
   readonly next: string | null;
   /** The reasons this row can give, `{placeholder}` templates as FORMAT.md's Reason cell lists them. */
   readonly reasons: readonly string[];
+  /**
+   * The state the row yields without a run (spec 040, T8): `waiting` for `close-pending` (feature siblings) and
+   * `blocked` (spec edges, claims), `done` for both `done` rows, `open` with the row's command for every other row and
+   * the story row. The state table (ISC-228) is checked against it.
+   */
+  readonly state: RuleState;
 }
 
 /** A row a spec folder stands in: tried in table order over the spec's `StageInput`, first match wins. */
@@ -219,6 +235,7 @@ export function fillReason(template: string, values: Readonly<Record<string, str
 export const STORY_RULE: StoryStageRule = {
   subject: 'story',
   stage: 'idea',
+  state: 'open',
   condition: 'a story file under `specs/ideas/`, no folder yet',
   next: '/spec new',
   reasons: ['the story is shaped but has no spec'],
@@ -229,6 +246,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'done',
+    state: 'done',
     condition: '`phase: complete`',
     when: (input) => input.phase === 'complete',
     next: null,
@@ -238,6 +256,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'plan',
+    state: 'open',
     condition: 'the type needs `plan.md` and it is missing',
     when: (input) => needs(input, 'plan') && !input.hasPlan,
     next: '/spec-plan',
@@ -247,6 +266,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'tasks',
+    state: 'open',
     condition: 'the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing',
     when: (input) => needs(input, 'tasks') && countsOf(input).total >= TASKS_THRESHOLD && !input.hasTasks,
     next: '/spec-tasks',
@@ -256,6 +276,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'review',
+    state: 'open',
     condition: 'the reviewed mark is not fresh',
     when: (input) => input.reviewed !== 'fresh',
     next: '/spec-review',
@@ -265,6 +286,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'build',
+    state: 'open',
     condition: 'at least one claim is takeable and not all open work waits on an open spec edge',
     when: (input) => countsOf(input).takeable > 0 && fullHoldOf(input).length === 0,
     next: '/spec-implement',
@@ -278,6 +300,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'done',
+    state: 'done',
     condition: 'the type is `chore` and every claim is closed',
     when: (input) => input.type === 'chore' && countsOf(input).allClosed,
     next: null,
@@ -287,6 +310,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'close-pending',
+    state: 'waiting',
     condition:
       "every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open",
     when: (input) => countsOf(input).allClosed && input.codeReview === 'feature' && input.featureSiblingsOpen.length > 0,
@@ -297,6 +321,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'code-review',
+    state: 'open',
     condition: "every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh",
     when: (input) => countsOf(input).allClosed && input.codeReview !== 'none' && input.codeReviewed !== 'fresh',
     next: '/spec-code-review',
@@ -306,6 +331,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'close',
+    state: 'open',
     condition: "every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none`",
     when: (input) => countsOf(input).allClosed && (input.codeReviewed === 'fresh' || input.codeReview === 'none'),
     next: '/spec-complete',
@@ -316,6 +342,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'blocked',
+    state: 'waiting',
     condition: 'anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet',
     when: () => true,
     next: '/spec-status',

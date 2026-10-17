@@ -18,6 +18,9 @@
 //                                            PLANNING_NOW.
 //   <tree>.tech.golden.json      tech        `readTech` (spec 023, ISC-134) over the tree's `specs/tech.md` and active
 //                                            spec folders; an image exists when its file under `specs/` does.
+//   <tree>.state.golden.json     state       `itemStates` (spec 040, T10, ISC-221) over the tree at the live clock with
+//                                            its activity reading and the default abort age of 120 minutes
+//                                            (helpers/state-model.ts); item-state.test.ts compares it too.
 //
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
@@ -48,6 +51,7 @@ import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
 import { planningGantt } from '../src/gantt.ts';
 import { planningModel } from './helpers/planning-model.ts';
+import { stateModel } from './helpers/state-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -160,6 +164,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   planning: planningModel,
   gantt: (root) => ((model) => planningGantt(model, model.asOf))(planningModel(root)),
   tech: techModel,
+  state: stateModel,
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 
