@@ -18,7 +18,18 @@
         "tries": 1,
         "note": "2026-09-24 · `manifest.spec.ts` + `theme-colors.spec.ts` 23/23 (red first: missing export); manifest standalone, scope `/`, both colours the dark surface held to its oklch; link and theme-color in `index.html` · second look Max: pass (icons arrive with ISC-328)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -31,7 +42,18 @@
         "tries": 0,
         "note": "2026-09-24 · `manifest.spec.ts` + `theme-colors.spec.ts` 23/23 (red first: missing export); manifest standalone, scope `/`, both colours the dark surface held to its oklch; link and theme-color in `index.html` · second look Max: pass (icons arrive with ISC-328)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -44,7 +66,18 @@
         "tries": 1,
         "note": "2026-09-24 · `manifest.spec.ts` 21/21: every named icon at its size, 8-bit, plate by colour type and corner, mark inside the safe zone (red at 228.9 px, green at 197.6 of 204.8 at 512; 68.8 of 72 at 180), two script runs byte-identical, favicon set unchanged · second look Max: fail on the safe zone, fixed and remeasured independently",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -57,7 +90,18 @@
         "tries": 0,
         "note": "2026-09-24 · `manifest.spec.ts` 21/21: every named icon at its size, 8-bit, plate by colour type and corner, mark inside the safe zone (red at 228.9 px, green at 197.6 of 204.8 at 512; 68.8 of 72 at 180), two script runs byte-identical, favicon set unchanged · second look Max: fail on the safe zone, fixed and remeasured independently",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -70,7 +114,18 @@
         "tries": 1,
         "note": "2026-09-24 · `theme.store.spec.ts` + `manifest.spec.ts` 27/27; the inline script executed for dark, light, system × OS, unset and garbage (4 red with the meta write removed, green after); the store follows each switch · second look Max: pass, one finding adopted (a comment-satisfiable assertion replaced by the executing test)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T6",
@@ -83,7 +138,18 @@
         "tries": 0,
         "note": "2026-09-24 · `theme.store.spec.ts` + `manifest.spec.ts` 27/27; the inline script executed for dark, light, system × OS, unset and garbage (4 red with the meta write removed, green after); the store follows each switch · second look Max: pass, one finding adopted (a comment-satisfiable assertion replaced by the executing test)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T7",
@@ -96,7 +162,18 @@
         "tries": 1,
         "note": "2026-09-24 · `ngsw-config.spec.ts` 15/15 (red first on the missing file, then on the /api navigation rule): app group prefetch, i18n prefetch, help and fonts lazy, no data group, `/api` only as `!/api/**` in navigationUrls, `enabled: !isDevMode()`; production build emits ngsw.json with the negative /api regex; @angular/service-worker 22.1.4 like core · second look Max: concerns, five findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T8",
@@ -109,7 +186,18 @@
         "tries": 0,
         "note": "2026-09-24 · `ngsw-config.spec.ts` 15/15 (red first on the missing file, then on the /api navigation rule): app group prefetch, i18n prefetch, help and fonts lazy, no data group, `/api` only as `!/api/**` in navigationUrls, `enabled: !isDevMode()`; production build emits ngsw.json with the negative /api regex; @angular/service-worker 22.1.4 like core · second look Max: concerns, five findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T9",
@@ -122,7 +210,18 @@
         "tries": 1,
         "note": "2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T10",
@@ -135,7 +234,18 @@
         "tries": 0,
         "note": "2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T11",
@@ -148,7 +258,18 @@
         "tries": 0,
         "note": "2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T12",
@@ -161,7 +282,18 @@
         "tries": 0,
         "note": "2026-09-24 · curl against the built web image: `/`, SPA routes, `/index.html`, `/ngsw.json`, `/manifest.webmanifest` (application/manifest+json) and both worker scripts `no-cache` with 304 on revalidation; hashed bundles and fonts `immutable`; icons, i18n, help without a policy (red first: no header anywhere); the chart ConfigMap mirrors the blocks, `helm template` + `nginx -t` green, rollout pending · second look Max: pass, two findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T13",
@@ -174,7 +306,18 @@
         "tries": 0,
         "note": "2026-09-24 · curl against the built web image: `/`, SPA routes, `/index.html`, `/ngsw.json`, `/manifest.webmanifest` (application/manifest+json) and both worker scripts `no-cache` with 304 on revalidation; hashed bundles and fonts `immutable`; icons, i18n, help without a policy (red first: no header anywhere); the chart ConfigMap mirrors the blocks, `helm template` + `nginx -t` green, rollout pending · second look Max: pass, two findings adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T14",
@@ -187,7 +330,18 @@
         "tries": 0,
         "note": "2026-09-24 · `rg` for `\"/api` in `ngsw-config.json`: 0 hits; manifest and worker config against 18 `.env` values, the `config/` hosts and the model names: 0 hits beyond the public product name and the `html` extension; no URL, no address · probe only, no second look",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T15",
@@ -200,7 +354,18 @@
         "tries": 0,
         "note": "2026-09-24 · manual: prod image served locally, worker `activated` and controlling, server stopped (curl 000), reload renders the shell with header and nav and each screen its error state, no browser offline page (`~/Downloads/interceptor-capture-20260924-174836-12644.png`); operator, verbatim: \"Ja, schließen\"",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T16",
@@ -213,7 +378,15 @@
         "tries": 0,
         "reason": "operator lane — the principal's own action, never auto-dispatched",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "012",
+          "state": "open",
+          "command": "/spec-implement 012",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       },
       {
         "task": "T17",
@@ -226,7 +399,18 @@
         "tries": 0,
         "note": "2026-09-24 · `WorkingNotesStaySmallTest` 3/3 (budgets 17,261/18,000 and 11,769/12,000); `rg` hits in the decision record, CHANGELOG and README went from 0/unrelated/0 to 15/10/3; `check:static` clean · second look Max: pass, four text findings adopted (ngsw failure mode, unmeasured mime claim, Safari/Firefox, block count)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "012",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "progress": {
@@ -255,7 +439,15 @@
         "tries": 0,
         "reason": "operator lane — the principal's own action, never auto-dispatched",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "012",
+          "state": "open",
+          "command": "/spec-implement 012",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       }
     ],
     "staleAfterMs": 2700000,
@@ -285,7 +477,18 @@
         "tries": 1,
         "note": "bun-test — `shortlist.browser.spec.ts` § the cited row in view 3/3 (2560 docked: row 35 inside the pane, pane scrolled, document at 0; 1440 docked then chat closed: row 35 inside the pane; offer 99 outside the loaded page: pane at 0, detail open), file 14/14 over two runs, shortlist units 106/106, `check:static` green; red first: 2/3 with row 35 outside the pane; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -298,7 +501,18 @@
         "tries": 0,
         "note": "bun-test — `shortlist.browser.spec.ts` § the cited row in view 3/3 (2560 docked: row 35 inside the pane, pane scrolled, document at 0; 1440 docked then chat closed: row 35 inside the pane; offer 99 outside the loaded page: pane at 0, detail open), file 14/14 over two runs, shortlist units 106/106, `check:static` green; red first: 2/3 with row 35 outside the pane; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -311,7 +525,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -324,7 +549,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -337,7 +573,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T6",
@@ -350,7 +597,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T7",
@@ -363,7 +621,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T8",
@@ -376,7 +645,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T9",
@@ -389,7 +669,18 @@
         "tries": 2,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T10",
@@ -402,7 +693,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T11",
@@ -415,7 +717,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T12",
@@ -428,7 +741,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § opens on keyboard focus (aria-label 'Answer status: Incomplete', aria-describedby the popover, open on focus, closed on blur, no animation on the mark under emulated reduced motion) and `i18n-parity.spec.ts` 3/3 with `chat.status.*` in both catalogs; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T13",
@@ -441,7 +765,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T14",
@@ -454,7 +789,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § opens on keyboard focus (aria-label 'Answer status: Incomplete', aria-describedby the popover, open on focus, closed on blur, no animation on the mark under emulated reduced motion) and `i18n-parity.spec.ts` 3/3 with `chat.status.*` in both catalogs; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T15",
@@ -467,7 +813,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T16",
@@ -480,7 +837,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T16 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T17",
@@ -493,7 +861,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T18",
@@ -506,7 +885,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T18",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T18 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T19",
@@ -519,7 +909,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T19",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T19 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T20",
@@ -532,7 +933,18 @@
         "tries": 0,
         "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T20",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T21",
@@ -545,7 +957,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T21",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T21 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T22",
@@ -558,7 +981,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T22",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T23",
@@ -571,7 +1005,18 @@
         "tries": 0,
         "note": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T23",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T23 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T24",
@@ -585,7 +1030,18 @@
         "reason": "claim takeable, edges closed",
         "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T24",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T25",
@@ -599,7 +1055,18 @@
         "reason": "after T24 still open",
         "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T25",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T25 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T26",
@@ -613,7 +1080,18 @@
         "reason": "after T25 still open",
         "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T26",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T26 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T27",
@@ -627,7 +1105,18 @@
         "reason": "after T26 still open",
         "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T27",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T27 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T28",
@@ -641,7 +1130,18 @@
         "reason": "after T26 still open",
         "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T28",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T28 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T29",
@@ -655,7 +1155,18 @@
         "reason": "after T27, T28 still open",
         "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T29 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T30",
@@ -670,7 +1181,18 @@
         "reason": "claim blocked by ISC-478",
         "note": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T30",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T30 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T31",
@@ -684,7 +1206,18 @@
         "reason": "claim blocked by ISC-478",
         "note": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T31",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T31 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T32",
@@ -698,7 +1231,18 @@
         "reason": "claim blocked by ISC-478",
         "note": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T32",
+          "spec": "022",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T32 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "progress": {
@@ -743,7 +1287,18 @@
         "tries": 1,
         "note": "2026-09-24. bash + JUnit — `wc -c` 15,064 / 9,188 / 10,060 (was 17,261 / 12,010 / 11,769; thresholds 15,300 / 10,200 / 10,200); 16 paragraphs moved whole into docs/decisions/, one-line rule with pointer left; `WorkingNotesStaySmallTest` 3/3 green in the main tree; second look (Max) concerns adopted: lost measurement restored in configuration.md, two table topics renamed, root cut for headroom, Interceptor and accessibility-tree wording restored",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -756,7 +1311,18 @@
         "tries": 1,
         "note": "2026-09-24. bash — `rg -n -i spotless README.md docs/DEVELOPMENT.md .github/workflows/release.yml` filtered for off/disabled: 0 hits; `rg -n config/local CLAUDE.md .dockerignore`: 0 hits (was README:169-173, DEVELOPMENT.md:27, release.yml:32, .dockerignore:10, CLAUDE.md:18); second look (Max) pass, `/config` anchored and the formatter set named",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -769,7 +1335,18 @@
         "tries": 1,
         "note": "2026-09-24. JUnit — `EnvExampleTest` red on [LEADGEN_CONFIG_MOUNT, RETRIEVAL_TOPIC_FLOOR] missing and [SEARCHAGENT_FOLDER] stray, green 3/3 after `.env.example` gained the two keys and lost the stray one; `everyOperatorConfigKeyIsDocumented` binds the four exempt keys to docs/CONFIGURATION.md; `.env.example`, `docker-compose.yml`, `frontend/proxy.conf.js` are Gradle test inputs; second look (Max) concerns adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -782,7 +1359,18 @@
         "tries": 0,
         "note": "2026-09-24. JUnit — `EnvExampleTest` red on [LEADGEN_CONFIG_MOUNT, RETRIEVAL_TOPIC_FLOOR] missing and [SEARCHAGENT_FOLDER] stray, green 3/3 after `.env.example` gained the two keys and lost the stray one; `everyOperatorConfigKeyIsDocumented` binds the four exempt keys to docs/CONFIGURATION.md; `.env.example`, `docker-compose.yml`, `frontend/proxy.conf.js` are Gradle test inputs; second look (Max) concerns adopted",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -795,7 +1383,18 @@
         "tries": 1,
         "note": "2026-09-24. docker — `docker compose config | rg -c healthcheck:` 3 (was 1); `up -d --wait` exit 0 on a clean HEAD export with `SERVER_PORT=9999` in .env: api/postgres/web all `running healthy`, restart=unless-stopped on all three, `$SERVER_PORT` inside api 8080 (pinned in `environment` after Max's major finding), torn down with `down -v`",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T6",
@@ -808,7 +1407,18 @@
         "tries": 1,
         "note": "2026-09-24. rg + docker — build stage `node:22.23.3-alpine` with `COPY --from=oven/bun:1.3.12-alpine` (bun 1.3.12's node shim is below the Angular CLI's floor; the floating tag only built because it resolves to 1.4.x), runtime `nginxinc/nginx-unprivileged:1.27-alpine` on 8080 with `nginx.conf` and compose moved along, `|| true` gone; probe on a clean stack: both images built, api/postgres/web healthy, web uid 101, `GET /` and `GET /api/v1/status` 200 through the proxy, torn down; second look (Max) pass, minors adopted: `BunPinTest` holds the four bun pins to one version, a Renovate rule groups the tag with `packageManager`, the Node-floor note in the Dockerfile, the nginx comment; the office chart's port follows (master § Remaining Work)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T7",
@@ -821,7 +1431,18 @@
         "tries": 2,
         "note": "2026-09-24. rg + Gradle — `@Value(` under backend/src/main 5 → 0; `version`, `ingestCron`, both poll intervals and `security.allowOpenBind` bind on `ConfigProperties` with `@DefaultValue` from one constant per default; `@EnableConfigurationProperties(ConfigProperties.class)` on the application class replaces the scan; `StatusController` on `@RequiredArgsConstructor`; main tree: StatusControllerTest 1/1, SecurityConfigTest 5+1+5, ScheduledPassTest 1+1, OperatorConfigTest 1/1, ConfigurationBannerTest 10/10, LeadGenRuntimeHintsTest 1/1, ConfigFixturesTest 4/4, all unchanged; second look (Max) failed the first patch on `@NotBlank version` vs the empty `LEADGEN_VERSION=` of `.env.example`, adopted; the redispatched look passed, minors adopted (defaults hoisted, unreachable `@NotNull`s dropped)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T9",
@@ -838,7 +1459,18 @@
         "reason": "[P], claim takeable, edges closed",
         "note": "question twice (JdbcClient, threshold); IngestService keeps its list + @PostConstruct duplicate-type guard; closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T10",
@@ -855,7 +1487,18 @@
         "reason": "[P], claim takeable, edges closed",
         "note": "Max: NUL byte hid QueryEmbedder, 5 JdbcClient ctors + Origin left; swept by parent; 171 → 31; suite 860/0; closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T11",
@@ -868,7 +1511,18 @@
         "tries": 1,
         "note": "2026-09-24. rg + Gradle — `new IngestReport(` under backend/src/main 2 → 0 (the four test constructions stay); `@Builder` on the record, one builder site after the try in `IngestService.runOnce`, the catch stores the failure and the failure branch still rethrows `StageFailed` before `record`; main tree: `IngestControllerTest` 8/8, `LastRunQueryServiceTest` 13/13, `spotlessCheck` green; second look (Max) concerns: only the missing test artifact, produced by this run",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T12",
@@ -881,7 +1535,18 @@
         "tries": 1,
         "note": "2026-09-24. rg + Gradle — `scoringChoices()` under backend/src/main: the declaration in `PipelineConfig`, one call and one Javadoc mention in `llm/ModelChoice` (was six readers in four files); main tree: `ScoringWithoutAModelTest` 15/15, `JudgesTest` 7/7, `ContentClassifierWireFormatTest` 9/9, `FieldExtractorWireFormatTest` 12/12, `LlmStrategyTest` 3/3, `LlmExtractorsTest` 4/4, `LlmExtractorWireFormatTest` 14/14; second look (Max) concerns: the missing artifact (produced by this run) and `AdvertAskService.model()` answering by its own rule, recorded as fog",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T13",
@@ -894,7 +1559,18 @@
         "tries": 1,
         "note": "2026-09-24. Vitest — new teardown specs red on the unchanged components (listener count 1 after destroy; request not cancelled), green after `DestroyRef.onDestroy` removes the media-query listener and `takeUntilDestroyed` ends the ask request; second look (Max) pass, finding adopted: the spec now also reads `bothColumns` after the fire; main tree `check:static` 0, `bun run test` 553/553, `bun run build` 0",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T14",
@@ -907,7 +1583,18 @@
         "tries": 1,
         "note": "2026-09-24. Vitest + rg — `CatalogTitleStrategy` (selectTranslate, BRAND 'Lead Generation') provided beside the router, route titles as `title.*` keys, manual fallbacks as `error.manual*` keys; `i18n-parity.spec.ts` unused-key check red on six dead keys, then two more after the second look (Max, major) made the match token-bounded over comment-stripped source; all eight removed from both catalogs; `title.strategy.spec.ts` pins every English title byte-identical; i18n specs 7/7, main tree `check:static` 0, `bun run test` 553/553; `rg \"Lead Generation'\" app.routes.ts` and the sentence probe on manual.store.ts 0 hits",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T15",
@@ -920,7 +1607,18 @@
         "tries": 1,
         "note": "2026-09-24. bash + bun — `angular.json` prefix `lg` (was `app`); `experimentalDecorators` 0 hits (was 1); `@angular/forms` kept as a required peer of `@angular/cdk` 22.1.7 (claim refined); main tree `check:static` 0, `bun run test` 553/553 (65 files), `bun run build` 0 with the pre-existing initial-bundle budget warning; second look skipped for cause (two configuration lines, three green probes)",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T16",
@@ -935,7 +1633,18 @@
         "reason": "[P], claim takeable, edges closed",
         "note": "migrations identical, no mapping changed, processAot green, image smoked 23/23; closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T16 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T17",
@@ -950,7 +1659,18 @@
         "reason": "[P], claim takeable, edges closed",
         "note": "CHANGELOG § Unreleased + configuration.md; closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "013",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "progress": {

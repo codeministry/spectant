@@ -1213,6 +1213,13 @@ export interface LiveCard extends FrameCard {
    * task. `buildLiveFrame` leaves it absent then, and on an `absent` card. Set on the live frame's cards only.
    */
   readonly run?: TaskRun | null;
+  /**
+   * The task's state in the one model (spec 040, ISC-223): item-state.ts `taskStates` over this frame's lock reading,
+   * runs, spec edges, clock and stale age, equal to the task's `itemStates` item. Named `itemState` because `state` is
+   * the card's own word (`CardState`), which stays as it was; `running`, `stale` and `run.state` are its finer details.
+   * Absent on a card no tasks.md line names (the carried cards of a spec without tasks.md).
+   */
+  readonly itemState?: ItemStateInfo;
 }
 
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
@@ -1341,6 +1348,13 @@ export interface ClaimView {
   readonly noteCount: number;
   /** 1-based line in spec.md. */
   readonly line: number;
+  /**
+   * The claim's state in the one model (spec 040, ISC-223): item-state.ts `claimStates`, equal to the claim's
+   * `itemStates` item. `state` (`taken`, `blocked`, `takeable`) stays beside it until the web reads this one: taken is
+   * `running` (detail `taken`) or `aborted`, blocked `waiting`, takeable an `open` whose reason says so. Absent unless
+   * the caller passes `ClaimViewInput.now`, since running and aborted need the clock.
+   */
+  readonly itemState?: ItemStateInfo;
 }
 
 /** A feature heading the Claims tab groups cards under. */
@@ -1406,6 +1420,13 @@ export interface ClaimViewInput {
    * claim holds it `blocked` with `waitsOn`. Absent or empty, nothing waits on another spec.
    */
   readonly specEdges?: readonly SpecEdge[];
+  /**
+   * The clock a lock's age is measured against (spec 040, ISC-223), as a Date or in milliseconds since the epoch.
+   * Given, every claim carries `itemState`; absent, none does (core reads no clock).
+   */
+  readonly now?: Date | number;
+  /** A lock older than this reads `aborted`; defaults to item-state.ts `DEFAULT_CLAIM_STALE_MS` (ISC-35). */
+  readonly staleAfterMs?: number;
 }
 
 export type TaskState = 'open' | 'done' | 'struck';
@@ -1467,6 +1488,11 @@ export interface TaskRow extends TaskView {
   readonly note: string | null;
   /** A path column that names no file, e.g. `probe only, Interceptor` from `· (probe only, Interceptor)`. */
   readonly pathNote: string | null;
+  /**
+   * The task's state in the one model (spec 040, ISC-223), as `TaskParseInput.itemStates` hands it in; `status`,
+   * `question`, `concerns` and `fail` stay the row's own words. Absent when the caller passes no item for the task.
+   */
+  readonly itemState?: ItemStateInfo;
 }
 
 /** A filter chip: a lane or status and how many rows carry it. */
@@ -1502,6 +1528,12 @@ export interface TaskParseInput {
    * open task, or on its claim, holds the task `held` with the reason `waits on NNN`. Absent or empty, nothing waits.
    */
   readonly specEdges?: readonly SpecEdge[];
+  /**
+   * The spec's items from the one state model (spec 040, ISC-223): `itemStates` filtered to the spec, or the live
+   * frame's `LiveCard.itemState`s. Each row gets the `task` item of its id as `itemState`; tasks.ts derives no state
+   * itself (item-state.ts imports this module). Absent, no row carries one.
+   */
+  readonly itemStates?: readonly ItemStateInfo[];
 }
 
 // ─── Evidence (evidence.ts) ──────────────────────────────────────────────────────────────────────────────────────

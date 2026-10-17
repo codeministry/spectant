@@ -22,6 +22,11 @@
 //                                            its activity reading and the default abort age of 120 minutes
 //                                            (helpers/state-model.ts); item-state.test.ts compares it too.
 //
+// Spec 040 (T17, ISC-223) adds one field to the `live` family and nothing else: each card carries `itemState`
+// (live.ts). The `claim-view` and `tasks` families stay as the server's claims and tasks routes answer them, which pass
+// no clock and no items yet (tests/routes.test.ts compares the two); item-state.test.ts `claim task state` proves the
+// field there.
+//
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
 // frame after them. The private corpus (T10, `SPECTANT_PRIVATE_CORPUS`) is a separate test and has no golden here.

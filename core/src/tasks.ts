@@ -21,6 +21,9 @@
 // - An open spec edge (`input.specEdges`, spec 025, ISC-162.2) on an open task, or on its claim, holds the task: its
 //   status reads `held` with the reason `waits on NNN`, over a round's open, dispatched or held state. A problem the
 //   round reported (fail, question, concerns) keeps its word.
+// - The state of the one model (spec 040, ISC-223) is injected, never derived here: each row gets the `task` item of
+//   its id from `input.itemStates` as `itemState` (item-state.ts `itemStates`, or the live frame's cards), because
+//   item-state.ts parses task lines through this module. `status` with question, concerns and fail stays the row's own.
 //
 // Pure: text in, model out. No file system, no Bun API; never throws.
 import { splitSpecEdges } from './claims.ts';
@@ -352,6 +355,7 @@ export function parseTaskLines(input: TaskParseInput): TasksTab {
   // A three-digit token is a spec edge (spec 025, ISC-162): it goes to `afterSpecs`, never into the task-edge checks.
   // An open resolved spec edge on the task or its claim holds an open task `held`, `waits on NNN` (ISC-162.2).
   const edgeHold = specEdgeHold(input.specEdges ?? []);
+  const itemOf = new Map((input.itemStates ?? []).filter((i) => i.kind === 'task').map((i) => [i.id, i]));
   const tasks: TaskRow[] = drafts.map(({ edgeTokens, ...draft }) => {
     const { edges: taskTokens, specs: afterSpecs } = splitSpecEdges(edgeTokens);
     const { ids, bad } = taskIds(taskTokens);
@@ -362,7 +366,8 @@ export function parseTaskLines(input: TaskParseInput): TasksTab {
     const unknown = ids.filter((e) => !seen.has(e));
     if (unknown.length > 0) at('task-edge-unknown', `(after: …) names ${unknown.join(', ')}, which no task line carries.`);
     const waits = draft.state === 'open' && EDGE_HOLDABLE.has(draft.status) ? edgeHold(draft.id, draft.claim) : null;
-    return { ...draft, ...(waits === null ? {} : { status: 'held' as const, reason: waits }), edges: ids, afterSpecs };
+    const itemState = itemOf.get(draft.id);
+    return { ...draft, ...(waits === null ? {} : { status: 'held' as const, reason: waits }), edges: ids, afterSpecs, ...(itemState === undefined ? {} : { itemState }) };
   });
 
   const probeMapping = parseMapping(lines, tasks, diagnostics);

@@ -28,6 +28,13 @@
 // A claim lock and a task run name no command and no run id: both come from implement rounds, so their run shows
 // `/spec-implement NNN` and the holding session as its id.
 //
+// One model for claims and tasks (ISC-223): `claimStates` and `taskStates` derive them from already parsed inputs of
+// one spec. `itemStates` calls them per spec; the live frame (live.ts `LiveCard.itemState`) and the claim view
+// (claim-view.ts `ClaimView.itemState`) call them with their own lock reading and clock; the Tasks tab's rows
+// (tasks.ts `TaskRow.itemState`) get the items injected by their caller, since this module imports tasks.ts. The
+// views' older words (a card's `running`/`stale`, a claim's `taken`/`blocked`/`takeable`, a row's ISC-179 run state)
+// stay beside it; a claim's takeability is the reason of its `open` item.
+//
 // Details (ISC-221.1, T13): `open` carries command and reason, `waiting` what it waits on, `running`/`aborted` the run
 // (command, `since`, actor, `elapsedMs`), `done` the date where the files give one and `closedAs` for a dropped claim or
 // a struck task; no state carries another state's details. A detail the files do not give is exactly one diagnostic,
@@ -39,10 +46,11 @@
 // `runStates`), so this module imports neither gates.ts nor locks.ts.
 import { parseActor } from './actor.ts';
 import { parseClaims } from './claims.ts';
+import type { Claim } from './claims.ts';
 import type { DashboardInput, DashboardModel, DashboardSpecRow } from './dashboard.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import { parseEvents } from './events.ts';
-import type { ClaimLock, GateState, GateView, ItemKind, ItemRun, ItemState, ItemStateInfo, ItemWaits, MarkState, OpenRun, RunState, SpecEdge, SpecFiles, TaskRun, Workflow } from './files.ts';
+import type { ClaimLock, GateState, GateView, ItemKind, ItemRun, ItemState, ItemStateInfo, ItemWaits, MarkState, OpenRun, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun, Workflow } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { resolveEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
@@ -389,8 +397,15 @@ function fromRuns(runs: readonly OpenRun[], ctx: Context): Pick<ItemStateInfo, '
   return { state: running.length > 0 ? 'running' : 'aborted', run, ...(diagnostic === undefined ? {} : { diagnostic }) };
 }
 
+/** The clock and the claim stale age a claim lock or a task run is measured against (ISC-35, ISC-223). */
+export interface ImplementClock {
+  /** Milliseconds since the epoch. */
+  readonly now: number;
+  readonly staleAfterMs: number;
+}
+
 /** A claim lock or task run as the run of a claim or task: no run id and no command of its own (module header). */
-function implementRun(spec: string, session: string, since: string, source: 'lock' | 'task-run', ctx: Context): Pick<ItemStateInfo, 'state' | 'run' | 'diagnostic'> {
+function implementRun(spec: string, session: string, since: string, source: 'lock' | 'task-run', ctx: ImplementClock): Pick<ItemStateInfo, 'state' | 'run' | 'diagnostic'> {
   const elapsed = ctx.now - Date.parse(since);
   const run: ItemRun = {
     run: session,
@@ -444,64 +459,114 @@ function contextOf(input: ItemStateInput): Context {
 const runsOnSpec = (row: DashboardSpecRow, ctx: Context): OpenRun[] =>
   ctx.openRuns.filter((r) => r.spec !== undefined && (r.spec === row.id || r.spec === row.slug || specIdOf(r.spec) === row.id));
 
-/** The claims of one spec: done, running/aborted on a lock, waiting on edges, else open. */
-function claimItems(row: DashboardSpecRow, spec: string, ctx: Context): ItemStateInfo[] {
-  const { claims } = parseClaims(spec);
-  const reviewed = markOf(row.gates.reviewed.state);
-  const partition = partitionClaims(claims, ctx.locks, reviewed);
-  const lockOf = new Map(heldLocks(ctx.locks, new Set(claims.map((c) => c.id))).map((l) => [l.claim, l]));
+/**
+ * What the claims of one spec are derived from (ISC-223), already parsed: the one input the workspace model
+ * (`itemStates`), the live frame (live.ts) and the claim view (claim-view.ts) all hand to `claimStates`, so none of them
+ * derives a claim's state itself.
+ */
+export interface ClaimStateInput extends ImplementClock {
+  /** The spec's number, `NNN`. */
+  readonly spec: string;
+  /** spec.md's claims in file order (claims.ts `parseClaims`). */
+  readonly claims: readonly Claim[];
+  /** The lock reading's locks, repository-wide; only those on these claims count. */
+  readonly locks: readonly ClaimLock[];
+  /** The spec's reviewed mark: without a fresh one no claim is takeable (ISC-99). */
+  readonly reviewed: MarkState;
+  /** The spec's resolved spec edges (`resolveEdges`, those whose `fromSpec` is this spec). */
+  readonly specEdges: readonly SpecEdge[];
+}
+
+/**
+ * The claims of one spec (ISC-223): done (checked, or dropped with `closedAs`), running on a held lock (detail `taken`)
+ * or aborted past the claim stale age, waiting on an open claim or spec edge, else open with `/spec-implement NNN`; a
+ * takeable claim says so in its reason. Each item in `ItemStateInfo` key order.
+ */
+export function claimStates(input: ClaimStateInput): ItemStateInfo[] {
+  const { claims, locks, reviewed, spec } = input;
+  const partition = partitionClaims(claims, locks, reviewed);
+  const lockOf = new Map(heldLocks(locks, new Set(claims.map((c) => c.id))).map((l) => [l.claim, l]));
   const closed = new Set(partition.closed);
   const dropped = new Set(partition.dropped);
   const taken = new Set(partition.taken.map((t) => t.id));
   const takeable = new Set(partition.takeable);
   const blockers = new Map(partition.blocked.map((b) => [b.id, b.openBlockers]));
   const specHolds = new Map<string, string[]>();
-  for (const e of ctx.edges.get(row.id) ?? []) {
+  for (const e of input.specEdges) {
     if (e.fromKind === 'claim' && e.state === 'open') specHolds.set(e.fromId, [...(specHolds.get(e.fromId) ?? []), e.toSpec]);
   }
   return claims.map((c): ItemStateInfo => {
-    const base = { kind: 'claim' as const, id: c.id, spec: row.id };
-    if (dropped.has(c.id)) return { ...base, state: 'done', closedAs: 'dropped', ...doneOf(NOTE_DATE.exec(c.droppedNote ?? '')?.[1], `claim ${c.id}`) };
-    if (closed.has(c.id)) return { ...base, state: 'done', ...doneOf(null, `claim ${c.id}`) };
+    const base = { kind: 'claim' as const, id: c.id, spec };
+    if (dropped.has(c.id)) return ordered({ ...base, state: 'done', closedAs: 'dropped', ...doneOf(NOTE_DATE.exec(c.droppedNote ?? '')?.[1], `claim ${c.id}`) });
+    if (closed.has(c.id)) return ordered({ ...base, state: 'done', ...doneOf(null, `claim ${c.id}`) });
     const lock = taken.has(c.id) ? lockOf.get(c.id) : undefined;
     if (lock !== undefined) {
-      const live = implementRun(row.id, lock.session, lock.since, 'lock', ctx);
-      return { ...base, ...live, ...(live.state === 'running' ? { detail: 'taken' } : {}) };
+      const live = implementRun(spec, lock.session, lock.since, 'lock', input);
+      return ordered({ ...base, ...live, ...(live.state === 'running' ? { detail: 'taken' } : {}) });
     }
     if (blockers.has(c.id) || specHolds.has(c.id)) {
-      return { ...base, state: 'waiting', waits: waitsOf({ specs: specHolds.get(c.id), claims: blockers.get(c.id) }) };
+      return ordered({ ...base, state: 'waiting', waits: waitsOf({ specs: specHolds.get(c.id), claims: blockers.get(c.id) }) });
     }
     const reason = takeable.has(c.id) ? `${c.id} is takeable` : `the reviewed mark is ${reviewed}`;
-    return { ...base, state: 'open', command: `/spec-implement ${row.id}`, reason };
+    return ordered({ ...base, state: 'open', command: `/spec-implement ${spec}`, reason });
   });
 }
 
-/** The tasks of one spec: done, running/aborted on their run, waiting with their claim or a spec edge, else open. */
+/** The claims of one spec in the workspace model: `claimStates` over its dashboard row and the workspace context. */
+function claimItems(row: DashboardSpecRow, spec: string, ctx: Context): ItemStateInfo[] {
+  return claimStates({ spec: row.id, claims: parseClaims(spec).claims, locks: ctx.locks, reviewed: markOf(row.gates.reviewed.state), specEdges: ctx.edges.get(row.id) ?? [], now: ctx.now, staleAfterMs: ctx.staleAfterMs });
+}
+
+/** What the tasks of one spec are derived from (ISC-223), already parsed; see `ClaimStateInput`. */
+export interface TaskStateInput extends ImplementClock {
+  /** The spec's number, `NNN`. */
+  readonly spec: string;
+  /** tasks.md's rows as `parseTaskLines` gives them with the spec's rounds and spec edges (a round's reason counts). */
+  readonly tasks: readonly TaskRow[];
+  /** The spec's claim items (`claimStates`): a task whose claim waits waits with it. */
+  readonly claims: readonly ItemStateInfo[];
+  /** The spec's task runs (ISC-179) as its live frame folds them (`LiveCard.run`). */
+  readonly runs: readonly TaskRun[];
+  /** The spec's resolved spec edges, as for `ClaimStateInput`. */
+  readonly specEdges: readonly SpecEdge[];
+}
+
+/**
+ * The tasks of one spec (ISC-223): done (ticked, dated by its `apply`; or struck with `closedAs`), running on a run in
+ * flight with its ISC-179 state as the detail or aborted past the claim stale age, waiting with its claim or on an open
+ * spec edge, else open with `/spec-implement NNN`. Each item in `ItemStateInfo` key order.
+ */
+export function taskStates(input: TaskStateInput): ItemStateInfo[] {
+  const { spec } = input;
+  const runOf = new Map(input.runs.map((r) => [r.task, r]));
+  const claimOf = new Map(input.claims.map((c) => [c.id, c]));
+  const taskHolds = new Map<string, string[]>();
+  for (const e of input.specEdges) if (e.fromKind === 'task' && e.state === 'open') taskHolds.set(e.fromId, [...(taskHolds.get(e.fromId) ?? []), e.toSpec]);
+  return input.tasks.map((t): ItemStateInfo => {
+    const base = { kind: 'task' as const, id: t.id, spec };
+    const run = runOf.get(t.id);
+    if (t.state === 'struck') return ordered({ ...base, state: 'done', closedAs: 'struck', ...doneOf(NOTE_DATE.exec(t.note ?? '')?.[1], `task ${t.id}`) });
+    if (t.state === 'done') return ordered({ ...base, state: 'done', ...doneOf(run?.state === 'applied' ? run.ts : null, `task ${t.id}`) });
+    if (run !== undefined && IN_FLIGHT.has(run.state)) {
+      const live = implementRun(spec, run.session, run.ts, 'task-run', input);
+      return ordered({ ...base, ...live, ...(live.state === 'running' ? { detail: run.state } : {}) });
+    }
+    const claim = claimOf.get(t.claim);
+    const held = taskHolds.get(t.id) ?? [];
+    if (claim?.state === 'waiting' || held.length > 0) {
+      return ordered({ ...base, state: 'waiting', waits: waitsOf({ specs: [...(claim?.waits?.specs ?? []), ...held], claims: claim?.waits?.claims }) });
+    }
+    return ordered({ ...base, state: 'open', command: `/spec-implement ${spec}`, reason: t.reason ?? `task of ${t.claim}, not dispatched` });
+  });
+}
+
+/** The tasks of one spec in the workspace model: `taskStates` over its task lines, parsed with rounds and spec edges. */
 function taskItems(row: DashboardSpecRow, files: SpecFiles, claims: readonly ItemStateInfo[], ctx: Context): ItemStateInfo[] {
   const { tasks, rounds } = files.texts;
   if (tasks === undefined) return [];
   const specEdges = ctx.edges.get(row.id) ?? [];
   const tab = parseTaskLines({ tasks, ...(ctx.constitution === null ? {} : { constitution: ctx.constitution }), ...(rounds === undefined ? {} : { rounds }), specEdges });
-  const runOf = new Map((ctx.taskRuns[row.id] ?? []).map((r) => [r.task, r]));
-  const claimOf = new Map(claims.map((c) => [c.id, c]));
-  const taskHolds = new Map<string, string[]>();
-  for (const e of specEdges) if (e.fromKind === 'task' && e.state === 'open') taskHolds.set(e.fromId, [...(taskHolds.get(e.fromId) ?? []), e.toSpec]);
-  return tab.tasks.map((t): ItemStateInfo => {
-    const base = { kind: 'task' as const, id: t.id, spec: row.id };
-    const run = runOf.get(t.id);
-    if (t.state === 'struck') return { ...base, state: 'done', closedAs: 'struck', ...doneOf(NOTE_DATE.exec(t.note ?? '')?.[1], `task ${t.id}`) };
-    if (t.state === 'done') return { ...base, state: 'done', ...doneOf(run?.state === 'applied' ? run.ts : null, `task ${t.id}`) };
-    if (run !== undefined && IN_FLIGHT.has(run.state)) {
-      const live = implementRun(row.id, run.session, run.ts, 'task-run', ctx);
-      return { ...base, ...live, ...(live.state === 'running' ? { detail: run.state } : {}) };
-    }
-    const claim = claimOf.get(t.claim);
-    const held = taskHolds.get(t.id) ?? [];
-    if (claim?.state === 'waiting' || held.length > 0) {
-      return { ...base, state: 'waiting', waits: waitsOf({ specs: [...(claim?.waits?.specs ?? []), ...held], claims: claim?.waits?.claims }) };
-    }
-    return { ...base, state: 'open', command: `/spec-implement ${row.id}`, reason: t.reason ?? `task of ${t.claim}, not dispatched` };
-  });
+  return taskStates({ spec: row.id, tasks: tab.tasks, claims, runs: ctx.taskRuns[row.id] ?? [], specEdges, now: ctx.now, staleAfterMs: ctx.staleAfterMs });
 }
 
 /** A spec without a run: the state of its stage table row, with that state's details. */

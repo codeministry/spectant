@@ -17,7 +17,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -29,7 +40,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -41,7 +63,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "progress": {
@@ -148,7 +181,15 @@
         "tries": 0,
         "reason": "spec not reviewed — the reviewed mark is stale",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-10, not dispatched"
+        }
       },
       {
         "task": "T2",
@@ -161,7 +202,15 @@
         "tries": 0,
         "reason": "spec not reviewed — the reviewed mark is stale",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-11, not dispatched"
+        }
       },
       {
         "task": "T3",
@@ -174,7 +223,15 @@
         "tries": 0,
         "reason": "spec not reviewed — the reviewed mark is stale",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-12, not dispatched"
+        }
       }
     ],
     "progress": {
@@ -225,6 +282,13 @@
           "session": "a:claude:sess-50/T1",
           "worktree": "wt-1",
           "ts": "2026-03-08T14:14:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "005",
+          "state": "done",
+          "doneAt": "2026-03-08T14:14:00Z"
         }
       },
       {
@@ -237,7 +301,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -274,6 +349,29 @@
           "session": "a:claude:sess-51/T3",
           "worktree": "wt-3",
           "ts": "2026-03-08T14:32:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T3",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T3",
+            "actor": {
+              "raw": "a:claude:sess-51/T3",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T3",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:32:00Z",
+            "elapsedMs": 1680000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "building"
         }
       },
       {
@@ -311,6 +409,28 @@
           "session": "a:claude:sess-50/T4",
           "worktree": "wt-4",
           "ts": "2026-03-08T13:41:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "005",
+          "state": "aborted",
+          "run": {
+            "run": "a:claude:sess-50/T4",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-50/T4",
+            "actor": {
+              "raw": "a:claude:sess-50/T4",
+              "kind": "subagent",
+              "id": "a:claude:sess-50",
+              "task": "T4",
+              "legacy": false
+            },
+            "since": "2026-03-08T13:41:00Z",
+            "elapsedMs": 4740000,
+            "openRuns": 1,
+            "source": "task-run"
+          }
         }
       },
       {
@@ -331,6 +451,29 @@
           "session": "a:claude:sess-51/T5",
           "worktree": "wt-5",
           "ts": "2026-03-08T14:31:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T5",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T5",
+            "actor": {
+              "raw": "a:claude:sess-51/T5",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T5",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:31:00Z",
+            "elapsedMs": 1740000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "patched"
         }
       },
       {
@@ -351,6 +494,29 @@
           "session": "a:claude:sess-51/T6",
           "worktree": "wt-6",
           "ts": "2026-03-08T14:35:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T6",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T6",
+            "actor": {
+              "raw": "a:claude:sess-51/T6",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T6",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:35:00Z",
+            "elapsedMs": 1500000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "applied-open"
         }
       },
       {
@@ -364,7 +530,20 @@
         "tries": 0,
         "reason": "claim blocked by ISC-18",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "005",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-18"
+            ],
+            "siblings": []
+          }
+        }
       }
     ],
     "progress": {
@@ -452,6 +631,29 @@
             "session": "a:claude:sess-51/T6",
             "worktree": "wt-6",
             "ts": "2026-03-08T14:35:00Z"
+          },
+          "itemState": {
+            "kind": "task",
+            "id": "T6",
+            "spec": "005",
+            "state": "running",
+            "run": {
+              "run": "a:claude:sess-51/T6",
+              "command": "/spec-implement 005",
+              "session": "a:claude:sess-51/T6",
+              "actor": {
+                "raw": "a:claude:sess-51/T6",
+                "kind": "subagent",
+                "id": "a:claude:sess-51",
+                "task": "T6",
+                "legacy": false
+              },
+              "since": "2026-03-08T14:35:00Z",
+              "elapsedMs": 1500000,
+              "openRuns": 1,
+              "source": "task-run"
+            },
+            "detail": "applied-open"
           }
         },
         {
@@ -472,6 +674,29 @@
             "session": "a:claude:sess-51/T5",
             "worktree": "wt-5",
             "ts": "2026-03-08T14:31:00Z"
+          },
+          "itemState": {
+            "kind": "task",
+            "id": "T5",
+            "spec": "005",
+            "state": "running",
+            "run": {
+              "run": "a:claude:sess-51/T5",
+              "command": "/spec-implement 005",
+              "session": "a:claude:sess-51/T5",
+              "actor": {
+                "raw": "a:claude:sess-51/T5",
+                "kind": "subagent",
+                "id": "a:claude:sess-51",
+                "task": "T5",
+                "legacy": false
+              },
+              "since": "2026-03-08T14:31:00Z",
+              "elapsedMs": 1740000,
+              "openRuns": 1,
+              "source": "task-run"
+            },
+            "detail": "patched"
           }
         },
         {
@@ -509,6 +734,29 @@
             "session": "a:claude:sess-51/T3",
             "worktree": "wt-3",
             "ts": "2026-03-08T14:32:00Z"
+          },
+          "itemState": {
+            "kind": "task",
+            "id": "T3",
+            "spec": "005",
+            "state": "running",
+            "run": {
+              "run": "a:claude:sess-51/T3",
+              "command": "/spec-implement 005",
+              "session": "a:claude:sess-51/T3",
+              "actor": {
+                "raw": "a:claude:sess-51/T3",
+                "kind": "subagent",
+                "id": "a:claude:sess-51",
+                "task": "T3",
+                "legacy": false
+              },
+              "since": "2026-03-08T14:32:00Z",
+              "elapsedMs": 1680000,
+              "openRuns": 1,
+              "source": "task-run"
+            },
+            "detail": "building"
           }
         },
         {
@@ -546,6 +794,28 @@
             "session": "a:claude:sess-50/T4",
             "worktree": "wt-4",
             "ts": "2026-03-08T13:41:00Z"
+          },
+          "itemState": {
+            "kind": "task",
+            "id": "T4",
+            "spec": "005",
+            "state": "aborted",
+            "run": {
+              "run": "a:claude:sess-50/T4",
+              "command": "/spec-implement 005",
+              "session": "a:claude:sess-50/T4",
+              "actor": {
+                "raw": "a:claude:sess-50/T4",
+                "kind": "subagent",
+                "id": "a:claude:sess-50",
+                "task": "T4",
+                "legacy": false
+              },
+              "since": "2026-03-08T13:41:00Z",
+              "elapsedMs": 4740000,
+              "openRuns": 1,
+              "source": "task-run"
+            }
           }
         }
       ],

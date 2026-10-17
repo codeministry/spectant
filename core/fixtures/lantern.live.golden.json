@@ -17,7 +17,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -29,7 +40,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -41,7 +63,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -53,7 +86,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -66,7 +110,15 @@
         "tries": 0,
         "reason": "[P], claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-7, not dispatched"
+        }
       },
       {
         "task": "T6",
@@ -79,7 +131,20 @@
         "tries": 0,
         "reason": "claim blocked by ISC-7",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-7"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "task": "T7",
@@ -92,7 +157,15 @@
         "tries": 0,
         "reason": "[P], claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-9, not dispatched"
+        }
       },
       {
         "task": "T8",
@@ -105,7 +178,20 @@
         "tries": 0,
         "reason": "claim blocked by ISC-9",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-9"
+            ],
+            "siblings": []
+          }
+        }
       }
     ],
     "progress": {

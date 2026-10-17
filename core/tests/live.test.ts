@@ -184,7 +184,10 @@ describe('no source', () => {
     const struck = { state: 'absent' as const, note: "struck 2026-03-08: covered by T32's keyboard probe" };
     // Nobody works a card without a lock (T66): agent and sub-agent are null on every card.
     const idle = { agent: null, subagent: null };
-    expect(live.cards).toEqual((last?.cards ?? []).map(({ reason, ...c }) => (c.task === 'T34' ? { ...c, ...struck, ...idle } : { ...c, ...(reason === undefined ? {} : { reason }), ...idle })));
+    // Every card of a task line also carries its item state (spec 040, ISC-223), additive beside the card's own words.
+    expect(live.cards.filter((c) => c.itemState === undefined)).toEqual([]);
+    const own = (card: (typeof live.cards)[number]) => Object.fromEntries(Object.entries(card).filter(([key]) => key !== 'itemState'));
+    expect(live.cards.map(own)).toEqual((last?.cards ?? []).map(({ reason, ...c }) => (c.task === 'T34' ? { ...c, ...struck, ...idle } : { ...c, ...(reason === undefined ? {} : { reason }), ...idle })));
   });
 
   test('without rounds every open task waits with its hold reason, every checked box is landed', () => {

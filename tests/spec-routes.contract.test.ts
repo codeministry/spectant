@@ -743,6 +743,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
       afterSpecs: "opt",
       // spec 025: the specs an open spec edge on the claim waits on (ISC-163)
       waitsOn: "opt",
+      // spec 040: the claim's state in the one model, given a clock (ISC-223)
+      itemState: "opt",
     });
     expect([
       ...shapeProblems("claims", value, keysOf<ClaimViewModel>({ claims: "req", features: "req", fog: "req", counts: "req" })),
@@ -768,6 +770,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
       line: "req", status: "req", round: "req", builder: "req", reason: "req", note: "req", pathNote: "req",
       // spec 025: the spec edges of the task's `(after: …)` (ISC-162)
       afterSpecs: "opt",
+      // spec 040: the task's state in the one model, injected by the caller (ISC-223)
+      itemState: "opt",
     });
     expect([
       ...shapeProblems("tasks", value, keysOf<TasksTab>({ tasks: "req", probeMapping: "req", counts: "req", diagnostics: "req" })),

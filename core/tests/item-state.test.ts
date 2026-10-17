@@ -12,12 +12,15 @@ import { parseClaims } from '../src/claims.ts';
 import { parseActor } from '../src/actor.ts';
 import type { ItemKind, ItemState, ItemStateInfo, LockReading, OpenRun } from '../src/files.ts';
 import { DEFAULT_ABORT_AFTER_MS, DEFAULT_CLAIM_STALE_MS, STATE_TABLE, itemStates, stageRuleOf } from '../src/item-state.ts';
-import { LIVE_STALE_MS } from '../src/live.ts';
+import { buildClaimViews } from '../src/claim-view.ts';
+import { buildLiveFrame, LIVE_STALE_MS } from '../src/live.ts';
+import { resolveEdges } from '../src/spec-edges.ts';
+import { parseTaskLines } from '../src/tasks.ts';
 import { specIdOf } from '../src/spec-ref.ts';
 import { STAGE_RULES } from '../src/stage.ts';
 import { expectGolden, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees } from './helpers/read-tree.ts';
-import { stateInputAt, stateModel } from './helpers/state-model.ts';
+import { STATE_NOW, stateInputAt, stateModel } from './helpers/state-model.ts';
 
 const UPDATE_COMMAND = 'bun test core/tests/item-state.test.ts';
 const STATES: readonly ItemState[] = ['open', 'waiting', 'running', 'aborted', 'done'];
@@ -340,5 +343,95 @@ describe('run aborted', () => {
     expect(itemOf(items, 'spec', '006')).toMatchObject({ state: 'aborted', run: { run: 'r-0308-1140', since: '2026-03-08T11:40:00Z', elapsedMs: 200 * MIN } });
     expect(itemOf(items, 'spec', '003').state).toBe('running');
     expectGolden(goldenPath('beacon', 'state'), goldenText(items), UPDATE_COMMAND);
+  });
+});
+
+// ISC-223 (T16): claims and tasks read their state from the one model only. A held lock, or a task run in dispatch,
+// build or patch (or applied with its box open), is `running` with the ISC-179 fine state as its detail; a lock or run
+// past the claim stale age (ISC-35) `aborted`; an open `(after: …)` edge `waiting`; a tick `done`; else `open`. The live
+// card (live.ts `itemState`), the claim view row (claim-view.ts `itemState`) and the task row (tasks.ts `itemState`)
+// carry exactly the item `itemStates` derives, field for field.
+describe('claim task state', () => {
+  /** Each active spec of a tree with what its views are built from: the tree's lock reading and its own spec edges. */
+  function specsOf(root: string) {
+    const input = stateInputAt(root);
+    const items = itemStates(input);
+    const { workspace } = input;
+    const edges = resolveEdges({ specs: workspace.specs, archived: workspace.archived, constitution: workspace.constitution }, workspace.mergeState ?? []).edges;
+    return workspace.specs
+      .filter((f) => f.texts.spec !== undefined)
+      .map((f) => {
+        const id = specIdOf(f.folder) ?? f.folder;
+        const texts = { ...f.texts, ...(workspace.constitution === null ? {} : { constitution: workspace.constitution }) };
+        return { id, files: { folder: f.folder, texts }, locks: workspace.locks as LockReading, specEdges: edges.filter((e) => e.fromSpec === id), items: items.filter((i) => i.spec === id) };
+      });
+  }
+  const ofKind = (items: readonly ItemStateInfo[], kind: ItemKind) => Object.fromEntries(items.filter((i) => i.kind === kind).map((i) => [i.id, i]));
+
+  test('beacon 005: lock running, stale lock aborted, open edge waiting, tick done, else open; the ISC-179 state stays the detail', () => {
+    const items = stateModel(BEACON);
+    const state = (kind: 'claim' | 'task', id: string) => ((i: ItemStateInfo) => [i.state, i.detail ?? null])(itemOf(items, kind, id, '005'));
+    expect(['ISC-13', 'ISC-14', 'ISC-15', 'ISC-16', 'ISC-17', 'ISC-18', 'ISC-19'].map((id) => state('claim', id))).toEqual([
+      ['done', null],
+      ['done', null],
+      ['running', 'taken'],
+      ['aborted', null],
+      ['waiting', null],
+      ['open', null],
+      ['done', null],
+    ]);
+    expect(['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'].map((id) => state('task', id))).toEqual([
+      ['done', null],
+      ['done', null],
+      ['running', 'building'],
+      ['aborted', null],
+      ['running', 'patched'],
+      ['running', 'applied-open'],
+      ['waiting', null],
+      ['done', null],
+    ]);
+    expect(itemOf(items, 'claim', 'ISC-18', '005').reason).toBe('ISC-18 is takeable');
+  });
+
+  test.each(trees)('%s: every live card carries the state the model gives its task', (tree) => {
+    for (const s of specsOf(join(FIXTURES, tree))) {
+      const frame = buildLiveFrame({ files: s.files, locks: s.locks, now: STATE_NOW, specEdges: s.specEdges });
+      const tasks = ofKind(s.items, 'task');
+      const carried = frame.cards.filter((c) => c.itemState !== undefined);
+      expect({ spec: s.id, states: Object.fromEntries(carried.map((c) => [c.task, c.itemState])) }).toEqual({ spec: s.id, states: Object.fromEntries(carried.map((c) => [c.task, tasks[c.task]])) });
+      // Every card of a task line carries it; only a struck task off the last board has no card.
+      const withState = new Set(carried.map((c) => c.task));
+      expect({ spec: s.id, missing: Object.values(tasks).filter((t) => !withState.has(t.id) && t.closedAs !== 'struck').map((t) => t.id) }).toEqual({ spec: s.id, missing: [] });
+      if (s.files.texts.tasks !== undefined) expect(frame.cards.filter((c) => c.itemState === undefined).map((c) => c.task)).toEqual([]);
+    }
+  });
+
+  test.each(trees)('%s: every claim view row carries the state the model gives its claim', (tree) => {
+    for (const s of specsOf(join(FIXTURES, tree))) {
+      const view = buildClaimViews({ files: s.files, locks: s.locks, specEdges: s.specEdges, now: STATE_NOW });
+      expect({ spec: s.id, states: Object.fromEntries(view.claims.map((c) => [c.id, c.itemState])) }).toEqual({ spec: s.id, states: ofKind(s.items, 'claim') });
+    }
+  });
+
+  test.each(trees)('%s: every task row carries the state the model gives its task', (tree) => {
+    for (const s of specsOf(join(FIXTURES, tree))) {
+      const { tasks, rounds, constitution } = s.files.texts;
+      if (tasks === undefined) continue;
+      const tab = parseTaskLines({ tasks, ...(constitution === undefined ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), specEdges: s.specEdges, itemStates: s.items });
+      expect({ spec: s.id, states: Object.fromEntries(tab.tasks.map((t) => [t.id, t.itemState])) }).toEqual({ spec: s.id, states: ofKind(s.items, 'task') });
+    }
+  });
+
+  test('beacon 005: the stale age reaches the views; without the clock the claim view and the task rows carry no state', () => {
+    const s = specsOf(BEACON).find((x) => x.id === '005');
+    if (s === undefined) throw new Error('no spec 005');
+    const wide = 100 * MIN;
+    const card = buildLiveFrame({ files: s.files, locks: s.locks, now: STATE_NOW, specEdges: s.specEdges, staleAfterMs: wide }).cards.find((c) => c.task === 'T4');
+    expect(card?.itemState).toMatchObject({ state: 'running', detail: 'dispatched', run: { source: 'task-run' } });
+    const claim = buildClaimViews({ files: s.files, locks: s.locks, specEdges: s.specEdges, now: STATE_NOW.getTime(), staleAfterMs: wide }).claims.find((c) => c.id === 'ISC-16');
+    expect(claim?.itemState).toMatchObject({ state: 'running', detail: 'taken', run: { source: 'lock', elapsedMs: 80 * MIN } });
+    expect(claim?.state).toBe('taken');
+    expect(buildClaimViews({ files: s.files, locks: s.locks }).claims.filter((c) => c.itemState !== undefined)).toEqual([]);
+    expect(parseTaskLines({ tasks: s.files.texts.tasks ?? '' }).tasks.filter((t) => t.itemState !== undefined)).toEqual([]);
   });
 });
