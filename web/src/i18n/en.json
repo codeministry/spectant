@@ -1664,8 +1664,8 @@
   "planning": {
     "page": {
       "lenses": {
+        "gantt": "Gantt",
         "tree": "Tree",
-        "board": "Matrix",
         "graph": "Graph"
       },
       "levels": {
@@ -1674,27 +1674,50 @@
         "specs": "Specs",
         "claims": "Claims"
       },
-      "eyebrowCount": "{{count}} milestones",
-      "meta": "{{milestones}} milestones · {{features}} features · {{closed}}/{{total}} claims closed",
+      "eyebrowCount": {
+        "one": "{{count}} milestone",
+        "other": "{{count}} milestones"
+      },
+      "meta": {
+        "one": "{{milestones}} milestone · {{features}} features · {{closed}}/{{total}} claims closed",
+        "other": "{{milestones}} milestones · {{features}} features · {{closed}}/{{total}} claims closed"
+      },
       "overview": "Overview",
       "overviewEmpty": "No spec names a milestone yet.",
       "showArchived": "Archived",
       "summary": {
-        "board": "{{lanes}} swimlanes · {{columns}} feature columns",
         "graph": "{{milestones}} milestones → {{features}} features → {{specs}} specs"
       }
     },
-    "matrix": {
-      "pills": "Milestones",
-      "showDone": "Finished features",
-      "specs": "{{count}} specs",
-      "corner": "Milestone \\ Feature",
-      "otherChip": "+{{id}}",
-      "noCards": "No specs yet in {{lane}}",
-      "bare": "{{count}} features without a spec in {{lane}}",
-      "openColumn": "{{id}} {{name}}, finished, show the column"
+    "gantt": {
+      "label": "Gantt: features by milestone over time",
+      "corner": "Feature",
+      "today": "Today · {{date}}",
+      "past": "Before today",
+      "overdue": "overdue",
+      "overdueSince": "overdue since {{date}}",
+      "done": "done",
+      "noMilestone": "Without a milestone",
+      "noWindow": "no window",
+      "noWindowLane": "no milestone window",
+      "features": {
+        "one": "{{count}} feature",
+        "other": "{{count}} features"
+      },
+      "days": "{{count}} d",
+      "boundary": "{{name}} · {{date}}",
+      "quarter": "Q{{quarter}} {{year}}",
+      "emptyAxis": {
+        "heading": "No milestone has a target date yet",
+        "body": "A dated line in the master’s ## Milestones block draws the timeline; until then every feature stands below."
+      },
+      "lane": "{{id}} {{name}}, {{closed}} of {{total}} claims closed, priority {{priority}}",
+      "laneMilestone": "milestone {{name}} until {{date}}",
+      "laneUndated": "milestone {{name}}, no target date",
+      "laneNone": "no milestone"
     },
     "graph": {
+      "pills": "Milestones",
       "all": "All",
       "filters": "Filters",
       "specEdges": "Spec edges",

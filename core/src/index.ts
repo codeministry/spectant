@@ -34,6 +34,7 @@ export * from './markdown.ts';
 export * from './archive.ts';
 export * from './milestones.ts';
 export * from './planning.ts';
+export * from './gantt.ts';
 export * from './workflow.ts';
 export * from './ideas.ts';
 export * from './actor.ts';

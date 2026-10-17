@@ -1,0 +1,50 @@
+{
+  "asOf": "2026-03-20",
+  "axis": null,
+  "groups": [
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 31,
+      "total": 32,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F40",
+          "id": "F40",
+          "name": "Installable as a PWA",
+          "closed": 9,
+          "total": 10,
+          "priority": "P3",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F41",
+          "id": "F41",
+          "name": "The debt behind v0.5.0 is paid down without a change in behaviour",
+          "closed": 14,
+          "total": 14,
+          "priority": "P3",
+          "rank": 2,
+          "mark": null
+        },
+        {
+          "ref": "feature:F50",
+          "id": "F50",
+          "name": "Chat turn status, bulk delete, and the cited row in view",
+          "closed": 8,
+          "total": 8,
+          "priority": "P3",
+          "rank": 3,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}

@@ -66,7 +66,7 @@ const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
 /** The planning lenses (spec 026), each opened with an object selected so the detail sidebar is open. */
 const PLANNING_LENSES = [
   { lens: 'tree', sel: 'feature:F2' },
-  { lens: 'board', sel: 'spec:003' },
+  { lens: 'gantt', sel: 'feature:F1' },
   { lens: 'graph', sel: 'milestone:harbor-0-9' },
 ] as const;
 
@@ -75,6 +75,8 @@ const PLANNING_REDIRECTS = [
   { path: '/w/harbor/features#F2', sel: 'feature:F2' },
   { path: '/w/harbor/milestones#m-harbor-0-9', sel: 'milestone:harbor-0-9' },
 ] as const;
+/** The Matrix lens's old address (spec 038, ISC-203.1), which redirects to the Gantt lens. */
+const GANTT_REDIRECT = { path: '/w/harbor/planning/board?sel=feature:F2', sel: 'feature:F2' } as const;
 const LIBRARY = '/w/harbor/library';
 const READER = '[data-library-reader]';
 const PROTOTYPE = STUB_LIBRARY.prototype;
@@ -261,6 +263,14 @@ for (const theme of ['light', 'dark'] as const) {
           });
         }
         await expect(page.locator(`app-planning-graph g.node[data-ref="${PLANNING_LENSES[2].sel}"]`)).toBeVisible();
+
+        // Spec 038 (ISC-206): the Matrix's old address redirects client-side to the Gantt lens, its selection kept.
+        await test.step(GANTT_REDIRECT.path, async () => {
+          await page.goto(GANTT_REDIRECT.path);
+          await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/gantt' && url.searchParams.get('sel') === GANTT_REDIRECT.sel);
+          await rendered(page, GANTT_REDIRECT.path);
+          await expectSidebarOn(page, GANTT_REDIRECT.sel);
+        });
 
         // The old addresses redirect client-side to the tree lens with the anchor's object selected.
         for (const { path, sel } of PLANNING_REDIRECTS) {

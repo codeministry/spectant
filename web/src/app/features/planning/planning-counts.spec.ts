@@ -6,19 +6,21 @@ import { planningCounts } from './planning-counts';
 
 const harbor = HARBOR as unknown as PlanningModel;
 
-describe('planning lenses (spec 026, ISC-167)', () => {
-  it('registers Matrix, Tree and Graph in tab order, routed under /w/:ws/planning, keeping the query', () => {
-    expect(PLANNING_LENSES).toEqual(['board', 'tree', 'graph']);
+describe('planning lenses (spec 026, ISC-167; spec 038, ISC-203)', () => {
+  it('gantt: registers Gantt, Tree and Graph in tab order, routed under /w/:ws/planning, keeping the query', () => {
+    expect(PLANNING_LENSES).toEqual(['gantt', 'tree', 'graph']);
     const tabs = planningTabs('harbor');
     expect(tabs.map((tab) => tab.link)).toEqual([
-      ['/w', 'harbor', 'planning', 'board'],
+      ['/w', 'harbor', 'planning', 'gantt'],
       ['/w', 'harbor', 'planning', 'tree'],
       ['/w', 'harbor', 'planning', 'graph'],
     ]);
-    expect(tabs.map((tab) => tab.icon)).toEqual(['layout-grid', 'list-tree', 'share-2']);
-    expect(tabs.map((tab) => tab.labelKey)).toEqual(['planning.page.lenses.board', 'planning.page.lenses.tree', 'planning.page.lenses.graph']);
+    expect(tabs.map((tab) => tab.icon)).toEqual(['chart-gantt', 'list-tree', 'share-2']);
+    expect(tabs.map((tab) => tab.labelKey)).toEqual(['planning.page.lenses.gantt', 'planning.page.lenses.tree', 'planning.page.lenses.graph']);
     expect(tabs.every((tab) => tab.keepQuery === true)).toBe(true);
-    expect(isPlanningLensId('board')).toBe(true);
+    expect(isPlanningLensId('gantt')).toBe(true);
+    // `board` is no lens id any more: `/w/:ws/planning/board` redirects to the Gantt lens (ISC-203.1).
+    expect(isPlanningLensId('board')).toBe(false);
     expect(isPlanningLensId('matrix')).toBe(false);
   });
 

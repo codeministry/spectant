@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { KeyboardService } from '../../core/keyboard.service';
 import { DetailSidebar } from '../detail-sidebar/detail-sidebar';
+import { DetailSelection } from '../detail-sidebar/selection';
 import { RailToggle } from '../zen/rail-toggle';
 import { ZenFooter } from '../zen/zen-footer';
 import { areaById } from './areas';
@@ -42,12 +43,22 @@ export class ShellComponent {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
   private readonly keyboard = inject(KeyboardService);
+  private readonly selection = inject(DetailSelection);
+
+  /**
+   * Spec 038 (ISC-204): the Gantt lens docks the detail sidebar into the rail at wide while a feature is selected
+   * (design.md § Desktop: the axis rescales to the rest of the width); without a selection it takes the full width.
+   */
+  private readonly ganttRail = computed(
+    () => this.state.route().lens === 'gantt' && this.state.tier() === 'wide' && this.selection.entry() !== null && !this.data.workspaceMissing() && !this.data.planningMissing(),
+  );
 
   /** No rail column at all (prototype `no-rail`): outside a workspace, on the full-width workspace pages, in a `noRail` area. */
   protected readonly noRail = computed(() => {
     const page = this.state.wsPage();
-    // Spec 026: the planning page's matrix and graph take the full width too; only the tree lens has a rail.
-    const planningWide = page === 'planning' && this.state.route().lens !== 'tree';
+    // Spec 026: the planning page's graph takes the full width too, and the Gantt (spec 038) until a selection docks the
+    // sidebar at wide; the tree lens has a rail.
+    const planningWide = page === 'planning' && this.state.route().lens !== 'tree' && !this.ganttRail();
     return this.state.ws() === null || page === 'board' || page === 'library' || planningWide || this.specAreaNoRail();
   });
 
@@ -64,9 +75,10 @@ export class ShellComponent {
   protected readonly showRail = computed(() => {
     if (this.state.notFound()) return false;
     if (this.state.specId() !== null) return !this.data.specMissing() && !this.specAreaNoRail();
-    // Spec 026: the planning page's tree lens at wide (the overview, or the docked sidebar on a selection); matrix and
-    // graph never draw one.
+    // Spec 026: the planning page's tree lens at wide (the overview, or the docked sidebar on a selection), the Gantt
+    // at wide with a selection (spec 038); the graph never draws one.
     if (this.state.route().wsPage === 'planning') {
+      if (this.ganttRail()) return true;
       return this.state.route().lens === 'tree' && this.state.tier() === 'wide' && !this.data.workspaceMissing() && !this.data.planningMissing();
     }
     // The spec list only: the Features and Milestones pages draw no rail (spec 003 design.md § Where the pages sit).

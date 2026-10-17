@@ -1,7 +1,7 @@
 <div class="graph" data-graph [attr.data-has-selection]="hasSelection() ? '' : null">
   <div class="graph-tools">
     @if (pills().length > 1) {
-      <div class="graph-pills" role="group" [attr.aria-label]="'planning.matrix.pills' | transloco">
+      <div class="graph-pills" role="group" [attr.aria-label]="'planning.graph.pills' | transloco">
         @for (p of pills(); track p.param) {
           <button type="button" class="graph-pill" [attr.data-m]="p.param" [attr.aria-pressed]="active() === p.param" (click)="pick(p.param)">
             <ui-icon [name]="p.icon" [size]="14" />

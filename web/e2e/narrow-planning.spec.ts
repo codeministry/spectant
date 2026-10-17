@@ -75,17 +75,17 @@ for (const width of [WIDTHS.panel, WIDTHS.phone]) {
 }
 
 /*
- * T33 · ISC-171.2 (spec 026): the three lenses — tree, matrix (`/planning/board`) and diagram (`/planning/graph`) — at
+ * T33 · ISC-171.2 (spec 026): the three lenses — tree, Gantt (`/planning/gantt`, spec 038 T29) and diagram (`/planning/graph`) — at
  * 600 and 390, with the detail sidebar closed and open (`?sel=`), on harbor and on lantern (no milestones). The page
- * never scrolls sideways: `document.scrollingElement.scrollWidth === clientWidth`. The matrix may scroll inside its own
- * container; only the page must not overflow. The open sidebar lies over the view: 600 and 390 are both below 640,
+ * never scrolls sideways: `document.scrollingElement.scrollWidth === clientWidth`. The Gantt axis never scrolls below
+ * 640 (it is squeezed); only the page must not overflow. The open sidebar lies over the view: 600 and 390 are both below 640,
  * the compact tier, where the decided overlay form is the modal bottom sheet (design.md § Across viewports:
  * "640 bis 1119 px nicht-modales Overlay … unter 640 px modales Bottom-Sheet"; "ISC-171.2 prüft 600 (fällt unter das
  * Sheet) und 390"); its panel ends inside the viewport.
  */
 const LENSES = [
   { lens: 'tree', host: 'app-planning-tree' },
-  { lens: 'board', host: 'app-planning-matrix' },
+  { lens: 'gantt', host: 'app-planning-gantt' },
   { lens: 'graph', host: 'app-planning-graph' },
 ] as const;
 const WORKSPACES = [

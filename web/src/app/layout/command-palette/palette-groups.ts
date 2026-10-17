@@ -311,7 +311,7 @@ function actionsSource(): PaletteSource {
           id: 'action/open-planning',
           label: t('palette.actions.planning'),
           link: workspaceLink(here, 'planning'),
-          keywords: ['planning', 'features', 'milestones', 'tree', 'matrix', 'graph'],
+          keywords: ['planning', 'features', 'milestones', 'tree', 'gantt', 'timeline', 'graph'],
         });
         // Spec 024 (T58, ISC-150.1): the Library, a menu page (a mock until spec 017).
         // Spec 024 (T58, ISC-150.1): the Library, a menu page; since spec 017 (T43, ISC-157.1) it also stands for the

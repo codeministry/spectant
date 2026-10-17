@@ -5,7 +5,7 @@
 } @else {
   <!-- Prototype `page-head`: eyebrow `<WS> · PLANNING · n MILESTONES`, the workspace badge, h1 "Planning", the meta. -->
   <ui-page-head
-    [segments]="[name(), ('shell.pages.planning' | transloco), counts() === null ? '' : ('planning.page.eyebrowCount' | transloco: { count: counts()?.milestones })]"
+    [segments]="[name(), ('shell.pages.planning' | transloco), counts() === null ? '' : ((counts()?.milestones === 1 ? 'planning.page.eyebrowCount.one' : 'planning.page.eyebrowCount.other') | transloco: { count: counts()?.milestones })]"
   >
     <div class="h1-row" ngProjectAs="h1">
       <ui-ws-badge class="page-mark" size="page" [name]="name()" aria-hidden="true" />
@@ -13,7 +13,7 @@
     </div>
   </ui-page-head>
   @if (counts(); as counts) {
-    <p class="meta" data-planning-meta>{{ 'planning.page.meta' | transloco: counts }}</p>
+    <p class="meta" data-planning-meta>{{ (counts.milestones === 1 ? 'planning.page.meta.one' : 'planning.page.meta.other') | transloco: counts }}</p>
   }
 
   <app-tab-bar-slot />
@@ -26,8 +26,8 @@
       </details>
     }
     @switch (lens()) {
-      @case ('board') {
-        <app-planning-matrix [model]="model" [(archived)]="showArchived" />
+      @case ('gantt') {
+        <app-planning-gantt [model]="treeModel() ?? model" />
       }
       @case ('graph') {
         <app-planning-graph [model]="model" [(archived)]="showArchived" />

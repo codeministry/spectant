@@ -1,5 +1,6 @@
 /**
- * Spec 026 · the planning page `/w/:ws/planning` with its three lenses Tree, Matrix and Graph.
+ * Spec 026 · the planning page `/w/:ws/planning` with its three lenses Gantt (spec 038, where the Matrix stood), Tree
+ * and Graph.
  *
  * T16 · ISC-167 (`bun run e2e -- planning -g lenses`): `/w/:ws/planning` lands on the tree; the three lens tabs are
  * route links with `aria-current="page"` and keep `?sel=` and `?m=`; the PAGE select lists Planning and no longer
@@ -19,7 +20,7 @@ const harbor = read('../../core/fixtures/harbor.planning.golden.json') as Planni
 
 interface Catalog {
   shell: { pages: Record<string, string> };
-  planning: { page: { lenses: Record<'tree' | 'board' | 'graph', string>; levels: Record<'milestones' | 'features' | 'specs' | 'claims', string> } };
+  planning: { page: { lenses: Record<'gantt' | 'tree' | 'graph', string>; levels: Record<'milestones' | 'features' | 'specs' | 'claims', string> } };
   terms: Record<'milestone' | 'feature' | 'spec' | 'claim', string>;
   palette: { actions: { planning: string } };
 }
@@ -28,7 +29,7 @@ const catalogs = {
   de: read('../src/i18n/de.json') as Catalog,
 };
 
-const LENSES = ['tree', 'board', 'graph'] as const;
+const LENSES = ['gantt', 'tree', 'graph'] as const;
 const LEVELS = [
   ['milestones', 'milestone'],
   ['features', 'feature'],
@@ -51,25 +52,25 @@ async function openPlanning(page: Page, path = '/w/harbor/planning'): Promise<vo
 test.describe('planning: lenses', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('lenses: /planning lands on the matrix; the three tabs route with aria-current and keep ?sel= and ?m=', async ({ page }) => {
+  test('lenses: /planning lands on the Gantt lens; the three tabs route with aria-current and keep ?sel= and ?m=', async ({ page }) => {
     await openPlanning(page);
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/gantt$/u);
     await expect(lensBar(page).locator('a[data-tab]')).toHaveCount(3);
-    await expect(lensTab(page, 'board')).toHaveAttribute('aria-current', 'page');
+    await expect(lensTab(page, 'gantt')).toHaveAttribute('aria-current', 'page');
     for (const lens of LENSES) {
       await expect(lensTab(page, lens)).toContainText(catalogs.en.planning.page.lenses[lens]);
       await expect(lensTab(page, lens).locator('ui-icon')).toHaveCount(1);
     }
-    await expect(page.locator('[data-lens="board"]')).toBeVisible();
+    await expect(page.locator('[data-lens="gantt"]')).toBeVisible();
 
     await page.goto('/w/harbor/planning/tree?sel=feature:F1&m=x');
-    await lensTab(page, 'board').click();
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board\?/u);
+    await lensTab(page, 'gantt').click();
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/gantt\?/u);
     expect(new URL(page.url()).searchParams.get('sel')).toBe('feature:F1');
     expect(new URL(page.url()).searchParams.get('m')).toBe('x');
-    await expect(lensTab(page, 'board')).toHaveAttribute('aria-current', 'page');
+    await expect(lensTab(page, 'gantt')).toHaveAttribute('aria-current', 'page');
     await expect(lensTab(page, 'tree')).not.toHaveAttribute('aria-current', 'page');
-    await expect(page.locator('[data-lens="board"]')).toBeVisible();
+    await expect(page.locator('[data-lens="gantt"]')).toBeVisible();
 
     await lensTab(page, 'graph').click();
     await expect(page).toHaveURL(/\/w\/harbor\/planning\/graph\?/u);
@@ -77,12 +78,12 @@ test.describe('planning: lenses', () => {
     await expect(page.locator('[data-lens="graph"]')).toBeVisible();
   });
 
-  test('lenses: the tree has the rail with the overview at wide; matrix and graph take the full width without an overview', async ({ page }) => {
+  test('lenses: the tree has the rail with the overview at wide; Gantt and graph take the full width without an overview', async ({ page }) => {
     await openPlanning(page, '/w/harbor/planning/tree');
     await expect(page.locator('aside.shell-rail [data-planning-overview]')).toBeVisible();
     await expect(page.locator('main [data-overview-block]')).toHaveCount(0);
 
-    for (const lens of ['board', 'graph'] as const) {
+    for (const lens of ['gantt', 'graph'] as const) {
       await lensTab(page, lens).click();
       await expect(page.locator(`[data-lens="${lens}"]`)).toBeVisible();
       await expect(page.locator('aside.shell-rail')).toHaveCount(0);
@@ -99,8 +100,8 @@ test.describe('planning: lenses', () => {
     await block.locator('summary').click();
     await expect(block.locator('[data-planning-overview]')).toBeVisible();
 
-    await lensTab(page, 'board').click();
-    await expect(page.locator('[data-lens="board"]')).toBeVisible();
+    await lensTab(page, 'gantt').click();
+    await expect(page.locator('[data-lens="gantt"]')).toBeVisible();
     await expect(page.locator('[data-planning-overview]')).toHaveCount(0);
   });
 
@@ -111,17 +112,17 @@ test.describe('planning: lenses', () => {
     await expect(page.locator('[data-level="claims"] [data-count]')).toHaveText(`${String(harbor.recount?.closed)}/${String(harbor.recount?.total)}`);
   });
 
-  test('lenses: the tree and the matrix show the milestone target as a calendar day, a <time> in the short date form', async ({ page }) => {
+  test('lenses: the tree and the Gantt lens show the milestone target as a calendar day, a <time> in the short date form', async ({ page }) => {
     const ref = `milestone:${STUB_MILESTONE.slug}`;
     await openPlanning(page, STUB_MILESTONE.routes.tree);
     const inTree = page.locator(`[role="treeitem"][data-ref="${ref}"] .date time`);
     await expect(inTree).toHaveAttribute('datetime', STUB_MILESTONE.target);
     await expect(inTree).toHaveText('03/15/2026');
 
-    await openPlanning(page, STUB_MILESTONE.routes.matrix);
-    const inMatrix = page.locator(`[data-lane="${ref}"] .lane-meta time`);
-    await expect(inMatrix).toHaveAttribute('datetime', STUB_MILESTONE.target);
-    await expect(inMatrix).toHaveText('03/15/2026');
+    await openPlanning(page, STUB_MILESTONE.routes.gantt);
+    const inGantt = page.locator(`[data-group="${ref}"] [data-group-head] .gdate time`);
+    await expect(inGantt).toHaveAttribute('datetime', STUB_MILESTONE.target);
+    await expect(inGantt).toHaveText('03/15/2026');
   });
 
   test('lenses: the level headings carry the glossary hints', async ({ page }) => {
@@ -144,7 +145,7 @@ test.describe('planning: lenses', () => {
     await expect(menu.locator('[data-page="features"]')).toHaveCount(0);
     await expect(menu.locator('[data-page="milestones"]')).toHaveCount(0);
     await menu.locator('[data-page="planning"]').click();
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/gantt$/u);
     await expect(page.locator('header [data-control="page"]')).toContainText(catalogs.en.shell.pages['planning'] ?? '');
     await (await headerControl(page, 'page')).click();
     menu = page.getByRole('navigation', { name: 'Pages' });
@@ -156,16 +157,16 @@ test.describe('planning: lenses', () => {
     await expect(page.locator('header [data-control="page"]')).toBeVisible();
     await page.keyboard.press('g');
     await page.keyboard.press('p');
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/gantt$/u);
     await expect(page.locator('[data-page="planning"] h1')).toBeVisible();
-    // T30 (ISC-167.1): `g f` and `g m` stay as aliases of Planning and land where `g p` does, on the matrix.
+    // T30 (ISC-167.1): `g f` and `g m` stay as aliases of Planning and land where `g p` does, on the Gantt lens (spec 038).
     for (const key of ['f', 'm']) {
       await page.goto('/w/harbor');
       await expect(page.locator('header [data-control="page"]')).toBeVisible();
       await page.keyboard.press('g');
       await page.keyboard.press(key);
-      await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
-      await expect(page.locator('[data-lens="board"]')).toBeVisible();
+      await expect(page).toHaveURL(/\/w\/harbor\/planning\/gantt$/u);
+      await expect(page.locator('[data-lens="gantt"]')).toBeVisible();
     }
   });
 
@@ -180,7 +181,7 @@ test.describe('planning: lenses', () => {
     const option = palette.getByRole('option', { name: catalogs.en.palette.actions.planning });
     await expect(option).toHaveCount(1);
     await option.click();
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/gantt$/u);
   });
 
   test('lenses: German renders every label, no raw key', async ({ page }, info) => {

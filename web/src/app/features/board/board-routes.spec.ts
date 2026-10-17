@@ -18,7 +18,7 @@ const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notMod
 const DASHBOARD = { specs: [{ id: '002', title: 'Web console', type: 'feature', stage: 'build' }], archive: [] };
 
 const PLANNING: PlanningBody = {
-  workflow: { rows: [], source: 'default', diagnostics: [] },
+  asOf: '2026-03-20', workflow: { rows: [], source: 'default', diagnostics: [] },
   stages: ['idea', 'plan', 'build', 'done'],
   stageCounts: { idea: 1, build: 1 },
   ideas: [

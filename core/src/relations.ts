@@ -1,6 +1,6 @@
 // The relation index of the planning tree (spec 026, T1, the core seam): every object of the cascade milestone ›
 // feature › spec › claim, plus the stories of `specs/ideas/`, as one flat table keyed by `<type>:<id>`, each entry with
-// its parents, children and blockers. It is the one source the detail sidebar, the tree, the matrix and the diagram
+// its parents, children and blockers. It is the one source the detail sidebar, the tree and the diagram
 // read, so no view derives the relations a second time; the server ships it inside `PlanningModel.relations`, no new
 // route. The sidebar reads only the address (`?sel=<type>:<id>`) and looks the entry up here, so a reload shows the
 // same sidebar without a side channel.
@@ -194,20 +194,21 @@ export function buildRelations(input: RelationsInput): RelationIndex {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// The matrix and the graph (spec 026, T18, T20, T22; ISC-169, ISC-169.1, ISC-170): two derivations of the index that
-// the Matrix and the Diagram lens render as they are. Pure functions over a `PlanningModel` (its features, milestones,
-// `unassignedFeatures` and `relations`), so the web lane calls them on the planning body the route serves, and the
-// probe derives them from `<tree>.planning.golden.json` and from the live tree alike: no golden family of their own.
+// The graph (spec 026, T22; ISC-170): a derivation of the index that the Diagram lens renders as it is. A pure function
+// over a `PlanningModel` (its features, milestones, `unassignedFeatures` and `relations`), so the web lane calls it on
+// the planning body the route serves, and the probe derives it from `<tree>.planning.golden.json` and from the live
+// tree alike: no golden family of its own. Its lanes and cards were shared with the Matrix lens, which the Gantt lens
+// replaced (spec 038, `gantt.ts`).
 
 /**
- * One card of the matrix: one spec, as its index entry counts it. Its column is its main feature, the first feature of
+ * One spec card of a lane: one spec, as its index entry counts it. Its feature is its main feature, the first feature of
  * the entry's `parents` (the `isa_feature`'s first word where the spec holds claims of it or holds none at all, else the
- * first held feature in master order); the spec's other features ride along as chips (ISC-169.1).
+ * first held feature in master order).
  */
-export interface LensCard {
+interface LaneCard {
   /** `spec:<NNN>`, the sidebar's `?sel=`. */
   readonly ref: RelationRef;
-  /** `025`, the card's mono id. */
+  /** `025`, the node's mono id. */
   readonly id: string;
   readonly title: string;
   /** The board stage of an active spec; null for an archived one or one the caller passed no state for. */
@@ -215,75 +216,11 @@ export interface LensCard {
   /** The live claims the spec holds, closed over total (the entry's progress). */
   readonly closed: number;
   readonly total: number;
-  /** Held only in `specs/archive/`: the card is drawn dashed with the `archive` chip, after the active cards. */
+  /** Held only in `specs/archive/`. */
   readonly archived: boolean;
-  /** The spec's other features, master order: the `+F8` chips. Empty for a spec of one feature. */
-  readonly otherFeatures: readonly RelationRef[];
-  /** The entry's `blockers` (spec edges, `after: NNN`, join with spec 025); empty until then. */
-  readonly blockers: readonly RelationRef[];
 }
 
-/** One column of the matrix: a feature that holds at least one card in at least one lane, in master order. */
-export interface LensColumn {
-  /** `feature:<F-id>`. */
-  readonly ref: RelationRef;
-  /** `F24`. */
-  readonly id: string;
-  readonly name: string;
-  /** The feature's claims, closed over total, dropped ones in neither number. */
-  readonly closed: number;
-  readonly total: number;
-  /**
-   * Finished: every live claim closed (`total` > 0) and every card of the column, across the lanes, archived or at
-   * stage `done`. The view folds such a column to a 44 px stripe until it is opened.
-   */
-  readonly done: boolean;
-}
-
-/** One swimlane: a milestone of the master, or the no-milestone lane (`ref` null), always last. */
-export interface LensLane {
-  /** `milestone:<slug>`; null for the no-milestone lane, which is a grouping, not an object of the index. */
-  readonly ref: RelationRef | null;
-  /** The milestone's name; null for the no-milestone lane, whose label is the view's. */
-  readonly name: string | null;
-  /** ISO date `YYYY-MM-DD`; null for an undated milestone and for the no-milestone lane. */
-  readonly target: string | null;
-  /**
-   * Progress, closed over total: a milestone's own (`PlanningMilestone`). The no-milestone lane sums its features where
-   * the master carries `Milestone:` lines or no milestone at all, otherwise the claims its specs hold, as a milestone
-   * without lines counts (ISC-102).
-   */
-  readonly closed: number;
-  readonly total: number;
-  /** Active cards in this lane, archived ones not counted: the lane head's „8 Specs". */
-  readonly specCount: number;
-  /** One cell per column, index-aligned with `MatrixLens.columns`: the cards, active ones first, then archived. */
-  readonly cells: ReadonlyArray<readonly LensCard[]>;
-  /** The lane's features without a card in this lane, master order: the folded „Features ohne Spec" line. */
-  readonly bare: readonly RelationRef[];
-}
-
-/** The Matrix lens: lanes by target date (undated after, the no-milestone lane last), columns in master order. */
-export interface MatrixLens {
-  readonly lanes: readonly LensLane[];
-  readonly columns: readonly LensColumn[];
-  /**
-   * Specs of the index without a feature parent, so no column can carry them (spec order): a spec that holds no claim
-   * and whose `isa_feature` names no block of the master (spec 033); usually empty.
-   */
-  readonly unplaced: readonly RelationRef[];
-}
-
-/** What the matrix shows; every field absent is the counted state of ISC-169. */
-export interface MatrixLensOptions {
-  /**
-   * Archived specs drawn (default true); false lays them on no card, so a column only they held drops and their
-   * features count as bare, as the planning page's archive toggle does.
-   */
-  readonly archived?: boolean;
-}
-
-/** The planning body both derivations read: the tree's lists, its index and its spec edges. A `PlanningModel` is one. */
+/** The planning body the graph reads: the tree's lists, its index and its spec edges. A `PlanningModel` is one. */
 export type LensInput = Pick<PlanningModel, 'features' | 'milestones' | 'unassignedFeatures' | 'relations' | 'specEdges'>;
 
 /** One lane while it is laid out: its features (master order) and its cards by column feature. */
@@ -291,17 +228,17 @@ interface LaneDraft {
   readonly ref: RelationRef | null;
   readonly milestone: PlanningMilestone | null;
   features: RelationRef[];
-  readonly cards: Map<RelationRef, LensCard[]>;
+  readonly cards: Map<RelationRef, LaneCard[]>;
 }
 
 /**
- * The lanes, each with its features and cards, shared by matrix and graph. A spec's lane: where the master carries
+ * The graph's lanes, each with its features and cards. A spec's lane: where the master carries
  * `Milestone:` lines (some milestone's `featureIds` is not empty), the milestone whose line its main feature carries;
  * otherwise the milestone whose `specs` list it (the spec's own `milestone:`); else the no-milestone lane. A lane's
  * features: a milestone's `features`; the no-milestone lane's `unassignedFeatures` with lines, otherwise the features
  * no milestone lists; then every feature that holds a card there. Cards in the index's spec order, active ones first.
  */
-function layLanes(model: LensInput, archived = true): { lanes: LaneDraft[]; unplaced: RelationRef[]; byLines: boolean } {
+function layLanes(model: LensInput): LaneDraft[] {
   const byLines = model.milestones.some((m) => (m.featureIds ?? []).length > 0);
   const lanes: LaneDraft[] = model.milestones.map((m) => ({ ref: refOf('milestone', m.slug), milestone: m, features: m.features.map((f) => refOf('feature', f.id)), cards: new Map() }));
   const listed = new Set(model.milestones.flatMap((m) => m.features.map((f) => f.id)));
@@ -309,64 +246,25 @@ function layLanes(model: LensInput, archived = true): { lanes: LaneDraft[]; unpl
   const none: LaneDraft = { ref: null, milestone: null, features: loose.map((id) => refOf('feature', id)), cards: new Map() };
   const laneOfFeature = new Map(model.milestones.flatMap((m, i) => (m.featureIds ?? []).map((id) => [refOf('feature', id), lanes[i]] as const)));
   const laneOfSpec = new Map(model.milestones.flatMap((m, i) => m.specs.map((s) => [refOf('spec', s.id), lanes[i]] as const)));
-  const unplaced: RelationRef[] = [];
   const specs = Object.values(model.relations ?? {}).filter((r) => r.type === 'spec');
-  for (const spec of [...specs.filter((s) => s.archived !== true), ...(archived ? specs.filter((s) => s.archived === true) : [])]) {
-    const [main, ...others] = spec.parents.filter((p) => p.startsWith('feature:'));
-    if (main === undefined) {
-      unplaced.push(spec.ref);
-      continue;
-    }
+  for (const spec of [...specs.filter((s) => s.archived !== true), ...specs.filter((s) => s.archived === true)]) {
+    const [main] = spec.parents.filter((p) => p.startsWith('feature:'));
+    if (main === undefined) continue;
     const lane = (byLines ? laneOfFeature.get(main) : laneOfSpec.get(spec.ref)) ?? none;
-    const card: LensCard = { ref: spec.ref, id: spec.id, title: spec.title, stage: spec.stage ?? null, closed: spec.closed, total: spec.total, archived: spec.archived === true, otherFeatures: others, blockers: spec.blockers };
+    const card: LaneCard = { ref: spec.ref, id: spec.id, title: spec.title, stage: spec.stage ?? null, closed: spec.closed, total: spec.total, archived: spec.archived === true };
     lane.cards.set(main, [...(lane.cards.get(main) ?? []), card]);
   }
   // The no-milestone lane stands when it holds a feature, and always in a master without milestones.
   if (lanes.length === 0 || none.features.length > 0 || none.cards.size > 0) lanes.push(none);
   const order = model.features.map((f) => refOf('feature', f.id));
   for (const lane of lanes) lane.features = order.filter((ref) => lane.features.includes(ref) || lane.cards.has(ref));
-  return { lanes, unplaced, byLines };
+  return lanes;
 }
 
 const finished = (closed: number, total: number): boolean => total > 0 && closed === total;
-const settled = (card: LensCard): boolean => card.archived || card.stage === 'done';
+const settled = (card: LaneCard): boolean => card.archived || card.stage === 'done';
 const sumOf = (items: ReadonlyArray<{ readonly closed: number; readonly total: number } | undefined>): { closed: number; total: number } =>
   items.reduce<{ closed: number; total: number }>((n, x) => ({ closed: n.closed + (x?.closed ?? 0), total: n.total + (x?.total ?? 0) }), { closed: 0, total: 0 });
-
-/**
- * The Matrix lens of a planning model (spec 026, T18 and T20; ISC-169, ISC-169.1): one lane per milestone in target
- * order plus the no-milestone lane last, one column per feature holding a card, master order, and per spec exactly one
- * card, in its lane and its main feature's column, its other features as chips. The lane rule is `layLanes`'. The
- * default options are the counted state; the view's own default (archived hidden) is a filter of the same derivation.
- */
-export function planningMatrix(model: LensInput, options: MatrixLensOptions = {}): MatrixLens {
-  const { lanes, unplaced, byLines } = layLanes(model, options.archived ?? true);
-  const columns = model.features.flatMap((f): LensColumn[] => {
-    const ref = refOf('feature', f.id);
-    const cards = lanes.flatMap((l) => l.cards.get(ref) ?? []);
-    return cards.length === 0 ? [] : [{ ref, id: f.id, name: f.name, closed: f.closed, total: f.total, done: finished(f.closed, f.total) && cards.every(settled) }];
-  });
-  const counts = new Map(model.features.map((f) => [refOf('feature', f.id), f]));
-  return {
-    lanes: lanes.map((lane): LensLane => {
-      const cells = columns.map((c) => lane.cards.get(c.ref) ?? []);
-      const cards = cells.flat();
-      const sum = lane.milestone ?? sumOf(byLines || model.milestones.length === 0 ? lane.features.map((ref) => counts.get(ref)) : cards);
-      return {
-        ref: lane.ref,
-        name: lane.milestone?.name ?? null,
-        target: lane.milestone?.target ?? null,
-        closed: sum.closed,
-        total: sum.total,
-        specCount: cards.filter((c) => !c.archived).length,
-        cells,
-        bare: lane.features.filter((ref) => !lane.cards.has(ref)),
-      };
-    }),
-    columns,
-    unplaced,
-  };
-}
 
 /** The four node kinds of the graph; a bundle folds several features of one lane into one dashed node. */
 export type LensNodeKind = 'milestone' | 'feature' | 'spec' | 'bundle';
@@ -437,7 +335,7 @@ const safe = (text: string): string => text.replace(/[^A-Za-z0-9_]/g, '_');
 
 /**
  * The Diagram lens of a planning model (spec 026, T22, ISC-170): milestone → feature → spec over the lanes and cards
- * of the matrix. Per lane a milestone node (the no-milestone lane gets one only when the master has milestones; without
+ * of `layLanes`. Per lane a milestone node (the no-milestone lane gets one only when the master has milestones; without
  * any, features and bundles are the roots: two ranks), then per lane feature in master order: a finished feature
  * (every live claim closed) with no open spec in the lane joins the lane's `done` bundle; a feature without a spec in
  * the lane joins its `no-spec` bundle; any other is drawn with its specs of the lane. A bundle without members is no
@@ -445,7 +343,7 @@ const safe = (text: string): string => text.replace(/[^A-Za-z0-9_]/g, '_');
  * view's own default (next milestone, archived hidden) is a filter of the same derivation, never the count.
  */
 export function planningGraph(model: LensInput, options: GraphLensOptions = {}): GraphLens {
-  const { lanes } = layLanes(model);
+  const lanes = layLanes(model);
   const pick = options.milestone === undefined ? 'all' : options.milestone;
   const archived = options.archived ?? true;
   const expand = new Set(options.expand ?? []);
@@ -461,7 +359,7 @@ export function planningGraph(model: LensInput, options: GraphLensOptions = {}):
     const hang = (id: string): void => {
       if (rooted) edges.push({ from: root, to: id, kind: 'contains' });
     };
-    const cardsOf = (ref: RelationRef): LensCard[] => (lane.cards.get(ref) ?? []).filter((c) => archived || !c.archived);
+    const cardsOf = (ref: RelationRef): LaneCard[] => (lane.cards.get(ref) ?? []).filter((c) => archived || !c.archived);
     const draw = (ref: RelationRef): void => {
       const f = features.get(ref);
       const id = `f_${key}_${safe(ref.slice('feature:'.length))}`;

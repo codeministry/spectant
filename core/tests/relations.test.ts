@@ -195,140 +195,7 @@ describe('relations: inline', () => {
   });
 });
 
-// The matrix lens (spec 026, T18 and T20, ISC-169 and ISC-169.1): `planningMatrix` over the planning model, one lane
-// per milestone plus the no-milestone lane, one column per feature holding a card. Probes by name: "matrix golden" (the
-// matrix of the planning golden equals the one of the live tree, card by card and number by number), "matrix shape"
-// (every spec with a feature exactly once, no empty column, order), "matrix" per fixture and "matrix multi" (a spec
-// holding claims of several features: one card per lane, in its main feature's column, the others as chips).
-const laneRefs = (matrix: core.MatrixLens): Array<string | null> => matrix.lanes.map((l) => l.ref);
-const cellOf = (matrix: core.MatrixLens, lane: string | null, feature: string): string[] => {
-  const l = matrix.lanes.find((x) => x.ref === lane);
-  const i = matrix.columns.findIndex((c) => c.ref === feature);
-  return l === undefined || i < 0 ? [] : (l.cells[i] ?? []).map((card) => card.ref);
-};
-const cardOf = (matrix: core.MatrixLens, spec: string): core.LensCard | undefined =>
-  matrix.lanes.flatMap((l) => l.cells.flat()).find((card) => card.ref === spec);
 const goldenModel = (tree: string): PlanningModel => JSON.parse(readFileSync(goldenPath(tree, 'planning'), 'utf8')) as PlanningModel;
-
-describe('relations: matrix', () => {
-  test.each(fixtureTrees())('matrix golden: %s derives the same matrix from its planning golden as from the tree', (tree) => {
-    expect(core.planningMatrix(goldenModel(tree))).toEqual(core.planningMatrix(planningOf(tree)));
-  });
-
-  test.each(fixtureTrees())('matrix shape: %s places every spec with a feature exactly once, every column holds a card, cards active first', (tree) => {
-    const model = planningOf(tree);
-    const index = indexOf(model);
-    const matrix = core.planningMatrix(model);
-    const cards = matrix.lanes.flatMap((l) => l.cells.flat());
-    const placed = cards.map((c) => c.ref);
-    expect(placed.length).toBe(new Set(placed).size);
-    const withFeature: string[] = entries(index).filter((r) => r.type === 'spec' && r.parents.some((p) => p.startsWith('feature:'))).map((r) => r.ref);
-    expect(placed.toSorted()).toEqual(withFeature.toSorted() as RelationRef[]);
-    expect([...matrix.unplaced].toSorted()).toEqual(refsOf(index, 'spec').filter((ref) => !withFeature.includes(ref)).toSorted() as RelationRef[]);
-    // Columns in master order, each with a card somewhere; every lane has one cell per column.
-    const order = model.features.map((f): RelationRef => `feature:${f.id}`);
-    expect(matrix.columns.map((c) => c.ref)).toEqual(order.filter((ref) => matrix.columns.some((c) => c.ref === ref)));
-    matrix.columns.forEach((_, i) => expect(matrix.lanes.some((l) => (l.cells[i] ?? []).length > 0)).toBe(true));
-    for (const lane of matrix.lanes) {
-      expect(lane.cells.length).toBe(matrix.columns.length);
-      expect(lane.specCount).toBe(lane.cells.flat().filter((c) => !c.archived).length);
-      for (const cell of lane.cells) expect(cell.map((c) => Number(c.archived))).toEqual(cell.map((c) => Number(c.archived)).toSorted());
-      // A bare feature has no card in this lane.
-      for (const bare of lane.bare) expect(lane.cells[matrix.columns.findIndex((c) => c.ref === bare)] ?? []).toEqual([]);
-    }
-    // Lanes: milestones in target order, the no-milestone lane last.
-    expect(laneRefs(matrix).filter((ref) => ref !== null)).toEqual(model.milestones.map((m) => `milestone:${m.slug}`));
-    if (laneRefs(matrix).includes(null)) expect(laneRefs(matrix).at(-1)).toBeNull();
-    // A card carries its spec entry's numbers, stage and archive flag; its column is its first feature parent.
-    for (const card of cards) {
-      const spec = entry(index, card.ref);
-      const features = spec?.parents.filter((p) => p.startsWith('feature:')) ?? [];
-      expect(card).toMatchObject({ id: spec?.id, title: spec?.title, closed: spec?.closed, total: spec?.total, archived: spec?.archived === true, stage: spec?.stage ?? null, otherFeatures: features.slice(1) });
-      expect(matrix.columns.findIndex((c) => c.ref === features[0])).toBeGreaterThanOrEqual(0);
-    }
-  });
-
-  test("matrix: milestone-lines puts each spec in its main feature line's lane, the line over the spec's own milestone", () => {
-    const matrix = core.planningMatrix(planningOf('milestone-lines'));
-    expect(laneRefs(matrix)).toEqual(['milestone:beacon-0-5', 'milestone:beacon-1-0', null]);
-    expect(matrix.columns.map((c) => c.ref)).toEqual(['feature:F1', 'feature:F2', 'feature:F3']);
-    expect(matrix.columns.map((c) => [c.id, c.closed, c.total, c.done])).toEqual([['F1', 3, 3, true], ['F2', 0, 3, false], ['F3', 0, 2, false]]);
-    expect(cellOf(matrix, 'milestone:beacon-0-5', 'feature:F1')).toEqual(['spec:001']);
-    // 002 names Beacon 0.5, its main feature F2 carries the line Beacon 1.0: the line wins.
-    expect(cellOf(matrix, 'milestone:beacon-1-0', 'feature:F2')).toEqual(['spec:002']);
-    expect(cellOf(matrix, null, 'feature:F3')).toEqual(['spec:003']);
-    expect(matrix.lanes.map((l) => [l.name, l.target, l.closed, l.total, l.specCount, l.bare])).toEqual([
-      ['Beacon 0.5', '2026-03-12', 3, 3, 1, []],
-      ['Beacon 1.0', '2026-04-30', 0, 3, 1, []],
-      [null, null, 0, 4, 1, ['feature:F0']],
-    ]);
-    expect(cardOf(matrix, 'spec:001')).toMatchObject({ id: '001', stage: 'done', closed: 3, total: 3, archived: false, blockers: [] });
-    expect(matrix.unplaced).toEqual([]);
-  });
-
-  test("matrix: harbor without lines puts each spec in its own milestone's lane, marks the archived card and folds done columns", () => {
-    const matrix = core.planningMatrix(planningOf('harbor'));
-    expect(laneRefs(matrix)).toEqual(['milestone:harbor-0-9', 'milestone:harbor-1-0', null]);
-    expect(matrix.columns.map((c) => c.id)).toEqual(['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6']);
-    expect(matrix.columns.filter((c) => c.done).map((c) => c.id)).toEqual(['F1', 'F5']);
-    expect(cellOf(matrix, 'milestone:harbor-0-9', 'feature:F3')).toEqual(['spec:003']);
-    expect(cellOf(matrix, 'milestone:harbor-1-0', 'feature:F1')).toEqual(['spec:001']);
-    expect(cellOf(matrix, null, 'feature:F3')).toEqual(['spec:005']);
-    expect(cellOf(matrix, null, 'feature:F6')).toEqual(['spec:008', 'spec:009']);
-    expect(cardOf(matrix, 'spec:001')).toMatchObject({ archived: true, stage: null, closed: 46, total: 46 });
-    expect(cardOf(matrix, 'spec:002')).toMatchObject({ archived: false, stage: 'build', closed: 25, total: 30 });
-    // Without lines the no-milestone lane counts the claims its specs hold, as a milestone does (ISC-102).
-    expect(matrix.lanes.map((l) => [l.closed, l.total, l.specCount, l.bare])).toEqual([
-      [0, 13, 1, []],
-      [101, 106, 2, []],
-      [5, 10, 5, ['feature:F7']],
-    ]);
-  });
-
-  test('matrix archived: archived false lays no archived card, drops a column only they held and counts its feature as bare', () => {
-    const model = planningOf('harbor');
-    const matrix = core.planningMatrix(model, { archived: false });
-    expect(matrix.lanes.flatMap((l) => l.cells.flat()).some((c) => c.archived)).toBe(false);
-    expect(matrix.columns.map((c) => c.id)).toEqual(['F0', 'F2', 'F3', 'F4', 'F5', 'F6']);
-    expect(matrix.lanes.map((l) => [l.closed, l.total, l.specCount, l.bare])).toEqual([
-      [0, 13, 1, []],
-      [101, 106, 2, ['feature:F1']],
-      [5, 10, 5, ['feature:F7']],
-    ]);
-    // The default options are the counted state: archived cards drawn.
-    expect(core.planningMatrix(model, { archived: true })).toEqual(core.planningMatrix(model));
-  });
-
-  test('matrix: a tree without milestones is one no-milestone lane; no master, one empty lane', () => {
-    const lantern = core.planningMatrix(planningOf('lantern'));
-    expect(laneRefs(lantern)).toEqual([null]);
-    expect(cellOf(lantern, null, 'feature:F1')).toEqual(['spec:001', 'spec:002']);
-    expect(lantern.lanes[0]?.bare).toEqual(['feature:F0']);
-    const empty = core.planningMatrix(planningOf('empty-master'));
-    expect(empty.columns).toEqual([]);
-    expect(empty.lanes).toEqual([{ ref: null, name: null, target: null, closed: 0, total: 3, specCount: 0, cells: [], bare: ['feature:F0', 'feature:F1'] }]);
-    const none = core.planningMatrix(core.buildPlanning({ master: null, specs: [], archived: [] }));
-    expect(none).toEqual({ lanes: [{ ref: null, name: null, target: null, closed: 0, total: 0, specCount: 0, cells: [], bare: [] }], columns: [], unplaced: [] });
-  });
-
-  test("matrix multi: a spec with claims in several features stands once per lane, in its main feature's column, the others as chips", () => {
-    const lines = core.planningMatrix(planningOf('milestone-lines'));
-    expect(cardOf(lines, 'spec:002')?.otherFeatures).toEqual(['feature:F0']);
-    expect(lines.lanes.map((l) => l.cells.flat().filter((c) => c.ref === 'spec:002').length)).toEqual([0, 1, 0]);
-    // F0 is held only as a side feature: no column, a bare feature of its lane.
-    expect(lines.columns.some((c) => c.ref === 'feature:F0')).toBe(false);
-    const own = core.planningMatrix(planningOf('spectant-001'));
-    expect(own.columns.map((c) => c.ref)).toEqual(['feature:F1']);
-    expect(cardOf(own, 'spec:001')?.otherFeatures).toEqual(['feature:F0']);
-    // isa_feature names F1, the spec holds claims of F0 and F1: column F1 though F0 comes first in the master.
-    const master = ['# Master', '', '## Features', '', '### F0 · A', '', '- [ ] ISC-1: One.', '', '### F1 · B', '', '- [ ] ISC-2: Two.', ''].join('\n');
-    const spec = ['---', 'task: "Both"', 'isa_feature: F1 F0', '---', '', '# Spec', '', '## Criteria', '', '- [ ] ISC-1: One.', '- [ ] ISC-2: Two.', ''].join('\n');
-    const both = core.planningMatrix(core.buildPlanning({ master, specs: [{ folder: '001-both', texts: { spec } }], archived: [] }));
-    expect(both.columns.map((c) => c.ref)).toEqual(['feature:F1']);
-    expect(cellOf(both, null, 'feature:F1')).toEqual(['spec:001']);
-    expect(cardOf(both, 'spec:001')?.otherFeatures).toEqual(['feature:F0']);
-  });
-});
 
 // The diagram lens (spec 026, T22, ISC-170): `planningGraph` over the planning model, milestone → feature → spec. The
 // counted state is the default options: every lane (`Alle`), archived specs drawn, every bundle collapsed. Probes by
@@ -356,9 +223,9 @@ describe('relations: graph', () => {
     const roots = graph.nodes.filter((n) => !targets.includes(n.id)).map((n) => n.kind);
     // Milestone nodes are the roots; without milestones features and bundles are.
     expect(roots.every((k) => (model.milestones.length > 0 ? k === 'milestone' : k === 'feature' || k === 'bundle'))).toBe(true);
-    // Every spec node is a card of the matrix, every bundle holds a feature.
-    const cards = core.planningMatrix(model).lanes.flatMap((l) => l.cells.flat()).map((c) => c.ref);
-    for (const n of graph.nodes.filter((x) => x.kind === 'spec')) expect(cards).toContain(n.ref as RelationRef);
+    // Every spec node is a spec of the index with a feature parent, every bundle holds a feature.
+    const index = indexOf(model);
+    for (const n of graph.nodes.filter((x) => x.kind === 'spec')) expect(index[n.ref as RelationRef]?.parents.some((p) => p.startsWith('feature:'))).toBe(true);
     for (const n of graph.nodes.filter((x) => x.kind === 'bundle')) expect(n.members?.length).toBeGreaterThan(0);
   });
 

@@ -87,7 +87,7 @@ const feature = (id: string, closed: number, total: number): PlanningBody['featu
 });
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
-  workflow: { rows: [], source: 'default', diagnostics: [] },
+  asOf: '2026-03-20', workflow: { rows: [], source: 'default', diagnostics: [] },
   stages: [],
   stageCounts: {},
   ideas: [],

@@ -66,7 +66,7 @@ const milestone = (name: string, slug: string, specs: readonly Holder[]): Milest
 
 /** 002 is main under F7 and also holds claims of F0 and F2; 001 is archived, main under F1. */
 const PLAN: PlanningBody = {
-  workflow: { rows: [], source: 'default', diagnostics: [] },
+  asOf: '2026-03-20', workflow: { rows: [], source: 'default', diagnostics: [] },
   stages: [],
   stageCounts: {},
   ideas: [],

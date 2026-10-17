@@ -469,6 +469,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(GOLDEN_FAMILY.planning).toBe("planning");
     const value = golden(GOLDEN_FAMILY.planning) as unknown as WorkspaceRouteResponses["planning"];
     const spec = keysOf<PlanningModel>({
+      asOf: "req",
       workflow: "req",
       stages: "req",
       stageCounts: "req",
