@@ -7,15 +7,16 @@
 // branch with its worktree, or one checked out in the main checkout, gives none. Merged or removed, the worktree leaves
 // the dashboard reading, so no chip shows. Nothing is written: `events.jsonl` stays byte-identical.
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { specRoutes } from "../server/src/spec-routes.contract.ts";
+import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { loadCatalogDoc, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { rawSha256 } from "../server/src/writes.ts";
 import {
   DATES,
   type PlantedWorktreeRepo,
@@ -23,6 +24,7 @@ import {
   SPEC_FOLDER,
   SPEC_ID,
   SPEC_WORKTREE,
+  UNCOMMITTED,
   type WorktreeRepoOptions,
   plantWorktreeRepo,
 } from "./fixtures/worktree-repo.ts";
@@ -133,5 +135,135 @@ describe("ISC-175.1 merged: the timeline derives the end of a spec's worktree fr
     expect((await repo.git(repo.root, "branch", "-D", SPEC_BRANCH)).code).toBe(0);
     const { entries } = await worktreeEntries(repo);
     expect(entries).toEqual([]);
+  });
+});
+
+// ── ended everywhere (spec 041, T5, ISC-212.1) ──────────────────────────────────────────────────────────────────────
+//
+// One rule decides which worktree a spec is read from, and "ended" (merged, removed, `prunable`) applies in every place
+// that reads a spec: the dashboard reading, the spec tabs and their three writes, the library and the timeline. The
+// fixture: `specs/` tracked, the spec branch merged into `main`, the spec worktree still present and clean (its one
+// uncommitted file removed, so it is not kept alive as a merged worktree with changes). `main` then moves on in one
+// commit of its own, so the two copies of the spec differ: main's `spec.md` back at `build`, T28 ticked in `tasks.md`,
+// one event line more and another plan heading. The worktree's copy keeps `code-review`; whoever reads it is wrong.
+
+/** The planted event line on main's `events.jsonl`: an entry with this time on the timeline proves main was read. */
+const MAIN_EVENT_TS = "2026-03-05T11:00:00Z";
+/** main's plan heading after its own commit; the worktree copy keeps harbor's. */
+const MAIN_PLAN_TITLE = "Plan 002 — Main checkout";
+/** A branch naming another harbor spec than the worktree's path does (ISC-174.1: the path wins). */
+const OTHER_FOLDER = "004-retention-policies";
+const OTHER_ID = "004";
+const OTHER_BRANCH = `feature/${OTHER_FOLDER}`;
+
+/** The merged, still present, clean spec worktree with a main checkout that moved on, as described above. */
+async function plantEnded(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true, merged: true });
+  rmSync(join(repo.worktrees.spec, UNCOMMITTED));
+  const main = join(repo.root, "specs", SPEC_FOLDER);
+  const edit = (file: string, from: RegExp, to: string): void => {
+    const path = join(main, file);
+    const text = readFileSync(path, "utf8");
+    if (!from.test(text)) throw new Error(`ended everywhere: ${from.source} not found in ${file}`);
+    writeFileSync(path, text.replace(from, to));
+  };
+  edit("spec.md", /^stage: code-review$/m, "stage: build");
+  edit("tasks.md", /^- \[ \] T28 ·/m, "- [x] T28 ·"); // single-core: allow — the fixture ticks one box of main's tasks.md; nothing is parsed
+  edit("plan.md", /^# Plan 002 — Web console$/m, `# ${MAIN_PLAN_TITLE}`);
+  appendFileSync(join(main, "events.jsonl"), `{"ts":"${MAIN_EVENT_TS}","from":"code-review","to":"build","command":"/spec-implement 002","actor":"u:3f9c0a7d"}\n`);
+  expect((await repo.git(repo.root, "commit", "-q", "-a", "-m", "harbor: main moves on")).code).toBe(0);
+  // The worktree is clean and its branch merged: ended by every reading of the rule.
+  expect((await repo.git(repo.worktrees.spec, "status", "--porcelain")).stdout).toBe("");
+  return repo;
+}
+
+/** One request to the spec routes of `handler`; `body` makes it a POST. */
+async function call(handler: ApiHandler, path: string, body?: unknown): Promise<Response> {
+  const url = new URL(`http://127.0.0.1:7717${path}`);
+  const init: RequestInit = body === undefined ? { headers: HOST } : { method: "POST", headers: HOST, body: JSON.stringify(body) };
+  const res = await handler(new Request(url.href, init), url);
+  if (res === null) throw new Error(`the spec routes declined ${path}`);
+  return res;
+}
+
+/** The timeline of spec `id` through `handler`. */
+async function timelineOf(handler: ApiHandler, id: string): Promise<TimelineEntry[]> {
+  const res = await call(handler, specRoutes.timeline("harbor", id));
+  expect(res.status).toBe(200);
+  return (await res.json()) as TimelineEntry[];
+}
+
+describe("ISC-212.1 ended everywhere: a merged, still present worktree is read nowhere, and the timeline follows the path", () => {
+  test("ended everywhere: dashboard reading → main's files, no worktree source, no copy, no chip", async () => {
+    const repo = await plantEnded();
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    const files = reading.input.specs.find((f) => f.folder === SPEC_FOLDER);
+    expect(files?.texts.spec).toBe(readFileSync(join(repo.root, "specs", SPEC_FOLDER, "spec.md"), "utf8"));
+    expect(reading.input.perSpec?.[SPEC_FOLDER]?.source).toBeUndefined();
+    expect(reading.copies[SPEC_FOLDER]).toBeUndefined();
+    expect(await chipWorktrees(repo)).toEqual([]);
+  });
+
+  test("ended everywhere: spec page and tasks tab → the hashes of main's spec.md and tasks.md", async () => {
+    const repo = await plantEnded();
+    const handler = handlerFor(repo);
+    const main = join(repo.root, "specs", SPEC_FOLDER);
+    const head = await call(handler, specRoutes.spec("harbor", SPEC_ID));
+    expect(head.status).toBe(200);
+    expect(head.headers.get(SPEC_HASH_HEADER)).toBe(rawSha256(readFileSync(join(main, "spec.md"))));
+    const tasks = await call(handler, specRoutes.tasks("harbor", SPEC_ID));
+    expect(tasks.status).toBe(200);
+    expect(tasks.headers.get(TASKS_HASH_HEADER)).toBe(rawSha256(readFileSync(join(main, "tasks.md"))));
+  });
+
+  test("ended everywhere: library document → main's plan.md, no worktree copy", async () => {
+    const repo = await plantEnded();
+    const load = await loadCatalogDoc(repo.root, `${SPEC_FOLDER}/plan.md`);
+    if (!load.readable) throw new Error("the fixture workspace is unreadable");
+    expect(load.copies[SPEC_FOLDER]).toBeUndefined();
+    expect(load.doc?.title).toBe(MAIN_PLAN_TITLE);
+  });
+
+  test("ended everywhere: timeline → main's events.jsonl, and the merged entry", async () => {
+    const repo = await plantEnded();
+    const entries = await timelineOf(handlerFor(repo), SPEC_ID);
+    expect(entries.some((e) => e.ts === MAIN_EVENT_TS)).toBe(true);
+    expect(entries.filter((e) => e.kind === "worktree").map((e) => e.worktree?.state)).toEqual(["merged"]);
+  });
+
+  test("ended everywhere: stage move with the page's hash → 200, stage written into main's spec.md, the worktree copy byte-identical", async () => {
+    const repo = await plantEnded();
+    // Main's plan heading goes back, so its reviewed mark reads fresh again and the move meets the review gate.
+    const plan = join(repo.root, "specs", SPEC_FOLDER, "plan.md");
+    writeFileSync(plan, readFileSync(plan, "utf8").replace(`# ${MAIN_PLAN_TITLE}`, "# Plan 002 — Web console"));
+    // The harbor activity log holds ISC-74 of 002; released here, so the move meets no lock (the test's own change).
+    appendFileSync(join(repo.root, ".spectant", "activity.jsonl"), '{"ts":"2026-03-08T16:00:00Z","event":"release","claim":"ISC-74","session":"a:claude:sess-2"}\n');
+    const handler = handlerFor(repo);
+    const mainSpec = join(repo.root, "specs", SPEC_FOLDER, "spec.md");
+    const copySpec = join(repo.worktrees.spec, "specs", SPEC_FOLDER, "spec.md");
+    const copyBefore = readFileSync(copySpec);
+    const hash = (await call(handler, specRoutes.spec("harbor", SPEC_ID))).headers.get(SPEC_HASH_HEADER);
+    const res = await call(handler, specRoutes.transition("harbor", SPEC_ID), { to: "blocked", hash });
+    expect({ status: res.status, body: res.status === 200 ? null : await res.json() }).toEqual({ status: 200, body: null });
+    expect(readFileSync(mainSpec, "utf8")).toMatch(/^stage: blocked$/m);
+    expect(readFileSync(copySpec).equals(copyBefore)).toBe(true);
+  });
+
+  test("ended everywhere: path and branch name two specs → the timeline follows the path, not the branch", async () => {
+    const repo = await plant();
+    // The worktree `.worktrees/002-web-console` switches to a branch named for 004; 002's own branch goes, and the
+    // 004 branch is merged into main with the worktree left clean and present.
+    rmSync(join(repo.worktrees.spec, UNCOMMITTED));
+    expect((await repo.git(repo.worktrees.spec, "switch", "-q", "-c", OTHER_BRANCH)).code).toBe(0);
+    expect((await repo.git(repo.root, "branch", "-D", SPEC_BRANCH)).code).toBe(0);
+    expect((await repo.git(repo.root, "merge", "-q", "--no-ff", "-m", `Merge branch '${OTHER_BRANCH}'`, OTHER_BRANCH)).code).toBe(0);
+    const handler = handlerFor(repo);
+    const own = (await timelineOf(handler, SPEC_ID)).filter((e) => e.kind === "worktree");
+    expect(own.map((e) => ({ state: e.worktree?.state, branch: e.worktree?.branch, path: e.worktree?.path }))).toEqual([
+      { state: "merged", branch: OTHER_BRANCH, path: SPEC_WORKTREE },
+    ]);
+    const other = (await timelineOf(handler, OTHER_ID)).filter((e) => e.kind === "worktree");
+    expect(other.filter((e) => e.worktree?.path === SPEC_WORKTREE)).toEqual([]);
   });
 });
