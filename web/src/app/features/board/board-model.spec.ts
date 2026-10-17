@@ -2,7 +2,9 @@ import { type PlanningModel, buildPlanning } from '../../../../../core/src/plann
 import { allowedTransition, reasonOf, storyStep } from '../../../../../core/src/stage';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
+import ranksGolden from '../../../../../core/fixtures/backlog-ranks.planning.golden.json';
 import {
+  type BoardBand,
   type BoardCard,
   type BoardModel,
   type BoardQueryState,
@@ -425,5 +427,100 @@ describe('hidden columns at medium (spec 019, T29, ISC-141.1)', () => {
     it('is empty without swimlanes: a board without a group has no bands', () => {
       expect(hiddenLanesOf(board().columns, RIGHT_OF_BUILD).size).toBe(0);
     });
+  });
+});
+
+// T11 · ISC-197 (spec 037): with feature swimlanes the bands follow `featureOrder` — milestone by milestone, each
+// milestone's features in rank, then the "No milestone" group, the band without a feature last — and every feature
+// band names the area it may move in. A divider heads each area only when the bands span more than one.
+describe('feature lanes rank (spec 037, T11, ISC-197)', () => {
+  const RANKS = ranksGolden as unknown as PlanningModel;
+  /** backlog-ranks holds no spec: one story per feature, and one without, puts a card of each in the idea column. */
+  const story = (feature: string | null): PlanningModel['ideas'][number] => ({
+    slug: `story-${feature ?? 'none'}`,
+    title: `Story of ${feature ?? 'no feature'}`,
+    type: 'feature',
+    feature,
+    milestone: null,
+    priority: 'P3',
+    path: `specs/ideas/story-${feature ?? 'none'}.md`,
+  });
+  const ranked = (query: Partial<BoardQueryState> = {}): BoardModel =>
+    buildBoard({
+      planning: { ...RANKS, ideas: [null, 'F0', 'F1', 'F2', 'F3', 'F4'].map(story) },
+      rows: [],
+      query: { ...EMPTY_BOARD_QUERY, group: 'feature', ...query },
+    });
+  const lanes = (bands: ReadonlyArray<Pick<BoardBand, 'key' | 'moveGroup' | 'divider'>> | undefined) =>
+    (bands ?? []).map((b) => [b.key, b.moveGroup, b.divider === null ? null : [b.divider.key, b.divider.name, b.divider.target]]);
+  const FERRY_1 = ['milestone:ferry-1-0', 'Ferry 1.0', '2026-04-15'];
+  const FERRY_2 = ['milestone:ferry-2-0', 'Ferry 2.0', '2026-06-30'];
+  const GROUP = ['group', null, null];
+
+  it('orders the bands by milestone and rank, then the "No milestone" group, and "No feature" last', () => {
+    expect(lanes(column(ranked(), 'idea')?.bands)).toEqual([
+      ['F2', 'milestone:ferry-1-0', FERRY_1],
+      ['F1', 'milestone:ferry-1-0', null],
+      ['F3', 'milestone:ferry-2-0', FERRY_2],
+      ['F4', 'milestone:ferry-2-0', null],
+      ['F0', 'group', GROUP],
+      [null, null, null],
+    ]);
+  });
+
+  it('orders the lanes across the board the same way', () => {
+    expect(lanes(ranked().lanes)).toEqual(lanes(column(ranked(), 'idea')?.bands));
+  });
+
+  it('draws no divider when the shown bands lie in one milestone', () => {
+    expect(lanes(column(ranked({ feature: ['F1', 'F2', 'none'] }), 'idea')?.bands)).toEqual([
+      ['F2', 'milestone:ferry-1-0', null],
+      ['F1', 'milestone:ferry-1-0', null],
+      [null, null, null],
+    ]);
+  });
+
+  it('follows the milestones a feature holds specs of where the master names none (harbor), not the global rank', () => {
+    const model = board({ group: 'feature' });
+    const H09 = ['milestone:harbor-0-9', 'Harbor 0.9', '2026-03-15'];
+    const H10 = ['milestone:harbor-1-0', 'Harbor 1.0', '2026-05-14'];
+    expect(lanes(column(model, 'review')?.bands)).toEqual([
+      ['F3', 'milestone:harbor-0-9', H09],
+      ['F0', 'group', GROUP],
+    ]);
+    expect(lanes(column(model, 'tasks')?.bands)).toEqual([['F3', 'milestone:harbor-0-9', null]]);
+    expect(lanes(model.lanes)).toEqual([
+      ['F3', 'milestone:harbor-0-9', H09],
+      ['F2', 'milestone:harbor-1-0', H10],
+      ['F4', 'milestone:harbor-1-0', null],
+      ['F0', 'group', GROUP],
+      ['F5', 'group', null],
+      ['F6', 'group', null],
+      ['F7', 'group', null],
+    ]);
+  });
+
+  it('places a feature two milestones list once, under the first', () => {
+    const [h09, h10] = PLANNING.milestones;
+    const f2 = h10.features.find((share) => share.id === 'F2');
+    if (f2 === undefined) throw new Error('harbor lists F2 under Harbor 1.0');
+    const planning: PlanningModel = { ...PLANNING, milestones: [{ ...h09, features: [...h09.features, f2] }, h10] };
+    const model = buildBoard({ planning, rows: ROWS, query: { ...EMPTY_BOARD_QUERY, group: 'feature' } });
+    // F2 (rank 3) now ranks ahead of F3 (rank 4) inside Harbor 0.9 and is not repeated under Harbor 1.0.
+    expect(model.lanes.map((lane) => [lane.key, lane.moveGroup])).toEqual([
+      ['F2', 'milestone:harbor-0-9'],
+      ['F3', 'milestone:harbor-0-9'],
+      ['F4', 'milestone:harbor-1-0'],
+      ['F0', 'group'],
+      ['F5', 'group'],
+      ['F6', 'group'],
+      ['F7', 'group'],
+    ]);
+  });
+
+  it('keeps milestone bands without a move group or divider', () => {
+    const model = board({ group: 'milestone' });
+    expect(model.columns.flatMap((c) => c.bands).every((b) => b.moveGroup === null && b.divider === null)).toBe(true);
+    expect(model.lanes.map((lane) => lane.key)).toEqual(['Harbor 0.9', 'Harbor 1.0', 'Harbor 2.0', null]);
   });
 });

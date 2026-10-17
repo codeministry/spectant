@@ -3,6 +3,7 @@ import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
 import type { Stage } from '../../../../../core/src/stage';
 import type { ActorMapping } from '../../../../../server/src/spec-routes.contract';
+import { type FeatureGroup, featureOrder } from '../backlog/backlog-order';
 
 /**
  * The workspace board's view model (spec 008, T120, ISC-129): pure functions from the planning tree, the dashboard rows
@@ -227,8 +228,32 @@ export type BoardStub =
   | { readonly kind: 'empty'; readonly hidden: number }
   | { readonly kind: 'cards'; readonly cards: number; readonly waitingOnYou: number };
 
+/**
+ * The quiet row heading the run of feature bands of one move group (spec 037, ISC-197): "⚑ <name> · <target>". `key`
+ * is the `FeatureGroup` key (`milestone:<slug>`, or `group` for the "No milestone" group, whose name and target are null).
+ */
+export interface BandDivider {
+  readonly key: string;
+  readonly name: string | null;
+  readonly target: string | null;
+}
+
+/** Where a band stands in the feature order (spec 037, ISC-197): the area it moves in and the divider above it. */
+export interface BandPlace {
+  /**
+   * The `FeatureGroup` key of the area a feature band moves in (`milestone:<slug>`, or `group`); a drop or an Alt+↑/↓
+   * keeps it inside that area (ISC-195.1). Null for the band without a feature and for every milestone band.
+   */
+  readonly moveGroup: string | null;
+  /**
+   * Set on the first band of each move group when the bands it is counted over (one column's, or the board's lanes)
+   * span more than one move group; null otherwise, and always on the band without a feature and on milestone bands.
+   */
+  readonly divider: BandDivider | null;
+}
+
 /** One swimlane band of a column. `key` null is the band without a feature or milestone, always last. */
-export interface BoardBand {
+export interface BoardBand extends BandPlace {
   readonly key: string | null;
   /** The feature's name or the milestone's name; null for the band without one. */
   readonly label: string | null;
@@ -274,6 +299,11 @@ export interface BoardFilterOptions {
 export interface BoardModel {
   readonly stages: readonly WorkflowStage[];
   readonly columns: readonly BoardColumn[];
+  /**
+   * The swimlanes across the board in band order: every band key a column holds, with its move group and its divider
+   * counted over all of them (spec 037, ISC-197). Empty without a group.
+   */
+  readonly lanes: readonly BoardLane[];
   /** Every card on the board, unfiltered, in column then card order. */
   readonly cards: readonly BoardCard[];
   /** The visible column at compact: `?col`, else `build` with cards, else the first column with cards, else the first. */
@@ -288,6 +318,11 @@ export interface BoardModel {
   /** Shown cards that wait on the principal. */
   readonly waitingOnYou: number;
   readonly options: BoardFilterOptions;
+}
+
+/** A swimlane across the whole board: its band key and its place in the feature order. */
+export interface BoardLane extends BandPlace {
+  readonly key: string | null;
 }
 
 /** Waiting stages whose wait is on another spec or on a claim, never on the principal (design § card edge). */
@@ -465,17 +500,34 @@ export function buildBoard(input: BoardInput): BoardModel {
   for (const c of cards) if (c.milestone !== null && !milestoneOrder.includes(c.milestone)) milestoneOrder.push(c.milestone);
   const milestoneByName = new Map(planning.milestones.map((m) => [m.name, m]));
 
+  // Feature band order (spec 037, T12, ISC-197): the milestones of `featureOrder`, each one's features in rank (a feature
+  // two milestones list stands under the first only), then the "No milestone" group; the band without a feature last.
+  const moveGroupOf = new Map<string, FeatureGroup>();
+  for (const group of featureOrder(planning)) for (const id of group.ids) if (featureNames.has(id) && !moveGroupOf.has(id)) moveGroupOf.set(id, group);
+  const bandOrder: Array<string | null> = query.group === 'feature' ? [...moveGroupOf.keys(), null] : [...milestoneOrder, null];
+  const groupOfBand = (key: string | null): FeatureGroup | undefined => (query.group === 'feature' && key !== null ? moveGroupOf.get(key) : undefined);
+  // Each band's move group, and a divider over the first band of each move group when the bands span more than one.
+  const placed = <T extends { readonly key: string | null }>(slots: readonly T[]): Array<T & BandPlace> => {
+    const spanned = new Set(slots.map((slot) => groupOfBand(slot.key)?.key).filter((key) => key !== undefined));
+    return slots.map((slot, i) => {
+      const group = groupOfBand(slot.key);
+      const opens = group !== undefined && spanned.size > 1 && (i === 0 || groupOfBand(slots[i - 1]?.key ?? null) !== group);
+      return { ...slot, moveGroup: group?.key ?? null, divider: opens ? { key: group.key, name: group.name, target: group.target } : null };
+    });
+  };
+
   const bandsOf = (shown: readonly BoardCard[]): { bands: BoardBand[]; omitted: number } => {
     if (query.group === 'none') return { bands: [], omitted: 0 };
-    const keys: Array<string | null> = query.group === 'feature' ? [...planning.features.map((f) => f.id), null] : [...milestoneOrder, null];
     const keyOf = (c: BoardCard): string | null => (query.group === 'feature' ? c.feature : c.milestone);
-    const bands = keys.flatMap((key): BoardBand[] => {
-      const members = shown.filter((c) => keyOf(c) === key);
-      if (members.length === 0) return [];
-      const milestone = key === null || query.group !== 'milestone' ? undefined : milestoneByName.get(key);
-      const label = key === null ? null : query.group === 'feature' ? (featureNames.get(key) ?? key) : key;
-      return [{ key, label, target: milestone?.target ?? null, state: milestone?.state ?? null, count: members.length, cards: members }];
-    });
+    const bands = placed(
+      bandOrder.flatMap((key): Array<Omit<BoardBand, keyof BandPlace>> => {
+        const members = shown.filter((c) => keyOf(c) === key);
+        if (members.length === 0) return [];
+        const milestone = key === null || query.group !== 'milestone' ? undefined : milestoneByName.get(key);
+        const label = key === null ? null : query.group === 'feature' ? (featureNames.get(key) ?? key) : key;
+        return [{ key, label, target: milestone?.target ?? null, state: milestone?.state ?? null, count: members.length, cards: members }];
+      }),
+    );
     const listed = query.group === 'feature' ? planning.features.length : planning.milestones.length;
     const shownListed = bands.filter((b) => b.key !== null && (query.group === 'feature' ? featureNames.has(b.key) : milestoneByName.has(b.key))).length;
     return { bands, omitted: listed - shownListed };
@@ -512,9 +564,12 @@ export function buildBoard(input: BoardInput): BoardModel {
   for (const c of cards) if (c.assignee !== null && !assignees.has(c.assignee.id)) assignees.set(c.assignee.id, c.assignee);
   const types = new Set(cards.map((c): BoardCardType | null => (c.kind === 'idea' ? 'idea' : c.type)));
 
+  const lanes: BoardLane[] = placed(bandOrder.filter((key) => columns.some((c) => c.bands.some((band) => band.key === key))).map((key) => ({ key })));
+
   return {
     stages,
     columns,
+    lanes,
     cards,
     current,
     query,
