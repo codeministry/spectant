@@ -39,6 +39,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { buildDashboard, type DashboardInput } from '../src/dashboard.ts';
 import { FILE_KINDS, type SpecFiles, type Worktree } from '../src/files.ts';
 import { catalogSourceOf, readCatalog } from '../src/library.ts';
+import { MAIN_SOURCE, REPO_SOURCE_PATHS, type RepoFileCandidate, repoFileSourceOf } from '../src/repo-source.ts';
 import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
@@ -483,6 +484,32 @@ describe('untracked: an untracked or symlinked specs/ keeps every spec on the ma
   test.each(HARBOR_GOLDEN_FAMILIES)('harbor %s golden: byte-identical with the worktrees present', (family) => {
     const built = harborFamilies(harborReadFrom(() => lsFilesOf('symlink-specs')))[family] ?? '';
     expect(goldenMismatch(readFileSync(goldenPath('harbor', family), 'utf8'), built)).toBeNull();
+  });
+
+  // Spec 039, ISC-210: the two further sources of 039 keep main as well. A linked `specs/` lists, inside a worktree,
+  // nothing or the link itself, never a path under it, so no worktree carries a spec of its own; and a repository file
+  // the main checkout holds untracked stays the main checkout's, whatever a worktree holds.
+  test('untracked: this repository: no spec worktree carries a spec of its own, even with no folder on main', () => {
+    const { worktrees } = assignWorktrees(read('symlink-specs.porcelain'), []);
+    const paths = worktrees.flatMap((w) => (w.path === null ? [] : [w.path]));
+    for (const listed of [lsFilesOf('symlink-specs'), ['specs'], ['specs', 'ISA.md']]) {
+      const tracked = Object.fromEntries(paths.map((path) => [path, listed]));
+      expect(worktreeOnlySpecs(worktrees, [], tracked)).toEqual([]);
+    }
+  });
+
+  test('untracked: every repository file keeps main when the main checkout holds it untracked', () => {
+    const newer = '2026-10-09T09:00:00Z';
+    for (const path of [...REPO_SOURCE_PATHS.filter((p) => !p.endsWith('/')), 'specs/ideas/registry-webhooks.md']) {
+      const candidates: RepoFileCandidate[] = [
+        { origin: MAIN_SOURCE, present: true, tracked: false, differs: false, digest: 'main', at: null },
+        // A linked specs/ in the worktree: the same file through the link, listed by git as the link at most.
+        { origin: { kind: 'worktree', worktree: '.worktrees/012-harbor' }, present: true, tracked: false, differs: false, digest: 'main', at: newer },
+        // Even a tracked, differing, newer version cannot move an untracked main file.
+        { origin: { kind: 'worktree', worktree: '.worktrees/016-audit' }, present: true, tracked: true, differs: true, digest: 'other', at: newer },
+      ];
+      expect(repoFileSourceOf(path, candidates)).toEqual({ source: MAIN_SOURCE, diagnostics: [] });
+    }
   });
 
   test('the comparison bites: a tracked specs/ would read the ticked worktree copies and move every family', () => {
