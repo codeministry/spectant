@@ -332,6 +332,28 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(kinds(r)).not.toContain('locks');
   });
 
+  test('lock diagnostics naming an archived or unknown claim land on no open row; one without a claim lands on every open row (spec 035, ISC-188)', async () => {
+    // ISC-5 and ISC-6 belong to harbor's archived spec 001, ISC-999 to no spec at all; `not json` names no claim.
+    const repo = tempRepo([
+      'not json',
+      '{"ts":"2026-03-08T15:00:00Z","event":"release","claim":"ISC-5","session":"a:claude:s-5"}',
+      '{"ts":"2026-03-08T15:01:00Z","event":"release","claim":"ISC-999","session":"a:claude:s-999"}',
+    ]);
+    const state = stateWith(repo, { 'ISC-6': { session: 'a:lifeos:old-6', ts: '2026-03-08T12:00:00.000Z' } });
+    const reading = await readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW });
+    // The reading really carries a diagnostic about each claim, so an empty row below is the routing, not a quiet source.
+    const named = (reading.diagnostics ?? []).map((d) => d.claim);
+    for (const claim of [undefined, 'ISC-5', 'ISC-999', 'ISC-6']) expect(named).toContain(claim);
+    const m = buildDashboard({ ...readTree('harbor'), locks: reading });
+    expect(open(m).length).toBeGreaterThan(0);
+    for (const r of open(m)) {
+      const locks = r.warnings.filter((w) => w.kind === 'locks');
+      expect(locks.map((w) => w.ref)).toEqual(['.spectant/activity.jsonl']);
+      expect(locks[0]?.text).toContain('.spectant/activity.jsonl line 1');
+    }
+    expect(m.warningGroups.find((g) => g.kind === 'locks')?.items.length).toBe(open(m).length);
+  });
+
   test('a stale frontier lock is a locks warning on its row and not taken', async () => {
     const repo = tempRepo();
     const state = stateWith(repo, { 'ISC-75': { session: 'a:lifeos:old-75', ts: '2026-03-08T12:00:00.000Z' } });
