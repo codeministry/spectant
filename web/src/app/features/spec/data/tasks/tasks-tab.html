@@ -163,8 +163,12 @@
             }
           </span>
           </span>
-          @if (row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id) || (specRun() && row.state !== 'struck')) {
+          @if (row.itemState || row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id) || (specRun() && row.state !== 'struck')) {
             <span class="extra">
+              @if (row.itemState; as item) {
+                <!-- spec 040 (T54, ISC-224): the state's details (command, actor, duration, start, date) under the row. -->
+                <ui-item-state details data-task-item [info]="item" [ws]="state.ws() ?? ''" />
+              }
               @if (row.state !== 'struck' && specRun(); as run) {
                 <span class="check-note" data-check-run-locked [id]="'task-' + row.id + '-run'">
                   <ui-icon name="lock" [size]="13" />{{ 'itemState.locked.checkbox' | transloco: { session: run.session } }}

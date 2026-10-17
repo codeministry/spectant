@@ -1340,8 +1340,9 @@ type RunVariant = { dashboard: { model: unknown; kpis: unknown }; planning: Plan
  * A tree under one run variant, built as its goldens are (`core/tests/fixtures.test.ts`, `golden.test.ts`,
  * `helpers/state-model.ts`, `helpers/planning-model.ts`) from its files and core's reading of the edited log
  * (`activityReading`): the items (`itemStates` at `STUB_NOW` with the default abort age), the dashboard and the planning
- * tree with them, and per spec the page with its `spec` item, the Tasks tab with its items and the live frame; claims,
- * timeline, frames and docs read no run line and stay the golden's.
+ * tree with them, and per spec the page with its `spec` item, the Tasks tab with its items, the claims over the log's
+ * locks and the spec's edges (as the claims route reads them) and the live frame; timeline, frames and docs read no run
+ * line and stay the golden's.
  */
 function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRunState): RunVariant {
   const read = edge.readTreeAt(base.root);
@@ -1363,6 +1364,7 @@ function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRu
   const planning = edge.withIdeaStates(built, items);
   const all = new Map([...specs, ...archived].map((f): [string, SpecFiles] => [f.folder, f]));
   const activityClaims = claimLines(base.root);
+  const edges = edge.resolveEdges({ specs, archived, constitution }, []).edges;
   const tree: TreeGoldens = {
     ...base,
     specs: base.specs.map((golden): SpecGoldens => {
@@ -1376,7 +1378,10 @@ function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRu
       const { tasks: tasksText, rounds } = files.texts;
       const tasks = tasksText === undefined ? null : edge.parseTaskLines({ tasks: tasksText, ...(constitution === null ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), itemStates: items.filter((i) => i.spec === id) });
       const live = edge.buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW });
-      return { ...golden, spec: page, tasks, locked: lockFixtures(core, page, live, golden.claims, activityClaims) };
+      // The claims as the claims route builds them (spec 040, ISC-224): over the run's locks and the spec's edges, so a
+      // held claim reads `running`, a stale one `aborted` and one after another spec `waiting`.
+      const claims = edge.buildClaimViews({ files, locks, specEdges: edges.filter((e) => e.fromSpec === id), now: LIVE_NOW });
+      return { ...golden, spec: page, claims, tasks, locked: lockFixtures(core, page, live, claims, activityClaims) };
     }),
   };
   return { dashboard: { model, kpis: (model as { kpis: unknown }).kpis }, planning, tree };

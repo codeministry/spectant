@@ -31,6 +31,7 @@ import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.di
 import type { FrameCard, ItemRun, ItemState, RunState, TaskRun } from '../../../../../../../core/src/files';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { elapsedText } from '../../../../shared/ui/item-state/duration';
+import { UiItemState } from '../../../../shared/ui/item-state/item-state';
 import { UiNotice } from '../../../../shared/ui/notice/notice';
 import { taskActorsOf } from '../../live/live-frame';
 import { TaskActors } from '../../live/task-actors/task-actors';
@@ -132,6 +133,7 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
     UiFilterChips,
     UiGlyph,
     UiIcon,
+    UiItemState,
     UiLiveRegion,
     UiNotice,
     UiRovingItem,

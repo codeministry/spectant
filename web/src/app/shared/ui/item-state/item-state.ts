@@ -30,7 +30,8 @@ const SPLIT = '\u0000';
  * A chip "2 runs" stands behind the line when more than one run is open. A diagnostic is the quiet note in place of
  * the missing detail, never an invented value. Content marked `uiItemStateAction` is projected beside a run's details
  * (the release button of T62). `block` is the status block's form: details one per row, nothing hidden, and a running
- * run's start beside its duration (T49).
+ * run's start beside its duration (T49). `details` is the task row's form (T54): the details alone, the duration among
+ * them, without the head and the finer state, which the row's status cell already shows.
  */
 @Component({
   selector: 'ui-item-state',
@@ -40,6 +41,7 @@ const SPLIT = '\u0000';
     '[attr.data-state]': 'info().state',
     '[attr.data-kind]': 'info().kind',
     '[attr.data-block]': "block() ? '' : null",
+    '[attr.data-details]': "details() ? '' : null",
   },
   styles: `
     :host { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; font-size: 13px; line-height: 20px; }
@@ -53,6 +55,7 @@ const SPLIT = '\u0000';
     .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   `,
   template: `
+    @if (!details()) {
     <span class="head">
       <ui-glyph [state]="info().state" family="item" [size]="14" />
       <span class="line" data-item-line>
@@ -75,6 +78,7 @@ const SPLIT = '\u0000';
         <ui-chip variant="count" data-runs>{{ runs }}</ui-chip>
       }
     </span>
+    }
     <span class="details">
       @let run = info().run;
       @switch (info().state) {
@@ -100,11 +104,14 @@ const SPLIT = '\u0000';
               <ui-command-chip [command]="command" [lockedBy]="run" />
             }
             <ui-actor-chip [actor]="run.actor" [active]="true" />
+            @if (details() && duration(); as duration) {
+              <span class="muted num" data-since>{{ 'itemState.since' | transloco: { duration } }}</span>
+            }
             @if (block()) {
               <span class="muted" data-started>{{ started()[0] }}<ui-time [value]="run.since" />{{ started()[1] }}</span>
             }
           }
-          @if (info().detail; as detail) {
+          @if (!details() && info().detail; as detail) {
             <span class="muted" data-detail>{{ detail }}</span>
           }
           <ng-content select="[uiItemStateAction]" />
@@ -143,6 +150,8 @@ export class UiItemState {
   readonly ws = input('');
   /** The status block's form: larger, every detail on its own row, the reason visible. */
   readonly block = input(false, { transform: booleanAttribute });
+  /** The task row's form: the details alone, the duration among them (the row's status cell names the state). */
+  readonly details = input(false, { transform: booleanAttribute });
 
   private readonly transloco = inject(TranslocoService);
   private readonly lang = inject(LanguageService).current;
