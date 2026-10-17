@@ -10,17 +10,23 @@
     "kind": "review-mark",
     "id": "001",
     "spec": "001",
-    "state": "open",
-    "command": "/spec-review 001",
-    "reason": "the reviewed mark is missing"
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "the reviewed mark of 001 is missing, although spec 001 is done; the files give no date for it."
+    }
   },
   {
     "kind": "code-review-mark",
     "id": "001",
     "spec": "001",
-    "state": "open",
-    "command": "/spec-code-review 001",
-    "reason": "the code-reviewed mark is missing"
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "the code-reviewed mark of 001 is missing, although spec 001 is done; the files give no date for it."
+    }
   },
   {
     "kind": "claim",

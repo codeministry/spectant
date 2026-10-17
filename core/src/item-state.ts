@@ -10,10 +10,12 @@
 //     count as running; with a running and an aborted run on one item the running one wins. Two open runs in one
 //     state: the newest decides what is shown, `run.openRuns` counts them. Without a run, the state the item's stage
 //     table row names (`StageRule.state`, T8): `open` with the row's command and reason, `waiting` (rows
-//     `close-pending`, `blocked`) with what it waits on, `done`.
+//     `close-pending`, `blocked`) with what it waits on, `done`. An aborted run that later gets its `run-end` is no
+//     longer open, so the item reads its row's state again; a newer `run-start` makes it `running` (T15, ISC-222.1).
 //   review mark: an open `/spec-review` run on the spec is `running`/`aborted`; a fresh mark `done`, dated by the mark;
-//     a missing mark while the spec stands before review (rows `plan`, `tasks`) `waiting` on the spec itself; else
-//     `open` with `/spec-review NNN`.
+//     on a spec in a `done` row a missing or stale mark is `done` too, undated with its one diagnostic, never `open`
+//     (reviews are optional per spec since spec 028); a missing mark while the spec stands before review (rows `plan`,
+//     `tasks`) `waiting` on the spec itself; else `open` with `/spec-review NNN`.
 //   code-review mark: the same with `/spec-code-review`; `waiting` while missing and the spec stands before the
 //     code-review row (on the feature siblings in `close-pending`, on the spec itself before that). A spec type whose
 //     workflow has no code review has no code-review mark item.
@@ -26,9 +28,10 @@
 // A claim lock and a task run name no command and no run id: both come from implement rounds, so their run shows
 // `/spec-implement NNN` and the holding session as its id.
 //
-// Details (ISC-221.1): `open` carries command and reason, `waiting` what it waits on, `running`/`aborted` the run,
-// `done` the date where the files give one. A detail the files do not give is exactly one diagnostic, never an
-// invented value.
+// Details (ISC-221.1, T13): `open` carries command and reason, `waiting` what it waits on, `running`/`aborted` the run
+// (command, `since`, actor, `elapsedMs`), `done` the date where the files give one and `closedAs` for a dropped claim or
+// a struck task; no state carries another state's details. A detail the files do not give is exactly one diagnostic,
+// never an invented value: `item-state-no-date`, `-no-command`, `-no-waits` or `-run-time`, each naming its item.
 //
 // Pure and browser-safe: no clock (`now` is an input), no file system, no Bun API, so it rides the barrel whole. The
 // caller passes the parsed workspace (`DashboardInput`), the model built from it (`buildDashboard`, whose functions
@@ -179,8 +182,8 @@ export const STATE_TABLE: readonly StateTableRow[] = [
   {
     kind: 'review-mark',
     state: 'done',
-    meaning: 'The reviewed mark is fresh; its date is the mark\'s.',
-    entered: 'A reviewed mark matching spec.md, plan.md and tasks.md is written.',
+    meaning: "The reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec).",
+    entered: 'A reviewed mark matching spec.md, plan.md and tasks.md is written, or the spec reaches a `done` row.',
     left: 'A reviewed file changes (stale), or a `/spec-review` run starts.',
   },
   {
@@ -214,8 +217,9 @@ export const STATE_TABLE: readonly StateTableRow[] = [
   {
     kind: 'code-review-mark',
     state: 'done',
-    meaning: 'The code-reviewed mark is fresh; its date is the mark\'s. A type whose workflow has no code review has no such item.',
-    entered: 'A code-reviewed mark matching the working tree is written.',
+    meaning:
+      "The code-reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). A type whose workflow has no code review has no such item.",
+    entered: 'A code-reviewed mark matching the working tree is written, or the spec reaches a `done` row.',
     left: 'The working tree changes (stale), or a `/spec-code-review` run starts.',
   },
   {
@@ -549,7 +553,11 @@ function markItem(
   );
   if (live !== null) return { ...base, ...live };
   const state = markOf(gate.state);
-  if (state === 'fresh') return { ...base, state: 'done', ...doneOf(gate.at, `the ${review ? 'reviewed' : 'code-reviewed'} mark of ${row.id}`) };
+  const mark = `the ${review ? 'reviewed' : 'code-reviewed'} mark of ${row.id}`;
+  if (state === 'fresh') return { ...base, state: 'done', ...doneOf(gate.at, mark) };
+  // A spec in a `done` row offers no review: reviews are optional per spec (spec 028), so a missing or stale mark is
+  // done with it, undated, and its one diagnostic says the mark is absent although the spec is complete.
+  if (rule.stage === 'done') return { ...base, state: 'done', diagnostic: missing('item-state-no-date', `${mark} is ${state}, although spec ${row.id} is done; the files give no date for it.`) };
   if (state === 'missing' && (review ? BEFORE_REVIEW : BEFORE_CODE_REVIEW).has(rule.stage)) {
     return { ...base, state: 'waiting', waits: rule.stage === 'close-pending' ? waitsOf({ siblings: siblings() }) : waitsOf({ specs: [row.id] }) };
   }

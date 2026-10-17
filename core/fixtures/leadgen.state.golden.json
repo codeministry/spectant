@@ -336,9 +336,12 @@
     "kind": "code-review-mark",
     "id": "022",
     "spec": "022",
-    "state": "open",
-    "command": "/spec-code-review 022",
-    "reason": "the code-reviewed mark is stale"
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "the code-reviewed mark of 022 is stale, although spec 022 is done; the files give no date for it."
+    }
   },
   {
     "kind": "claim",
