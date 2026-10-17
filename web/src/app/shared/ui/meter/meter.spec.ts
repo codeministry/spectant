@@ -67,4 +67,45 @@ describe('UiMeter', () => {
       expect(host.hasAttribute('aria-valuetext')).toBe(false);
     });
   });
+
+  // Spec 037, ISC-193.1: a surface the default look fails sets the track and the fill through two custom properties.
+  describe('colour hooks', () => {
+    const TRACK = 'rgb(4, 5, 6)';
+    const FILL = 'rgb(1, 2, 3)';
+
+    async function hooked(inputs: Record<string, unknown>): Promise<HTMLElement> {
+      const fixture = TestBed.createComponent(UiMeter);
+      const host = fixture.nativeElement as HTMLElement;
+      host.style.setProperty('--ui-meter-track', TRACK);
+      host.style.setProperty('--ui-meter-fill', FILL);
+      for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+      await fixture.whenStable();
+      return host;
+    }
+    const fill = (host: HTMLElement): string => getComputedStyle(host.querySelector('.fill') ?? host).backgroundColor;
+
+    it('paints the track and a partial fill from the hooks', async () => {
+      const host = await hooked({ value: 1, max: 2 });
+      expect(getComputedStyle(host).backgroundColor).toBe(TRACK);
+      expect(fill(host)).toBe(FILL);
+    });
+
+    // The full state (`:host([data-full]) .fill`) is a descendant rule the DOM emulation does not resolve; the browser
+    // tier proves it on the milestone header (`web/e2e/browser/contrast.spec.ts`).
+
+    it('lets a tone win over the fill hook', async () => {
+      const host = await hooked({ value: 1, max: 2, tone: 'warning' });
+      expect(fill(host)).not.toBe(FILL);
+    });
+
+    it('falls back to the default look where the hooks are unset', async () => {
+      const fixture = TestBed.createComponent(UiMeter);
+      fixture.componentRef.setInput('value', 1);
+      fixture.componentRef.setInput('max', 2);
+      await fixture.whenStable();
+      const host = fixture.nativeElement as HTMLElement;
+      expect(getComputedStyle(host).backgroundColor).not.toBe(TRACK);
+      expect(fill(host)).not.toBe(FILL);
+    });
+  });
 });

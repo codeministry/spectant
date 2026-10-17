@@ -15,6 +15,10 @@ export interface MeterSegment {
  * prototype's `--track` mixed 45 % into transparent (spec 024: prototype background (principal 2026-10-13)); it paints
  * below the 3:1 mark line, and `web/tests/contrast-exceptions.ts` lists the pairs. Pass `label` (translated): it names the meter for assistive technology, and
  * `valueText` (translated, single mode only) for `aria-valuetext`, e.g. "3 of 4 claims closed".
+ *
+ * Two hooks let a surface that the default look fails restyle a single meter (spec 037, ISC-193.1: the milestone
+ * header on `--disp-t`): `--ui-meter-track` replaces the track, `--ui-meter-fill` the fill, the full state included.
+ * Unset, each falls back to the look above. A `tone` still wins over `--ui-meter-fill`, and split mode keeps no track.
  */
 @Component({
   selector: 'ui-meter',
@@ -32,12 +36,12 @@ export interface MeterSegment {
     '[attr.data-full]': '!segments() && !tone() && full() ? "" : null',
   },
   styles: `
-    :host { display: flex; overflow: hidden; min-inline-size: 0; block-size: 6px; border-radius: 3px; background: color-mix(in srgb, var(--track) 45%, transparent); }
+    :host { display: flex; overflow: hidden; min-inline-size: 0; block-size: 6px; border-radius: 3px; background: var(--ui-meter-track, color-mix(in srgb, var(--track) 45%, transparent)); }
     :host([data-mini]) { block-size: 4px; }
     :host([data-size="lg"]) { block-size: 8px; }
     :host([data-split]) { gap: 2px; background: none; }
-    .fill { flex: 1; background: var(--color-primary); transform-origin: left center; transition: transform var(--motion-duration-slow) var(--motion-ease-standard); }
-    :host([data-full]) .fill { background: var(--color-accent); }
+    .fill { flex: 1; background: var(--ui-meter-fill, var(--color-primary)); transform-origin: left center; transition: transform var(--motion-duration-slow) var(--motion-ease-standard); }
+    :host([data-full]) .fill { background: var(--ui-meter-fill, var(--color-accent)); }
     .seg { min-inline-size: 0; border-radius: 3px; }
     @media (forced-colors: active) {
       :host { border: 1px solid CanvasText; }

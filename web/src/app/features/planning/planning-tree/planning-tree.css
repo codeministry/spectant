@@ -132,6 +132,14 @@ h2 {
   box-shadow: inset 4px 0 0 var(--color-primary);
 }
 
+/* The meter on the tint (design.md § Across viewports, ISC-193.1): the 45 % track falls to 1.6:1 on `--disp-t` and
+ * cyan to 1.1:1 on a full track, so the track is `--track` at full opacity and the fill the content colour, full or
+ * not. The "No milestone" group keeps the standard meter on the card surface. */
+.row[data-kind="milestone"] ui-meter {
+  --ui-meter-track: var(--track);
+  --ui-meter-fill: var(--color-base-content);
+}
+
 .row[data-kind="group"] {
   border-block-start-style: dashed;
   background: var(--color-base-100);

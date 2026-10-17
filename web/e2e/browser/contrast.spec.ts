@@ -33,6 +33,11 @@
  * line, each channel within 1. That list is the one `web/tests/tokens.test.ts` holds exact against the tokens; the
  * accepted samples are printed as annotations. The two known-narrow values (design.md § Contrast: muted text ≈ 4.6:1,
  * the unfilled track ≈ 3.3:1) are asserted to be present and printed as annotations and on stdout.
+ *
+ * Spec 037, ISC-193.1: the milestone header of the planning tree (`/w/harbor/planning/tree`, the theme set through the
+ * system scheme) is measured the same way, with no exception: its text and icons (name, date, fraction, chevron,
+ * flag) reach 4.5:1 on the `--disp-t` row, its marks (the 4 px `--color-primary` bar, the meter track on the row, the
+ * meter fill on that track) 3:1.
  */
 import { CONTRAST_EXCEPTIONS } from '../../tests/contrast-exceptions.ts';
 import { awaitReady, expect, test } from '../fixtures';
@@ -51,7 +56,7 @@ const MIN_MARKS = 40;
 type Sample = {
   /** `data-gallery` owner plus a text snippet or the mark's part. */
   name: string;
-  kind: 'text' | 'track' | 'fill' | 'stop' | 'segment' | 'dot';
+  kind: 'text' | 'icon' | 'bar' | 'track' | 'fill' | 'stop' | 'segment' | 'dot';
   fg: number[];
   bg: number[];
   /** The element's own colour before compositing, to recognise the muted and track tokens. */
@@ -63,10 +68,10 @@ type Sample = {
 type Scan = { samples: Sample[]; exempt: string[]; tokens: { muted: number[]; track: number[] } };
 
 /**
- * Runs in the page and measures every text and mark sample of the gallery. Self-contained, because Playwright
- * serialises the function source.
+ * Runs in the page and measures every text and mark sample of the gallery, or (`header`) of every milestone header
+ * of the planning tree. Self-contained, because Playwright serialises the function source.
  */
-function scan(): Scan {
+function scan(target: 'gallery' | 'header'): Scan {
   const canvas = document.createElement('canvas');
   canvas.width = 1;
   canvas.height = 1;
@@ -152,8 +157,6 @@ function scan(): Scan {
     return { name, kind, fg, bg, own: own.slice(0, 3), large, notes };
   };
 
-  const root = document.querySelector('[data-ui="gallery"]');
-  if (!root) throw new Error('gallery root missing');
   const visible = (el: Element): boolean =>
     el.checkVisibility({ visibilityProperty: true, opacityProperty: true, contentVisibilityAuto: true });
   const galleryName = (el: Element): string => el.closest('[data-gallery]')?.getAttribute('data-gallery') ?? '(page)';
@@ -161,39 +164,88 @@ function scan(): Scan {
   const samples: Sample[] = [];
   const exempt: string[] = [];
 
-  // Text: one sample per element that owns a visible text node.
-  const owners = new Set<Element>();
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const text = node.textContent?.trim() ?? '';
-    const el = node.parentElement;
-    if (!text || !el || owners.has(el)) continue;
-    if (el.closest('[aria-hidden="true"]') || !visible(el)) continue;
-    const range = document.createRange();
-    range.selectNodeContents(node);
-    const box = range.getBoundingClientRect();
-    if (box.width <= 1 || box.height <= 1) continue;
-    owners.add(el);
-    const snippet = `"${el.textContent.replace(/\s+/g, ' ').trim().slice(0, 24)}"`;
-    const name = `${galleryName(el)} ${snippet}`;
-    if (el.closest(':disabled, [aria-disabled="true"]')) {
-      exempt.push(name);
-      continue;
+  /** Text: one sample per element under `root` that owns a visible text node, named `<nameOf(el)> "<snippet>"`. */
+  const texts = (root: Element, nameOf: (el: Element) => string): void => {
+    const owners = new Set<Element>();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent?.trim() ?? '';
+      const el = node.parentElement;
+      if (!text || !el || owners.has(el)) continue;
+      if (el.closest('[aria-hidden="true"]') || !visible(el)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const box = range.getBoundingClientRect();
+      if (box.width <= 1 || box.height <= 1) continue;
+      owners.add(el);
+      const snippet = `"${el.textContent.replace(/\s+/g, ' ').trim().slice(0, 24)}"`;
+      const name = `${nameOf(el)} ${snippet}`;
+      if (el.closest(':disabled, [aria-disabled="true"]')) {
+        exempt.push(name);
+        continue;
+      }
+      const style = getComputedStyle(el);
+      const size = parseFloat(style.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+      const s = sample(name, 'text', style.color, el, el, large);
+      if (s) samples.push(s);
     }
-    const style = getComputedStyle(el);
-    const size = parseFloat(style.fontSize);
-    const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
-    const s = sample(name, 'text', style.color, el, el, large);
-    if (s) samples.push(s);
-  }
+  };
 
-  // Marks.
   const gradientStops = (image: string): string[] =>
     image === 'none' ? [] : [...image.matchAll(/(?:rgba?|oklch|oklab|lab|lch|hsla?|color)\([^()]*\)/g)].map((m) => m[0]);
   const sized = (el: Element): boolean => {
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && visible(el);
   };
+
+  // The resolved tokens, to single out the known-narrow samples.
+  const tokens = (): Scan['tokens'] => {
+    const probe = document.createElement('span');
+    document.body.append(probe);
+    probe.style.color = 'var(--muted-ink)';
+    const muted = rgba(getComputedStyle(probe).color)?.slice(0, 3) ?? [];
+    probe.style.color = 'var(--track)';
+    const trackRgb = rgba(getComputedStyle(probe).color)?.slice(0, 3) ?? [];
+    probe.remove();
+    return { muted, track: trackRgb };
+  };
+
+  if (target === 'header') {
+    // Spec 037, ISC-193.1: every milestone header of the tree lens, on its `--disp-t` tint. Text and icons (chevron,
+    // flag) against the row; the 4 px `--color-primary` bar (an inset box shadow) against the row; the meter track
+    // against the row, painted once on the row's chain like the gallery's; the meter fill against the track it sits on.
+    const rows = [...document.querySelectorAll('.tree .row[data-kind="milestone"]')];
+    for (const row of rows) {
+      const id = `milestone ${row.querySelector('.name')?.textContent.trim() ?? '?'}`;
+      texts(row, () => id);
+      for (const icon of row.querySelectorAll('.chev ui-icon, .kind')) {
+        if (!sized(icon)) continue;
+        const part = icon.classList.contains('kind') ? 'flag' : 'chevron';
+        const s = sample(`${id} ${part}`, 'icon', getComputedStyle(icon).color, icon, row);
+        if (s) samples.push(s);
+      }
+      const shadow = gradientStops(getComputedStyle(row).boxShadow)[0];
+      const bar = shadow === undefined ? null : sample(`${id} bar`, 'bar', shadow, row, row);
+      if (bar) samples.push(bar);
+      const meter = row.querySelector('ui-meter');
+      if (meter && sized(meter)) {
+        const track = sample(`${id} meter track`, 'track', getComputedStyle(meter).backgroundColor, row, row);
+        if (track) samples.push(track);
+        for (const fill of [...meter.querySelectorAll('.fill')].filter(sized)) {
+          const s = sample(`${id} meter fill`, 'fill', getComputedStyle(fill).backgroundColor, fill, meter);
+          if (s) samples.push(s);
+        }
+      }
+    }
+    return { samples, exempt, tokens: tokens() };
+  }
+
+  const root = document.querySelector('[data-ui="gallery"]');
+  if (!root) throw new Error('gallery root missing');
+  texts(root, galleryName);
+
+  // Marks.
 
   for (const ring of root.querySelectorAll('[data-gallery^="ring-"]')) {
     const name = ring.getAttribute('data-gallery') ?? 'ring';
@@ -249,16 +301,7 @@ function scan(): Scan {
     if (s) samples.push(s);
   }
 
-  // The resolved tokens, to single out the known-narrow samples.
-  const probe = document.createElement('span');
-  root.append(probe);
-  probe.style.color = 'var(--muted-ink)';
-  const muted = rgba(getComputedStyle(probe).color)?.slice(0, 3) ?? [];
-  probe.style.color = 'var(--track)';
-  const trackRgb = rgba(getComputedStyle(probe).color)?.slice(0, 3) ?? [];
-  probe.remove();
-
-  return { samples, exempt, tokens: { muted, track: trackRgb } };
+  return { samples, exempt, tokens: tokens() };
 }
 
 /** WCAG 2.x relative luminance of sRGB bytes. */
@@ -293,11 +336,24 @@ const line = (s: Sample, ratio: number): string =>
   (same(s.fg, s.own) ? '' : ` painted from ${hex(s.own)}`) +
   (s.notes.length > 0 ? ` [${s.notes.join('; ')}]` : '');
 
-async function open(page: Page, theme: 'light' | 'dark'): Promise<Scan> {
-  await page.goto(`/__ui?theme=${theme}`);
-  await awaitReady(page);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
-  await expect(page.locator('[data-ui="gallery"]')).toBeVisible();
+/** The stub's per-session state (`web/e2e/stub-api.ts`): a fresh session keeps the schema default theme `system`. */
+const SESSION = 'X-Spectant-Stub-Session';
+
+async function open(page: Page, theme: 'light' | 'dark', target: 'gallery' | 'header' = 'gallery'): Promise<Scan> {
+  if (target === 'header') {
+    // The planning tree follows the system scheme in the default mode; harbor's milestones head the tree.
+    await page.setExtraHTTPHeaders({ [SESSION]: `contrast-header-${theme}` });
+    await page.emulateMedia({ colorScheme: theme });
+    // `data-ready` follows the dashboard model, which this page never renders; the headers are the readiness signal.
+    await page.goto('/w/harbor/planning/tree');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+    await expect(page.locator('.tree .row[data-kind="milestone"]').first()).toBeVisible();
+  } else {
+    await page.goto(`/__ui?theme=${theme}`);
+    await awaitReady(page);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+    await expect(page.locator('[data-ui="gallery"]')).toBeVisible();
+  }
   // Colours are judged at rest: a theme transition still running would be measured mid-flight. Endless animations
   // (the skeleton shimmer) never finish and carry no text or mark, so only finite ones are awaited.
   await page.evaluate(() =>
@@ -308,7 +364,7 @@ async function open(page: Page, theme: 'light' | 'dark'): Promise<Scan> {
         .map((a) => a.finished.catch(() => undefined)),
     ),
   );
-  return page.evaluate(scan);
+  return page.evaluate(scan, target);
 }
 
 /**
@@ -374,6 +430,47 @@ test.describe('contrast', () => {
       test.info().annotations.push({ type: 'contrast', description: summary }, { type: 'track', description: track });
       console.log(`[contrast] ${summary}\n[contrast] ${track}`);
       expect(failures, `marks below threshold (${theme}):\n${failures.join('\n')}`).toEqual([]);
+    });
+
+    // Spec 037, ISC-193.1: the milestone header of the tree lens on `--disp-t`. No exception applies here: the
+    // header adds no pair to `contrast-exceptions.ts`, so every sample must reach its line on its own.
+    test(`milestone header text reaches 4.5:1 and marks 3:1 · ${theme}`, async ({ page }) => {
+      const { samples } = await open(page, theme, 'header');
+      const rows = await page.locator('.tree .row[data-kind="milestone"]').count();
+      expect(rows, 'milestone headers').toBeGreaterThan(0);
+      const of = (kind: Sample['kind']): Sample[] => samples.filter((s) => s.kind === kind);
+      // Each header shows its name, date and fraction, a chevron or a flag, the bar and the meter track.
+      expect(of('text').length, 'text samples').toBeGreaterThanOrEqual(rows * 3);
+      expect(of('icon').length, 'icon samples').toBeGreaterThanOrEqual(rows);
+      expect(of('bar').length, 'bar samples').toBe(rows);
+      expect(of('track').length, 'meter track samples').toBe(rows);
+      expect(of('fill').length, 'meter fill samples').toBeGreaterThan(0);
+
+      const failures = samples.flatMap((s) => {
+        const ratio = contrast(s.fg, s.bg);
+        const min = s.kind === 'text' || s.kind === 'icon' ? TEXT_MIN : MARK_MIN;
+        return ratio < min ? [line(s, ratio)] : [];
+      });
+      // A full milestone keeps the content colour, never the accent: the fixture has none, so each header meter is
+      // marked full in place (as `ui-meter` marks a value that reached its max) and its fill read back.
+      const full = await page.evaluate(() => {
+        const probe = document.createElement('span');
+        probe.style.backgroundColor = 'var(--color-base-content)';
+        document.body.append(probe);
+        const content = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        const fills = [...document.querySelectorAll('.tree .row[data-kind="milestone"] ui-meter')].map((meter) => {
+          meter.setAttribute('data-full', '');
+          return getComputedStyle(meter.querySelector('.fill') ?? meter).backgroundColor;
+        });
+        return { content, fills };
+      });
+      expect(full.fills, 'full milestone meter fills').toEqual(full.fills.map(() => full.content));
+
+      const summary = `${theme}: ${String(rows)} milestone headers, ${String(samples.length)} samples`;
+      test.info().annotations.push({ type: 'contrast', description: summary });
+      console.log(`[contrast] ${summary}\n${samples.map((s) => `[contrast]   ${line(s, contrast(s.fg, s.bg))}`).join('\n')}`);
+      expect(failures, `milestone header below threshold (${theme}):\n${failures.join('\n')}`).toEqual([]);
     });
   }
 });
