@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 
 import type { APIRequestContext, Page } from '@playwright/test';
 
-import { atWidth, expect, test } from './fixtures';
+import { atWidth, expect, STUB_MILESTONE, test } from './fixtures';
 
 interface Listed {
   readonly workspaces: ReadonlyArray<{ slug: string; name: string }>;
@@ -224,6 +224,16 @@ test.describe('palette', () => {
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `milestone:${milestone.slug}`);
       await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `milestone:${milestone.slug}`);
+    });
+
+    // spec 006, ISC-114.3: the target is a calendar day in the short date form, shown and named alike.
+    test('levels: a milestone target reads as its calendar day, on the row and in its accessible name', async ({ page }) => {
+      await openPalette(page, `/w/${STUB_MILESTONE.workspace}`);
+      await paletteOf(page).getByRole('combobox').fill(STUB_MILESTONE.name);
+      const option = paletteOf(page).locator(`[data-group="milestones"] [data-entry="milestone-${STUB_MILESTONE.slug}"]`);
+      await expect(option.locator(`time[datetime="${STUB_MILESTONE.target}"]`)).toHaveText('03/15/2026');
+      await expect(option).toHaveAccessibleName(/03\/15\/2026/);
+      await expect(option).not.toContainText(STUB_MILESTONE.target);
     });
   });
 

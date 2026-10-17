@@ -50,8 +50,9 @@ export function featuresPaletteSource(): PaletteSource {
  * absent exactly when the tree has no milestone level (`ShellData.hasMilestones`).
  *
  * No `chip`: the ranking reads the chip as the entry's ID (`palette-ranking.ts`), and a milestone has no mono id. The
- * served state rides in `meta` as a word in the UI language, after the target date when there is one (design.md
- * § Palette: the date on the right); the closed/total count stays on the page. The state stays out of `keywords`
+ * served state rides in `meta` as a word in the UI language; the target, when there is one, rides in `metaTime` as a
+ * calendar day the palette renders through `<ui-time form="day">` before the word (design.md § Palette: the date on
+ * the right; spec 006). The closed/total count stays on the page. The state stays out of `keywords`
  * too, which rank on the same ID tiers: "up" must reach a feature named "Upload" before every upcoming milestone.
  */
 export function milestonesPaletteSource(): PaletteSource {
@@ -68,11 +69,11 @@ export function milestonesPaletteSource(): PaletteSource {
     return model.milestones
       .filter((milestone) => milestone.specs.length > 0)
       .map((milestone) => {
-        const word = transloco.translate(`planning.milestones.stateWord.${milestone.state}`, {}, active);
         return {
           id: `milestone-${milestone.slug}`,
           label: milestone.name,
-          meta: milestone.target === null ? word : `${milestone.target} · ${word}`,
+          meta: transloco.translate(`planning.milestones.stateWord.${milestone.state}`, {}, active),
+          ...(milestone.target === null ? {} : { metaTime: { value: milestone.target, form: 'day' as const } }),
           link: onTree(router, ws, `milestone:${milestone.slug}`),
           keywords: [milestone.name, milestone.slug, 'milestone', 'release'],
         };

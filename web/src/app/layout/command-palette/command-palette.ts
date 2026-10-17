@@ -6,12 +6,14 @@ import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { keyLabel } from '../../core/keyboard-bindings';
 import { KeyboardService } from '../../core/keyboard.service';
+import { LanguageService } from '../../core/language.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { chipIcon } from '../../shared/ui/chip/chip-icons';
 import { UiClamp } from '../../shared/ui/clamp/clamp';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
+import { formatDay, formatInstant, UiTime } from '../../shared/time';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
@@ -72,7 +74,7 @@ interface PaletteGroup {
  */
 @Component({
   selector: 'app-command-palette',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiChip, UiClamp, UiDialog, UiIcon, UiKbd, UiSheet],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiChip, UiClamp, UiDialog, UiIcon, UiKbd, UiSheet, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './command-palette.html',
   styleUrl: './command-palette.css',
@@ -84,6 +86,7 @@ export class CommandPalette {
   private readonly document = inject(DOCUMENT);
   private readonly index = inject(PaletteIndex);
   private readonly recent = inject(PaletteRecent);
+  private readonly lang = inject(LanguageService).current;
   private readonly sources: readonly PaletteSource[] = [...(inject(PALETTE_SOURCES, { optional: true }) ?? [])].sort(
     (a, b) => a.order - b.order,
   );
@@ -100,6 +103,10 @@ export class CommandPalette {
   protected readonly groups = computed<readonly PaletteGroup[]>(() => {
     if (!this.settled()) return [];
     const query = this.query().trim();
+    const lang = this.lang();
+    // The accessible name reads a metaTime exactly as its <ui-time> shows it, in the active language.
+    const when = (time: PaletteEntry['metaTime']): string | null =>
+      time === undefined ? null : time.form === 'day' ? formatDay(time.value, lang) : formatInstant(time.value, lang);
     let index = 0;
     return rankGroups(this.sources, query).map(({ source, matches }) => ({
       id: source.id,
@@ -117,7 +124,7 @@ export class CommandPalette {
           label: highlight(text, query),
           ariaLabel:
             claim?.accessibleName ??
-            [entry.label, hasPhase(entry) ? entry.phaseLabel : null, entry.meta].filter((part) => part !== null && part !== undefined && part !== '').join(', '),
+            [entry.label, hasPhase(entry) ? entry.phaseLabel : null, when(entry.metaTime), entry.meta].filter((part) => part !== null && part !== undefined && part !== '').join(', '),
           status: claim === null ? null : { word: claim.statusWord, dot: claim.dot },
           chip: highlight(entry.chip ?? '', query),
           idea: isIdea(entry),

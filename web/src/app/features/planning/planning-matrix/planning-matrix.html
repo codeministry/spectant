@@ -29,7 +29,11 @@
       @if (lane.ref === null) {
         <span>{{ 'planning.tree.noMilestoneMeta' | transloco }}</span>
       } @else {
-        <span class="mono">{{ lane.target ?? ('planning.milestones.undated' | transloco) }}</span>
+        @if (lane.target; as target) {
+          <span class="mono"><ui-time [value]="target" form="day" /></span>
+        } @else {
+          <span class="mono">{{ 'planning.milestones.undated' | transloco }}</span>
+        }
       }
       <span class="lane-count" [attr.data-spec-count]="lane.specCount">{{ 'planning.matrix.specs' | transloco: { count: lane.specCount } }}</span>
     </div>

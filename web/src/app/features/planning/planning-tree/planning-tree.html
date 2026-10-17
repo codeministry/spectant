@@ -82,7 +82,7 @@
             <ui-icon class="kind" name="flag" [size]="16" />
             <span class="title name">{{ node.title }}</span>
             @if (node.target; as target) {
-              <span class="date">{{ target }}</span>
+              <span class="date"><ui-time [value]="target" form="day" /></span>
             }
           }
           @case ('group') {
