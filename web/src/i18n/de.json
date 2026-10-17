@@ -2224,7 +2224,6 @@
     },
     "loading": "Die Library wird geladen",
     "error": "Die Library konnte nicht gelesen werden.",
-    "date": "{{date}} {{time}}",
     "prototype": {
       "pages": "Seiten",
       "open": "{{file}}, öffnet in neuem Tab",

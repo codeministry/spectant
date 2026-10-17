@@ -30,6 +30,7 @@ import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { STAGE_LOOK } from '../../layout/spec-head/spec-head';
 import { UiIcon } from '../../shared/icons/icon';
+import { UiTime } from '../../shared/time';
 import type { IconName } from '../../shared/icons/icons';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
@@ -75,22 +76,6 @@ import {
 import { LibraryReader, typeIcon } from './library-reader';
 
 export { fileName, missingCommand, typeIcon } from './library-reader';
-
-// removed in T6 (spec 006): moved here unchanged from the reader, which no longer uses it.
-/**
- * A row's short date (design.md 017 § Across viewports): day, month and time, the year only outside the current
- * one, in UTC as every other date of the app's fixtures. The two parts are joined by the catalogue's `library.date`,
- * so English reads "Oct 12, 14:02" and German "12.10. 14:02".
- */
-export function shortDateParts(iso: string, now: Date, locale: string): { readonly date: string; readonly time: string } {
-  const at = new Date(iso);
-  const year = at.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
-  const german = locale.startsWith('de');
-  const date = new Intl.DateTimeFormat(locale, german ? { day: '2-digit', month: '2-digit', year, timeZone: 'UTC' } : { month: 'short', day: 'numeric', year, timeZone: 'UTC' }).format(at);
-  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }).format(at);
-  return { date, time };
-}
-
 
 /** The two control counts of the card's first row (design.md 017 § Across viewports; ISC-156.1), in this order. */
 export type ControlKey = 'missing' | 'stale';
@@ -314,6 +299,7 @@ interface GroupView {
     UiNotice,
     UiPageHead,
     UiSkeleton,
+    UiTime,
     UiWsBadge,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -339,7 +325,6 @@ export class LibraryPage {
   private readonly sanitizer = inject(DomSanitizer);
   /** Below 1120 px: the list's scroll position and the row a document was opened from, for the way back (DS-APP-35). */
   private listReturn: { readonly top: number; readonly path: string } | null = null;
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
   protected readonly wsName = computed(() => this.data.workspaceName(this.ws()));
@@ -575,10 +560,6 @@ export class LibraryPage {
     return `${specKey(spec)} · ${specSlug(spec)}`;
   }
 
-  protected date(iso: string | null): string {
-    if (iso === null) return this.transloco.translate('library.meta.noDate');
-    return this.transloco.translate('library.date', shortDateParts(iso, new Date(), this.lang()));
-  }
 
   /** The document's file (or prototype folder) as the workspace names it: below `specs/`. */
   protected filePath(doc: Pick<LibraryDoc, 'path'>): string {

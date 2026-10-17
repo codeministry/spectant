@@ -319,7 +319,15 @@
       </span>
       <!-- Slot 2: the cross references (T34). -->
       <span class="lib-slot"></span>
-      <span class="lib-date">{{ row.doc.state === 'missing' ? '' : date(row.doc.modified) }}</span>
+      <span class="lib-date">
+        @if (row.doc.state !== 'missing') {
+          @if (row.doc.modified; as modified) {
+            <ui-time [value]="modified" />
+          } @else {
+            {{ 'library.meta.noDate' | transloco }}
+          }
+        }
+      </span>
     </span>
     @if (row.meta; as meta) {
       <span class="lib-snippet" data-library-meta [attr.data-library-snippet]="row.snippet ? '' : null">

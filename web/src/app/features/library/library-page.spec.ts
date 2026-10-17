@@ -13,7 +13,8 @@ import { ApiClient, type ApiResult } from '../../core/api.service';
 import { RefreshService } from '../../core/refresh.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
-import { addressParams, controlViews, missingCommand, SEARCH_DEBOUNCE_MS, shortDateParts, typeIcon } from './library-page';
+import { addressParams, controlViews, missingCommand, SEARCH_DEBOUNCE_MS, typeIcon } from './library-page';
+import { formatInstant } from '../../shared/time';
 
 // T27 · ISC-156: the library page on the server's catalog: one row per document with its type icon, title, spec and
 // meta line, groups workspace-wide first and each spec once, a spec's evidence as one collapsed subgroup with its
@@ -351,6 +352,14 @@ describe('LibraryPage control counts (T30, ISC-156.1)', () => {
     expect(entries(root).filter((path) => path.startsWith('003-'))).toEqual(['003-board/spec.md', '003-board/plan.md']);
   });
 
+  it("shows a row's date as a time element in the browser's zone, through the shared formatter (spec 006)", async () => {
+    const root = await open('/w/harbor/library', CONTROL);
+    const time = page(root).querySelector('[data-library-entry="003-board/spec.md"] .lib-date time');
+    const iso = time?.getAttribute('datetime') ?? '';
+    expect(Number.isNaN(Date.parse(iso))).toBe(false);
+    expect(text(time)).toBe(formatInstant(iso, 'en'));
+  });
+
   it('opens a missing document as the empty state with the command that writes it', async () => {
     const root = await open('/w/harbor/library#003-board/plan.md', CONTROL);
     const reader = page(root).querySelector('[data-library-reader]');
@@ -621,15 +630,6 @@ describe('LibraryPage address, state select and search (T32, ISC-156.2)', () => 
   });
 });
 
-describe('shortDateParts (T27)', () => {
-  const now = new Date('2026-10-13T09:00:00Z');
-  it('reads day, month and time, the year only outside the current one', () => {
-    expect(shortDateParts('2026-10-12T14:02:00Z', now, 'en')).toEqual({ date: 'Oct 12', time: '14:02' });
-    expect(shortDateParts('2026-10-12T14:02:00Z', now, 'de')).toEqual({ date: '12.10.', time: '14:02' });
-    expect(shortDateParts('2025-03-07T09:05:00Z', now, 'en')).toEqual({ date: 'Mar 7, 2025', time: '09:05' });
-    expect(shortDateParts('2025-03-07T09:05:00Z', now, 'de')).toEqual({ date: '07.03.2025', time: '09:05' });
-  });
-});
 
 // T36 · ISC-157: a compact head per spec group (type, stage, claims with meter, tasks, fog count, Goal clamped, Approach
 // in a closed disclosure), the filter "open" with every fog line under its spec, and an absent tech.md as a dimmed row
