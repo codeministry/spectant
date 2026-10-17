@@ -25,7 +25,7 @@
 // `artifacts/`, `.evidence/`, `.design/` and the workspace documents stay on the main checkout, and every catalog path
 // stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
 import type { Dirent } from 'node:fs';
-import { lstat, readFile, readdir } from 'node:fs/promises';
+import { lstat, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { parseClaims } from './claims.ts';
@@ -58,6 +58,25 @@ export interface CatalogOptions {
 function folderOf(root: string, spec: string, kind: FileKind, copies: CatalogOptions['copies']): string {
   const copy = copies?.[spec];
   return copy !== undefined && WORKTREE_COPY_KINDS.includes(kind) ? copy : join(root, SPECS_DIR, spec);
+}
+
+/**
+ * The copies whose folder still exists (spec 041, ISC-217): a worktree removed between reading the copies and reading
+ * the catalog leaves its spec read from main, never briefly without documents. The check follows a link, so a copy
+ * folder linked out stays a copy and is refused where its files are resolved (ISC-216.1).
+ */
+async function presentCopies(copies: CatalogOptions['copies']): Promise<CatalogOptions['copies']> {
+  if (copies === undefined) return undefined;
+  const entries = await Promise.all(
+    Object.entries(copies).map(async ([spec, dir]) => {
+      try {
+        return (await stat(dir)).isDirectory() ? ([[spec, dir]] as const) : [];
+      } catch {
+        return [];
+      }
+    }),
+  );
+  return Object.fromEntries(entries.flat());
 }
 
 /** A spec's own Markdown files in catalog order; the type of each is its file kind. */
@@ -566,8 +585,9 @@ function groupsOf(input: DashboardInput): { groups: SpecGroupHead[]; fog: Librar
  * Reads only.
  */
 export async function readCatalog(root: string, input?: DashboardInput, options: CatalogOptions = {}): Promise<LibraryCatalog> {
-  const docs = await readCatalogDocs(root, options);
-  const { groups, fog } = groupsOf(input ?? (await stageInputOf(root, activeSpecs(root), options.copies)));
+  const copies = await presentCopies(options.copies);
+  const docs = await readCatalogDocs(root, { copies });
+  const { groups, fog } = groupsOf(input ?? (await stageInputOf(root, activeSpecs(root), copies)));
   return {
     docs,
     groups,
@@ -591,9 +611,11 @@ export function catalogSourceOf(
   copies: CatalogOptions['copies'] = {},
 ): { dir: string; rel: string } {
   const own = doc.spec === WORKSPACE || !doc.path.startsWith(`${doc.spec}/`) ? undefined : OWN_KIND.get(doc.path.slice(doc.spec.length + 1));
-  if (own === undefined) return { dir: join(root, SPECS_DIR), rel: doc.path };
-  const dir = folderOf(root, doc.spec, own, copies);
-  return dir === join(root, SPECS_DIR, doc.spec) ? { dir: join(root, SPECS_DIR), rel: doc.path } : { dir, rel: FILE_KINDS[own].path };
+  // A copy by the copies themselves (spec 041, ISC-217), never by comparing folder names: the spec has a copy, and the
+  // kind is one the copy holds.
+  const copy = own === undefined ? undefined : copies[doc.spec];
+  if (own === undefined || copy === undefined || !WORKTREE_COPY_KINDS.includes(own)) return { dir: join(root, SPECS_DIR), rel: doc.path };
+  return { dir: copy, rel: FILE_KINDS[own].path };
 }
 
 /** The active spec folders of the workspace at `root`, as `listSpecs` finds them (real directories, never archived). */
@@ -623,7 +645,7 @@ async function archivedDocs(root: string, spec: string): Promise<LibraryDoc[]> {
  * `options.copies` as for `readCatalog`.
  */
 export async function readCatalogDocs(root: string, options: CatalogOptions = {}): Promise<readonly LibraryDoc[]> {
-  const { copies } = options;
+  const copies = await presentCopies(options.copies);
   const slugs = activeSpecs(root);
   const perSpec = await Promise.all(slugs.map((s) => specDocs(root, s, copies)));
   const judged = await judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()], copies);
@@ -731,7 +753,7 @@ async function specDocAt(
  * `readCatalog`: a spec's own files and its `spec.md` from its worktree copy.
  */
 export async function catalogDocAt(root: string, path: string, options: CatalogOptions = {}): Promise<LibraryDoc | null> {
-  const { copies } = options;
+  const copies = await presentCopies(options.copies);
   const doc = await docAt(root, path, copies);
   if (doc === null || doc.archived === true) return doc;
   const from = derivesFrom(doc);

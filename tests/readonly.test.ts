@@ -31,11 +31,12 @@ import {
   readlinkSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join, relative } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
 import type { TasksTab } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
@@ -62,7 +63,7 @@ import { tokensCommand } from "../server/src/tokens-cli.ts";
 import { WRITE_PATHS, WRITE_TABLE, writePathsOf } from "../server/src/writes.contract.ts";
 import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { BACKLOG_UI_SEQUENCE, EMPTY_BACKLOG_HASH } from "../web/e2e/backlog-ui-sequence.ts";
-import { BUILDER_WORKTREE, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
+import { BUILDER_WORKTREE, type PlantedWorktreeRepo, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 /** The harbor transcripts: a main session with a sub-agent, beside the folders of an agent and a spec worktree. */
@@ -1116,6 +1117,129 @@ describe("ISC-182 worktree reads: the dashboard, the board and the spec page of 
       expect(after.checksum).toBe(before.checksum);
       expect(underGit(after)).toEqual(underGit(before));
       expect(indexes.filter((path, i) => !readFileSync(join(repo, path)).equals(indexesBefore[i] ?? Buffer.alloc(0)))).toEqual([]);
+      expect([...hosts]).toEqual(["127.0.0.1"]);
+    }, 60_000);
+  }
+});
+
+// Every kind of worktree at once (spec 041, T40, ISC-220), under the same guard as ISC-182, `-t worktree`: the fixture's
+// live spec worktree 002 with its builder worktree, plus three more spec worktrees, each one commit ahead of `main` on
+// `feature/<folder>`: 003 merged into `main` and still present, clean; 006 `prunable` (its folder deleted while git
+// still lists it, its admin folder left under `.git/worktrees/`); 007 outside the repository, a sibling folder of the
+// main checkout. Every page reads them: the dashboard, the board, the spec page of each with every tab, the library
+// catalog with every readable document and a search, the timeline and the live board. Afterwards every byte and mtime
+// of the main checkout, of every worktree folder under it and of the outside one is the same, `.git/` included, and
+// every request was loopback.
+
+/** The extra spec worktrees and the kind each is left in. */
+const WORKTREE_KINDS = { merged: "003-config-loader", prunable: "006-partial-push", outside: "007-rotate-mirror-token" } as const;
+
+/** Adds the spec worktree of `folder` at `path` on `feature/<folder>`, one commit ahead of `main`, specs linked when untracked. */
+async function addSpecWorktree(planted: PlantedWorktreeRepo, folder: string, path: string, trackedSpecs: boolean): Promise<void> {
+  const ok = async (cwd: string, ...args: string[]): Promise<void> => {
+    const result = await planted.git(cwd, ...args);
+    if (result.code !== 0) throw new Error(`git ${args.join(" ")} exited ${result.code}: ${result.stderr}`);
+  };
+  await ok(planted.root, "worktree", "add", "-q", "-b", `feature/${folder}`, path);
+  if (!trackedSpecs) {
+    const toMain = relative(path, planted.root);
+    symlinkSync(join(toMain, "specs"), join(path, "specs"));
+    symlinkSync(join(toMain, "ISA.md"), join(path, "ISA.md"));
+  }
+  mkdirSync(join(path, "src"), { recursive: true });
+  writeFileSync(join(path, "src", `${folder}.ts`), `// ${folder}: the first step.\nexport const step = 1;\n`);
+  await ok(path, "add", "--", `src/${folder}.ts`);
+  await ok(path, "commit", "-q", "-m", `${folder}: first step`);
+}
+
+describe("ISC-220 worktree reads with every kind of worktree: spec, builder, merged, prunable and outside change no byte", () => {
+  for (const trackedSpecs of [false, true]) {
+    test(`readonly: specs/ ${trackedSpecs ? "tracked" : "untracked"}: every page keeps every byte and mtime of main and each worktree, .git/ included; every request is loopback`, async () => {
+      const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs });
+      const repo = planted.root;
+      const merged = join(repo, ".worktrees", WORKTREE_KINDS.merged);
+      const prunable = join(repo, ".worktrees", WORKTREE_KINDS.prunable);
+      const outside = join(planted.base, `outside-${WORKTREE_KINDS.outside}`);
+      await addSpecWorktree(planted, WORKTREE_KINDS.merged, merged, trackedSpecs);
+      await addSpecWorktree(planted, WORKTREE_KINDS.prunable, prunable, trackedSpecs);
+      await addSpecWorktree(planted, WORKTREE_KINDS.outside, outside, trackedSpecs);
+      const branch = `feature/${WORKTREE_KINDS.merged}`;
+      expect((await planted.git(repo, "merge", "-q", "--no-ff", "-m", `Merge branch '${branch}'`, branch)).code).toBe(0);
+      rmSync(prunable, { recursive: true, force: true });
+
+      // The planted kinds, as git itself reports them: main and five linked worktrees, the deleted one `prunable`, the merged one
+      // clean and held by `main`, the outside one beside the main checkout.
+      const list = (await planted.git(repo, "worktree", "list", "--porcelain")).stdout;
+      const records = list.trim().split("\n\n");
+      expect(records.length).toBe(6);
+      expect(records.find((r) => r.includes(`/.worktrees/${WORKTREE_KINDS.prunable}\n`))).toContain("\nprunable");
+      expect(records.filter((r) => r.includes("\nprunable")).length).toBe(1);
+      expect(records.some((r) => r.startsWith(`worktree ${outside}\n`))).toBe(true);
+      expect((await planted.git(merged, "status", "--porcelain")).stdout).toBe("");
+      expect((await planted.git(repo, "merge-base", "--is-ancestor", branch, "main")).code).toBe(0);
+
+      const before = snapshot(repo);
+      expectWorktreesHashed(before);
+      const reached = [`.worktrees/${WORKTREE_KINDS.merged}/.git`, `.worktrees/${WORKTREE_KINDS.merged}/src/${WORKTREE_KINDS.merged}.ts`, `.git/worktrees/${WORKTREE_KINDS.prunable}/HEAD`, `.git/worktrees/outside-${WORKTREE_KINDS.outside}/HEAD`];
+      expect(reached.filter((path) => !before.entries.has(path))).toEqual([]);
+      expect(before.entries.has(`.worktrees/${WORKTREE_KINDS.prunable}`)).toBe(false);
+      const outsideBefore = snapshot(outside);
+      expect(outsideBefore.entries.has(".git")).toBe(true);
+
+      const hosts = new Set<string>();
+      const realFetch = globalThis.fetch;
+      const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+        hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+        return realFetch(input, init);
+      }) as typeof fetch);
+
+      const { url, stop } = await serve(repo, `kinds-${String(trackedSpecs)}`);
+      try {
+        // Dashboard, board, and the spec page with every tab (timeline, claims, tasks, frames, the live board) of each
+        // spec that has a worktree, and of 004, which has none.
+        await readEverything(url, [SPEC_ID, "003", "004", "006", "007"]);
+        for (const path of ["/api/settings", ACTORS_PATH, workspaceRoutes.boardQuery(SLUG)]) {
+          expect({ path, status: (await fetch(`${url}${path}`)).status }).toEqual({ path, status: 200 });
+        }
+
+        // The library: the catalog, every readable document (each spec's plan among them) and a search, each revalidated.
+        const library = await fetch(`${url}${workspaceRoutes.library(SLUG)}`);
+        expect(library.status).toBe(200);
+        const catalog = (await library.json()) as WorkspaceRouteResponses["library"];
+        const docs = catalog.docs.filter((d) => d.media === "markdown" && d.state !== "missing").map((d) => d.path);
+        expect(docs).toContain(`${SPEC_FOLDER}/plan.md`);
+        const searches = ["console", "retention", "no such words anywhere"].map((q) => workspaceRoutes.librarySearch(SLUG, q));
+        for (const path of [workspaceRoutes.library(SLUG), ...docs.map((doc) => workspaceRoutes.libraryDoc(SLUG, doc)), ...searches]) {
+          const first = await fetch(`${url}${path}`);
+          await first.arrayBuffer();
+          expect({ path, status: first.status }).toEqual({ path, status: 200 });
+          const etag = first.headers.get("etag");
+          const again = await fetch(`${url}${path}`, etag === null ? {} : { headers: { "If-None-Match": etag } });
+          await again.arrayBuffer();
+          expect({ path, ok: [200, 304].includes(again.status) }).toEqual({ path, ok: true });
+        }
+
+        // The git reads ran: 002 keeps its live chip, the merged and the prunable worktree end theirs, the outside one
+        // keeps its chip by branch without a path; no body names the outside folder.
+        const model = (await (await fetch(`${url}/api/workspaces/${SLUG}/dashboard`)).json()) as DashboardModel;
+        const chip = (id: string): DashboardModel["specs"][number]["worktree"] | undefined => model.specs.find((r) => r.id === id)?.worktree;
+        expect(chip(SPEC_ID)?.ahead).toBe(planted.expected.ahead);
+        expect([chip("003") ?? null, chip("006") ?? null]).toEqual([null, null]);
+        expect([chip("007")?.branch, chip("007")?.path]).toEqual([`feature/${WORKTREE_KINDS.outside}`, null]);
+        const bodies = [JSON.stringify(model), await (await fetch(`${url}${specRoutes.spec(SLUG, "007")}`)).text(), await (await fetch(`${url}${specRoutes.timeline(SLUG, "007")}`)).text()];
+        expect(bodies.filter((body) => body.includes(basename(outside)))).toEqual([]);
+      } finally {
+        await stop();
+        spy.mockRestore();
+      }
+
+      const after = snapshot(repo);
+      expect(changed(before, after, { mtime: true })).toEqual([]);
+      expect(after.checksum).toBe(before.checksum);
+      expect(underGit(after)).toEqual(underGit(before));
+      const outsideAfter = snapshot(outside);
+      expect(changed(outsideBefore, outsideAfter, { mtime: true })).toEqual([]);
+      expect(outsideAfter.checksum).toBe(outsideBefore.checksum);
       expect([...hosts]).toEqual(["127.0.0.1"]);
     }, 60_000);
   }

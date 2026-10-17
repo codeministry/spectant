@@ -91,7 +91,8 @@
  * - `librarySearch`, `GET …/library/search?q=`: the trimmed query, case-insensitive, over each document's rendered page
  *   as plain text, else its title; hits in catalog order, the snippet 40 characters before the first match and 60
  *   after with an ellipsis where cut, or the title for a title-only match. A blank `q` is `{query: '', hits: []}`,
- *   never 400. The plain texts are cached in memory per workspace by catalog path, size and mtime; a search keeps only
+ *   never 400. The plain texts are cached in memory per workspace by source folder (a worktree copy or main's
+ *   `specs/`, spec 041, ISC-217) and catalog path, checked against size and mtime; a search keeps only
  *   the entries of the catalog it read. Each document is resolved once from the entry in hand (no lookup by path), its
  *   real folder once per search, and the files are read `SEARCH_READS` at a time, so a search grows linearly with the
  *   documents (ISC-156.5).
@@ -111,7 +112,7 @@
 import type { Database } from "bun:sqlite";
 import { type Stats, readFileSync } from "node:fs";
 import { readFile, realpath, stat } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
@@ -127,6 +128,7 @@ import { listSpecs } from "../../core/src/resolve.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { getBoardQuery, listActors, replaceActors, setBoardQuery } from "./db.ts";
 import { evidenceFileResponse } from "./evidence.ts";
+import { mapBounded } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
@@ -207,13 +209,13 @@ const docNameOf = (type: LibraryDoc["type"]): DocName => (type === "constitution
  * never an escape, and nothing decodes it again. Core's `resolveEvidencePath` takes a raw request and refuses a percent
  * sequence after its one decode, which turned away a listed `run%20retry.md` (code-review finding 7). Its other rules
  * stand here: no control character or backslash, no empty, `.` or `..` segment, the real path below the real `dir`
- * (a symlink out is null) and a regular file.
+ * and a regular file. A real path that leaves `dir` (a symlink out) is `symlink-escape`, anything else unresolved null.
  */
 const catalogFileBelow = async (
   dir: string,
   rel: string,
   realDirOf: (dir: string) => Promise<string> = realpath,
-): Promise<{ real: string; stats: Stats } | null> => {
+): Promise<{ real: string; stats: Stats } | "symlink-escape" | null> => {
   // eslint-disable-next-line no-control-regex -- control characters are exactly what is refused here
   if (rel === "" || /[\u0000-\u001f\u007f\\]/.test(rel)) return null;
   const segments = rel.split("/");
@@ -221,7 +223,7 @@ const catalogFileBelow = async (
   try {
     const realDir = await realDirOf(dir);
     const real = await realpath(join(realDir, ...segments));
-    if (!real.startsWith(realDir + sep)) return null;
+    if (!real.startsWith(realDir + sep)) return "symlink-escape";
     const stats = await stat(real);
     return stats.isFile() ? { real, stats } : null;
   } catch {
@@ -229,22 +231,17 @@ const catalogFileBelow = async (
   }
 };
 
+/** Whether `dir` is a directory now, through a link; false when it is gone or cannot be read. */
+const isFolder = async (dir: string): Promise<boolean> => {
+  try {
+    return (await stat(dir)).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 /** Files a search reads at once (ISC-156.5): enough to overlap the reads, few enough to stay clear of the fd limit. */
 const SEARCH_READS = 16;
-
-/** `fn` over `items` with at most `limit` calls in flight, the results in the items' order. */
-async function mapBounded<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const worker = async (): Promise<void> => {
-    while (next < items.length) {
-      const at = next++;
-      results[at] = await fn(items[at] as T);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
 
 /** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
 type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };
@@ -458,20 +455,35 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
    * again): null for a document that is not readable Markdown, or whose real path leaves `specs/` (a symlink out). The
    * document is the catalog's entry in hand, so a request alone never names a file and nothing is looked up by path. A
    * spec's own file comes from its worktree copy when `copies` names one (core's `catalogSourceOf`, spec 027, ISC-181),
-   * confined to that copy's folder the same way. `realDirOf` lets a search resolve each folder once.
+   * resolved from the copy's `specs/` with `NNN-slug/<file>` (spec 041, ISC-216.1), so the confinement covers the copy
+   * folder itself: a copy folder or file whose real path leaves the worktree's `specs/` is `symlink-escape`, which the
+   * reader answers 403. A symlink out of the main checkout's `specs/` stays null (404), as before. A copy folder that is
+   * gone by now (its worktree removed since the copies were read) falls back to the main checkout's file (spec 041,
+   * ISC-217). `source` names the folder the file was read from, the copy's or main's `specs/`, for the search's text
+   * cache. `realDirOf` lets a search resolve each folder once.
    */
   const catalogFile = async (
     root: string,
     doc: LibraryDoc,
     copies: Readonly<Record<string, string>>,
     realDirOf?: (dir: string) => Promise<string>,
-  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string } | null> => {
+  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string; source: string } | "symlink-escape" | null> => {
     if (!isReadableDoc(doc)) return null;
+    const main = join(root, "specs");
     const source = catalogSourceOf(root, doc, copies);
-    const found = await catalogFileBelow(source.dir, source.rel, realDirOf);
+    const fromCopy = copies[doc.spec] === source.dir;
+    let found = fromCopy
+      ? await catalogFileBelow(dirname(source.dir), `${basename(source.dir)}/${source.rel}`, realDirOf)
+      : await catalogFileBelow(source.dir, source.rel, realDirOf);
+    let from = fromCopy ? source.dir : main;
+    if (fromCopy && found === null && !(await isFolder(source.dir))) {
+      found = await catalogFileBelow(main, doc.path, realDirOf);
+      from = main;
+    }
+    if (found === "symlink-escape") return from !== main ? found : null;
     // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`; it stays
     // the main checkout's, where a copy's relative images resolve (`artifacts/` and `.design/` are never read from a copy).
-    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical: join(root, "specs", ...doc.path.split("/")) };
+    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical: join(main, ...doc.path.split("/")), source: from };
   };
 
   /** A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`. */
@@ -491,6 +503,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const loaded = await docOf(workspace.path, path);
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
     const file = loaded.doc === null ? null : await catalogFile(workspace.path, loaded.doc, loaded.copies);
+    if (file === "symlink-escape") return json(req, 403, { error: "forbidden" }); // a worktree copy linked out (ISC-216.1)
     if (file === null) return json(req, 404, { error: "not-found" });
     let source: string;
     try {
@@ -521,9 +534,12 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     seen: Map<string, SearchText>,
   ): Promise<string | null> => {
     const file = await catalogFile(root, doc, copies, realDirOf);
-    if (file === null) return null;
+    if (file === null || file === "symlink-escape") return null;
     const { mtimeMs, size } = file.stats;
-    const cached = previous.get(doc.path);
+    // Keyed by source and catalog path (spec 041, ISC-217): a spec whose source switched between the copy and main never
+    // gets the other source's text, even where both files share size and mtime.
+    const key = `${file.source}\0${doc.path}`;
+    const cached = previous.get(key);
     let entry: SearchText;
     if (cached?.mtimeMs === mtimeMs && cached.size === size) entry = cached;
     else {
@@ -534,7 +550,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
         return null;
       }
     }
-    seen.set(doc.path, entry);
+    seen.set(key, entry);
     return entry.text;
   };
 

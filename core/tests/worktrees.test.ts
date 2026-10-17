@@ -3,7 +3,7 @@
 // spec folders of the workspace (`NNN-slug`), and returns `{ worktrees: Worktree[], builders: number, diagnostics }`:
 //
 //   - The first record is the main worktree. Its path is the workspace root; every other path is relative to it,
-//     `/`-separated (`../repo-013` outside it). The main worktree itself is not listed.
+//     `/`-separated, null for one outside it (spec 041, ISC-216). The main worktree itself is not listed.
 //   - Every other record is listed in the order git prints it. One under `.claude/worktrees/` is a `builder`: counted
 //     in `builders`, never assigned (`spec: null`), never read.
 //   - A spec worktree belongs to the spec its path `.worktrees/NNN-slug` names, else to the one its branch
@@ -41,7 +41,17 @@ import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
 import { buildSpecPage } from '../src/spec.ts';
-import { assignWorktrees, specSourceOf, WORKTREE_COPY_KINDS } from '../src/worktrees.ts';
+import {
+  assignWorktrees,
+  copyDirFor,
+  liveWorktrees,
+  mainBranchOf,
+  relativeTo,
+  specSourceOf,
+  WORKTREE_COPY_KINDS,
+  type WorktreeFacts,
+  type WorktreeView,
+} from '../src/worktrees.ts';
 import { DASHBOARD_FAMILY, goldenMismatch, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
@@ -78,8 +88,8 @@ const recordPaths = (text: string): string[] =>
     .map((line) => line.slice('worktree '.length));
 
 describe('assign: worktrees from git worktree list --porcelain to the specs of the workspace (ISC-174)', () => {
-  test('the fixture holds the four listings: spec worktrees, a path-branch conflict, builders, a linked specs/', () => {
-    expect(LISTINGS).toEqual(['builders', 'conflict', 'spec-worktrees', 'symlink-specs']);
+  test('the fixture holds the five listings: spec worktrees, a path-branch conflict, builders, prunable worktrees, a linked specs/', () => {
+    expect(LISTINGS).toEqual(['builders', 'conflict', 'prunable', 'spec-worktrees', 'symlink-specs']);
   });
 
   test.each(LISTINGS)('%s.porcelain has the shape git prints: main first, one blank line after every record', (name) => {
@@ -110,7 +120,7 @@ describe('assign: worktrees from git worktree list --porcelain to the specs of t
     const { worktrees } = assignWorktrees(text, SPECS);
     expect(worktrees).toHaveLength(recordPaths(text).length - 1);
     for (const w of worktrees) {
-      expect(w.path.startsWith('/')).toBe(false);
+      expect(w.path?.startsWith('/')).not.toBe(true);
       expect(w.path).not.toBe('');
     }
   });
@@ -124,7 +134,7 @@ describe('assign: worktrees from git worktree list --porcelain to the specs of t
     const kept = worktrees.filter((w) => w.kind === 'builder');
     expect(kept).toHaveLength(listed);
     for (const w of kept) {
-      expect(w.path.startsWith('.claude/worktrees/')).toBe(true);
+      expect(w.path?.startsWith('.claude/worktrees/')).toBe(true);
       expect(w).toMatchObject({ spec: null, ahead: null, dirty: null });
     }
   });
@@ -151,6 +161,121 @@ describe('mismatch: the path and the branch of a worktree name two different spe
     const plain = assignWorktrees(read('spec-worktrees.porcelain'), SPECS);
     expect(plain.worktrees.find((w) => w.path === '.worktrees/scratch')).toMatchObject({ kind: 'spec', spec: null });
     expect(plain.diagnostics).toEqual([]);
+  });
+});
+
+// Spec 041, ISC-216: a worktree's location never leaves the repository. `relativeTo(root, path)` resolves `.` and inner
+// `..` on both sides as text before it compares them, and answers null for a path outside the root, so a path that
+// climbs out through `..` is refused rather than named. `assignWorktrees` gives such a worktree `path: null` and assigns
+// it by its branch alone. `-t relativeTo` runs ISC-216's core part.
+describe('relativeTo: a worktree path is normalised and refused outside the root (ISC-216)', () => {
+  test('a path whose inner .. climbs out of the root is refused', () => {
+    expect(relativeTo('/srv/repo', '/srv/repo/a/../../b')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv/repo/../repo-013')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv/repo-013')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv')).toBeNull();
+    expect(relativeTo('/srv/repo', '/')).toBeNull();
+  });
+
+  test('. and inner .. inside the root are normalised away', () => {
+    expect(relativeTo('/srv/repo', '/srv/repo/a/./b/../c')).toBe('a/c');
+    expect(relativeTo('/srv/repo', '/srv/repo/.worktrees/012-harbor')).toBe('.worktrees/012-harbor');
+    expect(relativeTo('/srv/repo', '/srv/repo/a/../.worktrees/./012-harbor/')).toBe('.worktrees/012-harbor');
+  });
+
+  test('a root with inner .. is normalised too', () => {
+    expect(relativeTo('/srv/other/../repo', '/srv/repo/.worktrees/012-harbor')).toBe('.worktrees/012-harbor');
+    expect(relativeTo('/srv/./repo/', '/srv/repo/a/b')).toBe('a/b');
+    expect(relativeTo('/srv/other/../repo', '/srv/other/x')).toBeNull();
+  });
+
+  test('a worktree outside the repository gets path null and is still assigned by its branch', () => {
+    const text = listingOf([
+      { path: '/srv/repo-013', branch: 'fix/013-relay' },
+      { path: '/srv/repo/../repo-018', branch: 'spike/018-probe' },
+      { path: '/srv/repo/a/../../repo-017', branch: 'chore/017-tidy' },
+      { path: '/srv/repo/.worktrees/x/../012-harbor', branch: 'feature/012-harbor' },
+    ]);
+    const { worktrees, diagnostics } = assignWorktrees(text, SPECS);
+    expect(worktrees.map((w) => [w.path, w.spec, w.kind])).toEqual([
+      [null, '013', 'spec'],
+      [null, '018', 'spec'],
+      [null, null, 'spec'],
+      ['.worktrees/012-harbor', '012', 'spec'],
+    ]);
+    expect(diagnostics).toEqual([]);
+    expect(JSON.stringify(worktrees)).not.toContain('repo-01');
+  });
+
+  test('spec-worktrees.porcelain names none of its three sibling worktrees', () => {
+    const { worktrees } = assignWorktrees(read('spec-worktrees.porcelain'), SPECS);
+    const outside = worktrees.filter((w) => w.path === null);
+    expect(outside.map((w) => [w.branch, w.spec])).toEqual([
+      ['fix/013-relay', '013'],
+      ['chore/017-tidy', null],
+      ['spike/018-probe', '018'],
+    ]);
+    expect(JSON.stringify(worktrees)).not.toContain('..');
+  });
+});
+
+// Spec 041, ISC-212: a worktree git lists as `prunable` (its folder or its gitdir is gone) has ended. `assignWorktrees`
+// marks such a spec-kind worktree `prunable: true` and leaves the key out everywhere else, so every older golden stays
+// byte-identical; `liveWorktrees(assignment, facts)` then leaves it out of `live` with the reason `prunable`. When
+// several reasons apply, `merged` wins over `prunable`, and `prunable` over `removed`. `-t prunable` runs ISC-212.
+describe('prunable: a worktree git lists as prunable has ended (ISC-212)', () => {
+  /** The facts of `prunable.porcelain`: only harbor's folder is left, nothing merged, nothing dirty. */
+  const GONE = { merged: [], present: ['.worktrees/012-harbor'], dirty: [] } as const;
+
+  test('a prunable spec worktree carries prunable: true, a listed one carries no key at all', () => {
+    const { worktrees } = assignWorktrees(read('prunable.porcelain'), SPECS);
+    expect(worktrees.find((w) => w.spec === '014')).toMatchObject({ kind: 'spec', prunable: true });
+    expect(worktrees.find((w) => w.spec === '015')).toMatchObject({ kind: 'spec', prunable: true });
+    expect(worktrees.find((w) => w.path === '.worktrees/scratch')).toMatchObject({ spec: null, prunable: true });
+    expect(Object.hasOwn(worktrees.find((w) => w.spec === '012') ?? {}, 'prunable')).toBe(false);
+  });
+
+  test('a builder never carries prunable, even when git lists it as prunable', () => {
+    const { worktrees } = assignWorktrees(read('builders.porcelain'), SPECS);
+    const builder = worktrees.find((w) => w.path === '.claude/worktrees/agent-c3e6a9b2d5f8c1e4a');
+    expect(builder).toMatchObject({ kind: 'builder', spec: null });
+    expect(Object.hasOwn(builder ?? {}, 'prunable')).toBe(false);
+  });
+
+  test('liveWorktrees does not count a prunable spec worktree as live: it has ended with the reason prunable', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), GONE);
+    expect(live.map((w) => w.path)).toEqual(['.worktrees/012-harbor', '.worktrees/scratch']);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([
+      ['014', 'prunable'],
+      ['015', 'prunable'],
+    ]);
+  });
+
+  test('prunable ends a worktree even while its folder still reads as present', () => {
+    const present = ['.worktrees/012-harbor', '.worktrees/014-export', '.worktrees/015-ledger'];
+    const { live, ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), { ...GONE, present });
+    expect(live.some((w) => w.spec === '014' || w.spec === '015')).toBe(false);
+    expect(ended.map(({ reason }) => reason)).toEqual(['prunable', 'prunable']);
+  });
+
+  test('merged wins over prunable, and prunable over removed', () => {
+    const facts = { ...GONE, merged: ['feature/015-ledger'] };
+    const { ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), facts);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([
+      ['014', 'prunable'],
+      ['015', 'merged'],
+    ]);
+  });
+
+  test('the same listing without its prunable lines keeps both worktrees live while their folders are present', () => {
+    const plain = read('prunable.porcelain')
+      .split('\n')
+      .filter((line) => !line.startsWith('prunable'))
+      .join('\n');
+    const present = ['.worktrees/012-harbor', '.worktrees/014-export', '.worktrees/015-ledger'];
+    const { live, ended } = liveWorktrees(assignWorktrees(plain, SPECS), { ...GONE, present });
+    expect(ended).toEqual([]);
+    expect(live.map((w) => w.spec)).toEqual(['012', '014', '015', null]);
   });
 });
 
@@ -361,5 +486,200 @@ describe('untracked: an untracked or symlinked specs/ keeps every spec on the ma
       const built = tracked[family] ?? '';
       expect(goldenMismatch(readFileSync(goldenPath('harbor', family), 'utf8'), built)).not.toBeNull();
     }
+  });
+});
+
+// Spec 041, ISC-212.1: the folder a spec is read from, decided once for every caller. `copyDirFor(root, ref, view)`
+// takes the workspace root, the spec's number and folder name, and the `WorktreeView` the server builds from one
+// listing (`assignWorktrees`, `liveWorktrees`, `mainBranchOf` and the `ls-files` answers). It returns
+// `<root>/<worktree>/specs/NNN-slug` only for the spec's first live spec worktree in git's order, inside the
+// repository, when `specSourceOf` names `worktree` for it; null otherwise. The views below are built from the fixture's
+// listings the way the server builds them, so the tests exercise the model the server hands over. `-t copyDirFor`.
+
+/** The facts of a listing where every worktree's folder is present, nothing is merged and nothing is dirty. */
+function allPresent(porcelain: string, specs: readonly string[]): WorktreeFacts {
+  const present = assignWorktrees(porcelain, specs).worktrees.flatMap((w) => (w.path === null ? [] : [w.path]));
+  return { merged: [], present, dirty: [] };
+}
+
+/** The view the server builds from one listing, its git facts and the `ls-files` answer per spec folder. */
+function viewOf(
+  porcelain: string,
+  tracked: Readonly<Record<string, readonly string[]>>,
+  facts: WorktreeFacts = allPresent(porcelain, SPECS),
+): WorktreeView {
+  const assignment = assignWorktrees(porcelain, SPECS);
+  const { live, ended } = liveWorktrees(assignment, facts);
+  return { assignment, live, ended, mainBranch: mainBranchOf(porcelain), tracked };
+}
+
+/** A listing at `/srv/repo` with the given worktrees after the main checkout, as git prints it. */
+const listingOf = (records: ReadonlyArray<{ path: string; branch: string }>): string =>
+  [{ path: '/srv/repo', branch: 'main' }, ...records]
+    .map(({ path, branch }, i) => `worktree ${path}\nHEAD ${i.toString(16).padStart(40, '0')}\nbranch refs/heads/${branch}\n\n`)
+    .join('');
+
+const ROOT = '/srv/repo';
+const HARBOR_REF = { id: '012', slug: '012-harbor' } as const;
+const HARBOR_COPY = '/srv/repo/.worktrees/012-harbor/specs/012-harbor';
+
+describe('copyDirFor: the worktree copy a spec is read from, over the one worktree view (ISC-212.1)', () => {
+  test('a live spec worktree of the spec and a tracked path under specs/NNN-slug/ read from its copy', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '012-harbor': HARBOR_TRACKED });
+    expect(copyDirFor(ROOT, HARBOR_REF, view)).toBe(HARBOR_COPY);
+  });
+
+  test('a worktree assigned by its branch alone reads from its own path', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '016-audit': ['specs/016-audit/spec.md'] });
+    expect(copyDirFor(ROOT, { id: '016', slug: '016-audit' }, view)).toBe('/srv/repo/.worktrees/infra-ci/specs/016-audit');
+  });
+
+  test('a trailing slash on the root is not doubled', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '012-harbor': HARBOR_TRACKED });
+    expect(copyDirFor('/srv/repo/', HARBOR_REF, view)).toBe(HARBOR_COPY);
+    expect(copyDirFor('/srv/repo//', HARBOR_REF, view)).toBe(HARBOR_COPY);
+  });
+
+  test('untracked: no entry, an empty answer or only the link itself keeps main', () => {
+    const text = read('spec-worktrees.porcelain');
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, {}))).toBeNull();
+    for (const lsFiles of [[], ['specs'], ['specs/012-harbor'], ['specs/012-harbor-old/spec.md'], lsFilesOf('symlink-specs')]) {
+      expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': lsFiles }))).toBeNull();
+    }
+  });
+
+  test("this repository's layout: specs linked into every spec worktree keeps every spec on main", () => {
+    const text = read('symlink-specs.porcelain');
+    const tracked = { '012-harbor': lsFilesOf('symlink-specs'), '016-audit': lsFilesOf('symlink-specs') };
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, tracked))).toBeNull();
+    expect(copyDirFor(ROOT, { id: '016', slug: '016-audit' }, viewOf(text, tracked))).toBeNull();
+  });
+
+  test('an ended spec worktree is no source: merged, removed or prunable', () => {
+    const text = read('spec-worktrees.porcelain');
+    const tracked = { '012-harbor': HARBOR_TRACKED };
+    const present = allPresent(text, SPECS);
+    const merged = viewOf(text, tracked, { ...present, merged: ['feature/012-harbor'] });
+    const removed = viewOf(text, tracked, { ...present, present: present.present.filter((p) => p !== '.worktrees/012-harbor') });
+    for (const view of [merged, removed]) {
+      expect(view.ended.map(({ worktree }) => worktree.spec)).toContain('012');
+      expect(view.live.some((w) => w.spec === '012')).toBe(false);
+      expect(copyDirFor(ROOT, HARBOR_REF, view)).toBeNull();
+    }
+
+    const prunable = read('prunable.porcelain');
+    const export_ = { id: '014', slug: '014-export' } as const;
+    const pruned = viewOf(prunable, { '014-export': ['specs/014-export/spec.md'] });
+    expect(pruned.ended.map(({ worktree, reason }) => [worktree.spec, reason])).toContainEqual(['014', 'prunable']);
+    expect(copyDirFor(ROOT, export_, pruned)).toBeNull();
+    // The same listing still reads harbor's copy: only the ended worktree is left out.
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(prunable, { '012-harbor': HARBOR_TRACKED }))).toBe(HARBOR_COPY);
+  });
+
+  test('a builder is no source, even on the spec branch', () => {
+    const text = listingOf([{ path: '/srv/repo/.claude/worktrees/agent-4c7e0a3d', branch: 'feature/012-harbor' }]);
+    const view = viewOf(text, { '012-harbor': HARBOR_TRACKED });
+    expect(view.live.map((w) => w.kind)).toEqual(['builder']);
+    expect(copyDirFor(ROOT, HARBOR_REF, view)).toBeNull();
+  });
+
+  test('a worktree of another spec is no source', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '015-ledger': ['specs/015-ledger/spec.md'] });
+    expect(view.live.some((w) => w.spec === '015')).toBe(false);
+    expect(copyDirFor(ROOT, { id: '015', slug: '015-ledger' }, view)).toBeNull();
+    // A tracked entry filed under the wrong folder does not lend another spec's worktree either.
+    const crossed = viewOf(read('spec-worktrees.porcelain'), { '015-ledger': HARBOR_TRACKED });
+    expect(copyDirFor(ROOT, { id: '015', slug: '015-ledger' }, crossed)).toBeNull();
+  });
+
+  test('a worktree outside the repository is no source: /srv/repo-013 has no path and keeps main', () => {
+    const view = viewOf(read('spec-worktrees.porcelain'), { '013-relay': ['specs/013-relay/spec.md'] });
+    expect(view.live.find((w) => w.spec === '013')).toMatchObject({ path: null, kind: 'spec' });
+    expect(copyDirFor(ROOT, { id: '013', slug: '013-relay' }, view)).toBeNull();
+  });
+
+  test('two live worktrees of the same spec: the first in git order, as the dashboard chip shows', () => {
+    const tracked = { '012-harbor': HARBOR_TRACKED };
+    const first = listingOf([
+      { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+      { path: '/srv/repo/.worktrees/harbor-fix', branch: 'fix/012-harbor' },
+    ]);
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(first, tracked))).toBe(HARBOR_COPY);
+    const second = listingOf([
+      { path: '/srv/repo/.worktrees/harbor-fix', branch: 'fix/012-harbor' },
+      { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+    ]);
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(second, tracked))).toBe('/srv/repo/.worktrees/harbor-fix/specs/012-harbor');
+  });
+
+  test('the first live one wins once the first in git order has ended', () => {
+    const text = listingOf([
+      { path: '/srv/repo/.worktrees/harbor-fix', branch: 'fix/012-harbor' },
+      { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+    ]);
+    const facts = { ...allPresent(text, SPECS), merged: ['fix/012-harbor'] };
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': HARBOR_TRACKED }, facts))).toBe(HARBOR_COPY);
+  });
+});
+
+// Spec 041, ISC-212.2: a merge alone does not end a spec worktree that still holds an uncommitted change. Its path in
+// `facts.dirty` keeps it live, so the chip stays and its copy is still read; `prunable` and `removed` end it all the
+// same, and a clean merged worktree ends as before. `-t dirty` runs these.
+describe('dirty: a merged spec worktree with an uncommitted change is live (ISC-212.2)', () => {
+  const text = listingOf([
+    { path: '/srv/repo/.worktrees/012-harbor', branch: 'feature/012-harbor' },
+    { path: '/srv/repo/.worktrees/014-export', branch: 'feature/014-export' },
+  ]);
+  const present = allPresent(text, SPECS);
+
+  test('merged and dirty: live, not ended', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(text, SPECS), {
+      ...present,
+      merged: ['feature/012-harbor'],
+      dirty: ['.worktrees/012-harbor'],
+    });
+    expect(live.map((w) => w.spec)).toEqual(['012', '014']);
+    expect(ended).toEqual([]);
+  });
+
+  test('merged and clean: still ended with the reason merged', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(text, SPECS), { ...present, merged: ['feature/012-harbor'] });
+    expect(live.map((w) => w.spec)).toEqual(['014']);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([['012', 'merged']]);
+  });
+
+  test("another worktree's change does not keep a merged one live", () => {
+    const { ended } = liveWorktrees(assignWorktrees(text, SPECS), {
+      ...present,
+      merged: ['feature/012-harbor'],
+      dirty: ['.worktrees/014-export'],
+    });
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([['012', 'merged']]);
+  });
+
+  test('merged, dirty and its folder gone: ended with the reason removed', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(text, SPECS), {
+      merged: ['feature/012-harbor'],
+      present: present.present.filter((p) => p !== '.worktrees/012-harbor'),
+      dirty: ['.worktrees/012-harbor'],
+    });
+    expect(live.some((w) => w.spec === '012')).toBe(false);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([['012', 'removed']]);
+  });
+
+  test('merged, dirty and prunable: ended with the reason prunable', () => {
+    const facts = {
+      merged: ['feature/015-ledger'],
+      present: ['.worktrees/012-harbor', '.worktrees/015-ledger'],
+      dirty: ['.worktrees/015-ledger'],
+    };
+    const { live, ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), facts);
+    expect(live.some((w) => w.spec === '015')).toBe(false);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toContainEqual(['015', 'prunable']);
+  });
+
+  test('the merged worktree with a change stays the read source of its spec', () => {
+    const facts = { ...present, merged: ['feature/012-harbor'], dirty: ['.worktrees/012-harbor'] };
+    expect(copyDirFor(ROOT, HARBOR_REF, viewOf(text, { '012-harbor': HARBOR_TRACKED }, facts))).toBe(HARBOR_COPY);
   });
 });

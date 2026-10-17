@@ -75,6 +75,7 @@ import {
   readBytesIfExists,
   readIfExists,
   readSpecSource,
+  readWorktreeView,
   readWorkspaceInput,
   timelineWorktreeOf,
   unreadableCode,
@@ -214,7 +215,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     // when the source is `worktree`. Evidence and artifacts stay on `ref.dir`. The three writes on the spec (reviewed
     // mark, tick, stage move) take `source`: they read, compare and write the copy the client's hashes came from (T22),
     // so a source that switched between render and write is the plain 409 of the hash compare.
-    const { files, dir } = await readSpecSource(root, ref);
+    const reading = await readWorktreeView(root);
+    const { files, dir } = await readSpecSource(root, ref, reading);
     if (files.texts.spec === undefined) return json(req, 404, NOT_FOUND);
     const source = { ...ref, dir };
     const constitution = (): string | null => readIfExists(constitutionPath(root));
@@ -228,7 +230,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
           c.lock === null ? [] : [{ claim: c.id, session: c.lock.session, since: c.lock.since }],
         );
         // The spec worktree's end from git (spec 027, ISC-175.1): merged into `main` or removed, one derived entry.
-        const worktree = await timelineWorktreeOf(root, ref.slug);
+        const worktree = await timelineWorktreeOf(root, ref.slug, reading);
         // The type's code review under `specs/workflow.md` (spec 028, ISC-183.2): under `none` the derived stages step
         // build → close without a code-review entry, as the row reads it.
         const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));

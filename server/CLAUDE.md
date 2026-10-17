@@ -39,9 +39,13 @@ The CLI adds two further paths, never written by a route, both over `writes.ts`'
 
 - The feature-level code-review mark, `WRITE_PATHS.codeReviewFeature` (`spectant gate code-reviewed F<n> [--root DIR]
   [--yes]`, `server/src/feature-gate.ts`; no `WRITE_TABLE` row). It refuses while a spec of the feature still holds an
-  open claim, appends one `code-review → close` event per target, then writes the same `scope: F<n>` mark with the
-  tree id of the worktree as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Without
-  `--yes` it prints the plan and writes nothing; `tests/gates.test.ts` (`-t feature`) holds its probes.
+  open claim, appends one `code-review → close` event per target, then writes the `scope: F<n>` mark with the tree id
+  of the target's checkout as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Each
+  target is placed by the one worktree view the app reads (spec 041, ISC-211): the event and the mark go into the
+  spec's read source (`readSpecSource`, the worktree copy when `specs/` is tracked there), and the tree, `HEAD` and
+  branch come from the spec's live worktree inside the repository, else from the main checkout. Without `--yes` it
+  prints the plan, with source and checkout per target, and writes nothing; `tests/gates.test.ts` (`-t feature`,
+  `-t "cli mark worktree"`) holds its probes.
 - The token measurement, `spectant tokens --yes`, takes its target from `WRITE_PATHS.tokens`; it belongs to no spec, so
   no claim holds it.
 
@@ -137,3 +141,13 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Every function in `server/src/git.ts` runs only read-only git commands under one environment and root rule, never
   fetches and never throws: no repository, no git, a failure or the deadline answers `source: 'none'` or empty / null.
 - A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).
+- The worktrees are read once per workspace state, not per caller (spec 041, ISC-215): `readWorktreeView` (the
+  listing, the merge state, `ahead`, `dirty` and `ls-files` per live spec worktree, four worktrees at a time), the
+  listed paths of `worktreeTreeId`, the viewer's address, `mergeCommitOf` and the `CommitCache` hit are kept while
+  `repo-state.ts`' `repoStateOf` stands. That key is read from the file system alone (`HEAD`, the indexes, `packed-refs`,
+  `refs/heads/`, the config files, each linked worktree's `HEAD`, index and folder), so a repeat poll, a spec route, a
+  library document or a search keystroke starts no git process. An edit that touches no index does not move it: the
+  dirty mark follows on the next commit, stage or ref move.
+- Every read inside a worktree that could run a repository-configured command runs without it (ISC-216.2): `status`
+  with `core.fsmonitor=false`, each configured filter driver emptied and `--ignore-submodules=all`; `ls-files` with
+  `core.fsmonitor=false`.

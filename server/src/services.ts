@@ -15,11 +15,14 @@
  * runs in is that spec's three-digit number `spec`, read from the folder name with core's `SPEC_FOLDER`, never the
  * folder or any other part of the path.
  *
+ * ISC-212: a spec worktree git lists as `prunable` has ended, so a service still running in it carries no `spec`.
+ * git calls a worktree prunable once its folder no longer holds its `.git`; the same test here costs no git process.
+ *
  * When `lsof` is not on PATH, fails to spawn or exits non-zero, the result is `[]`, never a throw: a missing tool must
  * not break the dashboard.
  */
-import { realpathSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 
 export type DevServiceKind = "node" | "java" | "bun" | "python" | "other";
@@ -34,7 +37,8 @@ export type DevService = {
   worktree?: boolean;
   /**
    * The spec number `NNN` when the process runs inside the spec worktree `<repoRoot>/.worktrees/NNN-slug` (spec 027,
-   * ISC-177); absent in a builder worktree, in a `.worktrees/<name>` whose name has no spec number, and outside both.
+   * ISC-177); absent in a builder worktree, in a `.worktrees/<name>` whose name has no spec number, in a spec worktree
+   * that has ended as `prunable` (its folder without its `.git`, spec 041, ISC-212), and outside both.
    */
   spec?: string;
 };
@@ -206,6 +210,7 @@ type Place = { worktree: boolean; spec?: string };
  * Where a working directory lies: in the repo's main checkout, in one of its worktrees, or outside (null). A worktree is
  * `<root>/.worktrees/<name>` (a spec worktree; `spec` is `NNN` when `<name>` has the spec folder shape `NNN-slug`) or
  * `<root>/.claude/worktrees/<name>` (a builder worktree, never a spec). The two folders themselves are the main checkout.
+ * A spec worktree whose folder no longer holds its `.git` is `prunable` to git and has ended (ISC-212): no `spec`.
  */
 function locate(cwd: string, roots: string[]): Place | null {
   for (const root of roots) {
@@ -213,7 +218,8 @@ function locate(cwd: string, roots: string[]): Place | null {
     const [first = "", second = "", third = ""] = cwd === root ? [] : cwd.slice(root.length + sep.length).split(sep);
     if (first === ".worktrees" && second) {
       const spec = SPEC_FOLDER.exec(second)?.[1];
-      return spec === undefined ? { worktree: true } : { worktree: true, spec };
+      const ended = spec !== undefined && !existsSync(join(root, first, second, ".git"));
+      return spec === undefined || ended ? { worktree: true } : { worktree: true, spec };
     }
     return { worktree: first === ".claude" && second === "worktrees" && third !== "" };
   }

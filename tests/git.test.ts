@@ -10,7 +10,7 @@
 // Read-only (ISC-15): the repository, `.git/` included, is hashed before and after with node:fs only; the hash covers
 // bytes, modes and mtimes, so even an index refresh that rewrites identical bytes would show.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { assignWorktrees } from "../core/src/worktrees.ts";
@@ -23,9 +23,12 @@ import {
   mergeCommitOf,
   type GitRunner,
   takenSpecNumbers,
+  trackedSpecPaths,
   userEmail,
   worktreeList,
 } from "../server/src/git.ts";
+import { loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { DATES, plantWorktreeRepo, type PlantedWorktreeRepo, SPEC_FOLDER, UNCOMMITTED } from "./fixtures/worktree-repo.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -294,7 +297,8 @@ describe("the head cache", () => {
     const second = await commitsFor(repo, FOLDER, { cache, runner });
     expect(logCalls(calls)).toBe(1);
     expect(second).toEqual(first);
-    expect(calls.filter((args) => args.includes("rev-parse"))).toHaveLength(2);
+    // The repository state stands, so the hit is answered without even the `rev-parse` (spec 041, ISC-215).
+    expect(calls.filter((args) => args.includes("rev-parse"))).toHaveLength(1);
 
     // Same key, different shape (limit or files) is a miss, not a wrong answer.
     const limited = await commitsFor(repo, FOLDER, { cache, runner, limit: 1 });
@@ -508,7 +512,7 @@ describe("worktreeList reads the raw `git worktree list --porcelain` text (spec 
     const { worktrees, builders, diagnostics } = assignWorktrees(await worktreeList(dir), ["027-x"]);
     expect(builders).toBe(0);
     expect(diagnostics).toEqual([]);
-    expect([...worktrees].sort((a, b) => a.path.localeCompare(b.path))).toEqual([
+    expect([...worktrees].sort((a, b) => (a.path ?? "").localeCompare(b.path ?? ""))).toEqual([
       { path: ".worktrees/027-x", branch: "feature/027-x", spec: "027", ahead: null, dirty: null, kind: "spec" },
       { path: ".worktrees/detached", branch: null, spec: null, ahead: null, dirty: null, kind: "spec" },
     ]);
@@ -665,14 +669,15 @@ describe("aheadOfMain and dirty read a worktree's distance to main and its uncom
     }
   });
 
-  test("runs only `rev-list --count main..<branch>` and `status --porcelain` in the worktree, under the read-only environment, no fetch", async () => {
+  test("runs only `rev-list --count main..<branch>`, `config --get-regexp ^filter\\.` and `status --porcelain` in the worktree, under the read-only environment, no fetch", async () => {
     const { spec } = chipRepo();
     const { runner, seen } = recordingRunner();
     expect(await aheadOfMain(spec, "feature/027-x", { runner })).toBe(2);
     expect(await dirty(spec, { runner })).toBe(true);
     expect(seen.map((s) => s.args)).toEqual([
       ["-C", spec, "rev-list", "--count", "main..feature/027-x", "--"],
-      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal"],
+      ["-C", spec, "config", "-z", "--get-regexp", "^filter\\."],
+      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=all"],
     ]);
     for (const s of seen) {
       expect(s.args).not.toContain("fetch");
@@ -820,7 +825,7 @@ describe("mergeCommitOf names the commit that merged a spec branch into main (sp
     expect(seen.map((s) => s.args)).toEqual([
       ["-C", dir, "for-each-ref", "--format=%(objectname)", "refs/heads/feature/001-x"],
       ["-C", dir, "rev-list", "--first-parent", "refs/heads/main", "--"],
-      ["-C", dir, "log", "--ancestry-path", "--format=%H %cI %P", "refs/heads/feature/001-x..refs/heads/main", "--"],
+      ["-C", dir, "log", "--ancestry-path", "--topo-order", "--reverse", "--format=%H %cI %P", "refs/heads/feature/001-x..refs/heads/main", "--"],
     ]);
     for (const s of seen) expect(s.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
   });
@@ -842,5 +847,96 @@ describe("mergeCommitOf names the commit that merged a spec branch into main (sp
     for (const branch of ["feature/001-x", "feature/002-ff", "feature/003-open"]) await mergeCommitOf(dir, branch);
     await mergeCommitOf(dir, "feature/001-x", { timeoutMs: 1 });
     expect(checksum(dir)).toBe(before);
+  });
+
+  test("two later merges, one with a clock behind M's → still M, read with --topo-order --reverse, the repository byte- and mtime-identical (spec 041, ISC-214)", async () => {
+    // mergeRepo, then topic/other and topic/side from m2; main merges topic/other at a date before M's (M2) and
+    // topic/side after (M3). A date-order walk reaches M through topic/side before M2 and lists M2 behind M.
+    const { dir, merge } = mergeRepo();
+    for (const name of ["topic/other", "topic/side"]) {
+      git(dir, "2026-02-09T00:00:00Z", "switch", "-q", "-c", name, "main");
+      commit(dir, "2026-02-09T00:00:00Z", name, { [`${basename(name)}.txt`]: `${name}\n` });
+      git(dir, "2026-02-09T00:00:00Z", "switch", "-q", "main");
+    }
+    git(dir, "2026-02-05T12:00:00Z", "merge", "-q", "--no-ff", "-m", "merge other", "topic/other");
+    git(dir, "2026-02-10T00:00:00Z", "merge", "-q", "--no-ff", "-m", "merge side", "topic/side");
+    const before = checksum(dir);
+    const { runner, calls } = countingRunner();
+    const found = await mergeCommitOf(dir, "feature/001-x", { runner });
+    expect(found?.commit).toBe(merge);
+    expect(Date.parse(found?.at ?? "")).toBe(Date.parse("2026-02-06T10:00:00Z"));
+    expect(logCalls(calls)).toBe(1);
+    expect(calls.filter((args) => args.includes("log")).every((args) => args.includes("--topo-order") && args.includes("--reverse"))).toBe(true);
+    expect(checksum(dir)).toBe(before);
+  });
+});
+
+describe("the worktree reads start no command the repository configures (spec 041, ISC-216.2)", () => {
+  /**
+   * The worktree fixture with a clean filter `evil` on every path and a process filter `evil.proc` (a dotted driver
+   * name) on `src/`, both defined in the shared `.git/config` and assigned in `.git/info/attributes`, and
+   * `core.fsmonitor` set to a hook. Each command appends to its own marker file in a directory outside the repository.
+   * Every tracked file of the spec worktree gets a later mtime, so a status that hashes content would run the filters.
+   */
+  async function hookedRepo(): Promise<{ repo: PlantedWorktreeRepo; markers: string }> {
+    const repo = await plantWorktreeRepo({ parent: root });
+    const outside = mkdtempSync(join(root, "hooks-"));
+    const markers = join(outside, "markers");
+    mkdirSync(markers);
+    const script = (name: string, body: string): string => {
+      const path = join(outside, `${name}.sh`);
+      writeFileSync(path, `#!/bin/sh\necho ran >> '${join(markers, name)}'\n${body}`);
+      chmodSync(path, 0o755);
+      return path;
+    };
+    git(repo.root, DATES.later, "config", "core.fsmonitor", script("fsmonitor", "exit 0\n"));
+    git(repo.root, DATES.later, "config", "filter.evil.clean", script("clean", "cat\n"));
+    git(repo.root, DATES.later, "config", "filter.evil.proc.process", script("process", "exit 1\n"));
+    mkdirSync(join(repo.root, ".git/info"), { recursive: true });
+    writeFileSync(join(repo.root, ".git/info/attributes"), "* filter=evil\nsrc/* filter=evil.proc\n");
+    const later = new Date("2031-01-01T00:00:00Z");
+    for (const path of [".gitignore", "generate.ts", "src/console.ts"]) utimesSync(join(repo.worktrees.spec, path), later, later);
+    return { repo, markers };
+  }
+
+  test("no repo hooks: opening the page and reading dirty run neither a filter nor the fsmonitor hook, and change nothing", async () => {
+    const { repo, markers } = await hookedRepo();
+    const before = checksum(repo.root);
+    expect((await readWorkspaceInput(repo.root)).readable).toBe(true);
+    expect((await loadDashboard(repo.root, null)).readable).toBe(true);
+    expect(await dirty(repo.worktrees.spec)).toBe(true);
+    expect(await trackedSpecPaths(repo.root, SPEC_FOLDER)).toEqual([]);
+    expect(readdirSync(markers).join(",")).toBe("");
+    expect(checksum(repo.root)).toBe(before);
+  });
+
+  test("no repo hooks: dirty still reads a real change with the drivers off, and false without one", async () => {
+    const { repo, markers } = await hookedRepo();
+    rmSync(join(repo.worktrees.spec, UNCOMMITTED));
+    expect(await dirty(repo.worktrees.spec)).toBe(false);
+    writeFileSync(join(repo.worktrees.spec, "src/console.ts"), "export const runs = (): string[] => ['edited'];\n");
+    expect(await dirty(repo.worktrees.spec)).toBe(true);
+    expect(readdirSync(markers).join(",")).toBe("");
+  });
+
+  test("no repo hooks: dirty reads the driver names with `config -z --get-regexp`, then runs status with each driver and the monitor off", async () => {
+    const { repo } = await hookedRepo();
+    const { runner, calls } = countingRunner();
+    expect(await dirty(repo.worktrees.spec, { runner })).toBe(true);
+    const off = (name: string): string[] => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`];
+    expect(calls).toEqual([
+      ["-C", repo.worktrees.spec, "config", "-z", "--get-regexp", "^filter\\."],
+      ["-C", repo.worktrees.spec, "-c", "core.fsmonitor=false", ...off("evil"), ...off("evil.proc"), "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=all"],
+    ]);
+  });
+
+  test("no repo hooks: a driver name `-c` cannot carry or a failing config read answers null without running status", async () => {
+    const { repo } = await hookedRepo();
+    git(repo.root, DATES.later, "config", "filter.a=b.clean", "true");
+    const { runner, calls } = countingRunner();
+    expect(await dirty(repo.worktrees.spec, { runner })).toBeNull();
+    expect(calls.some((args) => args.includes("status"))).toBe(false);
+    const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" });
+    expect(await dirty(repo.worktrees.spec, { runner: failing })).toBeNull();
   });
 });

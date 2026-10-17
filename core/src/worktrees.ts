@@ -4,8 +4,10 @@
 // this module decides; it never runs git itself (FORMAT.md § Worktrees):
 //
 //   - The first record is the main checkout, the workspace root. It is no spec's worktree and is left out; every other
-//     record becomes one `Worktree`, in the order git prints it, its `path` relative to the root and `/`-separated
-//     (`../repo-013` for one outside it), its `branch` without `refs/heads/` (null when detached).
+//     record becomes one `Worktree`, in the order git prints it, its `path` relative to the root and `/`-separated,
+//     its `branch` without `refs/heads/` (null when detached). Both paths are normalised first (`.` dropped, inner `..`
+//     resolved); a worktree outside the repository, a sibling `../repo-013` or a path whose `..` climbs out, carries
+//     `path: null`, so its location never reaches the model or the browser (spec 041, ISC-216).
 //   - A worktree under `.claude/worktrees/`, where the Agent tool puts one per sub-agent task, is a `builder`: counted
 //     in `builders` and never assigned or read, so its `spec` is null whatever its branch.
 //   - Every other worktree is of kind `spec`. It belongs to the spec its path `.worktrees/NNN-slug` names, else to the
@@ -16,6 +18,8 @@
 //     be the base branch of another spec) and one `worktree-branch-mismatch` warning names the path's spec as its
 //     `subject` and the record's `worktree` line as its `line`.
 //   - `ahead` and `dirty` stay null: the server reads them in each spec worktree, with git, read-only (ISC-175).
+//   - A spec-kind worktree git lists as `prunable` carries `prunable: true` (spec 041, ISC-212); every other worktree,
+//     a builder included, carries no such key, so a listing without one builds what it built before.
 //
 // It also decides where a spec's files are read (ISC-181, ISC-181.1), `specSourceOf`. The server hands it the spec
 // folder, the worktree assigned above (or null) and the paths `git ls-files -z -- specs/NNN-slug` printed in the main
@@ -26,6 +30,16 @@
 //   - Everything else is `main`: no worktree, a builder, a worktree of another spec, an empty answer. A symbolic link
 //     is listed as itself, `specs` or `specs/NNN-slug` without a slash after it, never as a path under the folder, so
 //     an untracked or linked `specs/` keeps `main`, Spectant's own repository included.
+//
+// And it holds the one reading of the worktrees every caller shares (spec 041, ISC-212.1), so dashboard, spec tabs and
+// their writes, library and timeline never disagree on a spec's worktree; the server builds the `WorktreeView` once
+// from the listing and the git facts it read:
+//
+//   - `liveWorktrees` applies the rule "ended": a spec worktree of a spec has ended when its branch is merged into
+//     `main`, its folder is gone, or git lists it as `prunable`. Builders and worktrees of no spec never end here.
+//   - `copyDirFor` names the folder a spec is read from, `<root>/<worktree>/specs/NNN-slug`: only for the spec's first
+//     live spec worktree in git's order (the one the dashboard chip shows), only inside the repository, and only when
+//     `specSourceOf` names `worktree` for it. Otherwise null, and the spec reads from the main checkout.
 //
 // Pure and browser-safe like `planning.ts`: text in, model out, no file system, no git, no Node or Bun API. Malformed
 // lines are skipped, never thrown on: a listing git did not print yields no worktrees rather than an empty page.
@@ -56,45 +70,67 @@ const BRANCH_REF = 'refs/heads/';
 
 const MISMATCH = 'worktree-branch-mismatch' satisfies WarningKind;
 
-/** One record of the listing as git printed it: the absolute path, the branch, and the 1-based `worktree` line. */
+/**
+ * One record of the listing as git printed it: the absolute path, the branch, the 1-based `worktree` line, and whether
+ * git marked it `prunable`.
+ */
 interface PorcelainRecord {
   readonly path: string;
   readonly branch: string | null;
   readonly line: number;
+  readonly prunable: boolean;
 }
 
 /**
  * The records of `git worktree list --porcelain`, the main checkout first. A record starts at its `worktree <path>`
- * line; `branch refs/heads/<name>` sets its branch, and every other line (`HEAD`, `detached`, `locked`, `prunable`,
- * `bare`) changes nothing here.
+ * line; `branch refs/heads/<name>` sets its branch, `prunable` (bare or followed by git's reason) marks it prunable,
+ * and every other line (`HEAD`, `detached`, `locked`, `bare`) changes nothing here.
  */
 function parseRecords(porcelain: string): PorcelainRecord[] {
-  const records: Array<{ path: string; branch: string | null; line: number }> = [];
+  const records: Array<{ path: string; branch: string | null; line: number; prunable: boolean }> = [];
   porcelain.split('\n').forEach((raw, index) => {
     const text = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     if (text.startsWith('worktree ')) {
-      records.push({ path: text.slice('worktree '.length), branch: null, line: index + 1 });
+      records.push({ path: text.slice('worktree '.length), branch: null, line: index + 1, prunable: false });
       return;
     }
     const current = records.at(-1);
-    if (current !== undefined && text.startsWith('branch ')) {
+    if (current === undefined) return;
+    if (text.startsWith('branch ')) {
       const ref = text.slice('branch '.length);
       current.branch = ref.startsWith(BRANCH_REF) ? ref.slice(BRANCH_REF.length) : ref;
+    } else if (text === 'prunable' || text.startsWith('prunable ')) {
+      current.prunable = true;
     }
   });
   return records;
 }
 
-const segments = (path: string): string[] => path.split('/').filter((part) => part !== '' && part !== '.');
+/**
+ * The segments of an absolute, `/`-separated path with `.` dropped and every `..` resolved as text against the segment
+ * before it, as POSIX does: `/srv/repo/a/./b/../c` is `srv`, `repo`, `a`, `c`, and a `..` at the top stays at `/`.
+ */
+function segments(path: string): string[] {
+  const out: string[] = [];
+  for (const part of path.split('/')) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') out.pop();
+    else out.push(part);
+  }
+  return out;
+}
 
-/** `path` relative to `root`, both absolute and `/`-separated: `.worktrees/012-harbor`, `../repo-013`. */
-function relativeTo(root: string, path: string): string {
+/**
+ * `path` relative to `root`, both absolute and `/`-separated, each normalised first (`.` dropped, inner `..` resolved):
+ * `.worktrees/012-harbor` for `/srv/repo/a/../.worktrees/012-harbor`, `.` for the root itself. Null for a path outside
+ * the root, `/srv/repo-013` or `/srv/repo/a/../../b` alike (spec 041, ISC-216): a location outside the repository is
+ * refused, never named.
+ */
+export function relativeTo(root: string, path: string): string | null {
   const from = segments(root);
   const to = segments(path);
-  let common = 0;
-  while (common < from.length && common < to.length && from[common] === to[common]) common += 1;
-  const up = from.slice(common).map(() => '..');
-  return [...up, ...to.slice(common)].join('/') || '.';
+  if (to.length < from.length || from.some((part, index) => to[index] !== part)) return null;
+  return to.slice(from.length).join('/') || '.';
 }
 
 /** The `NNN` a spec folder name like `012-harbor` carries, when it is one of the workspace's spec numbers. */
@@ -140,18 +176,23 @@ export function assignWorktrees(porcelain: string, specs: readonly string[]): Wo
   const diagnostics: Diagnostic[] = [];
   let builders = 0;
   for (const record of others) {
+    // Null outside the repository: such a worktree is no builder (those sit under `.claude/worktrees/`), has no
+    // `.worktrees/` path, and is assigned by its branch alone.
     const path = relativeTo(main.path, record.path);
-    if (path.startsWith(BUILDER_WORKTREES)) {
+    if (path?.startsWith(BUILDER_WORKTREES) === true) {
       builders += 1;
       worktrees.push({ path, branch: record.branch, spec: null, ahead: null, dirty: null, kind: 'builder' });
       continue;
     }
-    const pathSpec = specOfPath(path, numbers);
+    const pathSpec = path === null ? null : specOfPath(path, numbers);
     const branchSpec = specOfBranch(record.branch, numbers);
-    if (pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
+    if (path !== null && pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
       diagnostics.push(mismatch(record, path, pathSpec, branchSpec));
     }
-    worktrees.push({ path, branch: record.branch, spec: pathSpec ?? branchSpec, ahead: null, dirty: null, kind: 'spec' });
+    const spec = pathSpec ?? branchSpec;
+    const base = { path, branch: record.branch, spec, ahead: null, dirty: null, kind: 'spec' } as const;
+    // The key only when git printed `prunable`, so a listing without one builds exactly what it built before.
+    worktrees.push(record.prunable ? { ...base, prunable: true } : base);
   }
   return { worktrees, builders, diagnostics };
 }
@@ -209,4 +250,115 @@ export function specSourceOf({ folder, worktree, lsFiles }: SpecSourceInput): Sp
   const own = worktree !== null && worktree.kind === 'spec' && worktree.spec !== null && worktree.spec === specIdOf(folder);
   const under = `${SPECS}/${folder}/`;
   return own && lsFiles.some((path) => path.startsWith(under)) ? 'worktree' : 'main';
+}
+
+// ─── The worktree view (spec 041, ISC-212.1) ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The git facts `liveWorktrees` decides on, read by the server in each spec worktree; core never asks git. Each list
+ * holds worktree paths as `assignWorktrees` gives them (relative to the root), or branch names without `refs/heads/`.
+ */
+export interface WorktreeFacts {
+  /** The spec branches merged into `main` (`mergedSpecBranches`, ISC-162.1). */
+  readonly merged: readonly string[];
+  /** The worktree paths whose folder still holds its `.git`. */
+  readonly present: readonly string[];
+  /**
+   * The worktree paths where `git status --porcelain` printed anything. A spec worktree listed here does not end by
+   * its merged branch: the uncommitted change is work the merge did not take (ISC-212.2).
+   */
+  readonly dirty: readonly string[];
+}
+
+/** Why a spec worktree has ended: its branch merged into `main`, its folder gone, or git lists it as `prunable`. */
+export type WorktreeEnd = 'merged' | 'removed' | 'prunable';
+
+/** A spec worktree that is no longer the spec's, with the reason. */
+export interface EndedWorktree {
+  readonly worktree: Worktree;
+  readonly reason: WorktreeEnd;
+}
+
+/** The spec worktrees of an assignment split by the rule "ended" (`liveWorktrees`). */
+export interface LiveWorktrees {
+  /** Every worktree that has not ended, in git's order: builders, worktrees of no spec and live spec worktrees. */
+  readonly live: readonly Worktree[];
+  /** The spec worktrees of a spec that have ended, in git's order. */
+  readonly ended: readonly EndedWorktree[];
+}
+
+/**
+ * The one reading of a workspace's worktrees every caller shares (spec 041, ISC-212.1): dashboard, spec tabs and their
+ * three writes, library and timeline. Built by the server from one `git worktree list`, `liveWorktrees` and the git
+ * facts it read; `live` carries `ahead` and `dirty` of each live spec worktree.
+ */
+export interface WorktreeView {
+  /** The listing as `assignWorktrees` assigned it, ended worktrees included. */
+  readonly assignment: WorktreeAssignment;
+  /** The worktrees that have not ended (`liveWorktrees`), with `ahead` and `dirty` read for the spec ones. */
+  readonly live: readonly Worktree[];
+  /** The spec worktrees that have ended, with the reason. */
+  readonly ended: readonly EndedWorktree[];
+  /** The main checkout's branch (`mainBranchOf`); null on a detached HEAD or an empty listing. */
+  readonly mainBranch: string | null;
+  /**
+   * Per spec folder with a live spec worktree, the paths `git ls-files -z -- specs/NNN-slug` printed in the main
+   * checkout (`SpecSourceInput.lsFiles`); a folder without an entry reads as untracked.
+   */
+  readonly tracked: Readonly<Record<string, readonly string[]>>;
+}
+
+/**
+ * Splits an assignment by the rule "ended" (FORMAT.md § Worktrees): a spec worktree of a spec has ended when its
+ * branch is merged into `main`, its folder is gone, or git lists it as `prunable`. When several apply, the reason is
+ * the first of `merged`, `prunable`, `removed`: a merge is the strongest fact, and `prunable` is git's own word for a
+ * folder or gitdir that is gone. A merge does not end a worktree whose path is in `facts.dirty`: its uncommitted change
+ * is work the merge did not take, so it stays live until the change is committed or dropped, while `prunable` and
+ * `removed` still end it (ISC-212.2). Builders and worktrees of no spec never end here; they are not read either way.
+ */
+export function liveWorktrees(assignment: WorktreeAssignment, facts: WorktreeFacts): LiveWorktrees {
+  const merged = new Set(facts.merged);
+  const present = new Set(facts.present);
+  const dirty = new Set(facts.dirty);
+  const live: Worktree[] = [];
+  const ended: EndedWorktree[] = [];
+  for (const worktree of assignment.worktrees) {
+    const reason = worktree.kind !== 'spec' || worktree.spec === null ? null : endOf(worktree, merged, present, dirty);
+    if (reason === null) live.push(worktree);
+    else ended.push({ worktree, reason });
+  }
+  return { live, ended };
+}
+
+function endOf(
+  worktree: Worktree,
+  merged: ReadonlySet<string>,
+  present: ReadonlySet<string>,
+  dirty: ReadonlySet<string>,
+): WorktreeEnd | null {
+  if (worktree.branch !== null && merged.has(worktree.branch) && (worktree.path === null || !dirty.has(worktree.path))) return 'merged';
+  if (worktree.prunable === true) return 'prunable';
+  // A worktree outside the repository (`path` null) is never looked at; only git's `prunable` says it is gone.
+  if (worktree.path !== null && !present.has(worktree.path)) return 'removed';
+  return null;
+}
+
+/** The parts of a spec reference `copyDirFor` reads: its number and its folder name. */
+export interface SpecFolderRef {
+  /** `NNN`. */
+  readonly id: string;
+  /** `NNN-slug`. */
+  readonly slug: string;
+}
+
+/**
+ * The absolute folder of the worktree copy a spec is read from, `<root>/<worktree>/specs/NNN-slug`, when `specSourceOf`
+ * names `worktree` for the spec's first live spec worktree inside the repository; null when the spec reads from the
+ * main checkout. `root` is the absolute, `/`-separated workspace root; the path is joined as text, nothing is looked at.
+ */
+export function copyDirFor(root: string, ref: SpecFolderRef, view: WorktreeView): string | null {
+  const worktree = view.live.find((w) => w.kind === 'spec' && w.spec === ref.id) ?? null;
+  if (worktree?.path == null || worktree.path === '..' || worktree.path.startsWith('../')) return null;
+  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
+  return source === 'worktree' ? [root.replace(/\/+$/u, ''), worktree.path, SPECS, ref.slug].join('/') : null;
 }

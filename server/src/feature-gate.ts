@@ -7,16 +7,19 @@
  *    core (`featureCodeReviewTargets`): the active specs whose main feature is `F<n>` and whose live claims are all
  *    closed in the master.
  * 2. Refused (exit 1, nothing written) for an unknown feature, for a block where any active spec of that main feature
- *    still holds an open claim (each named with its claims), for an empty target list, and where the worktree tree id
- *    cannot be computed (not a repository root, or git failed): a mark without a tree could never read fresh.
+ *    still holds an open claim (each named with its claims), for an empty target list, and where the tree id of a
+ *    target's checkout cannot be computed (not a git checkout, or git failed): a mark without a tree could never read
+ *    fresh.
  * 3. Without `--yes` it prints what it would write and exits 0.
- * 4. With `--yes`, in each target folder: one event line appended to `events.jsonl` (`<stage> → close`, `from` the
- *    dashboard row's stage before the write, normally `code-review`; no line for a spec that already stands in
- *    `close`), then the tree id is computed over the worktree as it now is, then `.gates/code-reviewed.json` is written
- *    with `scope: F<n>`, that tree, `HEAD` and the branch, `code: 0`, `security: 0` (the clean state the skill records
- *    after its fixes) and the viewer's `u:` id or `VIEWER_ACTOR_FALLBACK` as the actor. Events come first so the tree
- *    the mark names includes them: the mark reads fresh as long as `.gates/` is outside the tree (ignored or
- *    excluded), as for every per-spec mark.
+ * 4. With `--yes`, in each target's read source (spec 041, ISC-211; `readSpecSource` over one `readWorktreeView`: the
+ *    copy in the spec's live worktree when git tracks `specs/` there, else the main checkout's folder): one event line
+ *    appended to `events.jsonl` (`<stage> → close`, `from` the dashboard row's stage before the write, normally
+ *    `code-review`; no line for a spec that already stands in `close`), then the tree id is computed over the target's
+ *    checkout as it now is (its live spec worktree inside the repository, else the main checkout, ISC-176), then
+ *    `.gates/code-reviewed.json` is written with `scope: F<n>`, that tree, that checkout's `HEAD` and branch, `code: 0`,
+ *    `security: 0` (the clean state the skill records after its fixes) and the viewer's `u:` id or
+ *    `VIEWER_ACTOR_FALLBACK` as the actor. Events come first so the tree the mark names includes them: the mark reads
+ *    fresh as long as `.gates/` is outside the tree (ignored or excluded), as for every per-spec mark.
  *
  * Every write goes through `writes.ts`' in-place primitives (open, write, fsync, close; `.gates/` the one directory
  * created); nothing else in the repository changes, and git runs only the reads `git.ts` and the loader already run.
@@ -30,7 +33,7 @@ import { buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
 import type { Stage } from "../../core/src/stage.ts";
 import { commitsFor } from "./git.ts";
-import { readIfExists, readWorkspaceInput, worktreeTreeId } from "./workspace-loader.ts";
+import { insideRepository, readIfExists, readSpecSource, readWorkspaceInput, readWorktreeView, worktreeTreeId } from "./workspace-loader.ts";
 import { EVENTS_PATH, WRITE_PATHS, eventAppendBytes, writeActorOf } from "./writes.contract.ts";
 import { appendInPlace, ensureGatesDir, writeInPlace } from "./writes.ts";
 
@@ -53,6 +56,20 @@ export function featureGateEventCommand(feature: string): string {
 export interface FeatureGateTarget {
   /** `NNN-slug`. */
   readonly folder: string;
+  /**
+   * Where the mark goes (spec 041, ISC-211): `worktree`, the copy in the spec's live worktree when git tracks `specs/`
+   * there, else `main`, the main checkout's folder: the spec's read source, as the app reads it (`readSpecSource`).
+   */
+  readonly source: "main" | "worktree";
+  /**
+   * The checkout the mark's tree id, `HEAD` and branch are read in, relative to the root: the spec's live worktree inside
+   * the repository (`.worktrees/NNN-slug`), else `.`, the main checkout (ISC-176).
+   */
+  readonly checkout: string;
+  /** The tree id the mark carries; null on a dry run, since it is computed after the event lines are appended. */
+  readonly tree: string | null;
+  readonly head: string | null;
+  readonly branch: string | null;
   /** The dashboard row's stage before the write. */
   readonly from: Stage;
   /** The event appended, null when the spec already stood in `close`. */
@@ -67,10 +84,6 @@ export type FeatureGateResult =
       readonly written: boolean;
       readonly feature: string;
       readonly actor: string;
-      readonly head: string | null;
-      readonly branch: string | null;
-      /** The tree id the marks carry; null on a dry run, since it is computed after the event lines are appended. */
-      readonly tree: string | null;
       readonly targets: readonly FeatureGateTarget[];
     };
 
@@ -121,38 +134,61 @@ export async function codeReviewFeature(root: string, feature: string, options: 
   }
   const folders = featureCodeReviewTargets(planning, feature);
   if (folders.length === 0) return refuse(`${feature} has no spec to mark: no active spec of that main feature holds a live claim`);
-  if ((await worktreeTreeId(root)) === null) {
-    return refuse("the worktree tree id cannot be computed (not a git repository root, or git failed); a mark without it never reads fresh");
+  // Per target its read source and its checkout, from the one worktree view the app reads (spec 041, ISC-211).
+  const worktrees = await readWorktreeView(root);
+  const refs = new Map(listSpecs(root).filter((ref) => !ref.archived).map((ref) => [ref.slug, ref]));
+  const places = new Map<string, { dir: string; source: "main" | "worktree"; checkout: string }>();
+  for (const folder of folders) {
+    const ref = refs.get(folder);
+    if (ref === undefined) return refuse(`${folder} is no active spec folder`);
+    const { dir } = await readSpecSource(root, ref, worktrees);
+    const own = worktrees.view.live.find((w) => w.kind === "spec" && w.spec === ref.id);
+    const checkout = own?.path == null || !insideRepository(own.path) ? "." : own.path;
+    places.set(folder, { dir, source: dir === ref.dir ? "main" : "worktree", checkout });
+  }
+  const placeOf = (folder: string): { dir: string; source: "main" | "worktree"; checkout: string } =>
+    places.get(folder) ?? { dir: join(root, "specs", folder), source: "main", checkout: "." };
+  for (const checkout of new Set([...places.values()].map((p) => p.checkout))) {
+    if ((await worktreeTreeId(join(root, checkout))) === null) {
+      return refuse(`the worktree tree id cannot be computed in ${checkout} (not a git checkout, or git failed); a mark without it never reads fresh`);
+    }
   }
 
   const now = (options.now ?? new Date()).toISOString();
   const actor = writeActorOf(reading.viewer);
-  const head = (await commitsFor(root, "specs", { limit: 1 })).head;
-  const branch = branchOf(root);
   const stages = new Map(buildDashboard({ ...input, services: [] }).specs.map((row) => [row.slug, row.stage]));
-  const targets = folders.map((folder): FeatureGateTarget => {
+  const targets: FeatureGateTarget[] = [];
+  for (const folder of folders) {
+    const { source, checkout } = placeOf(folder);
+    const at = join(root, checkout);
     const from = stages.get(folder) ?? "code-review";
     const event = from === FEATURE_GATE_TO ? null : { ts: now, from, to: FEATURE_GATE_TO, command: featureGateEventCommand(feature), actor };
-    return { folder, from, event };
-  });
-  if (!options.yes) return { ok: true, written: false, feature, actor, head, branch, tree: null, targets };
+    const head = (await commitsFor(at, "specs", { limit: 1 })).head;
+    targets.push({ folder, source, checkout, tree: null, head, branch: branchOf(at), from, event });
+  }
+  if (!options.yes) return { ok: true, written: false, feature, actor, targets };
 
-  const dirs = new Map(listSpecs(root).filter((ref) => !ref.archived).map((ref) => [ref.slug, ref.dir]));
-  const dirOf = (folder: string): string => dirs.get(folder) ?? join(root, "specs", folder);
   for (const target of targets) {
     if (target.event === null) continue;
-    const events = join(dirOf(target.folder), EVENTS_PATH);
+    const events = join(placeOf(target.folder).dir, EVENTS_PATH);
     appendInPlace(events, eventAppendBytes(readIfExists(events), target.event));
   }
-  const tree = await worktreeTreeId(root);
-  if (tree === null) return refuse("the event lines are appended, but the worktree tree id could not be computed afterwards; no mark was written");
-  const text = codeReviewedMarkText({ at: now, actor, scope: feature, tree, head, branch, code: 0, security: 0 });
-  for (const target of targets) {
-    const dir = dirOf(target.folder);
+  // The trees after every event line is in, one per checkout, so each mark names the tree its events are part of.
+  const trees = new Map<string, string>();
+  for (const checkout of new Set(targets.map((t) => t.checkout))) {
+    const tree = await worktreeTreeId(join(root, checkout));
+    if (tree === null) return refuse(`the event lines are appended, but the tree id of ${checkout} could not be computed afterwards; no mark was written`);
+    trees.set(checkout, tree);
+  }
+  const written = targets.map((target): FeatureGateTarget => {
+    const tree = trees.get(target.checkout) ?? "";
+    const text = codeReviewedMarkText({ at: now, actor, scope: feature, tree, head: target.head, branch: target.branch, code: 0, security: 0 });
+    const { dir } = placeOf(target.folder);
     ensureGatesDir(dir);
     writeInPlace(join(dir, FILE_KINDS.gateCodeReviewed.path), text);
-  }
-  return { ok: true, written: true, feature, actor, head, branch, tree, targets };
+    return { ...target, tree };
+  });
+  return { ok: true, written: true, feature, actor, targets: written };
 }
 
 /** `spectant gate code-reviewed F<n>`: prints the plan or what was written; 0 on success and on a dry run, 1 on a refusal. */
@@ -163,11 +199,12 @@ export async function featureGateCommand(root: string, feature: string, yes: boo
     return 1;
   }
   const verb = result.written ? "wrote" : "would write";
-  const tree = result.tree ?? "the worktree's, computed after the event lines";
-  console.log(`gate code-reviewed ${feature} ${verb} the mark (scope ${feature}, tree ${tree}, head ${result.head ?? "none"}, actor ${result.actor}):`);
+  console.log(`gate code-reviewed ${feature} ${verb} the mark (scope ${feature}, actor ${result.actor}):`);
   for (const t of result.targets) {
     const move = t.event === null ? "already close, no event" : `${t.from} → ${FEATURE_GATE_TO} in specs/${t.folder}/${EVENTS_PATH}`;
-    console.log(`  ${featureMarkPath(t.folder)} · ${move}`);
+    const tree = t.tree ?? `${t.checkout}'s, computed after the event lines`;
+    const place = t.source === "worktree" ? `${t.checkout}/${featureMarkPath(t.folder)}` : featureMarkPath(t.folder);
+    console.log(`  ${place} · ${move} · source ${t.source}, tree ${tree}, head ${t.head ?? "none"}`);
   }
   if (!result.written) console.log("run it again with --yes to write");
   return 0;

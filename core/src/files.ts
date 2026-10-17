@@ -476,7 +476,10 @@ export interface SpecGates {
 }
 
 /**
- * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. `worktree-branch-mismatch`: the
+ * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. It carries every
+ * `locks-activity-*` code, `locks-activity-unassigned` included: a run line without a claim that names neither a spec
+ * session `a:<kind>:spec-NNN/…` nor a spec worktree `.worktrees/NNN-slug` and so counts for no spec (spec 041,
+ * ISC-213). `worktree-branch-mismatch`: the
  * path and the branch of the spec's worktree name two different specs, and the path won (spec 027, ISC-174.1).
  * `activity-event-unknown`: `.spectant/activity.jsonl` holds an event that is neither `claim`, `release` nor a
  * `RunEvent`; the file is read on (ISC-179). `spec-overlap`: two open specs change the same file by their plan or task
@@ -644,8 +647,12 @@ export type WorktreeKind = 'spec' | 'builder';
  * in a spec worktree only, read-only, without a fetch and with `GIT_OPTIONAL_LOCKS=0` (ISC-175).
  */
 export interface Worktree {
-  /** Relative to the workspace root, `/`-separated, e.g. `.worktrees/027-worktree-live-view`; never absolute. */
-  readonly path: string;
+  /**
+   * Relative to the workspace root, `/`-separated, e.g. `.worktrees/027-worktree-live-view`; never absolute. Null for a
+   * worktree outside the repository (spec 041, ISC-216): its location never reaches the model, and the browser shows no
+   * path for it; such a worktree is assigned by its branch alone and never read as a folder.
+   */
+  readonly path: string | null;
   /** The checked-out branch without `refs/heads/`, e.g. `feature/027-worktree-live-view`; null on a detached HEAD. */
   readonly branch: string | null;
   /** The `NNN` of the spec the worktree belongs to; null when neither its path nor its branch names one. */
@@ -658,6 +665,12 @@ export interface Worktree {
   /** True when `git status --porcelain` in the worktree prints anything; null when not read: a builder. */
   readonly dirty: boolean | null;
   readonly kind: WorktreeKind;
+  /**
+   * True when git lists the worktree as `prunable`: its folder or its gitdir is gone. Such a worktree has ended
+   * (spec 041, ISC-212). Set on a `spec` worktree only, and only when true; absent reads as false, so a listing without
+   * one stays byte-identical.
+   */
+  readonly prunable?: boolean;
 }
 
 /**

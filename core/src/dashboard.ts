@@ -460,12 +460,6 @@ interface SpecContext {
   readonly specEdges: ReadonlyMap<string, readonly SpecEdge[]>;
 }
 
-/**
- * Which copy of a spec folder a row is built from: `own`, the files the server read (the worktree's copy when the
- * source is `worktree`), or `main`, the main checkout's copy, built only for its stage and progress (spec 027, T12).
- */
-type RowCopy = 'own' | 'main';
-
 /** Whether an active spec holds a feature's code review back (row 7): not `phase: complete`, at least one open claim. */
 function holdsFeatureOpen(phase: string | null, doc: ClaimsDocument): boolean {
   return phase !== 'complete' && doc.claims.some((c) => !c.checked && !c.dropped);
@@ -491,33 +485,41 @@ function lockWarning(d: LockDiagnostic): SpecWarning {
  * names both specs and the branch, and `ref` the worktree's path; the chip turns to the warning tone on it.
  */
 function worktreeWarning(d: Diagnostic, worktree: Worktree | null): SpecWarning {
-  return { kind: 'worktree-branch-mismatch', text: d.message, ...(worktree === null ? {} : { ref: worktree.path }) };
+  return { kind: 'worktree-branch-mismatch', text: d.message, ...(worktree?.path == null ? {} : { ref: worktree.path }) };
 }
 
-/** The main checkout's stage and progress of a spec read from its worktree: its own row, with the workspace's tree. */
+/**
+ * The main checkout's stage and progress of a spec read from its worktree (spec 027, ISC-181; spec 041, ISC-218): the
+ * stage basis of its files with the main checkout's tree, without building a row. Its findings are not listed: the page
+ * and the row show the worktree copy, and its files are the ones read.
+ */
 function mainCopyOf(files: SpecFiles, ctx: SpecContext): MainCopy | null {
-  // The main copy's findings are not listed: the page and the row show the worktree copy, and its files are the ones read.
-  const mainRow = specRow(files, ctx, [], 'main');
-  return mainRow === null ? null : { stage: mainRow.stage, progress: mainRow.progress };
+  const spec = files.texts.spec;
+  if (spec === undefined) return null;
+  const basis = stageBasisOf(files, spec, specIdOf(files.folder) ?? files.folder, ctx, ctx.worktreeTree);
+  return { stage: nextCommandWithReason(basis.input).stage, progress: basis.doc.counted };
 }
 
-function heldElsewhere(ctx: SpecContext, folder: string): Set<string> {
-  const held = new Set<string>();
-  for (const [other, ids] of ctx.idsByFolder) if (other !== folder) ids.forEach((id) => held.add(id));
-  return held;
+/** What a spec folder's stage is derived from, with the parsed pieces its row also shows. */
+interface StageBasis {
+  readonly fm: ReturnType<typeof parseFrontmatter>;
+  readonly doc: ReturnType<typeof parseClaims>;
+  readonly plan: string | null;
+  readonly reviewedMark: ReturnType<typeof reviewedGate>['reading'];
+  readonly reviewed: ReturnType<typeof reviewedGate>['check'];
+  readonly partition: ReturnType<typeof partitionClaims>;
+  readonly takeable: ReturnType<typeof partitionClaims>['takeable'];
+  readonly codeMark: ReturnType<typeof readMark>;
+  readonly codeReviewed: ReturnType<typeof gateState>;
+  readonly events: ReturnType<typeof parseEvents>['events'];
+  readonly input: StageInput;
 }
 
-/** One active spec's row, or null (with a diagnostic) for a folder without spec.md. */
-function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], copy: RowCopy = 'own'): DashboardSpecRow | null {
-  const note = (kind: FileKind, list: readonly Diagnostic[]) => list.forEach((diagnostic) => diagnostics.push({ file: fileOf('specs', f.folder, kind), diagnostic }));
-  const spec = f.texts.spec;
-  if (spec === undefined) {
-    note('spec', [{ severity: 'error', code: 'spec-missing', message: 'The folder has no spec.md, so it is not a spec and gets no row.' }]);
-    return null;
-  }
-  const id = specIdOf(f.folder) ?? f.folder;
-  // How the server read the spec (spec 027, T12); the main copy is the main checkout's, so it takes none of it.
-  const read: SpecRead = copy === 'own' ? (ctx.perSpec[f.folder] ?? {}) : {};
+/**
+ * The stage input of one spec folder (ISC-218): the one derivation the row and the main copy share, so both read the
+ * same stage from the same files. `tree` is the worktree tree the code-reviewed mark is checked against.
+ */
+function stageBasisOf(f: SpecFiles, spec: string, id: string, ctx: SpecContext, tree: string | null): StageBasis {
   const plan = f.texts.plan ?? null;
   const fm = parseFrontmatter(spec);
   const doc = parseClaims(spec);
@@ -527,17 +529,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
   // A claim an open spec edge holds is not takeable: it counts where the Claims tab shows it, blocked (ISC-162.2, ISC-72).
   const edgeHeld = specEdgeHolds(partition.takeable, ctx.specEdges.get(id) ?? []);
   const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
-  const ids = new Set(doc.claims.map((c) => c.id));
-  const taken = heldLocks(ctx.locks, ids).map((l): DashboardTakenClaim => ({ id: l.claim, session: l.session, since: l.since, source: l.source }));
-  // The gate's own diagnostic is not a file warning: the row's stage and reason already name the mark (`review`).
-  const partitionWarnings = partition.diagnostics.filter((d) => d.code !== 'status-review-gate');
-  note('spec', [...fm.diagnostics, ...doc.diagnostics, ...partitionWarnings]);
-
   const codeMark = readMark('code-reviewed', f.texts.gateCodeReviewed);
-  note('gateReviewed', reviewedMark?.diagnostics ?? []);
-  note('gateCodeReviewed', codeMark?.diagnostics ?? []);
-  // The tree of the spec's own worktree when the server computed one (ISC-176), else the main checkout's.
-  const tree = read.tree === undefined ? ctx.worktreeTree : read.tree;
   const codeReviewed = gateState('code-reviewed', codeMark?.mark ?? null, { worktreeTree: tree });
 
   const { specType: type, phase } = fm.data;
@@ -548,7 +540,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
   // Row 7 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
   const mainFeature = mainFeatureOf(fm.data.isaFeature);
   const featureSiblingsOpen = mainFeature === null ? [] : (ctx.openByFeature.get(mainFeature) ?? []).filter((other) => other !== id);
-  const stageInput: StageInput = {
+  const input: StageInput = {
     number: id,
     type,
     phase,
@@ -573,6 +565,39 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
     waits: ctx.waits.get(id) ?? null,
     edgeHeld: [...new Set([...edgeHeld.values()].flat())].sort(),
   };
+  return { fm, doc, plan, reviewedMark, reviewed, partition, takeable, codeMark, codeReviewed, events, input };
+}
+
+function heldElsewhere(ctx: SpecContext, folder: string): Set<string> {
+  const held = new Set<string>();
+  for (const [other, ids] of ctx.idsByFolder) if (other !== folder) ids.forEach((id) => held.add(id));
+  return held;
+}
+
+/** One active spec's row, or null (with a diagnostic) for a folder without spec.md. */
+function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]): DashboardSpecRow | null {
+  const note = (kind: FileKind, list: readonly Diagnostic[]) => list.forEach((diagnostic) => diagnostics.push({ file: fileOf('specs', f.folder, kind), diagnostic }));
+  const spec = f.texts.spec;
+  if (spec === undefined) {
+    note('spec', [{ severity: 'error', code: 'spec-missing', message: 'The folder has no spec.md, so it is not a spec and gets no row.' }]);
+    return null;
+  }
+  const id = specIdOf(f.folder) ?? f.folder;
+  // How the server read the spec (spec 027, T12).
+  const read: SpecRead = ctx.perSpec[f.folder] ?? {};
+  // The tree of the spec's own worktree when the server computed one (ISC-176), else the main checkout's.
+  const tree = read.tree === undefined ? ctx.worktreeTree : read.tree;
+  const { fm, doc, plan, reviewedMark, reviewed, partition, takeable, codeMark, codeReviewed, events, input: stageInput } = stageBasisOf(f, spec, id, ctx, tree);
+  const ids = new Set(doc.claims.map((c) => c.id));
+  const taken = heldLocks(ctx.locks, ids).map((l): DashboardTakenClaim => ({ id: l.claim, session: l.session, since: l.since, source: l.source }));
+  // The gate's own diagnostic is not a file warning: the row's stage and reason already name the mark (`review`).
+  const partitionWarnings = partition.diagnostics.filter((d) => d.code !== 'status-review-gate');
+  note('spec', [...fm.diagnostics, ...doc.diagnostics, ...partitionWarnings]);
+
+  note('gateReviewed', reviewedMark?.diagnostics ?? []);
+  note('gateCodeReviewed', codeMark?.diagnostics ?? []);
+
+  const { specType: type, phase } = fm.data;
   const next = nextCommandWithReason(stageInput);
   // A `stage:` that does not apply is one warning on spec.md, at the key's line (T48, ISC-120.1).
   const mismatch = stageMismatchOf(stageInput, fm.keyLines.stage);
@@ -614,11 +639,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
       if (d.claim === undefined || ids.has(d.claim)) warnings.push(lockWarning(d));
     }
   }
-  // The worktree (spec 027, T12): a git fact, so it holds whatever the phase, like drift. The main copy has none.
-  const worktree = copy === 'own' ? (ctx.worktrees.find((w) => w.kind === 'spec' && w.spec === id) ?? null) : null;
-  if (copy === 'own') {
-    for (const d of ctx.worktreeDiagnostics) if (d.subject === id) warnings.push(worktreeWarning(d, worktree));
-  }
+  // The worktree (spec 027, T12): a git fact, so it holds whatever the phase, like drift.
+  const worktree = ctx.worktrees.find((w) => w.kind === 'spec' && w.spec === id) ?? null;
+  for (const d of ctx.worktreeDiagnostics) if (d.subject === id) warnings.push(worktreeWarning(d, worktree));
   const source: SpecSource = read.source ?? 'main';
   const main = source === 'worktree' && read.main !== undefined ? mainCopyOf(read.main, ctx) : null;
 

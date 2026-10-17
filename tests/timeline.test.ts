@@ -24,7 +24,8 @@ import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { readSpecFiles } from "../server/src/workspace-loader.ts";
+import { readSpecFiles, readWorkspaceInput, readWorktreeView } from "../server/src/workspace-loader.ts";
+import { DATES, IDENTITY, type PlantedWorktreeRepo, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, type WorktreeRepoOptions, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HARBOR = join(FIXTURES, "harbor");
@@ -214,5 +215,120 @@ describe("timeline route (T50, ISC-36)", () => {
     expect(fresh.status).toBe(304);
     expect(await fresh.text()).toBe("");
     expect(fresh.headers.get("etag")).toBe(recordedTag);
+  });
+});
+
+// The worktree entry of the timeline against the dashboard model (spec 041, ISC-214), over the git fixture of spec 027
+// (`tests/fixtures/worktree-repo.ts`). The dashboard shows a spec's worktree as a chip while it is live and drops it once
+// it has ended (`liveWorktrees`); the timeline names the end as one derived `worktree` entry. The comparable facts: a
+// chip and an entry never stand together, an ended worktree without a chip has exactly one entry, and where the shared
+// view still lists the ended worktree, the entry's state (`merged`, else `removed`) and path are the view's.
+
+/** The fixture's hermetic git environment with author and committer dated `date`, so a test may date a commit. */
+function fixtureGitEnv(repo: PlantedWorktreeRepo, date: string): Record<string, string> {
+  return {
+    PATH: process.env.PATH ?? "",
+    HOME: repo.base,
+    LC_ALL: "C",
+    GIT_CONFIG_GLOBAL: join(repo.base, "gitconfig"),
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_MERGE_AUTOEDIT: "no",
+    GIT_AUTHOR_NAME: IDENTITY.name,
+    GIT_AUTHOR_EMAIL: IDENTITY.email,
+    GIT_COMMITTER_NAME: IDENTITY.name,
+    GIT_COMMITTER_EMAIL: IDENTITY.email,
+    GIT_AUTHOR_DATE: date,
+    GIT_COMMITTER_DATE: date,
+  };
+}
+
+/** Runs git in `cwd` dated `date`; throws on a non-zero exit, so a fixture step never fails silently. */
+function gitAt(repo: PlantedWorktreeRepo, date: string, cwd: string, ...args: string[]): string {
+  const run = Bun.spawnSync(["git", ...args], { cwd, env: fixtureGitEnv(repo, date), stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+  if (run.exitCode !== 0) throw new Error(`git ${args.join(" ")} exited ${run.exitCode}: ${run.stderr.toString()}`);
+  return run.stdout.toString().trim();
+}
+
+/** The two ends the timeline names. */
+type EndState = "merged" | "removed";
+
+/** What the dashboard model and the timeline route say about spec 002's worktree in `repo`. */
+async function worktreeReadings(repo: PlantedWorktreeRepo): Promise<{
+  chip: Array<string | null>;
+  ended: Array<{ state: EndState; path: string | null }>;
+  entries: TimelineEntry[];
+}> {
+  const reading = await readWorkspaceInput(repo.root);
+  if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+  const chip = (reading.input.worktrees?.worktrees ?? []).filter((w) => w.kind === "spec" && w.spec === SPEC_ID).map((w) => w.path);
+  const { view } = await readWorktreeView(repo.root);
+  const ended = view.ended
+    .filter((e) => e.worktree.kind === "spec" && e.worktree.spec === SPEC_ID)
+    .map((e) => ({ state: e.reason === "merged" ? ("merged" as const) : ("removed" as const), path: e.worktree.path }));
+  const registry = openRegistry(mkdtempSync(join(root, "data-")));
+  registries.push(registry);
+  registry.add(repo.root);
+  const res = await timeline(specRoutesApi({ registry, lifeos: LIFEOS_ABSENT }), "harbor", SPEC_ID);
+  const entries = (await body(res)).entries.filter((e) => e.kind === "worktree");
+  return { chip, ended, entries };
+}
+
+describe("ISC-214 worktree: the timeline's worktree entry is the dashboard model's, and merged is dated topologically", () => {
+  const cases: Array<{ name: string; options: WorktreeRepoOptions; prepare?: (repo: PlantedWorktreeRepo) => void; state: EndState | null }> = [
+    { name: "open with its worktree", options: {}, state: null },
+    { name: "merged, the worktree present and clean", options: { merged: true }, prepare: (repo) => rmSync(join(repo.worktrees.spec, UNCOMMITTED)), state: "merged" },
+    // A merged worktree still holding uncommitted work is the spec's (ISC-212.2): chip, no entry.
+    { name: "merged, the worktree present with uncommitted work", options: { merged: true }, state: null },
+    { name: "merged, the worktree removed", options: { merged: true, removeWorktree: true }, state: "merged" },
+    { name: "the worktree removed, the branch open", options: { removeWorktree: true }, state: "removed" },
+    { name: "the worktree folder deleted (prunable)", options: {}, prepare: (repo) => rmSync(repo.worktrees.spec, { recursive: true, force: true }), state: "removed" },
+  ];
+  for (const c of cases) {
+    test(`worktree agreement, ${c.name}: chip and entry never together, the entry is the view's ended worktree`, async () => {
+      const repo = await plantWorktreeRepo({ ...c.options, parent: root });
+      c.prepare?.(repo);
+      const { chip, ended, entries } = await worktreeReadings(repo);
+      // The dashboard's chip stands exactly while the timeline names no end.
+      expect(chip.length > 0).toBe(entries.length === 0);
+      expect(entries.map((e) => e.worktree?.state ?? null)).toEqual(c.state === null ? [] : [c.state]);
+      if (c.state === null) expect(chip).toEqual([SPEC_WORKTREE]);
+      // Where the shared view still lists the ended worktree, the timeline names it with the view's state and path.
+      if (ended.length > 0) expect(entries.map((e) => ({ state: e.worktree?.state, path: e.worktree?.path }))).toEqual(ended);
+    });
+  }
+
+  test("worktree merged through two merge commits in deviating date order → dated by the topologically first", async () => {
+    // main's first-parent line: M1 (merges feature/002-web-console, dated DATES.merge) → M2 (merges topic/other, its
+    // committer clock a day behind M1's) → M3 (merges topic/side, the newest). topic/other and topic/side both start at
+    // M1. All three are merge commits on the line with the branch tip as ancestor; M1 is the oldest in topology and the
+    // one that brought the spec in (FORMAT.md § Worktrees). A walk in date order reaches M1 through topic/side before
+    // M2 and lists M2 behind M1, so the last hit in date order is M2; the first in `--topo-order --reverse` is M1.
+    const repo = await plantWorktreeRepo({ merged: true, parent: root });
+    rmSync(join(repo.worktrees.spec, UNCOMMITTED)); // clean, so the merged worktree has ended (ISC-212.2)
+    const skewed = "2026-03-03T12:00:00Z";
+    const newest = "2026-03-05T11:00:00Z";
+    const branchOff = (name: string, file: string): void => {
+      gitAt(repo, DATES.later, repo.root, "switch", "-q", "-c", name, "main");
+      writeFileSync(join(repo.root, "src", file), `// ${name}: one change after the spec's merge.\nexport const changed = true;\n`);
+      gitAt(repo, DATES.later, repo.root, "add", "--", `src/${file}`);
+      gitAt(repo, DATES.later, repo.root, "commit", "-q", "-m", `${name}: one change`);
+      gitAt(repo, DATES.later, repo.root, "switch", "-q", "main");
+    };
+    branchOff("topic/other", "other.ts");
+    branchOff("topic/side", "side.ts");
+    gitAt(repo, skewed, repo.root, "merge", "-q", "--no-ff", "-m", "Merge branch 'topic/other'", "topic/other");
+    gitAt(repo, newest, repo.root, "merge", "-q", "--no-ff", "-m", "Merge branch 'topic/side'", "topic/side");
+    // The skew is real: M2 is a child of M1 and yet dated before it.
+    expect(gitAt(repo, newest, repo.root, "log", "-1", "--format=%cI", "main~1").startsWith("2026-03-03T12:00:00")).toBe(true);
+    expect(gitAt(repo, newest, repo.root, "rev-parse", "main~2")).toBe(repo.commits.merge ?? "");
+
+    const { chip, entries } = await worktreeReadings(repo);
+    expect(chip).toEqual([]);
+    expect(entries).toHaveLength(1);
+    const [entry] = entries;
+    expect(entry?.worktree?.state).toBe("merged");
+    expect(entry?.worktree?.commit).toBe(repo.commits.merge?.slice(0, 7) ?? null);
+    expect(Date.parse(entry?.ts ?? "")).toBe(Date.parse(DATES.merge));
   });
 });
