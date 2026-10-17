@@ -1659,6 +1659,31 @@
       "term": "Chore",
       "common": "Chore",
       "definition": "Der siebte Spec-Typ: nur `spec.md`, Review, dann Build, dann Done, ohne Code-Review."
+    },
+    "open": {
+      "term": "offen",
+      "common": "Zu erledigen",
+      "definition": "Der Zustand eines Elements, in dem der nächste Befehl beim Nutzer liegt, mit seinem Grund."
+    },
+    "waiting": {
+      "term": "wartet",
+      "common": "Blockiert",
+      "definition": "Der Zustand eines Elements, das an einem anderen Element hängt, angegeben als das, worauf es wartet."
+    },
+    "running": {
+      "term": "läuft",
+      "common": "In Arbeit",
+      "definition": "Der Zustand, solange ein Lauf auf dem Element offen und jünger als das Abbruchalter ist; der Lauf sperrt das Element."
+    },
+    "aborted": {
+      "term": "abgebrochen",
+      "common": "Ins Stocken geraten",
+      "definition": "Der Zustand eines Laufs ohne Ende, der älter als das Abbruchalter ist; er sperrt nichts."
+    },
+    "done": {
+      "term": "fertig",
+      "common": "Erledigt",
+      "definition": "Der Zustand eines abgeschlossenen Elements; ein verworfener Claim oder ein gestrichener Task ist fertig, mit diesem Detail."
     }
   },
   "planning": {

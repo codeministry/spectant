@@ -22,7 +22,8 @@ The words this contract uses, one row per term: the Spectant term, the term an i
 the German term and a one-sentence definition. Spectant keeps its own words; the common term is a pointer, never a
 rename. `core/src/glossary.ts` exports the same rows as `GLOSSARY` through the browser-safe barrel, and
 `core/tests/glossary.test.ts` compares each row with its line in this table verbatim, so neither side can change alone.
-The app's Help page will render them from that export (a later task of the web lane).
+The app's Help page will render them from that export (a later task of the web lane). The last five rows are the
+item states of § The state table (spec 040).
 
 | Spectant term | Common term | German | Definition |
 |---------------|-------------|--------|------------|
@@ -39,6 +40,11 @@ The app's Help page will render them from that export (a later task of the web l
 | Actor | Assignee | Akteur | The neutral id in a file, `u:<8 hex>` for a person or `a:<kind>:<id>` for an agent. |
 | Agent | Bot | Agent | A Claude Code session or sub-agent working a task, recorded as an `a:` actor. |
 | Chore | Chore | Chore | The seventh spec type: `spec.md` only, review then build then done, no code review. |
+| Open | To do | offen | The item state in which the next command lies with the user, given with its reason. |
+| Waiting | Blocked | wartet | The item state in which the item hangs on another item, given as what it waits on. |
+| Running | In progress | läuft | The item state while a run is open on the item and younger than the abort age; the run locks the item. |
+| Aborted | Stalled | abgebrochen | The item state of a run without end that is older than the abort age; it locks nothing. |
+| Done | Done | fertig | The item state of a finished item; a dropped claim or a struck task is done with that as its detail. |
 
 ## Where the files live
 
@@ -1253,6 +1259,8 @@ dashboard row's `nextReason`, the spec head's `nextReason` and the first entry o
 that one phrase, unchanged. A step waiting in `review`, `blocked`, `close-pending`, `code-review` or `close` shows
 exactly one phrase, one template of its row filled, never two joined; the further entries of `next.reasons` are the
 spec page's own facts, after it.
+The stage says where a spec stands; what is happening to it now, `open`, `waiting`, `running`, `aborted` or `done`, is
+its state, which § The state table below derives from this table's row and the open runs (spec 040).
 
 | # | Stage | Condition | Next command | Reason |
 |---|-------|-----------|--------------|--------|
@@ -1348,6 +1356,66 @@ A row of `specs/workflow.md` replaces its type's default row, and the same rule 
 before its tasks, allows `plan → review`, `review → tasks` and `tasks → build` in place of `plan → tasks`,
 `tasks → review` and `review → build`; the detours follow the same rule. A type the file leaves out, or a row the
 reader rejects, keeps the pairs above.
+
+## The state table
+
+The stage says where a spec stands in its workflow; the state says what is happening to an item now (`item-state.ts`,
+`itemStates`, spec 040, ISC-221). One state model covers every item that carries one: a spec, an idea (a story under
+`specs/ideas/`), the reviewed mark, the code-reviewed mark, a claim and a task. Each stands in exactly one of five
+states:
+
+- `open`: a command lies with the user, given with its reason; for a spec, the command and reason of its stage table
+  row.
+- `waiting`: the item hangs on another item, given as what it waits on.
+- `running`: a run is open on the item, younger than the abort age. For a spec, an idea or a mark the run is a
+  `run-start` without its `run-end` (§ Activity and lock lines, run lifecycle events), and it holds a run lock on the
+  item for as long as it stays `running`; for a claim the run is a claim lock, for a task its last run event (ISC-179).
+- `aborted`: a run without end, older than the abort age: the server setting `runAbortMinutes` (default 120) for a
+  spec, an idea or a mark, the claim stale age (45 minutes, ISC-35) for a claim or a task. An aborted run locks
+  nothing and does not count as running; a running run on the same item wins over it.
+- `done`: the item is finished, dated where the files give a date. A dropped claim and a struck task are `done` too,
+  with `closedAs: dropped` or `closedAs: struck` as their detail.
+
+The state is derived from the files and the open runs on every read, like the stage, and never stored. A detail the
+files do not give is exactly one diagnostic, never an invented value (ISC-221.1). Without a run, a spec takes the state
+its stage table row names: `open` for a row with a command, `waiting` for `close-pending` and `blocked`, `done` for the
+two `done` rows. `STATE_TABLE` holds every item kind with each of the five states as data, with its meaning, how the
+item enters the state and how it leaves it; `core/tests/state-table.test.ts` renders it as this table, compares it
+verbatim, row for row, and prints the table it expects when they differ. A row whose Entered and Left read `—` names a
+state the item kind never takes.
+
+| Item | State | Meaning | Entered | Left |
+|------|-------|---------|---------|------|
+| `spec` | `open` | A command lies with the user: the command of the spec's stage table row, with the row's reason. | The spec stands in a row with a command and no run is open on it, or its run ended. | A run starts on the spec, or the files move it to another row. |
+| `spec` | `waiting` | The spec hangs on other items: `close-pending` on the open specs of its main feature, `blocked` on spec edges or claims. | The spec stands in row `close-pending` or `blocked` and no run is open on it. | What it waits on closes and the stage table moves the spec on, or a run starts on it. |
+| `spec` | `running` | A run is open on the spec: a `run-start` without `run-end`, younger than the abort age. It locks the spec. | A `run-start` names the spec. | Its `run-end` (also a release from the app), after which the files decide; or the abort age passes. |
+| `spec` | `aborted` | A run without end, older than the abort age; it no longer locks. | The abort age passes without a `run-end` for the run. | A `run-end` for it, after which the files decide; or a new `run-start`. |
+| `spec` | `done` | One of the two `done` rows: `phase: complete`, or a chore with every claim closed. | The files put the spec in a `done` row and no run is open on it. | Only when the files change, or a run starts on the spec. |
+| `idea` | `open` | A story waits for its spec: `/spec new <slug>` lies with the user. | A story file stands under `specs/ideas/` and no run is open on it. | A run starts on the idea, or its allocation turns it into a spec. |
+| `idea` | `waiting` | Never: a story carries no edges. | — | — |
+| `idea` | `running` | A run is open on the idea, younger than the abort age. It locks the allocation. | A `run-start` names the idea. | Its `run-end`, or the abort age passes. |
+| `idea` | `aborted` | A run on the idea without end, older than the abort age; it no longer locks. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `idea` | `done` | Never: an allocated story becomes a spec and leaves `specs/ideas/`. | — | — |
+| `review-mark` | `open` | `/spec-review NNN` lies with the user: the spec stands in the review row, or the mark is stale, or missing past review. | The spec reaches the review row, or a reviewed file changes after the review. | A `/spec-review` run starts, or a fresh mark is written. |
+| `review-mark` | `waiting` | The mark is missing and the spec stands before review (`plan`, `tasks`): it waits on the spec itself. | A spec without a reviewed mark stands in row `plan` or `tasks`. | The spec reaches the review row. |
+| `review-mark` | `running` | A `/spec-review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec-review NNN`. | Its `run-end`, or the abort age passes. |
+| `review-mark` | `aborted` | A `/spec-review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `review-mark` | `done` | The reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). | A reviewed mark matching spec.md, plan.md and tasks.md is written, or the spec reaches a `done` row. | A reviewed file changes (stale), or a `/spec-review` run starts. |
+| `code-review-mark` | `open` | `/spec-code-review NNN` lies with the user: the spec stands in the code-review row, or the mark is stale, or missing past it. | The spec reaches the code-review row, or the working tree changes after the code review. | A `/spec-code-review` run starts, or a fresh mark is written. |
+| `code-review-mark` | `waiting` | The mark is missing and the spec stands before the code-review row: on its feature siblings in `close-pending`, else on the spec itself. | A spec without a code-reviewed mark stands in a row before code review. | The spec reaches the code-review row. |
+| `code-review-mark` | `running` | A `/spec-code-review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec-code-review NNN`. | Its `run-end`, or the abort age passes. |
+| `code-review-mark` | `aborted` | A `/spec-code-review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `code-review-mark` | `done` | The code-reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). A type whose workflow has no code review has no such item. | A code-reviewed mark matching the working tree is written, or the spec reaches a `done` row. | The working tree changes (stale), or a `/spec-code-review` run starts. |
+| `claim` | `open` | `/spec-implement NNN` lies with the user: the claim is takeable, or held only by the review gate. | The claim is unchecked, no lock holds it and no edge is open. | A lock takes it, an edge holds it, or it is checked or dropped. |
+| `claim` | `waiting` | An unresolved `(after: …)` edge or an open spec edge holds the claim. | The claim names an open claim or spec in its `(after: …)`. | Every claim and spec it names closes. |
+| `claim` | `running` | A claim lock holds it (detail `taken`), younger than the claim stale age. | A `claim` line or a frontier lock takes the claim. | Its `release`, or the claim stale age passes. |
+| `claim` | `aborted` | A claim lock without release, older than the claim stale age. | The claim stale age passes without a `release`. | A `release`, or a new lock. |
+| `claim` | `done` | The claim is checked; a dropped claim (tombstone) is done with `closedAs: dropped`. | Its probe closes it and the box is checked, or it is dropped. | Only when spec.md changes. |
+| `task` | `open` | `/spec-implement NNN` lies with the user: the task has no run and its claim does not wait. | The task is unticked, without a run in flight and not held. | A `dispatch` sends it out, its claim starts waiting, or it is ticked or struck. |
+| `task` | `waiting` | Its claim waits, or an open spec edge holds the task or its claim. | Its claim waits, or the task names an open spec in its `(after: …)`. | What its claim and the task wait on closes. |
+| `task` | `running` | Its last run event leaves it dispatched, building, patched or applied-open (ISC-179); that state is the detail. | A `dispatch`, `build`, `patch` or `apply` line names the task. | Its box is ticked, or the claim stale age passes after its last run event. |
+| `task` | `aborted` | Its last run event is older than the claim stale age. | The claim stale age passes after its last run event. | A new run event, or its box is ticked. |
+| `task` | `done` | The task is ticked, dated by its `apply`; a struck task is done with `closedAs: struck`. | Its box is ticked, or it is struck. | Only when tasks.md changes. |
 
 ## The drift classes
 

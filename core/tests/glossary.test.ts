@@ -49,9 +49,9 @@ describe('FORMAT.md holds GLOSSARY verbatim', () => {
     expect(table.slice(0, 2)).toEqual(TABLE_HEAD);
   });
 
-  test('exactly thirteen rows on both sides', () => {
-    expect(GLOSSARY).toHaveLength(13);
-    expect(body).toHaveLength(13);
+  test('exactly eighteen rows on both sides: thirteen terms and the five item states (spec 040)', () => {
+    expect(GLOSSARY).toHaveLength(18);
+    expect(body).toHaveLength(18);
   });
 
   test('the terms are unique', () => {

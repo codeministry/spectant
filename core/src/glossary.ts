@@ -15,7 +15,7 @@ export interface GlossaryRow {
   readonly definition: string;
 }
 
-/** The thirteen glossary rows, in FORMAT.md order. */
+/** The eighteen glossary rows, in FORMAT.md order: thirteen terms, then the five item states. */
 export const GLOSSARY: readonly GlossaryRow[] = [
   {
     term: 'Feature',
@@ -95,5 +95,36 @@ export const GLOSSARY: readonly GlossaryRow[] = [
     common: 'Chore',
     german: 'Chore',
     definition: 'The seventh spec type: `spec.md` only, review then build then done, no code review.',
+  },
+  // The five item states (spec 040, ISC-228): what is happening to an item now, beside its stage (§ The state table).
+  {
+    term: 'Open',
+    common: 'To do',
+    german: 'offen',
+    definition: 'The item state in which the next command lies with the user, given with its reason.',
+  },
+  {
+    term: 'Waiting',
+    common: 'Blocked',
+    german: 'wartet',
+    definition: 'The item state in which the item hangs on another item, given as what it waits on.',
+  },
+  {
+    term: 'Running',
+    common: 'In progress',
+    german: 'läuft',
+    definition: 'The item state while a run is open on the item and younger than the abort age; the run locks the item.',
+  },
+  {
+    term: 'Aborted',
+    common: 'Stalled',
+    german: 'abgebrochen',
+    definition: 'The item state of a run without end that is older than the abort age; it locks nothing.',
+  },
+  {
+    term: 'Done',
+    common: 'Done',
+    german: 'fertig',
+    definition: 'The item state of a finished item; a dropped claim or a struck task is done with that as its detail.',
   },
 ];

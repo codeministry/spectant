@@ -22,11 +22,11 @@
  * The kinds include the two repository kinds `idea` and `workflow` (spec 008, T37): they come from `FILE_KINDS` like
  * the thirteen spec-folder kinds and are held to the same rules, section, path and verbatim `From` block (T75).
  *
- * `## Glossary` is a required section (spec 008, T75, ISC-124): exactly one, holding a table of exactly thirteen rows,
+ * `## Glossary` is a required section (spec 008, T75, ISC-124): exactly one, holding a table of exactly eighteen rows,
  * one per term of `GLOSSARY` (`core/src/glossary.ts`) by its first cell. A missing section, a missing table, a missing
  * term or a different row count is one `Glossary: <problem>` each; `core/tests/glossary.test.ts` compares the cells.
  *
- * Output: `format-doc: 15 kinds documented (…), glossary: 13 rows` on stdout and exit 0; otherwise one
+ * Output: `format-doc: 15 kinds documented (…), glossary: 18 rows` on stdout and exit 0; otherwise one
  * `format-doc: <kind>: <problem>` per problem on stderr, then `format-doc: N of 15 kinds documented`, and exit 1. Exit 2
  * on a usage error.
  *
@@ -60,8 +60,8 @@ const KINDS = Object.keys(FILE_KINDS) as FileKind[];
 const NO_FIXTURE = '**No fixture yet.**';
 const FIXTURE_PREFIX = 'core/fixtures/';
 const GLOSSARY_HEADING = '## Glossary';
-/** ISC-124: the glossary holds exactly this many rows. */
-const GLOSSARY_ROWS = 13;
+/** ISC-124: the glossary holds exactly this many rows; thirteen terms and the five item states of spec 040. */
+const GLOSSARY_ROWS = 18;
 
 /** A fence opener or closer: up to three spaces, then three or more backticks or tildes. */
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;

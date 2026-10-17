@@ -1,7 +1,7 @@
 /**
  * Spec 008: the Help page against the stub API. `bun run e2e -- help`.
  *
- * - `glossary` (T150, ISC-116): `/help` renders exactly the thirteen rows of core's `GLOSSARY`, each cell equal to the
+ * - `glossary` (T150, ISC-116): `/help` renders exactly the eighteen rows of core's `GLOSSARY`, each cell equal to the
  *   row's term, common term, German term and definition (the definition's code spans render as `<code>`, so its text
  *   is the row's without backticks); under German settings the Spectant-term column shows the German terms; the page
  *   is reached from the palette entry "Help" and from the link in the `?` shortcut sheet.
@@ -95,11 +95,11 @@ const cellsOf = (page: Page): Promise<string[][]> =>
 test.describe('glossary', () => {
   test.use(atWidth(1440));
 
-  test('renders the thirteen GLOSSARY rows cell for cell in English', async ({ page }) => {
+  test('renders the eighteen GLOSSARY rows cell for cell in English', async ({ page }) => {
     await page.goto('/help');
     await expect(helpPage(page).getByRole('heading', { level: 1 })).toHaveText(en.help.title);
-    await expect(glossaryRows(page)).toHaveCount(13);
-    expect(GLOSSARY).toHaveLength(13);
+    await expect(glossaryRows(page)).toHaveCount(18);
+    expect(GLOSSARY).toHaveLength(18);
     await expect
       .poll(() => cellsOf(page))
       .toEqual(GLOSSARY.map((row) => [row.term, row.common, row.german, row.definition.replace(/`/g, '')]));
@@ -117,7 +117,7 @@ test.describe('glossary', () => {
     await page.reload();
     await expect(helpPage(page).getByRole('heading', { level: 1 })).toHaveText(de.help.title);
     await expect(page.locator('[data-glossary] thead th').first()).toHaveText(de.help.glossary.columns.term);
-    await expect(glossaryRows(page)).toHaveCount(13);
+    await expect(glossaryRows(page)).toHaveCount(18);
     await expect.poll(async () => (await cellsOf(page)).map((cells) => [cells[0], cells[2]])).toEqual(GLOSSARY.map((row) => [row.german, row.german]));
 
     await page.request.post(RESET_PATH, { headers });
@@ -131,7 +131,7 @@ test.describe('glossary', () => {
     await expect(entry).toHaveText(en.palette.actions.help);
     await entry.click();
     await expect(page).toHaveURL(/\/help$/);
-    await expect(glossaryRows(page)).toHaveCount(13);
+    await expect(glossaryRows(page)).toHaveCount(18);
   });
 
   test('is reached from the link in the ? shortcut sheet', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('glossary', () => {
     await link.click();
     await expect(page).toHaveURL(/\/help$/);
     await expect(page.locator('app-shortcut-sheet dialog')).toBeHidden();
-    await expect(glossaryRows(page)).toHaveCount(13);
+    await expect(glossaryRows(page)).toHaveCount(18);
   });
 });
 
