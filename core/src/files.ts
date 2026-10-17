@@ -658,6 +658,12 @@ export interface Worktree {
   /** True when `git status --porcelain` in the worktree prints anything; null when not read: a builder. */
   readonly dirty: boolean | null;
   readonly kind: WorktreeKind;
+  /**
+   * True when git lists the worktree as `prunable`: its folder or its gitdir is gone. Such a worktree has ended
+   * (spec 041, ISC-212). Set on a `spec` worktree only, and only when true; absent reads as false, so a listing without
+   * one stays byte-identical.
+   */
+  readonly prunable?: boolean;
 }
 
 /**

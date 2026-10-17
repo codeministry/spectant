@@ -210,3 +210,100 @@ export function specSourceOf({ folder, worktree, lsFiles }: SpecSourceInput): Sp
   const under = `${SPECS}/${folder}/`;
   return own && lsFiles.some((path) => path.startsWith(under)) ? 'worktree' : 'main';
 }
+
+// ─── The worktree view (spec 041, ISC-212.1) ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The git facts `liveWorktrees` decides on, read by the server in each spec worktree; core never asks git. Each list
+ * holds worktree paths as `assignWorktrees` gives them (relative to the root), or branch names without `refs/heads/`.
+ */
+export interface WorktreeFacts {
+  /** The spec branches merged into `main` (`mergedSpecBranches`, ISC-162.1). */
+  readonly merged: readonly string[];
+  /** The worktree paths whose folder still holds its `.git`. */
+  readonly present: readonly string[];
+  /** The worktree paths where `git status --porcelain` printed anything. */
+  readonly dirty: readonly string[];
+}
+
+/** Why a spec worktree has ended: its branch merged into `main`, its folder gone, or git lists it as `prunable`. */
+export type WorktreeEnd = 'merged' | 'removed' | 'prunable';
+
+/** A spec worktree that is no longer the spec's, with the reason. */
+export interface EndedWorktree {
+  readonly worktree: Worktree;
+  readonly reason: WorktreeEnd;
+}
+
+/** The spec worktrees of an assignment split by the rule "ended" (`liveWorktrees`). */
+export interface LiveWorktrees {
+  /** Every worktree that has not ended, in git's order: builders, worktrees of no spec and live spec worktrees. */
+  readonly live: readonly Worktree[];
+  /** The spec worktrees of a spec that have ended, in git's order. */
+  readonly ended: readonly EndedWorktree[];
+}
+
+/**
+ * The one reading of a workspace's worktrees every caller shares (spec 041, ISC-212.1): dashboard, spec tabs and their
+ * three writes, library and timeline. Built by the server from one `git worktree list`, `liveWorktrees` and the git
+ * facts it read; `live` carries `ahead` and `dirty` of each live spec worktree.
+ */
+export interface WorktreeView {
+  /** The listing as `assignWorktrees` assigned it, ended worktrees included. */
+  readonly assignment: WorktreeAssignment;
+  /** The worktrees that have not ended (`liveWorktrees`), with `ahead` and `dirty` read for the spec ones. */
+  readonly live: readonly Worktree[];
+  /** The spec worktrees that have ended, with the reason. */
+  readonly ended: readonly EndedWorktree[];
+  /** The main checkout's branch (`mainBranchOf`); null on a detached HEAD or an empty listing. */
+  readonly mainBranch: string | null;
+  /**
+   * Per spec folder with a live spec worktree, the paths `git ls-files -z -- specs/NNN-slug` printed in the main
+   * checkout (`SpecSourceInput.lsFiles`); a folder without an entry reads as untracked.
+   */
+  readonly tracked: Readonly<Record<string, readonly string[]>>;
+}
+
+/**
+ * Splits an assignment by the rule "ended" (FORMAT.md § Worktrees): a spec worktree of a spec has ended when its
+ * branch is merged into `main`, its folder is gone, or git lists it as `prunable`. Builders and worktrees of no spec
+ * never end here; they are not read either way.
+ */
+export function liveWorktrees(assignment: WorktreeAssignment, facts: WorktreeFacts): LiveWorktrees {
+  const merged = new Set(facts.merged);
+  const present = new Set(facts.present);
+  const live: Worktree[] = [];
+  const ended: EndedWorktree[] = [];
+  for (const worktree of assignment.worktrees) {
+    const reason = worktree.kind !== 'spec' || worktree.spec === null ? null : endOf(worktree, merged, present);
+    if (reason === null) live.push(worktree);
+    else ended.push({ worktree, reason });
+  }
+  return { live, ended };
+}
+
+function endOf(worktree: Worktree, merged: ReadonlySet<string>, present: ReadonlySet<string>): WorktreeEnd | null {
+  if (worktree.branch !== null && merged.has(worktree.branch)) return 'merged';
+  if (!present.has(worktree.path)) return 'removed';
+  return null;
+}
+
+/** The parts of a spec reference `copyDirFor` reads: its number and its folder name. */
+export interface SpecFolderRef {
+  /** `NNN`. */
+  readonly id: string;
+  /** `NNN-slug`. */
+  readonly slug: string;
+}
+
+/**
+ * The absolute folder of the worktree copy a spec is read from, `<root>/<worktree>/specs/NNN-slug`, when `specSourceOf`
+ * names `worktree` for the spec's first live spec worktree inside the repository; null when the spec reads from the
+ * main checkout. `root` is the absolute, `/`-separated workspace root; the path is joined as text, nothing is looked at.
+ */
+export function copyDirFor(root: string, ref: SpecFolderRef, view: WorktreeView): string | null {
+  const worktree = view.live.find((w) => w.kind === 'spec' && w.spec === ref.id) ?? null;
+  if (worktree === null || worktree.path === '..' || worktree.path.startsWith('../')) return null;
+  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
+  return source === 'worktree' ? [root.replace(/\/+$/u, ''), worktree.path, SPECS, ref.slug].join('/') : null;
+}
