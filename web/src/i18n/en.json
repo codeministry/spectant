@@ -2201,6 +2201,10 @@
     "waitsOn": "waits on {{items}}",
     "doneOn": "done {{date}}",
     "noRelease": "no release",
+    "closedAs": {
+      "dropped": "dropped",
+      "struck": "struck"
+    },
     "abortedFor": "no release for {{duration}}",
     "duration": {
       "underMinute": "< 1 min",

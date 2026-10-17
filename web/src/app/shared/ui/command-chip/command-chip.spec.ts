@@ -53,4 +53,39 @@ describe('UiCommandChip', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('.hint')?.textContent).toBe('Select and press ⌘C');
     Reflect.deleteProperty(document, 'execCommand');
   });
+
+  // Spec 040, T47 · ISC-225.1: locked while a run is running — lock glyph, aria-disabled but focusable, a name that
+  // names the run, actor and duration; copying is refused and a press opens the hint line instead.
+  it('locks while a run holds the item: lock glyph, focusable, named by the run, copy refused, a press shows the hint', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec-tasks 037');
+    fixture.componentRef.setInput('lockedBy', {
+      run: 'run-1',
+      command: '/spec-tasks 037',
+      session: 'a:claude:sess-7',
+      actor: { raw: 'a:claude:sess-7', kind: 'agent', id: 'a:claude:sess-7', legacy: false },
+      since: '2026-10-17T14:02:00Z',
+      elapsedMs: 3 * 60_000,
+      openRuns: 1,
+      source: 'run',
+    });
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const button = root.querySelector('button');
+    expect(button?.getAttribute('aria-disabled')).toBe('true');
+    expect(button?.disabled).toBe(false);
+    expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock');
+    expect(button?.getAttribute('aria-label')).toBe('Locked · /spec-tasks 037 is running · a:claude:sess-7 · since 3 min');
+    expect(root.querySelector('[data-locked-hint]')).toBeNull();
+    button?.click();
+    await fixture.whenStable();
+    expect(writeText).not.toHaveBeenCalled();
+    expect(root.querySelector('[data-locked-hint]')?.textContent).toBe('Running for 3 min · copyable once it ends');
+    fixture.componentRef.setInput('lockedBy', null);
+    await fixture.whenStable();
+    expect(root.querySelector('button ui-icon')?.getAttribute('data-icon')).toBe('copy');
+    expect(root.querySelector('[data-locked-hint]')).toBeNull();
+  });
 });

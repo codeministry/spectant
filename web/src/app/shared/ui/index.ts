@@ -28,6 +28,8 @@ export {
 export { type FilterOption, UiFilterChips } from './filter-chips/filter-chips';
 export { UiIdChip } from './id-chip/id-chip';
 export { UiIdeaChip } from './idea-chip/idea-chip';
+export { elapsedText } from './item-state/duration';
+export { UiItemState } from './item-state/item-state';
 export { UiKbd } from './kbd/kbd';
 export { UiKpiTile } from './kpi-tile/kpi-tile';
 export { UiLiveRegion } from './live-region/live-region';

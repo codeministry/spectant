@@ -2201,6 +2201,10 @@
     "waitsOn": "wartet auf {{items}}",
     "doneOn": "fertig {{date}}",
     "noRelease": "keine Freigabe",
+    "closedAs": {
+      "dropped": "verworfen",
+      "struck": "gestrichen"
+    },
     "abortedFor": "ohne Freigabe seit {{duration}}",
     "duration": {
       "underMinute": "< 1 min",
