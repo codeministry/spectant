@@ -1,0 +1,13 @@
+{
+  "specs/001-check-scheduler": [],
+  "specs/002-status-page": [],
+  "specs/003-alert-rules": [],
+  "specs/004-incident-notes": [],
+  "specs/005-probe-agents": [],
+  "specs/006-retry-backoff": [],
+  "specs/007-history-export": [],
+  "specs/008-export-formats": [],
+  "specs/009-timezone-labels": [],
+  "specs/010-renew-api-key": [],
+  "specs/011-maintenance-windows": []
+}

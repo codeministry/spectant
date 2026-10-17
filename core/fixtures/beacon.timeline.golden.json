@@ -1,0 +1,524 @@
+{
+  "specs/001-check-scheduler": [
+    {
+      "ts": "2026-03-04T16:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "close → done",
+      "body": "- Command: /spec-complete 001",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": "u:5d0e8b21",
+      "from": "close",
+      "to": "done",
+      "command": "/spec-complete 001"
+    },
+    {
+      "ts": "2026-03-04T15:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "code-review → close",
+      "body": "- Command: /spec-code-review 001",
+      "ref": "close",
+      "id": "stage-close",
+      "actor": "u:5d0e8b21",
+      "from": "code-review",
+      "to": "close",
+      "command": "/spec-code-review 001"
+    },
+    {
+      "ts": "2026-03-04T12:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "build → code-review",
+      "body": "- Command: /spec-implement 001",
+      "ref": "code-review",
+      "id": "stage-code-review",
+      "actor": "a:claude:sess-10",
+      "from": "build",
+      "to": "code-review",
+      "command": "/spec-implement 001"
+    },
+    {
+      "ts": "2026-03-02T10:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "review → build",
+      "body": "- Command: /spec-review 001",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": "u:5d0e8b21",
+      "from": "review",
+      "to": "build",
+      "command": "/spec-review 001"
+    },
+    {
+      "ts": "2026-03-02T10:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-01T14:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "tasks → review",
+      "body": "- Command: /spec-tasks 001",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": "u:5d0e8b21",
+      "from": "tasks",
+      "to": "review",
+      "command": "/spec-tasks 001"
+    },
+    {
+      "ts": "2026-03-01T11:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "plan → tasks",
+      "body": "- Command: /spec-plan 001",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": "u:5d0e8b21",
+      "from": "plan",
+      "to": "tasks",
+      "command": "/spec-plan 001"
+    },
+    {
+      "ts": "2026-03-01T09:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "created → plan",
+      "body": "- Command: /spec-feature check-scheduler",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": "u:5d0e8b21",
+      "from": null,
+      "to": "plan",
+      "command": "/spec-feature check-scheduler"
+    }
+  ],
+  "specs/002-status-page": [
+    {
+      "ts": "2026-03-05T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ],
+  "specs/003-alert-rules": [
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-05T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ],
+  "specs/004-incident-notes": [
+    {
+      "ts": "2026-03-06T16:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-06T16:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-06T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ],
+  "specs/005-probe-agents": [
+    {
+      "ts": "2026-03-07T12:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T12:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-06T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ],
+  "specs/006-retry-backoff": [
+    {
+      "ts": "2026-03-08T09:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "code-review → close",
+      "body": "- Derived from: .gates/code-reviewed.json `at`",
+      "ref": "close",
+      "id": "stage-close",
+      "actor": null,
+      "from": "code-review",
+      "to": "close"
+    },
+    {
+      "ts": "2026-03-08T09:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Code reviewed",
+      "body": "- Head: `8c5af5c557389290383210097aa0b83f29cf94c2`\n- Branch: `feature/006-retry-backoff`\n- Note: no findings; tree changed since",
+      "ref": "code-reviewed",
+      "id": "gate-code-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "build → code-review",
+      "body": "- Undated: every claim closed; implied by .gates/code-reviewed.json, the files give no date",
+      "ref": "code-review",
+      "id": "stage-code-review",
+      "actor": null,
+      "from": "build",
+      "to": "code-review",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-06T13:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-06T13:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-06T11:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ],
+  "specs/007-history-export": [
+    {
+      "ts": "2026-03-07T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T10:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-07T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ],
+  "specs/008-export-formats": [
+    {
+      "ts": "2026-03-07T10:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T10:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-07T09:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ],
+  "specs/009-timezone-labels": [
+    {
+      "ts": "2026-03-07T11:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T11:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-07T11:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ],
+  "specs/010-renew-api-key": [
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "build → done",
+      "body": "- Undated: every claim of the chore closed; the files give no date",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": null,
+      "from": "build",
+      "to": "done",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-07T13:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T13:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-07T13:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ],
+  "specs/011-maintenance-windows": [
+    {
+      "ts": "2026-03-07T14:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T14:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-07T14:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ]
+}

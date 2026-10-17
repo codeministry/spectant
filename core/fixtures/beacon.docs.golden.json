@@ -1,0 +1,309 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "beacon",
+      "derived": "2026-03-01T08:00:00Z",
+      "standards_version": "1.0.0",
+      "design_track": "app",
+      "viewports": "[390, 820, 1440]",
+      "stack": "[bun, typescript]"
+    },
+    "html": "<h1 id=\"constitution-beacon\">Constitution — beacon</h1>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>XC-01 bun, never npm</td><td>repo <code>CLAUDE.md</code></td><td>binding</td><td><code>bun run check:static</code></td></tr></tbody></table></div>\n<h2 id=\"lanes\">Lanes</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Lane</th><th>Path prefixes</th><th>Context a worker loads</th><th>Lane probe</th></tr></thead><tbody><tr><td>api</td><td><code>api/</code>, <code>tests/</code></td><td><code>api/CLAUDE.md</code></td><td><code>bun test api/</code></td></tr><tr><td>web</td><td><code>web/</code></td><td><code>web/CLAUDE.md</code></td><td><code>bun run --cwd web test</code></td></tr></tbody></table></div>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      },
+      {
+        "level": 2,
+        "text": "Lanes",
+        "anchor": "lanes"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-beacon",
+        "heading": "Constitution — beacon",
+        "level": 1
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      },
+      {
+        "id": "lanes",
+        "heading": "Lanes",
+        "level": 2
+      }
+    ],
+    "wordCount": 48,
+    "constitution": {
+      "lanes": [
+        {
+          "lane": "api",
+          "paths": [
+            "api/",
+            "tests/"
+          ],
+          "probe": "bun test api/"
+        },
+        {
+          "lane": "web",
+          "paths": [
+            "web/"
+          ],
+          "probe": "bun run --cwd web test"
+        }
+      ],
+      "tiers": []
+    }
+  },
+  "specs": {
+    "specs/001-check-scheduler": {
+      "plan": {
+        "frontmatter": {
+          "spec": "001-check-scheduler",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-04T16:00:00Z"
+        },
+        "html": "<h1 id=\"plan-001-check-scheduler\">Plan 001 — Check scheduler</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>api/src/check-scheduler.ts</code></td><td>new</td><td>ISC-1</td></tr><tr><td><code>api/src/check-scheduler.ts</code></td><td>new</td><td>ISC-2</td></tr><tr><td><code>api/src/check-scheduler.ts</code></td><td>new</td><td>ISC-3</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-001-check-scheduler",
+            "heading": "Plan 001 — Check scheduler",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          }
+        ],
+        "wordCount": 66
+      },
+      "design": null,
+      "decisions": null
+    },
+    "specs/002-status-page": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/003-alert-rules": {
+      "plan": {
+        "frontmatter": {
+          "spec": "003-alert-rules",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-08T13:25:00Z"
+        },
+        "html": "<h1 id=\"plan-003-alert-rules\">Plan 003 — Alert rules</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>api/src/alert-rules.ts</code></td><td>new</td><td>ISC-7</td></tr><tr><td><code>api/src/alert-rules.ts</code></td><td>new</td><td>ISC-8</td></tr><tr><td><code>api/src/alert-rules.ts</code></td><td>new</td><td>ISC-9</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-003-alert-rules",
+            "heading": "Plan 003 — Alert rules",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          }
+        ],
+        "wordCount": 66
+      },
+      "design": null,
+      "decisions": null
+    },
+    "specs/004-incident-notes": {
+      "plan": {
+        "frontmatter": {
+          "spec": "004-incident-notes",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-07T15:00:00Z"
+        },
+        "html": "<h1 id=\"plan-004-incident-notes\">Plan 004 — Incident notes</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>api/src/incident-notes.ts</code></td><td>new</td><td>ISC-10</td></tr><tr><td><code>api/src/incident-notes.ts</code></td><td>new</td><td>ISC-11</td></tr><tr><td><code>api/src/incident-notes.ts</code></td><td>new</td><td>ISC-12</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-004-incident-notes",
+            "heading": "Plan 004 — Incident notes",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          }
+        ],
+        "wordCount": 66
+      },
+      "design": null,
+      "decisions": null
+    },
+    "specs/005-probe-agents": {
+      "plan": {
+        "frontmatter": {
+          "spec": "005-probe-agents",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-08T14:14:00Z"
+        },
+        "html": "<h1 id=\"plan-005-probe-agents\">Plan 005 — Probe agents</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-13</td></tr><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-14</td></tr><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-15</td></tr><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-16</td></tr><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-17</td></tr><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-18</td></tr><tr><td><code>api/src/probe-agents.ts</code></td><td>new</td><td>ISC-19</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-005-probe-agents",
+            "heading": "Plan 005 — Probe agents",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          }
+        ],
+        "wordCount": 90
+      },
+      "design": null,
+      "decisions": null
+    },
+    "specs/006-retry-backoff": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/007-history-export": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/008-export-formats": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/009-timezone-labels": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/010-renew-api-key": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/011-maintenance-windows": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    }
+  }
+}

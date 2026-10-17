@@ -1,0 +1,261 @@
+{
+  "pages": null,
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-check-scheduler",
+      "title": "Run every check on its interval",
+      "type": "feature",
+      "phase": "complete",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Every check runs on its own interval, spread across the host, and a timeout counts as down.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 17
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 17
+      },
+      "fog": []
+    },
+    {
+      "id": "002",
+      "slug": "002-status-page",
+      "title": "Publish the state of every public check",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A public page lists every public check with its state and works without script.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 14
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "003",
+      "slug": "003-alert-rules",
+      "title": "Send one alert per outage to the right channel",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>An alert rule fires once per outage on the channel it names.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 12
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 17
+      },
+      "fog": []
+    },
+    {
+      "id": "004",
+      "slug": "004-incident-notes",
+      "title": "Explain an outage in words on the status page",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Each outage can carry a note that shows on the status page, newest first.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 14
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 17
+      },
+      "fog": []
+    },
+    {
+      "id": "005",
+      "slug": "005-probe-agents",
+      "title": "Run checks from agents in several regions",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Agents in several regions run checks and report signed results over one connection.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  scheduler --&gt; agent --&gt; store --&gt; page</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  scheduler --> agent --> store --> page",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 13
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the status page reads the store and never the agents.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 17
+      },
+      "fog": []
+    },
+    {
+      "id": "006",
+      "slug": "006-retry-backoff",
+      "title": "Retry failed runs without counting extra outages",
+      "type": "refactor",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Retries back off exponentially and belong to the outage that caused them.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 12
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "007",
+      "slug": "007-history-export",
+      "title": "Find out which export formats teams need",
+      "type": "spike",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A recorded table names the formats and a decision names the default.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 12
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "008",
+      "slug": "008-export-formats",
+      "title": "Find the largest history each format exports quickly",
+      "type": "spike",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A recorded table names each format&#39;s limit, and no export exceeds it.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 12
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "009",
+      "slug": "009-timezone-labels",
+      "title": "Label every time on the status page with a time zone",
+      "type": "bug",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Every time on the status page carries the viewer&#39;s time-zone label.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 11
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "010",
+      "slug": "010-renew-api-key",
+      "title": "Replace the mail relay API key without a restart",
+      "type": "chore",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>The key is replaced and the old one revoked, with no restart.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 12
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "011",
+      "slug": "011-maintenance-windows",
+      "title": "Hide planned downtime from alerts and the page",
+      "type": "bug",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A maintenance window hides its outages and is announced a day ahead, once the status page exists.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 17
+      },
+      "approach": null,
+      "fog": []
+    }
+  ]
+}

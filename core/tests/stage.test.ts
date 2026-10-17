@@ -664,6 +664,20 @@ const WALK: Readonly<Record<string, readonly Walked[]>> = {
   'spectant-001': [['specs/001-app-skeleton', 'review', '/spec-review 001', 'the reviewed mark is missing']],
   // Spec 036: the backlog tree holds a master and specs/backlog.md, no spec folder.
   'backlog-ranks': [],
+  // Spec 040: the item-state tree, every spec row of the stage table at least once (beacon/generate.ts).
+  beacon: [
+    ['specs/001-check-scheduler', 'done', null, 'phase: complete'],
+    ['specs/002-status-page', 'plan', '/spec-plan 002', 'a feature spec needs plan.md and it is missing'],
+    ['specs/003-alert-rules', 'tasks', '/spec-tasks 003', '3 claims and no tasks.md'],
+    ['specs/004-incident-notes', 'review', '/spec-review 004', 'the reviewed mark is stale'],
+    ['specs/005-probe-agents', 'build', '/spec-implement 005', 'ISC-15, ISC-16 and 1 more are takeable'],
+    ['specs/006-retry-backoff', 'code-review', '/spec-code-review 006', 'every claim is closed and the code-reviewed mark is stale'],
+    ['specs/007-history-export', 'close-pending', null, 'every claim is closed and F6 waits on spec 008'],
+    ['specs/008-export-formats', 'build', '/spec-implement 008', 'ISC-25 is takeable'],
+    ['specs/009-timezone-labels', 'close', '/spec-complete 009', 'every claim is closed and the workflow has no code review'],
+    ['specs/010-renew-api-key', 'done', null, 'every claim of the chore is closed'],
+    ['specs/011-maintenance-windows', 'blocked', '/spec-status 011', 'waits on 002'],
+  ],
 };
 
 interface SpecPageGolden {
@@ -712,8 +726,8 @@ describe('every fixture spec derives the stage table row it names (ISC-79)', () 
   }
 
   test('the walk compared every listed spec', () => {
-    // 15, plus the three specs of milestone-lines (spec 026).
-    expect(compared).toBe(18);
+    // 15, plus the three specs of milestone-lines (spec 026), plus the eleven of beacon (spec 040).
+    expect(compared).toBe(29);
   });
 });
 

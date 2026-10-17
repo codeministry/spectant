@@ -25,6 +25,7 @@ snapshot changes only together with the parser change that explains it.
 | `lantern/` | the small clean case. Master with 12 claims, spec 001 (feature, building) and 002 (bug, scoping), both reviewed. No archive, no TL;DR, no tech.md, no milestone: the none case. Its one warning is the legacy actor case (spec 008, T33): 002's `events.jsonl` records its two transitions with the actor `principal`, outside the actor grammar, so it reads as recorded and raises one `actor-legacy` for the file. |
 | `empty-master/` | a repository with `ISA.md` and `specs/constitution.md` but no spec folder: zero specs. |
 | `milestone-lines/` | the explicit feature-to-milestone assignment (spec 026, ISC-166). A master with four feature blocks and a `## Milestones` block of two entries, `Beacon 0.5` and `Beacon 1.0`. F1 carries `Milestone: Beacon 0.5` and F2 `Milestone: Beacon 1.0`, each directly under its `Why:` line; F0 has no line; F3 names `Beacon 2.0`, which the block does not list (the unknown case). Three feature specs: 001 (F1, `milestone: Beacon 0.5`, complete), 002 (F2 with claims of F0, `milestone: Beacon 0.5`, which differs from the `Beacon 1.0` its main feature names: the mismatch case) and 003 (F3, no key). The tree hangs F1 under Beacon 0.5 and F2 under Beacon 1.0; F0 and F3 form the trailing no-milestone group. |
+| `beacon/` | the item states (spec 040, ISC-221). Eleven specs that stand, between them, in every row of the stage table, two stories in `specs/ideas/` for the `idea` row, a reviewed mark fresh, stale and missing, one code-reviewed mark, claims with an open `(after: …)` edge, a dropped tombstone and a struck task, and a `.spectant/activity.jsonl` with a held and a stale claim lock, task runs in every run state and the run lifecycle lines `run-start`/`run-end` (open, ended `ok`, `error` and `released`, aborted, two open on one spec, one open on a story). Written by `beacon/generate.ts`, whose header maps each stage row and each activity line to its case. |
 | `backlog-ranks/` | the feature backlog (spec 036, ISC-190). A master with five feature blocks: F1 and F2 under `Ferry 1.0`, F3 and F4 under `Ferry 2.0`, F0 without a `Milestone:` line; no spec folder. `specs/backlog.md` ranks F2 (P1), F3 (P2), F1 (no priority, P3) and F4 (`high`, read as P3), names the unknown F9 and lists F3 a second time; F0 is unlisted and stands last. The tree orders Ferry 1.0 as F2 before F1, against master order, and carries the three backlog warnings. |
 
 ### What each harbor spec carries
@@ -105,6 +106,17 @@ against `FORMAT.md`'s stage table and against the Expected column of both tables
 | `milestone-lines/` | `002-alert-routing` | feature · building | stage plan, `/spec-plan 002`, "a feature spec needs plan.md and it is missing" |
 | `milestone-lines/` | `003-escalation-chains` | feature · scoping | stage plan, `/spec-plan 003`, "a feature spec needs plan.md and it is missing" |
 | `spectant-001/` | `001-app-skeleton` | feature · scoping | stage review (the frozen copy carries no `.gates/`), `/spec-review 001`, "the reviewed mark is missing" |
+| `beacon/` | `001-check-scheduler` | feature · complete | stage done, no command, "phase: complete" |
+| `beacon/` | `002-status-page` | feature · building | stage plan, `/spec-plan 002`, "a feature spec needs plan.md and it is missing" |
+| `beacon/` | `003-alert-rules` | feature · building | stage tasks, `/spec-tasks 003`, "3 claims and no tasks.md" |
+| `beacon/` | `004-incident-notes` | feature · building | stage review, `/spec-review 004`, "the reviewed mark is stale" |
+| `beacon/` | `005-probe-agents` | feature · building | stage build, `/spec-implement 005`, "ISC-15, ISC-16 and 1 more are takeable" |
+| `beacon/` | `006-retry-backoff` | refactor · building | stage code-review, `/spec-code-review 006`, "every claim is closed and the code-reviewed mark is stale" |
+| `beacon/` | `007-history-export` | spike · building | stage close-pending, no command, "every claim is closed and F6 waits on spec 008" |
+| `beacon/` | `008-export-formats` | spike · building | stage build, `/spec-implement 008`, "ISC-25 is takeable" |
+| `beacon/` | `009-timezone-labels` | bug · building | stage close, `/spec-complete 009`, "every claim is closed and the workflow has no code review" |
+| `beacon/` | `010-renew-api-key` | chore · building | stage done, no command, "every claim of the chore is closed" |
+| `beacon/` | `011-maintenance-windows` | bug · building | stage blocked, `/spec-status 011`, "waits on 002" |
 
 ## Frozen corpora
 

@@ -430,8 +430,10 @@ describe('ideas: the dashboard lists the stories (T70)', () => {
     return input;
   };
 
+  // beacon (spec 040) carries two stories for the item-state model; its listing is pinned by its golden snapshot.
   test('every other fixture, and an input without ideas, has none', () => {
-    for (const name of fixtureTrees().filter((n) => n !== 'harbor')) expect(model(name).ideas).toEqual({ count: 0, list: [] });
+    for (const name of fixtureTrees().filter((n) => n !== 'harbor' && n !== 'beacon')) expect(model(name).ideas).toEqual({ count: 0, list: [] });
+    expect(model('beacon').ideas.list.map((i) => i.slug)).toEqual(['digest-emails', 'uptime-badges']);
     const withoutIdeas = harborWithoutIdeas();
     expect(buildDashboard(withoutIdeas).ideas).toEqual({ count: 0, list: [] });
   });

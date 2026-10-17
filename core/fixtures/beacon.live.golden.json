@@ -1,0 +1,754 @@
+{
+  "specs/001-check-scheduler": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-1",
+        "lane": "api",
+        "text": "a check runs at the interval its definition names, within one second",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "agent": null,
+        "subagent": null
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-2",
+        "lane": "api",
+        "text": "a check that times out is recorded as down, never as up",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "agent": null,
+        "subagent": null
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-3",
+        "lane": "api",
+        "text": "two checks on one host never run at the same instant",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "agent": null,
+        "subagent": null
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 3,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 3,
+        "total": 3
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/002-status-page": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/003-alert-rules": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/004-incident-notes": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "waiting",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-10",
+        "lane": "api",
+        "text": "an incident note is attached to the outage it describes",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-11",
+        "lane": "api",
+        "text": "incident notes show on the status page, newest first",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-12",
+        "lane": "api",
+        "text": "editing a note keeps its first publication time",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/005-probe-agents": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "waiting",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-13",
+        "lane": "api",
+        "text": "a probe agent registers with a one-time token",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "agent": null,
+        "subagent": null,
+        "run": {
+          "task": "T1",
+          "state": "applied",
+          "session": "a:claude:sess-50/T1",
+          "worktree": "wt-1",
+          "ts": "2026-03-08T14:14:00Z"
+        }
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-14",
+        "lane": "api",
+        "text": "a registered agent reports its results over one connection",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "agent": null,
+        "subagent": null
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-15",
+        "lane": "api",
+        "text": "an agent that stops reporting is shown as silent within two intervals",
+        "parallel": false,
+        "seam": false,
+        "state": "running",
+        "tries": 0,
+        "lock": {
+          "source": "activity",
+          "session": "a:claude:sess-51/T3"
+        },
+        "since": "2026-03-08T14:30:00Z",
+        "elapsedMs": 1800000,
+        "stale": false,
+        "agent": {
+          "raw": "a:claude:sess-51",
+          "kind": "agent",
+          "id": "a:claude:sess-51",
+          "legacy": false
+        },
+        "subagent": {
+          "raw": "a:claude:sess-51/T3",
+          "kind": "subagent",
+          "id": "a:claude:sess-51",
+          "task": "T3",
+          "legacy": false
+        },
+        "run": {
+          "task": "T3",
+          "state": "building",
+          "session": "a:claude:sess-51/T3",
+          "worktree": "wt-3",
+          "ts": "2026-03-08T14:32:00Z"
+        }
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-16",
+        "lane": "api",
+        "text": "a check can be pinned to one region's agents",
+        "parallel": false,
+        "seam": false,
+        "state": "running",
+        "tries": 0,
+        "lock": {
+          "source": "activity",
+          "session": "a:claude:sess-50/T4"
+        },
+        "since": "2026-03-08T13:40:00Z",
+        "elapsedMs": 4800000,
+        "stale": true,
+        "agent": {
+          "raw": "a:claude:sess-50",
+          "kind": "agent",
+          "id": "a:claude:sess-50",
+          "legacy": false
+        },
+        "subagent": {
+          "raw": "a:claude:sess-50/T4",
+          "kind": "subagent",
+          "id": "a:claude:sess-50",
+          "task": "T4",
+          "legacy": false
+        },
+        "run": {
+          "task": "T4",
+          "state": "dispatched",
+          "session": "a:claude:sess-50/T4",
+          "worktree": "wt-4",
+          "ts": "2026-03-08T13:41:00Z"
+        }
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-18",
+        "lane": "api",
+        "text": "sign agent results",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null,
+        "run": {
+          "task": "T5",
+          "state": "patched",
+          "session": "a:claude:sess-51/T5",
+          "worktree": "wt-5",
+          "ts": "2026-03-08T14:31:00Z"
+        }
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-18",
+        "lane": "api",
+        "text": "reject results with a failed signature",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "same file as a task already in this round: api/src/probe-agents.ts",
+        "agent": null,
+        "subagent": null,
+        "run": {
+          "task": "T6",
+          "state": "applied-open",
+          "session": "a:claude:sess-51/T6",
+          "worktree": "wt-6",
+          "ts": "2026-03-08T14:35:00Z"
+        }
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-17",
+        "lane": "api",
+        "text": "drop results of a revoked agent",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "claim blocked by ISC-18",
+        "agent": null,
+        "subagent": null
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 6
+      },
+      "tasks": {
+        "landed": 2,
+        "total": 7
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [
+      {
+        "source": "activity",
+        "claim": "ISC-15",
+        "session": "a:claude:sess-51/T3",
+        "actor": {
+          "raw": "a:claude:sess-51/T3",
+          "kind": "subagent",
+          "id": "a:claude:sess-51",
+          "task": "T3",
+          "legacy": false
+        },
+        "since": "2026-03-08T14:30:00Z"
+      },
+      {
+        "source": "activity",
+        "claim": "ISC-16",
+        "session": "a:claude:sess-50/T4",
+        "actor": {
+          "raw": "a:claude:sess-50/T4",
+          "kind": "subagent",
+          "id": "a:claude:sess-50",
+          "task": "T4",
+          "legacy": false
+        },
+        "since": "2026-03-08T13:40:00Z"
+      }
+    ],
+    "agents": [
+      {
+        "session": "a:claude:sess-50/T4",
+        "source": "activity",
+        "claims": [
+          "ISC-16"
+        ],
+        "since": "2026-03-08T13:40:00Z",
+        "elapsedMs": 4800000,
+        "stale": true
+      },
+      {
+        "session": "a:claude:sess-51/T3",
+        "source": "activity",
+        "claims": [
+          "ISC-15"
+        ],
+        "since": "2026-03-08T14:30:00Z",
+        "elapsedMs": 1800000,
+        "stale": false
+      }
+    ],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": 1,
+      "cards": [
+        {
+          "task": "T6",
+          "claim": "ISC-18",
+          "lane": "api",
+          "text": "reject results with a failed signature",
+          "parallel": false,
+          "seam": false,
+          "state": "waiting",
+          "tries": 0,
+          "reason": "same file as a task already in this round: api/src/probe-agents.ts",
+          "agent": null,
+          "subagent": null,
+          "run": {
+            "task": "T6",
+            "state": "applied-open",
+            "session": "a:claude:sess-51/T6",
+            "worktree": "wt-6",
+            "ts": "2026-03-08T14:35:00Z"
+          }
+        },
+        {
+          "task": "T5",
+          "claim": "ISC-18",
+          "lane": "api",
+          "text": "sign agent results",
+          "parallel": false,
+          "seam": false,
+          "state": "waiting",
+          "tries": 0,
+          "reason": "claim takeable, edges closed",
+          "agent": null,
+          "subagent": null,
+          "run": {
+            "task": "T5",
+            "state": "patched",
+            "session": "a:claude:sess-51/T5",
+            "worktree": "wt-5",
+            "ts": "2026-03-08T14:31:00Z"
+          }
+        },
+        {
+          "task": "T3",
+          "claim": "ISC-15",
+          "lane": "api",
+          "text": "an agent that stops reporting is shown as silent within two intervals",
+          "parallel": false,
+          "seam": false,
+          "state": "running",
+          "tries": 0,
+          "lock": {
+            "source": "activity",
+            "session": "a:claude:sess-51/T3"
+          },
+          "since": "2026-03-08T14:30:00Z",
+          "elapsedMs": 1800000,
+          "stale": false,
+          "agent": {
+            "raw": "a:claude:sess-51",
+            "kind": "agent",
+            "id": "a:claude:sess-51",
+            "legacy": false
+          },
+          "subagent": {
+            "raw": "a:claude:sess-51/T3",
+            "kind": "subagent",
+            "id": "a:claude:sess-51",
+            "task": "T3",
+            "legacy": false
+          },
+          "run": {
+            "task": "T3",
+            "state": "building",
+            "session": "a:claude:sess-51/T3",
+            "worktree": "wt-3",
+            "ts": "2026-03-08T14:32:00Z"
+          }
+        },
+        {
+          "task": "T4",
+          "claim": "ISC-16",
+          "lane": "api",
+          "text": "a check can be pinned to one region's agents",
+          "parallel": false,
+          "seam": false,
+          "state": "running",
+          "tries": 0,
+          "lock": {
+            "source": "activity",
+            "session": "a:claude:sess-50/T4"
+          },
+          "since": "2026-03-08T13:40:00Z",
+          "elapsedMs": 4800000,
+          "stale": true,
+          "agent": {
+            "raw": "a:claude:sess-50",
+            "kind": "agent",
+            "id": "a:claude:sess-50",
+            "legacy": false
+          },
+          "subagent": {
+            "raw": "a:claude:sess-50/T4",
+            "kind": "subagent",
+            "id": "a:claude:sess-50",
+            "task": "T4",
+            "legacy": false
+          },
+          "run": {
+            "task": "T4",
+            "state": "dispatched",
+            "session": "a:claude:sess-50/T4",
+            "worktree": "wt-4",
+            "ts": "2026-03-08T13:41:00Z"
+          }
+        }
+      ],
+      "lanes": {
+        "api": {
+          "dispatched": 1,
+          "building": 1,
+          "patched": 1,
+          "applied-open": 1
+        }
+      },
+      "total": {
+        "dispatched": 1,
+        "building": 1,
+        "patched": 1,
+        "applied-open": 1
+      }
+    }
+  },
+  "specs/006-retry-backoff": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/007-history-export": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/008-export-formats": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 1,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/009-timezone-labels": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 1,
+        "total": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/010-renew-api-key": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/011-maintenance-windows": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  }
+}

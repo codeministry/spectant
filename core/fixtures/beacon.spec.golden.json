@@ -1,0 +1,1342 @@
+{
+  "specs/001-check-scheduler": {
+    "head": {
+      "id": "001",
+      "slug": "001-check-scheduler",
+      "title": "Check scheduler",
+      "type": "feature",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "phase": "complete",
+      "started": "2026-03-01T09:00:00Z",
+      "updated": "2026-03-04T16:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:5d0e8b21",
+        "kind": "person",
+        "id": "u:5d0e8b21",
+        "legacy": false
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 3,
+        "total": 3,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 3,
+        "total": 3
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Every check runs on its own interval, spread across the host, and a timeout counts as down.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "phase: complete"
+      ],
+      "since": "2026-03-04T16:00:00Z",
+      "via": "/spec-complete 001"
+    },
+    "lanes": [
+      {
+        "name": "api",
+        "landed": 3,
+        "total": 3
+      },
+      {
+        "name": "web",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-03-02T10:00:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 8,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 3,
+          "total": 3
+        },
+        "tasks": {
+          "landed": 3,
+          "total": 3
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/002-status-page": {
+    "head": {
+      "id": "002",
+      "slug": "002-status-page",
+      "title": "Status page",
+      "type": "feature",
+      "stage": "plan",
+      "nextCommand": "/spec-plan 002",
+      "nextReason": "a feature spec needs plan.md and it is missing",
+      "phase": "building",
+      "started": "2026-03-05T09:00:00Z",
+      "updated": "2026-03-05T09:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 3,
+        "open": 3,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 1,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A public page lists every public check with its state and works without script.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-plan 002",
+      "reasons": [
+        "a feature spec needs plan.md and it is missing"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "missing",
+        "detail": "no reviewed mark"
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "warn",
+        "detail": "no mermaid diagram in plan.md",
+        "files": [
+          "plan.md"
+        ]
+      }
+    },
+    "warnings": [
+      {
+        "kind": "review",
+        "text": "no reviewed mark yet",
+        "command": "/spec-review 002"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 1,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 3
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/003-alert-rules": {
+    "head": {
+      "id": "003",
+      "slug": "003-alert-rules",
+      "title": "Alert rules",
+      "type": "feature",
+      "stage": "tasks",
+      "nextCommand": "/spec-tasks 003",
+      "nextReason": "3 claims and no tasks.md",
+      "phase": "building",
+      "started": "2026-03-05T10:00:00Z",
+      "updated": "2026-03-08T13:25:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 3,
+        "open": 3,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "An alert rule fires once per outage on the channel it names.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-tasks 003",
+      "reasons": [
+        "3 claims and no tasks.md"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "missing",
+        "detail": "no reviewed mark"
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "review",
+        "text": "no reviewed mark yet",
+        "command": "/spec-review 003"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 2,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 3
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/004-incident-notes": {
+    "head": {
+      "id": "004",
+      "slug": "004-incident-notes",
+      "title": "Incident notes",
+      "type": "feature",
+      "stage": "review",
+      "nextCommand": "/spec-review 004",
+      "nextReason": "the reviewed mark is stale",
+      "phase": "building",
+      "started": "2026-03-06T09:00:00Z",
+      "updated": "2026-03-07T15:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 3,
+        "open": 3,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Each outage can carry a note that shows on the status page, newest first.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-review 004",
+      "reasons": [
+        "the reviewed mark is stale"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "api",
+        "landed": 0,
+        "total": 3
+      },
+      {
+        "name": "web",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "stale",
+        "detail": "changed since the review: spec.md, plan.md, tasks.md",
+        "at": "2026-03-06T16:00:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "review",
+        "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+        "command": "/spec-review 004"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 5,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 3
+        },
+        "tasks": {
+          "landed": 0,
+          "total": 3
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/005-probe-agents": {
+    "head": {
+      "id": "005",
+      "slug": "005-probe-agents",
+      "title": "Probe agents",
+      "type": "feature",
+      "stage": "build",
+      "nextCommand": "/spec-implement 005",
+      "nextReason": "ISC-15, ISC-16 and 1 more are takeable",
+      "phase": "building",
+      "started": "2026-03-06T10:00:00Z",
+      "updated": "2026-03-08T14:14:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 6,
+        "open": 4,
+        "takeable": 3
+      },
+      "tasks": {
+        "landed": 2,
+        "total": 7
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 3,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Agents in several regions run checks and report signed results over one connection.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 005",
+      "reasons": [
+        "ISC-15, ISC-16 and 1 more are takeable",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "api",
+        "landed": 2,
+        "total": 7
+      },
+      {
+        "name": "web",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-03-07T12:00:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 5,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 6
+        },
+        "tasks": {
+          "landed": 2,
+          "total": 7
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/006-retry-backoff": {
+    "head": {
+      "id": "006",
+      "slug": "006-retry-backoff",
+      "title": "Retry backoff",
+      "type": "refactor",
+      "stage": "code-review",
+      "nextCommand": "/spec-code-review 006",
+      "nextReason": "every claim is closed and the code-reviewed mark is stale",
+      "phase": "building",
+      "started": "2026-03-06T11:00:00Z",
+      "updated": "2026-03-08T10:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 2,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Retries back off exponentially and belong to the outage that caused them.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-code-review 006",
+      "reasons": [
+        "every claim is closed and the code-reviewed mark is stale",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-06T13:00:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "stale",
+        "detail": "worktree tree id unavailable",
+        "at": "2026-03-08T09:30:00Z"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "warn",
+        "detail": "no mermaid diagram in spec.md",
+        "files": [
+          "spec.md"
+        ]
+      }
+    },
+    "warnings": [
+      {
+        "kind": "closed",
+        "text": "every claim closed, phase not complete"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 6,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/007-history-export": {
+    "head": {
+      "id": "007",
+      "slug": "007-history-export",
+      "title": "History export formats",
+      "type": "spike",
+      "stage": "close-pending",
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F6 waits on spec 008",
+      "phase": "building",
+      "started": "2026-03-07T09:00:00Z",
+      "updated": "2026-03-08T09:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 2,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A recorded table names the formats and a decision names the default.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "every claim is closed and F6 waits on spec 008"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-07T10:00:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 3,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/008-export-formats": {
+    "head": {
+      "id": "008",
+      "slug": "008-export-formats",
+      "title": "Export size limits",
+      "type": "spike",
+      "stage": "build",
+      "nextCommand": "/spec-implement 008",
+      "nextReason": "ISC-25 is takeable",
+      "phase": "building",
+      "started": "2026-03-07T09:30:00Z",
+      "updated": "2026-03-08T09:30:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 1,
+        "total": 2,
+        "open": 1,
+        "takeable": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A recorded table names each format's limit, and no export exceeds it.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 008",
+      "reasons": [
+        "ISC-25 is takeable",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-07T10:30:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 3,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 1,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/009-timezone-labels": {
+    "head": {
+      "id": "009",
+      "slug": "009-timezone-labels",
+      "title": "Time-zone labels",
+      "type": "bug",
+      "stage": "close",
+      "nextCommand": "/spec-complete 009",
+      "nextReason": "every claim is closed and the workflow has no code review",
+      "phase": "building",
+      "started": "2026-03-07T11:00:00Z",
+      "updated": "2026-03-08T11:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 1,
+        "total": 1,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Every time on the status page carries the viewer's time-zone label.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-complete 009",
+      "reasons": [
+        "every claim is closed and the workflow has no code review",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-07T11:30:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "closed",
+        "text": "every claim closed, phase not complete"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 1,
+          "total": 1
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/010-renew-api-key": {
+    "head": {
+      "id": "010",
+      "slug": "010-renew-api-key",
+      "title": "Renew the mail relay key",
+      "type": "chore",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "every claim of the chore is closed",
+      "phase": "building",
+      "started": "2026-03-07T13:00:00Z",
+      "updated": "2026-03-07T15:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 2,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "The key is replaced and the old one revoked, with no restart.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "every claim of the chore is closed"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-07T13:30:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/011-maintenance-windows": {
+    "head": {
+      "id": "011",
+      "slug": "011-maintenance-windows",
+      "title": "Maintenance windows",
+      "type": "bug",
+      "stage": "blocked",
+      "nextCommand": "/spec-status 011",
+      "nextReason": "waits on 002",
+      "phase": "building",
+      "started": "2026-03-07T14:00:00Z",
+      "updated": "2026-03-07T14:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": {
+        "spec": "011",
+        "blockers": [
+          "002"
+        ],
+        "heldTasks": 0,
+        "openTasks": 0,
+        "full": true
+      }
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 2,
+        "open": 2,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A maintenance window hides its outages and is announced a day ahead, once the status page exists.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-status 011",
+      "reasons": [
+        "waits on 002",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-07T14:30:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 3,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  }
+}

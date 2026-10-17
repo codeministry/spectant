@@ -26,4 +26,6 @@ export const EXPECTED_WARNINGS: Record<string, string[]> = {
   "milestone-lines": [],
   // The backlog cases of backlog-ranks are planning diagnostics on specs/backlog.md (spec 036), not dashboard ones.
   "backlog-ranks": [],
+  // Spec 040: the item-state tree carries every stage row and its run lines without a dashboard warning.
+  beacon: [],
 };

@@ -1,0 +1,737 @@
+{
+  "kpis": {
+    "specs": 11,
+    "building": 5,
+    "scoping": 4,
+    "master": {
+      "closed": 13,
+      "total": 29
+    },
+    "claims": {
+      "closed": 8,
+      "total": 24
+    },
+    "tasks": {
+      "landed": 2,
+      "total": 10
+    },
+    "takeable": 4,
+    "warnings": 5,
+    "fog": 0,
+    "attention": 5,
+    "archived": 0
+  },
+  "stageCounts": {
+    "plan": 1,
+    "tasks": 1,
+    "review": 1,
+    "build": 2,
+    "blocked": 1,
+    "code-review": 1,
+    "close-pending": 1,
+    "close": 1,
+    "done": 2
+  },
+  "specs": [
+    {
+      "id": "009",
+      "slug": "009-timezone-labels",
+      "title": "Label every time on the status page with a time zone",
+      "type": "bug",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "close",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 1,
+        "total": 1
+      },
+      "tasks": null,
+      "nextCommand": "/spec-complete 009",
+      "nextReason": "every claim is closed and the workflow has no code review",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "closed",
+          "text": "every claim closed, phase not complete"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-07T11:30:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T11:00:00Z",
+      "lastRound": null,
+      "goal": "Every time on the status page carries the viewer's time-zone label.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "006",
+      "slug": "006-retry-backoff",
+      "title": "Retry failed runs without counting extra outages",
+      "type": "refactor",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "code-review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-code-review 006",
+      "nextReason": "every claim is closed and the code-reviewed mark is stale",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "closed",
+          "text": "every claim closed, phase not complete"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-06T13:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "stale",
+          "detail": "worktree tree id unavailable",
+          "at": "2026-03-08T09:30:00Z"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in spec.md",
+          "files": [
+            "spec.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T10:00:00Z",
+      "lastRound": null,
+      "goal": "Retries back off exponentially and belong to the outage that caused them.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "004",
+      "slug": "004-incident-notes",
+      "title": "Explain an outage in words on the status page",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      },
+      "nextCommand": "/spec-review 004",
+      "nextReason": "the reviewed mark is stale",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+          "command": "/spec-review 004"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "stale",
+          "detail": "changed since the review: spec.md, plan.md, tasks.md",
+          "at": "2026-03-06T16:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-07T15:00:00Z",
+      "lastRound": null,
+      "goal": "Each outage can carry a note that shows on the status page, newest first.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "005",
+      "slug": "005-probe-agents",
+      "title": "Run checks from agents in several regions",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "build",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 6
+      },
+      "tasks": {
+        "landed": 2,
+        "total": 7
+      },
+      "nextCommand": "/spec-implement 005",
+      "nextReason": "ISC-15, ISC-16 and 1 more are takeable",
+      "takeable": [
+        "ISC-15",
+        "ISC-16",
+        "ISC-18"
+      ],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-03-07T12:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T14:14:00Z",
+      "lastRound": null,
+      "goal": "Agents in several regions run checks and report signed results over one connection.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "008",
+      "slug": "008-export-formats",
+      "title": "Find the largest history each format exports quickly",
+      "type": "spike",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "build",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 1,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-implement 008",
+      "nextReason": "ISC-25 is takeable",
+      "takeable": [
+        "ISC-25"
+      ],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-07T10:30:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T09:30:00Z",
+      "lastRound": null,
+      "goal": "A recorded table names each format's limit, and no export exceeds it.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "011",
+      "slug": "011-maintenance-windows",
+      "title": "Hide planned downtime from alerts and the page",
+      "type": "bug",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "blocked",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-status 011",
+      "nextReason": "waits on 002",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-07T14:30:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-07T14:00:00Z",
+      "lastRound": null,
+      "goal": "A maintenance window hides its outages and is announced a day ahead, once the status page exists.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": {
+        "spec": "011",
+        "blockers": [
+          "002"
+        ],
+        "heldTasks": 0,
+        "openTasks": 0,
+        "full": true
+      }
+    },
+    {
+      "id": "003",
+      "slug": "003-alert-rules",
+      "title": "Send one alert per outage to the right channel",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "tasks",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": null,
+      "nextCommand": "/spec-tasks 003",
+      "nextReason": "3 claims and no tasks.md",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 003"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T13:25:00Z",
+      "lastRound": null,
+      "goal": "An alert rule fires once per outage on the channel it names.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "002",
+      "slug": "002-status-page",
+      "title": "Publish the state of every public check",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "plan",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": null,
+      "nextCommand": "/spec-plan 002",
+      "nextReason": "a feature spec needs plan.md and it is missing",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 002"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in plan.md",
+          "files": [
+            "plan.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-05T09:00:00Z",
+      "lastRound": null,
+      "goal": "A public page lists every public check with its state and works without script.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "007",
+      "slug": "007-history-export",
+      "title": "Find out which export formats teams need",
+      "type": "spike",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "close-pending",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F6 waits on spec 008",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-07T10:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T09:00:00Z",
+      "lastRound": null,
+      "goal": "A recorded table names the formats and a decision names the default.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "001",
+      "slug": "001-check-scheduler",
+      "title": "Run every check on its interval",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "complete",
+      "stage": "done",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 3,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 3,
+        "total": 3
+      },
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "takeable": [],
+      "taken": [],
+      "assignee": {
+        "raw": "u:5d0e8b21",
+        "kind": "person",
+        "id": "u:5d0e8b21",
+        "legacy": false
+      },
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-03-02T10:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-04T16:00:00Z",
+      "lastRound": null,
+      "goal": "Every check runs on its own interval, spread across the host, and a timeout counts as down.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    },
+    {
+      "id": "010",
+      "slug": "010-renew-api-key",
+      "title": "Replace the mail relay API key without a restart",
+      "type": "chore",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "done",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim of the chore is closed",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-07T13:30:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-07T15:00:00Z",
+      "lastRound": null,
+      "goal": "The key is replaced and the old one revoked, with no restart.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null
+    }
+  ],
+  "nextUp": [
+    "009",
+    "006",
+    "004"
+  ],
+  "warningGroups": [
+    {
+      "kind": "review",
+      "items": [
+        {
+          "spec": "004",
+          "warning": {
+            "kind": "review",
+            "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+            "command": "/spec-review 004"
+          }
+        },
+        {
+          "spec": "003",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 003"
+          }
+        },
+        {
+          "spec": "002",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 002"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "closed",
+      "items": [
+        {
+          "spec": "009",
+          "warning": {
+            "kind": "closed",
+            "text": "every claim closed, phase not complete"
+          }
+        },
+        {
+          "spec": "006",
+          "warning": {
+            "kind": "closed",
+            "text": "every claim closed, phase not complete"
+          }
+        }
+      ]
+    }
+  ],
+  "archive": [],
+  "brief": null,
+  "services": [],
+  "diagnostics": [],
+  "ideas": {
+    "count": 2,
+    "list": [
+      {
+        "feature": "F3",
+        "milestone": null,
+        "slug": "digest-emails",
+        "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
+        "priority": "P3"
+      },
+      {
+        "feature": "F2",
+        "milestone": null,
+        "slug": "uptime-badges",
+        "title": "Each public check offers a small uptime badge a project can embed in its README.",
+        "priority": "P2"
+      }
+    ]
+  }
+}

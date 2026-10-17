@@ -1,0 +1,1416 @@
+{
+  "asOf": "2026-03-20",
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "close",
+          "done"
+        ],
+        "codeReview": "none"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "feature"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "file",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "tasks",
+    "review",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 2,
+    "plan": 1,
+    "tasks": 1,
+    "review": 1,
+    "build": 2,
+    "blocked": 1,
+    "close-pending": 1,
+    "code-review": 1,
+    "close": 1,
+    "done": 2
+  },
+  "features": [
+    {
+      "id": "F1",
+      "name": "Check scheduling",
+      "why": "checks run on time and an outage is never recorded twice.",
+      "rank": 1,
+      "priority": "P3",
+      "closed": 5,
+      "total": 5,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "text": "A check runs at the interval its definition names, within one second.",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-2",
+          "text": "A check that times out is recorded as down, never as up.",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-3",
+          "text": "Two checks on one host never run at the same instant.",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-20",
+          "text": "A failed run is retried with exponential backoff up to three times.",
+          "closed": true,
+          "dropped": false,
+          "holder": "006"
+        },
+        {
+          "id": "ISC-21",
+          "text": "a retry is counted as a separate outage.",
+          "closed": true,
+          "dropped": false,
+          "holder": "006"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-check-scheduler",
+          "title": "Run every check on its interval",
+          "archived": false,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "5ceb0516796ba62ec9fc1f29b04c6c82217bac4d216682058291849ee42d3aee",
+          "assignee": {
+            "raw": "u:5d0e8b21",
+            "kind": "person",
+            "id": "u:5d0e8b21",
+            "legacy": false
+          },
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "006",
+          "slug": "006-retry-backoff",
+          "title": "Retry failed runs without counting extra outages",
+          "archived": false,
+          "stage": "code-review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "ce808fec3a89b250cc69699de12f42a438b3e838402bc77a76d71b757fdeff23",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F2",
+      "name": "Status page",
+      "why": "the people who depend on a service see its state without asking.",
+      "rank": 2,
+      "priority": "P3",
+      "closed": 1,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-4",
+          "text": "The status page lists every public check with its current state.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-5",
+          "text": "The status page renders without script at 390 px.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-6",
+          "text": "a private check appears on the public status page.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-26",
+          "text": "Times on the status page carry the viewer's time-zone label.",
+          "closed": true,
+          "dropped": false,
+          "holder": "009"
+        }
+      ],
+      "holders": [
+        {
+          "id": "002",
+          "slug": "002-status-page",
+          "title": "Publish the state of every public check",
+          "archived": false,
+          "stage": "plan",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "7e4cba1ff9aa516e25cbc7a1271dcf11c3b054ba26146c7c055a7ec0f56bf6d8",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "009",
+          "slug": "009-timezone-labels",
+          "title": "Label every time on the status page with a time zone",
+          "archived": false,
+          "stage": "close",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "0ff05e3ad714148f6423c7f7c6600c2794cbf908f6b60ca0946c096c55c6cb4a",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 1
+        }
+      ],
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "uptime-badges",
+          "title": "Each public check offers a small uptime badge a project can embed in its README.",
+          "type": "feature",
+          "feature": "F2",
+          "milestone": null,
+          "priority": "P2",
+          "path": "specs/ideas/uptime-badges.md"
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "Alerting",
+      "why": "the on-call person hears about an outage once, on the right channel.",
+      "rank": 3,
+      "priority": "P3",
+      "closed": 0,
+      "total": 5,
+      "claims": [
+        {
+          "id": "ISC-7",
+          "text": "An alert rule names a check, a threshold and a channel.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-8",
+          "text": "A rule fires once per outage, not once per failed run.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-9",
+          "text": "A rule that names an unknown channel is refused when saved.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-29",
+          "text": "A maintenance window hides its checks' outages from the status page.",
+          "closed": false,
+          "dropped": false,
+          "holder": "011"
+        },
+        {
+          "id": "ISC-30",
+          "text": "A maintenance window is announced on the status page a day ahead.",
+          "closed": false,
+          "dropped": false,
+          "holder": "011"
+        }
+      ],
+      "holders": [
+        {
+          "id": "003",
+          "slug": "003-alert-rules",
+          "title": "Send one alert per outage to the right channel",
+          "archived": false,
+          "stage": "tasks",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "1c70c2c13d9e3d2e31b383835f8ec77d8047f49d7db001fc08ad572be0970308",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "011",
+          "slug": "011-maintenance-windows",
+          "title": "Hide planned downtime from alerts and the page",
+          "archived": false,
+          "stage": "blocked",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "83cee6efeec9781ebca247d0ad1f211e942a12d535640d2679e24e1c23f3056c",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "digest-emails",
+          "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
+          "type": "feature",
+          "feature": "F3",
+          "milestone": null,
+          "priority": "P3",
+          "path": "specs/ideas/digest-emails.md"
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "name": "Incident notes",
+      "why": "an outage on the status page says what happened, in words.",
+      "rank": 4,
+      "priority": "P3",
+      "closed": 0,
+      "total": 3,
+      "claims": [
+        {
+          "id": "ISC-10",
+          "text": "An incident note is attached to the outage it describes.",
+          "closed": false,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-11",
+          "text": "Incident notes show on the status page, newest first.",
+          "closed": false,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-12",
+          "text": "Editing a note keeps its first publication time.",
+          "closed": false,
+          "dropped": false,
+          "holder": "004"
+        }
+      ],
+      "holders": [
+        {
+          "id": "004",
+          "slug": "004-incident-notes",
+          "title": "Explain an outage in words on the status page",
+          "archived": false,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "137851951827b298fd29c00b8fa85953e7f2cfb8e19bd082aefb25791c603a5e",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 3
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F5",
+      "name": "Probe agents",
+      "why": "checks run from where the users are, not only from one host.",
+      "rank": 5,
+      "priority": "P3",
+      "closed": 2,
+      "total": 6,
+      "claims": [
+        {
+          "id": "ISC-13",
+          "text": "A probe agent registers with a one-time token.",
+          "closed": true,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-14",
+          "text": "A registered agent reports its results over one connection.",
+          "closed": true,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-15",
+          "text": "An agent that stops reporting is shown as silent within two intervals.",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-16",
+          "text": "A check can be pinned to one region's agents.",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-17",
+          "text": "Results from a revoked agent are dropped.",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-18",
+          "text": "An agent's results are signed and rejected when the signature fails.",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-19",
+          "text": "Agents update themselves from the console.",
+          "closed": false,
+          "dropped": true,
+          "holder": "005"
+        }
+      ],
+      "holders": [
+        {
+          "id": "005",
+          "slug": "005-probe-agents",
+          "title": "Run checks from agents in several regions",
+          "archived": false,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3d74790a7e22b372bf4ae33b2730570d7980357e45e100ceb8c7fe2211db8beb",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 6
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F6",
+      "name": "History export",
+      "why": "a team takes its uptime history elsewhere without a support ticket.",
+      "rank": 6,
+      "priority": "P3",
+      "closed": 3,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-22",
+          "text": "A recorded table names the export formats teams ask for, with one example file each.",
+          "closed": true,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-23",
+          "text": "A decision names the default export format.",
+          "closed": true,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-24",
+          "text": "A recorded table names the largest history each format exports within ten seconds.",
+          "closed": true,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-25",
+          "text": "an export exceeds the limit the spike recorded for its format.",
+          "closed": false,
+          "dropped": false,
+          "holder": "008"
+        }
+      ],
+      "holders": [
+        {
+          "id": "007",
+          "slug": "007-history-export",
+          "title": "Find out which export formats teams need",
+          "archived": false,
+          "stage": "close-pending",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "4899d35ac925baf3f41e86e3df82a322fea0bcdd74f5e2129ece3b8389fdd43f",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        },
+        {
+          "id": "008",
+          "slug": "008-export-formats",
+          "title": "Find the largest history each format exports quickly",
+          "archived": false,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "82e66eb28e7262838df180637280cb362912bcd01faf2e789a258b4f1f47217e",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F7",
+      "name": "Maintenance",
+      "why": "the service's own credentials and dependencies stay current.",
+      "rank": 7,
+      "priority": "P3",
+      "closed": 2,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-27",
+          "text": "The mail relay API key is replaced without a restart.",
+          "closed": true,
+          "dropped": false,
+          "holder": "010"
+        },
+        {
+          "id": "ISC-28",
+          "text": "The old mail relay API key is revoked after the swap.",
+          "closed": true,
+          "dropped": false,
+          "holder": "010"
+        }
+      ],
+      "holders": [
+        {
+          "id": "010",
+          "slug": "010-renew-api-key",
+          "title": "Replace the mail relay API key without a restart",
+          "archived": false,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "0550677fb6998d6748cac5ad204c6198d4d07ac9e836afba456e8393b2c0852e",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    }
+  ],
+  "milestones": [],
+  "unassignedFeatures": [
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7"
+  ],
+  "ideas": [
+    {
+      "slug": "digest-emails",
+      "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
+      "type": "feature",
+      "feature": "F3",
+      "milestone": null,
+      "priority": "P3",
+      "path": "specs/ideas/digest-emails.md"
+    },
+    {
+      "slug": "uptime-badges",
+      "title": "Each public check offers a small uptime badge a project can embed in its README.",
+      "type": "feature",
+      "feature": "F2",
+      "milestone": null,
+      "priority": "P2",
+      "path": "specs/ideas/uptime-badges.md"
+    }
+  ],
+  "recount": {
+    "closed": 13,
+    "total": 29
+  },
+  "diagnostics": [],
+  "relations": {
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Check scheduling",
+      "closed": 5,
+      "total": 5,
+      "parents": [],
+      "children": [
+        "spec:001",
+        "spec:006",
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3",
+        "claim:ISC-20",
+        "claim:ISC-21"
+      ],
+      "blockers": []
+    },
+    "feature:F2": {
+      "ref": "feature:F2",
+      "type": "feature",
+      "id": "F2",
+      "title": "Status page",
+      "closed": 1,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "spec:002",
+        "spec:009",
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-26",
+        "idea:uptime-badges"
+      ],
+      "blockers": []
+    },
+    "feature:F3": {
+      "ref": "feature:F3",
+      "type": "feature",
+      "id": "F3",
+      "title": "Alerting",
+      "closed": 0,
+      "total": 5,
+      "parents": [],
+      "children": [
+        "spec:003",
+        "spec:011",
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9",
+        "claim:ISC-29",
+        "claim:ISC-30",
+        "idea:digest-emails"
+      ],
+      "blockers": []
+    },
+    "feature:F4": {
+      "ref": "feature:F4",
+      "type": "feature",
+      "id": "F4",
+      "title": "Incident notes",
+      "closed": 0,
+      "total": 3,
+      "parents": [],
+      "children": [
+        "spec:004",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12"
+      ],
+      "blockers": []
+    },
+    "feature:F5": {
+      "ref": "feature:F5",
+      "type": "feature",
+      "id": "F5",
+      "title": "Probe agents",
+      "closed": 2,
+      "total": 6,
+      "parents": [],
+      "children": [
+        "spec:005",
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16",
+        "claim:ISC-17",
+        "claim:ISC-18",
+        "claim:ISC-19"
+      ],
+      "blockers": []
+    },
+    "feature:F6": {
+      "ref": "feature:F6",
+      "type": "feature",
+      "id": "F6",
+      "title": "History export",
+      "closed": 3,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "spec:007",
+        "spec:008",
+        "claim:ISC-22",
+        "claim:ISC-23",
+        "claim:ISC-24",
+        "claim:ISC-25"
+      ],
+      "blockers": []
+    },
+    "feature:F7": {
+      "ref": "feature:F7",
+      "type": "feature",
+      "id": "F7",
+      "title": "Maintenance",
+      "closed": 2,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "spec:010",
+        "claim:ISC-27",
+        "claim:ISC-28"
+      ],
+      "blockers": []
+    },
+    "spec:001": {
+      "ref": "spec:001",
+      "type": "spec",
+      "id": "001",
+      "title": "Run every check on its interval",
+      "closed": 3,
+      "total": 3,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3"
+      ],
+      "blockers": [],
+      "stage": "done"
+    },
+    "spec:002": {
+      "ref": "spec:002",
+      "type": "spec",
+      "id": "002",
+      "title": "Publish the state of every public check",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6"
+      ],
+      "blockers": [],
+      "stage": "plan"
+    },
+    "spec:003": {
+      "ref": "spec:003",
+      "type": "spec",
+      "id": "003",
+      "title": "Send one alert per outage to the right channel",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9"
+      ],
+      "blockers": [],
+      "stage": "tasks"
+    },
+    "spec:004": {
+      "ref": "spec:004",
+      "type": "spec",
+      "id": "004",
+      "title": "Explain an outage in words on the status page",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:005": {
+      "ref": "spec:005",
+      "type": "spec",
+      "id": "005",
+      "title": "Run checks from agents in several regions",
+      "closed": 2,
+      "total": 6,
+      "parents": [
+        "feature:F5"
+      ],
+      "children": [
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16",
+        "claim:ISC-17",
+        "claim:ISC-18",
+        "claim:ISC-19"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:006": {
+      "ref": "spec:006",
+      "type": "spec",
+      "id": "006",
+      "title": "Retry failed runs without counting extra outages",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-20",
+        "claim:ISC-21"
+      ],
+      "blockers": [],
+      "stage": "code-review"
+    },
+    "spec:007": {
+      "ref": "spec:007",
+      "type": "spec",
+      "id": "007",
+      "title": "Find out which export formats teams need",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F6"
+      ],
+      "children": [
+        "claim:ISC-22",
+        "claim:ISC-23"
+      ],
+      "blockers": [],
+      "stage": "close-pending"
+    },
+    "spec:008": {
+      "ref": "spec:008",
+      "type": "spec",
+      "id": "008",
+      "title": "Find the largest history each format exports quickly",
+      "closed": 1,
+      "total": 2,
+      "parents": [
+        "feature:F6"
+      ],
+      "children": [
+        "claim:ISC-24",
+        "claim:ISC-25"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:009": {
+      "ref": "spec:009",
+      "type": "spec",
+      "id": "009",
+      "title": "Label every time on the status page with a time zone",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [
+        "claim:ISC-26"
+      ],
+      "blockers": [],
+      "stage": "close"
+    },
+    "spec:010": {
+      "ref": "spec:010",
+      "type": "spec",
+      "id": "010",
+      "title": "Replace the mail relay API key without a restart",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F7"
+      ],
+      "children": [
+        "claim:ISC-27",
+        "claim:ISC-28"
+      ],
+      "blockers": [],
+      "stage": "done"
+    },
+    "spec:011": {
+      "ref": "spec:011",
+      "type": "spec",
+      "id": "011",
+      "title": "Hide planned downtime from alerts and the page",
+      "closed": 0,
+      "total": 2,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-29",
+        "claim:ISC-30"
+      ],
+      "blockers": [],
+      "stage": "blocked"
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "A check runs at the interval its definition names, within one second.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "A check that times out is recorded as down, never as up.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "Two checks on one host never run at the same instant.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-20": {
+      "ref": "claim:ISC-20",
+      "type": "claim",
+      "id": "ISC-20",
+      "title": "A failed run is retried with exponential backoff up to three times.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-21": {
+      "ref": "claim:ISC-21",
+      "type": "claim",
+      "id": "ISC-21",
+      "title": "a retry is counted as a separate outage.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "The status page lists every public check with its current state.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "The status page renders without script at 390 px.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "a private check appears on the public status page.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-26": {
+      "ref": "claim:ISC-26",
+      "type": "claim",
+      "id": "ISC-26",
+      "title": "Times on the status page carry the viewer's time-zone label.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:009",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "An alert rule names a check, a threshold and a channel.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "A rule fires once per outage, not once per failed run.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "A rule that names an unknown channel is refused when saved.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-29": {
+      "ref": "claim:ISC-29",
+      "type": "claim",
+      "id": "ISC-29",
+      "title": "A maintenance window hides its checks' outages from the status page.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:011",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-30": {
+      "ref": "claim:ISC-30",
+      "type": "claim",
+      "id": "ISC-30",
+      "title": "A maintenance window is announced on the status page a day ahead.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:011",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "An incident note is attached to the outage it describes.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-11": {
+      "ref": "claim:ISC-11",
+      "type": "claim",
+      "id": "ISC-11",
+      "title": "Incident notes show on the status page, newest first.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-12": {
+      "ref": "claim:ISC-12",
+      "type": "claim",
+      "id": "ISC-12",
+      "title": "Editing a note keeps its first publication time.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-13": {
+      "ref": "claim:ISC-13",
+      "type": "claim",
+      "id": "ISC-13",
+      "title": "A probe agent registers with a one-time token.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-14": {
+      "ref": "claim:ISC-14",
+      "type": "claim",
+      "id": "ISC-14",
+      "title": "A registered agent reports its results over one connection.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-15": {
+      "ref": "claim:ISC-15",
+      "type": "claim",
+      "id": "ISC-15",
+      "title": "An agent that stops reporting is shown as silent within two intervals.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-16": {
+      "ref": "claim:ISC-16",
+      "type": "claim",
+      "id": "ISC-16",
+      "title": "A check can be pinned to one region's agents.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-17": {
+      "ref": "claim:ISC-17",
+      "type": "claim",
+      "id": "ISC-17",
+      "title": "Results from a revoked agent are dropped.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-18"
+      ]
+    },
+    "claim:ISC-18": {
+      "ref": "claim:ISC-18",
+      "type": "claim",
+      "id": "ISC-18",
+      "title": "An agent's results are signed and rejected when the signature fails.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-19": {
+      "ref": "claim:ISC-19",
+      "type": "claim",
+      "id": "ISC-19",
+      "title": "Agents update themselves from the console.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-22": {
+      "ref": "claim:ISC-22",
+      "type": "claim",
+      "id": "ISC-22",
+      "title": "A recorded table names the export formats teams ask for, with one example file each.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-23": {
+      "ref": "claim:ISC-23",
+      "type": "claim",
+      "id": "ISC-23",
+      "title": "A decision names the default export format.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-24": {
+      "ref": "claim:ISC-24",
+      "type": "claim",
+      "id": "ISC-24",
+      "title": "A recorded table names the largest history each format exports within ten seconds.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-25": {
+      "ref": "claim:ISC-25",
+      "type": "claim",
+      "id": "ISC-25",
+      "title": "an export exceeds the limit the spike recorded for its format.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-27": {
+      "ref": "claim:ISC-27",
+      "type": "claim",
+      "id": "ISC-27",
+      "title": "The mail relay API key is replaced without a restart.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:010",
+        "feature:F7"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-28": {
+      "ref": "claim:ISC-28",
+      "type": "claim",
+      "id": "ISC-28",
+      "title": "The old mail relay API key is revoked after the swap.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:010",
+        "feature:F7"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "idea:digest-emails": {
+      "ref": "idea:digest-emails",
+      "type": "idea",
+      "id": "digest-emails",
+      "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "idea:uptime-badges": {
+      "ref": "idea:uptime-badges",
+      "type": "idea",
+      "id": "uptime-badges",
+      "title": "Each public check offers a small uptime badge a project can embed in its README.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
+}

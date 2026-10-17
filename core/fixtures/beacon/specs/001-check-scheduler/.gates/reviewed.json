@@ -1,0 +1,10 @@
+{
+  "gate": "reviewed",
+  "at": "2026-03-02T10:00:00Z",
+  "actor": "u:5d0e8b21",
+  "files": {
+    "spec.md": "6f3a85a9bcfca07e51588d0a44771dbfdee9fe739b54393840d8cee8ccf61f9f",
+    "plan.md": "53bd7521b658844fa2d67fe5a6404f3a637a23b0a87950e1c4888c9663386d66",
+    "tasks.md": "de1da8d7bdc0a365865e1145569704276d83f0de3872d92d1fe415ab0d4592c0"
+  }
+}

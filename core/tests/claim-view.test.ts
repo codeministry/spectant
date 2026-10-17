@@ -14,6 +14,7 @@ import type { ClaimGlyphState, ClaimLock, ClaimView, ClaimViewModel, LockReading
 import { hashForGate } from '../src/gates.ts';
 import { readLockSources } from '../src/locks.ts';
 import { buildSpecPage } from '../src/spec.ts';
+import { resolveEdges } from '../src/spec-edges.ts';
 import { FIXTURES, fixtureTrees, folders, readTree } from './helpers/read-tree.ts';
 
 const HARBOR = join(FIXTURES, 'harbor');
@@ -303,9 +304,12 @@ describe('the counts equal the dashboard row (ISC-72)', () => {
     const input = readTree(tree);
     const dashboard = buildDashboard(locks ? { ...input, locks } : input);
     expect(dashboard.specs.length).toBeGreaterThan(0);
+    // The row reads the workspace's spec edges (spec 025); the tab gets this spec's, as the server hands them over.
+    const edges = resolveEdges({ specs: input.specs, archived: input.archived }, []).edges;
     for (const row of dashboard.specs) {
       const files = input.specs.find((f) => f.folder === row.slug) as SpecFiles;
-      const model = buildClaimViews(locks ? { files, locks } : { files });
+      const specEdges = edges.filter((e) => e.fromSpec === row.id);
+      const model = buildClaimViews(locks ? { files, locks, specEdges } : { files, specEdges });
       const got = {
         spec: row.slug,
         closed: model.counts.closed,
@@ -325,7 +329,9 @@ describe('the counts equal the dashboard row (ISC-72)', () => {
         sum: model.claims.length,
       });
       // The spec page's key numbers come from the same row; the tab agrees with them too.
-      const page = buildSpecPage(locks ? { files, locks } : { files });
+      // The page builds its row over the other folders, so it sees the same spec edges.
+      const others = [...input.specs.filter((f) => f !== files), ...input.archived];
+      const page = buildSpecPage(locks ? { files, locks, others } : { files, others });
       expect({ spec: row.slug, ...page.keyNumbers.claims }).toEqual({
         spec: row.slug,
         closed: model.counts.closed,

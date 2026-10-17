@@ -1,0 +1,932 @@
+{
+  "specs/001-check-scheduler": {
+    "claims": [
+      {
+        "id": "ISC-1",
+        "text": "A check runs at the interval its definition names, within one second.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-1",
+          "type": "bun-test",
+          "check": "a check runs at the interval its definition names, within one second",
+          "threshold": "pass",
+          "tool": "`bun test tests/scheduler.test.ts -t interval`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/scheduler.test.ts -t interval` passed, 2026-03-04",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 36
+      },
+      {
+        "id": "ISC-2",
+        "text": "A check that times out is recorded as down, never as up.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-2",
+          "type": "bun-test",
+          "check": "a check that times out is recorded as down, never as up",
+          "threshold": "pass",
+          "tool": "`bun test tests/scheduler.test.ts -t timeout`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/scheduler.test.ts -t timeout` passed, 2026-03-04",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 37
+      },
+      {
+        "id": "ISC-3",
+        "text": "Two checks on one host never run at the same instant.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-3",
+          "type": "bun-test",
+          "check": "two checks on one host never run at the same instant",
+          "threshold": "pass",
+          "tool": "`bun test tests/scheduler.test.ts -t spread`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/scheduler.test.ts -t spread` passed, 2026-03-04",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 38
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 3,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 3,
+      "dropped": 0,
+      "normal": 3,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/002-status-page": {
+    "claims": [
+      {
+        "id": "ISC-4",
+        "text": "The status page lists every public check with its current state.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-4",
+          "type": "e2e",
+          "check": "the status page lists every public check with its current state",
+          "threshold": "pass",
+          "tool": "`bun run e2e -- status -g list`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 36
+      },
+      {
+        "id": "ISC-5",
+        "text": "The status page renders without script at 390 px.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-5",
+          "type": "browser",
+          "check": "the status page renders without script at 390 px",
+          "threshold": "pass",
+          "tool": "`bun run test:browser -- status`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 37
+      },
+      {
+        "id": "ISC-6",
+        "text": "a private check appears on the public status page.",
+        "feature": null,
+        "state": "open",
+        "kind": "anti",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-6",
+          "type": "bun-test",
+          "check": "anti: a private check appears on the public status page",
+          "threshold": "pass",
+          "tool": "`bun test tests/status.test.ts -t private`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 38
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 3,
+      "open": 3,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 2,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
+  "specs/003-alert-rules": {
+    "claims": [
+      {
+        "id": "ISC-7",
+        "text": "An alert rule names a check, a threshold and a channel.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-7",
+          "type": "bun-test",
+          "check": "an alert rule names a check, a threshold and a channel",
+          "threshold": "pass",
+          "tool": "`bun test tests/rules.test.ts -t shape`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 36
+      },
+      {
+        "id": "ISC-8",
+        "text": "A rule fires once per outage, not once per failed run.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-8",
+          "type": "bun-test",
+          "check": "a rule fires once per outage, not once per failed run",
+          "threshold": "pass",
+          "tool": "`bun test tests/rules.test.ts -t once`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 37
+      },
+      {
+        "id": "ISC-9",
+        "text": "A rule that names an unknown channel is refused when saved.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-9",
+          "type": "bun-test",
+          "check": "a rule that names an unknown channel is refused when saved",
+          "threshold": "pass",
+          "tool": "`bun test tests/rules.test.ts -t channel`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 38
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 3,
+      "open": 3,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 3,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/004-incident-notes": {
+    "claims": [
+      {
+        "id": "ISC-10",
+        "text": "An incident note is attached to the outage it describes.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-10",
+          "type": "bun-test",
+          "check": "an incident note is attached to the outage it describes",
+          "threshold": "pass",
+          "tool": "`bun test tests/notes.test.ts -t attach`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 36
+      },
+      {
+        "id": "ISC-11",
+        "text": "Incident notes show on the status page, newest first.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-11",
+          "type": "e2e",
+          "check": "incident notes show on the status page, newest first",
+          "threshold": "pass",
+          "tool": "`bun run e2e -- notes -g order`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 37
+      },
+      {
+        "id": "ISC-12",
+        "text": "Editing a note keeps its first publication time.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-12",
+          "type": "bun-test",
+          "check": "editing a note keeps its first publication time",
+          "threshold": "pass",
+          "tool": "`bun test tests/notes.test.ts -t edit`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 38
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 3,
+      "open": 3,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 3,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/005-probe-agents": {
+    "claims": [
+      {
+        "id": "ISC-13",
+        "text": "A probe agent registers with a one-time token.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-13",
+          "type": "bun-test",
+          "check": "a probe agent registers with a one-time token",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t register`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/agents.test.ts -t register` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 36
+      },
+      {
+        "id": "ISC-14",
+        "text": "A registered agent reports its results over one connection.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-14",
+          "type": "bun-test",
+          "check": "a registered agent reports its results over one connection",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t report`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/agents.test.ts -t report` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 37
+      },
+      {
+        "id": "ISC-15",
+        "text": "An agent that stops reporting is shown as silent within two intervals.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-15",
+          "type": "bun-test",
+          "check": "an agent that stops reporting is shown as silent within two intervals",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t silent`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 38
+      },
+      {
+        "id": "ISC-16",
+        "text": "A check can be pinned to one region's agents.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-16",
+          "type": "bun-test",
+          "check": "a check can be pinned to one region's agents",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t region`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 39
+      },
+      {
+        "id": "ISC-17",
+        "text": "Results from a revoked agent are dropped.",
+        "feature": null,
+        "state": "blocked",
+        "kind": "normal",
+        "edges": [
+          "ISC-18"
+        ],
+        "afterSpecs": [],
+        "blockedBy": [
+          "ISC-18"
+        ],
+        "probe": {
+          "isc": "ISC-17",
+          "type": "bun-test",
+          "check": "results from a revoked agent are dropped",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t revoked`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 40
+      },
+      {
+        "id": "ISC-18",
+        "text": "An agent's results are signed and rejected when the signature fails.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-18",
+          "type": "bun-test",
+          "check": "an agent's results are signed and rejected when the signature fails",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t signed`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 41
+      },
+      {
+        "id": "ISC-19",
+        "text": "Agents update themselves from the console.",
+        "feature": null,
+        "state": "dropped",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-19",
+          "type": "bun-test",
+          "check": "agents update themselves from the console",
+          "threshold": "pass",
+          "tool": "`bun test tests/agents.test.ts -t update`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": {
+          "note": "see Decisions 2026-03-07"
+        },
+        "noteCount": 0,
+        "line": 42
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 7,
+      "open": 4,
+      "takeable": 3,
+      "taken": 0,
+      "blocked": 1,
+      "closed": 2,
+      "dropped": 1,
+      "normal": 7,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/006-retry-backoff": {
+    "claims": [
+      {
+        "id": "ISC-20",
+        "text": "A failed run is retried with exponential backoff up to three times.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-20",
+          "type": "bun-test",
+          "check": "a failed run is retried with exponential backoff up to three times",
+          "threshold": "pass",
+          "tool": "`bun test tests/retry.test.ts -t backoff`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/retry.test.ts -t backoff` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 31
+      },
+      {
+        "id": "ISC-21",
+        "text": "a retry is counted as a separate outage.",
+        "feature": null,
+        "state": "closed",
+        "kind": "anti",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-21",
+          "type": "bun-test",
+          "check": "anti: a retry is counted as a separate outage",
+          "threshold": "pass",
+          "tool": "`bun test tests/retry.test.ts -t outage`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/retry.test.ts -t outage` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 32
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 2,
+      "dropped": 0,
+      "normal": 1,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
+  "specs/007-history-export": {
+    "claims": [
+      {
+        "id": "ISC-22",
+        "text": "A recorded table names the export formats teams ask for, with one example file each.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-22",
+          "type": "bash",
+          "check": "a recorded table names the export formats teams ask for, with one example file each",
+          "threshold": "pass",
+          "tool": "`bun run cli -- survey exports`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- survey exports` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 31
+      },
+      {
+        "id": "ISC-23",
+        "text": "A decision names the default export format.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-23",
+          "type": "bash",
+          "check": "a decision names the default export format",
+          "threshold": "pass",
+          "tool": "`bun run cli -- survey exports --decision`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- survey exports --decision` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 32
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 2,
+      "dropped": 0,
+      "normal": 2,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/008-export-formats": {
+    "claims": [
+      {
+        "id": "ISC-24",
+        "text": "A recorded table names the largest history each format exports within ten seconds.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-24",
+          "type": "bash",
+          "check": "a recorded table names the largest history each format exports within ten seconds",
+          "threshold": "pass",
+          "tool": "`bun run cli -- probe exports`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- probe exports` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 31
+      },
+      {
+        "id": "ISC-25",
+        "text": "an export exceeds the limit the spike recorded for its format.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "anti",
+        "edges": [
+          "ISC-24"
+        ],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-25",
+          "type": "bun-test",
+          "check": "anti: an export exceeds the limit the spike recorded for its format",
+          "threshold": "pass",
+          "tool": "`bun test tests/export.test.ts -t limit`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 32
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 1,
+      "takeable": 1,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 1,
+      "dropped": 0,
+      "normal": 1,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
+  "specs/009-timezone-labels": {
+    "claims": [
+      {
+        "id": "ISC-26",
+        "text": "Times on the status page carry the viewer's time-zone label.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-26",
+          "type": "e2e",
+          "check": "times on the status page carry the viewer's time-zone label",
+          "threshold": "pass",
+          "tool": "`bun run e2e -- status -g timezone`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run e2e -- status -g timezone` passed, 2026-03-08",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 31
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 1,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 1,
+      "dropped": 0,
+      "normal": 1,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/010-renew-api-key": {
+    "claims": [
+      {
+        "id": "ISC-27",
+        "text": "The mail relay API key is replaced without a restart.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-27",
+          "type": "bash",
+          "check": "the mail relay api key is replaced without a restart",
+          "threshold": "pass",
+          "tool": "`bun run cli -- keys rotate --dry-run`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- keys rotate --dry-run` passed, 2026-03-07",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 31
+      },
+      {
+        "id": "ISC-28",
+        "text": "The old mail relay API key is revoked after the swap.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-28",
+          "type": "bash",
+          "check": "the old mail relay api key is revoked after the swap",
+          "threshold": "pass",
+          "tool": "`bun run cli -- keys check`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- keys check` passed, 2026-03-07",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 32
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 2,
+      "dropped": 0,
+      "normal": 2,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/011-maintenance-windows": {
+    "claims": [
+      {
+        "id": "ISC-29",
+        "text": "A maintenance window hides its checks' outages from the status page.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [
+          "002"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-29",
+          "type": "e2e",
+          "check": "a maintenance window hides its checks' outages from the status page",
+          "threshold": "pass",
+          "tool": "`bun run e2e -- status -g maintenance`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 31
+      },
+      {
+        "id": "ISC-30",
+        "text": "A maintenance window is announced on the status page a day ahead.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "afterSpecs": [
+          "002"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-30",
+          "type": "e2e",
+          "check": "a maintenance window is announced on the status page a day ahead",
+          "threshold": "pass",
+          "tool": "`bun run e2e -- status -g announce`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 32
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 2,
+      "takeable": 2,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 2,
+      "anti": 0,
+      "antecedent": 0
+    }
+  }
+}

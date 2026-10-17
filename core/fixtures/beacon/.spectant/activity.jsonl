@@ -1,0 +1,27 @@
+{"ts":"2026-03-08T11:40:00Z","event":"run-start","run":"r-0308-1140","command":"/spec-code-review 006","session":"a:claude:sess-61","spec":"006-retry-backoff"}
+{"ts":"2026-03-08T12:30:00Z","event":"run-start","run":"r-0308-1230","command":"/spec-plan 002","session":"a:claude:sess-21","spec":"002-status-page"}
+{"ts":"2026-03-08T12:41:00Z","event":"run-end","run":"r-0308-1230","command":"/spec-plan 002","session":"a:claude:sess-21","spec":"002-status-page","outcome":"error"}
+{"ts":"2026-03-08T13:00:00Z","event":"run-start","run":"r-0308-1300","command":"/spec-plan 003","session":"a:claude:sess-31","spec":"003-alert-rules"}
+{"ts":"2026-03-08T13:25:00Z","event":"run-end","run":"r-0308-1300","command":"/spec-plan 003","session":"a:claude:sess-31","spec":"003-alert-rules","outcome":"ok"}
+{"ts":"2026-03-08T13:40:00Z","event":"claim","claim":"ISC-16","task":"T4","session":"a:claude:sess-50/T4","worktree":"wt-4"}
+{"ts":"2026-03-08T13:41:00Z","event":"dispatch","claim":"ISC-16","task":"T4","session":"a:claude:sess-50/T4","worktree":"wt-4"}
+{"ts":"2026-03-08T14:00:00Z","event":"run-start","run":"r-0308-1400","command":"/spec-review 004","session":"a:claude:sess-41","spec":"004-incident-notes"}
+{"ts":"2026-03-08T14:05:00Z","event":"dispatch","claim":"ISC-13","task":"T1","session":"a:claude:sess-50/T1","worktree":"wt-1"}
+{"ts":"2026-03-08T14:06:00Z","event":"build","claim":"ISC-13","task":"T1","session":"a:claude:sess-50/T1","worktree":"wt-1"}
+{"ts":"2026-03-08T14:12:00Z","event":"patch","claim":"ISC-13","task":"T1","session":"a:claude:sess-50/T1","worktree":"wt-1"}
+{"ts":"2026-03-08T14:14:00Z","event":"apply","claim":"ISC-13","task":"T1","session":"a:claude:sess-50/T1","worktree":"wt-1"}
+{"ts":"2026-03-08T14:20:00Z","event":"run-start","run":"r-0308-1420","command":"/spec-implement 005","session":"a:claude:sess-51","spec":"005-probe-agents"}
+{"ts":"2026-03-08T14:22:00Z","event":"dispatch","claim":"ISC-18","task":"T5","session":"a:claude:sess-51/T5","worktree":"wt-5"}
+{"ts":"2026-03-08T14:23:00Z","event":"build","claim":"ISC-18","task":"T5","session":"a:claude:sess-51/T5","worktree":"wt-5"}
+{"ts":"2026-03-08T14:24:00Z","event":"dispatch","claim":"ISC-18","task":"T6","session":"a:claude:sess-51/T6","worktree":"wt-6"}
+{"ts":"2026-03-08T14:25:00Z","event":"build","claim":"ISC-18","task":"T6","session":"a:claude:sess-51/T6","worktree":"wt-6"}
+{"ts":"2026-03-08T14:30:00Z","event":"run-end","run":"r-0308-1400","command":"/spec-review 004","session":"u:9a41c6f3","spec":"004-incident-notes","outcome":"released"}
+{"ts":"2026-03-08T14:30:00Z","event":"claim","claim":"ISC-15","task":"T3","session":"a:claude:sess-51/T3","worktree":"wt-3"}
+{"ts":"2026-03-08T14:31:00Z","event":"patch","claim":"ISC-18","task":"T5","session":"a:claude:sess-51/T5","worktree":"wt-5"}
+{"ts":"2026-03-08T14:31:00Z","event":"dispatch","claim":"ISC-15","task":"T3","session":"a:claude:sess-51/T3","worktree":"wt-3"}
+{"ts":"2026-03-08T14:32:00Z","event":"build","claim":"ISC-15","task":"T3","session":"a:claude:sess-51/T3","worktree":"wt-3"}
+{"ts":"2026-03-08T14:33:00Z","event":"patch","claim":"ISC-18","task":"T6","session":"a:claude:sess-51/T6","worktree":"wt-6"}
+{"ts":"2026-03-08T14:35:00Z","event":"apply","claim":"ISC-18","task":"T6","session":"a:claude:sess-51/T6","worktree":"wt-6"}
+{"ts":"2026-03-08T14:40:00Z","event":"run-start","run":"r-0308-1440","command":"/spec-implement 005","session":"a:claude:sess-52","spec":"005-probe-agents"}
+{"ts":"2026-03-08T14:45:00Z","event":"run-start","run":"r-0308-1445","command":"/spec new uptime-badges","session":"a:claude:sess-71","idea":"uptime-badges"}
+{"ts":"2026-03-08T14:52:00Z","event":"run-start","run":"r-0308-1452","command":"/spec-tasks 003","session":"a:claude:sess-32","spec":"003-alert-rules"}
