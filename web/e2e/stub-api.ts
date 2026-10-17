@@ -1284,7 +1284,8 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
  * fixture tree `beacon`, rebuilt by core from its files with `.spectant/activity.jsonl` edited in memory per
  * `X-Spectant-Stub-Run` (absent: `running`). `none` drops the run-start of `STUB_RUN`, so 003 reads `open` with
  * `/spec-tasks 003`; `running` is the log as it is, so the bodies equal beacon's goldens (003 `running` since 14:52);
- * `ended` appends that run's `run-end` with outcome `ok`, so 003 reads the state its files give.
+ * `ended` appends that run's `run-end` with outcome `ok` and gives 003 the `tasks.md` the run wrote (`STUB_RUN_TASKS`,
+ * in memory), so 003 reads the stage and state its files then give: `review`, open with `/spec-review 003` (ISC-224.1).
  */
 export const RUN_STATES = ['none', 'running', 'ended'] as const;
 export type StubRunState = (typeof RUN_STATES)[number];
@@ -1302,6 +1303,24 @@ export const STUB_RUN = {
   /** When the `ended` variant's run-end line is stamped, before `STUB_NOW`. */
   endedAt: '2026-03-08T14:58:00Z',
 } as const;
+
+/** The `tasks.md` the `ended` run leaves in 003, one task per claim; only the stub's memory holds it. */
+export const STUB_RUN_TASKS = [
+  '---',
+  'spec: 003-alert-rules',
+  'plan: plan.md',
+  `updated: ${STUB_RUN.endedAt}`,
+  '---',
+  '',
+  '# Tasks 003 — Alert rules',
+  '',
+  '## Tasks',
+  '',
+  '- [ ] T1 · ISC-7 · api — an alert rule names a check, a threshold and a channel · `api/src/alert-rules.ts`',
+  '- [ ] T2 · ISC-8 · api — fire once per outage · `api/src/alert-rules.ts`',
+  '- [ ] T3 · ISC-9 · api — refuse an unknown channel on save · `api/src/alert-rules.ts`',
+  '',
+].join('\n');
 
 /** beacon's activity log under one run variant; loud when the run's start line is not there exactly once. */
 export function runActivity(text: string, state: StubRunState): string {
@@ -1325,7 +1344,10 @@ type RunVariant = { dashboard: { model: unknown; kpis: unknown }; planning: Plan
  * timeline, frames and docs read no run line and stay the golden's.
  */
 function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRunState): RunVariant {
-  const input = edge.readTreeAt(base.root);
+  const read = edge.readTreeAt(base.root);
+  // The ended run wrote 003's tasks.md; the other variants read the tree as it is.
+  const withTasks = (f: SpecFiles): SpecFiles => (state === 'ended' && f.folder === STUB_RUN.folder ? { ...f, texts: { ...f.texts, tasks: STUB_RUN_TASKS } } : f);
+  const input: TreeInput = { ...read, specs: read.specs.map(withTasks) };
   const locks = edge.activityReading(runActivity(readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'), state));
   const workspace = { ...input, locks };
   const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS }) as ReadonlyArray<{ kind: string; id: string; spec?: string }>;

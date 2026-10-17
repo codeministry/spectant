@@ -2465,12 +2465,15 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
     expect(none.row).toMatchObject(OPEN);
     expect(none.row?.run).toBeUndefined();
     expect(running.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'running', run: { run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, since: STUB_RUN.since } });
-    // No file changes with the run's end, so 003 reads its files' row again: open with /spec-tasks 003.
-    expect(ended).toEqual(none);
-    for (const answer of [none, running, ended]) {
-      expect(answer.head).toEqual(answer.row);
+    // The run wrote tasks.md, so after its end 003 reads the stage and state its files then give: review, open.
+    expect(ended.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'open', stage: 'review', command: '/spec-review 003' });
+    expect(ended.row?.run).toBeUndefined();
+    expect(ended.stage).toBe('review');
+    expect(ended.tasks).not.toBeNull();
+    for (const answer of [none, running, ended]) expect(answer.head).toEqual(answer.row);
+    for (const answer of [none, running]) {
       expect(answer.stage).toBe('tasks');
-      // 003 has no tasks.md yet, in every variant.
+      // Before the run ends 003 has no tasks.md.
       expect(answer.tasks).toBeNull();
     }
     // Only 003's item moves: every other row, and the stories, read the same in all three.

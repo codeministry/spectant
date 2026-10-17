@@ -179,8 +179,8 @@ with `X-Spectant-Stub-Run`:
 - **none**: the run's `run-start` line is dropped; 003 reads `open` with the chip `/spec-tasks 003`.
 - **running** (absent): the log as it is, every body beacon's golden; 003 reads `running` since 14:52 by
   `a:claude:sess-32`, and the story `uptime-badges` runs `/spec new uptime-badges`.
-- **ended**: the run's `run-end` with outcome `ok` is appended; 003 reads the state its files give, `open` again,
-  since the stub changes no file.
+- **ended**: the run's `run-end` with outcome `ok` is appended and 003 gets the `tasks.md` the run wrote (in memory);
+  003 reads the stage its files then give, `review`, open with `/spec-review 003`.
 
 Switch the header between two polls to step a card through a run within one refresh tick. The header is a 400 under
 any other lock fixture, and `runs` is a 400 beside the worktree, edge or midnight overlays. Reason: the state is core's
