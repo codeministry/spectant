@@ -41,7 +41,7 @@ import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
 import { buildSpecPage } from '../src/spec.ts';
-import { assignWorktrees, specSourceOf, WORKTREE_COPY_KINDS } from '../src/worktrees.ts';
+import { assignWorktrees, liveWorktrees, specSourceOf, WORKTREE_COPY_KINDS } from '../src/worktrees.ts';
 import { DASHBOARD_FAMILY, goldenMismatch, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
@@ -78,8 +78,8 @@ const recordPaths = (text: string): string[] =>
     .map((line) => line.slice('worktree '.length));
 
 describe('assign: worktrees from git worktree list --porcelain to the specs of the workspace (ISC-174)', () => {
-  test('the fixture holds the four listings: spec worktrees, a path-branch conflict, builders, a linked specs/', () => {
-    expect(LISTINGS).toEqual(['builders', 'conflict', 'spec-worktrees', 'symlink-specs']);
+  test('the fixture holds the five listings: spec worktrees, a path-branch conflict, builders, prunable worktrees, a linked specs/', () => {
+    expect(LISTINGS).toEqual(['builders', 'conflict', 'prunable', 'spec-worktrees', 'symlink-specs']);
   });
 
   test.each(LISTINGS)('%s.porcelain has the shape git prints: main first, one blank line after every record', (name) => {
@@ -151,6 +151,66 @@ describe('mismatch: the path and the branch of a worktree name two different spe
     const plain = assignWorktrees(read('spec-worktrees.porcelain'), SPECS);
     expect(plain.worktrees.find((w) => w.path === '.worktrees/scratch')).toMatchObject({ kind: 'spec', spec: null });
     expect(plain.diagnostics).toEqual([]);
+  });
+});
+
+// Spec 041, ISC-212: a worktree git lists as `prunable` (its folder or its gitdir is gone) has ended. `assignWorktrees`
+// marks such a spec-kind worktree `prunable: true` and leaves the key out everywhere else, so every older golden stays
+// byte-identical; `liveWorktrees(assignment, facts)` then leaves it out of `live` with the reason `prunable`. When
+// several reasons apply, `merged` wins over `prunable`, and `prunable` over `removed`. `-t prunable` runs ISC-212.
+describe('prunable: a worktree git lists as prunable has ended (ISC-212)', () => {
+  /** The facts of `prunable.porcelain`: only harbor's folder is left, nothing merged, nothing dirty. */
+  const GONE = { merged: [], present: ['.worktrees/012-harbor'], dirty: [] } as const;
+
+  test('a prunable spec worktree carries prunable: true, a listed one carries no key at all', () => {
+    const { worktrees } = assignWorktrees(read('prunable.porcelain'), SPECS);
+    expect(worktrees.find((w) => w.spec === '014')).toMatchObject({ kind: 'spec', prunable: true });
+    expect(worktrees.find((w) => w.spec === '015')).toMatchObject({ kind: 'spec', prunable: true });
+    expect(worktrees.find((w) => w.path === '.worktrees/scratch')).toMatchObject({ spec: null, prunable: true });
+    expect(Object.hasOwn(worktrees.find((w) => w.spec === '012') ?? {}, 'prunable')).toBe(false);
+  });
+
+  test('a builder never carries prunable, even when git lists it as prunable', () => {
+    const { worktrees } = assignWorktrees(read('builders.porcelain'), SPECS);
+    const builder = worktrees.find((w) => w.path === '.claude/worktrees/agent-c3e6a9b2d5f8c1e4a');
+    expect(builder).toMatchObject({ kind: 'builder', spec: null });
+    expect(Object.hasOwn(builder ?? {}, 'prunable')).toBe(false);
+  });
+
+  test('liveWorktrees does not count a prunable spec worktree as live: it has ended with the reason prunable', () => {
+    const { live, ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), GONE);
+    expect(live.map((w) => w.path)).toEqual(['.worktrees/012-harbor', '.worktrees/scratch']);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([
+      ['014', 'prunable'],
+      ['015', 'prunable'],
+    ]);
+  });
+
+  test('prunable ends a worktree even while its folder still reads as present', () => {
+    const present = ['.worktrees/012-harbor', '.worktrees/014-export', '.worktrees/015-ledger'];
+    const { live, ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), { ...GONE, present });
+    expect(live.some((w) => w.spec === '014' || w.spec === '015')).toBe(false);
+    expect(ended.map(({ reason }) => reason)).toEqual(['prunable', 'prunable']);
+  });
+
+  test('merged wins over prunable, and prunable over removed', () => {
+    const facts = { ...GONE, merged: ['feature/015-ledger'] };
+    const { ended } = liveWorktrees(assignWorktrees(read('prunable.porcelain'), SPECS), facts);
+    expect(ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([
+      ['014', 'prunable'],
+      ['015', 'merged'],
+    ]);
+  });
+
+  test('the same listing without its prunable lines keeps both worktrees live while their folders are present', () => {
+    const plain = read('prunable.porcelain')
+      .split('\n')
+      .filter((line) => !line.startsWith('prunable'))
+      .join('\n');
+    const present = ['.worktrees/012-harbor', '.worktrees/014-export', '.worktrees/015-ledger'];
+    const { live, ended } = liveWorktrees(assignWorktrees(plain, SPECS), { ...GONE, present });
+    expect(ended).toEqual([]);
+    expect(live.map((w) => w.spec)).toEqual(['012', '014', '015', null]);
   });
 });
 

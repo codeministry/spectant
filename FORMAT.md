@@ -1371,11 +1371,14 @@ of a story always writes the main checkout. The rules below are the contract.
 The server reads one listing per registered repository, `git worktree list --porcelain`, and hands its text to
 `core/`, which decides which worktree belongs to which spec and never runs git itself. Every git call is a read: no
 fetch, nothing written, `GIT_OPTIONAL_LOCKS=0`. The listing holds one block per worktree, blocks separated by a blank
-line: `worktree <absolute path>`, `HEAD <sha>`, then `branch refs/heads/<name>` or `detached`, plus lines such as
-`locked` or `prunable` that change nothing here. The first block is the main checkout, the repository root itself: it
-is no spec's worktree. Every other block becomes one `Worktree` (`core/src/files.ts`): `path` relative to the repository
-root and `/`-separated, `branch` without `refs/heads/` (null when detached), `spec` (the `NNN` it belongs to, or
-null) and `kind` (`builder` or `spec`).
+line: `worktree <absolute path>`, `HEAD <sha>`, then `branch refs/heads/<name>` or `detached`, plus optional lines:
+`locked`, which changes nothing here, and `prunable` (bare or followed by git's reason), which git prints when the
+worktree's folder or gitdir is gone. The first block is the main checkout, the repository root itself: it is no spec's
+worktree. Every other block becomes one `Worktree` (`core/src/files.ts`): `path` relative to the repository root and
+`/`-separated, `branch` without `refs/heads/` (null when detached), `spec` (the `NNN` it belongs to, or null), `kind`
+(`builder` or `spec`) and, on a `spec` worktree whose block carries a `prunable` line, `prunable: true` (spec 041,
+ISC-212). The key is absent otherwise, a builder's included, so a listing without a `prunable` spec worktree builds the
+same model as before.
 
 - **Builder worktrees.** A worktree under `.claude/worktrees/`, where the Agent tool puts one per sub-agent task, is a
   `builder`. It is counted and never read: no file, no `rev-list`, no `status`, and its `spec`, `ahead` and `dirty` are
@@ -1395,9 +1398,12 @@ For a `spec` worktree that belongs to a spec the server then reads, in that work
 branch that `main` lacks (`git rev-list --count main..<branch>`, null when detached), and `dirty`, whether
 `git status --porcelain` prints anything (ISC-175).
 
-A spec worktree has ended when its branch is merged into `main` (the merge state of § Spec edges, ISC-162.1) or when
-git still lists it but its folder is gone (`prunable`): the server leaves it out of the reading, so no chip shows and
-the spec reads from the main checkout again (ISC-175.1). The spec's timeline then carries one derived `worktree`
+A spec worktree of a spec has ended when its branch is merged into `main` (the merge state of § Spec edges,
+ISC-162.1), when git lists it as `prunable` (ISC-212), or when git still lists it but its folder no longer holds its
+`.git` (`removed`). `liveWorktrees` (`core/src/worktrees.ts`) applies this rule on the facts the server read and names
+one reason per ended worktree; when several apply, `merged` wins over `prunable`, and `prunable` over `removed`.
+Builders and worktrees of no spec never end. An ended worktree is left out of the reading: no chip shows, it is no read
+source and no dev service is assigned to it, and the spec reads from the main checkout again (ISC-175.1). The spec's timeline then carries one derived `worktree`
 entry, never a line in `events.jsonl`: `merged`, dated by the merge commit (the oldest commit on `main`'s
 first-parent line with the branch's tip as an ancestor and a second parent), or `removed`, undated, when the spec has a
 branch, none merged, that no live worktree carries and that is not the main checkout's branch (`mainBranchOf`, the

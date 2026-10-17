@@ -1,0 +1,41 @@
+{
+  "builders": 0,
+  "diagnostics": [],
+  "worktrees": [
+    {
+      "ahead": null,
+      "branch": "feature/012-harbor",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/012-harbor",
+      "spec": "012"
+    },
+    {
+      "ahead": null,
+      "branch": "feature/014-export",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/014-export",
+      "prunable": true,
+      "spec": "014"
+    },
+    {
+      "ahead": null,
+      "branch": "feature/015-ledger",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/015-ledger",
+      "prunable": true,
+      "spec": "015"
+    },
+    {
+      "ahead": null,
+      "branch": null,
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/scratch",
+      "prunable": true,
+      "spec": null
+    }
+  ]
+}

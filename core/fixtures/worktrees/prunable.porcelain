@@ -1,0 +1,24 @@
+worktree /srv/repo
+HEAD 5d41c0a9e3b2f7d86a1c4e9b0f3a2d7c6e5b8a14
+branch refs/heads/main
+
+worktree /srv/repo/.worktrees/012-harbor
+HEAD 8e2f1a7c3b9d0e6f4a5c2b1d8e7f6a3c9b0d2e41
+branch refs/heads/feature/012-harbor
+
+worktree /srv/repo/.worktrees/014-export
+HEAD 2b7c9e1f4a0d3c8b6e5f1a2d9c7b4e0f3a8d6c52
+branch refs/heads/feature/014-export
+prunable gitdir file points to non-existent location
+
+worktree /srv/repo/.worktrees/015-ledger
+HEAD 4c7f0a3e6d9b2c5f8a1e4d7b0c3f6a9e2d5b8c18
+branch refs/heads/feature/015-ledger
+locked
+prunable gitdir file points to non-existent location
+
+worktree /srv/repo/.worktrees/scratch
+HEAD 0d3a6f9c2e5b8d1a4f7c0e3b6d9a2f5c8e1b4d29
+detached
+prunable gitdir file points to non-existent location
+

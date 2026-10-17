@@ -15,7 +15,8 @@
 //   makes zero calls, with and without `--yes`, and the app's data directory stays empty.
 // - `worktrees` (ISC-178, T28): the project folder of a spec worktree inside the repository, `<folder>--worktrees-NNN-slug`,
 //   is read like the older sibling `<folder>-NNN` (main sessions and their sub-agents), both patterns stay, and no
-//   look-alike, a nested agent worktree above all, is taken for one; the measured file is the golden.
+//   look-alike, a nested agent worktree above all, is taken for one; the measured file is the golden. A slug with
+//   capital letters (`mixed case slug`, ISC-219, T36) is read like its lower-case form.
 import * as sqlite from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, setSystemTime, spyOn, test } from "bun:test";
 import * as dns from "node:dns";
@@ -327,6 +328,36 @@ describe("worktrees", () => {
     expect(text).toBe(fs.readFileSync(GOLDEN, "utf8"));
     const invocation = text.split("\n").find((line) => line.includes(`"id":"a:claude:${IN_REPO_SESSION}#1"`));
     expect(JSON.parse(invocation ?? "{}")).toMatchObject({ kind: "invocation", command: "/spec-plan", spec: "003-config-loader", requests: 2 });
+  });
+
+  test("mixed case slug: `<folder>--worktrees-042-Mixed-Case` is read exactly like its lower-case form", () => {
+    /** One transcript copy with the in-repo session also in `slugFolder`; separate copies, as a case-insensitive file system folds the two names. */
+    const withSlug = (slugFolder: string): Array<{ role: string; label: string }> => {
+      const transcripts = transcriptCopy();
+      const projects = dirname(transcripts);
+      const session = fs.readFileSync(join(projects, IN_REPO, `${IN_REPO_SESSION}.jsonl`));
+      put(join(projects, slugFolder, "s.jsonl"), session);
+      put(join(projects, slugFolder, "s", "subagents", "agent-c1d2e3.jsonl"), `${usageLine("2026-03-09T08:00:09.000Z", "req_mixed_sub", 3)}\n`);
+      const { files, diagnostics } = discoverTranscripts(transcripts);
+      expect(diagnostics).toEqual([]);
+      return files.filter((f) => f.label.startsWith(`../${slugFolder}/`)).map(({ role, label }) => ({ role, label }));
+    };
+    const lower = withSlug("harbor--worktrees-042-mixed-case");
+    expect(lower).toEqual([
+      { role: "subagent", label: "../harbor--worktrees-042-mixed-case/s/subagents/agent-c1d2e3.jsonl" },
+      { role: "main", label: "../harbor--worktrees-042-mixed-case/s.jsonl" },
+    ]);
+    const mixed = withSlug("harbor--worktrees-042-Mixed-Case");
+    expect(mixed).toEqual(lower.map(({ role, label }) => ({ role, label: label.replace("mixed-case", "Mixed-Case") })));
+  });
+
+  test("mixed case slug: a nested agent worktree below a mixed-case spec worktree is still not one", () => {
+    const transcripts = transcriptCopy();
+    const before = new Set(seen(transcripts).map((file) => file.label));
+    const projects = dirname(transcripts);
+    const session = fs.readFileSync(join(projects, IN_REPO, `${IN_REPO_SESSION}.jsonl`));
+    for (const name of ["harbor--worktrees-042-Mixed-Case--claude-worktrees-agent-x", "harbor--worktrees-042-Mixed--Case"]) put(join(projects, name, "s.jsonl"), session);
+    expect(seen(transcripts).filter((file) => !before.has(file.label))).toEqual([]);
   });
 });
 

@@ -2,7 +2,7 @@
 // `lsof -F` output; "answers HTTP" is a real `Bun.serve` on an ephemeral loopback port, "nothing listens" is a port
 // freed right before the probe, and "answers but not HTTP" is a raw TCP listener that never replies.
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type DevService, type HttpProbe, listServices, type LsofRun, probeHttp } from "../server/src/services.ts";
@@ -15,6 +15,11 @@ afterEach(() => {
 function tempRepo(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "spectant-services-")));
   mkdirSync(join(root, "repo", ".claude", "worktrees", "feature-a"), { recursive: true });
+  // Live spec worktrees: each folder holds the `.git` file git writes there, so git does not list it as prunable.
+  for (const name of ["027-x", "031-y"]) {
+    mkdirSync(join(root, "repo", ".worktrees", name), { recursive: true });
+    writeFileSync(join(root, "repo", ".worktrees", name, ".git"), `gitdir: ../../.git/worktrees/${name}\n`);
+  }
   mkdirSync(join(root, "elsewhere"), { recursive: true });
   cleanups.push(() => rmSync(root, { recursive: true, force: true }));
   return root;
@@ -225,6 +230,29 @@ describe("worktrees (T26, ISC-177)", () => {
       { port: 4424, label: "node", kind: "node", pid: 424, worktree: false },
     ]);
     expect(found.some((s) => "spec" in s)).toBe(false);
+  });
+
+  test("a listener in a prunable spec worktree is a worktree service without a spec (ISC-212)", async () => {
+    const root = tempRepo();
+    const repoRoot = join(root, "repo");
+    // git lists a worktree as `prunable` once its folder no longer holds its `.git`: here the folder is gone entirely
+    // (042-gone), or it is left behind without its `.git` (043-husk). A process started there before keeps its cwd.
+    mkdirSync(join(repoRoot, ".worktrees", "043-husk", "web"), { recursive: true });
+    mkdirSync(join(repoRoot, ".worktrees", "044-live"), { recursive: true });
+    writeFileSync(join(repoRoot, ".worktrees", "044-live", ".git"), "gitdir: ../../.git/worktrees/044-live\n");
+    const runLsof = fakeLsof([
+      at(441, 4441, join(repoRoot, ".worktrees", "042-gone", "web")),
+      at(442, 4442, join(repoRoot, ".worktrees", "043-husk", "web")),
+      at(443, 4443, join(repoRoot, ".worktrees", "044-live")),
+    ]);
+
+    const found = await listServices({ repoRoot, labels: new Map(), runLsof, probe: answers });
+
+    expect(found).toEqual([
+      { port: 4441, label: "node", kind: "node", pid: 441, worktree: true },
+      { port: 4442, label: "node", kind: "node", pid: 442, worktree: true },
+      { port: 4443, label: "node", kind: "node", pid: 443, worktree: true, spec: "044" },
+    ]);
   });
 
   test("a .worktrees/NNN-slug outside the repository root is not listed", async () => {

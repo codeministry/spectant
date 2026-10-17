@@ -16,6 +16,8 @@
 //     be the base branch of another spec) and one `worktree-branch-mismatch` warning names the path's spec as its
 //     `subject` and the record's `worktree` line as its `line`.
 //   - `ahead` and `dirty` stay null: the server reads them in each spec worktree, with git, read-only (ISC-175).
+//   - A spec-kind worktree git lists as `prunable` carries `prunable: true` (spec 041, ISC-212); every other worktree,
+//     a builder included, carries no such key, so a listing without one builds what it built before.
 //
 // It also decides where a spec's files are read (ISC-181, ISC-181.1), `specSourceOf`. The server hands it the spec
 // folder, the worktree assigned above (or null) and the paths `git ls-files -z -- specs/NNN-slug` printed in the main
@@ -56,30 +58,37 @@ const BRANCH_REF = 'refs/heads/';
 
 const MISMATCH = 'worktree-branch-mismatch' satisfies WarningKind;
 
-/** One record of the listing as git printed it: the absolute path, the branch, and the 1-based `worktree` line. */
+/**
+ * One record of the listing as git printed it: the absolute path, the branch, the 1-based `worktree` line, and whether
+ * git marked it `prunable`.
+ */
 interface PorcelainRecord {
   readonly path: string;
   readonly branch: string | null;
   readonly line: number;
+  readonly prunable: boolean;
 }
 
 /**
  * The records of `git worktree list --porcelain`, the main checkout first. A record starts at its `worktree <path>`
- * line; `branch refs/heads/<name>` sets its branch, and every other line (`HEAD`, `detached`, `locked`, `prunable`,
- * `bare`) changes nothing here.
+ * line; `branch refs/heads/<name>` sets its branch, `prunable` (bare or followed by git's reason) marks it prunable,
+ * and every other line (`HEAD`, `detached`, `locked`, `bare`) changes nothing here.
  */
 function parseRecords(porcelain: string): PorcelainRecord[] {
-  const records: Array<{ path: string; branch: string | null; line: number }> = [];
+  const records: Array<{ path: string; branch: string | null; line: number; prunable: boolean }> = [];
   porcelain.split('\n').forEach((raw, index) => {
     const text = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     if (text.startsWith('worktree ')) {
-      records.push({ path: text.slice('worktree '.length), branch: null, line: index + 1 });
+      records.push({ path: text.slice('worktree '.length), branch: null, line: index + 1, prunable: false });
       return;
     }
     const current = records.at(-1);
-    if (current !== undefined && text.startsWith('branch ')) {
+    if (current === undefined) return;
+    if (text.startsWith('branch ')) {
       const ref = text.slice('branch '.length);
       current.branch = ref.startsWith(BRANCH_REF) ? ref.slice(BRANCH_REF.length) : ref;
+    } else if (text === 'prunable' || text.startsWith('prunable ')) {
+      current.prunable = true;
     }
   });
   return records;
@@ -151,7 +160,10 @@ export function assignWorktrees(porcelain: string, specs: readonly string[]): Wo
     if (pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
       diagnostics.push(mismatch(record, path, pathSpec, branchSpec));
     }
-    worktrees.push({ path, branch: record.branch, spec: pathSpec ?? branchSpec, ahead: null, dirty: null, kind: 'spec' });
+    const spec = pathSpec ?? branchSpec;
+    const base = { path, branch: record.branch, spec, ahead: null, dirty: null, kind: 'spec' } as const;
+    // The key only when git printed `prunable`, so a listing without one builds exactly what it built before.
+    worktrees.push(record.prunable ? { ...base, prunable: true } : base);
   }
   return { worktrees, builders, diagnostics };
 }
@@ -266,8 +278,9 @@ export interface WorktreeView {
 
 /**
  * Splits an assignment by the rule "ended" (FORMAT.md § Worktrees): a spec worktree of a spec has ended when its
- * branch is merged into `main`, its folder is gone, or git lists it as `prunable`. Builders and worktrees of no spec
- * never end here; they are not read either way.
+ * branch is merged into `main`, its folder is gone, or git lists it as `prunable`. When several apply, the reason is
+ * the first of `merged`, `prunable`, `removed`: a merge is the strongest fact, and `prunable` is git's own word for a
+ * folder or gitdir that is gone. Builders and worktrees of no spec never end here; they are not read either way.
  */
 export function liveWorktrees(assignment: WorktreeAssignment, facts: WorktreeFacts): LiveWorktrees {
   const merged = new Set(facts.merged);
@@ -284,6 +297,7 @@ export function liveWorktrees(assignment: WorktreeAssignment, facts: WorktreeFac
 
 function endOf(worktree: Worktree, merged: ReadonlySet<string>, present: ReadonlySet<string>): WorktreeEnd | null {
   if (worktree.branch !== null && merged.has(worktree.branch)) return 'merged';
+  if (worktree.prunable === true) return 'prunable';
   if (!present.has(worktree.path)) return 'removed';
   return null;
 }

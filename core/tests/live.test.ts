@@ -418,6 +418,77 @@ describe('run states on the live frame (spec 027, ISC-179.1)', () => {
   });
 });
 
+/**
+ * Spec 041, ISC-213: three specs that each have a task `T3`, and one repository-wide log whose `T3` run lines carry no
+ * claim. Line 1 names spec 041 by its session ref (`a:<kind>:spec-NNN/…`), line 2 names spec 042 by its worktree
+ * (`.worktrees/NNN-slug`), line 3 names neither. Read back through the real reader from a temp repository.
+ */
+const CLAIMLESS_LOG = [
+  { ts: '2026-03-10T10:00:00Z', event: 'dispatch', task: 'T3', session: 'a:claude:spec-041/T3' },
+  { ts: '2026-03-10T10:01:00Z', event: 'build', task: 'T3', session: 'a:claude:sess-9/T3', worktree: '.worktrees/042-beta' },
+  { ts: '2026-03-10T10:02:00Z', event: 'patch', task: 'T3', session: 'a:claude:sess-9/T3', worktree: 'wt-3' },
+];
+
+async function claimlessReading(): Promise<LockReading> {
+  const root = mkdtempSync(join(tmpdir(), 'spectant-live-isc213-'));
+  mkdirSync(join(root, '.spectant'));
+  try {
+    writeFileSync(join(root, '.spectant', 'activity.jsonl'), `${CLAIMLESS_LOG.map((l) => JSON.stringify(l)).join('\n')}\n`);
+    return await readLockSources({ repoRoot: root });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+const CLAIMLESS = await claimlessReading();
+
+/** A minimal spec folder `folder` whose tasks.md has T1 to T3 open under claims `ISC-<n>01` to `ISC-<n>03`. */
+function specWithT3(folder: string, n: number): SpecFiles {
+  const claim = (i: number) => `ISC-${n}0${i}`;
+  const spec = ['---', `task: "Synthetic spec ${folder}"`, `slug: ${folder}`, 'spec_type: feature', 'phase: building', '---', '', '## Claims', '', ...[1, 2, 3].map((i) => `- [ ] ${claim(i)}: Claim ${i} of ${folder}.`), ''].join('\n');
+  const tasks = ['# Tasks', '', ...[1, 2, 3].map((i) => `- [ ] T${i} · ${claim(i)} · core — task ${i} of ${folder} · \`core/src/x${i}.ts\``), ''].join('\n');
+  return { folder, texts: { spec, tasks } };
+}
+
+describe('claimless run lines (spec 041, ISC-213)', () => {
+  const now = new Date('2026-03-10T10:30:00Z');
+  const runOf = (folder: string, n: number) => card(buildLiveFrame({ files: specWithT3(folder, n), locks: CLAIMLESS, now }), 'T3').run;
+
+  test('the reader keeps every claimless run line as written', () => {
+    expect((CLAIMLESS.runs ?? []).map((r) => [r.event, r.task, r.claim ?? null])).toEqual([
+      ['dispatch', 'T3', null],
+      ['build', 'T3', null],
+      ['patch', 'T3', null],
+    ]);
+  });
+
+  test('spec 041 sees only the line its session ref names: T3 dispatched by a:claude:spec-041/T3', () => {
+    expect(runOf('041-alpha', 41)).toEqual({ task: 'T3', state: 'dispatched', session: 'a:claude:spec-041/T3', ts: '2026-03-10T10:00:00Z' });
+  });
+
+  test('spec 042 sees only the line its worktree names: T3 building in .worktrees/042-beta', () => {
+    expect(runOf('042-beta', 42)).toEqual({ task: 'T3', state: 'building', session: 'a:claude:sess-9/T3', worktree: '.worktrees/042-beta', ts: '2026-03-10T10:01:00Z' });
+  });
+
+  test('a line naming neither a spec session nor a spec worktree counts for no spec', () => {
+    // A third spec with the same task id sees nothing: line 1 and 2 name other specs, line 3 names none.
+    expect(runOf('043-gamma', 43)).toBeUndefined();
+    // Neither of the two named specs folds line 3 (`patch`) into its run.
+    expect(runOf('041-alpha', 41)?.state).not.toBe('patched');
+    expect(runOf('042-beta', 42)?.state).not.toBe('patched');
+  });
+
+  test('the line naming neither carries a warning; the two assigned lines carry none', () => {
+    const diagnostics = CLAIMLESS.diagnostics ?? [];
+    // mark: the code is fixed in T13 following the `locks-activity-*` pattern (expected `locks-activity-unassigned`).
+    const unassigned = diagnostics.filter((d) => d.line === 3);
+    expect(unassigned).toHaveLength(1);
+    expect(unassigned[0]?.severity).toBe('warning');
+    expect(unassigned[0]?.code).toStartWith('locks-activity-');
+    expect(diagnostics.filter((d) => d.line === 1 || d.line === 2)).toEqual([]);
+  });
+});
+
 describe('purity', () => {
   test('the same input twice gives deep-equal frames and leaves the input untouched', async () => {
     const files = harbor002();
