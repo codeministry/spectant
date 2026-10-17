@@ -212,9 +212,10 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     if (match.route === "spec") return specPage(req, root, ref);
 
     // The spec's read source, as the row and the head read it (spec 027, ISC-181): `dir` is the worktree copy's folder
-    // when the source is `worktree`. Evidence and artifacts stay on `ref.dir`. The three writes on the spec (reviewed
-    // mark, tick, stage move) take `source`: they read, compare and write the copy the client's hashes came from (T22),
-    // so a source that switched between render and write is the plain 409 of the hash compare.
+    // when the source is `worktree`, for every file of the folder, the evidence file route's `artifacts/`, `.evidence/`
+    // and `.design/` included (spec 039, ISC-208). The three writes on the spec (reviewed mark, tick, stage move) take
+    // `source`: they read, compare and write the copy the client's hashes came from (T22), so a source that switched
+    // between render and write is the plain 409 of the hash compare.
     const reading = await readWorktreeView(root);
     const { files, dir } = await readSpecSource(root, ref, reading);
     if (files.texts.spec === undefined) return json(req, 404, NOT_FOUND);
@@ -257,7 +258,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, tab, { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
       }
       case "evidenceFile":
-        return evidenceFileResponse(req, ref.dir, url.search);
+        return evidenceFileResponse(req, dir, url.search);
       case "frames":
         return json(req, 200, buildFrames(files));
       case "live": {

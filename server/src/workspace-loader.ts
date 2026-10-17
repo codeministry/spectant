@@ -500,7 +500,7 @@ export async function readSpecSource(root: string, ref: SpecRef, reading?: Workt
  * ids and the chip's git facts: one `git worktree list`, one `git ls-files` per spec worktree, no hash. Empty when no
  * spec has a worktree. For the library's reader and search, which need the documents and never a stage.
  */
-async function readCopies(root: string): Promise<Record<string, string>> {
+export async function readCopies(root: string): Promise<Record<string, string>> {
   const refs = listSpecs(root);
   const { view } = await readWorktreeView(root, refs);
   const copies: Record<string, string> = {};

@@ -98,7 +98,8 @@
  *   documents (ISC-156.5).
  * - `libraryAsset`, `GET …/library/asset?path=`: one image below `specs/`, the evidence file route (`evidence.ts`) with
  *   the workspace's `specs/` as the root: the same once-decoded resolver, every file below the real `specs/` reachable,
- *   images only. 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a second encoding, an absolute
+ *   images only. A path into the folder of a spec read from its worktree copy resolves below the copy's `specs/`
+ *   instead (spec 039, ISC-208). 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a second encoding, an absolute
  *   path, a symlink out or another media type, 404 for a missing file or workspace.
  * The tech page's routes (`…/tech`, `…/tech/asset`) went with spec 017 T51: the library replaces them (ISC-157.1),
  * and a request to either is the unmatched API path's 404.
@@ -159,6 +160,7 @@ import {
   loadCatalogDocs,
   loadDashboard,
   readBytesIfExists,
+  readCopies,
   readIdeaFiles,
   readWorkspaceInput,
   unreadableCode,
@@ -481,9 +483,11 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       from = main;
     }
     if (found === "symlink-escape") return from !== main ? found : null;
-    // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`; it stays
-    // the main checkout's, where a copy's relative images resolve (`artifacts/` and `.design/` are never read from a copy).
-    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical: join(main, ...doc.path.split("/")), source: from };
+    // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`: the copy's
+    // file for a document read from a copy, where its relative images resolve, since the whole folder, `artifacts/` and
+    // `.design/` included, is read from it (spec 039, ISC-208); else the main checkout's.
+    const logical = from === main ? join(main, ...doc.path.split("/")) : join(source.dir, ...source.rel.split("/"));
+    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical, source: from };
   };
 
   /** A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`. */
@@ -595,11 +599,21 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     return json(req, 200, body);
   };
 
-  // One image below specs/, through the evidence file route's resolver and answer (header).
-  const libraryAsset = (req: Request, slug: string, search: string): Promise<Response> | Response => {
+  // One image below specs/, through the evidence file route's resolver and answer (header). A path into the folder of a
+  // spec read from its worktree copy is served from the copy's `specs/` (spec 039, ISC-208), as the reader read the
+  // document that names it; a copy folder gone by now falls back to the main checkout, as `catalogFile` does.
+  const libraryAsset = async (req: Request, slug: string, search: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
-    return evidenceFileResponse(req, join(workspace.path, "specs"), search, {
+    let first: string | null;
+    try {
+      first = decodeURIComponent(evidencePathQuery(search)).split("/")[0] ?? null;
+    } catch {
+      first = null; // the resolver refuses it below, from the main checkout
+    }
+    const copy = first === null ? undefined : (await readCopies(workspace.path))[first];
+    const specsDir = copy !== undefined && (await isFolder(copy)) ? dirname(copy) : join(workspace.path, "specs");
+    return evidenceFileResponse(req, specsDir, search, {
       reach: "tree",
       serves: (mediaType) => mediaType.startsWith("image/"),
     });

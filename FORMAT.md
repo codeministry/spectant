@@ -1463,16 +1463,18 @@ They are assigned as follows; the main checkout `/srv/repo` is not among the wor
 `worktree` only when the spec has a worktree of kind `spec` assigned to it (a builder never counts) and its folder
 `specs/NNN-slug/` is tracked in git. The server asks git with `git ls-files -z -- specs/NNN-slug` in the main checkout
 and hands the listed paths, split on NUL, to `specSourceOf` (`core/src/worktrees.ts`), which counts the folder as
-tracked when one of them lies under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS`, `spec.md`, `plan.md`,
-`tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and `.gates/`, are read from the worktree's copy,
-`<worktree>/specs/NNN-slug/`, and the spec header names that source with the main checkout's stage and progress beside
+tracked when one of them lies under `specs/NNN-slug/`. Then the whole folder is read from the worktree's copy,
+`<worktree>/specs/NNN-slug/`: the kinds in `WORKTREE_COPY_KINDS`, `spec.md`, `plan.md`, `tasks.md`, `context.md`,
+`design.md`, `events.jsonl`, `rounds.jsonl`, `.gates/`, and since spec 039 (ISC-208) `artifacts/` and `.evidence/`,
+plus `.design/`, which is no file kind; the main checkout's folder is not read for that spec. The spec header names that source with the main checkout's stage and progress beside
 it. The three in-place writes to an existing spec, the reviewed mark, a task checkbox and a stage transition, go to
 that same copy under the same hash check against the file of that copy; the main checkout stays byte-identical. A
 write whose source changed since the client rendered it, because a worktree appeared or vanished, is a 409.
 Allocating an idea creates a spec that has no worktree yet, so it always writes in the main checkout. The library's
 documents of the spec follow the same source (`readCatalog` with `copies`, `catalogSourceOf` in `core/src/library.ts`):
-its five Markdown files, their stale and missing judgements and its group head come from the copy, while its
-`artifacts/`, `.evidence/` and `.design/` files stay on the main checkout.
+its five Markdown files, their stale and missing judgements, its group head and its `artifacts/`, `.evidence/` and
+`.design/` files all come from the copy, and so do the files the evidence file route and the library's asset route
+serve for it.
 
 Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
 `specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),

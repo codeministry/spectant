@@ -26,7 +26,8 @@
 // checkout; core never asks git and never looks at a file:
 //
 //   - The source is `worktree` only when the worktree is of kind `spec`, belongs to this spec, and git listed at least
-//     one path under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS` come from the worktree's copy.
+//     one path under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS`, the whole spec folder, come from the
+//     worktree's copy (spec 039, ISC-208).
 //   - Everything else is `main`: no worktree, a builder, a worktree of another spec, an empty answer. A symbolic link
 //     is listed as itself, `specs` or `specs/NNN-slug` without a slash after it, never as a path under the folder, so
 //     an untracked or linked `specs/` keeps `main`, Spectant's own repository included.
@@ -212,10 +213,11 @@ export function mainBranchOf(porcelain: string): string | null {
 const SPECS = 'specs';
 
 /**
- * The file kinds read from the worktree's copy `<worktree>/specs/NNN-slug/` when the source is `worktree`: the eight
- * ISC-181 names, `spec.md`, `plan.md`, `tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and
- * `.gates/` (both marks). Every other kind, the repository kinds and `artifacts/` and `.evidence/` among them, stays on
- * the main checkout.
+ * The file kinds read from the worktree's copy `<worktree>/specs/NNN-slug/` when the source is `worktree`: every kind of
+ * the spec folder. The eight ISC-181 names, `spec.md`, `plan.md`, `tasks.md`, `context.md`, `design.md`,
+ * `events.jsonl`, `rounds.jsonl` and `.gates/` (both marks), and since spec 039 (ISC-208) `artifacts/` and `.evidence/`;
+ * the library reads `.design/`, which is no file kind, from the copy too. Only the repository kinds stay on the main
+ * checkout.
  */
 export const WORKTREE_COPY_KINDS: readonly FileKind[] = [
   'spec',
@@ -227,6 +229,8 @@ export const WORKTREE_COPY_KINDS: readonly FileKind[] = [
   'rounds',
   'gateReviewed',
   'gateCodeReviewed',
+  'artifacts',
+  'evidence',
 ];
 
 /** What `specSourceOf` decides on: one spec, its worktree and git's answer about its folder. */

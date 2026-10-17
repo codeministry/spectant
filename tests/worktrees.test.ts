@@ -7,13 +7,14 @@
 // branch with its worktree, or one checked out in the main checkout, gives none. Merged or removed, the worktree leaves
 // the dashboard reading, so no chip shows. Nothing is written: `events.jsonl` stays byte-identical.
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
+import { composeApi, dashboardApi } from "../server/src/api.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes } from "../server/src/spec-routes.contract.ts";
+import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { loadCatalogDoc, loadCatalogDocs, loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { rawSha256 } from "../server/src/writes.ts";
@@ -526,5 +527,86 @@ describe("ISC-216 external path: a worktree outside the repository reaches the b
       expect(body).not.toContain(marker);
       expect(body).not.toContain("../");
     }
+  });
+});
+
+// ── folder copy (spec 039, T3, ISC-208) ──────────────────────────────────────────────────────────────────────────────
+//
+// With `specs/` tracked and a live spec worktree, the whole spec folder is read from the worktree's copy: besides the
+// eight kinds of ISC-181, `artifacts/` and `.evidence/`. The fixture changes one file of each in the copy only (the
+// tracked harbor files `artifacts/T13-routes.md`, `.evidence/bun-test-r3.log` and the image `.evidence/kpi-band-390.png`);
+// the tasks tab, the library reader, the evidence file route and the library's asset route all answer the copy's bytes,
+// and the main checkout's spec folder stays byte-identical.
+
+/** The copy's retitled artifact heading; main keeps harbor's `# T13 — routes`. */
+const COPY_ARTIFACT_TITLE = "T13 — routes (worktree copy)";
+const COPY_LOG = "bun test v1.3.0 — worktree copy\n";
+const COPY_IMAGE = "png bytes of the worktree copy";
+
+/** The tracked fixture with the three files changed in the spec worktree's copy alone. */
+async function plantFolderCopy(): Promise<PlantedWorktreeRepo> {
+  const repo = await plant({ trackedSpecs: true });
+  const copy = join(repo.worktrees.spec, "specs", SPEC_FOLDER);
+  const artifact = join(copy, "artifacts", "T13-routes.md");
+  writeFileSync(artifact, readFileSync(artifact, "utf8").replace(/^# T13 — routes$/m, `# ${COPY_ARTIFACT_TITLE}`));
+  writeFileSync(join(copy, ".evidence", "bun-test-r3.log"), COPY_LOG);
+  writeFileSync(join(copy, ".evidence", "kpi-band-390.png"), COPY_IMAGE);
+  return repo;
+}
+
+/** Every file below `dir` with its bytes' sha256, so any write shows. */
+function folderHashes(dir: string): string[] {
+  const out: string[] = [];
+  const walk = (d: string, rel: string): void => {
+    for (const entry of readdirSync(d, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const path = join(d, entry.name);
+      if (entry.isDirectory()) walk(path, `${rel}${entry.name}/`);
+      else out.push(`${rel}${entry.name} ${rawSha256(readFileSync(path))}`);
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+
+/** The dashboard and spec routes for the fixture's main checkout, registered alone as `harbor`. */
+function apiFor(repo: PlantedWorktreeRepo): ApiHandler {
+  const registry = openRegistry(mkdtempSync(join(repo.base, "data-")));
+  registries.push(registry);
+  registry.add(repo.root);
+  return composeApi(dashboardApi({ registry, services: () => Promise.resolve([]) }), specRoutesApi({ registry, lifeos: LIFEOS_ABSENT }));
+}
+
+describe("ISC-208 folder copy: every file of a spec folder comes from the worktree copy", () => {
+  test("folder copy: tasks tab, library reader, evidence file route and library asset route answer the copy; main stays byte-identical", async () => {
+    const repo = await plantFolderCopy();
+    const main = join(repo.root, "specs", SPEC_FOLDER);
+    const copy = join(repo.worktrees.spec, "specs", SPEC_FOLDER);
+    const before = folderHashes(main);
+    const api = apiFor(repo);
+
+    // Tasks tab: the copy's tasks.md (ISC-181, unchanged by 039).
+    const tasks = await call(api, specRoutes.tasks("harbor", SPEC_ID));
+    expect(tasks.status).toBe(200);
+    expect(tasks.headers.get(TASKS_HASH_HEADER)).toBe(rawSha256(readFileSync(join(copy, "tasks.md"))));
+
+    // Library: the catalog lists the copy's artifact, and the reader renders it.
+    const listed = await loadCatalogDoc(repo.root, `${SPEC_FOLDER}/artifacts/T13-routes.md`);
+    if (!listed.readable) throw new Error("the fixture workspace is unreadable");
+    expect(listed.doc?.title).toBe(COPY_ARTIFACT_TITLE);
+    const doc = await call(api, workspaceRoutes.libraryDoc("harbor", `${SPEC_FOLDER}/artifacts/T13-routes.md`));
+    expect(doc.status).toBe(200);
+    expect(JSON.stringify(await doc.json())).toContain("worktree copy");
+
+    // Evidence file route: the copy's log.
+    const log = await call(api, specRoutes.evidenceFile("harbor", SPEC_ID, ".evidence/bun-test-r3.log"));
+    expect(log.status).toBe(200);
+    expect(await log.text()).toBe(COPY_LOG);
+
+    // Library asset route: the copy's image.
+    const image = await call(api, workspaceRoutes.libraryAsset("harbor", `${SPEC_FOLDER}/.evidence/kpi-band-390.png`));
+    expect(image.status).toBe(200);
+    expect(await image.text()).toBe(COPY_IMAGE);
+
+    expect(folderHashes(main)).toEqual(before);
   });
 });

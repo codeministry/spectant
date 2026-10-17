@@ -21,9 +21,10 @@
 //
 // Worktree copies (spec 027, ISC-181): the caller may name, per active spec, the folder its files are read from
 // (`CatalogOptions.copies`, the server's `WorkspaceReading.copies`). The kinds of `WORKTREE_COPY_KINDS` then come from
-// that folder (the five own Markdown files, `spec.md` for the stale and missing rules, the texts of the stage input);
-// `artifacts/`, `.evidence/`, `.design/` and the workspace documents stay on the main checkout, and every catalog path
-// stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
+// that folder (the five own Markdown files, `spec.md` for the stale and missing rules, the texts of the stage input),
+// and so does every other file of the folder, `artifacts/`, `.evidence/` and `.design/` included (spec 039, ISC-208):
+// the main checkout's folder is not read for such a spec. The workspace documents stay on the main checkout, and every
+// catalog path stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
 import type { Dirent } from 'node:fs';
 import { lstat, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -58,6 +59,15 @@ export interface CatalogOptions {
 function folderOf(root: string, spec: string, kind: FileKind, copies: CatalogOptions['copies']): string {
   const copy = copies?.[spec];
   return copy !== undefined && WORKTREE_COPY_KINDS.includes(kind) ? copy : join(root, SPECS_DIR, spec);
+}
+
+/**
+ * The folder the files of the spec folder `folder` are read from (spec 039, ISC-208): the copy `copies` names for an
+ * active spec (`folder` is the spec itself), else `specs/<folder>` of the main checkout, an archived spec's included.
+ */
+function readDirOf(root: string, spec: string, folder: string, copies: CatalogOptions['copies']): string {
+  const copy = folder === spec ? copies?.[spec] : undefined;
+  return copy ?? join(root, SPECS_DIR, folder);
 }
 
 /**
@@ -332,6 +342,7 @@ async function prototypesIn(dir: string, rel: string, spec: string, candidates: 
  */
 async function specDocs(root: string, spec: string, copies: CatalogOptions['copies'], folder: string = spec): Promise<LibraryDoc[]> {
   const specDir = join(root, SPECS_DIR, folder);
+  const readDir = readDirOf(root, spec, folder, copies);
   const own = await Promise.all(
     SPEC_DOCS.map((kind) => {
       const file = FILE_KINDS[kind].path;
@@ -344,17 +355,17 @@ async function specDocs(root: string, spec: string, copies: CatalogOptions['copi
   const prototypeRoot = `${folder}/${PROTOTYPE_ROOT}`;
   for (const [zone, type] of SPEC_ZONES) {
     // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
-    const files = await filesBelow(join(specDir, zone), `${folder}/${zone}`, new Set([prototypeRoot]));
+    const files = await filesBelow(join(readDir, zone), `${folder}/${zone}`, new Set([prototypeRoot]));
     const docs = await Promise.all(
       files.map(async (path) => {
         const media = mediaOf(path.slice(path.lastIndexOf('/') + 1));
-        return media === null ? null : fileDoc(root, path, type, spec, media);
+        return media === null ? null : fileDoc(root, path, type, spec, media, join(readDir, path.slice(folder.length + 1)));
       }),
     );
     zoned.push(...docs.filter((d): d is LibraryDoc => d !== null).sort(byPath));
   }
-  const candidates = await previewCandidates(specDir);
-  const prototypes = (await prototypesIn(join(specDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates, folder)).sort(byPath);
+  const candidates = await previewCandidates(readDir);
+  const prototypes = (await prototypesIn(join(readDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates, folder)).sort(byPath);
 
   return [...own.filter((d): d is LibraryDoc => d !== null), ...zoned, ...prototypes];
 }
@@ -597,25 +608,23 @@ export async function readCatalog(root: string, input?: DashboardInput, options:
   };
 }
 
-/** The own Markdown files of a spec by their path below its folder, each with its kind. */
-const OWN_KIND: ReadonlyMap<string, TextFileKind> = new Map(SPEC_DOCS.map((kind) => [FILE_KINDS[kind].path, kind]));
-
 /**
- * Where the file of one catalog document is read (spec 027, ISC-181), as the folder `dir` and the path `rel` below it:
- * a spec's own Markdown file from the worktree copy `copies` names for its spec, the way `readCatalog` listed it;
- * every other document, and every document without a copy, from `<root>/specs` with its catalog path.
+ * Where the file of one catalog document is read (spec 027, ISC-181; spec 039, ISC-208), as the folder `dir` and the
+ * path `rel` below it: every file of a spec folder, its own Markdown files, `artifacts/`, `.evidence/` and `.design/`,
+ * from the worktree copy `copies` names for its spec, the way `readCatalog` listed it; every other document, and every
+ * document without a copy, from `<root>/specs` with its catalog path.
  */
 export function catalogSourceOf(
   root: string,
   doc: Pick<LibraryDoc, 'path' | 'spec'>,
   copies: CatalogOptions['copies'] = {},
 ): { dir: string; rel: string } {
-  const own = doc.spec === WORKSPACE || !doc.path.startsWith(`${doc.spec}/`) ? undefined : OWN_KIND.get(doc.path.slice(doc.spec.length + 1));
+  const inFolder = doc.spec !== WORKSPACE && doc.path.startsWith(`${doc.spec}/`);
   // A copy by the copies themselves (spec 041, ISC-217), never by comparing folder names: the spec has a copy, and the
-  // kind is one the copy holds.
-  const copy = own === undefined ? undefined : copies[doc.spec];
-  if (own === undefined || copy === undefined || !WORKTREE_COPY_KINDS.includes(own)) return { dir: join(root, SPECS_DIR), rel: doc.path };
-  return { dir: copy, rel: FILE_KINDS[own].path };
+  // path lies in its folder, which the copy holds whole (ISC-208).
+  const copy = inFolder ? copies[doc.spec] : undefined;
+  if (copy === undefined) return { dir: join(root, SPECS_DIR), rel: doc.path };
+  return { dir: copy, rel: doc.path.slice(doc.spec.length + 1) };
 }
 
 /** The active spec folders of the workspace at `root`, as `listSpecs` finds them (real directories, never archived). */
@@ -673,8 +682,7 @@ async function realDirs(base: string, names: readonly string[]): Promise<boolean
  * folder on the way a real directory without a leading dot, the target holding HTML pages directly and no folder above
  * it, from the prototype root down, holding any (it would own the target). Null otherwise.
  */
-async function prototypeAt(root: string, spec: string, subs: readonly string[], folder: string = spec): Promise<LibraryDoc | null> {
-  const specDir = join(root, SPECS_DIR, folder);
+async function prototypeAt(root: string, spec: string, subs: readonly string[], folder: string, specDir: string): Promise<LibraryDoc | null> {
   if (subs.some((s) => s.startsWith('.'))) return null;
   if (!(await realDirs(specDir, [DESIGN_ASSETS, 'prototype', ...subs]))) return null;
   let dir = join(specDir, PROTOTYPE_ROOT);
@@ -725,6 +733,7 @@ async function specDocAt(
   copies: CatalogOptions['copies'],
 ): Promise<LibraryDoc | null> {
   const specsDir = join(root, SPECS_DIR);
+  const readDir = readDirOf(root, spec, folder, copies);
   if (rest.length === 1) {
     const kind = SPEC_DOCS.find((k) => FILE_KINDS[k].path === rest[0]);
     if (kind === undefined) return null;
@@ -735,12 +744,12 @@ async function specDocAt(
   const zone = SPEC_ZONES.find(([name]) => name === zoneName);
   if (zone === undefined) return null;
   // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
-  if (zoneName === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1), folder);
+  if (zoneName === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1), folder, readDir);
   const name = inside.at(-1) ?? '';
   const media = mediaOf(name);
   if (media === null || inside.some((s) => s.startsWith('.'))) return null;
-  if (!(await realDirs(join(specsDir, folder), [zoneName, ...inside.slice(0, -1)]))) return null;
-  return fileDoc(root, path, zone[1], spec, media);
+  if (!(await realDirs(readDir, [zoneName, ...inside.slice(0, -1)]))) return null;
+  return fileDoc(root, path, zone[1], spec, media, join(readDir, zoneName, ...inside));
 }
 
 /**
