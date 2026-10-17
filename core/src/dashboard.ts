@@ -443,8 +443,6 @@ interface SpecContext {
   readonly locks: readonly ClaimLock[];
   /** The lock reading's diagnostics, routed to rows as `locks` warnings. */
   readonly lockDiagnostics: readonly LockDiagnostic[];
-  /** Claim IDs of the active folders: a lock diagnostic naming one of them lands on its row only. */
-  readonly activeIds: ReadonlySet<string>;
   /** The main checkout's tree: every spec's unless `perSpec` names its own. */
   readonly worktreeTree: string | null;
   /** How the server read each spec, by folder (spec 027, T12). */
@@ -609,10 +607,11 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
       warnings.push({ kind: 'closed', text: 'every claim closed, phase not complete' });
     }
     if (fog > 0) warnings.push({ kind: 'fog', text: plural(fog, 'open fog line') });
-    // A diagnostic naming an active claim concerns that claim's row; any other one (an unreadable source, a line without
-    // a claim) may hide a lock from every open spec, so each open row carries it.
+    // A diagnostic naming a claim concerns that claim's row only, so one naming an archived or unknown claim lands on no
+    // open row (spec 035). One without a claim (an unreadable source, a line without a claim) may hide a lock from every
+    // open spec, so each open row carries it.
     for (const d of ctx.lockDiagnostics) {
-      if (d.claim === undefined || !ctx.activeIds.has(d.claim) || ids.has(d.claim)) warnings.push(lockWarning(d));
+      if (d.claim === undefined || ids.has(d.claim)) warnings.push(lockWarning(d));
     }
   }
   // The worktree (spec 027, T12): a git fact, so it holds whatever the phase, like drift. The main copy has none.
@@ -899,14 +898,12 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     const feature = mainFeatureOf(fm.isaFeature);
     if (feature !== null && holdsFeatureOpen(fm.phase, doc)) openByFeature.set(feature, [...(openByFeature.get(feature) ?? []), specIdOf(f.folder) ?? f.folder]);
   }
-  const activeIds = new Set(active.flatMap((f) => [...(idsByFolder.get(f.folder) ?? [])]));
   const edges = resolveEdges({ specs: active, archived, constitution: input.constitution }, input.mergeState ?? []);
   const ctx: SpecContext = {
     master,
     idsByFolder,
     locks: input.locks?.locks ?? [],
     lockDiagnostics: input.locks?.diagnostics ?? [],
-    activeIds,
     worktreeTree: input.worktreeTree ?? null,
     perSpec: input.perSpec ?? {},
     worktrees: input.worktrees?.worktrees ?? [],

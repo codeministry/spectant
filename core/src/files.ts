@@ -888,7 +888,7 @@ export interface LockReading {
   readonly diagnostics?: readonly LockDiagnostic[];
   /**
    * The run events of `.spectant/activity.jsonl` (spec 027, ISC-179), every well-formed one in file order: its event,
-   * task, session, worktree and ts as written, and the claim when the line names one. A run event holds no claim;
+   * task, session and ts as written, and its worktree and claim when the line names them. A run event holds no claim;
    * `runStates` (locks.ts) folds them into each task's last state. Optional like `diagnostics`; `readLockSources`
    * always sets it, `[]` when the log is absent or holds none.
    */
@@ -896,7 +896,8 @@ export interface LockReading {
     readonly event: RunEvent;
     readonly task: string;
     readonly session: string;
-    readonly worktree: string;
+    /** Absent on a `dispatch` or `build` line that names no worktree (spec 035, ISC-189). */
+    readonly worktree?: string;
     readonly ts: string;
     readonly claim?: string;
   }>;
@@ -920,9 +921,10 @@ export interface LockReadInput {
 }
 
 /**
- * The four run events of `.spectant/activity.jsonl` beside `claim` and `release` (spec 027, ISC-179), each with `task`,
- * `session` and `worktree`: `dispatch` when the round's plan sends the task out, `build` when its builder starts in its
- * worktree, `patch` when its patch is pulled, `apply` when the patch landed on the spec's branch.
+ * The four run events of `.spectant/activity.jsonl` beside `claim` and `release` (spec 027, ISC-179), each with `task`
+ * and `session`, `patch` and `apply` also with `worktree` (spec 035, ISC-189): `dispatch` when the round's plan sends
+ * the task out, `build` when its builder starts in its worktree, `patch` when its patch is pulled, `apply` when the
+ * patch landed on the spec's branch.
  */
 export type RunEvent = 'dispatch' | 'build' | 'patch' | 'apply';
 
@@ -939,8 +941,11 @@ export interface TaskRun {
   readonly state: RunState;
   /** The last run event's session, as written. */
   readonly session: string;
-  /** The last run event's worktree, as written. */
-  readonly worktree: string;
+  /**
+   * The last run event's worktree, as written; absent when that event names none, which a `dispatch` or `build` may
+   * (spec 035, ISC-189): the builder's worktree does not exist yet when its task is dispatched.
+   */
+  readonly worktree?: string;
   /** ISO 8601: the last run event's `ts`. */
   readonly ts: string;
 }

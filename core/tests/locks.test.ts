@@ -5,6 +5,7 @@
 //
 // The run events (spec 027, ISC-179): `dispatch`, `build`, `patch` and `apply` beside `claim` and `release`, folded per
 // task into its last run state; an unknown event is one `activity-event-unknown` warning per file (`activity-events`).
+// Since spec 035 (ISC-189) `dispatch` and `build` may name no worktree; `patch` and `apply` still require one.
 //
 // Every tree here is a fresh temp dir with synthetic sessions; no real state directory or session enters the tree.
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -244,8 +245,8 @@ describe('activity-events: dispatch, build, patch and apply per task (spec 027, 
     const r = await readLockSources({
       repoRoot: tempRepo([
         runLine('dispatch', 'T6', '2026-03-06T09:01:00Z'),
-        without(runLine('build', 'T6', '2026-03-06T09:02:00Z'), 'worktree'),
-        without(runLine('patch', 'T6', '2026-03-06T09:03:00Z'), 'task'),
+        without(runLine('patch', 'T6', '2026-03-06T09:02:00Z'), 'worktree'),
+        without(runLine('build', 'T6', '2026-03-06T09:03:00Z'), 'task'),
         without(runLine('apply', 'T6', '2026-03-06T09:04:00Z'), 'session'),
       ]),
     });
@@ -258,5 +259,38 @@ describe('activity-events: dispatch, build, patch and apply per task (spec 027, 
 
     const old = await readLockSources({ repoRoot: tempRepo([claimLine('ISC-53', 'a:claude:sess-2', '2026-03-06T09:00:00Z')]) });
     expect(await runStates(old, new Set())).toEqual([]);
+  });
+});
+
+// ── spec 035, T4 (ISC-189): `dispatch` and `build` may name no worktree ──────────────────────────────────────────────
+// The round writes `dispatch` before the builder's worktree exists, so `dispatch` and `build` need no `worktree`: read,
+// no diagnostic, and the run carries no `worktree` key at all. `patch` and `apply` still require it.
+describe('run events without worktree (spec 035, ISC-189)', () => {
+  const bare = (event: string, task: string, ts: string) => Object.fromEntries(Object.entries(runLine(event, task, ts)).filter(([k]) => k !== 'worktree'));
+
+  test('run events without worktree: dispatch and build are read, dispatched and building, with no worktree key', async () => {
+    const r = await readLockSources({
+      repoRoot: tempRepo([bare('dispatch', 'T7', '2026-03-06T09:01:00Z'), bare('dispatch', 'T8', '2026-03-06T09:02:00Z'), bare('build', 'T8', '2026-03-06T09:03:00Z')]),
+    });
+    expect(r.diagnostics).toEqual([]);
+    const runs = await runStates(r, new Set());
+    expect(runs).toEqual([
+      { task: 'T7', state: 'dispatched', session: 'a:claude:sess-2/T7', ts: '2026-03-06T09:01:00Z' },
+      { task: 'T8', state: 'building', session: 'a:claude:sess-2/T8', ts: '2026-03-06T09:03:00Z' },
+    ]);
+    expect(runs.map((run) => 'worktree' in run)).toEqual([false, false]);
+    expect(r.runs?.map((run) => 'worktree' in run)).toEqual([false, false, false]);
+  });
+
+  test('run events without worktree: patch and apply are one locks-activity-malformed each and no run', async () => {
+    const r = await readLockSources({
+      repoRoot: tempRepo([bare('patch', 'T9', '2026-03-06T09:01:00Z'), bare('apply', 'T9', '2026-03-06T09:02:00Z')]),
+    });
+    expect(r.diagnostics?.map((d) => [d.code, d.line])).toEqual([
+      ['locks-activity-malformed', 1],
+      ['locks-activity-malformed', 2],
+    ]);
+    expect(r.diagnostics?.every((d) => d.message.includes('worktree'))).toBe(true);
+    expect(await runStates(r, new Set())).toEqual([]);
   });
 });

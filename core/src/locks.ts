@@ -19,10 +19,12 @@
 //    release by its holder is held since the claim line's `ts`.
 //
 //    The run events (spec 027, ISC-179): `{ts, event: "dispatch" | "build" | "patch" | "apply", task, session,
-//    worktree, claim?}`, one per step of a task in an implement round. A run event holds no claim; it is collected on
+//    worktree?, claim?}`, one per step of a task in an implement round. A run event holds no claim; it is collected on
 //    the reading as `runs`, and `runStates` folds them into each task's last state (dispatched → building → patched →
-//    applied, `applied-open` while tasks.md has not ticked the task). A run event without `task`, `session`, `worktree`
-//    or `ts` is malformed and skipped. An event that is none of the six raises one `activity-event-unknown` warning per
+//    applied, `applied-open` while tasks.md has not ticked the task). A run event without `task`, `session` or `ts` is
+//    malformed and skipped, and so is a `patch` or `apply` without `worktree`; a `dispatch` or `build` may name none,
+//    since the builder's worktree does not exist yet when its task is dispatched (spec 035, ISC-189), and its run then
+//    carries no `worktree` key. An event that is none of the six raises one `activity-event-unknown` warning per
 //    file, at its first line; that line and every later unknown one are skipped, and the file is read on.
 //
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
@@ -198,13 +200,16 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
       return;
     }
     if (isRunEvent(event)) {
+      // `worktree` is required only once the builder's worktree exists: on `patch` and `apply` (spec 035, ISC-189).
       const { task, worktree } = entry;
-      if (!filled(task) || !filled(session) || !filled(worktree) || !filled(ts)) {
-        diagnostics.push(warning('locks-activity-malformed', `The ${event} line lacks a task, a session, a worktree or a ts; it is skipped.`, { line, ...claimOf(entry) }));
+      const needsWorktree = event === 'patch' || event === 'apply';
+      if (!filled(task) || !filled(session) || !filled(ts) || (needsWorktree && !filled(worktree))) {
+        const fields = needsWorktree ? 'a task, a session, a worktree or a ts' : 'a task, a session or a ts';
+        diagnostics.push(warning('locks-activity-malformed', `The ${event} line lacks ${fields}; it is skipped.`, { line, ...claimOf(entry) }));
         return;
       }
       actors.push({ ref: parseActor(session), line, ...claimOf(entry) });
-      runs.push({ event, task, session, worktree, ts, ...claimOf(entry) });
+      runs.push({ event, task, session, ...(filled(worktree) ? { worktree } : {}), ts, ...claimOf(entry) });
       return;
     }
     if (!filled(claim) || !filled(session) || !filled(ts)) {
@@ -249,7 +254,13 @@ export function runStates(reading: LockReading, ticked: ReadonlySet<string>): re
   for (const run of reading.runs ?? []) last.set(run.task, run);
   return [...last.values()]
     .sort((a, b) => byId(a.task, b.task))
-    .map(({ event, task, session, worktree, ts }) => ({ task, state: event === 'apply' && !ticked.has(task) ? 'applied-open' : RUN_STATE[event], session, worktree, ts }));
+    .map(({ event, task, session, worktree, ts }) => ({
+      task,
+      state: event === 'apply' && !ticked.has(task) ? 'applied-open' : RUN_STATE[event],
+      session,
+      ...(worktree === undefined ? {} : { worktree }),
+      ts,
+    }));
 }
 
 /**
