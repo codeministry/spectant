@@ -58,10 +58,10 @@ describe('UiTime', () => {
     expect(host.textContent).toBe('soon');
   });
 
-  it('keeps a calendar day as its raw value in a time element until formatDay lands', async () => {
+  it('shows a calendar day as that day in the short date form, keeping the raw day as datetime', async () => {
     const time = (await render('2026-12-31', 'day')).querySelector('time');
 
     expect(time?.getAttribute('datetime')).toBe('2026-12-31');
-    expect(time?.textContent).toBe('2026-12-31');
+    expect(time?.textContent).toBe('12/31/2026');
   });
 });

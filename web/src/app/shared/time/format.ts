@@ -1,12 +1,13 @@
 import type { Lang } from '../../../i18n/catalogues';
 
 /**
- * The app's one date and time formatter (spec 006). Instants render in the browser's time zone: no format object
- * here sets `timeZone`, so the Intl default applies. Options follow spec.md § Constraints; no hand-built patterns.
+ * The app's one date and time formatter (spec 006). Instants render in the browser's time zone: no instant form
+ * sets `timeZone`, so the Intl default applies; only `day` reads its calendar day in UTC. Options follow spec.md
+ * § Constraints; no hand-built patterns.
  */
 
-/** The forms a value can take. `day` (a calendar day read as a UTC day) slots in here with `formatDay`. */
-export type TimeForm = 'instant' | 'date' | 'clock';
+/** The forms a value can take; `day` is a calendar day, read as a UTC day so no zone can shift it. */
+export type TimeForm = 'instant' | 'date' | 'clock' | 'day';
 
 /** App language to Intl locale; `en-US` gives `10/01/2026, 2:05 PM`. */
 const LOCALE: Readonly<Record<Lang, string>> = { de: 'de-DE', en: 'en-US' };
@@ -20,6 +21,7 @@ const OPTIONS: Readonly<Record<TimeForm, (lang: Lang) => Intl.DateTimeFormatOpti
   instant: (lang) => ({ ...DATE_PART, hour: HOUR[lang], minute: '2-digit' }),
   date: () => DATE_PART,
   clock: () => ({ timeStyle: 'short' }),
+  day: () => ({ ...DATE_PART, timeZone: 'UTC' }),
 };
 
 const cache = new Map<string, Intl.DateTimeFormat>();
@@ -54,6 +56,11 @@ export function formatDate(iso: string, lang: Lang): string {
 /** The clock time of an instant alone, only under a heading that shows the date: `14:05` / `2:05 PM`. */
 export function formatClock(iso: string, lang: Lang): string {
   return formatIso(iso, lang, 'clock');
+}
+
+/** A calendar day (`YYYY-MM-DD`, a milestone target) as that same day in every zone: `15.03.2026` / `03/15/2026`. */
+export function formatDay(isoDate: string, lang: Lang): string {
+  return formatIso(isoDate, lang, 'day');
 }
 
 /** `YYYY-MM-DD` of the local (browser) day a moment falls on, for grouping by day and the local today. */

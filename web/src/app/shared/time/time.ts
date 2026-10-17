@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LanguageService } from '../../core/language.service';
-import { formatClock, formatDate, formatInstant } from './format';
+import { formatClock, formatDate, formatDay, formatInstant } from './format';
 
 /** What `<ui-time>` shows: date and time, the date, the clock alone (under a day heading), or a calendar day. */
 export type UiTimeForm = 'instant' | 'date' | 'clock' | 'day';
@@ -34,8 +34,7 @@ export class UiTime {
       case 'clock':
         return formatClock(value, lang);
       case 'day':
-        // TODO(T15): formatDay (a UTC calendar day); until then the raw day, which no zone can shift.
-        return value;
+        return formatDay(value, lang);
       default:
         return formatInstant(value, lang);
     }

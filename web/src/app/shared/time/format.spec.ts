@@ -1,4 +1,4 @@
-import { dateTimeFormat, formatClock, formatDate, formatInstant, localDayKey, type TimeForm } from './format';
+import { dateTimeFormat, formatClock, formatDate, formatDay, formatInstant, localDayKey, type TimeForm } from './format';
 
 /** Intl may put a narrow no-break space before the day period; compare on plain spaces. */
 const plain = (text: string): string => text.replace(/[\u202f\u00a0]/g, ' ');
@@ -33,11 +33,18 @@ describe('shared/time format', () => {
   it('sets no time zone on any format object, so the browser default applies', () => {
     const browserZone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
     const forms: readonly TimeForm[] = ['instant', 'date', 'clock'];
+    // `day` is the exception: a calendar day is read as a UTC day so no zone can shift it (ISC-114.3).
     for (const lang of ['de', 'en'] as const) {
       for (const form of forms) {
         expect(dateTimeFormat(lang, form).resolvedOptions().timeZone).toBe(browserZone);
       }
     }
+  });
+
+  it('reads a calendar day as that day in the short date form, whatever the zone (ISC-114.3)', () => {
+    expect(formatDay('2026-03-15', 'de')).toBe('15.03.2026');
+    expect(formatDay('2026-03-15', 'en')).toBe('03/15/2026');
+    expect(dateTimeFormat('en', 'day').resolvedOptions().timeZone).toBe('UTC');
   });
 
   it('builds each format object once per language and form', () => {
