@@ -115,6 +115,8 @@
       "id": "F0",
       "name": "Cross-cutting",
       "why": "what would sink the project whichever slice slipped — data leaving the machine, a private detail going public, the app and the skill disagreeing about the format, or the database quietly becoming a second truth.",
+      "rank": 1,
+      "priority": "P3",
       "closed": 3,
       "total": 9,
       "claims": [
@@ -205,6 +207,8 @@
       "id": "F1",
       "name": "App skeleton and dashboard",
       "why": "the first time the author types `spectant` and sees two real repositories on one page in the look they know — the smallest thing that already replaces a per-repo HTML file.",
+      "rank": 2,
+      "priority": "P3",
       "closed": 11,
       "total": 38,
       "claims": [

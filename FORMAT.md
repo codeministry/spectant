@@ -85,9 +85,10 @@ Diagrams: a `feature`, `infra` or `project` spec needs a fence whose info string
 `spec.md` and `plan.md` (dashboard warning `diagrams`); a `refactor` only warns without one in `spec.md`; a complete
 spec is never held to it (`diagrams.ts`).
 
-Beside the thirteen, `FILE_KINDS` holds three repository kinds: `idea`, the story files under `specs/ideas/`, and
-`workflow`, the one table `specs/workflow.md` (both spec 008, T37), and `tokens`, the one measurement
-`specs/tokens.jsonl` (spec 009, T1), each documented in its section below. None belongs to a spec folder, so the
+Beside the thirteen, `FILE_KINDS` holds the repository kinds `idea`, the story files under `specs/ideas/`, and
+`workflow`, the one table `specs/workflow.md` (both spec 008, T37), `tokens`, the one measurement
+`specs/tokens.jsonl` (spec 009, T1), and `backlog`, the one feature ranking `specs/backlog.md` (spec 036), each
+documented in its section below. None belongs to a spec folder, so the
 table above has no row for them; like `constitution` and `master` they carry `scope: repo` and a path from the
 repository root (`repoFilePath`) beside the path relative to an active spec folder.
 
@@ -1146,6 +1147,49 @@ From `core/fixtures/harbor/specs/tokens.jsonl`:
 {"v":1,"kind":"round","spec":"002-web-console","round":1,"requests":4,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
 {"v":1,"kind":"round","spec":"002-web-console","round":2,"requests":2,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
 {"v":1,"kind":"unassigned","requests":2,"input":14,"output":220,"cache_read":18000,"cache_write":1800}
+```
+
+## `backlog` — `../backlog.md`, at `specs/backlog.md`
+
+The feature backlog: a rank and a priority for every feature block of the master (`### F<n> · …`). One file per
+repository, at `specs/backlog.md`, beside the constitution; it belongs to no spec folder and is optional. The rank is
+the order, the priority an attribute beside it; the priority orders nothing. The master is never written for either:
+a feature's milestone stays its `Milestone:` line, and moving a feature into another milestone is a change of the
+master, not of the backlog. Types and signatures live in `core/src/backlog.ts` (`parseBacklog`); the planning tree
+(`buildPlanning`) reads the file through it.
+
+- **An entry** is a list line `- F<n> · P<1-4>`, or `- F<n>` without a priority, which reads as `P3`. The separator is
+  the middle dot `·` with blanks around it, as in a feature heading. Every other line is skipped: a heading, a blank
+  line, prose, a list line naming no feature id, and everything inside an HTML comment `<!-- … -->`.
+- **The rank** is the position of the entry among the entries that count, 1-based and global across every milestone:
+  the first counted entry is rank 1. A feature block the file does not list stands behind every listed one, in master
+  order, with `P3`. Without the file every block stands at its position in the master with `P3`, so a workspace
+  without it reads exactly as before.
+- **The planning tree** carries `rank` and `priority` on every feature and orders every list of features by rank: the
+  features, each milestone's features and `featureIds`, and the no-milestone group. A milestone's features are the
+  global order filtered to that milestone.
+- **Findings** are warnings on `specs/backlog.md`, each with its line and the offending value as `subject`, and reading
+  goes on: `backlog-unknown-feature`, a line naming no feature block of the master (skipped);
+  `backlog-duplicate`, a second line of one feature (the first one counts); `backlog-priority`, a priority other than
+  `P1` to `P4` (read as `P3`). One finding per line.
+
+The file of the backlog-ranks fixture: F2 and F3 lead with P1 and P2, F9 names no feature block, F1 carries no
+priority, F3's second line is a duplicate, F4's `high` is no priority, and F0 is not listed. It reads as F2 (1, P1),
+F3 (2, P2), F1 (3, P3), F4 (4, P3), F0 (5, P3), with three warnings; Ferry 1.0 lists F2 before F1.
+
+From `core/fixtures/backlog-ranks/specs/backlog.md`:
+
+```markdown
+# Backlog
+
+<!-- One line per feature, `- F<n> · P<1-4>`; the line's position is the feature's rank. -->
+
+- F2 · P1
+- F3 · P2
+- F9 · P1
+- F1
+- F3 · P4
+- F4 · high
 ```
 
 ## The stage table

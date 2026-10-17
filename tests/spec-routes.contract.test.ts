@@ -473,6 +473,8 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       relations: "opt",
       // Spec 025 (ISC-170.1): the resolved spec edges, absent without any (no golden tree carries one).
       specEdges: "opt",
+      // Spec 036: the hash of specs/backlog.md the route serves for a backlog write, absent from every golden.
+      backlogHash: "opt",
     });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);

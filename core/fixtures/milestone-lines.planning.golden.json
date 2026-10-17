@@ -115,6 +115,8 @@
       "id": "F0",
       "name": "Cross-cutting",
       "why": "what would break trust in any release — a signal lost on the way or a contact detail in the repository.",
+      "rank": 1,
+      "priority": "P3",
       "closed": 0,
       "total": 2,
       "claims": [
@@ -158,6 +160,8 @@
       "id": "F1",
       "name": "Signal intake",
       "why": "every monitoring tool can hand its signals to one endpoint.",
+      "rank": 2,
+      "priority": "P3",
       "closed": 3,
       "total": 3,
       "claims": [
@@ -206,6 +210,8 @@
       "id": "F2",
       "name": "Alert routing",
       "why": "a signal reaches the person on call for its service, not a shared channel.",
+      "rank": 3,
+      "priority": "P3",
       "closed": 0,
       "total": 3,
       "claims": [
@@ -254,6 +260,8 @@
       "id": "F3",
       "name": "Escalation chains",
       "why": "a signal nobody acknowledges moves up the chain on its own.",
+      "rank": 4,
+      "priority": "P3",
       "closed": 0,
       "total": 2,
       "claims": [

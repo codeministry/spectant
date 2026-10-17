@@ -24,4 +24,6 @@ export const EXPECTED_WARNINGS: Record<string, string[]> = {
   "spectant-001": [],
   leadgen: ["ISA.md: master-progress-mismatch"],
   "milestone-lines": [],
+  // The backlog cases of backlog-ranks are planning diagnostics on specs/backlog.md (spec 036), not dashboard ones.
+  "backlog-ranks": [],
 };

@@ -115,6 +115,8 @@
       "id": "F0",
       "name": "Cross-cutting",
       "why": "notes stay on the machine they were written on.",
+      "rank": 1,
+      "priority": "P3",
       "closed": 0,
       "total": 1,
       "claims": [
@@ -136,6 +138,8 @@
       "id": "F1",
       "name": "Weekly digest",
       "why": "last week's notes are read at least once, in one sitting.",
+      "rank": 2,
+      "priority": "P3",
       "closed": 0,
       "total": 2,
       "claims": [

@@ -418,6 +418,9 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const reading = await read(workspace.path);
     if (!reading.readable) return json(req, 409, summary(workspace, reading));
     const { master, specs, archived, constitution } = reading.input;
+    // The feature backlog (spec 036): text and hash from one read of the bytes, so the hash the client sends back with
+    // a backlog write is the hash of the order it rendered; the hash of the empty text without the file.
+    const backlogBytes = readBytesIfExists(repoFilePath(workspace.path, "backlog"));
     const model: WorkspaceRouteResponses["planning"] = buildPlanning({
       master,
       specs,
@@ -428,6 +431,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       specStates: specStatesOf(workspace.path, reading),
       // The Diagram lens's arrows (spec 025, ISC-170.1): the edges as the dashboard resolves them.
       specEdges: resolveEdges({ specs, archived, constitution }, reading.mergeState).edges,
+      backlog: backlogBytes === null ? null : backlogBytes.toString("utf8"),
+      backlogHash: rawSha256(backlogBytes ?? ""),
     });
     return json(req, 200, model);
   };

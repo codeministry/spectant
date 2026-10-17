@@ -747,8 +747,9 @@ describe('planning: milestones', () => {
   test.each(fixtureTrees())('milestones: %s equals the milestones of its planning golden', (tree) => {
     const golden = JSON.parse(readFileSync(goldenPath(tree, 'planning'), 'utf8')) as PlanningModel;
     expect(planningOf(tree).milestones).toEqual(golden.milestones);
-    // milestone-lines (spec 026) pins its own milestones in "planning: feature-milestone".
-    if (tree !== 'milestone-lines') expect(golden.milestones).toEqual(tree === 'harbor' ? HARBOR_MILESTONES : []);
+    // milestone-lines (spec 026) pins its own milestones in "planning: feature-milestone", backlog-ranks (spec 036) in
+    // "planning: feature backlog".
+    if (tree !== 'milestone-lines' && tree !== 'backlog-ranks') expect(golden.milestones).toEqual(tree === 'harbor' ? HARBOR_MILESTONES : []);
   });
 
   test('milestones: lantern, with no block and no milestone key, has none', () => {
@@ -1327,14 +1328,14 @@ describe('planning: milestone-progress', () => {
 // tree's claims and holders, independent of `planning.ts`), and the only spec 026 fields are the empty assignment.
 describe('planning: legacy', () => {
   const NEW_CODES = new Set(['feature-milestone-unknown', 'milestone-mismatch']);
-  const legacy = fixtureTrees().filter((tree) => tree !== 'milestone-lines');
+  const legacy = fixtureTrees().filter((tree) => tree !== 'milestone-lines' && tree !== 'backlog-ranks');
 
   test('legacy: the five legacy fixtures are exactly those whose master carries no Milestone: line', () => {
     expect(legacy).toEqual(['empty-master', 'harbor', 'lantern', 'leadgen', 'spectant-001']);
     for (const tree of fixtureTrees()) {
       const master = readTree(tree).master;
       const lines = master === null ? 0 : core.parseClaims(master).features.filter((f) => f.milestone !== null).length;
-      expect({ tree, lined: lines > 0 }).toEqual({ tree, lined: tree === 'milestone-lines' });
+      expect({ tree, lined: lines > 0 }).toEqual({ tree, lined: tree === 'milestone-lines' || tree === 'backlog-ranks' });
     }
   });
 
@@ -1380,5 +1381,84 @@ describe('planning: backlog', () => {
     const stray = model.ideas.filter((i) => i.feature === null || !blocks.has(i.feature) || i.milestone === null || !milestones.has(i.milestone));
     expect(stray.map((i) => i.slug)).toEqual([]);
     expect(model.diagnostics.filter((d) => d.diagnostic.code.startsWith('unknown-')).map((d) => `${d.file}: ${d.diagnostic.code}`)).toEqual([]);
+  });
+});
+
+// Spec 036 (ISC-190, ISC-190.2): `specs/backlog.md` ranks the feature blocks. Probe names "backlog" and, for the anti
+// case without the file, "backlog absent".
+describe('planning: feature backlog', () => {
+  const rows = (model: PlanningModel): Array<[string, number, string]> => model.features.map((f) => [f.id, f.rank, f.priority]);
+
+  test('backlog: backlog-ranks gives every feature its rank and priority, unlisted ones last in master order', () => {
+    expect(rows(planningOf('backlog-ranks'))).toEqual([
+      ['F2', 1, 'P1'],
+      ['F3', 2, 'P2'],
+      ['F1', 3, 'P3'],
+      ['F4', 4, 'P3'],
+      ['F0', 5, 'P3'],
+    ]);
+  });
+
+  test('backlog: the features of each milestone and of the no-milestone group stand in rank order', () => {
+    const model = planningOf('backlog-ranks');
+    expect(model.milestones.map((m) => [m.name, m.featureIds, m.features.map((f) => f.id)])).toEqual([
+      ['Ferry 1.0', ['F2', 'F1'], ['F2', 'F1']],
+      ['Ferry 2.0', ['F3', 'F4'], ['F3', 'F4']],
+    ]);
+    expect(model.unassignedFeatures).toEqual(['F0']);
+  });
+
+  test('backlog: backlog-ranks equals its planning golden', () => {
+    expectGolden(goldenPath('backlog-ranks', 'planning'), goldenText(planningOf('backlog-ranks')), UPDATE_COMMAND);
+  });
+
+  test('backlog: without a master-wide Milestone: line, a milestone lists the features its specs hold in rank order', () => {
+    const master = masterOf([
+      { id: 'F0', name: 'Zero', claims: [1] },
+      { id: 'F1', name: 'One', claims: [2] },
+    ]).concat('\n## Milestones\n\n- Only · 2026-06-01\n');
+    const spec = specOf('F0', [1, 2]).replace('isa_feature: F0', 'isa_feature: F0\nmilestone: Only');
+    const model = core.buildPlanning({ master, specs: [{ folder: '001-both', texts: { spec } }], archived: [], backlog: '- F1 · P2\n', now: '2026-03-20' });
+    expect(model.features.map((f) => f.id)).toEqual(['F1', 'F0']);
+    expect(model.milestones[0]?.features.map((f) => f.id)).toEqual(['F1', 'F0']);
+  });
+});
+
+describe('planning: backlog diagnostics and the absent file', () => {
+  test('backlog diagnostics: backlog-ranks carries exactly its three backlog warnings, on specs/backlog.md', () => {
+    const found = planningOf('backlog-ranks').diagnostics.map((d) => [d.file, d.diagnostic.severity, d.diagnostic.code, d.diagnostic.line, d.diagnostic.subject]);
+    expect(found).toEqual([
+      ['specs/backlog.md', 'warning', 'backlog-unknown-feature', 7, 'F9'],
+      ['specs/backlog.md', 'warning', 'backlog-duplicate', 9, 'F3'],
+      ['specs/backlog.md', 'warning', 'backlog-priority', 10, 'high'],
+    ]);
+  });
+
+  // ISC-190.2: a workspace without specs/backlog.md reads as before, the two new fields aside.
+  const without = fixtureTrees().filter((tree) => !existsSync(join(FIXTURES, tree, 'specs', 'backlog.md')));
+
+  test('backlog absent: every fixture but backlog-ranks has no specs/backlog.md', () => {
+    expect(fixtureTrees().filter((tree) => !without.includes(tree))).toEqual(['backlog-ranks']);
+  });
+
+  test.each(without)('backlog absent: %s gains no backlog diagnostic, ranks in master order with P3, every list in master order', (tree) => {
+    const model = planningOf(tree);
+    expect(model.diagnostics.filter((d) => d.diagnostic.code.startsWith('backlog-'))).toEqual([]);
+    const master = readTree(tree).master;
+    const order = master === null ? [] : core.parseClaims(master).features.map((f) => f.id);
+    expect(model.features.map((f) => [f.id, f.rank, f.priority])).toEqual(order.map((id, i) => [id, i + 1, 'P3']));
+    const inMaster = (ids: readonly string[]): string[] => [...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    for (const m of model.milestones) {
+      expect(m.featureIds ?? []).toEqual(inMaster(m.featureIds ?? []));
+      expect(m.features.map((f) => f.id)).toEqual(inMaster(m.features.map((f) => f.id)));
+    }
+    expect(model.unassignedFeatures ?? []).toEqual(inMaster(model.unassignedFeatures ?? []));
+  });
+
+  test.each(without)('backlog absent: %s equals its planning golden with rank and priority stripped, as before spec 036', (tree) => {
+    const golden = JSON.parse(readFileSync(goldenPath(tree, 'planning'), 'utf8')) as PlanningModel;
+    const strip = (m: PlanningModel): unknown => ({ ...m, features: m.features.map((f) => Object.fromEntries(Object.entries(f).filter(([k]) => k !== 'rank' && k !== 'priority'))) });
+    expect(strip(planningOf(tree))).toEqual(strip(golden));
+    expect(goldenText(planningOf(tree))).toBe(readFileSync(goldenPath(tree, 'planning'), 'utf8'));
   });
 });

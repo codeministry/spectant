@@ -1,0 +1,634 @@
+{
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "default",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "tasks",
+    "review",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 0,
+    "plan": 0,
+    "tasks": 0,
+    "review": 0,
+    "build": 0,
+    "blocked": 0,
+    "close-pending": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 0
+  },
+  "features": [
+    {
+      "id": "F2",
+      "name": "Timetable",
+      "why": "the crossings a passenger can book are the ones the ferry actually runs.",
+      "rank": 1,
+      "priority": "P1",
+      "closed": 2,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-5",
+          "text": "The timetable lists every crossing of the next thirty days.",
+          "closed": true,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-6",
+          "text": "A cancelled crossing disappears from sale within a minute.",
+          "closed": true,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-5",
+        "ISC-6"
+      ],
+      "ideas": []
+    },
+    {
+      "id": "F3",
+      "name": "Boarding passes",
+      "why": "a passenger boards with the phone instead of a paper ticket.",
+      "rank": 2,
+      "priority": "P2",
+      "closed": 0,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-7",
+          "text": "A sold ticket carries a boarding pass the pier scanner accepts.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-8",
+          "text": "A pass is refused once it has boarded.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-7",
+        "ISC-8"
+      ],
+      "ideas": []
+    },
+    {
+      "id": "F1",
+      "name": "Ticket sales",
+      "why": "a passenger can buy a ticket without going to the pier.",
+      "rank": 3,
+      "priority": "P3",
+      "closed": 1,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-3",
+          "text": "A ticket for a crossing with free seats is sold online and paid in one step.",
+          "closed": true,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-4",
+          "text": "A sold-out crossing offers the next crossing with free seats.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-3",
+        "ISC-4"
+      ],
+      "ideas": []
+    },
+    {
+      "id": "F4",
+      "name": "Crew rota",
+      "why": "the crew sees the passenger list of a crossing before it leaves.",
+      "rank": 4,
+      "priority": "P3",
+      "closed": 0,
+      "total": 3,
+      "claims": [
+        {
+          "id": "ISC-9",
+          "text": "The crew view lists the passengers of the next crossing.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-10",
+          "text": "The list updates when a pass boards.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-11",
+          "text": "The list of a past crossing is kept for thirty days.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-9",
+        "ISC-10",
+        "ISC-11"
+      ],
+      "ideas": []
+    },
+    {
+      "id": "F0",
+      "name": "Cross-cutting",
+      "why": "what would break trust in any release — a ticket sold twice or a passenger's details in the repository.",
+      "rank": 5,
+      "priority": "P3",
+      "closed": 0,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "text": "one seat of one crossing is sold twice.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-2",
+          "text": "a tracked file contains a passenger's name or address.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-1",
+        "ISC-2"
+      ],
+      "ideas": []
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Ferry 1.0",
+      "slug": "ferry-1-0",
+      "target": "2026-04-15",
+      "description": "Tickets are sold online.",
+      "closed": 3,
+      "total": 4,
+      "state": "upcoming",
+      "featureIds": [
+        "F2",
+        "F1"
+      ],
+      "features": [
+        {
+          "id": "F2",
+          "name": "Timetable",
+          "closed": 2,
+          "total": 2
+        },
+        {
+          "id": "F1",
+          "name": "Ticket sales",
+          "closed": 1,
+          "total": 2
+        }
+      ],
+      "specs": [],
+      "ideas": []
+    },
+    {
+      "name": "Ferry 2.0",
+      "slug": "ferry-2-0",
+      "target": "2026-06-30",
+      "description": "Passengers board with a pass on the phone.",
+      "closed": 0,
+      "total": 5,
+      "state": "upcoming",
+      "featureIds": [
+        "F3",
+        "F4"
+      ],
+      "features": [
+        {
+          "id": "F3",
+          "name": "Boarding passes",
+          "closed": 0,
+          "total": 2
+        },
+        {
+          "id": "F4",
+          "name": "Crew rota",
+          "closed": 0,
+          "total": 3
+        }
+      ],
+      "specs": [],
+      "ideas": []
+    }
+  ],
+  "unassignedFeatures": [
+    "F0"
+  ],
+  "ideas": [],
+  "recount": {
+    "closed": 3,
+    "total": 11
+  },
+  "diagnostics": [
+    {
+      "file": "specs/backlog.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "backlog-unknown-feature",
+        "message": "F9 is not a feature block of the master; the line is skipped",
+        "line": 7,
+        "subject": "F9"
+      }
+    },
+    {
+      "file": "specs/backlog.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "backlog-duplicate",
+        "message": "F3 is listed more than once; its first line counts",
+        "line": 9,
+        "subject": "F3"
+      }
+    },
+    {
+      "file": "specs/backlog.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "backlog-priority",
+        "message": "priority \"high\" of F4 is none of P1 to P4; it reads as P3",
+        "line": 10,
+        "subject": "high"
+      }
+    }
+  ],
+  "relations": {
+    "milestone:ferry-1-0": {
+      "ref": "milestone:ferry-1-0",
+      "type": "milestone",
+      "id": "ferry-1-0",
+      "title": "Ferry 1.0",
+      "closed": 3,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "feature:F2",
+        "feature:F1"
+      ],
+      "blockers": []
+    },
+    "milestone:ferry-2-0": {
+      "ref": "milestone:ferry-2-0",
+      "type": "milestone",
+      "id": "ferry-2-0",
+      "title": "Ferry 2.0",
+      "closed": 0,
+      "total": 5,
+      "parents": [],
+      "children": [
+        "feature:F3",
+        "feature:F4"
+      ],
+      "blockers": []
+    },
+    "feature:F2": {
+      "ref": "feature:F2",
+      "type": "feature",
+      "id": "F2",
+      "title": "Timetable",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "milestone:ferry-1-0"
+      ],
+      "children": [
+        "claim:ISC-5",
+        "claim:ISC-6"
+      ],
+      "blockers": []
+    },
+    "feature:F3": {
+      "ref": "feature:F3",
+      "type": "feature",
+      "id": "F3",
+      "title": "Boarding passes",
+      "closed": 0,
+      "total": 2,
+      "parents": [
+        "milestone:ferry-2-0"
+      ],
+      "children": [
+        "claim:ISC-7",
+        "claim:ISC-8"
+      ],
+      "blockers": []
+    },
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Ticket sales",
+      "closed": 1,
+      "total": 2,
+      "parents": [
+        "milestone:ferry-1-0"
+      ],
+      "children": [
+        "claim:ISC-3",
+        "claim:ISC-4"
+      ],
+      "blockers": []
+    },
+    "feature:F4": {
+      "ref": "feature:F4",
+      "type": "feature",
+      "id": "F4",
+      "title": "Crew rota",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "milestone:ferry-2-0"
+      ],
+      "children": [
+        "claim:ISC-9",
+        "claim:ISC-10",
+        "claim:ISC-11"
+      ],
+      "blockers": []
+    },
+    "feature:F0": {
+      "ref": "feature:F0",
+      "type": "feature",
+      "id": "F0",
+      "title": "Cross-cutting",
+      "closed": 0,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2"
+      ],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "The timetable lists every crossing of the next thirty days.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "A cancelled crossing disappears from sale within a minute.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "A sold ticket carries a boarding pass the pier scanner accepts.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "A pass is refused once it has boarded.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-7"
+      ]
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "A ticket for a crossing with free seats is sold online and paid in one step.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "A sold-out crossing offers the next crossing with free seats.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "The crew view lists the passengers of the next crossing.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "The list updates when a pass boards.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-9"
+      ]
+    },
+    "claim:ISC-11": {
+      "ref": "claim:ISC-11",
+      "type": "claim",
+      "id": "ISC-11",
+      "title": "The list of a past crossing is kept for thirty days.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "one seat of one crossing is sold twice.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "a tracked file contains a passenger's name or address.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
+}
