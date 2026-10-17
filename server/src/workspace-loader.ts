@@ -293,6 +293,8 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     ]);
     const workflow = parseWorkflow(workflowFile.text);
     const mergeState = mergeStateOf(specs, archived, branches);
+    // Each file's conflict once (ISC-209.1): every repository file is read once in this reading.
+    const sourceDiagnostics = sourceFindings([master, constitution, tldr, workflowFile, ...ideas.reads]);
     return {
       readable: true,
       workflow,
@@ -307,6 +309,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
         constitution: constitution.text,
         tldr: tldr.text,
         ...(tldr.source.kind === "worktree" ? { tldrSource: tldr.source } : {}),
+        ...(sourceDiagnostics.length === 0 ? {} : { sourceDiagnostics }),
         specs,
         archived,
         worktreeTree: reviewed ? await worktreeTreeId(root) : null,
@@ -479,7 +482,8 @@ export interface IdeaSources {
   readonly files: IdeaFiles;
   /** Per file name, the worktree source of a story read from a spec worktree; absent for one read from main. */
   readonly sources: Readonly<Record<string, RepoFileSource>>;
-  readonly diagnostics: readonly Diagnostic[];
+  /** Each story as `readRepoFile` read it, for its findings; empty without a spec worktree. */
+  readonly reads: readonly RepoFileReading[];
 }
 
 /**
@@ -498,18 +502,34 @@ export async function readIdeaSources(root: string, reading?: WorktreeReading): 
       if (name.endsWith(".md") && !name.includes("/")) names.add(name);
     }
   }
-  if (view.repoFacts.worktrees.length === 0) return { files: main, sources: {}, diagnostics: [] };
+  if (view.repoFacts.worktrees.length === 0) return { files: main, sources: {}, reads: [] };
   const files: Record<string, string> = {};
   const sources: Record<string, RepoFileSource> = {};
-  const diagnostics: Diagnostic[] = [];
+  const reads: RepoFileReading[] = [];
   for (const name of [...names].sort()) {
     const read = await readRepoFile(root, `${ideasDir}${name}`, view);
+    reads.push(read);
     if (read.text === null) continue;
     files[name] = read.text;
     if (read.source.kind === "worktree") sources[name] = read.source;
-    diagnostics.push(...read.diagnostics);
   }
-  return { files, sources, diagnostics };
+  return { files, sources, reads };
+}
+
+/** The findings of repository file reads as workspace diagnostics, each file's conflict once (ISC-209.1). */
+function sourceFindings(reads: readonly RepoFileReading[]): FileDiagnostic[] {
+  const seen = new Set<string>();
+  const out: FileDiagnostic[] = [];
+  for (const read of reads) {
+    for (const diagnostic of read.diagnostics) {
+      const file = diagnostic.subject ?? "";
+      const key = `${diagnostic.code}\0${file}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ file, diagnostic });
+    }
+  }
+  return out;
 }
 
 /**

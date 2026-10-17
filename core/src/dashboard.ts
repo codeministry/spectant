@@ -260,6 +260,11 @@ export interface DashboardInput {
   readonly tldr: string | null;
   /** Where `tldr` was read (spec 039, ISC-209); absent means the main checkout. */
   readonly tldrSource?: RepoFileSource;
+  /**
+   * The findings of the repository files' read sources (spec 039, ISC-209.1): one `worktree-file-conflict` per file two
+   * spec worktrees changed differently, already one per file; they join the model's `diagnostics` as they are.
+   */
+  readonly sourceDiagnostics?: readonly FileDiagnostic[];
   /** Folders directly under `specs/`. */
   readonly specs: readonly SpecFiles[];
   /** Folders under `specs/archive/`. */
@@ -1001,6 +1006,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     .sort((a, b) => a.port - b.port)
     .map((s) => (s.label === null && labels.has(s.port) ? { ...s, label: labels.get(s.port) ?? null } : s));
 
+  diagnostics.push(...(input.sourceDiagnostics ?? []));
   return {
     kpis,
     stageCounts,

@@ -758,3 +758,31 @@ describe("ISC-209 repo files: a repository file is read from the spec worktree t
     expect(dashboard.model.brief?.source).toBeUndefined();
   });
 });
+
+// ── conflict (spec 039, T21, ISC-209.1) ──────────────────────────────────────────────────────────────────────────────
+//
+// Two spec worktrees change `specs/tldr.md` differently: the spec worktree of 002 commits one line, a second spec
+// worktree of 004 another. The workspace carries exactly one `worktree-file-conflict` for the file, naming both;
+// which version is read is core's rule (`core/tests/repo-source.test.ts -t conflict`); the fixture dates every
+// commit alike.
+
+describe("ISC-209.1 conflict: two spec worktrees with different versions of one repository file warn once", () => {
+  test("conflict: one worktree-file-conflict for specs/tldr.md naming both worktrees", async () => {
+    const repo = await plant({ trackedSpecs: true });
+    const second = `.worktrees/${OTHER_FOLDER}`;
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", OTHER_BRANCH, second)).code).toBe(0);
+    const write = async (worktree: string, line: string): Promise<void> => {
+      appendFileSync(join(worktree, "specs", "tldr.md"), `\n${line}\n`);
+      expect((await repo.git(worktree, "commit", "-q", "-m", "tldr", "--", "specs/tldr.md")).code).toBe(0);
+    };
+    await write(repo.worktrees.spec, "Line from 002.");
+    await write(join(repo.root, second), "Line from 004.");
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    const conflicts = dashboard.model.diagnostics.filter((d) => d.diagnostic.code === "worktree-file-conflict");
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({ file: "specs/tldr.md", diagnostic: { severity: "warning", subject: "specs/tldr.md" } });
+    expect(conflicts[0]?.diagnostic.message).toContain(SPEC_WORKTREE);
+    expect(conflicts[0]?.diagnostic.message).toContain(second);
+  });
+});

@@ -11,10 +11,18 @@
 //   - A worktree competes only with a version that is present, tracked by its branch, differs from the main checkout's
 //     and has a time. The newest of them is read when it is newer than the main checkout's own time; on a tie, or when
 //     none competes, the main checkout's.
+//   - When the competing versions are not all the same bytes, two worktrees changed the file differently: one warning
+//     `worktree-file-conflict` names every competing worktree, and the newest version is still read (ISC-209.1).
 //
 // Pure and browser-safe: facts in, decision out, no file system, no git, no Node or Bun API.
 import type { Diagnostic } from './diagnostics.ts';
 import type { RepoFileSource } from './files.ts';
+
+/**
+ * The code of the warning two or more spec worktrees with different versions of one repository file raise (ISC-209.1):
+ * a workspace diagnostic of the file, never a spec row's warning, since the file belongs to no spec.
+ */
+export const WORKTREE_FILE_CONFLICT = 'worktree-file-conflict';
 
 /** The main checkout as a source. */
 export const MAIN_SOURCE: RepoFileSource = { kind: 'main' };
@@ -55,7 +63,21 @@ export function repoFileSourceOf(path: string, candidates: readonly RepoFileCand
   const newest = contenders.reduce<RepoFileCandidate | null>((best, c) => (best === null || (timeOf(c) ?? 0) > (timeOf(best) ?? 0) ? c : best), null);
   const mainTime = main === undefined ? null : timeOf(main);
   const source = newest === null || (mainTime !== null && mainTime >= (timeOf(newest) ?? 0)) ? MAIN_SOURCE : newest.origin;
-  return { source, diagnostics: [] };
+  return { source, diagnostics: conflictOf(path, contenders) };
+}
+
+/** One `worktree-file-conflict` when the competing versions are not all the same bytes; none otherwise (ISC-209.1). */
+function conflictOf(path: string, contenders: readonly RepoFileCandidate[]): Diagnostic[] {
+  if (new Set(contenders.map((c) => c.digest)).size < 2) return [];
+  const names = contenders.map((c) => (c.origin.kind === 'worktree' ? c.origin.worktree : 'main')).join(', ');
+  return [
+    {
+      severity: 'warning',
+      code: WORKTREE_FILE_CONFLICT,
+      subject: path,
+      message: `${path} differs between the spec worktrees ${names}; the newest version is read.`,
+    },
+  ];
 }
 
 /** A candidate's time in ms, or null without a parsable one. */

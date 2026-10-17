@@ -1511,6 +1511,10 @@ dates by its mtime, which a checkout rewrites. `repoFileSourceOf` decides:
   The newest is read when it is newer than the main checkout's own time; on a tie, or when none competes, the main
   checkout's. A file the main checkout lacks is read from the newest worktree that tracks it, so a story added on a
   branch is listed before the merge.
+- When the competing versions are not all the same bytes, two spec worktrees changed the file differently (ISC-209.1):
+  the newest is still read, and the workspace carries exactly one warning `worktree-file-conflict` for the file in the
+  dashboard's `diagnostics`, its `file` and `subject` the path, its message naming every competing worktree. The file
+  belongs to no spec, so no row carries it.
 
 The dashboard's brief (`brief.source`), each library document of the workspace (`LibraryDoc.source`) and the story page
 (`IdeaPage.source`) name the worktree as `{ "kind": "worktree", "worktree": ".worktrees/NNN-slug" }` when it was read

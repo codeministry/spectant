@@ -76,3 +76,51 @@ describe('repo files (spec 039, ISC-209)', () => {
     expect(repoFileSourceOf(TLDR, [main('2026-10-01T09:00:00Z'), copy('.worktrees/012-harbor', '2026-10-03T09:00:00Z')]).diagnostics).toEqual([]);
   });
 });
+
+// ISC-209.1: two or more spec worktrees with different versions of one repository file raise exactly one warning
+// `worktree-file-conflict` for that file, naming the worktrees; the newest version is still read.
+describe('conflict (spec 039, ISC-209.1)', () => {
+  test('conflict: two worktrees with different versions → one warning naming both, the newer one read', () => {
+    const decision = repoFileSourceOf(TLDR, [
+      main('2026-10-01T09:00:00Z'),
+      copy('.worktrees/012-harbor', '2026-10-02T09:00:00Z'),
+      copy('.worktrees/014-export', '2026-10-03T09:00:00Z'),
+    ]);
+    expect(decision.source).toEqual(wt('.worktrees/014-export'));
+    expect(decision.diagnostics).toHaveLength(1);
+    expect(decision.diagnostics[0]).toMatchObject({ severity: 'warning', code: 'worktree-file-conflict', subject: TLDR });
+    expect(decision.diagnostics[0]?.message).toContain('.worktrees/012-harbor');
+    expect(decision.diagnostics[0]?.message).toContain('.worktrees/014-export');
+  });
+
+  test('conflict: three worktrees, two of them equal → still one warning, naming all three', () => {
+    const decision = repoFileSourceOf(TLDR, [
+      main('2026-10-01T09:00:00Z'),
+      copy('.worktrees/012-harbor', '2026-10-02T09:00:00Z'),
+      copy('.worktrees/013-relay', '2026-10-02T10:00:00Z', { digest: '.worktrees/012-harbor' }),
+      copy('.worktrees/014-export', '2026-10-03T09:00:00Z'),
+    ]);
+    expect(decision.diagnostics).toHaveLength(1);
+    for (const w of ['.worktrees/012-harbor', '.worktrees/013-relay', '.worktrees/014-export']) expect(decision.diagnostics[0]?.message).toContain(w);
+  });
+
+  test('conflict: two worktrees with the same version, or only one differing, raise none', () => {
+    const same = repoFileSourceOf(TLDR, [
+      main('2026-10-01T09:00:00Z'),
+      copy('.worktrees/012-harbor', '2026-10-02T09:00:00Z', { digest: 'same' }),
+      copy('.worktrees/014-export', '2026-10-03T09:00:00Z', { digest: 'same' }),
+    ]);
+    expect(same.diagnostics).toEqual([]);
+    const one = repoFileSourceOf(TLDR, [main('2026-10-01T09:00:00Z'), copy('.worktrees/012-harbor', '2026-10-02T09:00:00Z'), copy('.worktrees/014-export', null)]);
+    expect(one.diagnostics).toEqual([]);
+  });
+
+  test('conflict: an untracked main file raises none, whatever the worktrees hold', () => {
+    const decision = repoFileSourceOf(TLDR, [
+      main(null, { tracked: false }),
+      copy('.worktrees/012-harbor', '2026-10-02T09:00:00Z'),
+      copy('.worktrees/014-export', '2026-10-03T09:00:00Z'),
+    ]);
+    expect(decision).toEqual({ source: MAIN_SOURCE, diagnostics: [] });
+  });
+});
