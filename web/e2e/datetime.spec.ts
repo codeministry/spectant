@@ -70,7 +70,7 @@ const TOKYO = {
 
 /** Intl may put a narrow no-break space before the day period; compare on plain spaces. */
 async function shown(locator: Locator): Promise<string> {
-  return (await locator.innerText()).replace(/[  ]/g, ' ').trim();
+  return (await locator.innerText()).replace(/[\u202f\u00a0]/g, ' ').trim();
 }
 
 for (const lang of ['en', 'de'] as const) {
