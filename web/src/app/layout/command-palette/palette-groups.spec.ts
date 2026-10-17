@@ -191,9 +191,9 @@ describe('spec 019 Claims group (T4, ISC-139)', () => {
     ]);
     const first = entries.find(isClaim);
     if (first === undefined) throw new Error('not a claim entry');
-    expect(first.keywords).toEqual(['126', 'taken']);
-    expect(first.claim.statusWord).toBe('taken');
-    expect(first.claim.accessibleName).toBe('ISC-126, The rotated token is used without a restart., spec 007, workspace Harbor, taken');
+    expect(first.keywords).toEqual(['126', 'running']);
+    expect(first.claim.statusWord).toBe('running');
+    expect(first.claim.accessibleName).toBe('ISC-126, The rotated token is used without a restart., spec 007, workspace Harbor, running');
     // Every claim navigates (Enter follows the link and Recent remembers it); none runs a command.
     expect(entries.some((entry) => 'run' in entry)).toBe(false);
   });

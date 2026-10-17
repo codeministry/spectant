@@ -16,7 +16,7 @@ describe('UiStateChip', () => {
     });
   });
 
-  async function render(state: string, family?: 'card' | 'claim') {
+  async function render(state: string, family?: 'card' | 'claim' | 'item') {
     const fixture = TestBed.createComponent(UiStateChip);
     fixture.componentRef.setInput('state', state);
     if (family) fixture.componentRef.setInput('family', family);
@@ -38,10 +38,23 @@ describe('UiStateChip', () => {
     const { fixture, host } = await render('running');
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(host.textContent.trim()).toBe('in Arbeit');
+    expect(host.textContent.trim()).toBe('läuft');
 
     const claim = await render('closed', 'claim');
     expect(claim.host.getAttribute('data-family')).toBe('claim');
     expect(claim.host.querySelector('ui-glyph')?.getAttribute('data-shape')).toBe('disc');
+  });
+
+  it('reads the item words and sets aborted apart as the warning chip (spec 040)', async () => {
+    const words: string[] = [];
+    for (const state of ['open', 'waiting', 'running', 'aborted', 'done']) words.push((await render(state, 'item')).host.textContent.trim());
+    expect(words).toEqual(['open', 'waiting', 'running', 'aborted', 'done']);
+
+    const { host } = await render('aborted');
+    const chip = host.querySelector<HTMLElement>('ui-chip');
+    expect(host.getAttribute('data-family')).toBe('item');
+    expect(chip?.getAttribute('data-tone')).toBe('warning');
+    expect(chip?.style.getPropertyValue('--chip-ink')).toBe('var(--hover-ink)');
+    expect(host.querySelector('ui-glyph')?.getAttribute('data-shape')).toBe('ring-slash');
   });
 });

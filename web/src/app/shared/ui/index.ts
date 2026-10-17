@@ -19,6 +19,10 @@ export {
   type GlyphState,
   glyphFamily,
   glyphSpec,
+  ITEM_ALIASES,
+  ITEM_GLYPHS,
+  ITEM_STATES,
+  itemStateOf,
   stateKey,
 } from './glyph/states';
 export { type FilterOption, UiFilterChips } from './filter-chips/filter-chips';

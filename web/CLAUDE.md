@@ -63,6 +63,10 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   `ui-state-chip` (glyph plus the visible state word from `states.*`), `ui-scrubber` (a real `<input type="range">` with
   `aria-valuetext` and typed ticks), `ui-toast` (the app's single toast, mounted once in the app root) and a `count` on
   `ui-disclosure`. A state word is never a tooltip. Reason: touch has no hover (ISC-88, DS-APP-25).
+- Spec 040 adds the glyph family `item`: the five item states (open, waiting, running, aborted, done), each its own
+  pair, `aborted` the one warning glyph. A card or claim word that means one of them (`ITEM_ALIASES`) shares its entry
+  and reads its word in both catalogues; "waiting" / „wartet" names only that state. Reason: one state vocabulary on
+  every surface (ISC-224), guarded by `web/tests/states-complete.test.ts` and the glossary parity test.
 
 ## Shell
 

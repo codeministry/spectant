@@ -8,8 +8,8 @@
 //   2. Every `terms.*` hint (ISC-107) belongs to a glossary row and is derived from its common term:
 //      EN `<common> in a ticket tracker`, DE `<German common> im Ticket-Tracker`.
 //   3. Every catalogue entry that is a level label (its EN value is a glossary term or its plural, any case) reads
-//      the glossary's German term (or its plural) in DE. The five item-state rows (spec 040) are not level labels:
-//      their EN words also name a stage (`done`) or a board column (`waiting`), so rule 3 skips them.
+//      the glossary's German term (or its plural) in DE, capitalised where the EN value is (`Open` is `Offen`, `open`
+//      is `offen`). It covers the five item-state rows of spec 040 too: `waiting` / `wartet` names only that state.
 //   4. No German value uses an English level word the glossary translates (Milestone, Idea, Actor) or a drift synonym
 //      for a level (Stufe for Stage, Aufgabe for Task). Code spans and quoted `## Heading` literals are exempt.
 //   5. No catalogue entry outside `terms.*` and `glossary.*` is a level's common term: the screen says Feature · Spec
@@ -35,8 +35,6 @@ const DE_HINT = " im Ticket-Tracker";
 /** The levels the screen names (ISC-107): their common terms never stand alone outside a hint. */
 const LEVELS = ["feature", "spec", "claim", "task", "milestone"] as const;
 
-/** The item-state rows of the glossary (spec 040, ISC-228): states, not level labels, so rule 3 skips them. */
-const STATE_TERMS: ReadonlySet<string> = new Set(["Open", "Waiting", "Running", "Aborted", "Done"]);
 
 /** German plurals of the glossary's German terms; the glossary itself carries the singular only. */
 const DE_PLURAL: Readonly<Record<string, string>> = {
@@ -133,7 +131,9 @@ function levelLabelProblems(en: Flat, de: Flat, rows: readonly GlossaryRow[]): s
     for (const row of rows) {
       const term = row.term.toLowerCase();
       if (word !== term && word !== `${term}s`) continue;
-      const want = word === term ? row.german : (DE_PLURAL[row.german] ?? `${row.german}s`);
+      const german = word === term ? row.german : (DE_PLURAL[row.german] ?? `${row.german}s`);
+      // A label in sentence case capitalises the German too; the German nouns of the levels already are.
+      const want = /^\p{Lu}/u.test(value.trim()) ? german.charAt(0).toUpperCase() + german.slice(1) : german;
       if (de.get(key) !== want) out.push(`de: ${key} is ${JSON.stringify(de.get(key))}, the glossary says ${JSON.stringify(want)}`);
     }
   }
@@ -223,6 +223,16 @@ describe("the checkers catch what they claim to (synthetic input)", () => {
     expect(levelLabelProblems(enFlat, deFlat, rows)).toEqual(['de: a is "Milestones", the glossary says "Meilensteine"']);
   });
 
+  test("an item-state label reads the German state word, capitalised only where the EN label is (spec 040)", () => {
+    const states = GLOSSARY.filter((row) => ["Open", "Waiting"].includes(row.term));
+    const enFlat = flatten({ a: "Open", b: "open", c: "waiting", d: "Waiting" });
+    const deFlat = flatten({ a: "Offen", b: "Offen", c: "wartend", d: "Wartet" });
+    expect(levelLabelProblems(enFlat, deFlat, states)).toEqual([
+      'de: b is "Offen", the glossary says "offen"',
+      'de: c is "wartend", the glossary says "wartet"',
+    ]);
+  });
+
   test("English level words and drift synonyms in German are found; code spans and headings are exempt", () => {
     const deFlat = flatten({
       a: "Keine Milestones",
@@ -268,10 +278,8 @@ describe("the catalogues against the core glossary (ISC-116.1)", () => {
     expect(hintProblems(en, de, GLOSSARY)).toEqual([]);
   });
 
-  test("every level label reads the glossary's German term in DE", () => {
-    const levelRows = GLOSSARY.filter((row) => !STATE_TERMS.has(row.term));
-    expect(levelRows).toHaveLength(GLOSSARY.length - STATE_TERMS.size);
-    expect(levelLabelProblems(enFlat, deFlat, levelRows)).toEqual([]);
+  test("every level label and item-state label reads the glossary's German term in DE", () => {
+    expect(levelLabelProblems(enFlat, deFlat, GLOSSARY)).toEqual([]);
   });
 
   test("no German value uses an English level word or a drift synonym", () => {

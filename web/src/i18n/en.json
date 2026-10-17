@@ -244,8 +244,8 @@
     "claimStates": {
       "open": "open",
       "takeable": "takeable",
-      "taken": "taken",
-      "blocked": "blocked",
+      "taken": "running",
+      "blocked": "waiting",
       "closed": "closed",
       "dropped": "dropped"
     },
@@ -450,12 +450,12 @@
     "card": {
       "waiting": "waiting",
       "dispatched": "dispatched",
-      "running": "in flight",
+      "running": "running",
       "question": "question",
       "concerns": "concerns",
       "fail": "fail",
-      "done": "done",
-      "closed": "closed",
+      "done": "landed",
+      "closed": "done",
       "absent": "absent",
       "operatorOpen": "your step",
       "operatorDone": "step done",
@@ -473,10 +473,17 @@
     "claim": {
       "open": "open",
       "takeable": "takeable",
-      "taken": "taken",
-      "blocked": "blocked",
+      "taken": "running",
+      "blocked": "waiting",
       "closed": "closed",
       "dropped": "dropped"
+    },
+    "item": {
+      "open": "open",
+      "waiting": "waiting",
+      "running": "running",
+      "aborted": "aborted",
+      "done": "done"
     }
   },
   "scrubber": {
@@ -746,8 +753,8 @@
       "all": "All",
       "open": "open",
       "takeable": "takeable",
-      "taken": "taken",
-      "blocked": "blocked",
+      "taken": "running",
+      "blocked": "waiting",
       "closed": "closed",
       "dropped": "dropped"
     },
@@ -851,8 +858,8 @@
     },
     "status": {
       "open": "open",
-      "dispatched": "dispatched",
-      "held": "held",
+      "dispatched": "running",
+      "held": "waiting",
       "question": "question",
       "concerns": "concerns",
       "fail": "fail",
@@ -1136,8 +1143,8 @@
       "error": "The open claims could not be read.",
       "groups": {
         "takeable": "takeable",
-        "taken": "taken",
-        "blocked": "blocked",
+        "taken": "running",
+        "blocked": "waiting",
         "open": "open"
       },
       "waitsOn": "waits on {{ids}}",
@@ -2185,7 +2192,46 @@
     "unmapped": "unmapped"
   },
   "reason": {
-    "glyph": "waits"
+    "glyph": "open"
+  },
+  "itemState": {
+    "line": "{{stage}} · {{state}}",
+    "since": "since {{duration}}",
+    "started": "started {{time}}",
+    "waitsOn": "waits on {{items}}",
+    "doneOn": "done {{date}}",
+    "noRelease": "no release",
+    "abortedFor": "no release for {{duration}}",
+    "duration": {
+      "underMinute": "< 1 min",
+      "minutes": "{{minutes}} min",
+      "hours": "{{hours}} h {{minutes}} min"
+    },
+    "runs": {
+      "one": "{{count}} run",
+      "other": "{{count}} runs"
+    },
+    "runningCount": {
+      "one": "{{count}} running",
+      "other": "{{count}} running"
+    },
+    "locked": {
+      "chip": "Locked · {{command}} is running · {{actor}}",
+      "hint": "Running for {{duration}} · copyable once it ends",
+      "checkbox": "locked · {{session}}",
+      "notice": "{{spec}} is running · {{command}} · since {{duration}} — ticks locked",
+      "move": "{{spec}} is running · {{command}} · {{actor}} · since {{duration}}"
+    },
+    "refusal": "Not moved — {{spec}} is running: {{command}} · {{actor}} · since {{duration}}",
+    "release": {
+      "button": "Release run",
+      "question": "The agent may still be writing. Release the run?",
+      "explain": "The run in the chat goes on; the app only lifts the lock.",
+      "confirm": "Release",
+      "keep": "Keep",
+      "released": "Run released",
+      "changed": "The run changed · reloaded"
+    }
   },
   "live": {
     "taskActors": "Working on {{ task }}",
