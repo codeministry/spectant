@@ -24,6 +24,7 @@ import { dirname, isAbsolute, join } from "node:path";
 import { specNumbersOf } from "../../core/src/allocate.ts";
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 import type { CommitRecord } from "../../core/src/files.ts";
+import { StateMemo, repoStateOf } from "./repo-state.ts";
 
 /** A commit record, plus the touched paths inside the folder when `files` was asked for. */
 export interface GitCommit extends CommitRecord {
@@ -67,13 +68,18 @@ export const DEFAULT_TIMEOUT_MS = 3000;
 // ── the cache ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface CacheEntry {
+  /** `repoStateOf(root)` when read; a hit under the same state starts no git process (spec 041, ISC-215). */
+  readonly state: string | null;
   readonly head: string;
   readonly limit: number;
   readonly files: boolean;
   readonly commits: readonly GitCommit[];
 }
 
-/** The last read per `<root>\0<folder>`, valid while `HEAD` is unchanged; bounded, the oldest key leaves first. */
+/**
+ * The last read per `<root>\0<folder>`, valid while `HEAD` is unchanged; bounded, the oldest key leaves first. While
+ * `repoStateOf(root)` stands as well, a hit is answered without even the `rev-parse` (spec 041, ISC-215).
+ */
 export class CommitCache {
   readonly #entries = new Map<string, CacheEntry>();
 
@@ -172,6 +178,8 @@ function none(diagnostic: string, head: string | null = null): CommitsResult {
 
 const firstLine = (text: string): string => text.trim().split("\n", 1)[0] ?? "";
 
+const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
 /** Parses `\x1e<sha>\x1f<author date>\x1f<subject>` records, each followed by its paths when `--name-only` ran. */
 export function parseLog(stdout: string, withFiles: boolean): GitCommit[] {
   const commits: GitCommit[] = [];
@@ -204,22 +212,12 @@ export async function commitsFor(root: string, folder: string, options: CommitsO
     return none("not a git repository root");
   }
 
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<CommitsResult>((resolve) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      resolve(none(`git timed out after ${timeoutMs} ms`));
-    }, timeoutMs);
-  });
-  try {
-    return await Promise.race([read(root, rel, { limit, withFiles, runner, cache: options.cache }, controller.signal), deadline]);
-  } catch (error) {
-    return none(`git read failed: ${error instanceof Error ? error.message : String(error)}`);
-  } finally {
-    clearTimeout(timer);
-    controller.abort();
-  }
+  return readWithin(
+    timeoutMs,
+    none(`git timed out after ${timeoutMs} ms`),
+    (signal) => read(root, rel, { limit, withFiles, runner, cache: options.cache }, signal),
+    (error) => none(`git read failed: ${messageOf(error)}`),
+  );
 }
 
 // ── the identity (T77, ISC-119) ──────────────────────────────────────────────────────────────────────────────────
@@ -243,29 +241,13 @@ export async function userEmail(root: string, options: UserEmailOptions = {}): P
   } catch {
     return null;
   }
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<null>((resolve) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      resolve(null);
-    }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-  });
-  const read = async (): Promise<string | null> => {
-    const run = await runner(["-C", root, "config", "--get", "user.email"], gitEnv(root), controller.signal);
+  return readWithin(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
+    const run = await runner(["-C", root, "config", "--get", "user.email"], gitEnv(root), signal);
     // No git (null), exit 1 ("not set") and any other failure all read as no address.
-    if (run?.code !== 0 || controller.signal.aborted) return null;
+    if (run?.code !== 0 || signal.aborted) return null;
     const address = run.stdout.trim();
     return address === "" ? null : address;
-  };
-  try {
-    return await Promise.race([read(), deadline]);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-    controller.abort();
-  }
+  });
 }
 
 // ── the numbers given out (T86, ISC-130.2) ───────────────────────────────────────────────────────────────────────
@@ -301,23 +283,15 @@ export async function takenSpecNumbers(root: string, options: UserEmailOptions =
   } catch {
     return nothing("not a git repository root");
   }
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<TakenNumbers>((resolve) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      resolve(nothing(`git timed out after ${timeoutMs} ms`));
-    }, timeoutMs);
-  });
-  const read = async (): Promise<TakenNumbers> => {
+  const read = async (signal: AbortSignal): Promise<TakenNumbers> => {
     const env = gitEnv(root);
-    const refs = await runner(["-C", root, "for-each-ref", "--format=%(refname)", "refs/heads/", "refs/remotes/"], env, controller.signal);
+    const refs = await runner(["-C", root, "for-each-ref", "--format=%(refname)", "refs/heads/", "refs/remotes/"], env, signal);
     if (refs === null) return nothing("git not found on PATH");
     if (refs.code !== 0) return nothing(`git for-each-ref exited ${refs.code}: ${firstLine(refs.stderr)}`);
     const log = await runner(
       ["-C", root, "--no-pager", "log", "--all", "--no-renames", "--diff-filter=A", "--name-only", "--format=", "--no-color", "--no-ext-diff", "--no-textconv", "--", "specs"],
       env,
-      controller.signal,
+      signal,
     );
     if (log === null) return nothing("git not found on PATH");
     if (log.code !== 0) return nothing(`git log exited ${log.code}: ${firstLine(log.stderr)}`);
@@ -329,14 +303,7 @@ export async function takenSpecNumbers(root: string, options: UserEmailOptions =
     });
     return { numbers: [...new Set([...fromRefs, ...fromPaths])].sort((a, b) => a - b), source: "git" };
   };
-  try {
-    return await Promise.race([read(), deadline]);
-  } catch (error) {
-    return nothing(`git read failed: ${error instanceof Error ? error.message : String(error)}`);
-  } finally {
-    clearTimeout(timer);
-    controller.abort();
-  }
+  return readWithin(timeoutMs, nothing(`git timed out after ${timeoutMs} ms`), read, (error) => nothing(`git read failed: ${messageOf(error)}`));
 }
 
 // ── the worktrees (spec 027, T16, ISC-174, ISC-175) ──────────────────────────────────────────────────────────────
@@ -501,10 +468,16 @@ const NOT_IN_BRANCH = /\.\.|@\{|[\s~^:?*[\\]|\p{Cc}/u;
 const isPlainBranchName = (name: string): boolean => name !== "" && !name.startsWith("-") && !NOT_IN_BRANCH.test(name);
 
 /**
- * `read` under one deadline: `fallback` when the deadline passes first (the signal aborts, which kills the child) or
- * when `read` throws. The bound the worktree reads share.
+ * `read` under one deadline: `fallback` when the deadline passes first (the signal aborts, which kills the child), and
+ * `failed(error)`, by default `fallback`, when `read` throws. The one deadline helper of this module (spec 041, ISC-218):
+ * every read that spawns git runs under it.
  */
-async function readWithin<T>(timeoutMs: number, fallback: T, read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+async function readWithin<T>(
+  timeoutMs: number,
+  fallback: T,
+  read: (signal: AbortSignal) => Promise<T>,
+  failed: (error: unknown) => T = () => fallback,
+): Promise<T> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<T>((resolve) => {
@@ -515,8 +488,8 @@ async function readWithin<T>(timeoutMs: number, fallback: T, read: (signal: Abor
   });
   try {
     return await Promise.race([read(controller.signal), deadline]);
-  } catch {
-    return fallback;
+  } catch (error) {
+    return failed(error);
   } finally {
     clearTimeout(timer);
     controller.abort();
@@ -532,6 +505,12 @@ interface ReadPlan {
 
 async function read(root: string, rel: string, plan: ReadPlan, signal: AbortSignal): Promise<CommitsResult> {
   const env = gitEnv(root);
+  const state = repoStateOf(root);
+  const key = cacheKey(root, rel);
+  const known = plan.cache?.lookup(key);
+  if (state !== null && known?.state === state && known.limit === plan.limit && known.files === plan.withFiles) {
+    return { commits: known.commits, head: known.head, source: "git" };
+  }
   const headRun = await plan.runner(["-C", root, "rev-parse", "--verify", "--quiet", "HEAD"], env, signal);
   if (headRun === null) return none("git not found on PATH");
   if (signal.aborted) return none("aborted");
@@ -539,10 +518,9 @@ async function read(root: string, rel: string, plan: ReadPlan, signal: AbortSign
   if (headRun.code !== 0) return none(`git rev-parse exited ${headRun.code}: ${firstLine(headRun.stderr)}`);
   const head = headRun.stdout.trim();
 
-  const key = cacheKey(root, rel);
-  const cached = plan.cache?.lookup(key);
-  if (cached?.head === head && cached.limit === plan.limit && cached.files === plan.withFiles) {
-    return { commits: cached.commits, head, source: "git" };
+  if (known?.head === head && known.limit === plan.limit && known.files === plan.withFiles) {
+    plan.cache?.store(key, { ...known, state });
+    return { commits: known.commits, head, source: "git" };
   }
 
   const args = [
@@ -568,7 +546,7 @@ async function read(root: string, rel: string, plan: ReadPlan, signal: AbortSign
   if (logRun.code !== 0) return none(`git log exited ${logRun.code}: ${firstLine(logRun.stderr)}`, head);
 
   const commits = parseLog(logRun.stdout, plan.withFiles);
-  plan.cache?.store(key, { head, limit: plan.limit, files: plan.withFiles, commits });
+  plan.cache?.store(key, { state, head, limit: plan.limit, files: plan.withFiles, commits });
   return { commits, head, source: "git" };
 }
 
@@ -745,13 +723,21 @@ export interface MergeCommit {
  */
 export async function mergeCommitOf(root: string, branch: string, options: UserEmailOptions = {}): Promise<MergeCommit | null> {
   if (!isPlainBranchName(branch)) return null;
-  const runner = options.runner ?? defaultGitRunner;
   try {
     lstatSync(join(root, ".git"));
   } catch {
     return null;
   }
-  return readWithin<MergeCommit | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
+  // An injected runner reads afresh: its caller counts or scripts the runs.
+  if (options.runner !== undefined) return mergeCommitNow(root, branch, options.runner, options.timeoutMs);
+  return MERGE_COMMITS.get(`${root}\0${branch}`, repoStateOf(root), () => mergeCommitNow(root, branch, defaultGitRunner, options.timeoutMs));
+}
+
+/** The process's merge commits per root and branch, kept while `repoStateOf(root)` stands: refs unchanged (ISC-215). */
+const MERGE_COMMITS = new StateMemo<MergeCommit | null>();
+
+function mergeCommitNow(root: string, branch: string, runner: GitRunner, timeoutMs: number | undefined): Promise<MergeCommit | null> {
+  return readWithin<MergeCommit | null>(timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
     const env = gitEnv(root);
     // Read through a call each time: the flag turns true while a run is awaited, which a narrowed property would hide.
     const aborted = (): boolean => signal.aborted;
@@ -772,4 +758,23 @@ export async function mergeCommitOf(root: string, branch: string, options: UserE
     }
     return null;
   });
+}
+
+// ── bounded concurrency ──────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `fn` over `items` with at most `limit` calls in flight, the results in the items' order: the library search's file
+ * reads (ISC-156.5) and the worktree view's git reads (spec 041, ISC-215).
+ */
+export async function mapBounded<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const at = next++;
+      results[at] = await fn(items[at] as T);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }

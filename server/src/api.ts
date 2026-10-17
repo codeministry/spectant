@@ -128,6 +128,7 @@ import { listSpecs } from "../../core/src/resolve.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { getBoardQuery, listActors, replaceActors, setBoardQuery } from "./db.ts";
 import { evidenceFileResponse } from "./evidence.ts";
+import { mapBounded } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
@@ -241,20 +242,6 @@ const isFolder = async (dir: string): Promise<boolean> => {
 
 /** Files a search reads at once (ISC-156.5): enough to overlap the reads, few enough to stay clear of the fd limit. */
 const SEARCH_READS = 16;
-
-/** `fn` over `items` with at most `limit` calls in flight, the results in the items' order. */
-async function mapBounded<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const worker = async (): Promise<void> => {
-    while (next < items.length) {
-      const at = next++;
-      results[at] = await fn(items[at] as T);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
 
 /** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
 type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };

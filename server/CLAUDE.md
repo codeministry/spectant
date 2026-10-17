@@ -141,3 +141,13 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Every function in `server/src/git.ts` runs only read-only git commands under one environment and root rule, never
   fetches and never throws: no repository, no git, a failure or the deadline answers `source: 'none'` or empty / null.
 - A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).
+- The worktrees are read once per workspace state, not per caller (spec 041, ISC-215): `readWorktreeView` (the
+  listing, the merge state, `ahead`, `dirty` and `ls-files` per live spec worktree, four worktrees at a time), the
+  listed paths of `worktreeTreeId`, the viewer's address, `mergeCommitOf` and the `CommitCache` hit are kept while
+  `repo-state.ts`' `repoStateOf` stands. That key is read from the file system alone (`HEAD`, the indexes, `packed-refs`,
+  `refs/heads/`, the config files, each linked worktree's `HEAD`, index and folder), so a repeat poll, a spec route, a
+  library document or a search keystroke starts no git process. An edit that touches no index does not move it: the
+  dirty mark follows on the next commit, stage or ref move.
+- Every read inside a worktree that could run a repository-configured command runs without it (ISC-216.2): `status`
+  with `core.fsmonitor=false`, each configured filter driver emptied and `--ignore-submodules=all`; `ls-files` with
+  `core.fsmonitor=false`.

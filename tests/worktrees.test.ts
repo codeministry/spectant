@@ -15,7 +15,7 @@ import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { loadCatalogDoc, loadCatalogDocs, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { loadCatalogDoc, loadCatalogDocs, loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { rawSha256 } from "../server/src/writes.ts";
 import {
   DATES,
@@ -420,7 +420,8 @@ describe("ISC-215 git spawn budget: one worktree list per poll, nothing re-read 
   });
 
   test("git spawn budget: a poll calls `git worktree list` exactly once", async () => {
-    const repo = await budgetRepo();
+    // A repository of its own: the shared one is warm, and a warm poll lists nothing at all.
+    const repo = await plantBudget();
     const { spawns } = await gitSpawnsOf(() => poll(repo));
     expect({ worktreeList: countOf(spawns, "worktree"), all: summary(spawns) }).toMatchObject({ worktreeList: 1 });
   });
@@ -499,5 +500,31 @@ describe("ISC-215 git spawn budget: one worktree list per poll, nothing re-read 
     const { value: ahead, spawns } = await gitSpawnsOf(() => aheadByPath(repo));
     expect(ahead[path]).toBe(2);
     expect(spawns.some((s) => s.command === "rev-list" && s.at === at)).toBe(true);
+  });
+});
+
+describe("ISC-216 external path: a worktree outside the repository reaches the browser without a path", () => {
+  test("external path: dashboard model, spec page and timeline name no path of the outside worktree; it keeps its chip by branch", async () => {
+    const repo = await plant();
+    // A worktree beside the repository, the older sibling layout, on spec 003's branch.
+    const folder = "003-config-loader";
+    const outside = join(repo.base, `outside-${folder}`);
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", `feature/${folder}`, outside)).code).toBe(0);
+    const marker = basename(outside);
+
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    const chip = (reading.input.worktrees?.worktrees ?? []).filter((w) => w.kind === "spec" && w.spec === "003");
+    expect(chip.map((w) => ({ path: w.path, branch: w.branch }))).toEqual([{ path: null, branch: `feature/${folder}` }]);
+
+    const dashboard = await loadDashboard(repo.root, null);
+    if (!dashboard.readable) throw new Error("the fixture workspace is unreadable");
+    const handler = handlerFor(repo);
+    const page = await (await call(handler, specRoutes.spec("harbor", "003"))).text();
+    const timeline = JSON.stringify(await timelineOf(handler, "003"));
+    for (const body of [JSON.stringify(dashboard.model), page, timeline]) {
+      expect(body).not.toContain(marker);
+      expect(body).not.toContain("../");
+    }
   });
 });

@@ -297,7 +297,8 @@ describe("the head cache", () => {
     const second = await commitsFor(repo, FOLDER, { cache, runner });
     expect(logCalls(calls)).toBe(1);
     expect(second).toEqual(first);
-    expect(calls.filter((args) => args.includes("rev-parse"))).toHaveLength(2);
+    // The repository state stands, so the hit is answered without even the `rev-parse` (spec 041, ISC-215).
+    expect(calls.filter((args) => args.includes("rev-parse"))).toHaveLength(1);
 
     // Same key, different shape (limit or files) is a miss, not a wrong answer.
     const limited = await commitsFor(repo, FOLDER, { cache, runner, limit: 1 });
