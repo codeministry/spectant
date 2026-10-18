@@ -86,16 +86,13 @@
           </div>
         }
 
-        <section class="card idea" data-section="idea" aria-labelledby="spec-dashboard-idea">
-          <p class="eyebrow" id="spec-dashboard-idea">
-            {{ (m.ideaSource === 'task' ? 'specDashboard.idea.eyebrowTask' : 'specDashboard.idea.eyebrow') | transloco }}
-          </p>
-          @if (quote(); as text) {
-            <blockquote>{{ text }}</blockquote>
-          } @else {
+        <!-- Spec 021 (T39, ISC-250): the spec head carries the goal sentence; the card stays only for its absence. -->
+        @if (m.ideaQuote === null) {
+          <section class="card idea" data-section="idea" aria-labelledby="spec-dashboard-idea">
+            <p class="eyebrow" id="spec-dashboard-idea">{{ 'specDashboard.idea.eyebrow' | transloco }}</p>
             <p class="muted">{{ 'specDashboard.idea.none' | transloco }}</p>
-          }
-        </section>
+          </section>
+        }
 
         @if (!wide()) {
           <ng-container [ngTemplateOutlet]="lanes" />

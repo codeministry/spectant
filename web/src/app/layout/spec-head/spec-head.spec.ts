@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, type Routes } from '@angular/router';
+import { provideRouter, Router, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
@@ -249,7 +249,7 @@ describe('SpecHead chip row (T36, ISC-149)', () => {
     const root = await open('/w/harbor/s/002/status');
     const more = root.querySelector<HTMLButtonElement>('[data-head-chips] button[data-head-more]');
     expect(text(more)).toBe('+2');
-    expect(more?.getAttribute('aria-label')).toBe(en.planning.breadcrumb.more.replace('{{count}}', '2'));
+    expect(more?.getAttribute('aria-label')).toBe(en.planning.breadcrumb.more.other.replace('{{count}}', '2'));
     const panelId = more?.getAttribute('aria-controls') ?? '';
     const links = [...root.querySelectorAll<HTMLAnchorElement>(`[id="${panelId}"] a`)];
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/planning/tree?sel=feature:F0', '/w/harbor/planning/tree?sel=feature:F2']);
@@ -404,9 +404,9 @@ describe('SpecHead provenance line (T34, T35, ISC-175, ISC-181)', () => {
     expect(note(root)).toBeNull();
     expect(root.querySelector('[data-provenance]')).toBeNull();
     const line = root.querySelector<HTMLElement>('[data-no-source-line]');
-    expect(line?.tagName).toBe('P');
-    expect(line?.className).toBe('no-source');
-    expect(line?.parentElement?.classList.contains('sh-main')).toBe(true);
+    // Spec 021 T38 (ISC-250): a part of the one meta line, no line of its own.
+    expect(line?.classList.contains('no-source')).toBe(true);
+    expect(line?.parentElement?.hasAttribute('data-meta')).toBe(true);
     expect(text(line)).toBe(en.specHead.noSource);
   });
 
@@ -449,14 +449,15 @@ describe('SpecHead provenance line (T34, T35, ISC-175, ISC-181)', () => {
     }
   });
 
-  it('comes after the breadcrumb and before the command chip in tab order', async () => {
+  // Spec 021 T38 (ISC-250): the command chip moved into the title row, so the meta line's chip now follows it.
+  it('comes after the breadcrumb and the title row’s command chip in tab order', async () => {
     setUp(unserved, () => with002({ worktree: WORKTREE }));
     const root = await open('/w/harbor/s/002/status');
     const trigger = chip(root)?.querySelector('button') ?? null;
     const command = root.querySelector('[data-head-command]');
     expect(trigger).not.toBeNull();
     expect(nav(root).compareDocumentPosition(trigger as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect((trigger as Node).compareDocumentPosition(command as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect((command as Node).compareDocumentPosition(trigger as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
@@ -513,11 +514,10 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
       expect(line?.id).toBe(`overlap-${other}`);
       expect(text(line?.querySelector('[data-overlap-text]') ?? null)).toBe(`Shares 4 files with ${other}, no edge`);
       expect(line?.querySelector('a[data-overlap-other]')?.getAttribute('href')).toBe(`/w/harbor/s/${other}`);
-      expect([...(line?.querySelectorAll('[data-overlap-path]') ?? [])].map((p) => text(p))).toEqual(PATHS.slice(0, 3));
+      // Spec 021 T37 (ISC-250): inside the head's one overlaps disclosure every path stands, no "+n more" of its own.
+      expect([...(line?.querySelectorAll('[data-overlap-path]') ?? [])].map((p) => text(p))).toEqual(PATHS);
       expect(text(line?.querySelector('[data-overlap-edge] code') ?? null)).toBe(edge);
-      line?.querySelector<HTMLButtonElement>('[data-overlap-more]')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(line?.querySelectorAll('[data-overlap-path]')).toHaveLength(4);
+      expect(line?.querySelector('[data-overlap-more]')).toBeNull();
     }
   });
 
@@ -527,4 +527,116 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
     expect(root.querySelector('ui-waits-chip')).toBeNull();
     expect(chipNames(root)).not.toContain('waits');
   });
+});
+
+// Spec 021, T37 and T38 · ISC-250 (design.md § Spec dashboard per viewport, § Across viewports, head height): the head
+// keeps its height down: every overlap in one collapsed disclosure whose state lives in `?open=overlaps`, one meta line,
+// the next command and Notes in the title row, the goal clamped with a toggle that names the goal of its spec (ISC-248).
+describe('SpecHead density (T37, T38, ISC-250)', () => {
+  type Body = { head: Record<string, unknown>; ideaQuote: string | null };
+  const GOLDEN = specGolden as unknown as Record<string, Body>;
+  const with002 = () => ok(GOLDEN['specs/002-web-console']);
+  const PATHS = ['web/src/app/a.ts', 'web/src/app/b.ts', 'web/src/app/c.ts', 'web/src/app/d.ts'];
+  const pair = (other: string) => ({
+    kind: 'spec-overlap',
+    text: `shares 4 files with ${other}, no edge`,
+    overlap: { specs: ['002', other], paths: PATHS, waiting: '002', edge: `(after: ${other})` },
+  });
+  const rowsWith = (others: readonly string[]) => ({
+    ...HARBOR,
+    specs: [
+      { id: '002', title: 'Web console', type: 'feature', stage: 'build', warnings: others.map(pair) },
+      ...others.map((id) => ({ id, title: id, type: 'feature', stage: 'plan', warnings: [] })),
+    ],
+  });
+  const fold = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('ui-disclosure[data-head-overlap-fold]');
+  const summary = (root: HTMLElement): HTMLButtonElement | null => fold(root)?.querySelector<HTMLButtonElement>('button[aria-expanded]') ?? null;
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('folds every overlap into one collapsed "N overlaps" disclosure inside the head (T37)', async () => {
+    setUp(unserved, with002, rowsWith(['004', '006', '009']));
+    const root = await open('/w/harbor/s/002/status');
+    expect(root.querySelectorAll('ui-disclosure[data-head-overlap-fold]')).toHaveLength(1);
+    expect(text(summary(root))).toBe('3 overlaps');
+    expect(summary(root)?.getAttribute('aria-expanded')).toBe('false');
+    expect(fold(root)?.hasAttribute('data-open')).toBe(false);
+    // Inside: every line and every path, no second fold ("+n more overlaps", "+n more").
+    const lines = [...(fold(root)?.querySelectorAll('[data-head-overlaps] [data-overlap-line]') ?? [])];
+    expect(lines.map((line) => line.id)).toEqual(['overlap-004', 'overlap-006', 'overlap-009']);
+    expect(fold(root)?.querySelector('[data-overlaps-more]')).toBeNull();
+    expect(fold(root)?.querySelector('[data-overlap-more]')).toBeNull();
+    expect(lines[0]?.querySelectorAll('[data-overlap-path]')).toHaveLength(4);
+  });
+
+  it('reads the singular for one overlap', async () => {
+    setUp(unserved, with002, rowsWith(['004']));
+    const root = await open('/w/harbor/s/002/status');
+    expect(text(summary(root))).toBe('1 overlap');
+  });
+
+  it('keeps the open state in ?open=overlaps, on every tab (T37)', async () => {
+    setUp(unserved, with002, rowsWith(['004', '006']));
+    const root = await open('/w/harbor/s/002/claims?open=overlaps');
+    expect(fold(root)?.hasAttribute('data-open')).toBe(true);
+    const router = TestBed.inject(Router);
+    summary(root)?.click();
+    await settle();
+    expect(router.url).toBe('/w/harbor/s/002/claims');
+    summary(root)?.click();
+    await settle();
+    expect(router.url).toBe('/w/harbor/s/002/claims?open=overlaps');
+  });
+
+  it('renders no fold without an overlap', async () => {
+    setUp(unserved, with002);
+    const root = await open('/w/harbor/s/002/status');
+    expect(fold(root)).toBeNull();
+  });
+
+  it('draws one meta line: updated, round and the "No agent source" text together (T38)', async () => {
+    setUp(unserved, with002);
+    const root = await open('/w/harbor/s/002/status');
+    expect(root.querySelectorAll('[data-meta]')).toHaveLength(1);
+    const line = root.querySelector<HTMLElement>('[data-meta]');
+    expect(line?.querySelector('[data-no-source-line]')).not.toBeNull();
+    expect(text(line)).toContain('round 3');
+    expect(text(line)).toContain(en.specHead.noSource);
+  });
+
+  it('puts the next command and Notes into the title row, after the title (T38)', async () => {
+    setUp(unserved, with002);
+    const root = await open('/w/harbor/s/002/status');
+    const row = root.querySelector<HTMLElement>('[data-title-row]');
+    expect(row).not.toBeNull();
+    expect(row?.querySelector('h1#spec-title')).not.toBeNull();
+    expect(row?.querySelector('[data-head-actions] [data-head-command]')).not.toBeNull();
+    expect(row?.querySelector('[data-head-actions] [data-notes-pill]')).not.toBeNull();
+  });
+
+  for (const tier of ['compact', 'wide'] as const) {
+    it(`clamps the goal with uiClamp, the toggle shows "More…" and is named "More… goal of 002" (${tier}, T38)`, async () => {
+      const height = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.textContent.length > 40 ? 400 : 10;
+      });
+      try {
+        setUp(unserved, with002);
+        const root = await open('/w/harbor/s/002/status', tier);
+        const goal = root.querySelector<HTMLElement>('[data-description]');
+        expect(goal?.getAttribute('data-clamp')).toBe('cut');
+        const toggle = root.querySelector<HTMLButtonElement>('button[data-more]');
+        expect(text(toggle)).toBe(en.specHead.more);
+        expect(toggle?.getAttribute('aria-label')).toBe('More… goal of 002');
+        expect(toggle?.getAttribute('aria-controls')).toBe(goal?.id);
+        expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+        toggle?.click();
+        await settle();
+        await settle();
+        expect(goal?.getAttribute('data-clamp')).toBe('open');
+        expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+        expect(text(goal)).toBe(GOLDEN['specs/002-web-console'].ideaQuote);
+      } finally {
+        height.mockRestore();
+      }
+    });
+  }
 });

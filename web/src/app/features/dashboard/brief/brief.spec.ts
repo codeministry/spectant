@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter, Router } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { formatDate } from '../../../shared/time';
@@ -33,6 +34,7 @@ describe('Brief', () => {
           preloadLangs: true,
         }),
       ],
+      providers: [provideRouter([])],
     });
   });
 
@@ -174,5 +176,116 @@ describe('Brief', () => {
     host.querySelector<HTMLButtonElement>('ui-command-chip button')?.click();
     await fixture.whenStable();
     expect(copied).toEqual(['/spec-tldr']);
+  });
+});
+
+// Spec 021 (T26, ISC-246): the workspace TL;DR (core's `sections`) stands on its first section, whole; one toggle in
+// the footer opens the others, its state `?open=tldr`, so a reload keeps it; `/spec-tldr` sits at the footer's end.
+describe('Brief folded to its first section (spec 021, T26)', () => {
+  const OVERVIEW = 'Sync is **done** and archived (001). '.repeat(12).trim();
+  const SECTIONED: BriefModel = {
+    markdown: '# TL;DR — harbor\n\n<!-- section: overview -->\n…',
+    generated: GENERATED,
+    stale: false,
+    sections: { overview: OVERVIEW, try: 'Run `harbor sync --dry-run`.', risks: '- The loader rewrite touches every package.' },
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function render(brief: BriefModel, url = '/') {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
+    const fixture = TestBed.createComponent(Brief);
+    fixture.componentRef.setInput('brief', brief);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const first = () => host.querySelector<HTMLElement>('[data-brief-first]');
+    const fold = () => host.querySelector<HTMLElement>('ui-disclosure[data-brief-fold]');
+    const toggle = () => fold()?.querySelector<HTMLButtonElement>('button[aria-expanded]') ?? null;
+    const rest = () => fold()?.querySelector<HTMLElement>('[data-brief-rest]') ?? null;
+    return { fixture, host, router, first, fold, toggle, rest };
+  }
+
+  it('shows the first section whole, unclipped, and nothing of the file before the first marker', async () => {
+    const { host, first } = await render(SECTIONED);
+    expect(first()?.hasAttribute('data-clipped')).toBe(false);
+    expect(first()?.textContent.replace(/\s+/g, ' ').trim()).toBe(OVERVIEW.replaceAll('**', ''));
+    expect(first()?.querySelector('strong')?.textContent).toBe('done');
+    expect(host.textContent).not.toContain('TL;DR — harbor');
+    expect(host.querySelector('[data-brief-more]')).toBeNull();
+  });
+
+  it('folds the other sections behind one toggle, closed, named for the TL;DR', async () => {
+    const { host, fold, toggle, rest } = await render(SECTIONED);
+    expect(host.querySelectorAll('ui-disclosure')).toHaveLength(1);
+    expect(host.querySelectorAll('button[aria-expanded]')).toHaveLength(1);
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(rest()?.closest('[inert]')).not.toBeNull();
+    expect(rest()?.textContent).toContain('harbor sync --dry-run');
+    expect(rest()?.querySelector('li')?.textContent).toContain('The loader rewrite');
+    // Visible text "Show whole TL;DR"; the accessible name starts with it and names the brief (label in name).
+    expect(toggle()?.querySelector('[data-brief-toggle] > [aria-hidden="true"]')?.textContent.trim()).toBe('Show whole TL;DR');
+    expect(toggle()?.querySelector('.visually-hidden')?.textContent.trim()).toBe('Show whole TL;DR, all sections of the brief');
+  });
+
+  it('puts the toggle and the /spec-tldr chip in the footer, the chip at the end and outside the toggle', async () => {
+    const { host, fold, toggle } = await render(SECTIONED);
+    const chip = host.querySelector<HTMLElement>('ui-command-chip[data-brief-command]');
+    expect(host.querySelectorAll('ui-command-chip')).toHaveLength(1);
+    expect(host.querySelector('[data-brief-head]')?.contains(chip)).toBe(false);
+    expect(toggle()?.contains(chip)).toBe(false);
+    const head = toggle()?.parentElement;
+    expect(head?.contains(chip)).toBe(true);
+    expect(head?.lastElementChild?.contains(chip)).toBe(true);
+    expect(fold()?.compareDocumentPosition(host.querySelector('[data-brief-first]') as Node)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+  });
+
+  it('opens on the toggle, writes `?open=tldr` and keeps focus on it; closing drops it again', async () => {
+    const { fixture, router, fold, toggle, rest } = await render(SECTIONED, '/?sel=spec:002');
+    toggle()?.focus();
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:002&open=tldr');
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+    expect(rest()?.closest('[inert]')).toBeNull();
+    expect(document.activeElement).toBe(toggle());
+
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:002');
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+  });
+
+  it('a reload with `?open=tldr` shows the whole TL;DR', async () => {
+    const { fold, toggle } = await render(SECTIONED, '/?open=tldr');
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('a single section stands alone with the chip in the footer and no toggle', async () => {
+    const { host } = await render({ ...SECTIONED, sections: { overview: OVERVIEW } });
+    expect(host.querySelector('ui-disclosure')).toBeNull();
+    expect(host.querySelector('button[aria-expanded]')).toBeNull();
+    expect(host.querySelector('[data-brief-foot] ui-command-chip')).not.toBeNull();
+  });
+
+  it('reads the toggle in German', async () => {
+    const { fixture, toggle } = await render(SECTIONED);
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(toggle()?.querySelector('[data-brief-toggle] > [aria-hidden="true"]')?.textContent.trim()).toBe('Ganzes TL;DR zeigen');
   });
 });

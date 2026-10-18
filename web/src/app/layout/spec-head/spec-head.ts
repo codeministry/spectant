@@ -1,13 +1,4 @@
-import {
-  afterRenderEffect,
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -18,7 +9,11 @@ import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { chipIcon } from '../../shared/ui/chip/chip-icons';
+import { OpenState } from '../../shared/open-state';
+import { UiClamp } from '../../shared/ui/clamp/clamp';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
+import { UiDisclosure } from '../../shared/ui/overlay/disclosure';
+import { nextId } from '../../shared/ui/overlay/ids';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
@@ -36,6 +31,7 @@ import {
   type FeaturePlace,
   featurePlace,
   gateInHead,
+  goalLines,
   holderOf,
   type MilestonePlace,
   milestonePlace,
@@ -69,9 +65,13 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  *   priority exactly once as `pmark` after the stage chip, the milestone chip with `flag` and the feature chip (its id;
  *   "+n" opens the other blocks the spec holds). Milestone and feature come from the planning tree
  *   (`ShellData.planningModel`) and left the breadcrumb with spec 024 (principal 2026-10-12).
- * - The row: `NNN · title` (mono cyan id, Sora 600 24/32, 20/28 at compact), the description muted and clamped with a
- *   "More…" disclosure, the meta line; on the right (below under 800 px) the next-command chip with copy, the shared gate
- *   button when the stage allows, and the notes pill (`sticky-note` (the prototype's `note`) + "n notes", violet tint).
+ * - The title row (spec 021 T38, ISC-250): `NNN · title` (mono cyan id, Sora 600 24/32, 20/28 at compact) and, in the
+ *   same row on the right (wrapping under the title when the row is too narrow), the next-command chip with copy, the
+ *   shared gate button when the stage allows, and the notes pill (`sticky-note` + "n notes", violet tint). Under it the
+ *   goal sentence, clamped by `uiClamp` (one line wide, two below) with a "More…" named for the goal of its spec
+ *   (ISC-248), then one meta line: updated, round, uncommitted files, the provenance and the "No agent source" text.
+ * - The overlaps (spec 021 T37, ISC-250): every overlap of the spec in one collapsed `ui-disclosure` "N overlaps" beside
+ *   the meta line (its own line at compact and once open), its state in `?open=overlaps` (`OpenState`), on every tab.
  * - The agent banner (3 px orange edge, agent dot, `lock` "writes paused") while a lock source reports a lock (ISC-90);
  *   without one the "No agent source" note joins the meta lines when the server read no source (ISC-86).
  * - The provenance line (spec 027 design.md § Across viewports 1, ISC-175, ISC-181): for a spec with a worktree,
@@ -88,7 +88,23 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, OverlapLines, RouterLink, SpecGuideCard, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWaitsChip, UiWorktreeChip],
+  imports: [
+    GateButton,
+    OverlapLines,
+    RouterLink,
+    SpecGuideCard,
+    TranslocoPipe,
+    UiChip,
+    UiClamp,
+    UiCommandChip,
+    UiDisclosure,
+    UiIcon,
+    UiPopover,
+    UiPopoverTrigger,
+    UiPriority,
+    UiWaitsChip,
+    UiWorktreeChip,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./spec-head.css', './spec-head.context.css', './spec-head.compact.css'],
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
@@ -171,10 +187,10 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
             <ui-chip variant="mono">{{ feature.id }}</ui-chip>
           </a>
           @if (otherFeatures().length; as count) {
-            <button type="button" class="head-more" data-head-more [attr.aria-label]="'planning.breadcrumb.more' | transloco: { count }" [uiPopoverTrigger]="more">
+            <button type="button" class="head-more" data-head-more [attr.aria-label]="(count === 1 ? 'planning.breadcrumb.more.one' : 'planning.breadcrumb.more.other') | transloco: { count }" [uiPopoverTrigger]="more">
               <ui-chip variant="count">+{{ count }}</ui-chip>
             </button>
-            <ui-popover #more [label]="'planning.breadcrumb.more' | transloco: { count }">
+            <ui-popover #more [label]="(count === 1 ? 'planning.breadcrumb.more.one' : 'planning.breadcrumb.more.other') | transloco: { count }">
               <ul class="head-more-list">
                 @for (other of otherFeatures(); track other.id) {
                   <li>
@@ -190,8 +206,8 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
       </div>
     </div>
 
-    <div class="row">
-      <div class="sh-main">
+    <div class="sh-main">
+      <div class="title-row" data-title-row>
         <h1 id="spec-title">
           <span class="spec-id">{{ id() }}</span>
           @if (title(); as title) {
@@ -199,80 +215,107 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
             <span class="spec-title" [attr.title]="title">{{ title }}</span>
           }
         </h1>
-        @if (description(); as description) {
-          <div class="desc-block">
-            <p #desc class="desc" data-description [class.clamped]="!expanded()">{{ description }}</p>
-            @if (expanded() || overflowing()) {
-              <button type="button" class="more" data-more [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
-                {{ (expanded() ? 'specHead.less' : 'specHead.more') | transloco }}
-              </button>
-            }
-          </div>
-        }
-        @if (meta().length > 0) {
-          <p class="meta" data-meta>
-            @for (part of meta(); track $index) {
-              <span>{{ part }}</span>
-            }
-          </p>
-        }
-        @if (provenance(); as prov) {
-          <div class="provenance" data-provenance>
-            <ui-worktree-chip data-head-worktree [worktree]="prov.worktree" [mismatch]="prov.mismatch" [source]="prov.source" [tier]="chipTier()" />
-            @if (prov.note || noSource()) {
-              <p class="source-line">
-                @if (prov.note; as note) {
-                  <span class="source-note" data-source-note>
-                    <span class="read"><ui-icon name="folder-git-2" [size]="12" />{{ 'specHead.source.read' | transloco }}</span>
-                    @if (note.kind === 'behind') {
-                      <span class="seg"
-                        >{{ 'specHead.source.main' | transloco }}
-                        <ui-chip class="main-stage" data-main-stage variant="small">{{ 'stages.' + note.stage | transloco }}</ui-chip></span
-                      >
-                      <span class="seg mono" data-main-progress>{{ note.closed }}/{{ note.total }}</span>
-                    } @else {
-                      <span class="seg">{{ (note.kind === 'equal' ? 'specHead.source.equal' : 'specHead.source.absent') | transloco }}</span>
-                    }
-                  </span>
-                }
-                @if (noSource()) {
-                  <span data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
-                }
-              </p>
-            }
-          </div>
-        } @else if (noSource()) {
-          <p class="no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</p>
-        }
-        @if (overlaps().length > 0) {
-          <app-overlap-lines class="overlaps" data-head-overlaps [lines]="overlaps()" [ws]="state.ws() ?? ''" />
-        }
+        <div class="actions" data-head-actions>
+          @if (command(); as command) {
+            <ui-command-chip
+              class="command"
+              data-head-command
+              [command]="command"
+              [copyLabel]="'common.copyCommand' | transloco"
+              [copiedLabel]="'common.copied' | transloco: { command }"
+              [manualHint]="'common.copyFallback' | transloco"
+            />
+          }
+          @if (showGate()) {
+            <app-gate-button size="inline" />
+          }
+          @if (notesLink(); as link) {
+            <a class="notes-pill" data-notes-pill [routerLink]="link">
+              <ui-icon name="sticky-note" [size]="14" />
+              @if (notes(); as count) {
+                {{ (count === 1 ? 'specHead.notesCount.one' : 'specHead.notesCount.other') | transloco: { count } }}
+              } @else {
+                {{ 'specHead.notes' | transloco }}
+              }
+            </a>
+          }
+        </div>
       </div>
-      <div class="actions" data-head-actions>
-        @if (command(); as command) {
-          <ui-command-chip
-            class="command"
-            data-head-command
-            [command]="command"
-            [copyLabel]="'common.copyCommand' | transloco"
-            [copiedLabel]="'common.copied' | transloco: { command }"
-            [manualHint]="'common.copyFallback' | transloco"
-          />
-        }
-        @if (showGate()) {
-          <app-gate-button size="inline" />
-        }
-        @if (notesLink(); as link) {
-          <a class="notes-pill" data-notes-pill [routerLink]="link">
-            <ui-icon name="sticky-note" [size]="14" />
-            @if (notes(); as count) {
-              {{ (count === 1 ? 'specHead.notesCount.one' : 'specHead.notesCount.other') | transloco: { count } }}
-            } @else {
-              {{ 'specHead.notes' | transloco }}
-            }
-          </a>
-        }
-      </div>
+      @if (description(); as description) {
+        <div class="desc-block">
+          <p
+            #goal="uiClamp"
+            class="desc"
+            data-description
+            [id]="goalId"
+            [uiClamp]="description"
+            [uiClampLines]="goalLines()"
+            [uiClampExpanded]="expanded()"
+          ></p>
+          @if (goal.overflows() || expanded()) {
+            <button
+              type="button"
+              class="more"
+              data-more
+              [attr.aria-expanded]="expanded()"
+              [attr.aria-controls]="goalId"
+              [attr.aria-label]="expanded() ? null : ('specHead.goalMore' | transloco: { id: id() })"
+              (click)="expanded.set(!expanded())"
+            >
+              {{ (expanded() ? 'specHead.less' : 'specHead.more') | transloco }}
+            </button>
+          }
+        </div>
+      }
+      @if (meta().length > 0 || provenance() || noSource() || overlaps().length > 0) {
+        <div class="meta-row">
+          @if (meta().length > 0 || provenance() || noSource()) {
+            <p class="meta" data-meta>
+              @for (part of meta(); track $index) {
+                <span class="part">{{ part }}</span>
+              }
+              @if (provenance(); as prov) {
+                <span class="part provenance" data-provenance>
+                  <ui-worktree-chip data-head-worktree [worktree]="prov.worktree" [mismatch]="prov.mismatch" [source]="prov.source" [tier]="chipTier()" />
+                  @if (prov.note || noSource()) {
+                    <span class="source-line">
+                      @if (prov.note; as note) {
+                        <span class="source-note" data-source-note>
+                          <span class="read"><ui-icon name="folder-git-2" [size]="12" />{{ 'specHead.source.read' | transloco }}</span>
+                          @if (note.kind === 'behind') {
+                            <span class="seg"
+                              >{{ 'specHead.source.main' | transloco }}
+                              <ui-chip class="main-stage" data-main-stage variant="small">{{ 'stages.' + note.stage | transloco }}</ui-chip></span
+                            >
+                            <span class="seg mono" data-main-progress>{{ note.closed }}/{{ note.total }}</span>
+                          } @else {
+                            <span class="seg">{{ (note.kind === 'equal' ? 'specHead.source.equal' : 'specHead.source.absent') | transloco }}</span>
+                          }
+                        </span>
+                      }
+                      @if (noSource()) {
+                        <span data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
+                      }
+                    </span>
+                  }
+                </span>
+              } @else if (noSource()) {
+                <span class="part no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
+              }
+            </p>
+          }
+          @if (overlaps().length > 0) {
+            <!-- Spec 021 T37 (ISC-250): every overlap in one collapsed disclosure, its open state in ?open=overlaps. -->
+            <ui-disclosure class="overlap-fold" data-head-overlap-fold [open]="overlapsOpen()" (openChange)="setOverlapsOpen($event)">
+              <span uiDisclosureSummary class="fold-summary">
+                <ui-icon class="warn-icon" name="triangle-alert" [size]="14" />
+                {{ (overlaps().length === 1 ? 'warnings.overlap.disclosure.one' : 'warnings.overlap.disclosure.other') | transloco: { count: overlaps().length } }}
+              </span>
+              <app-overlap-lines class="overlaps" data-head-overlaps [lines]="overlaps()" [ws]="state.ws() ?? ''" [fold]="false" />
+            </ui-disclosure>
+          }
+        </div>
+      }
     </div>
 
     @if (lock(); as held) {
@@ -438,18 +481,18 @@ export class SpecHead {
     return parts;
   });
 
+  /**
+   * Spec 021 T38 (ISC-250, ISC-248): the goal sentence, clamped by `uiClamp` to `goalLines(tier)` at a whole word. Its
+   * "More…" shows only while the clamp cuts; its accessible name names the goal of this spec.
+   */
   protected readonly expanded = signal(false);
-  protected readonly overflowing = signal(false);
-  private readonly desc = viewChild<ElementRef<HTMLElement>>('desc');
+  protected readonly goalId = nextId('spec-goal');
+  protected readonly goalLines = computed(() => goalLines(this.tier()));
 
-  constructor() {
-    // The "More…" disclosure shows only when the clamp (one line wide, two below) actually cuts the description.
-    afterRenderEffect(() => {
-      const el = this.desc()?.nativeElement;
-      this.tier();
-      if (!el || this.expanded()) return;
-      this.description();
-      this.overflowing.set(el.scrollHeight > el.clientHeight + 1);
-    });
+  // ─── Overlaps (spec 021 T37, ISC-250) ───────────────────────────────────────────────────────────────────────────
+  private readonly openState = inject(OpenState);
+  protected readonly overlapsOpen = computed(() => this.openState.isOpen('overlaps'));
+  protected setOverlapsOpen(open: boolean): void {
+    if (open !== this.overlapsOpen()) void this.openState.set('overlaps', open);
   }
 }

@@ -46,7 +46,7 @@
   grid-column: 1 / -1;
 }
 
-/* The idea (`.idea-quote.big`): a violet 3 px edge, the quote in the display face. */
+/* The idea card, shown only without a goal sentence (spec 021, ISC-250; the head carries the sentence): a violet edge. */
 .idea {
   gap: 4px;
   padding: 12px 16px;
@@ -65,18 +65,6 @@
   text-transform: uppercase;
 }
 
-blockquote {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 26px;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-}
 
 /* Next step beside lanes (`.dash-2`, 1.4fr 1fr from 900). */
 .dash-2 {
@@ -171,10 +159,5 @@ blockquote {
 
   .kpi .kpi-hero {
     grid-column: auto;
-  }
-
-  blockquote {
-    font-size: 19px;
-    line-height: 28px;
   }
 }

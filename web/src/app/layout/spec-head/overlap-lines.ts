@@ -1,9 +1,10 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { OverlapLine } from '../../features/dashboard/warnings-panel/overlap';
 import { UiIcon } from '../../shared/icons/icon';
+import { OPEN_PARAM, OpenState, serializeOpen } from '../../shared/open-state';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { specLink } from '../shell/areas';
 
@@ -28,7 +29,7 @@ const OPEN_PATHS = 3;
   styles: `
     :host { display: block; min-inline-size: 0; }
     ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .o-line { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 4px 8px; align-items: start; min-block-size: 28px; font-size: 13px; line-height: 20px; }
+    .o-line { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 4px 8px; align-items: start; min-block-size: 28px; font-size: 13px; line-height: 20px; }
     .o-line:focus { outline: none; }
     .warn-icon { margin-block-start: 2px; color: var(--color-warning); }
     .o-body { display: grid; gap: 2px; min-inline-size: 0; }
@@ -37,13 +38,14 @@ const OPEN_PATHS = 3;
     .spec:hover { text-decoration: underline; text-underline-offset: 3px; }
     .o-paths { gap: 0; color: var(--muted-ink); font-family: var(--font-mono); font-size: 12px; line-height: 16px; }
     /* The prototype's .path: one line, cut at the start so the file name stays visible. */
-    .path { overflow: hidden; max-inline-size: 100%; direction: rtl; text-align: start; text-overflow: ellipsis; white-space: nowrap; }
+    /* Spec 021 T37 (ISC-250): \`end\` of the rtl run is the left edge, so the paths stand left-aligned under their line. */
+    .path { overflow: hidden; max-inline-size: 100%; direction: rtl; text-align: end; text-overflow: ellipsis; white-space: nowrap; }
     .path bdi { direction: ltr; }
     .more { justify-self: start; min-block-size: 32px; padding: 0; border: 0; background: none; color: var(--muted-ink); font-size: 12px; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
     @media (pointer: coarse) { .more { min-block-size: 44px; } }
     .more ui-icon { vertical-align: -2px; }
-    .o-edge { justify-self: end; }
-    @container shell (inline-size < 640px) { .o-edge { grid-column: 2; justify-self: start; } }
+    /* The edge chip under the paths of its line, never right-aligned away from them (T37). */
+    .o-edge { grid-column: 2; justify-self: start; }
     details > summary { padding-block: 4px; color: var(--muted-ink); font-size: 12px; line-height: 20px; cursor: pointer; }
     details > ul { margin-block-start: 8px; }
     .o-short { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 20px; }
@@ -58,7 +60,14 @@ const OPEN_PATHS = 3;
             <ui-icon class="warn-icon" name="triangle-alert" [size]="16" [label]="'warnings.icon' | transloco" />
             <span class="o-body">
               <span class="o-text">{{ lead(line) | transloco: { count: line.paths.length } }} <span class="spec">{{ line.other }}</span></span>
-              <a class="anchor" data-overlap-anchor [routerLink]="[]" [fragment]="'overlap-' + line.other" queryParamsHandling="preserve">{{
+              <a
+                class="anchor"
+                data-overlap-anchor
+                [routerLink]="[]"
+                [fragment]="'overlap-' + line.other"
+                [queryParams]="openHead()"
+                queryParamsHandling="merge"
+                >{{
                 'warnings.overlap.toHead' | transloco
               }}</a>
             </span>
@@ -67,7 +76,7 @@ const OPEN_PATHS = 3;
       </ul>
     } @else {
       <ul [attr.aria-label]="'warnings.overlap.region' | transloco">
-        @for (line of lines().slice(0, openLines); track line.other) {
+        @for (line of shownLines(); track line.other) {
           <ng-container [ngTemplateOutlet]="full" [ngTemplateOutletContext]="{ $implicit: line }" />
         }
       </ul>
@@ -100,7 +109,7 @@ const OPEN_PATHS = 3;
               <li class="path" data-overlap-path [title]="path"><bdi>{{ path }}</bdi></li>
             }
           </ul>
-          @if (line.paths.length > openPaths && !expanded().has(line.other)) {
+          @if (fold() && line.paths.length > openPaths && !expanded().has(line.other)) {
             <button type="button" class="more" data-overlap-more [attr.aria-expanded]="false" (click)="expand(line.other)">
               {{ (line.paths.length - openPaths === 1 ? 'warnings.overlap.more.one' : 'warnings.overlap.more.other') | transloco: { count: line.paths.length - openPaths } }}
               <ui-icon name="chevron-down" [size]="12" />
@@ -126,11 +135,20 @@ export class OverlapLines {
   readonly form = input<'full' | 'short'>('full');
   /** Whether the lines carry the `overlap-<other>` anchors; only the spec head's do, so each id exists once. */
   readonly anchors = input(true);
+  /**
+   * Spec 021 T37 (ISC-250): whether the full form folds lines past the second and paths past the third. The spec head
+   * turns it off: its lines already sit in one collapsed overlaps disclosure, so a second fold inside would add nothing.
+   */
+  readonly fold = input(true);
 
-  protected readonly openLines = OPEN_LINES;
+  private readonly openState = inject(OpenState);
+
   protected readonly openPaths = OPEN_PATHS;
-  protected readonly rest = computed(() => this.lines().slice(OPEN_LINES));
+  protected readonly shownLines = computed(() => (this.fold() ? this.lines().slice(0, OPEN_LINES) : this.lines()));
+  protected readonly rest = computed(() => (this.fold() ? this.lines().slice(OPEN_LINES) : []));
   protected readonly expanded = signal<ReadonlySet<string>>(new Set());
+  /** The short form's anchor opens the head's overlaps disclosure, so the line it jumps to is not hidden (T37). */
+  protected readonly openHead = computed(() => ({ [OPEN_PARAM]: serializeOpen([...this.openState.keys(), 'overlaps']) }));
 
   protected lead(line: OverlapLine): string {
     return line.paths.length === 1 ? 'warnings.overlap.headLead.one' : 'warnings.overlap.headLead.other';
@@ -141,7 +159,7 @@ export class OverlapLines {
   }
 
   protected shownPaths(line: OverlapLine): readonly string[] {
-    return this.expanded().has(line.other) ? line.paths : line.paths.slice(0, OPEN_PATHS);
+    return !this.fold() || this.expanded().has(line.other) ? line.paths : line.paths.slice(0, OPEN_PATHS);
   }
 
   protected expand(other: string): void {

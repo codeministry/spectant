@@ -1,7 +1,14 @@
 @let k = kpis();
 @let master = k.master;
 @let noValue = 'common.noValue' | transloco;
-<!-- The prototype's kpi-band (app.js pageWorkspace): six tiles, each a ui-card with explicit edge and glow. -->
+@let complete = k.stageGroups?.complete ?? noValue;
+@let ofSpecs = 'kpi.of' | transloco: { total: (specsKey(k.specs) | transloco: { count: k.specs }) };
+@let warningsRef = (k.specsWithWarnings ?? noValue) + ' ' + ofSpecs;
+@let fogRef = (k.specsWithFog ?? noValue) + ' ' + ofSpecs;
+<!--
+  The prototype's kpi-band (app.js pageWorkspace): six tiles, each a ui-card with explicit edge and glow. Each shows its
+  number with a reference (a fraction, or "n of N specs" in the meta line) and a statement line (spec 021, ISC-245).
+-->
 <div class="band">
   <ui-kpi-tile
     class="master"
@@ -15,6 +22,7 @@
     [meta]="masterPercent() === null ? undefined : ('kpi.closedCaption' | transloco: { percent: masterPercent(), open: masterOpen() })"
   >
     <ui-ring visual [value]="masterPercent()" [size]="112" [stroke]="10" />
+    <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
   </ui-kpi-tile>
 
   <ui-kpi-tile
@@ -29,6 +37,7 @@
     [denominator]="k.claims.total"
   >
     <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+    <span class="statement foot">{{ 'kpi.statement.specClaims' | transloco }}</span>
   </ui-kpi-tile>
 
   <ui-kpi-tile
@@ -39,7 +48,8 @@
     [edge]="true"
     [glow]="true"
     [label]="'kpi.specs' | transloco"
-    [value]="k.specs"
+    [value]="complete"
+    [denominator]="k.specs"
     [href]="href()"
     [fragment]="targets.specs"
   >
@@ -52,6 +62,7 @@
         </span>
       }
     </span>
+    <span class="statement foot">{{ 'kpi.statement.specs' | transloco }}</span>
   </ui-kpi-tile>
 
   <ui-kpi-tile
@@ -63,48 +74,55 @@
     [glow]="true"
     [label]="'kpi.takeableNow' | transloco"
     [value]="k.takeable"
-    [meta]="'kpi.takeableCaption' | transloco"
+    [denominator]="k.openClaims ?? noValue"
     [href]="href()"
     [queryParams]="takeableQuery"
     [fragment]="targets.specs"
-  />
+  >
+    <span class="statement foot">{{ 'kpi.statement.takeable' | transloco }}</span>
+  </ui-kpi-tile>
 
   <ui-kpi-tile
-    class="attention span-wide"
-    data-kpi="attention"
-    [attr.data-tint]="tint()('attention')"
+    class="warnings"
+    data-kpi="warnings"
+    [attr.data-tint]="tint()('warnings')"
     accent="warning"
     [edge]="true"
     [glow]="true"
-    [label]="'kpi.attention' | transloco"
-    [value]="k.attention"
-    [meta]="'kpi.attentionDetail' | transloco: { warnings: k.warnings, fog: k.fog }"
+    [label]="'kpi.warnings' | transloco"
+    [value]="k.warnings"
+    [meta]="warningsRef"
     [href]="href()"
     [fragment]="targets.warnings"
-  />
+  >
+    <span class="statement">{{ 'kpi.statement.warnings' | transloco }}</span>
+  </ui-kpi-tile>
 
   <ui-kpi-tile
-    class="archive"
-    data-kpi="archive"
-    [attr.data-tint]="tint()('archive')"
+    class="fog"
+    data-kpi="fog"
+    [attr.data-tint]="tint()('fog')"
     accent="secondary"
     [edge]="true"
     [glow]="true"
-    [label]="'kpi.archive' | transloco"
-    [value]="k.archived"
-    [meta]="'kpi.archiveCaption' | transloco"
+    [label]="'kpi.fog' | transloco"
+    [value]="k.fog"
+    [meta]="fogRef"
     [href]="href()"
-    [fragment]="targets.archive"
-  />
+    [queryParams]="fogQuery"
+    [fragment]="targets.specs"
+  >
+    <span class="statement">{{ 'kpi.statement.fog' | transloco }}</span>
+  </ui-kpi-tile>
 </div>
 
-<!-- The prototype's Pulse card, the band's compact form: the container query shows it instead of the band. -->
+<!-- The prototype's Pulse card, the band's compact form: the master row and the spec claims over a 2 × 2 grid. -->
 <div class="pulse" data-kpi="pulse">
   <ui-card [glow]="true" [padding]="16">
     <div class="pulse-in">
       <div class="top">
         <ui-ring [value]="masterPercent()" [size]="72" [stroke]="8" />
-        <div>
+        <div class="lead">
           <div class="type-eyebrow">{{ 'kpi.masterClaims' | transloco }}</div>
           <div class="figure type-kpi-value" data-stat="master" [attr.data-tint]="tint()('master')">
             @if (master) {
@@ -113,25 +131,39 @@
               {{ noValue }}
             }
           </div>
+          <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
         </div>
       </div>
       <div class="claims">
         <div class="claims-row">
           <span class="type-eyebrow">{{ 'kpi.specClaims' | transloco }}</span>
+          <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
           <span class="frac" data-stat="claims" [attr.data-tint]="tint()('claims')">{{ k.claims.closed }}/{{ k.claims.total }}</span>
         </div>
-        <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+        <span class="statement">{{ 'kpi.statement.specClaims' | transloco }}</span>
       </div>
-      <div class="stats">
-        <a [routerLink]="href()" [fragment]="targets.specs">
-          <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span><b data-stat="specs" [attr.data-tint]="tint()('specs')">{{ k.specs }}</b>
+      <div class="cells">
+        <a [routerLink]="href()" [fragment]="targets.specs" data-cell="specs">
+          <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span>
+          <b data-stat="specs" [attr.data-tint]="tint()('specs')">{{ complete }}<small class="den">/{{ k.specs }}</small></b>
+          <span class="statement">{{ 'kpi.statement.specs' | transloco }}</span>
         </a>
-        <a [routerLink]="href()" [queryParams]="takeableQuery" [fragment]="targets.specs">
-          <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span><b data-stat="takeable" [attr.data-tint]="tint()('takeable')">{{ k.takeable }}</b>
+        <a [routerLink]="href()" [queryParams]="takeableQuery" [fragment]="targets.specs" data-cell="takeable">
+          <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span>
+          <b data-stat="takeable" [attr.data-tint]="tint()('takeable')">{{ k.takeable }}<small class="den">/{{ k.openClaims ?? noValue }}</small></b>
+          <span class="statement">{{ 'kpi.statement.takeable' | transloco }}</span>
         </a>
-        <a [routerLink]="href()" [fragment]="targets.warnings">
-          <span class="type-eyebrow">{{ 'kpi.attention' | transloco }}</span
-          ><b data-stat="attention" [attr.data-tint]="tint()('attention')">{{ k.attention }}</b>
+        <a [routerLink]="href()" [fragment]="targets.warnings" data-cell="warnings">
+          <span class="type-eyebrow">{{ 'kpi.warnings' | transloco }}</span>
+          <b data-stat="warnings" [attr.data-tint]="tint()('warnings')">{{ k.warnings }}</b>
+          <span class="ref">{{ warningsRef }}</span>
+          <span class="statement">{{ 'kpi.statement.warnings' | transloco }}</span>
+        </a>
+        <a [routerLink]="href()" [queryParams]="fogQuery" [fragment]="targets.specs" data-cell="fog">
+          <span class="type-eyebrow">{{ 'kpi.fog' | transloco }}</span>
+          <b data-stat="fog" [attr.data-tint]="tint()('fog')">{{ k.fog }}</b>
+          <span class="ref">{{ fogRef }}</span>
+          <span class="statement">{{ 'kpi.statement.fog' | transloco }}</span>
         </a>
       </div>
     </div>

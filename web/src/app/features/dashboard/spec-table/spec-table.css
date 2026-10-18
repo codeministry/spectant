@@ -26,6 +26,14 @@
   margin: 0;
 }
 
+/* Spec 021 (T25): the counters wrap as chips; they never scroll sideways. */
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-inline-size: 0;
+}
+
 .t-head ui-filter-chips {
   flex: 0 1 auto;
   min-inline-size: 0;
@@ -72,6 +80,33 @@
   padding: 0;
   border-block-start: 1px solid var(--line);
   list-style: none;
+}
+
+/*
+ * "Show all N" (spec 021, T25): the fold insets its toggle 16 px like the head; the folded rows step back out to the
+ * card edges and continue the first list's hairlines (the next-up fold's pattern).
+ */
+.show-all {
+  display: block;
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+.show-all-label {
+  color: var(--disp-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.rows-rest {
+  margin: 0 -16px;
+  border-block-start: 1px solid var(--line);
+}
+
+/* While open, the fold's hairline is the folded list's top edge; the last row's own closes the list. */
+.show-all[data-open] {
+  border-block-end: 0;
 }
 
 .rows > li {

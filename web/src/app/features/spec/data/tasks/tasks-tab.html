@@ -3,9 +3,20 @@
   <section class="tasks" aria-labelledby="tasks-heading">
     <div class="head">
       <h2 id="tasks-heading">{{ 'shell.tabs.tasks' | transloco }}</h2>
-      <p class="landed" data-tasks-landed>
-        {{ 'tasks.landed' | transloco: { landed: landed(), total: body.counts.boxes.total } }}
+      <!-- spec 021 (T43, ISC-252): one unit, the task row; done is core's landed rows (status done or closed). -->
+      <p class="done" data-tasks-done>
+        {{ doneKey() | transloco: { done: done(), count: body.counts.rows } }}
       </p>
+      <label class="hide-done">
+        <input
+          type="checkbox"
+          class="checkbox checkbox-sm"
+          data-hide-done
+          [checked]="hideDone()"
+          (change)="setQuery('hideDone', hideDone() ? null : '1')"
+        />
+        {{ 'tasks.filters.hideDone' | transloco }}
+      </label>
     </div>
 
     @if (specRun(); as run) {
@@ -30,16 +41,6 @@
         [label]="'tasks.filters.status' | transloco"
         (valueChange)="setQuery('status', $event ?? 'all')"
       />
-      <label class="hide-done">
-        <input
-          type="checkbox"
-          class="checkbox checkbox-sm"
-          data-hide-done
-          [checked]="hideDone()"
-          (change)="setQuery('hideDone', hideDone() ? null : '1')"
-        />
-        {{ 'tasks.filters.hideDone' | transloco }}
-      </label>
       <p class="result" aria-live="polite" data-tasks-result>
         {{ 'tasks.result' | transloco: { shown: rows().length, total: body.counts.rows } }}
       </p>

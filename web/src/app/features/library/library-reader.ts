@@ -10,6 +10,7 @@ import {
   input,
   output,
   resource,
+  signal,
   untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -24,6 +25,8 @@ import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
+import { type OpenKey, OpenState } from '../../shared/open-state';
+import { UiDisclosure, UiDisclosureDescription } from '../../shared/ui/overlay/disclosure';
 import { UiTimeLabel } from '../../shared/time';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiChip } from '../../shared/ui/chip/chip';
@@ -33,7 +36,7 @@ import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiSourceChip } from '../../shared/ui/source-chip/source-chip';
-import { specKey, WORKSPACE_SPEC } from './library-model';
+import { openSections, type ReaderSection, readerSections, type ReaderSplit, sectionFor, specKey, WORKSPACE_SPEC } from './library-model';
 import { PrototypeCard } from './prototype-card';
 
 /**
@@ -155,12 +158,49 @@ const DECISIONS_NAMES: readonly string[] = ['decisions', 'entscheidungen'];
 
 /** The drawn `## Decisions` heading of a spec.md: the h2 whose text (English or German) or id names it; null without. */
 export function decisionsHeading(root: ParentNode): HTMLElement | null {
-  const named = (heading: Element): boolean => {
-    const text = plainWords(heading.textContent);
-    return DECISIONS_NAMES.some((name) => text === name || text.startsWith(`${name} `) || heading.id === name || heading.id.endsWith(`-${name}`));
-  };
-  return [...root.querySelectorAll<HTMLElement>('.docs-prose h2')].find(named) ?? null;
+  return [...root.querySelectorAll<HTMLElement>('.docs-prose h2')].find((heading) => namesDecisions(heading.textContent, heading.id)) ?? null;
 }
+
+/** A `## Decisions` heading by its text (English or German) or its id. */
+function namesDecisions(heading: string, id: string): boolean {
+  const text = plainWords(heading);
+  return DECISIONS_NAMES.some((name) => text === name || text.startsWith(`${name} `) || id === name || id.endsWith(`-${name}`));
+}
+
+/**
+ * The key a page writes once every one of its sections is closed (ISC-251): `s-~` and its first section's id. Without
+ * it an address naming none of the page's sections means "the default", so a short page closed section by section
+ * would open whole again on a reload. Core's heading ids are letters, digits and hyphens, so `~` never names a section;
+ * keyed to the page's first section, it holds for this page and not for the next document the address shows.
+ */
+export const closedKey = (split: ReaderSplit): OpenKey | null => {
+  const first = split.sections.at(0);
+  return first === undefined ? null : `s-~${first.id}`;
+};
+
+/** The open sections of a page under the address's keys: none after `closedKey`, else `openSections`. */
+export function readerOpen(split: ReaderSplit, keys: readonly OpenKey[]): ReadonlySet<OpenKey> {
+  const own = new Set(split.sections.map((section) => section.key));
+  const closed = closedKey(split);
+  if (closed !== null && keys.includes(closed) && !keys.some((key) => own.has(key))) return new Set();
+  return openSections(split, keys);
+}
+
+/** What the address gets for `open`: every section of the page named open or closed, and `closedKey` when none is open. */
+export function openEntries(split: ReaderSplit, open: ReadonlySet<OpenKey>): ReadonlyArray<readonly [OpenKey, boolean]> {
+  const entries = split.sections.map((section) => [section.key, open.has(section.key)] as const);
+  const closed = closedKey(split);
+  return closed === null ? entries : [...entries, [closed, open.size === 0] as const];
+}
+
+/** One section as the reader draws it: core's split and the page its body renders as (no contents, its own figures). */
+interface SectionPart {
+  readonly section: ReaderSection;
+  readonly page: DocsPage;
+}
+
+/** The figures of `page` whose element sits in `html` (core numbers them `data-figure="n"`). */
+const figuresIn = (page: DocsPage, html: string): DocsPage['figures'] => page.figures.filter((figure) => html.includes(`data-figure="${figure.index}"`));
 
 /** tech.md as the reader shows it: the page with the four sections in order, and the keys the file has none for. */
 export interface TechReading {
@@ -252,7 +292,23 @@ export type ReaderContext = 'workspace' | 'spec';
  */
 @Component({
   selector: 'app-library-reader',
-  imports: [PrototypeCard, RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton, UiSourceChip, UiTimeLabel],
+  imports: [
+    PrototypeCard,
+    RouterLink,
+    TranslocoPipe,
+    UiButton,
+    UiChip,
+    UiCommandChip,
+    UiDisclosure,
+    UiDisclosureDescription,
+    UiDocProse,
+    UiEmptyState,
+    UiIcon,
+    UiNotice,
+    UiSkeleton,
+    UiSourceChip,
+    UiTimeLabel,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'lib-reader',
@@ -273,6 +329,7 @@ export class LibraryReader {
   private readonly route = inject(ActivatedRoute);
   private readonly locationStrategy = inject(LocationStrategy);
   private readonly transloco = inject(TranslocoService);
+  private readonly openState = inject(OpenState);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly translation = toSignal(this.transloco.selectTranslation());
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -359,6 +416,37 @@ export class LibraryReader {
     return doc.type === 'tech' ? techReading(page) : { page, present: [], missing: [] };
   });
   protected readonly prose = computed<DocsPage | null>(() => this.reading()?.page ?? null);
+
+  /**
+   * The page as its `##` sections (ISC-251, `readerSections`); null for a page without one and for tech.md, whose
+   * sections are its own (`techReading`), so both read as before.
+   */
+  private readonly split = computed<ReaderSplit | null>(() => {
+    const page = this.prose();
+    if (page === null || this.doc()?.type === 'tech') return null;
+    const split = readerSections(page);
+    return split.sections.length > 0 ? split : null;
+  });
+  /** What the prose itself shows: the lead before the first `##` with the whole contents, or the page as it is. */
+  protected readonly lead = computed<DocsPage | null>(() => {
+    const page = this.prose();
+    const split = this.split();
+    return page !== null && split !== null ? { ...page, html: split.lead, figures: figuresIn(page, split.lead) } : page;
+  });
+  /** Each section with its body as a page of its own, drawn through the same `ui-doc-prose`. */
+  protected readonly sections = computed<readonly SectionPart[]>(() => {
+    const page = this.prose();
+    const split = this.split();
+    if (page === null || split === null) return [];
+    return split.sections.map((section) => ({ section, page: { ...page, html: section.html, toc: [], figures: figuresIn(page, section.html) } }));
+  });
+  /** The open sections: what `?open=` names of this page, else a long page its first, a short one all (`readerOpen`). */
+  protected readonly opened = computed<ReadonlySet<OpenKey>>(() => {
+    const split = this.split();
+    return split === null ? new Set() : readerOpen(split, this.openState.keys());
+  });
+  /** A contents jump waiting for its section to open: the section's id and the anchor to land on. */
+  private readonly pending = signal<{ readonly section: string; readonly anchor: string } | null>(null);
   /** tech.md only: the sections the file has none for, named under the prose. */
   protected readonly techMissing = computed<readonly TechSection[]>(() => this.reading()?.missing ?? []);
   /** The placeholder of an absent `specs/tech.md` (the page lists it dimmed): the empty state with `/spec-doc`. */
@@ -419,6 +507,13 @@ export class LibraryReader {
         }
         const key = `${this.doc()?.path ?? ''}#${section}`;
         if (this.jumped === key) return;
+        // A spec.md drawn as sections: the Decisions section opens and takes the focus like a contents jump.
+        const decisions = section === DECISIONS_SECTION ? this.sections().find((part) => namesDecisions(part.section.heading, part.section.id)) : undefined;
+        if (decisions !== undefined) {
+          this.jumped = key;
+          untracked(() => this.jumpTo(decisions.section, decisions.section.id));
+          return;
+        }
         const heading =
           section === DECISIONS_SECTION
             ? decisionsHeading(this.host)
@@ -438,12 +533,39 @@ export class LibraryReader {
       event.preventDefault();
       event.stopPropagation();
       const anchor = (link.getAttribute('href') ?? '').slice(1);
+      // Into a section (its own ## or a heading below it): the section opens first, then the jump lands (ISC-251).
+      const split = this.split();
+      const target = split === null ? null : sectionFor(split, anchor);
+      if (target !== null) {
+        this.jumpTo(target, anchor);
+        return;
+      }
       const heading = this.host.querySelector<HTMLElement>(`.docs-prose [id="${anchor.replaceAll('"', '')}"]`);
       if (heading === null) return;
       heading.setAttribute('tabindex', '-1');
       heading.scrollIntoView({ block: 'start' });
       heading.focus({ preventScroll: true });
     };
+    // A pending jump lands once its section is drawn open (no longer inert): on the section's own toggle for its ##,
+    // on the heading below it otherwise; scrolled to and focused, the focus in the arriving section (DS-APP-35).
+    afterRenderEffect({
+      write: () => {
+        const pending = this.pending();
+        const part = pending === null ? undefined : this.sections().find((entry) => entry.section.id === pending.section);
+        if (pending === null || part === undefined || !this.opened().has(part.section.key)) return;
+        const element = [...this.host.querySelectorAll<HTMLElement>('[data-library-section]')].find((el) => el.dataset['librarySection'] === pending.section);
+        untracked(() => this.pending.set(null));
+        if (element === undefined) return;
+        const toggle = element.querySelector<HTMLElement>(':scope > .head .summary');
+        const heading =
+          pending.anchor === pending.section ? null : [...element.querySelectorAll<HTMLElement>('.docs-prose [id]')].find((el) => el.id === pending.anchor);
+        const scrollTo = heading ?? element;
+        const focus = heading ?? toggle;
+        heading?.setAttribute('tabindex', '-1');
+        scrollTo.scrollIntoView({ block: 'start' });
+        focus?.focus({ preventScroll: true });
+      },
+    });
     this.host.addEventListener('click', toc, { capture: true });
     inject(DestroyRef).onDestroy(() => {
       this.host.removeEventListener('click', toc, { capture: true });
@@ -458,6 +580,22 @@ export class LibraryReader {
   /** The document's file (or prototype folder) as the workspace names it: below `specs/`. */
   protected filePath(doc: Pick<LibraryDoc, 'path'>): string {
     return `specs/${doc.path}`;
+  }
+
+  /** A section toggled: the page's open sections go into `?open=` in one change (`openEntries`). */
+  protected setOpen(key: OpenKey, open: boolean): void {
+    const split = this.split();
+    if (split === null) return;
+    const next = new Set(this.opened());
+    if (open) next.add(key);
+    else next.delete(key);
+    void this.openState.assign(openEntries(split, next));
+  }
+
+  /** Opens `section` if it is closed and lands on `anchor` in it once it is drawn open. */
+  private jumpTo(section: ReaderSection, anchor: string): void {
+    if (!this.opened().has(section.key)) this.setOpen(section.key, true);
+    this.pending.set({ section: section.id, anchor });
   }
 
   /** A plain click on a cross reference selects its document in place; a modified click keeps the browser's way. */

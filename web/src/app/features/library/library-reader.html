@@ -56,7 +56,29 @@
     @if (failed()) {
       <ui-notice tone="error" icon="circle-alert">{{ 'library.reader.error' | transloco }}</ui-notice>
     } @else if (prose(); as page) {
-      <ui-doc-prose class="lib-prose" data-library-prose [page]="page" [wide]="wide()" [assetUrl]="assetUrl()" />
+      <!-- spec 021 § Library reader (ISC-251): the lead stays open; each ## is a level-2 disclosure, collapsed to its
+           heading and first sentence, its open state in `?open=`. The table of contents stays the prose's own. -->
+      <ui-doc-prose class="lib-prose" data-library-prose [page]="lead() ?? page" [wide]="wide()" [assetUrl]="assetUrl()">
+        @if (sections().length > 0) {
+          <div class="lib-sections" data-library-sections>
+            @for (part of sections(); track part.section.id) {
+              <ui-disclosure
+                class="lib-section"
+                [attr.data-library-section]="part.section.id"
+                [headingLevel]="2"
+                [open]="opened().has(part.section.key)"
+                (openChange)="setOpen(part.section.key, $event)"
+              >
+                <span uiDisclosureSummary class="lib-section-title">{{ part.section.heading }}</span>
+                @if (!opened().has(part.section.key) && part.section.sentence !== '') {
+                  <p uiDisclosureDescription class="lib-section-sentence">{{ part.section.sentence }}</p>
+                }
+                <ui-doc-prose class="lib-section-body" [page]="part.page" [assetUrl]="assetUrl()" />
+              </ui-disclosure>
+            }
+          </div>
+        }
+      </ui-doc-prose>
       @if (techMissing().length > 0) {
         <!-- design.md 017 § 2b: a section tech.md has none for, muted and not linked. -->
         <ul class="lib-tech-missing" data-library-tech-missing [attr.aria-label]="'library.tech.missingLabel' | transloco">

@@ -163,7 +163,7 @@ function rowsFor(g: Goldens): readonly Row[] {
   if (tasks) {
     rows.push(
       { tab: '/tasks', what: 'task rows', golden: 'tasks.counts.rows', selector: '[data-task-row]', kind: 'count', want: tasks.counts.rows },
-      { tab: '/tasks', what: 'tasks landed/total', golden: 'tasks.counts.boxes.landed/total', selector: '[data-tasks-landed]', kind: 'contains', want: pair(tasks.counts.boxes.landed, tasks.counts.boxes.total) },
+      { tab: '/tasks', what: 'tasks done of rows', golden: 'tasks.counts.done/rows', selector: '[data-tasks-done]', kind: 'contains', want: `${String(tasks.counts.done)} of ${String(tasks.counts.rows)} task` },
       { tab: '/tasks', what: 'task boxes', golden: 'tasks.counts.boxes.total', selector: '[data-task-row] input[type="checkbox"]', kind: 'count', want: tasks.counts.boxes.total },
       { tab: '/tasks', what: 'task boxes ticked', golden: 'tasks.counts.boxes.landed', selector: '[data-task-row] input[type="checkbox"]:checked', kind: 'count', want: tasks.counts.boxes.landed },
       { tab: '/tasks', what: 'lane chips', golden: 'tasks.counts.byLane.length', selector: '[data-filter="lane"] button', kind: 'count', want: tasks.counts.byLane.length + 1 },

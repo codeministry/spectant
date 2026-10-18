@@ -167,8 +167,8 @@ describe('kpi-band: each workspace KPI tile carries its reference (spec 021, ISC
       complete: count(m.specs, (r) => r.stageGroup === 'complete'),
     });
     expect(kpis.stageGroups).toEqual({ scoping: 3, building: 4, complete: 1 });
-    expect(kpis.stageGroups?.building).toBe(kpis.building);
-    expect(kpis.stageGroups?.scoping).toBe(kpis.scoping);
+    expect(kpis.stageGroups.building).toBe(kpis.building);
+    expect(kpis.stageGroups.scoping).toBe(kpis.scoping);
     // The group follows the derived stage, not the frontmatter: 007 is written `building` and counts as complete.
     expect(row(m, '007').phase).toBe('building');
     expect(row(m, '007').stageGroup).toBe('complete');
@@ -196,12 +196,12 @@ describe('kpi-band: each workspace KPI tile carries its reference (spec 021, ISC
       const k = f.kpis;
       const groups = k.stageGroups;
       expect(groups, name).toBeDefined();
-      expect((groups?.scoping ?? 0) + (groups?.building ?? 0) + (groups?.complete ?? 0), name).toBe(k.specs);
-      expect(f.specs.every((r) => r.stageGroup !== undefined), name).toBe(true);
+      expect(groups.scoping + groups.building + groups.complete, name).toBe(k.specs);
+      expect(f.specs.every((r) => Object.keys(groups).includes(r.stageGroup)), name).toBe(true);
       expect(k.openClaims, name).toBeGreaterThanOrEqual(k.takeable);
       expect(k.specsWithWarnings, name).toBe(count(f.specs, (r) => r.warnings.length > 0));
       expect(k.specsWithFog, name).toBe(count(f.specs, (r) => r.fog > 0));
-      expect((k.masterFog ?? Number.NaN) + f.specs.reduce((n, r) => n + r.fog, 0), name).toBe(k.fog);
+      expect(k.masterFog + f.specs.reduce((n, r) => n + r.fog, 0), name).toBe(k.fog);
     }
   });
 });

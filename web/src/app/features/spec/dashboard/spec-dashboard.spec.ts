@@ -17,8 +17,8 @@ const spec = (key: string): SpecPageModel => {
   return found;
 };
 
-function setup(key: string, tier: Tier) {
-  const m = spec(key);
+function setup(key: string, tier: Tier, patch: Partial<SpecPageModel> = {}) {
+  const m: SpecPageModel = { ...spec(key), ...patch };
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -42,8 +42,8 @@ function setup(key: string, tier: Tier) {
   return m;
 }
 
-async function render(key: string, tier: Tier) {
-  const m = setup(key, tier);
+async function render(key: string, tier: Tier, patch: Partial<SpecPageModel> = {}) {
+  const m = setup(key, tier, patch);
   const fixture = TestBed.createComponent(SpecDashboard);
   await fixture.whenStable();
   return { m, host: fixture.nativeElement as HTMLElement };
@@ -67,7 +67,7 @@ const order = (host: HTMLElement) => [...host.querySelectorAll('.page > [data-se
 describe('SpecDashboard guidance below 1120 (T19, ISC-239)', () => {
   it('opens the page with the guidance spot: sentence, chip and the further waiting entries (harbor 002)', async () => {
     const { m, host } = await render('002-web-console', 'medium');
-    expect(order(host)).toEqual(['next', 'kpi', 'idea', 'lanes', 'tldr', 'tiles']);
+    expect(order(host)).toEqual(['next', 'kpi', 'lanes', 'tldr', 'tiles']);
 
     const spot = host.querySelector('[data-guidance-spot]');
     expect(spot?.id).toBe('waiting');
@@ -126,7 +126,7 @@ describe('SpecDashboard guidance below 1120 (T19, ISC-239)', () => {
 describe('SpecDashboard next step from 1120 (T19, ISC-239)', () => {
   it('puts the card right under the KPI band, before the idea, without a chip of its own', async () => {
     const { m, host } = await render('002-web-console', 'wide');
-    expect(order(host)).toEqual(['kpi', 'next', 'lanes', 'idea', 'tldr', 'tiles']);
+    expect(order(host)).toEqual(['kpi', 'next', 'lanes', 'tldr', 'tiles']);
     const next = host.querySelector('[data-section="next"]');
     expect(next?.getAttribute('data-form')).toBe('card');
     expect(next?.id).toBe('');
@@ -141,5 +141,26 @@ describe('SpecDashboard next step from 1120 (T19, ISC-239)', () => {
   it('shows no rail link when nothing of the spec waits (harbor 003)', async () => {
     const { host } = await render('003-config-loader', 'wide');
     expect(host.querySelector('[data-section="next"] [data-waits-link]')).toBeNull();
+  });
+});
+
+describe('SpecDashboard goal sentence (spec 021, T39, ISC-250)', () => {
+  /** The spec head (`app-spec-head`, outside this page) shows `ideaQuote`; this page must not say it a second time. */
+  it.each(['compact', 'medium', 'wide'] as const)('leaves the goal sentence to the spec head, with no card that repeats it (%s)', async (tier) => {
+    const { m, host } = await render('002-web-console', tier);
+    expect(m.ideaSource).toBe('goal');
+    const opening = (m.ideaQuote ?? '').slice(0, 40);
+    expect(opening.length).toBe(40);
+    expect(host.textContent).not.toContain(opening);
+    expect(host.querySelector('[data-section="idea"]')).toBeNull();
+    expect(host.querySelector('blockquote')).toBeNull();
+  });
+
+  it('keeps the card with its hint where there is no goal sentence, which the head then does not show either', async () => {
+    const { host } = await render('003-config-loader', 'medium', { ideaQuote: null, ideaSource: null });
+    const card = host.querySelector('[data-section="idea"]');
+    expect(card?.querySelector('.eyebrow')?.textContent.trim()).toBe(TestBed.inject(TranslocoService).translate('specDashboard.idea.eyebrow'));
+    expect(card?.textContent).toContain(TestBed.inject(TranslocoService).translate('specDashboard.idea.none'));
+    expect(card?.querySelector('blockquote')).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LANGS } from '../../../i18n/catalogues';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LanguageService } from '../../core/language.service';
-import { SettingsService, type ThemeMode } from '../../core/settings.service';
+import { isDensity, SettingsService, type ThemeMode } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
@@ -44,8 +44,9 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
 
 /**
  * `/settings` (spec 024, T60; design.md § Settings and the static prototype `settings.html`): the page head, the
- * anchor pills (the Help nav), then five cards. Appearance holds theme and language as stored settings; density and
- * reduced motion are not stored by the core yet, so they sit in one disabled demo block. Actors, Workspaces (the
+ * anchor pills (the Help nav), then five cards. Appearance holds theme, language and density (spec 021, ISC-254: the
+ * default of board, flow view and spec row; `?density=` overrides it for one view and never changes it here) as stored
+ * settings; reduced motion is not stored yet, so it sits alone in a disabled demo block. Actors, Workspaces (the
  * registry summary and the row link to `/settings/workspaces`), Keyboard (the single-key switch, the common keys and
  * the shortcut sheet) and About follow. The way back is the header.
  */
@@ -131,16 +132,22 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
                 (valueChange)="setLanguage($event)"
               />
             </div>
+            <div class="set-row">
+              <span class="eyebrow" aria-hidden="true">{{ 'settings.appearance.density' | transloco }}</span>
+              <ui-segmented
+                data-setting="density"
+                [label]="'settings.appearance.density' | transloco"
+                [options]="densityOptions()"
+                [value]="density()"
+                (valueChange)="setDensity($event)"
+              />
+            </div>
             <div class="demo-block" data-demo>
               <div class="demo-head" data-demo-head>
                 <span class="eyebrow">{{ 'settings.appearance.display' | transloco }}</span>
                 <ui-chip variant="demo" />
               </div>
               <fieldset disabled>
-                <div class="set-row">
-                  <span class="eyebrow" aria-hidden="true">{{ 'settings.appearance.density' | transloco }}</span>
-                  <ui-segmented [label]="'settings.appearance.density' | transloco" [options]="densityOptions()" value="comfortable" />
-                </div>
                 <div class="set-row">
                   <span class="eyebrow" aria-hidden="true">{{ 'settings.appearance.reducedMotion' | transloco }}</span>
                   <button
@@ -270,6 +277,8 @@ export class SettingsPage {
   });
   protected readonly langOptions: readonly SegmentedOption[] = LANGS.map((key) => ({ key, label: key.toUpperCase() }));
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
+  /** The stored density; `?density=` on a view never reaches it (ISC-254). */
+  protected readonly density = computed(() => this.settings.settings().density);
 
   /** The registry summary: every registered workspace, the readable ones and the ones whose folder is gone. */
   protected readonly registry = computed(() => {
@@ -288,6 +297,10 @@ export class SettingsPage {
     if (next === undefined) return;
     this.language.set(next);
     void this.settings.update({ language: next });
+  }
+
+  protected setDensity(value: string | undefined): void {
+    if (isDensity(value) && value !== this.density()) void this.settings.update({ density: value });
   }
 
   protected toggleSingleKeys(): void {

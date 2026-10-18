@@ -300,7 +300,7 @@ export class BoardPage {
     const page: string = this.transloco.translate('shell.pages.board', {}, lang);
     const b = this.board();
     if (b === null) return [this.ws(), page];
-    return [this.ws(), page, this.transloco.translate('board.workspace.eyebrowCards', { count: b.total }, lang)];
+    return [this.ws(), page, this.transloco.translate(b.total === 1 ? 'board.workspace.eyebrowCards.one' : 'board.workspace.eyebrowCards.other', { count: b.total }, lang)];
   });
 
   /**
@@ -543,7 +543,7 @@ export class BoardPage {
     if (at === null) return;
     const name = this.groupName(group);
     const params = { id: feature, position: at.index, count: at.count, group: name };
-    this.bandNews.set(this.transloco.translate(name === null ? 'backlog.board.movedNone' : 'backlog.board.moved', params, this.lang()));
+    this.bandNews.set(this.transloco.translate(`${name === null ? 'backlog.board.movedNone' : 'backlog.board.moved'}.${at.count === 1 ? 'one' : 'other'}`, params, this.lang()));
   }
 
   private readonly menu = viewChild(MoveToMenu);

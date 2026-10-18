@@ -3,6 +3,11 @@
     "specs": 3,
     "building": 0,
     "scoping": 2,
+    "stageGroups": {
+      "scoping": 2,
+      "building": 0,
+      "complete": 1
+    },
     "master": {
       "closed": 3,
       "total": 10
@@ -16,8 +21,12 @@
       "total": 0
     },
     "takeable": 0,
+    "openClaims": 6,
     "warnings": 5,
+    "specsWithWarnings": 3,
     "fog": 0,
+    "specsWithFog": 0,
+    "masterFog": 0,
     "attention": 5,
     "archived": 0
   },
@@ -41,6 +50,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "plan",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 0,
@@ -111,6 +121,7 @@
       "priority": "P3",
       "phase": "scoping",
       "stage": "plan",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 0,
@@ -181,6 +192,7 @@
       "priority": "P3",
       "phase": "complete",
       "stage": "done",
+      "stageGroup": "complete",
       "stageSource": "derived",
       "progress": {
         "closed": 3,

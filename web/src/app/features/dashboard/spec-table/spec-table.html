@@ -1,7 +1,11 @@
 <ui-card [padding]="0" class="panel">
   <div class="t-head">
     <h2 id="specs" class="type-section-title" tabindex="-1">{{ 'specs.title' | transloco }}</h2>
-    <span class="meta type-meta">{{ 'specs.metaShort' | transloco: { active: rows().length, archived: archive().length } }}</span>
+    <!-- Spec 021 (T25, ISC-246): the counters as one wrapping chip row, the archived count among them (no KPI tile). -->
+    <div class="counts" data-counts>
+      <ui-chip variant="plain" data-count="active">{{ (rows().length === 1 ? 'specs.count.one' : 'specs.count.other') | transloco: { count: rows().length } }}</ui-chip>
+      <ui-chip variant="plain" data-count="archived">{{ (archivedTotal() === 1 ? 'specs.archived.one' : 'specs.archived.other') | transloco: { count: archivedTotal() } }}</ui-chip>
+    </div>
     <ui-filter-chips
       data-filter="phase"
       [options]="phaseChips()"
@@ -63,8 +67,29 @@
   </div>
 
   @if (visible().length > 0) {
-    <ol class="rows" uiRovingList [singleKeys]="singleKeys()">
-      @for (row of visible(); track row.id) {
+    <!-- Spec 021 (T25, ISC-246): one roving list over two lists, the first rows and those behind "show all N". The row
+         template is declared inside the roving host, so the list's content query sees the rows of both. -->
+    <div class="list" uiRovingList [singleKeys]="singleKeys()">
+      <ol class="rows">
+        @for (row of headRows(); track row.id) {
+          <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" />
+        }
+      </ol>
+      @if (restRows().length > 0) {
+        <ui-disclosure class="show-all" data-fold="specs" [open]="allOpen()" (openChange)="setAllOpen($event)" (keydown)="keepToggleKeys($event)">
+          <span uiDisclosureSummary class="show-all-label" data-show-all>
+            {{ (visible().length === 1 ? 'specs.showAll.one' : 'specs.showAll.other') | transloco: { count: visible().length } }}
+          </span>
+          @if (allOpen()) {
+            <ol class="rows rows-rest" [start]="cap + 1">
+              @for (row of restRows(); track row.id) {
+                <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" />
+              }
+            </ol>
+          }
+        </ui-disclosure>
+      }
+      <ng-template #rowTpl let-row>
         <li>
           <!-- Spec 025 (T24, ISC-163): the row is no single link any more. Its title is the row link, stretched over the
                whole row (`::after`), so the "waits on NNN" chip behind the title can be its own link to the blocker. -->
@@ -123,8 +148,8 @@
             <ui-reason class="row-reason" icon="circle-pause" [attr.data-reason]="row.id" [compact]="true" [phrase]="row.nextReason" [guidance]="guidanceOf(row.id)" />
           }
         </li>
-      }
-    </ol>
+      </ng-template>
+    </div>
   } @else if (rows().length === 0) {
     <p class="empty">{{ 'specs.empty' | transloco }}</p>
   } @else {

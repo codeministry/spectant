@@ -1,22 +1,15 @@
 /*
- * The spec head under 800 px of its own width (prototype `@container shell (max-width: 799px)`): the row in one column,
- * the actions below the title, start-aligned. The compact tier (< 640 px, design.md § Mobile): the chip row under the
- * breadcrumb, start-aligned; the title Sora 600 20/28 on at most two lines; the description clamped to two lines.
+ * The compact tier (< 640 px, design.md § Mobile): the chip row under the breadcrumb, start-aligned; the title Sora 600
+ * 20/28 on at most two lines, the actions beside it while they fit, else start-aligned under it; the goal on two lines
+ * (`goalLines`); the overlaps disclosure on its own line under the meta line (spec 021 T37, T38, ISC-250).
  */
-@container spec-head (width < 800px) {
-  .row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
+:host([data-tier='compact']) .actions {
+  justify-content: flex-start;
+  margin-inline-start: 0;
+}
 
-  .actions {
-    justify-content: flex-start;
-  }
-
-  .desc.clamped {
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
+:host([data-tier='compact']) .overlap-fold {
+  flex-basis: 100%;
 }
 
 :host([data-tier='compact']) {
@@ -32,10 +25,6 @@
 
 :host([data-tier='compact']) .chips {
   justify-content: flex-start;
-}
-
-:host([data-tier='compact']) .row {
-  gap: 8px;
 }
 
 :host([data-tier='compact']) h1 {

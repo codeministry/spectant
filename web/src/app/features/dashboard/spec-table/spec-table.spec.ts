@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { provideRouter, Router } from '@angular/router';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
@@ -74,7 +74,8 @@ describe('SpecTable (prototype port, T89)', () => {
     const heading = host.querySelector('.t-head h2#specs');
     expect(text(heading)).toBe('Specs');
     expect(heading?.getAttribute('tabindex')).toBe('-1');
-    expect(text(host.querySelector('.t-head .meta'))).toBe('2 · 1 archived');
+    // Spec 021 (T25): the counters are chips now, the archived count among them (was the meta text "2 · 1 archived").
+    expect([...host.querySelectorAll('.t-head [data-counts] ui-chip')].map(text)).toEqual(['2 specs', '1 archived spec']);
     expect(host.querySelectorAll('.t-head [data-filter="phase"] button')).toHaveLength(3);
   });
 
@@ -226,6 +227,8 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
   });
 
   async function renderHarbor(): Promise<HTMLElement> {
+    // Spec 021 (T25): harbor lists more rows than the fold shows; these pins read every row, so the list is open.
+    await TestBed.inject(Router).navigateByUrl('/?open=specs');
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(harbor));
@@ -282,6 +285,8 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
   // spec is next "ring · sentence · chip"; the mark is the visible word, never on a Next row or any other row.
   it('marks exactly the rows in "Waits on you" and gives every row with an entry its whole sentence and chip', async () => {
     const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
+    // Spec 021 (T25): every harbor row in view, past the fold's first 5.
+    await TestBed.inject(Router).navigateByUrl('/?open=specs');
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(harbor));
@@ -377,5 +382,125 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
     expect(named.join(' ')).toBe('002 Spec 002');
     expect(link?.closest('li')?.querySelector('ui-waits-chip')).toBeNull();
     expect(host.querySelectorAll('a.row-link a')).toHaveLength(0);
+  });
+});
+
+// Spec 021 (T25, ISC-246): the dashboard's spec list shows its head with the counters and its first 5 rows; the rest
+// stand behind "show all N", whose open state is `?open=specs`, so a reload keeps it.
+describe('SpecTable fold (spec 021, T25)', () => {
+  const MANY = {
+    specs: Array.from({ length: 22 }, (_, i) => wire(String(i + 2).padStart(3, '0'), i % 2 === 0 ? { phase: 'building', stage: 'build' } : {})),
+    archive: Array.from({ length: 17 }, (_, i) => ({ id: `1${String(i).padStart(2, '0')}`, slug: `1${String(i).padStart(2, '0')}-old`, title: 'Old', type: 'feature' })),
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderMany(url = '/', query: ListQuery = DEFAULT_QUERY, body: Record<string, unknown> = MANY) {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('archive', readArchiveRows(body));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const rowIds = () => [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((row) => row.dataset['specRow']);
+    const fold = () => host.querySelector<HTMLElement>('ui-disclosure[data-fold="specs"]');
+    const toggle = () => fold()?.querySelector<HTMLButtonElement>('button[aria-expanded]') ?? null;
+    return { fixture, host, router, rowIds, fold, toggle };
+  }
+
+  it('heads the list with the counters as one wrapping chip row, the archived count among them', async () => {
+    const { host } = await renderMany();
+    const chips = [...host.querySelectorAll<HTMLElement>('.t-head [data-counts] ui-chip')];
+    expect(chips.map(text)).toEqual(['22 specs', '17 archived specs']);
+    expect(chips.map((chip) => chip.dataset['count'])).toEqual(['active', 'archived']);
+    expect(host.querySelector('.t-head .meta')).toBeNull();
+  });
+
+  it('counts the archive from the KPI model when the page passes it', async () => {
+    const { fixture, host } = await renderMany();
+    fixture.componentRef.setInput('archivedCount', 1);
+    await fixture.whenStable();
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('1 archived spec');
+  });
+
+  it('shows the first 5 rows and folds the rest behind "Show all 22 specs", closed', async () => {
+    const { rowIds, fold, toggle } = await renderMany();
+    expect(rowIds()).toEqual(['002', '003', '004', '005', '006']);
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+    expect(text(toggle())).toBe('Show all 22 specs');
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(fold()?.querySelector('[data-spec-row]')).toBeNull();
+  });
+
+  it('opens on "show all N", writes `?open=specs` and keeps focus on the toggle', async () => {
+    const { fixture, router, rowIds, fold, toggle } = await renderMany('/?sel=spec:002');
+    toggle()?.focus();
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:002&open=specs');
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+    expect(rowIds()).toHaveLength(22);
+    expect(fold()?.querySelectorAll('[data-spec-row]')).toHaveLength(17);
+    expect(fold()?.querySelector('ol.rows-rest')?.getAttribute('start')).toBe('6');
+    expect(document.activeElement).toBe(toggle());
+
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:002');
+    expect(rowIds()).toHaveLength(5);
+  });
+
+  it('a reload with `?open=specs` shows the whole list', async () => {
+    const { rowIds, fold } = await renderMany('/?open=specs');
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(rowIds()).toHaveLength(22);
+  });
+
+  it('keeps one roving list over both parts: ↓ from row 5 lands on row 6; the toggle keeps its own arrow keys', async () => {
+    const { fixture, host, toggle } = await renderMany('/?open=specs');
+    const row = (id: string) => host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`);
+    row('006')?.focus();
+    row('006')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(row('007'));
+    expect(row('007')?.tabIndex).toBe(0);
+
+    toggle()?.focus();
+    toggle()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(toggle());
+  });
+
+  it('caps a filtered list the same way and counts its rows; no fold for 5 rows or fewer', async () => {
+    const building = await renderMany('/', { ...DEFAULT_QUERY, phase: 'building' });
+    expect(building.rowIds()).toHaveLength(5);
+    expect(text(building.toggle())).toBe('Show all 11 specs');
+
+    const few = await renderMany('/', DEFAULT_QUERY, { specs: MANY.specs.slice(0, 5), archive: [] });
+    expect(few.rowIds()).toHaveLength(5);
+    expect(few.fold()).toBeNull();
+  });
+
+  it('reads the fold in German', async () => {
+    const { fixture, toggle, host } = await renderMany();
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(toggle())).toBe('Alle 22 Specs zeigen');
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('17 archivierte Specs');
   });
 });

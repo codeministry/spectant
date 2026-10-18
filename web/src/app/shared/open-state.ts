@@ -42,6 +42,16 @@ export function withOpen(value: string | null | undefined, key: OpenKey, open: b
   return serializeOpen(open ? [...keys, key] : keys.filter((entry) => entry !== key));
 }
 
+/**
+ * `value` with every entry applied at once (`withOpen` per entry, in order): what a block of many keys (a library page's
+ * sections) writes in one address change, since separate changes would each read the address before the other landed.
+ */
+export function withOpenEach(value: string | null | undefined, entries: Iterable<readonly [OpenKey, boolean]>): string | null {
+  let next = value ?? null;
+  for (const [key, open] of entries) next = withOpen(next, key, open);
+  return next;
+}
+
 /** The open keys of the current address, and the one way to change them. */
 @Injectable({ providedIn: 'root' })
 export class OpenState {
@@ -62,14 +72,22 @@ export class OpenState {
     return this.keys().includes(key);
   }
 
-  /** Opens or closes `key`: rewrites `?open=` in place, the path and every other param kept. */
+  /** Opens or closes `key`: rewrites `?open=` in place, the path, every other param and the fragment kept. */
   set(key: OpenKey, open: boolean): Promise<boolean> {
-    const value = withOpen(this.readParam(), key, open);
-    return this.router.navigate([], { queryParams: { [OPEN_PARAM]: value }, queryParamsHandling: 'merge', replaceUrl: true });
+    return this.navigate(withOpen(this.readParam(), key, open));
+  }
+
+  /** Opens and closes several keys in one rewrite of `?open=` (`withOpenEach`). */
+  assign(entries: Iterable<readonly [OpenKey, boolean]>): Promise<boolean> {
+    return this.navigate(withOpenEach(this.readParam(), entries));
   }
 
   toggle(key: OpenKey): Promise<boolean> {
     return this.set(key, !this.isOpen(key));
+  }
+
+  private navigate(value: string | null): Promise<boolean> {
+    return this.router.navigate([], { queryParams: { [OPEN_PARAM]: value }, queryParamsHandling: 'merge', preserveFragment: true, replaceUrl: true });
   }
 
   private readParam(): string | null {

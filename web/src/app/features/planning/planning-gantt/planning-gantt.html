@@ -131,7 +131,7 @@
                 <span class="gnum num">
                   {{ group.closed }}/{{ group.total }}
                   @if (g.daysLeft !== null && tier() === 'compact') {
-                    <span> · {{ 'planning.gantt.days' | transloco: { count: g.daysLeft } }}</span>
+                    <span> · {{ (g.daysLeft === 1 ? 'planning.gantt.days.one' : 'planning.gantt.days.other') | transloco: { count: g.daysLeft } }}</span>
                   }
                 </span>
               </span>

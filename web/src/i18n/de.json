@@ -887,8 +887,8 @@
     "landed": "{{landed}}/{{total}} Kästchen abgehakt",
     "result": "{{shown}} von {{total}} Tasks",
     "doneOfTotal": {
-      "one": "{{done}} von {{count}} Task erledigt",
-      "other": "{{done}} von {{count}} Tasks erledigt"
+      "one": "{{done}} von {{count}} Task fertig oder geschlossen",
+      "other": "{{done}} von {{count}} Tasks fertig oder geschlossen"
     },
     "columns": {
       "task": "Task",
@@ -1396,7 +1396,10 @@
       "counts": "{{landed}}/{{total}}",
       "meter": "{{lane}}: Karten nach Abschnitt",
       "toggle": "Bahn {{lane}} ein- oder ausblenden",
-      "waiting": "· {{count}} wartend",
+      "waiting": {
+        "one": "· {{count}} wartend",
+        "other": "· {{count}} wartend"
+      },
       "hide": "Lane {{lane}} ausblenden",
       "hidden": "{{lane}} · ausgeblendet",
       "show": "zeigen",
@@ -1404,8 +1407,14 @@
       "showAll": "alle {{count}} zeigen",
       "quiet": "nichts in Arbeit",
       "next": "als Nächstes",
-      "inRound": "{{count}} in der Runde",
-      "runCount": "{{count}} {{state}}",
+      "inRound": {
+        "one": "{{count}} in der Runde",
+        "other": "{{count}} in der Runde"
+      },
+      "runCount": {
+        "one": "{{count}} {{state}}",
+        "other": "{{count}} {{state}}"
+      },
       "waitsName": "{{lane}}, wartet auf {{ids}}"
     },
     "section": {
@@ -1491,15 +1500,24 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} Karten · {{specs}} Specs · {{ideas}} Ideen",
-      "eyebrowCards": "{{count}} Karten",
+      "eyebrowCards": {
+        "one": "{{count}} Karte",
+        "other": "{{count}} Karten"
+      },
       "index": "Stages",
       "indexPrev": "Vorherige Spalte",
       "indexNext": "Nächste Spalte",
-      "sheetBar": "Dieses Board · {{count}} Karten",
+      "sheetBar": {
+        "one": "Dieses Board · {{count}} Karte",
+        "other": "Dieses Board · {{count}} Karten"
+      },
       "needsYou": "Wartet auf Sie",
       "needsNone": "Nichts wartet auf Sie.",
       "waitsCount": "Liegt bei Ihnen {{count}}",
-      "bandMeter": "{{done}} von {{count}} erledigt",
+      "bandMeter": {
+        "one": "{{done}} von {{count}} erledigt",
+        "other": "{{done}} von {{count}} erledigt"
+      },
       "search": {
         "label": "Karten durchsuchen",
         "placeholder": "ID, Titel, Feature"
@@ -1511,12 +1529,24 @@
       },
       "column": {
         "empty": "leer",
-        "cards": "{{count}} Karten",
-        "waitsOnYou": "{{count}} warten auf Sie",
-        "name": "{{stage}}, {{count}} Karten, {{waiting}} warten auf Sie",
+        "cards": {
+          "one": "{{count}} Karte",
+          "other": "{{count}} Karten"
+        },
+        "waitsOnYou": {
+          "one": "{{count}} wartet auf Sie",
+          "other": "{{count}} warten auf Sie"
+        },
+        "name": {
+          "one": "{{stage}}, {{count}} Karte, {{waiting}} warten auf Sie",
+          "other": "{{stage}}, {{count}} Karten, {{waiting}} warten auf Sie"
+        },
         "stub": "{{stage}}, keine Karten",
         "emptyIn": "Keine Karte in {{stage}}",
-        "hiddenByFilters": "{{count}} durch Filter ausgeblendet",
+        "hiddenByFilters": {
+          "one": "{{count}} durch Filter ausgeblendet",
+          "other": "{{count}} durch Filter ausgeblendet"
+        },
         "fixedGate": "festes Gate",
         "gateReviewed": "Review-Marke",
         "gateClosed": "jeder Claim geschlossen",
@@ -1565,8 +1595,14 @@
         },
         "collapse": "{{lane}} einklappen",
         "expand": "{{lane}} ausklappen",
-        "omittedFeatures": "{{count}} Features haben keine Karte in {{stage}}",
-        "omittedMilestones": "{{count}} Meilensteine haben keine Karte in {{stage}}",
+        "omittedFeatures": {
+          "one": "{{count}} Feature hat keine Karte in {{stage}}",
+          "other": "{{count}} Features haben keine Karte in {{stage}}"
+        },
+        "omittedMilestones": {
+          "one": "{{count}} Meilenstein hat keine Karte in {{stage}}",
+          "other": "{{count}} Meilensteine haben keine Karte in {{stage}}"
+        },
         "noFeature": "Kein Feature"
       },
       "card": {
@@ -1621,7 +1657,10 @@
         }
       },
       "live": {
-        "changed": "{{count}} Karten geändert · anzeigen"
+        "changed": {
+          "one": "{{count}} Karte geändert · anzeigen",
+          "other": "{{count}} Karten geändert · anzeigen"
+        }
       },
       "empty": {
         "noSpecs": "Noch keine Specs in {{ws}}",
@@ -1637,7 +1676,10 @@
         "segment": "{{stage}} {{count}}",
         "prev": "Vorherige Spalte: {{stage}}",
         "next": "Nächste Spalte: {{stage}}",
-        "back": "{{stage}}, {{count}} Karten · zurück zu den Stages",
+        "back": {
+          "one": "{{stage}}, {{count}} Karte · zurück zu den Stages",
+          "other": "{{stage}}, {{count}} Karten · zurück zu den Stages"
+        },
         "tray": "Ablageziele: die Stages"
       }
     },
@@ -1818,7 +1860,10 @@
         "one": "{{count}} Feature",
         "other": "{{count}} Features"
       },
-      "days": "{{count}} T",
+      "days": {
+        "one": "{{count}} T",
+        "other": "{{count}} T"
+      },
       "boundary": "{{name}} · {{date}}",
       "quarter": "Q{{quarter}} {{year}}",
       "emptyAxis": {
@@ -1836,8 +1881,14 @@
       "filters": "Filter",
       "specEdges": "Spec-Kanten",
       "rebundle": "Wieder bündeln",
-      "bundleDone": "{{count}} Features erledigt",
-      "bundleNoSpec": "+{{count}} Features ohne Spec",
+      "bundleDone": {
+        "one": "{{count}} Feature erledigt",
+        "other": "{{count}} Features erledigt"
+      },
+      "bundleNoSpec": {
+        "one": "+{{count}} Feature ohne Spec",
+        "other": "+{{count}} Features ohne Spec"
+      },
       "openBundle": "{{name}}, Features anzeigen",
       "label": "Planungsdiagramm",
       "drawing": "Diagramm wird gezeichnet…",
@@ -1854,7 +1905,10 @@
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
-      "unheld": "{{count}} ohne Spec",
+      "unheld": {
+        "one": "{{count}} ohne Spec",
+        "other": "{{count}} ohne Spec"
+      },
       "unheldHint": "Ein Claim des Masters, den noch keine Spec übernommen hat. Er schliesst erst, wenn eine Spec ihn hält und seine Probe besteht.",
       "unheldClaims": "Claims ohne Spec von {{id}}",
       "allHeld": "alle in Specs",
@@ -1878,7 +1932,10 @@
       "whyLess": "weniger",
       "valueText": "{{closed}} von {{total}} Claims geschlossen",
       "meterLabel": "{{id}} Claims geschlossen",
-      "moreChips": "+{{count}} weitere",
+      "moreChips": {
+        "one": "+{{count}} weitere",
+        "other": "+{{count}} weitere"
+      },
       "filter": {
         "label": "Features filtern",
         "all": "Alle",
@@ -1912,9 +1969,15 @@
         "closed": "Claims geschlossen · {{name}}",
         "mostOpen": "Meiste offene Claims"
       },
-      "meta": "{{count}} Meilensteine · nächster: {{name}}, {{date}}",
+      "meta": {
+        "one": "{{count}} Meilenstein · nächster: {{name}}, {{date}}",
+        "other": "{{count}} Meilensteine · nächster: {{name}}, {{date}}"
+      },
       "metaNone": "kein anstehender Meilenstein",
-      "metaUndated": "{{count}} Meilensteine · nächster: {{name}}",
+      "metaUndated": {
+        "one": "{{count}} Meilenstein · nächster: {{name}}",
+        "other": "{{count}} Meilensteine · nächster: {{name}}"
+      },
       "caption": "Nach Zieldatum sortiert",
       "undated": "kein Zieldatum",
       "meterLabel": "{{name}} Claims geschlossen",
@@ -1939,7 +2002,10 @@
     },
     "breadcrumb": {
       "label": "Pfad",
-      "more": "{{count}} weitere Features",
+      "more": {
+        "one": "{{count}} weiteres Feature",
+        "other": "{{count}} weitere Features"
+      },
       "archived": "archiviert",
       "unknownMilestone": "nicht im Block ## Milestones des Masters"
     },
@@ -2227,8 +2293,14 @@
   },
   "backlog": {
     "board": {
-      "moved": "{{id}} an Position {{position}} von {{count}} in {{group}}",
-      "movedNone": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein",
+      "moved": {
+        "one": "{{id}} an Position {{position}} von {{count}} in {{group}}",
+        "other": "{{id}} an Position {{position}} von {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein",
+        "other": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein"
+      },
       "otherMilestone": "Anderer Meilenstein"
     },
     "reorder": {
@@ -2248,8 +2320,14 @@
       "title": "Priorität · {{id}}"
     },
     "tree": {
-      "moved": "{{id}} an Position {{position}} von {{count}} in {{group}}",
-      "movedNone": "{{id}} an Position {{position}} von {{count}} ohne Meilenstein",
+      "moved": {
+        "one": "{{id}} an Position {{position}} von {{count}} in {{group}}",
+        "other": "{{id}} an Position {{position}} von {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} an Position {{position}} von {{count}} ohne Meilenstein",
+        "other": "{{id}} an Position {{position}} von {{count}} ohne Meilenstein"
+      },
       "atFirst": "{{id}} steht schon an erster Stelle in {{group}}",
       "atFirstNone": "{{id}} steht schon an erster Stelle ohne Meilenstein",
       "atLast": "{{id}} steht schon an letzter Stelle in {{group}}",

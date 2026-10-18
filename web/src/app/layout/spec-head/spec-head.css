@@ -18,21 +18,28 @@
   font-variant-numeric: tabular-nums;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-}
-
 .sh-main {
   display: grid;
   gap: 4px;
   min-inline-size: 0;
 }
 
+/*
+ * Spec 021 T38 (ISC-250): the title and, on its right in the same row, the next command and Notes; the actions wrap
+ * under the title only when both do not fit.
+ */
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* In the title row: it takes the room the actions leave, and pushes them under itself below 16rem. */
 h1 {
   display: flex;
+  flex: 1 1 16rem;
   gap: 10px;
   align-items: baseline;
   min-inline-size: 0;
@@ -72,6 +79,7 @@ h1 {
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
+  margin-inline-start: auto;
 }
 
 /* The notes pill: 28 px, violet tint, 12/600, `file-text` + "n notes"; never filled. */
@@ -112,14 +120,6 @@ h1 {
   line-height: 20px;
 }
 
-.desc.clamped {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-}
-
 /* "More…" in the violet text, beside the clamped line, so the disclosure costs no row of its own. */
 .more {
   flex: none;
@@ -138,12 +138,66 @@ h1 {
   text-decoration: underline;
 }
 
-.meta,
-.no-source,
-.source-line {
+/*
+ * Spec 021 T38 (ISC-250): one meta line (updated, round, uncommitted, provenance, "No agent source") and, beside it,
+ * the overlaps disclosure (T37); the disclosure takes a line of its own at compact and while open.
+ */
+.meta-row {
   display: flex;
   flex-wrap: wrap;
+  gap: 0 16px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.overlap-fold {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  margin-inline-start: auto;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.overlap-fold[data-open] {
+  flex-basis: 100%;
+}
+
+/*
+ * The primitive's 48 px summary would set the meta line's height: 32 px here, 44 px under coarse pointers. The
+ * primitive has no size option yet, so this reaches into its button (open question for the next `ui-disclosure` change).
+ */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.overlap-fold ::ng-deep .summary {
+  min-block-size: 32px;
+}
+
+@media (pointer: coarse) {
+  /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+  .overlap-fold ::ng-deep .summary {
+    min-block-size: 44px;
+  }
+}
+
+.fold-summary {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.fold-summary .warn-icon {
+  color: var(--color-warning);
+}
+
+.meta,
+.source-line {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   gap: 0 8px;
+  align-items: center;
+  min-inline-size: 0;
   margin: 0;
   color: var(--muted-ink);
   font-size: 12px;
@@ -151,7 +205,7 @@ h1 {
   line-height: 16px;
 }
 
-.meta span + span::before,
+.meta > .part + .part::before,
 .source-line > span + span::before,
 .source-note .seg::before {
   margin-inline-end: 8px;
@@ -165,16 +219,16 @@ h1 {
  * compact tier the chip always stands alone, the text 4 px below it. Only rendered for a spec with a worktree.
  */
 .provenance {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 4px 8px;
   align-items: center;
   min-inline-size: 0;
 }
 
-/* Spec 025 (T29, ISC-164.1): the overlap lines after the meta and provenance lines, 8 px above. */
+/* Spec 025 (T29, ISC-164.1): the overlap lines, inside the open disclosure, 8 px under its summary. */
 .overlaps {
-  margin-block-start: 8px;
+  padding-block: 4px 8px;
 }
 
 .provenance > ui-worktree-chip {

@@ -89,6 +89,36 @@
   justify-self: stretch;
 }
 
+/* spec 021 § Library reader (ISC-251): each `##` a disclosure, the whole row its toggle (48 px, the primitive's); the
+   heading in the brand face 15/24, the first sentence whole under it, 13/20 muted, both aligned past the chevron. */
+.lib-sections {
+  display: grid;
+}
+
+.lib-section {
+  border-block-start: 1px solid var(--line);
+  scroll-margin-block-start: 80px;
+}
+
+.lib-section-title {
+  font-family: var(--font-brand);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.lib-section-sentence {
+  margin: -8px 0 12px;
+  padding-inline-start: 24px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.lib-section-body {
+  padding-inline-start: 24px;
+}
+
 @container shell (width < 640px) {
   :host {
     padding: 16px;

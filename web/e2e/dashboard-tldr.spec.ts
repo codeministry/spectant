@@ -18,6 +18,7 @@ import { atWidth, expect, test } from './fixtures';
 interface DashboardBrief {
   readonly markdown: string;
   readonly generated: string | null;
+  readonly sections: Readonly<Record<string, string>>;
 }
 
 function briefOf(golden: string): DashboardBrief | null {
@@ -38,11 +39,12 @@ const TLDR_COMMAND = '/spec-tldr';
  */
 const TILES = 'app-kpi-band :is(.band > [data-kpi], [data-kpi="pulse"])';
 
-/** The first Markdown heading of the TL;DR, as the reader sees it above the sections. */
-function firstHeading(markdown: string): string {
-  const match = /^#{1,6}\s+(.+?)\s*#*\s*$/m.exec(markdown);
-  if (!match?.[1]) throw new Error('the golden TL;DR has no heading');
-  return match[1];
+/** The first sentence of the TL;DR's first section (core's `sections`, file order), as the card shows it whole. */
+function firstSentence(sections: Readonly<Record<string, string>>): string {
+  const first = Object.values(sections)[0];
+  const sentence = first?.split(/(?<=\.)\s/u)[0];
+  if (!sentence) throw new Error('the golden TL;DR has no first section');
+  return sentence;
 }
 
 /**
@@ -92,9 +94,8 @@ for (const width of [1440, 390] as const) {
       await expect(time).toHaveText(day);
       await expect(asOf).toHaveText(`as of ${day}`);
 
-      await expect(card.locator('[data-brief-prose] :is(h1, h2, h3, h4, h5, h6)').first()).toHaveText(
-        firstHeading(brief.markdown),
-      );
+      // Spec 021 (T26, ISC-246): the card stands on its first section, whole; the file's title before it is not shown.
+      await expect(card.locator('[data-brief-first]')).toContainText(firstSentence(brief.sections));
 
       const command = card.locator('[data-brief-command]');
       await expect(command).toBeVisible();

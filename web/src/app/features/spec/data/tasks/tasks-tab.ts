@@ -273,12 +273,17 @@ export class TasksTab {
     const checks = this.checks();
     return (this.body()?.tasks ?? []).map((row) => withCheck(row, checks.get(row.id) ?? IDLE));
   });
-  /** "Boxes ticked", moved by the accepted writes. */
-  protected readonly landed = computed(() => {
+  /**
+   * The head line's done part (spec 021, ISC-252): core's `counts.done`, the rows whose status landed (`done` or
+   * `closed`), moved only by the ticks this list has seen accepted; its whole is `counts.rows`, never the boxes.
+   */
+  protected readonly done = computed(() => {
     const checks = this.checks();
     const tasks = this.body()?.tasks ?? [];
-    return tasks.reduce((sum, row) => sum + landedDelta(row, checks.get(row.id) ?? IDLE), this.body()?.counts.boxes.landed ?? 0);
+    return tasks.reduce((sum, row) => sum + landedDelta(row, checks.get(row.id) ?? IDLE), this.body()?.counts.done ?? 0);
   });
+  /** The plural form of "x of N tasks done or closed", picked by the whole (`counts.rows`). */
+  protected readonly doneKey = computed(() => (this.body()?.counts.rows === 1 ? 'tasks.doneOfTotal.one' : 'tasks.doneOfTotal.other'));
 
   /** Rows after the lane and status filters, before "hide done". */
   private readonly filtered = computed<readonly TaskRowView[]>(() => {

@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { isOpenKey, OPEN_PARAM, OpenState, parseOpen, sectionKey, serializeOpen, withOpen } from './open-state';
+import { isOpenKey, OPEN_PARAM, OpenState, parseOpen, sectionKey, serializeOpen, withOpen, withOpenEach } from './open-state';
 
 describe('open state', () => {
   describe('parseOpen', () => {
@@ -92,6 +92,16 @@ describe('open state', () => {
       expect(tree.queryParamMap.has(OPEN_PARAM)).toBe(false);
       expect(tree.queryParamMap.get('density')).toBe('compact');
       expect(state.keys()).toEqual([]);
+    });
+
+    it('opens and closes several keys in one address change (withOpenEach)', async () => {
+      expect(withOpenEach('tldr,s-a', [['s-a', false], ['s-b', true], ['s-c', true]])).toBe('tldr,s-b,s-c');
+      expect(withOpenEach(null, [['s-a', false]])).toBeNull();
+      await router.navigateByUrl('/w/harbor?density=compact&open=tldr#002-x/plan.md');
+      await state.assign([['tldr', false], ['s-x', true], ['s-y', true]]);
+      expect(router.parseUrl(router.url).fragment).toBe('002-x/plan.md');
+      expect(router.parseUrl(router.url).queryParamMap.get(OPEN_PARAM)).toBe('s-x,s-y');
+      expect(router.parseUrl(router.url).queryParamMap.get('density')).toBe('compact');
     });
 
     it('toggles a key', async () => {

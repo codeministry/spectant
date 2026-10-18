@@ -240,7 +240,7 @@ for (const theme of ['light', 'dark'] as const) {
           await rendered(page, `/w/harbor/s/${spec}`);
           await expect(waits('ui-waits-chip[data-head-chip="waits"]', on)).toBeVisible();
         }
-        await expect(page.locator('[data-head-overlaps] [data-overlap-line]').first()).toBeVisible();
+        await expect(page.locator('ui-disclosure[data-head-overlap-fold]').first()).toBeVisible();
 
         // Every lane, so both ends of each edge are drawn; mermaid comes from the lazy chunk on the app's origin.
         await page.goto('/w/harbor/planning/graph?m=all');

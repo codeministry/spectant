@@ -89,6 +89,46 @@ app-brief .brief-more {
   }
 }
 
+/*
+ * Spec 021 (T26): the sectioned card. The first section stands whole; the footer is the fold's head, the toggle at
+ * the start and the command chip at the end; the other sections open under it.
+ */
+app-brief .brief-fold {
+  padding-inline: 16px;
+}
+
+app-brief .brief-fold [data-brief-rest] {
+  padding: 0 0 8px;
+}
+
+app-brief .brief-toggle {
+  color: var(--ques-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+app-brief .brief-actions {
+  display: inline-flex;
+  flex: none;
+}
+
+app-brief .brief-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 8px;
+}
+
+app-brief .visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 app-brief .brief-prose > :last-child {
   margin-block-end: 0;
 }

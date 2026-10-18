@@ -887,8 +887,8 @@
     "landed": "{{landed}}/{{total}} boxes ticked",
     "result": "{{shown}} of {{total}} tasks",
     "doneOfTotal": {
-      "one": "{{done}} of {{count}} task done",
-      "other": "{{done}} of {{count}} tasks done"
+      "one": "{{done}} of {{count}} task done or closed",
+      "other": "{{done}} of {{count}} tasks done or closed"
     },
     "columns": {
       "task": "Task",
@@ -1396,7 +1396,10 @@
       "counts": "{{landed}}/{{total}}",
       "meter": "{{lane}}: cards by section",
       "toggle": "Show or hide lane {{lane}}",
-      "waiting": "· {{count}} waiting",
+      "waiting": {
+        "one": "· {{count}} waiting",
+        "other": "· {{count}} waiting"
+      },
       "hide": "Hide lane {{lane}}",
       "hidden": "{{lane}} · hidden",
       "show": "show",
@@ -1404,8 +1407,14 @@
       "showAll": "show all {{count}}",
       "quiet": "nothing in flight",
       "next": "next",
-      "inRound": "{{count}} in the round",
-      "runCount": "{{count}} {{state}}",
+      "inRound": {
+        "one": "{{count}} in the round",
+        "other": "{{count}} in the round"
+      },
+      "runCount": {
+        "one": "{{count}} {{state}}",
+        "other": "{{count}} {{state}}"
+      },
       "waitsName": "{{lane}}, waits on {{ids}}"
     },
     "section": {
@@ -1491,15 +1500,24 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} cards · {{specs}} specs · {{ideas}} ideas",
-      "eyebrowCards": "{{count}} cards",
+      "eyebrowCards": {
+        "one": "{{count}} card",
+        "other": "{{count}} cards"
+      },
       "index": "Stages",
       "indexPrev": "Previous column",
       "indexNext": "Next column",
-      "sheetBar": "This board · {{count}} cards",
+      "sheetBar": {
+        "one": "This board · {{count}} card",
+        "other": "This board · {{count}} cards"
+      },
       "needsYou": "Needs you",
       "needsNone": "Nothing waits on you.",
       "waitsCount": "Waits on you {{count}}",
-      "bandMeter": "{{done}} of {{count}} done",
+      "bandMeter": {
+        "one": "{{done}} of {{count}} done",
+        "other": "{{done}} of {{count}} done"
+      },
       "search": {
         "label": "Search cards",
         "placeholder": "id, title, feature"
@@ -1511,12 +1529,24 @@
       },
       "column": {
         "empty": "empty",
-        "cards": "{{count}} cards",
-        "waitsOnYou": "{{count}} wait on you",
-        "name": "{{stage}}, {{count}} cards, {{waiting}} wait on you",
+        "cards": {
+          "one": "{{count}} card",
+          "other": "{{count}} cards"
+        },
+        "waitsOnYou": {
+          "one": "{{count}} waits on you",
+          "other": "{{count}} wait on you"
+        },
+        "name": {
+          "one": "{{stage}}, {{count}} card, {{waiting}} wait on you",
+          "other": "{{stage}}, {{count}} cards, {{waiting}} wait on you"
+        },
         "stub": "{{stage}}, no cards",
         "emptyIn": "No card in {{stage}}",
-        "hiddenByFilters": "{{count}} hidden by filters",
+        "hiddenByFilters": {
+          "one": "{{count}} hidden by filters",
+          "other": "{{count}} hidden by filters"
+        },
         "fixedGate": "fixed gate",
         "gateReviewed": "reviewed mark",
         "gateClosed": "every claim closed",
@@ -1565,8 +1595,14 @@
         },
         "collapse": "Collapse {{lane}}",
         "expand": "Expand {{lane}}",
-        "omittedFeatures": "{{count}} features have no card in {{stage}}",
-        "omittedMilestones": "{{count}} milestones have no card in {{stage}}",
+        "omittedFeatures": {
+          "one": "{{count}} feature has no card in {{stage}}",
+          "other": "{{count}} features have no card in {{stage}}"
+        },
+        "omittedMilestones": {
+          "one": "{{count}} milestone has no card in {{stage}}",
+          "other": "{{count}} milestones have no card in {{stage}}"
+        },
         "noFeature": "No feature"
       },
       "card": {
@@ -1621,7 +1657,10 @@
         }
       },
       "live": {
-        "changed": "{{count}} cards changed · show"
+        "changed": {
+          "one": "{{count}} card changed · show",
+          "other": "{{count}} cards changed · show"
+        }
       },
       "empty": {
         "noSpecs": "No specs in {{ws}} yet",
@@ -1637,7 +1676,10 @@
         "segment": "{{stage}} {{count}}",
         "prev": "Previous column: {{stage}}",
         "next": "Next column: {{stage}}",
-        "back": "{{stage}}, {{count}} cards · back to the stages",
+        "back": {
+          "one": "{{stage}}, {{count}} card · back to the stages",
+          "other": "{{stage}}, {{count}} cards · back to the stages"
+        },
         "tray": "Drop targets: the stages"
       }
     },
@@ -1818,7 +1860,10 @@
         "one": "{{count}} feature",
         "other": "{{count}} features"
       },
-      "days": "{{count}} d",
+      "days": {
+        "one": "{{count}} d",
+        "other": "{{count}} d"
+      },
       "boundary": "{{name}} · {{date}}",
       "quarter": "Q{{quarter}} {{year}}",
       "emptyAxis": {
@@ -1836,8 +1881,14 @@
       "filters": "Filters",
       "specEdges": "Spec edges",
       "rebundle": "Bundle again",
-      "bundleDone": "{{count}} features done",
-      "bundleNoSpec": "+{{count}} features without a spec",
+      "bundleDone": {
+        "one": "{{count}} feature done",
+        "other": "{{count}} features done"
+      },
+      "bundleNoSpec": {
+        "one": "+{{count}} feature without a spec",
+        "other": "+{{count}} features without a spec"
+      },
       "openBundle": "{{name}}, show the features",
       "label": "Planning graph",
       "drawing": "Drawing the graph…",
@@ -1854,7 +1905,10 @@
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} features · {{closed}}/{{total}} claims closed · {{unheld}} unheld",
-      "unheld": "{{count}} unheld",
+      "unheld": {
+        "one": "{{count}} unheld",
+        "other": "{{count}} unheld"
+      },
       "unheldHint": "A master claim that no spec has taken on yet. It closes only once a spec holds it and its probe passes.",
       "unheldClaims": "Unheld claims of {{id}}",
       "allHeld": "all held",
@@ -1878,7 +1932,10 @@
       "whyLess": "less",
       "valueText": "{{closed}} of {{total}} claims closed",
       "meterLabel": "{{id}} claims closed",
-      "moreChips": "+{{count}} more",
+      "moreChips": {
+        "one": "+{{count}} more",
+        "other": "+{{count}} more"
+      },
       "filter": {
         "label": "Filter features",
         "all": "All",
@@ -1912,9 +1969,15 @@
         "closed": "claims closed · {{name}}",
         "mostOpen": "Most open claims"
       },
-      "meta": "{{count}} milestones · next: {{name}}, {{date}}",
+      "meta": {
+        "one": "{{count}} milestone · next: {{name}}, {{date}}",
+        "other": "{{count}} milestones · next: {{name}}, {{date}}"
+      },
       "metaNone": "no upcoming milestone",
-      "metaUndated": "{{count}} milestones · next: {{name}}",
+      "metaUndated": {
+        "one": "{{count}} milestone · next: {{name}}",
+        "other": "{{count}} milestones · next: {{name}}"
+      },
       "caption": "Ordered by target date",
       "undated": "no target date",
       "meterLabel": "{{name}} claims closed",
@@ -1939,7 +2002,10 @@
     },
     "breadcrumb": {
       "label": "Breadcrumb",
-      "more": "{{count}} more features",
+      "more": {
+        "one": "{{count}} more feature",
+        "other": "{{count}} more features"
+      },
       "archived": "archived",
       "unknownMilestone": "not in the master's Milestones block"
     },
@@ -2227,8 +2293,14 @@
   },
   "backlog": {
     "board": {
-      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
-      "movedNone": "{{id}} at position {{position}} of {{count}}, no milestone",
+      "moved": {
+        "one": "{{id}} at position {{position}} of {{count}} in {{group}}",
+        "other": "{{id}} at position {{position}} of {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} at position {{position}} of {{count}}, no milestone",
+        "other": "{{id}} at position {{position}} of {{count}}, no milestone"
+      },
       "otherMilestone": "Other milestone"
     },
     "reorder": {
@@ -2248,8 +2320,14 @@
       "title": "Priority · {{id}}"
     },
     "tree": {
-      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
-      "movedNone": "{{id}} at position {{position}} of {{count}} without a milestone",
+      "moved": {
+        "one": "{{id}} at position {{position}} of {{count}} in {{group}}",
+        "other": "{{id}} at position {{position}} of {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} at position {{position}} of {{count}} without a milestone",
+        "other": "{{id}} at position {{position}} of {{count}} without a milestone"
+      },
       "atFirst": "{{id}} is already first in {{group}}",
       "atFirstNone": "{{id}} is already first without a milestone",
       "atLast": "{{id}} is already last in {{group}}",

@@ -92,7 +92,7 @@
                 type="button"
                 class="btn btn-ghost barname"
                 data-back
-                [attr.aria-label]="'board.workspace.compact.back' | transloco: { stage: curLabel, count: c.cards.length }"
+                [attr.aria-label]="(c.cards.length === 1 ? 'board.workspace.compact.back.one' : 'board.workspace.compact.back.other') | transloco: { stage: curLabel, count: c.cards.length }"
                 (click)="backToSwitch()"
               >
                 <ui-icon [name]="glyphs[c.stage]" [size]="16" />
@@ -147,14 +147,14 @@
             [attr.data-drop]="drag.hint(stage)"
             [attr.data-col]="stage"
             [style.--role]="edges[stage]"
-            [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: c.count, waiting: c.waitingOnYou }"
+            [attr.aria-label]="(c.count === 1 ? 'board.workspace.column.name.one' : 'board.workspace.column.name.other') | transloco: { stage: label, count: c.count, waiting: c.waitingOnYou }"
           >
             <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: c, label: label }" />
             @if (c.cards.length === 0) {
               <p class="empty-col">
                 {{ 'board.workspace.column.emptyIn' | transloco: { stage: label } }}
                 @if (c.hidden > 0) {
-                  · {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: c.hidden } }} ·
+                  · {{ (c.hidden === 1 ? 'board.workspace.column.hiddenByFilters.one' : 'board.workspace.column.hiddenByFilters.other') | transloco: { count: c.hidden } }} ·
                   <button type="button" class="btn btn-sm btn-ghost link" (click)="clearFilters()">{{ 'board.workspace.filter.clear' | transloco }}</button>
                 }
               </p>
@@ -243,7 +243,9 @@
               @if (c.bandsOmitted > 0) {
                 <p class="omitted">
                   {{
-                    (b.query.group === 'feature' ? 'board.workspace.swimlanes.omittedFeatures' : 'board.workspace.swimlanes.omittedMilestones')
+                    (b.query.group === 'feature'
+                      ? (c.bandsOmitted === 1 ? 'board.workspace.swimlanes.omittedFeatures.one' : 'board.workspace.swimlanes.omittedFeatures.other')
+                      : (c.bandsOmitted === 1 ? 'board.workspace.swimlanes.omittedMilestones.one' : 'board.workspace.swimlanes.omittedMilestones.other'))
                       | transloco: { count: c.bandsOmitted, stage: label }
                   }}
                 </p>
@@ -257,7 +259,7 @@
         <div class="sheet-bar" data-sheet-bar>
           <button type="button" class="bar-open" aria-haspopup="dialog" (click)="needsOpen.set(true)">
             <span class="grab" aria-hidden="true"></span>
-            <span>{{ 'board.workspace.sheetBar' | transloco: { count: b.total } }}</span>
+            <span>{{ (b.total === 1 ? 'board.workspace.sheetBar.one' : 'board.workspace.sheetBar.other') | transloco: { count: b.total } }}</span>
           </button>
           <a class="needs-n" data-waits-link [routerLink]="['/w', ws()]" fragment="waiting">{{ 'board.workspace.waitsCount' | transloco: { count: waitsCount() } }}</a>
         </div>
@@ -372,7 +374,7 @@
                       @if (column.cards.length > 0) {
                         {{ 'board.workspace.column.folded' | transloco }}
                       } @else if (column.stub.kind === 'empty' && column.stub.hidden > 0) {
-                        {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: column.stub.hidden } }}
+                        {{ (column.stub.hidden === 1 ? 'board.workspace.column.hiddenByFilters.one' : 'board.workspace.column.hiddenByFilters.other') | transloco: { count: column.stub.hidden } }}
                       } @else {
                         {{ 'board.workspace.column.empty' | transloco }}
                       }
@@ -389,7 +391,7 @@
                     [attr.data-col]="stage"
                     [style.--role]="edges[stage]"
                     [style.grid-column]="i + 1"
-                    [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
+                    [attr.aria-label]="(column.count === 1 ? 'board.workspace.column.name.one' : 'board.workspace.column.name.other') | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
                   >
                     <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: column, label: label }" />
                     <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
@@ -623,7 +625,7 @@
       [mini]="true"
       [value]="done"
       [max]="band.count"
-      [label]="'board.workspace.bandMeter' | transloco: { done: done, count: band.count }"
+      [label]="(band.count === 1 ? 'board.workspace.bandMeter.one' : 'board.workspace.bandMeter.other') | transloco: { done: done, count: band.count }"
       />
     }
   </h3>

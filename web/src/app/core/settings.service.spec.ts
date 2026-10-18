@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting, type TestRequest } fro
 import { TestBed } from '@angular/core/testing';
 import { DEFAULT_SETTINGS, type Settings, SETTINGS_URL, SettingsService } from './settings.service';
 
-const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90 };
+const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90, density: 'compact' };
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -28,7 +28,7 @@ describe('SettingsService', () => {
   });
 
   it('exposes the schema defaults until the server answers', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, density: 'comfortable' });
     expect(service.settings()).toEqual(DEFAULT_SETTINGS);
   });
 
@@ -109,6 +109,28 @@ describe('SettingsService', () => {
 
     late.flush({ ...DEFAULT_SETTINGS, theme: 'dark' });
     await expect(winning).resolves.toBe(true);
+  });
+
+  it('reads and writes density like theme: stored value, malformed value as default, optimistic PUT of the patch (ISC-254)', async () => {
+    const loading = service.load();
+    http.expectOne(SETTINGS_URL).flush({ ...stored, density: 'dense' });
+    await loading;
+    expect(service.settings()).toEqual({ ...stored, density: 'comfortable' });
+
+    const saving = service.update({ density: 'compact' });
+    expect(service.settings().density).toBe('compact'); // optimistic
+    const request = http.expectOne({ method: 'PUT', url: SETTINGS_URL });
+    expect(request.request.body).toEqual({ density: 'compact' });
+    request.flush({ ...stored, density: 'compact' });
+    await expect(saving).resolves.toBe(true);
+    expect(service.settings().density).toBe('compact');
+
+    const refused = service.update({ density: 'comfortable' });
+    http
+      .expectOne({ method: 'PUT', url: SETTINGS_URL })
+      .flush({ error: 'invalid-value', key: 'density' }, { status: 400, statusText: 'Bad Request' });
+    await expect(refused).resolves.toBe(false);
+    expect(service.settings().density).toBe('compact');
   });
 
   it('never keeps settings in browser storage, so they survive a port change (ISC-18.3)', async () => {

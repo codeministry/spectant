@@ -6,7 +6,11 @@
     </ui-disclosure>
   }
 
-  <article class="docs-prose" #prose [innerHTML]="html()"></article>
+  <!-- The prose, and below it what a consumer projects (the library reader's sections), in the first column. -->
+  <div class="docs-main">
+    <article class="docs-prose" #prose [innerHTML]="html()"></article>
+    <ng-content />
+  </div>
 
   @if (toc().length > 0 && wide()) {
     <nav class="docs-toc" [attr.aria-label]="'docs.contents' | transloco">

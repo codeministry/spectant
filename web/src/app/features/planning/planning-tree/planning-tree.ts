@@ -383,7 +383,7 @@ export class PlanningTree {
     afterNextRender(
       () => {
         this.moveTo(row.key);
-        this.announce('backlog.tree.moved', row);
+        this.announce('backlog.tree.moved', row, true);
       },
       { injector: this.injector },
     );
@@ -397,13 +397,14 @@ export class PlanningTree {
     if (outcome === 'written') this.live()?.announce(this.transloco.translate('backlog.tree.prioritized', { id: row.node.id, level: priority }, this.lang()));
   }
 
-  private announce(key: string, row: TreeRow): void {
+  private announce(key: string, row: TreeRow, plural = false): void {
     if (row.group === null) return;
     const order = this.order();
     const at = positionOf(order, row.group, row.node.id);
     const name = groupOf(order, row.group)?.name ?? null;
     const params = { id: row.node.id, position: at?.index ?? 0, count: at?.count ?? 0, group: name ?? '' };
-    this.live()?.announce(this.transloco.translate(name === null ? `${key}None` : key, params, this.lang()));
+    const form = plural ? (params.count === 1 ? '.one' : '.other') : '';
+    this.live()?.announce(this.transloco.translate(`${name === null ? `${key}None` : key}${form}`, params, this.lang()));
   }
 
   protected dragStarted(row: TreeRow): void {

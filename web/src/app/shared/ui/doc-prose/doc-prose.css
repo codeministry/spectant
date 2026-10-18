@@ -7,11 +7,14 @@ ui-doc-prose .docs-layout {
   grid-template-columns: minmax(0, 1fr);
 }
 
-ui-doc-prose[data-wide] .docs-layout {
+ui-doc-prose[data-wide] > .docs-layout {
   grid-template-columns: minmax(0, 1fr) 180px;
   gap: 32px;
   align-items: start;
 }
+
+/* The prose column: the article and any projected content, so the wide TOC stays one sticky column beside both. */
+ui-doc-prose .docs-main { min-inline-size: 0; }
 
 ui-doc-prose .docs-toc {
   position: sticky;

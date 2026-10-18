@@ -67,6 +67,38 @@ const PLAN_PAGE: DocsPage = {
   wordCount: 12,
 };
 
+// T41 · ISC-251: a document of 20 `##` sections, far over three reference screens expanded, with a lead paragraph and
+// an h3 in its fifth section; and a short one of three sections that opens whole.
+const RUN_ON = 'More words of the part that keep the line going on and on. '.repeat(5);
+const partHtml = (n: number): string =>
+  [
+    `<h2 id="part-${n}">Part ${n}</h2>`,
+    `<p>Part ${n} opens here. ${RUN_ON}</p>`,
+    n === 5 ? '<h3 id="part-5-detail">Detail</h3>' : '',
+    `<p>${RUN_ON}</p>`,
+    `<p>${RUN_ON}</p>`,
+  ]
+    .filter((block) => block !== '')
+    .join('\n');
+const PARTS = Array.from({ length: 20 }, (_, i) => i + 1);
+const LONG_PAGE: DocsPage = {
+  html: ['<p>Purpose: the lead stays.</p>', ...PARTS.map(partHtml)].join('\n'),
+  toc: PARTS.flatMap((n) => [{ level: 2, text: `Part ${n}`, anchor: `part-${n}` }, ...(n === 5 ? [{ level: 3, text: 'Detail', anchor: 'part-5-detail' }] : [])]),
+  frontmatter: null,
+  figures: [],
+  sections: PARTS.flatMap((n) => [{ id: `part-${n}`, heading: `Part ${n}`, level: 2 }, ...(n === 5 ? [{ id: 'part-5-detail', heading: 'Detail', level: 3 }] : [])]),
+  wordCount: 2000,
+};
+const SHORT_IDS = ['a', 'b', 'c'];
+const SHORT_PAGE: DocsPage = {
+  html: SHORT_IDS.map((id) => `<h2 id="part-${id}">Part ${id}</h2>\n<p>Short ${id}. Then more.</p>`).join('\n'),
+  toc: SHORT_IDS.map((id) => ({ level: 2, text: `Part ${id}`, anchor: `part-${id}` })),
+  frontmatter: null,
+  figures: [],
+  sections: SHORT_IDS.map((id) => ({ id: `part-${id}`, heading: `Part ${id}`, level: 2 })),
+  wordCount: 12,
+};
+
 const assetUrl = (ws: string, path: string): string => `/api/workspaces/${ws}/library/asset?path=${encodeURIComponent(path)}`;
 
 describe('resolveRelative / rewriteProse (T34, ISC-156.3)', () => {
@@ -217,14 +249,16 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
   let fixture: ComponentFixture<ReaderHost>;
   let requested: string[];
   let rendered: string[];
+  let planPage: DocsPage;
 
   beforeEach(() => {
     requested = [];
     rendered = [];
+    planPage = PLAN_PAGE;
     const api: Pick<ApiClient, 'libraryDoc' | 'libraryAssetUrl' | 'prototypeUrl'> = {
       libraryDoc: (_ws, path) => {
         requested.push(path);
-        return Promise.resolve(ok(path === PLAN.path ? PLAN_PAGE : { ...PLAN_PAGE, html: '<p>Other</p>', toc: [], figures: [] }));
+        return Promise.resolve(ok(path === PLAN.path ? planPage : { ...PLAN_PAGE, html: '<p>Other</p>', toc: [], figures: [] }));
       },
       libraryAssetUrl: assetUrl,
       prototypeUrl: (ws, d, page) => ApiClient.prototype.prototypeUrl(ws, d, page),
@@ -334,6 +368,92 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
     await settle();
     expect(TestBed.inject(Router).url).toBe(url);
     expect(document.activeElement?.id).toBe('flow');
+  });
+
+  describe('sections (T41, ISC-251)', () => {
+    const sections = (reader: HTMLElement): HTMLElement[] => [...reader.querySelectorAll<HTMLElement>('ui-disclosure[data-library-section]')];
+    const toggle = (section: HTMLElement | undefined): HTMLButtonElement | null =>
+      section?.querySelector<HTMLButtonElement>(':scope > .head > h2.heading > button.summary') ?? null;
+    const expanded = (reader: HTMLElement): string[] => sections(reader).map((s) => toggle(s)?.getAttribute('aria-expanded') ?? 'none');
+    const openParam = (): string | null => TestBed.inject(Router).parseUrl(TestBed.inject(Router).url).queryParamMap.get('open');
+    const hash = (): string => new URL(TestBed.inject(Router).url, 'http://x').hash;
+
+    it('shows every ## section as a level-2 disclosure, collapsed to its heading and whole first sentence; a long document opens with its first only', async () => {
+      planPage = LONG_PAGE;
+      const reader = await render();
+      // The lead before the first ## stays visible, in the prose above the sections.
+      expect(reader.querySelector('[data-library-prose] .docs-main > article.docs-prose')?.textContent.trim()).toBe('Purpose: the lead stays.');
+      const all = sections(reader);
+      expect(all.map((s) => s.getAttribute('data-library-section'))).toEqual(PARTS.map((n) => `part-${n}`));
+      expect(all.map((s) => toggle(s)?.textContent.trim())).toEqual(PARTS.map((n) => `Part ${n}`));
+      expect(expanded(reader)).toEqual(['true', ...PARTS.slice(1).map(() => 'false')]);
+      // Collapsed: the whole first sentence as the toggle's description, outside its name.
+      const second = all.at(1);
+      const sentence = second?.querySelector<HTMLElement>('[uiDisclosureDescription]');
+      expect(sentence?.textContent.trim()).toBe('Part 2 opens here.');
+      expect(toggle(second)?.getAttribute('aria-describedby')).toBe(sentence?.id);
+      // Open: the full text, no description beside it, and the ## not drawn twice.
+      expect(all[0]?.querySelector('[uiDisclosureDescription]')).toBeNull();
+      expect(all[0]?.querySelector('.docs-prose')?.textContent).toContain('Part 1 opens here.');
+      expect(reader.querySelectorAll('.docs-prose h2')).toHaveLength(0);
+      expect(openParam()).toBeNull();
+    });
+
+    it('opens a short document whole', async () => {
+      planPage = SHORT_PAGE;
+      const reader = await render();
+      expect(expanded(reader)).toEqual(['true', 'true', 'true']);
+      expect(reader.querySelectorAll('[uiDisclosureDescription]')).toHaveLength(0);
+    });
+
+    it('keeps the open sections in the address and opens what the address names', async () => {
+      planPage = LONG_PAGE;
+      let reader = await render();
+      toggle(sections(reader)[2])?.click();
+      reader = await settle();
+      expect(openParam()).toBe('s-part-1,s-part-3');
+      expect(expanded(reader).slice(0, 4)).toEqual(['true', 'false', 'true', 'false']);
+      expect(hash()).toBe(`#${PLAN.path}`);
+      await TestBed.inject(Router).navigateByUrl(`/w/harbor/library?type=plan&open=s-part-7#${PLAN.path}`);
+      reader = await settle();
+      expect(expanded(reader).flatMap((state, i) => (state === 'true' ? [i + 1] : []))).toEqual([7]);
+    });
+
+    it('keeps a short document closed over a reload once every section is closed', async () => {
+      planPage = SHORT_PAGE;
+      let reader = await render();
+      for (const id of SHORT_IDS) {
+        toggle(sections(reader).find((s) => s.getAttribute('data-library-section') === `part-${id}`))?.click();
+        reader = await settle();
+      }
+      expect(expanded(reader)).toEqual(['false', 'false', 'false']);
+      expect(openParam()).toBe('s-~part-a');
+      fixture.destroy();
+      fixture = TestBed.createComponent(ReaderHost);
+      reader = await settle();
+      expect(expanded(reader)).toEqual(['false', 'false', 'false']);
+    });
+
+    it('opens the target section of a contents jump, scrolls to it and focuses its heading; an h3 opens its ##', async () => {
+      planPage = LONG_PAGE;
+      const scrolled: Element[] = [];
+      Element.prototype.scrollIntoView = function (this: Element): void {
+        scrolled.push(this);
+      };
+      let reader = await render();
+      reader.querySelector<HTMLAnchorElement>('.docs-toc-list a[href="#part-9"]')?.click();
+      reader = await settle();
+      const ninth = sections(reader)[8];
+      expect(toggle(ninth)?.getAttribute('aria-expanded')).toBe('true');
+      expect(openParam()).toBe('s-part-1,s-part-9');
+      expect(document.activeElement).toBe(toggle(ninth));
+      expect(scrolled.at(-1)).toBe(ninth);
+      reader.querySelector<HTMLAnchorElement>('.docs-toc-list a[href="#part-5-detail"]')?.click();
+      reader = await settle();
+      expect(toggle(sections(reader)[4])?.getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement?.id).toBe('part-5-detail');
+      expect(hash()).toBe(`#${PLAN.path}`);
+    });
   });
 
   it('shows an image document as a preview at its natural size, alt its title, from the file route', async () => {

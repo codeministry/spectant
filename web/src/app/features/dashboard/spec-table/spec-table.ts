@@ -19,9 +19,12 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { SettingsService } from '../../../core/settings.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
+import { OpenState } from '../../../shared/open-state';
 import { UiCard } from '../../../shared/ui/card/card';
+import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
+import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
 import { UiReason } from '../../../shared/ui/reason/reason';
 import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
@@ -49,6 +52,12 @@ import {
   typeOptions,
 } from './spec-table-model';
 
+/** The rows the dashboard's spec list shows before "show all N" (spec 021, ISC-246). */
+export const SPEC_ROW_CAP = 5;
+
+/** The keys `uiRovingList` moves on; the fold's toggle keeps them (`keepToggleKeys`). */
+const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End', 'j', 'k']);
+
 /**
  * The Specs panel of the workspace dashboard (T63, ISC-61), ported from the prototype's `spec-table` (T89; styles.css
  * 362-400, app.js specTable): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
@@ -59,6 +68,12 @@ import {
  * Filter, sort and takeable are the page's query state: the panel renders `query` and asks for a new one through
  * `queryChange`, it never holds them itself. The selection is the roving list's tab stop, exposed as `selectedId`
  * and marked `data-selected` on its row.
+ *
+ * Spec 021 (T25, ISC-246): the head carries the counters (active and archived specs) as one wrapping chip row, and
+ * the list shows its first `SPEC_ROW_CAP` rows; the rest stand behind a "show all N" `ui-disclosure` whose open state is
+ * `?open=specs` (`OpenState`), so a reload keeps it. The cap counts the listed rows, filtered and sorted: a filter
+ * narrows the list, the fold still keeps it to one picture. The folded rows are rendered only while the fold is open,
+ * so the roving list never steps into a hidden row.
  */
 @Component({
   selector: 'app-spec-table',
@@ -67,7 +82,9 @@ import {
     RouterLink,
     TranslocoPipe,
     UiCard,
+    UiChip,
     UiClamp,
+    UiDisclosure,
     UiFilterChips,
     UiIcon,
     UiPopover,
@@ -175,6 +192,34 @@ export class SpecTable {
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
   protected readonly visible = computed(() => applyListQuery(this.rows(), this.query()));
   protected readonly sortSheetOpen = signal(false);
+
+  private readonly openState = inject(OpenState);
+  /**
+   * The workspace's archived specs (`DashboardKpis.archived`) for the head's counter; without it the panel counts the
+   * archive rows it lists, the same folders.
+   */
+  readonly archivedCount = input<number | null>(null);
+  protected readonly archivedTotal = computed(() => this.archivedCount() ?? this.archive().length);
+  /** "Show all N" is open: `?open=specs` in the address. */
+  protected readonly allOpen = computed(() => this.openState.isOpen('specs'));
+  protected readonly cap = SPEC_ROW_CAP;
+  /** The rows always in view, and those behind "show all N". */
+  protected readonly headRows = computed(() => this.visible().slice(0, SPEC_ROW_CAP));
+  protected readonly restRows = computed(() => this.visible().slice(SPEC_ROW_CAP));
+
+  protected setAllOpen(open: boolean): void {
+    void this.openState.set('specs', open);
+  }
+
+  /**
+   * The fold's toggle sits inside the roving list's host: its arrow, Home and End keys stay the button's own instead of
+   * moving the row selection. Keys from a row (inside an `li`) pass on to the list.
+   */
+  protected keepToggleKeys(event: KeyboardEvent): void {
+    if (!ROVING_KEYS.has(event.key)) return;
+    if (event.target instanceof Element && event.target.closest('li') !== null) return;
+    event.stopPropagation();
+  }
 
   private readonly sortPopover = viewChild(UiPopover);
   private readonly roving = viewChild(UiRovingList);
