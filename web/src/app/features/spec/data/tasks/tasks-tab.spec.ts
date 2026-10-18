@@ -285,6 +285,23 @@ describe('TasksTab tasks-tab counts (spec 021, T42, ISC-252)', () => {
   });
 });
 
+describe('TasksTab filter names (spec 021, T44, ISC-248)', () => {
+  const allChip = (root: HTMLElement, group: string) => root.querySelector<HTMLButtonElement>(`[data-filter="${group}"] button`);
+
+  it('names the two `all` chips by their group, the visible text first, so no two chips share a name', async () => {
+    setUp();
+    const { root } = await open();
+    const total = GOLDEN.counts.rows;
+    expect(allChip(root, 'lane')?.textContent.replace(/\s+/g, ' ').trim()).toBe(`all ${String(total)}`);
+    expect(allChip(root, 'lane')?.getAttribute('aria-label')).toBe(`All ${String(total)} lanes`);
+    expect(allChip(root, 'status')?.getAttribute('aria-label')).toBe(`All ${String(total)} statuses`);
+    const named = [...root.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map(
+      (b) => b.getAttribute('aria-label') ?? b.textContent.replace(/\s+/g, ' ').trim(),
+    );
+    expect(new Set(named).size).toBe(named.length);
+  });
+});
+
 describe('TasksTab spec waits (spec 025, T26, ISC-163)', () => {
   /** The golden with T27 held on 002, T28 on an unknown 042 and T29 on a met edge to 006 (no hold reason). */
   function waiting(): TasksBody {

@@ -406,6 +406,19 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
       expect(reader.querySelectorAll('[uiDisclosureDescription]')).toHaveLength(0);
     });
 
+    it('numbers the table regions across the whole document, not per section (T68)', async () => {
+      const table = (cell: string): string => `<div class="mdtable"><table><thead><tr><th>${cell}</th></tr></thead><tbody></tbody></table></div>`;
+      planPage = {
+        ...SHORT_PAGE,
+        html: ['a', 'b'].map((id) => `<h2 id="part-${id}">Part ${id}</h2>\n<p>Short ${id}.</p>\n${table(id)}`).join('\n'),
+        toc: SHORT_PAGE.toc.slice(0, 2),
+        sections: SHORT_PAGE.sections.slice(0, 2),
+      };
+      const reader = await render();
+      const regions = [...reader.querySelectorAll<HTMLElement>('div.mdtable[role="region"]')];
+      expect(regions.map((region) => region.getAttribute('aria-label'))).toEqual(['Table 1, scrolls sideways', 'Table 2, scrolls sideways']);
+    });
+
     it('keeps the open sections in the address and opens what the address names', async () => {
       planPage = LONG_PAGE;
       let reader = await render();

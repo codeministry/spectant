@@ -252,11 +252,11 @@ export class SpecTable {
 
   protected readonly phaseChips = computed<FilterOption[]>(() => {
     this.lang();
-    return phaseOptions(this.rows()).map((option) => this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true));
+    return phaseOptions(this.rows()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true), 'specs.filter.allStages'));
   });
   protected readonly typeChips = computed<FilterOption[]>(() => {
     this.lang();
-    return typeOptions(this.rows()).map((option) => this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false));
+    return typeOptions(this.rows()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false), 'specs.filter.allTypes'));
   });
   /** The strip under the head (prototype `.phase-strip`): one equal segment per active spec, in its phase's tone. */
   protected readonly strip = computed(() =>
@@ -312,5 +312,10 @@ export class SpecTable {
       count: option.count,
       ...(tone !== undefined ? { tone } : {}),
     };
+  }
+
+  /** The "all" chip named by its group ("All 23 stages" / "All 23 types", the visible "All 23" inside the name), so the two never share a name (ISC-248). */
+  private named(chip: FilterOption, key: string): FilterOption {
+    return chip.key === ALL ? { ...chip, name: this.transloco.translate(`${key}.${chip.count === 1 ? 'one' : 'other'}`, { count: chip.count ?? 0 }) } : chip;
   }
 }

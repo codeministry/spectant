@@ -70,6 +70,11 @@ export class UiDocProse {
   readonly wide = input(false);
   /** Resolves a spec-folder image path to its URL; null leaves such images without `src` (core's missing shape stays). */
   readonly assetUrl = input<((path: string) => string) | null>(null);
+  /**
+   * How many tables of the same document come before this prose: a document drawn as several proses (the library
+   * reader's `##` sections) numbers its table regions across all of them, so no two regions share a name.
+   */
+  readonly tableStart = input(0);
 
   /**
    * Trusted on purpose, and only here: core's renderer (`core/src/markdown.ts`) escapes every text and every raw HTML
@@ -130,7 +135,8 @@ export class UiDocProse {
         const figures = this.mermaidFigures(); // tracks the page: a new page re-runs the enhancement
         const theme = this.theme.resolved();
         const assetUrl = this.assetUrl();
-        const tableLabel = (index: number) => this.transloco.translate('docs.tableRegion', { index });
+        const tableStart = this.tableStart();
+        const tableLabel = (index: number) => this.transloco.translate('docs.tableRegion', { index: tableStart + index });
         const notes: MissingNotes = {
           missing: this.transloco.translate('docs.imageMissing'),
           unavailable: this.transloco.translate('docs.imageUnavailable'),

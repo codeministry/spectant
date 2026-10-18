@@ -129,3 +129,32 @@ describe('UiDocProse mermaid width', () => {
     expect(scroller.style.getPropertyValue('--mermaid-natural-width')).toBe('');
   });
 });
+
+// T68 · ISC-251: a document drawn as several proses (the library reader's sections) numbers its tables across them.
+describe('UiDocProse table regions', () => {
+  const TABLE = '<div class="mdtable"><table><thead><tr><th>a</th></tr></thead><tbody></tbody></table></div>';
+  const tables: DocsPage = { html: `${TABLE}\n${TABLE}`, toc: [], frontmatter: null, figures: [], sections: [], wordCount: 1 };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: MERMAID_LOADER, useValue: () => Promise.reject(new Error('unused')) }],
+    });
+  });
+
+  async function labels(start?: number): Promise<Array<string | null>> {
+    const fixture = TestBed.createComponent(UiDocProse);
+    fixture.componentRef.setInput('page', tables);
+    if (start !== undefined) fixture.componentRef.setInput('tableStart', start);
+    await fixture.whenStable();
+    return [...(fixture.nativeElement as HTMLElement).querySelectorAll('div.mdtable[role="region"]')].map((region) => region.getAttribute('aria-label'));
+  }
+
+  it('numbers its tables from 1 on its own', async () => {
+    expect(await labels()).toEqual(['Table 1, scrolls sideways', 'Table 2, scrolls sideways']);
+  });
+
+  it('numbers on after the tables before it in the document', async () => {
+    expect(await labels(3)).toEqual(['Table 4, scrolls sideways', 'Table 5, scrolls sideways']);
+  });
+});

@@ -73,7 +73,7 @@
                 @if (!opened().has(part.section.key) && part.section.sentence !== '') {
                   <p uiDisclosureDescription class="lib-section-sentence">{{ part.section.sentence }}</p>
                 }
-                <ui-doc-prose class="lib-section-body" [page]="part.page" [assetUrl]="assetUrl()" />
+                <ui-doc-prose class="lib-section-body" [page]="part.page" [assetUrl]="assetUrl()" [tableStart]="part.tableStart" />
               </ui-disclosure>
             }
           </div>

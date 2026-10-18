@@ -2850,6 +2850,85 @@ describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5,
     expect(await dashboard({})).toEqual(golden('harbor') as Dash);
   });
 
+  test('on: titles and goal lines long enough that every expand toggle appears through overflow, each core-derived (T34, ISC-248)', async () => {
+    type Row = { id: string; slug: string; title: string; goal: string };
+    const served = (await dashboard(on())) as unknown as { specs: Row[]; guidance?: { next: Array<{ spec: string }> } };
+    const plain = golden('harbor') as unknown as { specs: Row[] };
+    const longs = Object.entries(STUB_DENSE.long) as Array<[string, { title?: string; goal?: string }]>;
+    expect(longs.length).toBeGreaterThanOrEqual(5);
+    for (const [folder, long] of longs) {
+      const row = served.specs.find((s) => s.slug === folder);
+      const before = plain.specs.find((s) => s.slug === folder);
+      if (long.title !== undefined) {
+        expect(row?.title).toBe(long.title);
+        expect(long.title.length).toBeGreaterThanOrEqual(120);
+        expect(row?.title).not.toBe(before?.title);
+      }
+      if (long.goal !== undefined) {
+        expect(row?.goal).toBe(long.goal);
+        expect(long.goal.length).toBeGreaterThanOrEqual(250);
+      }
+    }
+    // Every Next-up entry carries a long title, and no two titles repeat each other.
+    const next = served.guidance?.next.map((e) => e.spec) ?? [];
+    expect(next).toHaveLength(STUB_DENSE.next);
+    for (const id of next) expect(served.specs.find((s) => s.id === id)?.title.length ?? 0).toBeGreaterThanOrEqual(120);
+    const titles = served.specs.map((s) => s.title);
+    expect(new Set(titles).size).toBe(titles.length);
+    // The first five rows of the list (core's order, and the id order) each overflow by title or goal.
+    const overflowing = (s: Row): boolean => s.title.length >= 120 || s.goal.length >= 250;
+    expect(served.specs.slice(0, 5).every(overflowing)).toBe(true);
+    expect([...served.specs].sort((a, b) => (a.id < b.id ? -1 : 1)).slice(0, 5).every(overflowing)).toBe(true);
+  });
+
+  test('on: the long-goal spec page carries the long goal sentence from core; every other page stays the golden (T34, ISC-248)', async () => {
+    type Page = { head: { id: string }; ideaQuote: string | null; ideaSource: string | null };
+    const ws = STUB_DENSE.workspace.slug;
+    const id = STUB_DENSE.goalSpec;
+    const res = await ask(specRoutes.spec(ws, id), { headers: on() });
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as Page;
+    expect(page.head.id).toBe(id);
+    expect(page.ideaSource).toBe('goal');
+    expect(page.ideaQuote?.length ?? 0).toBeGreaterThanOrEqual(300);
+    const long = (Object.entries(STUB_DENSE.long) as Array<[string, { goal?: string }]>).find(([folder]) => folder.startsWith(`${id}-`))?.[1];
+    expect(long?.goal?.startsWith(page.ideaQuote ?? '\0')).toBe(true);
+    const plain = (await (await ask(specRoutes.spec(ws, id))).json()) as Page;
+    expect(plain.ideaQuote).not.toBe(page.ideaQuote);
+    const other = async (headers: Record<string, string>): Promise<string> => (await ask(specRoutes.spec(ws, '007'), { headers })).text();
+    expect(await other(on())).toBe(await other({}));
+  });
+
+  test('on: the library lists one long document with 20 sections and about 30 screens, rendered by core (T53, ISC-251)', async () => {
+    const ws = STUB_DENSE.workspace.slug;
+    const { doc } = STUB_DENSE;
+    const listed = async (headers: Record<string, string>): Promise<string[]> =>
+      ((await (await ask(workspaceRoutes.library(ws), { headers })).json()) as { docs: Array<{ path: string }> }).docs.map((d) => d.path);
+    const dense = await listed(on());
+    expect(dense).toContain(doc.path);
+    expect(await listed({})).not.toContain(doc.path);
+    expect(dense.filter((p) => p !== doc.path)).toEqual(await listed({}));
+    expect((await ask(workspaceRoutes.libraryDoc(ws, doc.path))).status).toBe(404);
+
+    const res = await ask(workspaceRoutes.libraryDoc(ws, doc.path), { headers: on() });
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as DocsPage;
+    const level2 = page.sections.filter((s) => s.level === 2);
+    expect(level2).toHaveLength(doc.sections);
+    expect(new Set(level2.map((s) => s.heading)).size).toBe(doc.sections);
+    // The reader's reference estimate (85 characters a 26 px line, 12 px after a paragraph, an h2 58 px), in 900 px screens.
+    const paragraphs = [...page.html.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => (m[1] ?? '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim());
+    const px = paragraphs.reduce((sum, p) => sum + Math.ceil(p.length / 85) * 26 + 12, 0) + level2.length * 58;
+    expect(px / 900).toBeGreaterThanOrEqual(27);
+    expect(px / 900).toBeLessThanOrEqual(34);
+    // Each section opens with its own first sentence, so no two collapsed sections read the same.
+    const firsts = page.html.split(/<h2[^>]*>/).slice(1).map((part) => /<p>([^.]+\.)/.exec(part)?.[1] ?? '');
+    expect(firsts.every((s) => s.length > 20)).toBe(true);
+    expect(new Set(firsts).size).toBe(doc.sections);
+    const hits = (await (await ask(workspaceRoutes.librarySearch(ws, doc.title), { headers: on() })).json()) as { hits: Array<{ path: string }> };
+    expect(hits.hits.map((h) => h.path)).toContain(doc.path);
+  });
+
   test('an unknown value, or on beside an overlay, is a 400', async () => {
     const unknown = await ask('/api/workspaces', { headers: { [DENSE_HEADER]: 'yes' } });
     expect([unknown.status, await unknown.json()]).toEqual([400, { error: 'unknown-stub-dense', dense: 'yes', states: [...DENSE_STATES] }]);

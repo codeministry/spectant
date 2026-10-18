@@ -50,6 +50,7 @@
         data-brief-more
         [attr.aria-expanded]="open()"
         [attr.aria-controls]="bodyId"
+        [attr.aria-label]="(open() ? 'brief.lessName' : 'brief.moreName') | transloco"
         (click)="toggle()"
       >
         {{ (open() ? 'brief.less' : 'brief.more') | transloco }}

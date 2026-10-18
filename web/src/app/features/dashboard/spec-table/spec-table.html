@@ -133,6 +133,7 @@
               [attr.data-more]="row.id"
               [attr.aria-expanded]="moreOpen().has(row.id)"
               [attr.aria-controls]="'desc-' + row.id"
+              [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
               (click)="toggleMore(row.id)"
             >
               {{ (moreOpen().has(row.id) ? 'brief.less' : 'brief.more') | transloco }}

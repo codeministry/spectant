@@ -257,16 +257,20 @@ export class TasksTab {
     this.lang();
     const body = this.body();
     if (!body) return [];
-    const all: FilterOption = { key: 'all', label: this.transloco.translate('tasks.filters.all'), count: body.counts.rows };
+    const all = this.allOption(body.counts.rows, 'tasks.filters.allLanes');
     return [all, ...body.counts.byLane.map((c) => ({ key: c.name, label: c.name, count: c.count }))];
   });
   protected readonly statusOptions = computed<readonly FilterOption[]>(() => {
     this.lang();
     const body = this.body();
     if (!body) return [];
-    const all: FilterOption = { key: 'all', label: this.transloco.translate('tasks.filters.all'), count: body.counts.rows };
+    const all = this.allOption(body.counts.rows, 'tasks.filters.allStatuses');
     return [all, ...body.counts.byStatus.map((c) => ({ key: c.name, label: this.transloco.translate(`tasks.status.${c.name}`), count: c.count }))];
   });
+  /** The `all` chip, named by its group ("All 39 lanes" / "All 39 statuses") so the two never share a name (ISC-248). */
+  private allOption(count: number, nameKey: string): FilterOption {
+    return { key: 'all', label: this.transloco.translate('tasks.filters.all'), count, name: this.transloco.translate(`${nameKey}.${count === 1 ? 'one' : 'other'}`, { count }) };
+  }
 
   /** Every row as it stands after the writes this list has seen accepted. */
   private readonly written = computed<readonly TaskRowView[]>(() => {

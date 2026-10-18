@@ -26,4 +26,16 @@ describe('UiFilterChips', () => {
     const dot = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.dot');
     expect(dot?.style.background).toBe('var(--done-mark)');
   });
+
+  it('gives a chip the accessible name its option carries, and none otherwise (spec 021, ISC-248)', async () => {
+    const fixture = TestBed.createComponent(UiFilterChips);
+    fixture.componentRef.setInput('options', [
+      { key: 'all', label: 'All', count: 6, name: 'All 6 stages' },
+      { key: 'building', label: 'building', count: 2 },
+    ]);
+    await fixture.whenStable();
+    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('button');
+    expect(buttons[0].getAttribute('aria-label')).toBe('All 6 stages');
+    expect(buttons[1].hasAttribute('aria-label')).toBe(false);
+  });
 });

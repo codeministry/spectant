@@ -125,6 +125,8 @@
     "stale": "veraltet",
     "more": "Mehr…",
     "less": "Weniger",
+    "moreName": "Mehr… vom TL;DR",
+    "lessName": "Weniger vom TL;DR",
     "showWhole": "Ganzes TL;DR zeigen",
     "showWholeName": "Ganzes TL;DR zeigen, alle Abschnitte der Kurzfassung",
     "lang": "Sprache des Textes: {{lang}}"
@@ -154,8 +156,14 @@
       "label": "Nach Phase filtern",
       "typeLabel": "Nach Typ filtern",
       "all": "Alle",
-      "allStages": "Alle Stages, {{count}}",
-      "allTypes": "Alle Typen, {{count}}",
+      "allStages": {
+        "one": "Alle {{count}} Stages",
+        "other": "Alle {{count}} Stages"
+      },
+      "allTypes": {
+        "one": "Alle {{count}} Typen",
+        "other": "Alle {{count}} Typen"
+      },
       "fog": "fog"
     },
     "sort": {
@@ -190,6 +198,8 @@
       "other": "{{count}} offene Fog-Einträge"
     },
     "agentWorking": "Agent {{session}} arbeitet",
+    "moreName": "Mehr… {{id}} {{title}}",
+    "lessName": "Weniger {{id}} {{title}}",
     "ideas": {
       "title": "Ideen · {{count}}",
       "label": "Ideen im Backlog"
@@ -199,6 +209,7 @@
     "title": "Als Nächstes",
     "showAll": "Alle {{count}} anzeigen",
     "moreName": "Mehr… {{entry}}",
+    "lessName": "Weniger {{entry}}",
     "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec-plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
@@ -924,8 +935,14 @@
       "lane": "Nach Lane filtern",
       "status": "Nach Status filtern",
       "all": "alle",
-      "allLanes": "Alle Lanes, {{count}}",
-      "allStatuses": "Alle Status, {{count}}",
+      "allLanes": {
+        "one": "Alle {{count}} Lanes",
+        "other": "Alle {{count}} Lanes"
+      },
+      "allStatuses": {
+        "one": "Alle {{count}} Status",
+        "other": "Alle {{count}} Status"
+      },
       "hideDone": "Erledigte ausblenden"
     },
     "landed": "{{landed}}/{{total}} Kästchen abgehakt",

@@ -197,10 +197,15 @@ export function openEntries(split: ReaderSplit, open: ReadonlySet<OpenKey>): Rea
 interface SectionPart {
   readonly section: ReaderSection;
   readonly page: DocsPage;
+  /** The tables of the document before this section (the lead's and the earlier sections'): its regions number on. */
+  readonly tableStart: number;
 }
 
 /** The figures of `page` whose element sits in `html` (core numbers them `data-figure="n"`). */
 const figuresIn = (page: DocsPage, html: string): DocsPage['figures'] => page.figures.filter((figure) => html.includes(`data-figure="${figure.index}"`));
+
+/** The tables in a chunk of core's HTML (core wraps each in `div.mdtable`, `core/src/markdown.ts`). */
+const tablesIn = (html: string): number => html.split('<div class="mdtable">').length - 1;
 
 /** tech.md as the reader shows it: the page with the four sections in order, and the keys the file has none for. */
 export interface TechReading {
@@ -438,7 +443,12 @@ export class LibraryReader {
     const page = this.prose();
     const split = this.split();
     if (page === null || split === null) return [];
-    return split.sections.map((section) => ({ section, page: { ...page, html: section.html, toc: [], figures: figuresIn(page, section.html) } }));
+    let tables = tablesIn(split.lead);
+    return split.sections.map((section) => {
+      const tableStart = tables;
+      tables += tablesIn(section.html);
+      return { section, tableStart, page: { ...page, html: section.html, toc: [], figures: figuresIn(page, section.html) } };
+    });
   });
   /** The open sections: what `?open=` names of this page, else a long page its first, a short one all (`readerOpen`). */
   protected readonly opened = computed<ReadonlySet<OpenKey>>(() => {

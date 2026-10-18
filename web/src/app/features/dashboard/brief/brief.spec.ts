@@ -383,3 +383,92 @@ describe('Brief language: chip and lang attribute on a mismatch (spec 021, T28)'
     expect(host.querySelector('[data-brief-prose][data-clipped]')?.getAttribute('lang')).toBe('de');
   });
 });
+
+// Spec 021 (T33, ISC-248): every toggle of the TL;DR card names the TL;DR in its accessible name, which starts with the
+// visible text (label in name, WCAG 2.5.3): the sectioned view's "Show whole TL;DR" and the clip view's "More…" /
+// "Less" alike, so neither reads as a bare "More…" beside the Next up and spec head toggles.
+describe('Brief toggles name the TL;DR (spec 021, T33)', () => {
+  const SECTIONED: BriefModel = {
+    markdown: '# TL;DR — harbor\n\n<!-- section: overview -->\n…',
+    generated: GENERATED,
+    stale: false,
+    sections: { overview: 'Sync is done.', risks: '- The loader rewrite touches every package.' },
+  };
+
+  /** The accessible name as the accessibility tree computes it for a button: `aria-label`, else its non-hidden text. */
+  function accessibleName(el: Element | null | undefined): string {
+    if (!el) return '';
+    const label = el.getAttribute('aria-label');
+    if (label !== null) return label.trim();
+    const text = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+      if (node instanceof Element && node.getAttribute('aria-hidden') === 'true') return '';
+      return [...node.childNodes].map(text).join('');
+    };
+    return text(el).replace(/\s+/g, ' ').trim();
+  }
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function render(brief: BriefModel, lang: 'en' | 'de' = 'en') {
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    await TestBed.inject(Router).navigateByUrl('/');
+    const fixture = TestBed.createComponent(Brief);
+    fixture.componentRef.setInput('brief', brief);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const toggles = () => [...host.querySelectorAll<HTMLButtonElement>('button[aria-expanded]')];
+    return { fixture, host, toggles };
+  }
+
+  it('clip view: "More…" is named "More… of the TL;DR", "Less" "Less of the TL;DR"', async () => {
+    const { fixture, toggles } = await render(BRIEF);
+    expect(toggles()).toHaveLength(1);
+    const [more] = toggles();
+    expect(more.textContent.trim()).toBe('More…');
+    expect(accessibleName(more)).toBe('More… of the TL;DR');
+    more.click();
+    await fixture.whenStable();
+    expect(more.textContent.trim()).toBe('Less');
+    expect(accessibleName(more)).toBe('Less of the TL;DR');
+  });
+
+  it('clip view in German: "Mehr… vom TL;DR", "Weniger vom TL;DR"', async () => {
+    const { fixture, toggles } = await render(BRIEF, 'de');
+    const [more] = toggles();
+    expect(accessibleName(more)).toBe('Mehr… vom TL;DR');
+    more.click();
+    await fixture.whenStable();
+    expect(accessibleName(more)).toBe('Weniger vom TL;DR');
+  });
+
+  it('sectioned view: the one toggle is named for the TL;DR, starting with its visible text, open or closed', async () => {
+    const { fixture, toggles } = await render(SECTIONED);
+    expect(toggles()).toHaveLength(1);
+    const [toggle] = toggles();
+    const visible = toggle.querySelector('[data-brief-toggle] > [aria-hidden="true"]')?.textContent.trim() ?? '';
+    expect(visible).toBe('Show whole TL;DR');
+    expect(accessibleName(toggle)).toBe('Show whole TL;DR, all sections of the brief');
+    expect(accessibleName(toggle).startsWith(visible)).toBe(true);
+    toggle.click();
+    await fixture.whenStable();
+    expect(toggles()[0]?.getAttribute('aria-expanded')).toBe('true');
+    expect(accessibleName(toggles()[0])).toBe('Show whole TL;DR, all sections of the brief');
+  });
+
+  it('sectioned view in German names the TL;DR too', async () => {
+    const { toggles } = await render(SECTIONED, 'de');
+    expect(accessibleName(toggles()[0])).toBe('Ganzes TL;DR zeigen, alle Abschnitte der Kurzfassung');
+  });
+});

@@ -37,11 +37,13 @@ import type { NextUpForm } from './next-up-list';
     .next-card ui-id-chip { flex: none; padding-inline: 6px; border-radius: 4px; background: var(--disp-t); font-size: 12px; font-weight: 500; }
     .next-card .link { display: block; min-inline-size: 0; }
     .title { display: block; overflow: hidden; overflow-wrap: anywhere; }
-    .more { justify-self: start; min-block-size: 24px; padding: 2px 0; border: 0; background: none; color: var(--ques-text); font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; cursor: pointer; }
+    .more { position: relative; justify-self: start; min-block-size: 24px; padding: 2px 0; border: 0; background: none; color: var(--ques-text); font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; cursor: pointer; }
     .next-card .more { margin-block-start: -8px; }
     .next-row .more { grid-column: 2; }
     @media (hover: hover) { .more:hover { text-decoration: underline; } }
-    @media (pointer: coarse) { .more { min-block-size: 44px; } }
+    /* Spec 021 (T31): a 44 px hit area (WCAG 2.5.8) around the 24 px toggle under a coarse pointer, as ui-button and
+       the worktree chip grow theirs: an invisible ::before, so the row keeps its height. */
+    @media (pointer: coarse) { .more::before { position: absolute; inset: min(0px, (100% - 44px) / 2); content: ''; } }
     .link { border-radius: var(--radius-field); color: var(--color-base-content); text-decoration: none; }
     .link:hover { text-decoration: underline; text-underline-offset: 3px; }
     .next-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-inline-size: 0; }
@@ -83,7 +85,15 @@ import type { NextUpForm } from './next-up-list';
           ></a>
         </h3>
         @if (railTitle.overflows()) {
-          <button type="button" class="more" data-next-more [attr.aria-expanded]="open()" [attr.aria-controls]="titleId()" (click)="toggle()">
+          <button
+            type="button"
+            class="more"
+            data-next-more
+            [attr.aria-expanded]="open()"
+            [attr.aria-controls]="titleId()"
+            [attr.aria-label]="(open() ? 'nextUp.lessName' : 'nextUp.moreName') | transloco: { entry: entryName() }"
+            (click)="toggle()"
+          >
             {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
           </button>
         }
@@ -115,7 +125,15 @@ import type { NextUpForm } from './next-up-list';
           ></span
         ></a>
         @if (rowTitle.overflows()) {
-          <button type="button" class="more" data-next-more [attr.aria-expanded]="open()" [attr.aria-controls]="titleId()" (click)="toggle()">
+          <button
+            type="button"
+            class="more"
+            data-next-more
+            [attr.aria-expanded]="open()"
+            [attr.aria-controls]="titleId()"
+            [attr.aria-label]="(open() ? 'nextUp.lessName' : 'nextUp.moreName') | transloco: { entry: entryName() }"
+            (click)="toggle()"
+          >
             {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
           </button>
         }
@@ -177,6 +195,11 @@ export class NextUpEntry {
   /** The title shows in full: the "more…" / "less" button outside the title link (ISC-111.1). */
   protected readonly open = signal(false);
   protected readonly titleId = computed(() => `next-title-${this.row().id}`);
+  /**
+   * Spec 021 (T31, ISC-248): the toggle's accessible name starts with its visible "More…" / "Less" and then names the
+   * entry ("More… 032 <title>", label in name, WCAG 2.5.3), so two entries' toggles never share a name.
+   */
+  protected readonly entryName = computed(() => `${this.row().id} ${this.row().title}`);
 
   protected toggle(): void {
     this.open.update((open) => !open);

@@ -504,3 +504,66 @@ describe('SpecTable fold (spec 021, T25)', () => {
     expect(text(host.querySelector('[data-count="archived"]'))).toBe('17 archivierte Specs');
   });
 });
+
+describe('SpecTable names (spec 021, T32, ISC-248)', () => {
+  const TYPED = {
+    specs: [wire('002', { goal: 'Serves the dashboard.' }), wire('003', { type: 'bug' }), wire('004')],
+    archive: [],
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderTyped() {
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(TYPED));
+    fixture.componentRef.setInput('archive', readArchiveRows(TYPED));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    return { fixture, host: fixture.nativeElement as HTMLElement };
+  }
+  const allChip = (host: HTMLElement, group: string) => host.querySelector<HTMLButtonElement>(`[data-filter="${group}"] button`);
+
+  it('names the two "all" chips by their group, so no two chips share a name', async () => {
+    const { host } = await renderTyped();
+    expect(text(allChip(host, 'phase'))).toBe('All 3');
+    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('All 3 stages');
+    expect(text(allChip(host, 'type'))).toBe('All 3');
+    expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('All 3 types');
+    const named = [...host.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map((b) => b.getAttribute('aria-label') ?? text(b));
+    expect(new Set(named).size).toBe(named.length);
+  });
+
+  it('names the chips in German too', async () => {
+    const { fixture, host } = await renderTyped();
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('Alle 3 Stages');
+    expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('Alle 3 Typen');
+  });
+
+  it('names a row\'s "More…" by its spec once the description overflows, visible text first (label in name)', async () => {
+    const { fixture, host } = await renderTyped();
+    expect(host.querySelector('[data-more]')).toBeNull();
+    (fixture.componentInstance as unknown as { setOverflow(id: string, overflows: boolean): void }).setOverflow('002', true);
+    await fixture.whenStable();
+    const more = host.querySelector<HTMLButtonElement>('[data-more="002"]');
+    expect(text(more)).toBe('More…');
+    expect(more?.getAttribute('aria-label')).toBe('More… 002 Spec 002');
+    more?.click();
+    await fixture.whenStable();
+    expect(text(more)).toBe('Less');
+    expect(more?.getAttribute('aria-label')).toBe('Less 002 Spec 002');
+  });
+});
