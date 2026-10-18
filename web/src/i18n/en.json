@@ -2415,5 +2415,51 @@
     "partial": "{{held}} of {{open}} open tasks",
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
+  },
+  "guidance": {
+    "reason": {
+      "stage": {
+        "plan": {
+          "0": "Write the plan next: the spec needs one before it can be broken into tasks."
+        },
+        "tasks": {
+          "0": "Break the spec into tasks: its claims need a task list before building."
+        },
+        "review": {
+          "0": "Read the spec and confirm it: your review is {{state}}, and building needs it."
+        },
+        "build": {
+          "0": "Start the next implementation round: claims are ready to build."
+        },
+        "code-review": {
+          "0": "Run the code review: every claim is closed, and the code review is {{state}}."
+        },
+        "close": {
+          "0": "Close the spec: every claim is closed and the code review is done.",
+          "1": "Close the spec: every claim is closed and this workflow has no code review."
+        }
+      },
+      "waiting": {
+        "manual": "Check {{ref}} by hand and confirm it: only you can close it.",
+        "operator": "Take care of {{ref}} yourself: this step is yours, not an agent’s.",
+        "question": "Answer the question on {{ref}}: the current round goes on only after that."
+      }
+    },
+    "value": {
+      "state": {
+        "missing": "still missing",
+        "stale": "out of date"
+      }
+    },
+    "waits": {
+      "label": "Waits on you",
+      "empty": "Nothing is waiting on you.",
+      "more": "+{{n}} more",
+      "since": "waiting {{time}}"
+    },
+    "next": {
+      "label": "Next"
+    },
+    "marker": "Waits on you"
   }
 }

@@ -2415,5 +2415,51 @@
     "partial": "{{held}} von {{open}} offenen Tasks",
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
+  },
+  "guidance": {
+    "reason": {
+      "stage": {
+        "plan": {
+          "0": "Schreiben Sie als Nächstes den Plan: Die Spec braucht ihn vor den Tasks."
+        },
+        "tasks": {
+          "0": "Zerlegen Sie die Spec in Tasks: Ihre Claims brauchen vor der Umsetzung eine Taskliste."
+        },
+        "review": {
+          "0": "Lesen und bestätigen Sie die Spec: Ihr Review ist {{state}}, die Umsetzung braucht es."
+        },
+        "build": {
+          "0": "Starten Sie die nächste Umsetzungsrunde: Claims sind bereit zum Bauen."
+        },
+        "code-review": {
+          "0": "Starten Sie das Code-Review: Jeder Claim ist geschlossen, das Code-Review ist {{state}}."
+        },
+        "close": {
+          "0": "Schließen Sie die Spec ab: Jeder Claim ist geschlossen und das Code-Review erledigt.",
+          "1": "Schließen Sie die Spec ab: Jeder Claim ist geschlossen, der Workflow kennt kein Code-Review."
+        }
+      },
+      "waiting": {
+        "manual": "Prüfen Sie {{ref}} von Hand und bestätigen Sie ihn: Nur Sie können ihn schließen.",
+        "operator": "Erledigen Sie {{ref}} selbst: Dieser Schritt liegt bei Ihnen, nicht bei einem Agenten.",
+        "question": "Beantworten Sie die Frage zu {{ref}}: Die aktuelle Runde geht erst danach weiter."
+      }
+    },
+    "value": {
+      "state": {
+        "missing": "noch offen",
+        "stale": "veraltet"
+      }
+    },
+    "waits": {
+      "label": "Liegt bei Ihnen",
+      "empty": "Nichts liegt bei Ihnen.",
+      "more": "+{{n}} weitere",
+      "since": "seit {{time}}"
+    },
+    "next": {
+      "label": "Als Nächstes"
+    },
+    "marker": "Liegt bei Ihnen"
   }
 }

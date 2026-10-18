@@ -20,7 +20,8 @@ import { parseClaims } from './claims.ts';
 import type { DashboardInput, DashboardModel, DashboardSpecRow } from './dashboard.ts';
 import { parseEvents } from './events.ts';
 import type { Guidance, GuidanceEntry, GuidanceItem, GuidanceReason, ItemStateInfo, SpecFiles, WaitingItem } from './files.ts';
-import { matchReason, PRINCIPAL_STAGES, SPEC_RULES } from './stage.ts';
+import { WAITING_TEMPLATES } from './guidance-reasons.ts';
+import { matchReason, PRINCIPAL_STAGES } from './stage.ts';
 import type { Stage } from './stage.ts';
 import { parseTaskLines } from './tasks.ts';
 
@@ -94,43 +95,13 @@ export function waitingOnYouOf(texts: SpecFiles['texts']): WaitingItem[] {
   ];
 }
 
-// ── the reason keys (T8) ──────────────────────────────────────────────────────────────────────────────────────────
+// ── the reasons (T8; the key list lives in guidance-reasons.ts) ──────────────────────────────────────────────────────
 
-/** One reason a guidance entry can carry: its key, the English template and the template's placeholders. */
-export interface GuidanceReasonTemplate {
-  readonly key: string;
-  readonly template: string;
-  readonly placeholders: readonly string[];
-}
-
-/** The fixed English templates of the three waiting kinds. */
-const WAITING_TEMPLATES: Readonly<Record<WaitingItem['kind'], string>> = {
-  manual: '{ref} needs your confirmation',
-  operator: '{ref} is your step',
-  question: 'the newest round asks about {ref}',
-};
-
-const placeholdersOf = (template: string): string[] => [...new Set([...template.matchAll(/\{([a-zA-Z]+)\}/g)].map((m) => m[1] as string))];
+export { GUIDANCE_REASON_KEYS, GUIDANCE_REASONS, WAITING_TEMPLATES } from './guidance-reasons.ts';
+export type { GuidanceReasonTemplate } from './guidance-reasons.ts';
 
 const fill = (template: string, values: Readonly<Record<string, string>>): string =>
   template.replace(/\{([a-zA-Z]+)\}/g, (placeholder, name: string) => values[name] ?? placeholder);
-
-/**
- * Every reason key, generated: one `stage.<stage>.<i>` per template of each open spec row of the stage table, then the
- * three `waiting.*` keys. Never hand-maintained; a new stage template is a new key here.
- */
-export const GUIDANCE_REASONS: readonly GuidanceReasonTemplate[] = [
-  ...SPEC_RULES.filter((rule) => rule.state === 'open').flatMap((rule) =>
-    rule.reasons.map((template, i) => ({ key: `stage.${rule.stage}.${i}`, template, placeholders: placeholdersOf(template) })),
-  ),
-  ...(Object.entries(WAITING_TEMPLATES) as Array<[WaitingItem['kind'], string]>).map(([kind, template]) => ({
-    key: `waiting.${kind}`,
-    template,
-    placeholders: placeholdersOf(template),
-  })),
-];
-
-export const GUIDANCE_REASON_KEYS: readonly string[] = GUIDANCE_REASONS.map((r) => r.key);
 
 /** A spec entry's reason: the stage template its phrase fills, else the fallback key `phrase` with no values. */
 function specReason(stage: string, phrase: string): GuidanceReason {

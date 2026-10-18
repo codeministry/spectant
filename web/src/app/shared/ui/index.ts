@@ -26,6 +26,7 @@ export {
   stateKey,
 } from './glyph/states';
 export { type FilterOption, UiFilterChips } from './filter-chips/filter-chips';
+export { GUIDANCE_REASON_PREFIX, GuidanceReasonPipe } from './guidance/guidance-reason.pipe';
 export { UiIdChip } from './id-chip/id-chip';
 export { UiIdeaChip } from './idea-chip/idea-chip';
 export { elapsedText } from './item-state/duration';
