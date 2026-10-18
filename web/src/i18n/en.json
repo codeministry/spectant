@@ -2659,7 +2659,10 @@
     "nameBare": "Waits on spec {{id}}",
     "unknown": "Waits on spec {{id}}, no such spec",
     "more": "Also waits on {{ids}}",
-    "partial": "{{held}} of {{open}} open tasks waiting",
+    "partial": {
+      "one": "{{held}} waiting · {{ready}} open",
+      "other": "{{held}} waiting · {{ready}} open"
+    },
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },

@@ -5,7 +5,9 @@ import { provideRouter, Router, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
+import de from '../../../i18n/de.json';
 import en from '../../../i18n/en.json';
+import type { SpecWait, TasksTab } from '../../../../../core/src/files';
 import specGolden from '../../../../../core/fixtures/harbor.spec.golden.json';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
@@ -474,7 +476,7 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
   const waits = (root: HTMLElement): HTMLElement | null => chip(root, 'waits');
 
   it('shows "waits on 006" after the priority with the scope as separate meta, the stage kept (partial)', async () => {
-    const partial = { spec: '002', blockers: ['006'], heldTasks: 4, openTasks: 7, full: false };
+    const partial = { spec: '002', blockers: ['006'], heldTasks: 4, readyTasks: 3, openTasks: 7, full: false };
     setUp(unserved, () => with002({ stage: 'build', waits: partial }), DASHBOARD);
     const root = await open('/w/harbor/s/002/status');
     expect(chipNames(root).slice(0, 4)).toEqual(['type', 'stage', 'priority', 'waits']);
@@ -483,11 +485,11 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
     expect(text(link)).toBe('waits on 006');
     expect(link?.getAttribute('href')).toBe('/w/harbor/s/006');
     expect(link?.getAttribute('aria-label')).toBe('Waits on spec 006, Search index');
-    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 of 7 open tasks waiting');
+    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 waiting · 3 open');
   });
 
   it('stands on blocked with the chip and no meta (full)', async () => {
-    const full = { spec: '002', blockers: ['006'], heldTasks: 7, openTasks: 7, full: true };
+    const full = { spec: '002', blockers: ['006'], heldTasks: 7, readyTasks: 0, openTasks: 7, full: true };
     setUp(unserved, () => with002({ stage: 'blocked', waits: full }), DASHBOARD);
     const root = await open('/w/harbor/s/002/status');
     expect(text(chip(root, 'stage'))).toBe(en.stages.blocked);
@@ -644,34 +646,44 @@ describe('SpecHead density (T37, T38, ISC-250)', () => {
   }
 });
 
-// Spec 021, T64 · ISC-252.1: the waits scope in the spec head names what it counts, held of open tasks, so no number in
-// the head reads as a count of open tasks when it means held ones; in en and de. No golden carries a partial hold, so
-// the numbers are pinned against the payload's `heldTasks` / `openTasks` (core's count over the same task rows).
-describe('SpecHead waits scope (T64, ISC-252.1)', () => {
+// Spec 021, T64b · ISC-252.1: the waits scope in the spec head counts in the Tasks tab's units, the `held` and `open`
+// status chips, so no number in the head reads as open tasks when it means held ones; in en and de. One spec model: 002
+// has seven open tasks, four held by `(after: 006)` and three open. The tab's chips read `counts.byStatus`; core derives
+// `SpecWait.heldTasks` / `readyTasks` from that same tab model (core/tests/spec-waits-tab.test.ts), and `openTasks` (7)
+// is neither chip, so a head that showed it would fail here.
+describe('SpecHead waits scope (T64b, ISC-252.1)', () => {
   type Body = { head: Record<string, unknown> };
   const GOLDEN = specGolden as unknown as Record<string, Body>;
-  const partial = { spec: '002', blockers: ['006'], heldTasks: 4, openTasks: 7, full: false };
+  const counts: Pick<TasksTab['counts'], 'byStatus'> = {
+    byStatus: [
+      { name: 'open', count: 3 },
+      { name: 'held', count: 4 },
+      { name: 'done', count: 0 },
+    ],
+  };
+  const chipCount = (name: string): number => counts.byStatus.find((c) => c.name === name)?.count ?? 0;
+  const partial: SpecWait = { spec: '002', blockers: ['006'], heldTasks: chipCount('held'), readyTasks: chipCount('open'), openTasks: 7, full: false };
   const with002 = () => {
     const golden = GOLDEN['specs/002-web-console'];
     return ok({ ...golden, head: { ...golden.head, stage: 'build', waits: partial } });
   };
   const DASHBOARD = { ...HARBOR, specs: [...HARBOR.specs, { id: '006', title: 'Search index', type: 'feature', stage: 'review' }] };
   const CASES = [
-    ['en', '· 4 of 7 open tasks waiting', /^· \d+ of \d+ open tasks waiting$/u],
-    ['de', '· 4 von 7 offenen Tasks warten', /^· \d+ von \d+ offenen Tasks warten$/u],
+    ['en', '· 4 waiting · 3 open', en.tasks.status.open],
+    ['de', '· 4 warten · 3 offen', de.tasks.status.open],
   ] as const;
 
-  for (const [lang, expected, shape] of CASES) {
-    it(`spec-head waits count: names 4 held of 7 open tasks (${lang})`, async () => {
+  for (const [lang, expected, openWord] of CASES) {
+    it(`spec-head waits count: 4 held and 3 open, the tasks tab's chips (${lang})`, async () => {
       setUp(unserved, with002, DASHBOARD);
       TestBed.inject(TranslocoService).setActiveLang(lang);
       const root = await open('/w/harbor/s/002/status');
       const meta = text(chip(root, 'waits')?.querySelector('[data-waits-meta]') ?? null);
       expect(meta).toBe(expected);
-      // What it counts is named: held tasks out of open tasks, never a bare "n of m open tasks".
-      expect(meta).toMatch(shape);
-      // The numbers are held first, then open, as core counts them.
-      expect(meta.match(/\d+/gu)).toEqual([String(partial.heldTasks), String(partial.openTasks)]);
+      // The open count carries the open chip's own word, never "open tasks" around a held count.
+      expect(meta.endsWith(` ${openWord}`)).toBe(true);
+      // The numbers are the tab's `held` chip, then its `open` chip, of the same tasks.
+      expect(meta.match(/\d+/gu)).toEqual([String(chipCount('held')), String(chipCount('open'))]);
     });
   }
 });

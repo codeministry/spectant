@@ -14,6 +14,7 @@ const wait = (blockers: string[], extra: Partial<SpecWait> = {}): SpecWait => ({
   spec: '009',
   blockers,
   heldTasks: 4,
+  readyTasks: 1,
   openTasks: 5,
   full: false,
   ...extra,
@@ -54,7 +55,7 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
     expect(text(chip)).toBe('waits on 002');
     expect(chip.getAttribute('href')).toBe('/w/harbor/s/002');
     expect(chip.querySelector('ui-icon[name="clock"]')).not.toBeNull();
-    expect(chip.getAttribute('aria-label')).toBe('Waits on spec 002, Web console, 4 of 5 open tasks waiting');
+    expect(chip.getAttribute('aria-label')).toBe('Waits on spec 002, Web console, 4 waiting · 1 open');
     expect(chip.getAttribute('title')).toBe(chip.getAttribute('aria-label'));
     expect(root.querySelector('[data-waits-more]')).toBeNull();
   });
@@ -89,14 +90,14 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
   it('puts the partial scope as separate meta behind the chip, never inside the chip text', async () => {
     const root = await render(wait(['006']), { meta: true });
     const meta = root.querySelector('[data-waits-meta]');
-    expect(text(meta)).toBe('· 4 of 5 open tasks waiting');
+    expect(text(meta)).toBe('· 4 waiting · 1 open');
     expect(chips(root)[0].contains(meta)).toBe(false);
     expect(text(chips(root)[0])).toBe('waits on 006');
     expect(chips(root)[0].getAttribute('aria-label')).toBe('Waits on spec 006');
   });
 
   it('shows no scope at all for a full hold', async () => {
-    const root = await render(wait(['002'], { full: true, heldTasks: 5 }), { meta: true });
+    const root = await render(wait(['002'], { full: true, heldTasks: 5, readyTasks: 0 }), { meta: true });
     expect(root.querySelector('[data-waits-meta]')).toBeNull();
     expect(root.hasAttribute('data-full')).toBe(true);
     expect(chips(root)[0].getAttribute('aria-label')).toBe('Waits on spec 002');
@@ -106,7 +107,7 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
     const root = await render(wait(['002']), { meta: true });
     expect(text(chips(root)[0])).toBe(`${de.waits.on} 002`);
-    expect(text(root.querySelector('[data-waits-meta]'))).toBe('· 4 von 5 offenen Tasks warten');
+    expect(text(root.querySelector('[data-waits-meta]'))).toBe('· 4 warten · 1 offen');
     expect(en.waits.on).toBe('waits on');
   });
 });

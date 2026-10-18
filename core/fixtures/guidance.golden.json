@@ -602,6 +602,7 @@
           "007"
         ],
         "heldTasks": 0,
+        "readyTasks": 0,
         "openTasks": 0,
         "full": true
       },

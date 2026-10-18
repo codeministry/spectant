@@ -2374,8 +2374,10 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
   };
   const goldenModel = (): Dashboard => golden('harbor') as unknown as Dashboard;
   const { full, partial, unknown } = STUB_EDGES;
-  const FULL: SpecWait = { spec: full.spec, blockers: [full.on], heldTasks: 0, openTasks: 0, full: true };
-  const PARTIAL: SpecWait = { spec: partial.spec, blockers: [partial.on], heldTasks: partial.tasks.length, openTasks: 5, full: false };
+  const FULL: SpecWait = { spec: full.spec, blockers: [full.on], heldTasks: 0, readyTasks: 0, openTasks: 0, full: true };
+  // In the Tasks tab's units (spec 021, ISC-252.1): of the four edged tasks one keeps its round's word (a question,
+  // concerns or a failure), so three read `held`; one row reads `open`; five open tasks in all.
+  const PARTIAL: SpecWait = { spec: partial.spec, blockers: [partial.on], heldTasks: 3, readyTasks: 1, openTasks: 5, full: false };
   const UNKNOWN_EDGE: SpecWarning = {
     kind: 'spec-edge',
     text: `The spec edge (after: ${unknown.on}) on ${unknown.task} names no spec, active or archived; it stays open.`,
@@ -2425,6 +2427,9 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
     expect(row.stage).toBe(rowOf(goldenModel(), partial.spec).stage);
     expect((await holders(headers)).filter((h) => h.slug === partial.folder).map((h) => h.waits)).toContainEqual(PARTIAL);
     expect((await page(partial.spec, headers)).head.waits).toEqual(PARTIAL);
+    // The head counts are the tab's `held` and `open` chips of the same spec (ISC-252.1).
+    const byStatus = (await tasks(partial.spec, headers)).counts.byStatus;
+    expect([PARTIAL.heldTasks, PARTIAL.readyTasks]).toEqual(['held', 'open'].map((n) => byStatus.find((c) => c.name === n)?.count ?? 0));
     const held = (await tasks(partial.spec, headers)).tasks.filter((t) => t.afterSpecs?.includes(partial.on) === true).map((t) => t.id);
     expect(held).toEqual([...partial.tasks]);
     // The tasks answer carries the same hold (core tasks.ts, ISC-162.2): no open one of them is left open or

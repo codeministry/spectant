@@ -231,7 +231,7 @@ export class UiItemState {
     const blockers = this.waitSpecs();
     if (!this.ws() || blockers.length === 0) return null;
     const { id, spec } = this.info();
-    return { spec: spec ?? id, blockers, heldTasks: 0, openTasks: 0, full: true };
+    return { spec: spec ?? id, blockers, heldTasks: 0, readyTasks: 0, openTasks: 0, full: true };
   });
 
   protected readonly waitsText = computed(() => {

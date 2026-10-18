@@ -177,7 +177,7 @@ header) every answer stays the golden. Lantern and every spec below without an e
 | Harbor spec | Edge | `waiting` (002 and 006 on unmerged branches) | `met` (both merged) |
 |-------------|------|----------------------------------------------|---------------------|
 | 009 | ISC-131 `(after: ISC-130, 002)` | full hold: `waits` `{blockers: [002], full: true}` on row, board holder and head; stage `blocked`, reason `waits on 002`; ISC-131 `blocked`, `waitsOn: ['002']` | `waits: null`; back on `build`, ISC-131 takeable, as the golden |
-| 002 | T27, T28, T29, T32 `(after: …, 006)` | partial hold: `{blockers: [006], heldTasks: 4, openTasks: 5, full: false}`, stage `build` kept; the web lane waits whole, the operator's T31 does not | `waits: null` |
+| 002 | T27, T28, T29, T32 `(after: …, 006)` | partial hold: `{blockers: [006], heldTasks: 3, readyTasks: 1, openTasks: 5, full: false}` (Tasks tab units: one edged task keeps its round's word), stage `build` kept; the web lane waits whole, the operator's T31 does not | `waits: null` |
 | 002 | ticked T1 `(after: 042)` | one `spec-edge` warning on 002's row (no spec 042), no hold | the same warning |
 | 002 / 004 | none | the `spec-overlap` of the golden stays: `web/src/app/retention/`, `waiting: '002'`, `edge: '(after: 004)'` | the same |
 

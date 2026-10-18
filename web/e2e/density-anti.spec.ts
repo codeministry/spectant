@@ -239,12 +239,12 @@ for (const stub of STUBS) {
       expect(lanes.size).toBe(1 + tasks.counts.byLane.length);
       for (const entry of tasks.counts.byLane) expect(lanes.get(entry.name)?.count, `lane chip ${entry.name}`).toBe(entry.count);
 
-      // The spec head on the same page: a partial wait names held of open as served; none or a whole wait, no text.
+      // The spec head on the same page: a partial wait names waiting and open (the tab chips) as served; none or a whole wait, no text.
       const spec = await getJson<SpecPageModel>(page, specRoutes.spec(WS, SPEC), stub.headers);
       const meta = page.locator('app-spec-head [data-waits-meta]');
       const wait = spec.head.waits ?? null;
       if (wait === null || wait.full) await expect(meta).toHaveCount(0);
-      else expect(await numbersOf(meta)).toEqual([wait.heldTasks, wait.openTasks]);
+      else expect(await numbersOf(meta)).toEqual([wait.heldTasks, wait.readyTasks]);
     });
 
     test(`density anti: loading, folding and setting the density call loopback only (${stub.label})`, async ({ page }) => {
@@ -299,11 +299,11 @@ for (const stub of STUBS) {
   });
 }
 
-/** Under the edges stub harbor 002 waits partly on 006: the head names held of open as the spec route serves them. */
+/** Under the edges stub harbor 002 waits partly on 006: the head names waiting and open tasks as the spec route serves them (ISC-252.1: the Tasks tab chip units). */
 test.describe('density anti on the edges stub', () => {
   test.use(atWidth(1440));
 
-  test('density anti: the spec head waits text names held of open tasks as served (edges)', async ({ page }) => {
+  test('density anti: the spec head waits text names waiting and open tasks as served (edges)', async ({ page }) => {
     const headers = { [EDGES_HEADER]: 'waiting' };
     await page.setExtraHTTPHeaders(headers);
     const spec = await getJson<SpecPageModel>(page, specRoutes.spec(WS, SPEC), headers);
@@ -313,6 +313,6 @@ test.describe('density anti on the edges stub', () => {
     await page.goto(`/w/${WS}/s/${SPEC}`);
     const meta = page.locator('app-spec-head [data-waits-meta]');
     await expect(meta).toBeVisible();
-    expect(await numbersOf(meta)).toEqual([wait.heldTasks, wait.openTasks]);
+    expect(await numbersOf(meta)).toEqual([wait.heldTasks, wait.readyTasks]);
   });
 });

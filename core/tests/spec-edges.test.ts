@@ -233,16 +233,16 @@ describe('spec edges: resolve (ISC-162.1)', () => {
   test('wait: 003 is held in part, 004 in full, 002 waits on nothing', () => {
     const { waits } = resolveEdges(TREE, BASE);
     expect(waits.map((w) => w.spec)).toEqual(['002', '003', '004', '005', '006', '007']);
-    expect(waitOf(waits, '002')).toEqual({ spec: '002', blockers: [], heldTasks: 0, openTasks: 1, full: false });
+    expect(waitOf(waits, '002')).toEqual({ spec: '002', blockers: [], heldTasks: 0, readyTasks: 1, openTasks: 1, full: false });
     // T2 by its own edge, T4 by its claim ISC-6; T1 carries none, T3's edges on 001 are met.
-    expect(waitOf(waits, '003')).toEqual({ spec: '003', blockers: ['002'], heldTasks: 2, openTasks: 4, full: false });
-    expect(waitOf(waits, '004')).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
+    expect(waitOf(waits, '003')).toEqual({ spec: '003', blockers: ['002'], heldTasks: 2, readyTasks: 2, openTasks: 4, full: false });
+    expect(waitOf(waits, '004')).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, readyTasks: 0, openTasks: 2, full: true });
   });
 
   test('wait: once 002 is merged nothing holds 003 or 004', () => {
     const { waits } = resolveEdges(TREE, MERGED_002);
-    expect(waitOf(waits, '003')).toEqual({ spec: '003', blockers: [], heldTasks: 0, openTasks: 4, full: false });
-    expect(waitOf(waits, '004')).toEqual({ spec: '004', blockers: [], heldTasks: 0, openTasks: 2, full: false });
+    expect(waitOf(waits, '003')).toEqual({ spec: '003', blockers: [], heldTasks: 0, readyTasks: 4, openTasks: 4, full: false });
+    expect(waitOf(waits, '004')).toEqual({ spec: '004', blockers: [], heldTasks: 0, readyTasks: 2, openTasks: 2, full: false });
   });
 });
 
@@ -281,14 +281,14 @@ describe('spec edges: diagnostics (ISC-162.4)', () => {
     const { edges, waits } = resolveEdges(TREE, met);
     expect(edgesFrom(edges, '005')).toEqual(['claim ISC-10 → 006 open']);
     expect(edgesFrom(edges, '006')).toEqual(['task T1 → 005 open']);
-    expect(waitOf(waits, '005')).toEqual({ spec: '005', blockers: ['006'], heldTasks: 1, openTasks: 1, full: true });
-    expect(waitOf(waits, '006')).toEqual({ spec: '006', blockers: ['005'], heldTasks: 1, openTasks: 1, full: true });
+    expect(waitOf(waits, '005')).toEqual({ spec: '005', blockers: ['006'], heldTasks: 1, readyTasks: 0, openTasks: 1, full: true });
+    expect(waitOf(waits, '006')).toEqual({ spec: '006', blockers: ['005'], heldTasks: 1, readyTasks: 0, openTasks: 1, full: true });
   });
 
   test('parsing runs on: the unknown edge stays open and the edges beside it still resolve', () => {
     const { edges, waits } = resolveEdges(TREE, BASE);
     expect(edgesFrom(edges, '007')).toEqual(['task T2 → 042 open']);
-    expect(waitOf(waits, '007')).toEqual({ spec: '007', blockers: ['042'], unknownBlockers: ['042'], heldTasks: 1, openTasks: 2, full: false });
+    expect(waitOf(waits, '007')).toEqual({ spec: '007', blockers: ['042'], unknownBlockers: ['042'], heldTasks: 1, readyTasks: 1, openTasks: 2, full: false });
     expect(edgesFrom(edges, '003')).toContain('task T3 → 001 met');
   });
 
@@ -627,15 +627,15 @@ describe('spec edges: waits (ISC-163)', () => {
   };
 
   test('waits: the dashboard row carries the wait while an edge is open, null once it is met or never was', () => {
-    expect(rowWaits(BASE, '004')).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
-    expect(rowWaits(BASE, '003')).toEqual({ spec: '003', blockers: ['002'], heldTasks: 2, openTasks: 4, full: false });
+    expect(rowWaits(BASE, '004')).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, readyTasks: 0, openTasks: 2, full: true });
+    expect(rowWaits(BASE, '003')).toEqual({ spec: '003', blockers: ['002'], heldTasks: 2, readyTasks: 2, openTasks: 4, full: false });
     expect(rowWaits(BASE, '002')).toBeNull();
     expect(rowWaits(MERGED_002, '004')).toBeNull();
     expect(rowWaits(MERGED_002, '003')).toBeNull();
   });
 
   test('waits: a number no spec carries is a blocker without a target, marked unknown so it renders without a link', () => {
-    expect(rowWaits(BASE, '007')).toEqual({ spec: '007', blockers: ['042'], unknownBlockers: ['042'], heldTasks: 1, openTasks: 2, full: false });
+    expect(rowWaits(BASE, '007')).toEqual({ spec: '007', blockers: ['042'], unknownBlockers: ['042'], heldTasks: 1, readyTasks: 1, openTasks: 2, full: false });
     expect(rowWaits(BASE, '004')?.unknownBlockers).toBeUndefined();
   });
 
@@ -648,7 +648,7 @@ describe('spec edges: waits (ISC-163)', () => {
       if (!holder) throw new Error('004 holds no claim of F1');
       return holder;
     };
-    expect(holderAt(BASE).waits).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
+    expect(holderAt(BASE).waits).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, readyTasks: 0, openTasks: 2, full: true });
     expect(holderAt(MERGED_002).waits).toBeNull();
   });
 
@@ -656,7 +656,7 @@ describe('spec edges: waits (ISC-163)', () => {
     const files = reviewed('004');
     const others = [...reviewedTree().specs.filter((f) => specIdOf(f.folder) !== '004'), ...TREE.archived];
     const headAt = (rows: readonly MergeState[]) => buildSpecPage({ files, others, mergeState: rows }).head;
-    expect(headAt(BASE).waits).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
+    expect(headAt(BASE).waits).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, readyTasks: 0, openTasks: 2, full: true });
     expect(headAt(BASE).stage).toBe('blocked');
     expect(headAt(MERGED_002).waits).toBeNull();
   });

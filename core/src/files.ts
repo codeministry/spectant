@@ -562,9 +562,14 @@ export interface SpecWait {
    * link to (ISC-163). Ascending; absent when every blocker names a known spec.
    */
   readonly unknownBlockers?: readonly string[];
-  /** Open tasks held by an open spec edge, on the task or on its claim. */
+  /**
+   * The Tasks tab's `held` status count (ISC-252.1): open tasks an open spec edge holds, on the task or on its claim,
+   * or a round reported waiting; a task whose round reported a question, concerns or a failure keeps that word.
+   */
   readonly heldTasks: number;
-  /** Open tasks of the spec in all. */
+  /** The Tasks tab's `open` status count (ISC-252.1): open tasks neither held nor in a round's hands. */
+  readonly readyTasks: number;
+  /** Open tasks of the spec in all, whatever their round status. */
   readonly openTasks: number;
   /** Every open piece of work hangs on an open spec edge: the stage reads `blocked` (ISC-162.3). */
   readonly full: boolean;

@@ -404,7 +404,7 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
 // spec's "waits on NNN" chip stands behind the title as its own link to the blocker, never inside the row link and
 // without the partial meta; the hooks of the row link stay (data-spec-row, data-ref, roving tab stop).
 describe('SpecTable waits chip (T24, ISC-163)', () => {
-  const WAITS = { spec: '003', blockers: ['002'], heldTasks: 2, openTasks: 3, full: false };
+  const WAITS = { spec: '003', blockers: ['002'], heldTasks: 2, readyTasks: 1, openTasks: 3, full: false };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -445,7 +445,7 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
     expect(link?.parentElement).toBe(chip?.closest('ui-waits-chip')?.parentElement);
     expect(text(chip)).toBe('waits on 002');
     expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
-    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 of 3 open tasks waiting');
+    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 waiting · 1 open');
     expect(host.querySelector('[data-waits-meta]')).toBeNull();
     // Keyboard order: the row link, then its chip.
     const order = [...host.querySelectorAll('a')].filter((a) => a === link || a === chip);

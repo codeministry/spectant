@@ -2659,7 +2659,10 @@
     "nameBare": "Wartet auf Spec {{id}}",
     "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
     "more": "Wartet auch auf {{ids}}",
-    "partial": "{{held}} von {{open}} offenen Tasks warten",
+    "partial": {
+      "one": "{{held}} wartet · {{ready}} offen",
+      "other": "{{held}} warten · {{ready}} offen"
+    },
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },
