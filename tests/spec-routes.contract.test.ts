@@ -737,7 +737,7 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
     expect([
       ...shapeProblems("spec", value, keysOf<SpecPageModel>({
         head: "req", keyNumbers: "req", ideaQuote: "req", ideaSource: "req", next: "req", lanes: "req",
-        gates: "req", warnings: "req", waitingOnYou: "req", areas: "req", tldr: "req",
+        gates: "req", warnings: "req", waitingOnYou: "req", areas: "req", tldr: "req", guidance: "opt",
       })),
       ...shapeProblems("spec.head", value.head, keysOf<SpecHead>({
         id: "req", slug: "req", title: "req", type: "req", stage: "req",
@@ -852,7 +852,7 @@ describe("the dashboard golden (core/fixtures/<tree>.golden.json) is a Dashboard
     const value = JSON.parse(readFileSync(join(FIXTURES, "harbor.golden.json"), "utf8")) as DashboardModel;
     const model = keysOf<DashboardModel>({
       kpis: "req", stageCounts: "req", specs: "req", nextUp: "req", warningGroups: "req", archive: "req", brief: "req",
-      services: "req", diagnostics: "req", ideas: "req",
+      services: "req", diagnostics: "req", ideas: "req", guidance: "opt",
     });
     // spec 040: `state`, the story's item state (ISC-224), set by the server's loader at its clock.
     const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req", state: "opt" });

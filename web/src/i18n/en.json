@@ -929,7 +929,7 @@
       "agentsWorking": "{{count}} agents working",
       "noAgent": "No agent working",
       "gates": "Gates",
-      "waiting": "Waiting on you",
+      "waiting": "Waits on you",
       "waitingMeta": "decisions · checks · gates",
       "waitingNone": "nothing"
     },
@@ -947,7 +947,8 @@
       "copied": "Copied",
       "manual": "Select and press ⌘C",
       "done": "Nothing left to run: the spec is done.",
-      "reasons": "Why this step"
+      "reasons": "Why this step",
+      "waitsLink": "Waits on you: {{count}}"
     },
     "waiting": {
       "heading": "Waiting on you",
@@ -1005,7 +1006,8 @@
     },
     "warnings": {
       "heading": "Warnings",
-      "none": "No warnings."
+      "none": "No warnings.",
+      "overlaps": "Overlaps"
     },
     "gates": {
       "heading": "Gates",
@@ -1418,6 +1420,7 @@
       "sheetBar": "This board · {{count}} cards",
       "needsYou": "Needs you",
       "needsNone": "Nothing waits on you.",
+      "waitsCount": "Waits on you {{count}}",
       "bandMeter": "{{done}} of {{count}} done",
       "search": {
         "label": "Search cards",
@@ -1440,6 +1443,7 @@
         "gateReviewed": "reviewed mark",
         "gateClosed": "every claim closed",
         "waitingStage": "a waiting stage",
+        "openStage": "a stage that waits on you",
         "fold": "Fold {{stage}}",
         "unfold": "Open {{stage}}",
         "folded": "folded"
@@ -2415,5 +2419,54 @@
     "partial": "{{held}} of {{open}} open tasks",
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
+  },
+  "guidance": {
+    "reason": {
+      "stage": {
+        "plan": {
+          "0": "Write the plan next: the spec needs one before it can be broken into tasks."
+        },
+        "tasks": {
+          "0": "Break the spec into tasks: its claims need a task list before building."
+        },
+        "review": {
+          "0": "Read the spec and confirm it: your review is {{state}}, and building needs it."
+        },
+        "build": {
+          "0": "Start the next implementation round: claims are ready to build."
+        },
+        "code-review": {
+          "0": "Run the code review: every claim is closed, and the code review is {{state}}."
+        },
+        "close": {
+          "0": "Close the spec: every claim is closed and the code review is done.",
+          "1": "Close the spec: every claim is closed and this workflow has no code review."
+        }
+      },
+      "waiting": {
+        "manual": "Check {{ref}} by hand and confirm it: only you can close it.",
+        "operator": "Take care of {{ref}} yourself: this step is yours, not an agent’s.",
+        "question": "Answer the question on {{ref}}: the current round goes on only after that."
+      }
+    },
+    "value": {
+      "state": {
+        "missing": "still missing",
+        "stale": "out of date"
+      }
+    },
+    "waits": {
+      "label": "Waits on you",
+      "empty": "Nothing is waiting on you.",
+      "more": "+{{n}} more",
+      "since": "waiting {{time}}",
+      "showAll": "Show all {{count}}",
+      "waiting": "+{{n}} waiting"
+    },
+    "next": {
+      "label": "Next",
+      "step": "Next step"
+    },
+    "marker": "Waits on you"
   }
 }

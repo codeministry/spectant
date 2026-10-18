@@ -37,6 +37,7 @@ import { isAbsolute, join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { itemStates, withItemStates } from "../../core/src/item-state.ts";
+import { guidanceOf, withGuidance } from "../../core/src/guidance.ts";
 import { taskRunsOf } from "../../core/src/live.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
@@ -810,7 +811,8 @@ export function workspaceItemStates(input: DashboardInput, model: DashboardModel
  * The dashboard model of the workspace at `root`. With a `probe`, its listeners become the model's services, labelled
  * from the constitution's `dev_services:`; with `null` the services are empty (the workspace list needs counts only).
  * `lifeosStateDir` as for `readWorkspaceInput`. Each spec row and story carries its item state at `clock` (spec 040,
- * ISC-224, core's `withItemStates`); the request's time and core's abort age by default.
+ * ISC-224, core's `withItemStates`); the request's time and core's abort age by default. The model carries the
+ * workspace guidance (spec 020, ISC-237, core's `guidanceOf`) from the same items.
  */
 export async function loadDashboard(root: string, probe: ServicesProbe | null, lifeosStateDir: string | null = null, clock: StateClock = { now: new Date() }): Promise<DashboardLoad> {
   const reading = await readWorkspaceInput(root, lifeosStateDir);
@@ -819,7 +821,8 @@ export async function loadDashboard(root: string, probe: ServicesProbe | null, l
   const labels = input.constitution === null ? new Map<number, string>() : devServiceLabels(input.constitution);
   const probed = probe === null ? [] : await probe(root, labels).catch(() => []);
   const model = buildDashboard({ ...input, services: probed.map((s) => toLocalService(s, labels)) });
-  return { readable: true, model: withItemStates(model, workspaceItemStates(input, model, clock)) };
+  const items = workspaceItemStates(input, model, clock);
+  return { readable: true, model: withGuidance(withItemStates(model, items), guidanceOf({ workspace: input, dashboard: model, items })) };
 }
 
 /**

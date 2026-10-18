@@ -75,3 +75,58 @@ describe('UiReason (ISC-122.3)', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 });
+
+// Spec 020 (T13, ISC-237.1): with a guidance reason the component reads the catalogue sentence in place of the phrase,
+// in every variant and in the active language; without one it keeps the phrase.
+describe('UiReason guidance (ISC-237.1)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+    });
+  });
+
+  const phrase = 'the reviewed mark is stale';
+  const guidance = { key: 'stage.review.0', values: { state: 'stale' }, phrase };
+
+  async function render(inputs: Record<string, unknown>) {
+    const fixture = TestBed.createComponent(UiReason);
+    for (const [key, value] of Object.entries(inputs)) fixture.componentRef.setInput(key, value);
+    await fixture.whenStable();
+    return { fixture, host: fixture.nativeElement as HTMLElement };
+  }
+
+  /** The sentence as the catalogue holds it, its state value read as the catalogue's word. */
+  const sentence = (lang: string): string => {
+    const t = TestBed.inject(TranslocoService);
+    const state: string = t.translate('guidance.value.state.stale', {}, lang);
+    return t.translate('guidance.reason.stage.review.0', { state }, lang);
+  };
+
+  it('shows the sentence, not the phrase, as the accessible copy of the clamped variant', async () => {
+    const { host } = await render({ phrase, guidance, compact: true });
+    const expected = sentence('en');
+    expect(expected).not.toBe(phrase);
+    expect(expected).not.toContain('stale');
+    expect(host.querySelector('.visually-hidden')?.textContent).toBe(expected);
+  });
+
+  it('shows the sentence in the block variant and follows the language', async () => {
+    const { fixture, host } = await render({ phrase, guidance, block: true });
+    expect(host.querySelector('.phrase')?.textContent).toBe(sentence('en'));
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(sentence('de')).not.toBe(sentence('en'));
+    expect(host.querySelector('.phrase')?.textContent).toBe(sentence('de'));
+  });
+
+  it('keeps the phrase without a guidance reason', async () => {
+    const { host } = await render({ phrase, guidance: null, block: true });
+    expect(host.querySelector('.phrase')?.textContent).toBe(phrase);
+  });
+});

@@ -82,6 +82,8 @@ const KIND_CHIPS = ['all', 'anti', 'antecedent'] as const;
 
 function rowsFor(g: Goldens): readonly Row[] {
   const { keyNumbers: k, areas, lanes } = g.spec;
+  // Spec 020 (ISC-239): the spec's waiting entries beside its own (`item: 'spec'`), what its Waits on you lists.
+  const others = (g.spec.guidance?.waits ?? []).filter((e) => e.spec === g.spec.head.id && e.item !== 'spec').length;
   const dash = 'app-spec-dashboard';
   const kpi = `${dash} [data-section="kpi"]`;
   const tile = (area: string, line: number) => `${dash} [data-area-tile="${area}"] .tile-line >> nth=${n(line)}`;
@@ -96,8 +98,12 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '', what: 'kpi gates ok/total', golden: 'spec.keyNumbers.gates.ok/total', selector: `${kpi} [data-kpi="gates"] .figure`, kind: 'text', want: pair(k.gates.ok, k.gates.total) },
     { tab: '', what: 'kpi waiting', golden: 'spec.keyNumbers.waiting', selector: `${kpi} [data-kpi="waiting"] .figure`, kind: 'text', want: n(k.waiting) },
     // Spec dashboard: lanes, and the Spec context (main column below 1120 px, the rail from 1120: one copy per width).
-    { tab: '', what: 'waiting header count', golden: 'spec.keyNumbers.waiting', selector: '[data-spec-context] [data-context-block="waiting"] [data-count-badge]', kind: 'text', want: n(k.waiting) },
-    { tab: '', what: 'waiting rows', golden: 'spec.waitingOnYou.length', selector: '[data-spec-context] [data-context-block="waiting"] [data-waiting-item]', kind: 'count', want: g.spec.waitingOnYou.length },
+    // Spec 020 (ISC-239): the spec's Waits on you is the guidance spot's `ui-waits-block`: the rail's from 1120 px, the
+    // next-step card's below; it lists the spec's waiting entries other than its own.
+    ...(others > 0
+      ? [{ tab: '', what: 'waits on you count', golden: 'spec.guidance.waits (other than its own)', selector: '[data-spec-context] ui-waits-block ui-section-header ui-chip, [data-guidance-spot] ui-waits-block ui-section-header ui-chip', kind: 'text' as const, want: n(others) }]
+      : []),
+    { tab: '', what: 'waits on you rows', golden: 'spec.guidance.waits (other than its own)', selector: '[data-spec-context] ui-waits-block :is([data-top], [data-row]), [data-guidance-spot] ui-waits-block :is([data-top], [data-row])', kind: 'count', want: others },
     { tab: '', what: 'lanes rows', golden: 'spec.lanes.length', selector: `${dash} [data-lane]`, kind: 'count', want: lanes.length },
     { tab: '', what: 'warnings header count', golden: 'spec.areas.status.warnings', selector: '[data-spec-context] [data-context-block="warnings"] [data-count-badge]', kind: 'text', want: n(areas.status.warnings) },
     { tab: '', what: 'warnings rows', golden: 'spec.warnings.length', selector: '[data-spec-context] [data-context-block="warnings"] [data-context-warning]', kind: 'count', want: g.spec.warnings.length },

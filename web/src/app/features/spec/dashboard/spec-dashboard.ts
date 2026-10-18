@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, type 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
+import type { GateState, SpecPageModel } from '../../../../../../core/src/files';
 import { type AreaId, areaById, areaPath, specLink } from '../../../layout/shell/areas';
 import { RailContent } from '../../../layout/shell/rail-content';
 import { ShellData } from '../../../layout/shell/shell-data.service';
@@ -15,6 +15,10 @@ import { UiTimeLabel } from '../../../shared/time';
 import { UiTerm } from '../../../shared/ui/term/term';
 import type { IconName } from '../../../shared/icons/icons';
 import { UiChip } from '../../../shared/ui/chip/chip';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
+import { UiWaitsBlock } from '../../../shared/ui/guidance/waits-block';
+import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
 import { UiKbd } from '../../../shared/ui/kbd/kbd';
@@ -27,6 +31,7 @@ import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
 import { Brief, type BriefModel } from '../../dashboard/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
+import { SpecRailGuide } from '../rail/spec-rail-guide';
 import { GATE_NAMES, GATE_TONE, quoteIdea, stageIndex, TRACK_STAGES } from './dashboard-model';
 
 /** The five area tiles in menu order, each with its provisional `g` key (the sequences themselves arrive with T102). */
@@ -106,6 +111,13 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
  * is `#waiting`, the last block of the main column, so exactly one copy renders per width and the KPI "Waiting on you"
  * jumps to it on this page. No number is counted here (ISC-72); layouts follow design.md per tier through the shell's
  * container queries.
+ *
+ * Spec 020 (T19, ISC-239): below 1120 the next-step card is the guidance spot, the page's first block right under the
+ * spec head: the eyebrow with the marker "Waits on you" when the spec itself waits, the catalogue sentence, the copy
+ * chip, the stage track and the spec's further waiting entries as `ui-waits-block` (no limit, a chip on each row); it
+ * carries `#waiting`, the KPI's target, and the Spec context's overlaps fold into a disclosure. From 1120 the rail is
+ * the guidance spot and holds `#waiting`: the card moves under the KPI band, before the idea, without a chip of its own
+ * (the head and the rail carry the command) and links "Waits on you: n" to the rail.
  */
 @Component({
   selector: 'app-spec-dashboard',
@@ -113,12 +125,16 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
     AreaPlaceholder,
     UiTerm,
     Brief,
+    SpecRailGuide,
     NgTemplateOutlet,
     OverlapLines,
     RouterLink,
     TranslocoPipe,
     UiChip,
+    GuidanceReasonPipe,
     UiCommandChip,
+    UiDisclosure,
+    UiWaitsBlock,
     UiEmptyState,
     UiIcon,
     UiKbd,
@@ -200,8 +216,29 @@ export class SpecDashboard {
     return text ? quoteIdea(text, this.lang()) : null;
   });
 
-  /** At most three reasons (design.md § Next step). */
+  /** At most three reasons (design.md § Next step); shown only where the guidance names no entry for the spec. */
   protected readonly reasons = computed(() => this.model()?.next.reasons.slice(0, 3) ?? []);
+
+  /**
+   * Spec 020 (T19, ISC-239, ISC-237.1): the spec's own guidance entry, whose catalogue sentence stands in the next-step
+   * card as it does on every other surface; null without guidance or without an open item (the reasons stay then).
+   */
+  protected readonly entry = computed(() => {
+    const m = this.model();
+    return guidanceEntryOf(m?.guidance, m?.head.id);
+  });
+  /** The spec's entries in "Waits on you", in core's order (ISC-237). */
+  protected readonly waits = computed(() => this.model()?.guidance?.waits ?? []);
+  /** Whether the spec itself waits on the principal: the marker beside the guide's eyebrow. */
+  protected readonly selfWaits = computed(() => {
+    const own = this.entry();
+    return own !== null && this.waits().includes(own);
+  });
+  /** The spec's other waiting entries (claims, tasks, questions): the guide lists them under its own step. */
+  protected readonly alsoWaiting = computed(() => {
+    const own = this.entry();
+    return this.waits().filter((entry) => entry !== own);
+  });
   protected readonly stageLabels = computed(() => {
     this.lang();
     return TRACK_STAGES.map((stage) => this.transloco.translate(`stages.${stage}`));
@@ -255,15 +292,6 @@ export class SpecDashboard {
   /** The prototype's gate-row icon: passed checks, stale or warning alerts, absent crosses. */
   protected gateIcon(state: GateState): IconName {
     return GATE_ICON[state];
-  }
-
-  /** A task waits on the board, a manual claim among the claims. */
-  protected waitingLink(item: WaitingItem): string[] {
-    return this.link(item.kind === 'manual' ? 'claims' : 'board');
-  }
-
-  protected waitingKey(item: WaitingItem): string {
-    return `${item.kind}-${item.ref}`;
   }
 
   protected reload(): void {

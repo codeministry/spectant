@@ -71,10 +71,11 @@ describe('ContextRail', () => {
     expect(next.getAttribute('data-form')).toBe('rail');
     expect(warnings.getAttribute('data-form')).toBe('rail');
     expect([...rail.querySelectorAll('[data-rail-blocks] > *')].map((e) => e.tagName.toLowerCase())).toEqual([
+      'app-waiting-section',
       'app-next-up-list',
       'app-warnings-panel',
     ]);
-    expect(page.querySelector('app-next-up-list, app-warnings-panel')).toBeNull();
+    expect(page.querySelector('app-waiting-section, app-next-up-list, app-warnings-panel')).toBeNull();
   });
 
   it("gives the collapsed strip the model's Next up and warning counts", async () => {
@@ -124,7 +125,7 @@ describe('ContextRail', () => {
 
     tier.set('wide');
     await warningsOnly.fixture.whenStable();
-    expect(warningsOnly.rail.querySelectorAll('[data-rail-blocks] > *').length).toBe(2);
+    expect(warningsOnly.rail.querySelectorAll('[data-rail-blocks] > *').length).toBe(3);
   });
 
   it('releases the rail when it is destroyed', async () => {

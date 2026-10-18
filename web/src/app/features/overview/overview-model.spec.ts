@@ -43,6 +43,12 @@ describe('readColumn (T65)', () => {
     expect(column.kpis).toEqual({ master: null, claims: { closed: 0, total: 0 }, specs: 0, building: 0, scoping: 0, warnings: 0, fog: 0 });
     expect(column.next).toEqual([]);
     expect(column.list).toEqual([]);
+    expect(column.waits).toEqual([]);
+  });
+
+  it('passes guidance.waits through in core order, the same entries the model serves (spec 020 T16)', () => {
+    expect(readColumn(entry('harbor'), harbor, 0).waits).toEqual(harbor.guidance.waits);
+    expect(readColumn(entry('lantern'), lantern, 0).waits).toEqual([]);
   });
 });
 

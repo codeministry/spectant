@@ -30,6 +30,7 @@ import type {
   FileDiagnostic,
   FileKind,
   GateView,
+  Guidance,
   IdeaFiles,
   ItemStateInfo,
   LockDiagnostic,
@@ -257,6 +258,12 @@ export interface DashboardModel {
    * the planning tree (`planning.ts`) and are not listed here a second time.
    */
   readonly ideas: DashboardIdeas;
+  /**
+   * What waits on the principal and what is next, workspace-wide (spec 020, ISC-237): `guidanceOf` over the item
+   * states, set by `withGuidance` at the caller's clock. `buildDashboard` has no clock and sets none; the server's
+   * loader always does.
+   */
+  readonly guidance?: Guidance;
 }
 
 /** Everything the model is built from, read by the caller; pure over it. */

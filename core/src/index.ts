@@ -21,6 +21,8 @@
 // Spec 040's item-state.ts (`itemStates`, `STATE_TABLE`, the default ages) takes the parsed workspace, the dashboard
 // model and the task runs from the caller, imports dashboard.ts for types only and neither gates.ts nor locks.ts, so it
 // rides it whole; its types `ItemStateInfo`, `ItemState`, `ItemRun`, `ItemWaits` and `OpenRun` ride with files.ts.
+// Spec 020's guidance.ts (`guidanceOf`, `withGuidance`, `guidanceOfSpec`) takes the workspace, the dashboard model and
+// the item states from the caller and reads no file, so it is browser-safe and rides it whole; its types ride with files.ts.
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';
@@ -51,6 +53,7 @@ export * from './tech.ts';
 export * from './worktrees.ts';
 export * from './repo-source.ts';
 export * from './item-state.ts';
+export * from './guidance.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';
 export type * from './library.ts';

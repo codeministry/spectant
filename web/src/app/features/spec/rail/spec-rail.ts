@@ -1,33 +1,32 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
+import type { GateState, SpecPageModel } from '../../../../../../core/src/files';
 import { ApiClient } from '../../../core/api.service';
-import { specLink } from '../../../layout/shell/areas';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiChip } from '../../../shared/ui/chip/chip';
-import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiKbd } from '../../../shared/ui/kbd/kbd';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
 import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from '../dashboard/dashboard-model';
 import { openClaims } from '../status/status-model';
+import { SpecRailGuide } from './spec-rail-guide';
 
 /**
- * The spec rail (spec 024, the prototype's spec-detail `context-rail`: `whereCard`, `waitingCard` and the key line):
- * Where it stands (stage track, ring, next command and its reason, first takeable claim, warnings, gate rows), Waiting
- * on you and `[ ] previous / next spec · Esc`. `SpecPage` registers it with `RailContent` from 1120 px for every tab of
- * the Status, Data, Docs and Notes areas, so the rail is the same on each; the spec dashboard and the live board
- * register their own rail over it. It renders the spec payload the shell already loads (`ShellData.spec`) as it is and
- * reads the first takeable claim from the Claims route; nothing is counted here (ISC-72).
+ * The spec rail (spec 024, the prototype's spec-detail `context-rail`: `whereCard` and the key line). Spec 020 (T20,
+ * ISC-239) makes it the guidance spot of every tab it serves from 1120 px: on top `app-spec-rail-guide` (Next step and
+ * the spec's own Waits on you, shared with the spec dashboard's rail). Below them Where it stands (stage track, ring,
+ * first takeable claim, warnings, gate rows) and `[ ] previous / next spec · Esc`. `SpecPage` registers it with `RailContent` from 1120 px for every tab of the
+ * Status, Data and Notes areas, so the rail is the same on each; the spec dashboard and the live board register their
+ * own rail over it. It renders the spec payload the shell already loads (`ShellData.spec`) as it is and reads the first
+ * takeable claim from the Claims route; nothing is counted here (ISC-72).
  */
 @Component({
   selector: 'app-spec-rail',
-  imports: [RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiKbd, UiRing, UiStageTrack],
+  imports: [SpecRailGuide, TranslocoPipe, UiChip, UiIcon, UiKbd, UiRing, UiStageTrack],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-rail.html',
   // While the take chip's claims load the rail says it is busy, so a reader (and a screenshot) waits for the settled rail.
@@ -89,14 +88,5 @@ export class SpecRail {
   protected railGateIcon(state: GateState): 'check' | 'triangle-alert' | 'x' {
     if (state === 'ok' || state === 'fresh') return 'check';
     return state === 'stale' || state === 'warn' ? 'triangle-alert' : 'x';
-  }
-
-  protected waitingKey(item: WaitingItem): string {
-    return `${item.kind}-${item.ref}`;
-  }
-
-  /** A task waits on the board, a manual claim among the claims. */
-  protected waitingLink(item: WaitingItem): string[] {
-    return specLink(this.state.ws() ?? '', this.state.specId() ?? '', item.kind === 'manual' ? 'claims' : 'board');
   }
 }

@@ -57,7 +57,7 @@
   rotate: -90deg;
 }
 
-/* Compact: the prototype's `.sheet-bar` (40 px, glass, grab, "Needs you" in the hover text colour), sticky at the
+/* Compact: the prototype's `.sheet-bar` (40 px, glass, grab, "Waits on you" in the secondary text colour), sticky at the
    bottom of the viewport; 44 px under a coarse pointer. */
 .sheet-bar {
   position: sticky;
@@ -79,6 +79,23 @@
   color: var(--color-base-content);
   font-size: 13px;
   line-height: 20px;
+}
+
+/* The bar's start opens the sheet; "Waits on you n" at its end is its own link to the dashboard's #waiting (spec 020). */
+.sheet-bar .bar-open {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 12px;
+  align-items: center;
+  align-self: stretch;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 
@@ -90,9 +107,15 @@
   background: var(--line);
 }
 
+/* Spec 020 (T24): the secondary tone of `open`, not the warning orange: waiting on you is no warning. */
 .sheet-bar .needs-n {
-  margin-inline-start: auto;
-  color: var(--hover-text);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: stretch;
+  color: var(--ques-text);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 @media (pointer: coarse) {

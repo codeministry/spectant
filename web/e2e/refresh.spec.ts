@@ -165,6 +165,9 @@ test.describe('refresh cls', () => {
         const tile = page.locator('.band [data-kpi="claims"]');
         const value = tile.locator('.value');
         await expect(value).toHaveText(BEFORE);
+        // Spec 020 T17: below wide the section #waiting opens the page before the KPI band; the band moves to the top
+        // so the tile and the first spec row both stand in the viewport the shifts are measured in.
+        if (width < 1120) await tile.evaluate((el) => el.scrollIntoView({ block: 'start' }));
         await expect(tile).toBeInViewport();
         await expect(page.locator('[data-spec-row]').first()).toBeInViewport();
         await page.evaluate(() => document.fonts.ready);

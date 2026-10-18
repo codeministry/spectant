@@ -177,6 +177,91 @@
         "stop": null
       }
     },
-    "tldr": null
+    "tldr": null,
+    "guidance": {
+      "waits": [
+        {
+          "spec": "001",
+          "priority": "P3",
+          "item": "spec",
+          "ref": null,
+          "title": "Install spectant with one line and see two workspaces on the dashboard",
+          "command": "/spec-review 001",
+          "since": "2026-09-28T13:02:35Z",
+          "reason": {
+            "key": "stage.review.0",
+            "values": {
+              "state": "missing"
+            },
+            "phrase": "the reviewed mark is missing"
+          }
+        },
+        {
+          "spec": "001",
+          "priority": "P3",
+          "item": "claim",
+          "ref": "ISC-11",
+          "title": "For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0.",
+          "command": "/spec-implement 001",
+          "since": "2026-09-28T13:02:35Z",
+          "reason": {
+            "key": "waiting.manual",
+            "values": {
+              "ref": "ISC-11"
+            },
+            "phrase": "ISC-11 needs your confirmation"
+          }
+        },
+        {
+          "spec": "001",
+          "priority": "P3",
+          "item": "claim",
+          "ref": "ISC-19",
+          "title": "The dashboard renders and navigates inside the cmux web view.",
+          "command": "/spec-implement 001",
+          "since": "2026-09-28T13:02:35Z",
+          "reason": {
+            "key": "waiting.manual",
+            "values": {
+              "ref": "ISC-19"
+            },
+            "phrase": "ISC-19 needs your confirmation"
+          }
+        },
+        {
+          "spec": "001",
+          "priority": "P3",
+          "item": "task",
+          "ref": "T16",
+          "title": "macOS arm64 install on a throwaway user account, transcript into `.evidence/`",
+          "command": "/spec-implement 001",
+          "since": "2026-09-28T13:02:35Z",
+          "reason": {
+            "key": "waiting.operator",
+            "values": {
+              "ref": "T16"
+            },
+            "phrase": "T16 is your step"
+          }
+        },
+        {
+          "spec": "001",
+          "priority": "P3",
+          "item": "task",
+          "ref": "T83",
+          "title": "cmux web view check with Interceptor, WebKit version recorded",
+          "command": "/spec-implement 001",
+          "since": "2026-09-28T13:02:35Z",
+          "reason": {
+            "key": "waiting.operator",
+            "values": {
+              "ref": "T83"
+            },
+            "phrase": "T83 is your step"
+          }
+        }
+      ],
+      "next": []
+    }
   }
 }

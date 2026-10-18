@@ -5,7 +5,8 @@
  * - `GET /api/workspaces` → `WorkspaceSummary[]` in registry order: `{slug, name, pathTail, readable, error?, counts}`.
  *   `counts` is the workspace's `DashboardKpis`, built without a services probe; `null` when unreadable.
  * - `GET /api/workspaces/:slug/dashboard` → the `DashboardModel` of `core/src/dashboard.ts`, unchanged, its `services`
- *   from the local-listener probe labelled with the constitution's `dev_services:`.
+ *   from the local-listener probe labelled with the constitution's `dev_services:`. Its `guidance` is the workspace-wide
+ *   guidance (spec 020, core's `guidanceOf`) over the same item states as its rows (`loadDashboard`).
  *
  * Answers:
  * - 200 with the JSON body; `HEAD` gets the same headers without it.

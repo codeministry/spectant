@@ -81,13 +81,41 @@ test.describe('truncate table', () => {
   });
 });
 
+/**
+ * Since spec 020 (T25, ISC-240) Next up holds `guidance.next`, whose harbor titles fit their lines, and the entry's
+ * sentence is never cut. So the dashboard body's first Next entry gets a longer title (its own title twice), the one
+ * change to core's body, and the title clamp still has something to cut.
+ */
+async function longNextTitle(page: Page): Promise<void> {
+  await page.route('**/api/workspaces/harbor/dashboard', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { specs: Array<{ id: string; title: string }>; guidance?: { next: Array<{ spec: string }> } };
+    const id = body.guidance?.next[0]?.spec;
+    for (const spec of body.specs) if (spec.id === id) spec.title = `${spec.title}, then ${spec.title.toLowerCase()}`;
+    await route.fulfill({ response, json: body });
+  });
+}
+
+/** The entry's guidance sentence stands whole: no ellipsis, nothing hidden. */
+async function expectWholeSentences(page: Page): Promise<void> {
+  const sentences = page.locator('[data-next-sentence]');
+  await expect(sentences.first()).toBeVisible();
+  for (const sentence of await sentences.all()) {
+    const m = await sentence.evaluate((node) => ({ text: node.textContent, fits: node.scrollHeight <= node.clientHeight + 1 && node.scrollWidth <= node.clientWidth + 1 }));
+    expect(m.text.endsWith(ELLIPSIS)).toBe(false);
+    expect(m.fits).toBe(true);
+  }
+}
+
 test.describe('truncate next', () => {
   test.use(atWidth(1440));
 
   test('next: a long rail card title is cut after two lines at a whole word, and more… / less outside the link toggle it', async ({
     page,
   }) => {
+    await longNextTitle(page);
     await openHarbor(page);
+    await expectWholeSentences(page);
     const cut = page.locator('[data-next-card] [data-next-link] .title[data-clamp="cut"]');
     await expect(cut.first()).toBeVisible();
     const id = (await cut.first().getAttribute('id')) ?? '';
@@ -111,7 +139,9 @@ test.describe('truncate next', () => {
 
   test('next: below wide the one-line row title is cut at a whole word with its own more…', async ({ page }) => {
     await page.setViewportSize({ width: 600, height: 900 });
+    await longNextTitle(page);
     await openHarbor(page);
+    await expectWholeSentences(page);
     const titles = page.locator('[data-next-row] [data-next-link] .title');
     await expect(titles.first()).toBeVisible();
     for (const t of await titles.all()) {

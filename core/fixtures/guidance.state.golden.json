@@ -1,0 +1,728 @@
+[
+  {
+    "kind": "spec",
+    "id": "001",
+    "state": "open",
+    "stage": "review",
+    "command": "/spec-review 001",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-review 001",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "001"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-2",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-3",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "task of ISC-1, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "task of ISC-2, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "task of ISC-3, not dispatched"
+  },
+  {
+    "kind": "spec",
+    "id": "002",
+    "state": "open",
+    "stage": "review",
+    "command": "/spec-review 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "review-mark",
+    "id": "002",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-review 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "002",
+    "spec": "002",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "002"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-4",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-5",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-6",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "task of ISC-4, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "task of ISC-5, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "task of ISC-6, not dispatched"
+  },
+  {
+    "kind": "spec",
+    "id": "003",
+    "state": "open",
+    "stage": "review",
+    "command": "/spec-review 003",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "review-mark",
+    "id": "003",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-review 003",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "003",
+    "spec": "003",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "003"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-7",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-8",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-9",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "the reviewed mark is stale"
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "task of ISC-7, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "task of ISC-8, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "003",
+    "state": "open",
+    "command": "/spec-implement 003",
+    "reason": "task of ISC-9, not dispatched"
+  },
+  {
+    "kind": "spec",
+    "id": "004",
+    "state": "open",
+    "stage": "code-review",
+    "command": "/spec-code-review 004",
+    "reason": "every claim is closed and the code-reviewed mark is stale"
+  },
+  {
+    "kind": "review-mark",
+    "id": "004",
+    "spec": "004",
+    "state": "done",
+    "doneAt": "2026-03-02T12:00:00Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "004",
+    "spec": "004",
+    "state": "open",
+    "command": "/spec-code-review 004",
+    "reason": "every claim is closed and the code-reviewed mark is stale"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-10",
+    "spec": "004",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-10 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-11",
+    "spec": "004",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-11 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "005",
+    "state": "open",
+    "stage": "build",
+    "command": "/spec-implement 005",
+    "reason": "ISC-13 and ISC-14 are takeable"
+  },
+  {
+    "kind": "review-mark",
+    "id": "005",
+    "spec": "005",
+    "state": "done",
+    "doneAt": "2026-03-04T12:00:00Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "005",
+    "spec": "005",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "005"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-12",
+    "spec": "005",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-12 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-13",
+    "spec": "005",
+    "state": "open",
+    "command": "/spec-implement 005",
+    "reason": "ISC-13 is takeable"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-14",
+    "spec": "005",
+    "state": "open",
+    "command": "/spec-implement 005",
+    "reason": "ISC-14 is takeable"
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "005",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "005",
+    "state": "open",
+    "command": "/spec-implement 005",
+    "reason": "state \"open\" · claim takeable, edges closed"
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "005",
+    "state": "open",
+    "command": "/spec-implement 005",
+    "reason": "task of ISC-13, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T4",
+    "spec": "005",
+    "state": "open",
+    "command": "/spec-implement 005",
+    "reason": "claim takeable, edges closed"
+  },
+  {
+    "kind": "spec",
+    "id": "006",
+    "state": "waiting",
+    "stage": "close-pending",
+    "waits": {
+      "specs": [],
+      "claims": [],
+      "siblings": [
+        "005"
+      ]
+    }
+  },
+  {
+    "kind": "review-mark",
+    "id": "006",
+    "spec": "006",
+    "state": "done",
+    "doneAt": "2026-03-03T10:00:00Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "006",
+    "spec": "006",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [],
+      "siblings": [
+        "005"
+      ]
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-15",
+    "spec": "006",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-15 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-16",
+    "spec": "006",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-16 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "007",
+    "state": "open",
+    "stage": "plan",
+    "command": "/spec-plan 007",
+    "reason": "a feature spec needs plan.md and it is missing"
+  },
+  {
+    "kind": "review-mark",
+    "id": "007",
+    "spec": "007",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "007"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "007",
+    "spec": "007",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "007"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-17",
+    "spec": "007",
+    "state": "open",
+    "command": "/spec-implement 007",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-18",
+    "spec": "007",
+    "state": "open",
+    "command": "/spec-implement 007",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-19",
+    "spec": "007",
+    "state": "open",
+    "command": "/spec-implement 007",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "spec",
+    "id": "008",
+    "state": "open",
+    "stage": "tasks",
+    "command": "/spec-tasks 008",
+    "reason": "3 claims and no tasks.md"
+  },
+  {
+    "kind": "review-mark",
+    "id": "008",
+    "spec": "008",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "008"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "008",
+    "spec": "008",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "008"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-20",
+    "spec": "008",
+    "state": "open",
+    "command": "/spec-implement 008",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-21",
+    "spec": "008",
+    "state": "open",
+    "command": "/spec-implement 008",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-22",
+    "spec": "008",
+    "state": "open",
+    "command": "/spec-implement 008",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "spec",
+    "id": "009",
+    "state": "running",
+    "stage": "review",
+    "run": {
+      "run": "r-0308-1430",
+      "command": "/spec-review 009",
+      "session": "a:claude:sess-91",
+      "actor": {
+        "raw": "a:claude:sess-91",
+        "kind": "agent",
+        "id": "a:claude:sess-91",
+        "legacy": false
+      },
+      "since": "2026-03-08T14:30:00Z",
+      "elapsedMs": 1800000,
+      "openRuns": 1,
+      "source": "run"
+    }
+  },
+  {
+    "kind": "review-mark",
+    "id": "009",
+    "spec": "009",
+    "state": "running",
+    "run": {
+      "run": "r-0308-1430",
+      "command": "/spec-review 009",
+      "session": "a:claude:sess-91",
+      "actor": {
+        "raw": "a:claude:sess-91",
+        "kind": "agent",
+        "id": "a:claude:sess-91",
+        "legacy": false
+      },
+      "since": "2026-03-08T14:30:00Z",
+      "elapsedMs": 1800000,
+      "openRuns": 1,
+      "source": "run"
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-23",
+    "spec": "009",
+    "state": "open",
+    "command": "/spec-implement 009",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-24",
+    "spec": "009",
+    "state": "open",
+    "command": "/spec-implement 009",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "spec",
+    "id": "010",
+    "state": "open",
+    "stage": "close",
+    "command": "/spec-complete 010",
+    "reason": "every claim is closed and the workflow has no code review"
+  },
+  {
+    "kind": "review-mark",
+    "id": "010",
+    "spec": "010",
+    "state": "done",
+    "doneAt": "2026-03-04T10:00:00Z"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-25",
+    "spec": "010",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-25 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "011",
+    "state": "done",
+    "stage": "done",
+    "doneAt": "2026-03-02T16:00:00Z"
+  },
+  {
+    "kind": "review-mark",
+    "id": "011",
+    "spec": "011",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "the reviewed mark of 011 is missing, although spec 011 is done; the files give no date for it."
+    }
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "011",
+    "spec": "011",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "the code-reviewed mark of 011 is missing, although spec 011 is done; the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-26",
+    "spec": "011",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-26 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-27",
+    "spec": "011",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-27 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "012",
+    "state": "waiting",
+    "stage": "blocked",
+    "waits": {
+      "specs": [
+        "007"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "review-mark",
+    "id": "012",
+    "spec": "012",
+    "state": "done",
+    "doneAt": "2026-03-07T12:00:00Z"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-28",
+    "spec": "012",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "007"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-29",
+    "spec": "012",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "007"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "idea",
+    "id": "flag-templates",
+    "state": "open",
+    "stage": "idea",
+    "command": "/spec new flag-templates",
+    "reason": "the story is shaped but has no spec"
+  }
+]

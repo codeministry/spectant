@@ -1,0 +1,55 @@
+{
+  "waits": [
+    {
+      "spec": "012",
+      "priority": "P3",
+      "item": "claim",
+      "ref": "ISC-334",
+      "title": "Under `security.auth: oidc` the sign-in redirect completes inside the installed window and returns to the app; the window is never left on the identity provider's page.",
+      "command": "/spec-implement 012",
+      "since": "2026-09-24T15:56:51Z",
+      "reason": {
+        "key": "waiting.manual",
+        "values": {
+          "ref": "ISC-334"
+        },
+        "phrase": "ISC-334 needs your confirmation"
+      }
+    },
+    {
+      "spec": "012",
+      "priority": "P3",
+      "item": "task",
+      "ref": "T16",
+      "title": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop",
+      "command": "/spec-implement 012",
+      "since": "2026-09-24T15:56:51Z",
+      "reason": {
+        "key": "waiting.operator",
+        "values": {
+          "ref": "T16"
+        },
+        "phrase": "T16 is your step"
+      }
+    }
+  ],
+  "next": [
+    {
+      "spec": "012",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
+      "command": "/spec-implement 012",
+      "since": "2026-09-24T15:56:51Z",
+      "reason": {
+        "key": "stage.build.0",
+        "values": {
+          "ids": "ISC-334",
+          "is": "is"
+        },
+        "phrase": "ISC-334 is takeable"
+      }
+    }
+  ]
+}

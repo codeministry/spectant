@@ -4,7 +4,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
 import beacon from '../../../../../core/fixtures/beacon.golden.json';
-import type { ItemStateInfo, Worktree } from '../../../../../core/src/files';
+import type { Guidance, ItemStateInfo, Worktree } from '../../../../../core/src/files';
 import type { PlanningModel } from '../../../../../core/src/planning';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ShellData } from '../../layout/shell/shell-data.service';
@@ -322,5 +322,53 @@ describe('BoardCard state line (spec 040, T48, ISC-224)', () => {
     TestBed.resetTestingModule();
     const plain = await render('002', { ...cardOf('002'), state: null });
     expect(plain.querySelector('[data-card-state]')).toBeNull();
+  });
+});
+
+describe('BoardCard "Waits on you" marker and reason (spec 020, T23, ISC-240)', () => {
+  const GUIDED = buildBoard({
+    planning: planningGolden as unknown as PlanningModel,
+    rows: dashboard.specs as unknown as readonly BoardRow[],
+    guidance: dashboard.guidance as unknown as Guidance,
+    actors: [],
+  });
+  const guided = (id: string): BoardCardModel => {
+    const found = GUIDED.cards.find((c) => c.id === id);
+    if (!found) throw new Error(`no card ${id}`);
+    return found;
+  };
+  const waits = new Set(dashboard.guidance.waits.filter((e) => e.item === 'spec').map((e) => e.spec));
+
+  it('marks exactly the cards whose spec has its own entry in guidance.waits; Next, waiting and done cards are unmarked', () => {
+    for (const c of GUIDED.cards) expect(c.marked ?? false, c.key).toBe(c.kind === 'spec' && waits.has(c.id ?? ''));
+    expect([...waits].sort()).toEqual(['004', '005', '006']);
+    expect(BOARD.cards.some((c) => c.marked)).toBe(false);
+  });
+
+  it('006 in review: the marker row (secondary, user-round) right above the state line, the whole sentence, then the chip', async () => {
+    const host = await render('006', guided('006'));
+    const marker = host.querySelector<HTMLElement>('[data-card-marker]');
+    const chip = marker?.querySelector('ui-chip');
+    expect(text(chip)).toBe('Waits on you');
+    expect(chip?.getAttribute('data-tone')).toBe('secondary');
+    expect(chip?.getAttribute('data-variant')).toBe('status');
+    expect(chip?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('user-round');
+    expect(marker?.nextElementSibling?.hasAttribute('data-card-state')).toBe(true);
+    const state = host.querySelector('[data-card-state] ui-item-state');
+    expect(state?.hasAttribute('data-reasoned')).toBe(true);
+    const shown = state?.querySelector('[data-reason-shown]');
+    expect(text(shown)).toBe('Read the spec and confirm it: your review is out of date, and building needs it.');
+    expect(shown?.nextElementSibling?.tagName.toLowerCase()).toBe('ui-command-chip');
+    expect(host.querySelector('a.title')?.getAttribute('aria-describedby')).not.toContain(marker?.id ?? '?');
+  });
+
+  it('a Next card (002 in build) carries its sentence without the marker; a waiting card (008) neither', async () => {
+    const host = await render('002', guided('002'));
+    expect(host.querySelector('[data-card-marker]')).toBeNull();
+    expect(text(host.querySelector('[data-reason-shown]'))).toBe('Start the next implementation round: claims are ready to build.');
+    TestBed.resetTestingModule();
+    const held = await render('008', guided('008'));
+    expect(held.querySelector('[data-card-marker]')).toBeNull();
+    expect(held.querySelector('[data-reason-shown]')).toBeNull();
   });
 });

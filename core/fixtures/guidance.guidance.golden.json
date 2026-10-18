@@ -1,0 +1,181 @@
+{
+  "waits": [
+    {
+      "spec": "001",
+      "priority": "P1",
+      "item": "spec",
+      "ref": null,
+      "title": "Target a flag at users by attribute",
+      "command": "/spec-review 001",
+      "since": "2026-03-05T10:00:00Z",
+      "reason": {
+        "key": "stage.review.0",
+        "values": {
+          "state": "stale"
+        },
+        "phrase": "the reviewed mark is stale"
+      }
+    },
+    {
+      "spec": "003",
+      "priority": "P2",
+      "item": "spec",
+      "ref": null,
+      "title": "Let a flag expire and list it for clean-up",
+      "command": "/spec-review 003",
+      "since": "2026-03-03T09:00:00Z",
+      "reason": {
+        "key": "stage.review.0",
+        "values": {
+          "state": "stale"
+        },
+        "phrase": "the reviewed mark is stale"
+      }
+    },
+    {
+      "spec": "005",
+      "priority": "P2",
+      "item": "claim",
+      "ref": "ISC-14",
+      "title": "A rollout to the staging tenant is confirmed by hand on the staging console.",
+      "command": "/spec-implement 005",
+      "since": "2026-03-04T12:00:00Z",
+      "reason": {
+        "key": "waiting.manual",
+        "values": {
+          "ref": "ISC-14"
+        },
+        "phrase": "ISC-14 needs your confirmation"
+      }
+    },
+    {
+      "spec": "005",
+      "priority": "P2",
+      "item": "task",
+      "ref": "T3",
+      "title": "add the staging sdk key to the ci secrets",
+      "command": "/spec-implement 005",
+      "since": "2026-03-04T12:00:00Z",
+      "reason": {
+        "key": "waiting.operator",
+        "values": {
+          "ref": "T3"
+        },
+        "phrase": "T3 is your step"
+      }
+    },
+    {
+      "spec": "002",
+      "priority": "P2",
+      "item": "spec",
+      "ref": null,
+      "title": "Record who changed which flag",
+      "command": "/spec-review 002",
+      "since": "2026-03-06T09:00:00Z",
+      "reason": {
+        "key": "stage.review.0",
+        "values": {
+          "state": "missing"
+        },
+        "phrase": "the reviewed mark is missing"
+      }
+    },
+    {
+      "spec": "005",
+      "priority": "P2",
+      "item": "question",
+      "ref": "T4",
+      "title": "roll out to every staging tenant or to the first one only?",
+      "command": "/spec-implement 005",
+      "since": "2026-03-07T10:00:00Z",
+      "reason": {
+        "key": "waiting.question",
+        "values": {
+          "ref": "T4"
+        },
+        "phrase": "the newest round asks about T4"
+      }
+    },
+    {
+      "spec": "004",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Read flags through a cache without serving stale values",
+      "command": "/spec-code-review 004",
+      "since": "2026-03-05T16:00:00Z",
+      "reason": {
+        "key": "stage.code-review.0",
+        "values": {
+          "state": "stale"
+        },
+        "phrase": "every claim is closed and the code-reviewed mark is stale"
+      }
+    },
+    {
+      "spec": "010",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Name the flag and its owner in the stale-flag banner",
+      "command": "/spec-complete 010",
+      "since": null,
+      "reason": {
+        "key": "stage.close.1",
+        "values": {},
+        "phrase": "every claim is closed and the workflow has no code review"
+      }
+    }
+  ],
+  "next": [
+    {
+      "spec": "007",
+      "priority": "P1",
+      "item": "spec",
+      "ref": null,
+      "title": "Build reusable user segments in the console",
+      "command": "/spec-plan 007",
+      "since": "2026-03-06T09:00:00Z",
+      "reason": {
+        "key": "stage.plan.0",
+        "values": {
+          "type": "feature"
+        },
+        "phrase": "a feature spec needs plan.md and it is missing"
+      }
+    },
+    {
+      "spec": "005",
+      "priority": "P2",
+      "item": "spec",
+      "ref": null,
+      "title": "Evaluate flags locally in the server and browser SDKs",
+      "command": "/spec-implement 005",
+      "since": "2026-03-04T12:00:00Z",
+      "reason": {
+        "key": "stage.build.0",
+        "values": {
+          "ids": "ISC-13 and ISC-14",
+          "is": "are"
+        },
+        "phrase": "ISC-13 and ISC-14 are takeable"
+      }
+    },
+    {
+      "spec": "008",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Send a signed webhook on every flag change",
+      "command": "/spec-tasks 008",
+      "since": "2026-03-04T14:00:00Z",
+      "reason": {
+        "key": "stage.tasks.0",
+        "values": {
+          "claims": "3 claims"
+        },
+        "phrase": "3 claims and no tasks.md"
+      }
+    }
+  ]
+}

@@ -15,13 +15,13 @@
  *                                        main column (inside `main#main`, below every other `[data-section]`).
  *   - `#waiting`                         exactly one visible element per width, inside the visible Spec context: the
  *                                        KPI "Waiting on you" links to it on the dashboard itself (018-B10).
- *   - `[data-context-block="waiting" | "warnings" | "gates"]`
- *                                        the three blocks, in this order, each with a heading (Waiting on you,
- *                                        Warnings, Gates).
- *   - `[data-count-badge]`               the count badge in the heading row of the waiting and warnings blocks.
- *   - `[data-waiting-item]`              one per waiting item, with `data-waiting-kind` (`operator` | `manual` |
- *                                        `question`) and `data-waiting-ref` (the task or claim id); it holds
- *                                        `[data-waiting-kind-label]`, the plain chip with the kind word.
+ *   - `[data-context-block="warnings" | "gates"]`
+ *                                        the two blocks, in this order, each with a heading (Warnings, Gates). Spec 020
+ *                                        (ISC-239): the waiting block is gone; from 1120 px the rail opens with the
+ *                                        guidance spot (`app-spec-rail-guide`: `[data-rail-block="next"]` and the
+ *                                        spec's `ui-waits-block[data-rail-block="waits"]`), below 1120 px the
+ *                                        next-step card `[data-guidance-spot]` holds them (`[data-guidance-waits]`).
+ *   - `[data-count-badge]`               the count badge in the heading row of the warnings block.
  *   - `[data-context-warning]`           one per warning of the spec; `[data-warning-command]` inside holds its
  *                                        command when the warning has one.
  *   - `[data-gate-row]`                  one per gate, `data-gate` = `reviewed` | `codeReviewed` | `drift` |
@@ -127,7 +127,7 @@ const WORKSPACE = read('harbor.golden.json') as { readonly warningGroups: readon
 const WARNED = WORKSPACE.warningGroups.flatMap((group) => group.items);
 
 const GATES = ['reviewed', 'codeReviewed', 'drift', 'diagrams'] as const;
-const BLOCKS = ['waiting', 'warnings', 'gates'] as const;
+const BLOCKS = ['warnings', 'gates'] as const;
 const KINDS = { operator: 'operator', manual: 'manual', question: 'question' } as const;
 
 const TIERS = [
@@ -157,9 +157,11 @@ test.describe('elements', () => {
         const context = home(page, rail).locator('[data-spec-context]');
         await expect(context).toBeVisible();
         expect(await context.locator('[data-context-block]').evaluateAll((blocks) => blocks.map((b) => b.getAttribute('data-context-block')))).toEqual([...BLOCKS]);
-        for (const name of ['Waiting on you', 'Warnings', 'Gates']) {
+        for (const name of ['Warnings', 'Gates']) {
           await expect(context.getByRole('heading', { name, exact: true })).toBeVisible();
         }
+        // Spec 020 (ISC-239): from 1120 px the Spec context opens with the guidance spot, as every tab's rail does.
+        if (rail) await expect(context.locator('app-spec-rail-guide [data-rail-block="next"]')).toBeVisible();
         // The other home never holds a second, visible Spec context.
         await expect(home(page, !rail).locator('[data-spec-context]:visible')).toHaveCount(0);
 
@@ -176,25 +178,28 @@ test.describe('elements', () => {
         }
       });
 
-      test('Waiting on you lists every item with its kind chip and a count badge', async ({ page }) => {
+      test('Waits on you lists every waiting entry of the spec with its kind chip and a count', async ({ page }) => {
         await page.goto('/w/harbor/s/002');
-        const block = home(page, rail).locator('[data-spec-context] [data-context-block="waiting"]');
+        // Spec 020 (ISC-239): the guidance spot holds the spec's Waits on you, the rail's from 1120 px, the card's below.
+        const block = rail
+          ? home(page, rail).locator('[data-spec-context] ui-waits-block[data-rail-block="waits"]')
+          : home(page, rail).locator('[data-guidance-spot] ui-waits-block[data-guidance-waits]');
         await expect(block).toBeVisible();
-        await expect(block.locator('[data-count-badge]')).toHaveText(String(SPEC_002.waitingOnYou.length));
-
-        const items = block.locator('[data-waiting-item]');
-        await expect(items).toHaveCount(SPEC_002.waitingOnYou.length);
-        for (const item of SPEC_002.waitingOnYou) {
-          const row = block.locator(`[data-waiting-item][data-waiting-kind="${item.kind}"][data-waiting-ref="${item.ref}"]`);
-          await expect(row).toBeVisible();
-          await expect(row.locator('[data-waiting-kind-label]')).toHaveText(KINDS[item.kind]);
-        }
+        const total = String(SPEC_002.waitingOnYou.length);
+        await expect(block).toHaveAttribute('data-count', total);
+        await expect(block.locator('ui-section-header ui-chip')).toHaveText(total);
+        const kinds = block.locator('[data-top] [data-kind], [data-row] [data-kind]');
+        await expect(kinds).toHaveCount(SPEC_002.waitingOnYou.length);
+        const shown = (await kinds.allTextContents()).map((t) => t.trim()).sort();
+        expect(shown).toEqual(SPEC_002.waitingOnYou.map((item) => KINDS[item.kind]).sort());
+        await expect(block.locator('input[type="checkbox"]')).toHaveCount(0);
       });
 
       test('a question item is real data and carries no demo chip', async ({ page }) => {
         await page.goto('/w/harbor/s/002');
-        const questions = home(page, rail).locator('[data-spec-context] [data-waiting-item][data-waiting-kind="question"]');
-        await expect(questions.first()).toBeVisible();
+        const spot = home(page, rail).locator(rail ? '[data-spec-context]' : '[data-guidance-spot]');
+        await expect(spot.locator('ui-waits-block [data-row][data-item="question"]').first()).toBeVisible();
+        await expect(spot.locator('[data-demo-chip]')).toHaveCount(0);
         await expect(home(page, rail).locator('[data-spec-context] [data-demo-chip]')).toHaveCount(0);
       });
 
@@ -226,7 +231,12 @@ test.describe('elements', () => {
         await page.goto('/w/harbor/s/002');
         const target = page.locator('#waiting:visible');
         await expect(target).toHaveCount(1);
-        await expect(home(page, rail).locator('[data-spec-context] #waiting, [data-spec-context]#waiting').filter({ visible: true })).toHaveCount(1);
+        // Spec 020 (T19, ISC-239): from 1120 px `#waiting` is the rail's Spec context; below it the guidance spot, the
+        // next-step card right under the spec head, carries it.
+        const holder = rail
+          ? home(page, rail).locator('[data-spec-context] #waiting, [data-spec-context]#waiting')
+          : home(page, rail).locator('app-spec-dashboard [data-section="next"][data-guidance-spot]#waiting');
+        await expect(holder.filter({ visible: true })).toHaveCount(1);
 
         await page.locator('a[data-kpi="waiting"], [data-kpi="waiting"] a').first().click();
         await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/002' && url.hash === '#waiting');
@@ -306,9 +316,9 @@ const openPaletteWithRecent = async (page: Page): Promise<void> => {
 
 /**
  * Icons the design names for a place the prototype drew without a key: Zen's focus corners (spec 024 design.md) and
- * the Library's fog line (spec 017 design.md).
+ * the Library's fog line (spec 017 design.md), the mark of Waits on you (spec 020 design.md).
  */
-const DESIGN_ICONS: readonly IconName[] = ['scan', 'cloud-fog'];
+const DESIGN_ICONS: readonly IconName[] = ['scan', 'cloud-fog', 'user-round'];
 
 const SHELL = 'Gemeinsam · Shell';
 const WORKSPACE_VIEW = 'workspace.html';
@@ -349,8 +359,8 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: SPEC_VIEW, place: 'head command chip', route: '/w/harbor/s/002', at: '[data-head-command]', icon: 'copy' },
   { section: SPEC_VIEW, place: 'head notes pill', route: '/w/harbor/s/002', at: '[data-notes-pill]', icon: 'sticky-note' },
   { section: SPEC_VIEW, place: 'area tiles', route: '/w/harbor/s/002', at: '[data-section="tiles"] [data-area-tile="status"]', icon: 'arrow-right' },
-  { section: SPEC_VIEW, place: 'Waiting on you manual', route: '/w/harbor/s/002', at: '[data-spec-context] [data-waiting-item][data-waiting-kind="manual"]', icon: 'circle-check' },
-  { section: SPEC_VIEW, place: 'Waiting on you question', route: '/w/harbor/s/002', at: '[data-spec-context] [data-waiting-item][data-waiting-kind="question"]', icon: 'circle-help' },
+  // Spec 020 (ISC-239): the dashboard rail's Waits on you is the shared `ui-waits-block`, marked `user-round`.
+  { section: SPEC_VIEW, place: 'Waits on you mark', route: '/w/harbor/s/002', at: '[data-spec-context] ui-waits-block[data-rail-block="waits"] ui-section-header', icon: 'user-round' },
   { section: SPEC_VIEW, place: 'Spec context warning', route: '/w/harbor/s/003', at: '[data-spec-context] [data-context-warning]', icon: 'triangle-alert' },
   { section: SPEC_VIEW, place: 'gate row fresh', route: '/w/harbor/s/002', at: '[data-spec-context] [data-gate-row][data-gate="reviewed"]', icon: 'check' },
   { section: SPEC_VIEW, place: 'gate row missing', route: '/w/harbor/s/002', at: '[data-spec-context] [data-gate-row][data-gate="codeReviewed"]', icon: 'x' },
@@ -368,8 +378,10 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: DETAIL_VIEW, place: 'Status activity decision', route: '/w/harbor/s/003/status', at: '[data-section="activity"] [data-activity][data-kind="decision"]', icon: 'file' },
   { section: DETAIL_VIEW, place: 'Status where it stands warning', route: '/w/harbor/s/003/status', at: '[data-spec-rail] [data-rail-warning]', icon: 'triangle-alert' },
   { section: DETAIL_VIEW, place: 'Status where it stands take chip', route: '/w/harbor/s/002/status', at: '[data-spec-rail] [data-rail-take]', icon: 'hand' },
-  { section: DETAIL_VIEW, place: 'Status waiting manual', route: '/w/harbor/s/002/status', at: '[data-rail-waiting][data-waiting-kind="manual"]', icon: 'circle-check' },
-  { section: DETAIL_VIEW, place: 'Status waiting question', route: '/w/harbor/s/002/status', at: '[data-rail-waiting][data-waiting-kind="question"]', icon: 'circle-help' },
+  // Spec 020 (T20, ISC-239): the rail's Waits on you is the shared `ui-waits-block`; its rows carry the reference and
+  // the kind chip in place of a per-kind icon (design.md 020 § Spec-Seite), and the block's mark is `user-round`.
+  { section: DETAIL_VIEW, place: 'Status waits on you', route: '/w/harbor/s/002/status', at: 'app-spec-rail ui-waits-block[data-rail-block="waits"] ui-section-header', icon: 'user-round' },
+  { section: DETAIL_VIEW, place: 'Status next step marker', route: '/w/harbor/s/006/status', at: 'app-spec-rail [data-rail-block="next"] [data-rail-marker]', icon: 'user-round' },
   // spec 024 (principal 2026-10-13, claims fold): ISC-51 is an older closed claim behind its group's fold; the deep link opens it.
   { section: DETAIL_VIEW, place: 'Claims notes badge', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"] [data-link="notes"]', icon: 'sticky-note' },
   { section: DETAIL_VIEW, place: 'Claims verification line', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"]', icon: 'circle-check' },

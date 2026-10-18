@@ -103,10 +103,52 @@ blockquote {
   color: var(--muted-ink);
 }
 
-.ref {
-  font-family: var(--font-mono);
+/* Spec 020 (T19, ISC-239): the eyebrow with the marker on its right, the sentence in 15/24, whole and never cut. */
+.next-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sentence {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: break-word;
+}
+
+/* Below 1120 the card is the guidance spot: an inline-start edge, secondary when the spec waits on you. */
+.next[data-form='guide'] {
+  --edge: var(--color-primary);
+
+  border-inline-start: 4px solid var(--edge);
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.next[data-waits] {
+  --edge: var(--ques-ink);
+}
+
+.next ui-command-chip {
+  justify-self: start;
+}
+
+.also {
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.waits-link {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: start;
+  min-block-size: 44px;
+  color: var(--ques-ink);
   font-size: 13px;
-  font-variant-numeric: tabular-nums;
   line-height: 20px;
 }
 

@@ -36,6 +36,7 @@ import type {
   WaitingItem,
 } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
+import { guidanceOfSpec, newestRoundLine, waitingOnYouOf } from './guidance.ts';
 import { parseTaskLines } from './tasks.ts';
 import { codeReviewOf } from './stage.ts';
 import { buildTimeline } from './timeline.ts';
@@ -49,25 +50,6 @@ const PAST_REVIEW: ReadonlySet<string> = new Set(['build', 'code-review', 'close
 const MAX_REASONS = 3;
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Each non-blank line parsed as a JSON object; lines that are not are skipped (the dashboard reports them). */
-function jsonLines(text: string | undefined): Array<Record<string, unknown>> {
-  const out: Array<Record<string, unknown>> = [];
-  for (const raw of (text ?? '').split(/\r?\n/)) {
-    if (raw.trim() === '') continue;
-    try {
-      const value: unknown = JSON.parse(raw);
-      if (isRecord(value)) out.push(value);
-    } catch {
-      // not JSON: skipped
-    }
-  }
-  return out;
-}
 
 // ── tasks.md (tasks.ts) ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -109,28 +91,7 @@ function lanesOf(tasks: string | undefined, constitution: string | undefined): L
   });
 }
 
-// ── rounds.jsonl and events.jsonl ─────────────────────────────────────────────────────────────────────────────────
-
-/** The line with the highest `round` number (the later line on a tie); null without one. */
-function newestRoundLine(text: string | undefined): Record<string, unknown> | null {
-  let newest: Record<string, unknown> | null = null;
-  for (const line of jsonLines(text)) {
-    if (typeof line.round !== 'number') continue;
-    if (newest === null || line.round >= (newest.round as number)) newest = line;
-  }
-  return newest;
-}
-
-function questionsOf(round: Record<string, unknown> | null): WaitingItem[] {
-  const tasks = round !== null && Array.isArray(round.tasks) ? (round.tasks as unknown[]).filter(isRecord) : [];
-  return tasks
-    .filter((t) => t.state === 'question' && typeof t.id === 'string')
-    .map((t) => {
-      const note = typeof t.note === 'string' ? t.note.replace(/^question:\s*/i, '').trim() : '';
-      const text = typeof t.text === 'string' ? t.text : '';
-      return { kind: 'question', ref: t.id as string, title: note !== '' ? note : text };
-    });
-}
+// ── events.jsonl (rounds.jsonl's newest line and what waits on you are guidance.ts's, the one derivation) ───────────
 
 /** The newest valid events.jsonl line (file order, T16's validator: old words normalised, bad lines dropped) whose `to` is the current stage. */
 function sinceOf(events: string | undefined, stage: string): { since: string | null; via: string | null } {
@@ -230,17 +191,9 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
   const newestLock = locks.reduce<ClaimLock | null>((a, l) => (a === null || Date.parse(l.since) > Date.parse(a.since) ? l : a), null);
   const agentsWorking = new Set(locks.map((l) => l.session)).size;
 
-  // Waiting on you: open operator tasks, open claims with a manual probe, the newest round's questions.
-  const manual = new Set(doc.testStrategy.filter((r) => r.type.trim().toLowerCase() === 'manual').map((r) => r.isc));
-  const waitingOnYou: WaitingItem[] = [
-    ...taskBoxes(texts.tasks)
-      .filter((t) => t.lane === OPERATOR && !t.landed)
-      .map((t): WaitingItem => ({ kind: 'operator', ref: t.id, title: t.title, checked: false })),
-    ...doc.claims
-      .filter((c) => !c.checked && !c.dropped && manual.has(c.id))
-      .map((c): WaitingItem => ({ kind: 'manual', ref: c.id, title: c.text })),
-    ...questionsOf(newest),
-  ];
+  // Waiting on you: open operator tasks, open claims with a manual probe, the newest round's questions; the guidance
+  // reads the same list (spec 020), so the page and the guidance cannot disagree.
+  const waitingOnYou: WaitingItem[] = waitingOnYouOf(texts);
 
   const gates = row.gates;
   const tasks = row.tasks ?? { landed: 0, total: 0 };
@@ -320,5 +273,7 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     waitingOnYou,
     areas,
     tldr: tldrOf(input.tldr, row),
+    // This spec's slice of the workspace guidance (spec 020, ISC-237), when the caller passed it.
+    ...(input.guidance === undefined ? {} : { guidance: guidanceOfSpec(input.guidance, row.id) }),
   };
 }

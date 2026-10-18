@@ -10,6 +10,7 @@ import type { APIRequestContext, Locator, Page } from '@playwright/test';
 import type { Diagnostic } from '../../core/src/diagnostics.ts';
 import type { LibraryCatalog, LibraryDoc, SpecPageModel } from '../../core/src/files.ts';
 import { atWidth, expect, test, headerControl } from './fixtures';
+import { sentenceOf, specEntryOf } from './guidance-sentence';
 
 const GOLDEN = fileURLToPath(new URL('../../core/fixtures/harbor.spec.golden.json', import.meta.url));
 const HARBOR_002 = (JSON.parse(readFileSync(GOLDEN, 'utf8')) as Record<string, SpecPageModel>)['specs/002-web-console'];
@@ -133,8 +134,13 @@ test.describe('dashboard', () => {
     const quote = page.locator('app-spec-dashboard [data-section="idea"] blockquote');
     await expect(quote).toContainText(SPEC.ideaQuote ?? 'the golden has no idea quote');
     const next = page.locator('app-spec-dashboard [data-section="next"]');
-    await expect(next.locator('ui-command-chip code')).toHaveText(SPEC.next.command ?? '');
-    await expect(next.locator('[data-reason]')).toHaveText(SPEC.next.reasons.slice(0, 3));
+    // Spec 020 (T19, ISC-239): from 1120 px the card reads the spec's guidance sentence and holds no chip of its own;
+    // the spec head carries the canonical chip (one command, one chip per screen beside the rail's).
+    const own = specEntryOf(SPEC.guidance, SPEC.head.id);
+    expect(own, 'harbor 002 has its own guidance entry').toBeDefined();
+    await expect(next.locator('[data-guidance-reason]')).toHaveText(own ? sentenceOf(own.reason) : 'no entry');
+    await expect(next.locator('ui-command-chip')).toHaveCount(0);
+    await expect(page.locator('app-spec-head [data-head-command] code')).toHaveText(SPEC.next.command ?? '');
 
     // Spec 006 (ISC-114.2): the eyebrow is heading · "since <instant> via <command>"; the instant is a <time> in the
     // shared `en` form in the test's zone (`03/04/2026, 10:00 AM`), and the capitals come from CSS alone.

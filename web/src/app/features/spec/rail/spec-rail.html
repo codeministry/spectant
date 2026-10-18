@@ -1,6 +1,12 @@
-<!-- Where it stands and Waiting on you (the prototype's whereCard and waitingCard) with the key line: the spec rail from 1120 px. -->
+<!--
+  The spec rail from 1120 px: the guidance spot of every tab (spec 020, T20, ISC-239) on top, Next step and the spec's
+  own Waits on you, then Where it stands (the prototype's whereCard) and the key line. No checkbox: the rail leads, the
+  Tasks tab ticks.
+-->
 @if (model(); as m) {
   <div class="sr" data-spec-rail role="group" [attr.aria-label]="'specDashboard.context.label' | transloco">
+    <app-spec-rail-guide />
+
     <section class="sr-card" data-rail-block="where" aria-labelledby="spec-rail-where">
       <h2 id="spec-rail-where" class="sr-eyebrow">{{ 'status.where.heading' | transloco }}</h2>
       <ui-stage-track size="labelled" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
@@ -11,20 +17,6 @@
           <p class="sr-meta">{{ 'status.rail.claimsClosed' | transloco }}</p>
         </div>
       </div>
-      @if (m.next.command; as command) {
-        <div class="sr-next" data-rail-next>
-          <span class="sr-eyebrow">{{ 'status.rail.next' | transloco }}</span>
-          <ui-command-chip
-            [command]="command"
-            [copyLabel]="'status.where.copy' | transloco"
-            [copiedLabel]="'status.where.copied' | transloco"
-            [manualHint]="'status.where.manual' | transloco"
-          />
-          @if (m.next.reasons[0]; as reason) {
-            <p class="sr-meta">{{ reason }}</p>
-          }
-        </div>
-      }
       @if (firstTakeable(); as id) {
         <div class="sr-chips"><ui-chip variant="take" tone="accent" icon="hand" data-rail-take>{{ 'status.rail.take' | transloco: { id } }}</ui-chip></div>
       }
@@ -43,36 +35,6 @@
           </li>
         }
       </ul>
-    </section>
-
-    <section class="sr-card" data-rail-block="waiting" aria-labelledby="spec-rail-waiting">
-      <div class="sr-head">
-        <h2 id="spec-rail-waiting" class="sr-eyebrow">{{ 'specDashboard.waiting.heading' | transloco }}</h2>
-        <ui-chip data-count-badge variant="count" tone="secondary">{{ m.keyNumbers.waiting }}</ui-chip>
-      </div>
-      @if (m.waitingOnYou.length === 0) {
-        <p class="sr-meta">{{ 'specDashboard.waiting.none' | transloco }}</p>
-      } @else {
-        <ul class="sr-rows">
-          @for (item of m.waitingOnYou; track waitingKey(item)) {
-            <li class="sr-wait" data-rail-waiting [attr.data-waiting-kind]="item.kind">
-              @if (item.kind === 'operator') {
-                <input
-                  type="checkbox"
-                  class="checkbox checkbox-xs sr-box"
-                  disabled
-                  [checked]="item.checked ?? false"
-                  [attr.aria-label]="'specDashboard.waiting.checkLabel' | transloco: { ref: item.ref }"
-                />
-              } @else {
-                <ui-icon class="sr-wait-icon" [name]="item.kind === 'question' ? 'circle-help' : 'circle-check'" [size]="16" />
-              }
-              <a class="sr-wait-link" [routerLink]="waitingLink(item)"><span class="sr-ref">{{ item.ref }}</span> · {{ item.title }}</a>
-              <ui-chip variant="plain">{{ 'specDashboard.context.kinds.' + item.kind | transloco }}</ui-chip>
-            </li>
-          }
-        </ul>
-      }
     </section>
 
     <p class="sr-kbd" data-rail-kbd>

@@ -1,0 +1,11 @@
+{
+  "gate": "code-reviewed",
+  "at": "2026-03-05T15:00:00Z",
+  "actor": "a:claude:sess-40",
+  "tree": "d12a776d8e9e3e1e53923eddf1afdef160c1a0a2",
+  "head": "d2e9dec32fb82c72e5d1227bdef90c1f446871bf",
+  "branch": "feature/004-cache-layer",
+  "code": 0,
+  "security": 0,
+  "note": "no findings; tree changed since"
+}

@@ -1,0 +1,3 @@
+{"ts":"2026-03-02T09:00:00Z","from":null,"to":"plan","command":"/spec-feature flag-targeting","actor":"u:7b2e4f10"}
+{"ts":"2026-03-02T11:00:00Z","from":"plan","to":"tasks","command":"/spec-plan 001","actor":"u:7b2e4f10"}
+{"ts":"2026-03-05T10:00:00Z","from":"tasks","to":"review","command":"/spec-tasks 001","actor":"u:7b2e4f10"}

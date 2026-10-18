@@ -42,5 +42,9 @@
   "ideas": {
     "count": 0,
     "list": []
+  },
+  "guidance": {
+    "waits": [],
+    "next": []
   }
 }

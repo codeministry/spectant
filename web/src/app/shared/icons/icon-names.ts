@@ -142,4 +142,6 @@ export const ICON_NAMES = [
   'app-window',
   // Spec 017: the library's missing documents (design.md § Across viewports: control count, chip, reader).
   'file-x',
+  // Spec 020: the "Waits on you" marker and block (design.md § Viewport-übergreifend: word plus `user-round`).
+  'user-round',
 ] as const;

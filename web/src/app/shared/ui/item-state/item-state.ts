@@ -42,12 +42,16 @@ const SPLIT = '\u0000';
     '[attr.data-kind]': 'info().kind',
     '[attr.data-block]': "block() ? '' : null",
     '[attr.data-details]': "details() ? '' : null",
+    '[attr.data-reasoned]': "reasoned() ? '' : null",
   },
   styles: `
     :host { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; font-size: 13px; line-height: 20px; }
     :host([data-block]) { flex-direction: column; align-items: flex-start; gap: 8px; font-size: 15px; line-height: 24px; }
     .head, .details { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
     :host([data-block]) .details { flex-direction: column; align-items: flex-start; }
+    /* Spec 020 (T23, ISC-240): the board card's form, the open item's sentence on its own line above the chip, never cut. */
+    :host([data-reasoned][data-state='open']) .details { flex: 1 1 100%; }
+    .reason { flex: 1 1 100%; min-inline-size: 0; color: var(--color-base-content); overflow-wrap: break-word; }
     .line { min-inline-size: 0; font-weight: 600; }
     .num { font-variant-numeric: tabular-nums; font-weight: 500; }
     .muted { color: var(--muted-ink); }
@@ -83,10 +87,13 @@ const SPLIT = '\u0000';
       @let run = info().run;
       @switch (info().state) {
         @case ('open') {
+          @if (reasoned() && info().reason; as reason) {
+            <span class="reason" data-phrase data-reason-shown>{{ reason }}</span>
+          }
           @if (info().command; as command) {
             <ui-command-chip [command]="command" />
           }
-          @if (info().reason; as reason) {
+          @if (!reasoned() && info().reason; as reason) {
             <span class="muted" data-phrase [class.vh]="!block()">{{ reason }}</span>
           }
         }
@@ -158,6 +165,11 @@ export class UiItemState {
   readonly details = input(false, { transform: booleanAttribute });
   /** Leave the run's actor chip out: the caller already shows who holds the item (a task row's agent and sub-agent). */
   readonly noActor = input(false, { transform: booleanAttribute });
+  /**
+   * The board card's form (spec 020, T23, ISC-240): an `open` item's reason stands visible on its own line between
+   * the head and the copy chip, wrapping on whole words and never cut; the other states are unchanged.
+   */
+  readonly reasoned = input(false, { transform: booleanAttribute });
 
   private readonly transloco = inject(TranslocoService);
   private readonly lang = inject(LanguageService).current;

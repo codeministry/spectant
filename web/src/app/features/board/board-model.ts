@@ -1,4 +1,5 @@
-import type { ActorRef, ItemStateInfo, Priority, SpecType, SpecWait, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
+import { guidanceEntryOf } from '../../shared/ui/guidance/guidance-entry';
+import type { ActorRef, Guidance, GuidanceReason, ItemStateInfo, Priority, SpecType, SpecWait, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
 import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
 import type { Stage } from '../../../../../core/src/stage';
@@ -168,6 +169,8 @@ export interface BoardInput {
   readonly planning: PlanningModel;
   /** The dashboard rows of the same workspace: the type, reason and command a planning holder does not carry. */
   readonly rows: readonly BoardRow[];
+  /** `DashboardModel.guidance` of the same workspace (spec 020); absent from a server without a clock. */
+  readonly guidance?: Guidance;
   /** `GET /api/actors`: the display names of persons. */
   readonly actors?: ReadonlyArray<Pick<ActorMapping, 'id' | 'displayName'>>;
   readonly query?: BoardQueryState;
@@ -200,12 +203,22 @@ export interface BoardCard {
   readonly assigneeName: string | null;
   /** The row's one phrase; for an idea the story row's; null when the caller passed no row for the spec. */
   readonly reason: string | null;
+  /**
+   * The spec's own guidance reason (spec 020, ISC-237.1): the card reads its catalogue sentence in place of `reason`;
+   * null or absent for an idea, or when the guidance names no entry for the spec.
+   */
+  readonly guidance?: GuidanceReason | null;
   /** The row's command, e.g. `/spec-review 005`; null where the row names none. */
   readonly command: string | null;
   /** The stage is one core's `WAITING_STAGES` holds: the card shows its reason line. */
   readonly waiting: boolean;
   /** Waits on the principal: a waiting stage whose row has a command, other than the waits on a spec or a claim. */
   readonly waitsOnYou: boolean;
+  /**
+   * Spec 020 (T23, ISC-240): the spec's own entry stands in `guidance.waits`, so the card carries the "Waits on you"
+   * marker; absent or false for an idea, a Next item and a server without a clock.
+   */
+  readonly marked?: boolean;
   /** The raw sha256 of spec.md the transition sends back; null for an idea and where the server hashed none. */
   readonly hash: string | null;
   /** The story file for an idea (`specs/ideas/<slug>.md`); null for a spec. */
@@ -457,9 +470,11 @@ export function buildBoard(input: BoardInput): BoardModel {
       assignee,
       assigneeName: nameOf(assignee),
       reason: row?.nextReason ?? null,
+      guidance: guidanceEntryOf(input.guidance, entry?.holder.id ?? row?.id)?.reason ?? null,
       command,
       waiting: WAITING_STAGES.has(stage),
       waitsOnYou: WAITING_STAGES.has(stage) && !WAITS_ON_OTHERS.has(stage) && command !== null,
+      marked: input.guidance?.waits.some((e) => e.item === 'spec' && e.spec === (entry?.holder.id ?? row?.id)) ?? false,
       hash: entry?.holder.hash ?? null,
       path: null,
       targets: dropTargetsOf(base, planning.workflow, stages),

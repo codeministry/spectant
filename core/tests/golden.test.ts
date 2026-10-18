@@ -21,6 +21,8 @@
 //   <tree>.state.golden.json     state       `itemStates` (spec 040, T10, ISC-221) over the tree at the live clock with
 //                                            its activity reading and the default abort age of 120 minutes
 //                                            (helpers/state-model.ts); item-state.test.ts compares it too.
+//   <tree>.guidance.golden.json  guidance    `guidanceOf` (spec 020, ISC-237) over the `state` family's items and input
+//                                            (helpers/guidance-model.ts); the dashboard and spec goldens carry it too.
 //
 // Spec 040 adds the item state and nothing else (T17, T20, ISC-223, ISC-224): each `live` card carries `itemState`
 // (live.ts); each `claim-view` claim carries it at the live clock without locks, as the golden has always been built;
@@ -60,6 +62,7 @@ import { planningGantt } from '../src/gantt.ts';
 import { planningModel } from './helpers/planning-model.ts';
 import { planningGolden } from './helpers/planning-golden.ts';
 import { stateModel } from './helpers/state-model.ts';
+import { guidanceModel } from './helpers/guidance-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -131,10 +134,12 @@ const itemsOfSpec = (root: string, folder: string): ItemStateInfo[] => itemsAt(r
 /**
  * The `spec` family (`<tree>.spec.golden.json`, T12): `buildSpecPage` per spec folder in `listSpecs` order, keyed by
  * `specs/…` path, with the tree's master, constitution and TL;DR and every other folder as siblings; no locks (lock
- * sources are T20), no commits, no worktree tree.
+ * sources are T20), no commits, no worktree tree. Each page gets the tree's workspace guidance, as the spec route
+ * passes it (spec 020), and keeps its own spec's slice.
  */
 function specPageModel(root: string): Record<string, SpecPageModel> {
   const tree = readTreeAt(root);
+  const guidance = guidanceModel(root);
   const texts = folderTexts(root);
   const out: Record<string, SpecPageModel> = {};
   for (const ref of listSpecs(root)) {
@@ -142,7 +147,7 @@ function specPageModel(root: string): Record<string, SpecPageModel> {
     const files = texts.get(folder) as SpecFiles;
     const own = { ...files.texts, ...(tree.master === null ? {} : { master: tree.master }), ...(tree.constitution === null ? {} : { constitution: tree.constitution }) };
     const state = itemsAt(root).find((i) => i.kind === 'spec' && i.id === (specIdOf(files.folder) ?? files.folder));
-    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr, ...(tree.workflow ? { workflow: tree.workflow } : {}), ...(state === undefined ? {} : { state }) });
+    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr, ...(tree.workflow ? { workflow: tree.workflow } : {}), ...(state === undefined ? {} : { state }), guidance });
   }
   return out;
 }
@@ -191,6 +196,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   gantt: (root) => ((model) => planningGantt(model, model.asOf))(planningModel(root)),
   tech: techModel,
   state: stateModel,
+  guidance: guidanceModel,
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 

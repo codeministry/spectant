@@ -11,7 +11,7 @@
  *
  * | route | answer |
  * |-------|--------|
- * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72), the head's `state` the spec's item (spec 040); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
+ * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72), the head's `state` the spec's item (spec 040), `guidance` that spec's slice of the workspace guidance from the same items (spec 020); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
  * | timeline | `buildTimeline({files, commits, worktree})`, commits from `git.ts` `commitsFor`, the worktree from `timelineWorktreeOf`; ETag over body and `HEAD` |
  * | claims | `buildClaimViews({files, locks, specEdges, now})`, the spec edges resolved over the workspace reading (spec 025); each claim's `itemState` at the clock (spec 040) |
  * | tasks | `parseTaskLines` or `null` without tasks.md, each row's `itemState` its task's item (`itemStates`, spec 040); header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
@@ -39,6 +39,7 @@ import { buildClaimViews } from "../../core/src/claim-view.ts";
 import { specFilePath } from "../../core/src/files.ts";
 import type { ItemStateInfo, LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
 import { buildDashboard } from "../../core/src/dashboard.ts";
+import { guidanceOf } from "../../core/src/guidance.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { buildFrames } from "../../core/src/frames.ts";
@@ -195,6 +196,10 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       ...(input.master === null ? {} : { master: input.master }),
       ...(input.constitution === null ? {} : { constitution: input.constitution }),
     };
+    // One item-state reading for the head's state and the workspace guidance (spec 020), as the dashboard composes it.
+    const dashboard = buildDashboard(input);
+    const items = workspaceItemStates(input, dashboard, { now: clock(), ...age() });
+    const state = ref.archived ? undefined : items.find((i) => i.kind === "spec" && i.id === ref.id);
     const page = buildSpecPage({
       files: { folder: files.folder, texts },
       others: [...input.specs, ...input.archived].filter((f) => f !== files),
@@ -210,7 +215,9 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       // The merge state beside the reading (spec 025): the head's stage and `waits` are the row's (ISC-163).
       mergeState: reading.mergeState,
       // The spec's item state as the board card has it (spec 040, ISC-224); an archived spec has none.
-      ...((state) => (state === undefined ? {} : { state }))(workspaceItemStates(input, buildDashboard(input), { now: clock(), ...age() }).find((i) => i.kind === "spec" && i.id === ref.id && !ref.archived)),
+      ...(state === undefined ? {} : { state }),
+      // The workspace guidance; core keeps this spec's entries (spec 020, ISC-237).
+      guidance: guidanceOf({ workspace: input, dashboard, items }),
     });
     // The same hashes the gate write and the transition recompute (`writes.ts`), so a render and its write can only
     // differ by the files: the normalised gate hashes, and spec.md's raw bytes for the stage move (T83). Both over the

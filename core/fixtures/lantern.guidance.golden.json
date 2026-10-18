@@ -1,0 +1,39 @@
+{
+  "waits": [],
+  "next": [
+    {
+      "spec": "002",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Stop duplicate links and duplicate tags from entering the list",
+      "command": "/spec-implement 002",
+      "since": "2026-03-06T10:30:00Z",
+      "reason": {
+        "key": "stage.build.0",
+        "values": {
+          "ids": "ISC-11 and ISC-12",
+          "is": "are"
+        },
+        "phrase": "ISC-11 and ISC-12 are takeable"
+      }
+    },
+    {
+      "spec": "001",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Save a link once and find it again, online or offline",
+      "command": "/spec-implement 001",
+      "since": "2026-03-06T15:00:00Z",
+      "reason": {
+        "key": "stage.build.0",
+        "values": {
+          "ids": "ISC-7 and ISC-9",
+          "is": "are"
+        },
+        "phrase": "ISC-7 and ISC-9 are takeable"
+      }
+    }
+  ]
+}

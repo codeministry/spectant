@@ -1,0 +1,230 @@
+{
+  "specs/001-flag-targeting": [],
+  "specs/002-audit-trail": [],
+  "specs/003-flag-expiry": [],
+  "specs/004-cache-layer": [],
+  "specs/005-sdk-rollout": [
+    {
+      "index": 0,
+      "kind": "dispatch",
+      "round": 1,
+      "ts": "2026-03-05T10:00:00Z",
+      "label": "R1 dispatch",
+      "worst": "dispatched",
+      "cards": [
+        {
+          "task": "T1",
+          "claim": "ISC-12",
+          "lane": "api",
+          "text": "evaluate flags from one snapshot in the server sdk",
+          "parallel": false,
+          "seam": false,
+          "state": "dispatched",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed"
+        },
+        {
+          "task": "T2",
+          "claim": "ISC-13",
+          "lane": "sdk",
+          "text": "reload the browser snapshot on a change event",
+          "parallel": false,
+          "seam": false,
+          "state": "dispatched",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed"
+        }
+      ],
+      "progress": {
+        "claims": {
+          "closed": 0,
+          "total": 0
+        },
+        "tasks": {
+          "landed": 0,
+          "total": 2
+        }
+      },
+      "closedClaims": []
+    },
+    {
+      "index": 1,
+      "kind": "result",
+      "round": 1,
+      "ts": "2026-03-05T10:00:00Z",
+      "label": "R1",
+      "worst": "question",
+      "cards": [
+        {
+          "task": "T1",
+          "claim": "ISC-12",
+          "lane": "api",
+          "text": "evaluate flags from one snapshot in the server sdk",
+          "parallel": false,
+          "seam": false,
+          "state": "closed",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed"
+        },
+        {
+          "task": "T2",
+          "claim": "ISC-13",
+          "lane": "sdk",
+          "text": "reload the browser snapshot on a change event",
+          "parallel": false,
+          "seam": false,
+          "state": "question",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed",
+          "note": "question: reload on every event or debounce them?"
+        }
+      ],
+      "progress": {
+        "claims": {
+          "closed": 0,
+          "total": 0
+        },
+        "tasks": {
+          "landed": 1,
+          "total": 2
+        }
+      },
+      "closedClaims": []
+    },
+    {
+      "index": 2,
+      "kind": "dispatch",
+      "round": 2,
+      "ts": "2026-03-07T10:00:00Z",
+      "label": "R2 dispatch",
+      "worst": "dispatched",
+      "cards": [
+        {
+          "task": "T1",
+          "claim": "ISC-12",
+          "lane": "api",
+          "text": "evaluate flags from one snapshot in the server sdk",
+          "parallel": false,
+          "seam": false,
+          "state": "closed",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed"
+        },
+        {
+          "task": "T2",
+          "claim": "ISC-13",
+          "lane": "sdk",
+          "text": "reload the browser snapshot on a change event",
+          "parallel": false,
+          "seam": false,
+          "state": "dispatched",
+          "builder": "Engineer",
+          "tries": 2,
+          "reason": "claim takeable, edges closed"
+        },
+        {
+          "task": "T4",
+          "claim": "ISC-14",
+          "lane": "sdk",
+          "text": "roll the sdk out to the staging tenant",
+          "parallel": false,
+          "seam": false,
+          "state": "dispatched",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed"
+        }
+      ],
+      "progress": {
+        "claims": {
+          "closed": 0,
+          "total": 0
+        },
+        "tasks": {
+          "landed": 1,
+          "total": 3
+        }
+      },
+      "closedClaims": [],
+      "stop": "a decision only the principal can make",
+      "recut": {
+        "struck": [],
+        "added": [
+          "T4"
+        ],
+        "changed": []
+      }
+    },
+    {
+      "index": 3,
+      "kind": "result",
+      "round": 2,
+      "ts": "2026-03-07T10:00:00Z",
+      "label": "R2",
+      "worst": "question",
+      "cards": [
+        {
+          "task": "T1",
+          "claim": "ISC-12",
+          "lane": "api",
+          "text": "evaluate flags from one snapshot in the server sdk",
+          "parallel": false,
+          "seam": false,
+          "state": "closed",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed"
+        },
+        {
+          "task": "T2",
+          "claim": "ISC-13",
+          "lane": "sdk",
+          "text": "reload the browser snapshot on a change event",
+          "parallel": false,
+          "seam": false,
+          "state": "waiting",
+          "builder": "Engineer",
+          "tries": 2,
+          "reason": "state \"open\" · claim takeable, edges closed"
+        },
+        {
+          "task": "T4",
+          "claim": "ISC-14",
+          "lane": "sdk",
+          "text": "roll the sdk out to the staging tenant",
+          "parallel": false,
+          "seam": false,
+          "state": "question",
+          "builder": "Engineer",
+          "tries": 1,
+          "reason": "claim takeable, edges closed",
+          "note": "question: roll out to every staging tenant or to the first one only?"
+        }
+      ],
+      "progress": {
+        "claims": {
+          "closed": 0,
+          "total": 0
+        },
+        "tasks": {
+          "landed": 1,
+          "total": 3
+        }
+      },
+      "closedClaims": [],
+      "stop": "a decision only the principal can make"
+    }
+  ],
+  "specs/006-sdk-benchmarks": [],
+  "specs/007-segment-builder": [],
+  "specs/008-change-webhooks": [],
+  "specs/009-percent-rounding": [],
+  "specs/010-banner-copy": [],
+  "specs/011-flag-store": [],
+  "specs/012-segment-export": []
+}

@@ -185,3 +185,16 @@ with `X-Spectant-Stub-Run`:
 Switch the header between two polls to step a card through a run within one refresh tick. The header is a 400 under
 any other lock fixture, and `runs` is a 400 beside the worktree, edge or midnight overlays. Reason: the state is core's
 decision over the same log the server reads, never hand-written JSON (`stub-api.test.ts`, `-t "run variants"`).
+
+## Driving what waits on you from an e2e spec
+
+The block "Waits on you" (spec 020, ISC-238) reads `guidance.waits` from each workspace's dashboard. Pick how many
+entries the first workspace column of the start holds with `X-Spectant-Stub-Waits` (`STUB_WAITS` in `stub-api.ts`):
+
+- **0**: lantern alone, its golden as it is (no waiting entry; Next up still has two).
+- **1**: beacon, rebuilt by core without its folder `009-timezone-labels`, then lantern; only `/spec-review 004` waits.
+- **7**: harbor, then lantern, the goldens as they are; the first column shows the top entry, four more and "+2 more".
+
+Absent, the workspaces are the default list. The header is a 400 for any other value and beside `X-Spectant-Stub-Locks:
+runs`, the worktree, edge or midnight overlays. Reason: every body is core's output over a real fixture tree, never
+hand-written JSON (`stub-api.test.ts`, `-t "Waits"`).

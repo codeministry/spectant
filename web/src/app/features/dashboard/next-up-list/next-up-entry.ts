@@ -2,7 +2,11 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import type { DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
+import { UiGlyph } from '../../../shared/ui/glyph/glyph';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
@@ -23,9 +27,9 @@ import type { NextUpForm } from './next-up-list';
  */
 @Component({
   selector: 'app-next-up-entry',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiChip, UiClamp, UiCommandChip, UiIdChip, UiReason, UiStageTrack],
+  imports: [GuidanceReasonPipe, NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiChip, UiClamp, UiCommandChip, UiGlyph, UiIdChip, UiReason, UiStageTrack],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-next-entry]': 'row().id' },
+  host: { '[attr.data-next-entry]': 'row().id', '[attr.data-form]': 'form()' },
   styles: `
     :host { display: block; min-inline-size: 0; }
     .next-card { display: grid; gap: 12px; min-inline-size: 0; border-inline-start: 3px solid var(--color-primary); }
@@ -47,6 +51,16 @@ import type { NextUpForm } from './next-up-list';
     .next-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 8px; align-items: baseline; padding: 10px 12px; border-inline-start: 3px solid var(--color-primary); }
     .next-row .link { min-inline-size: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
     .next-row .cmd { grid-column: 2; min-inline-size: 0; }
+    /* Spec 020 (T25): the sentence in 13/20 over the chip, wrapping on whole words and never clamped; the ring of
+       "open" in its own tone (secondary). A card row as wide as the 820 px dashboard keeps the chip right, top-aligned. */
+    :host([data-form='card']) { container: next-entry / inline-size; }
+    .guide { display: grid; gap: 8px; justify-items: start; align-items: start; min-inline-size: 0; }
+    .sentence { display: flex; gap: 6px; align-items: flex-start; min-inline-size: 0; color: var(--color-base-content); font-size: 13px; line-height: 20px; overflow-wrap: break-word; }
+    .sentence ui-glyph { padding-block-start: 3px; }
+    .next-foot .guide { flex: 1 1 100%; }
+    @container next-entry (min-inline-size: 560px) {
+      .guide { grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; }
+    }
     @media (forced-colors: active) {
       .next-card, .next-row { border-inline-start-color: CanvasText; }
     }
@@ -105,7 +119,7 @@ import type { NextUpForm } from './next-up-list';
             {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
           </button>
         }
-        @if (row().nextReason || row().nextCommand) {
+        @if (entry() || row().nextReason || row().nextCommand) {
           <div class="cmd">
             <ng-container [ngTemplateOutlet]="next" [ngTemplateOutletContext]="{ compact: true }" />
           </div>
@@ -113,10 +127,26 @@ import type { NextUpForm } from './next-up-list';
       </div>
     }
 
-    <!-- The reason line (ISC-122.3): the same phrase and chip as the dashboard row; the bare chip without a phrase. -->
+    <!-- The reason line (ISC-122.3): the same phrase and chip as the dashboard row; the bare chip without a phrase.
+         With its guidance entry (spec 020, T25, ISC-240): the ring of "open", the whole sentence, never clamped, and the
+         entry's command; no "Waits on you" mark, Next is not waiting on you. -->
     <ng-template #next let-compact="compact">
-      @if (row().nextReason; as phrase) {
-        <ui-reason class="reason" data-next-reason [phrase]="phrase" [command]="row().nextCommand" [compact]="compact" />
+      @if (entry(); as entry) {
+        <div class="guide" data-next-reason data-next-guide>
+          <span class="sentence"
+            ><ui-glyph state="open" family="item" [size]="14" /><span data-next-sentence>{{ entry.reason | guidanceReason }}</span></span
+          >
+          @if (entry.command; as command) {
+            <ui-command-chip
+              [command]="command"
+              [copyLabel]="'common.copyCommand' | transloco"
+              [copiedLabel]="'common.copied' | transloco: { command }"
+              [manualHint]="'common.copyFallback' | transloco"
+            />
+          }
+        </div>
+      } @else if (row().nextReason; as phrase) {
+        <ui-reason class="reason" data-next-reason [phrase]="phrase" [guidance]="entryReason()" [command]="row().nextCommand" [compact]="compact" />
       } @else if (row().nextCommand; as command) {
         <ui-command-chip
           [command]="command"
@@ -133,6 +163,12 @@ export class NextUpEntry {
   readonly form = input<NextUpForm>('card');
   /** The five translated stage labels (`stages.*`), shared by every entry of the list. */
   readonly labels = input.required<readonly string[]>();
+  /** `DashboardModel.guidance` (spec 020): the spec's own entry turns the phrase into its sentence (ISC-237.1). */
+  readonly guidance = input<Guidance | undefined>(undefined);
+  /** The `guidance.next` entry this row stands for (spec 020, T25): its sentence and command replace the row's phrase. */
+  readonly entry = input<GuidanceEntry | null>(null);
+
+  protected readonly entryReason = computed(() => guidanceEntryOf(this.guidance(), this.row().id)?.reason ?? null);
 
   protected readonly current = computed(() => stageIndex(this.row().stage));
   /** One-based stage the accessible label names; a done spec names the last stage. */

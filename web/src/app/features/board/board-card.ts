@@ -8,8 +8,11 @@ import { DetailSelection, selectedLook } from '../../layout/detail-sidebar/selec
 import { UiIcon } from '../../shared/icons/icon';
 import { UiActorChip } from '../../shared/ui/actor-chip/actor-chip';
 import { UiCard } from '../../shared/ui/card/card';
+import { UiChip } from '../../shared/ui/chip/chip';
 import { UiItemState } from '../../shared/ui/item-state/item-state';
 import { UiPriority } from '../../shared/ui/priority/priority';
+import { withReason } from '../../shared/ui/guidance/guidance-entry';
+import { GuidanceReasonPipe } from '../../shared/ui/guidance/guidance-reason.pipe';
 import { UiReason } from '../../shared/ui/reason/reason';
 import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
@@ -77,7 +80,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiItemState, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
+  imports: [CdkDragHandle, GuidanceReasonPipe, TranslocoPipe, UiActorChip, UiCard, UiChip, UiIcon, UiItemState, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.data-key]': 'card().key',
@@ -120,6 +123,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .ms { border: 1px solid var(--line); color: var(--muted-ink); }
     /* Spec 040 (T48): the state line lies over the stretched title link, so its chips and links are their own targets. */
     .r4 { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
+    /* Spec 020 (T23, ISC-240): the "Waits on you" marker's own row, flush with the state line's glyph. */
+    .mark { display: flex; min-inline-size: 0; }
     .r4[data-run] { padding: 4px 8px; border-radius: var(--radius-field); background: var(--color-base-200); }
     .grip { position: relative; z-index: 1; display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: var(--radius-field); background: none; color: var(--muted-ink); cursor: grab; }
     .grip:active { cursor: grabbing; }
@@ -140,6 +145,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     @media (forced-colors: active) {
       .title:focus-visible::after { outline-color: Highlight; }
       .idea, .ms { border-color: CanvasText; }
+      .mark ui-chip { outline: 1px solid CanvasText; }
     }
   `,
   template: `
@@ -196,19 +202,27 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
             </div>
           }
 
-          @if (waits(); as reason) {
+          <!-- Spec 020 (T13, ISC-237.1): the spec's guidance entry reads its catalogue sentence; without one, the phrase. -->
+          @if (waits(); as phrase) {
+            @let reason = c.guidance | guidanceReason: phrase;
             <span class="vh" [id]="describedBy()">{{ 'board.workspace.card.waits' | transloco: { reason } }}</span>
+          }
+          <!-- Spec 020 (T23, ISC-240): the spec's own entry stands in guidance.waits: the marker row right above the state line. -->
+          @if (c.marked) {
+            <div class="mark" data-card-marker [id]="markId()">
+              <ui-chip tone="secondary" icon="user-round">{{ 'guidance.marker' | transloco }}</ui-chip>
+            </div>
           }
           @if (c.state || c.waits || waits()) {
             <div class="r4" data-card-state [attr.data-run]="c.state?.run ? c.state?.state : null">
               @if (c.state; as state) {
-                <ui-item-state [info]="state" [ws]="ws()" />
+                <ui-item-state [info]="withReason(state, c.guidance | guidanceReason: state.reason)" [ws]="ws()" reasoned />
               }
               @if (holdShown() && c.waits; as wait) {
                 <ui-waits-chip data-card-waits [id]="holdId()" [wait]="wait" [ws]="ws()" [titles]="c.waitTitles" />
               }
               @if (!c.state && waits(); as reason) {
-                <ui-reason [compact]="true" [phrase]="reason" [command]="c.command" />
+                <ui-reason [compact]="true" [phrase]="reason" [guidance]="c.guidance ?? null" [command]="c.command" />
               }
             </div>
           }
@@ -267,10 +281,13 @@ export class BoardCard {
   /** A run on the card's item is running (spec 040, T57): the grip locks. The state as served decides. */
   protected readonly locked = computed(() => this.card().state?.state === 'running');
   protected readonly ink = computed(() => reasonInk(this.card()));
+  protected readonly withReason = withReason;
   protected readonly glyph = computed<TypeGlyphKind>(() => this.card().type ?? 'idea');
   /** The phrase of a waiting card; null on every other card, which shows no reason line. */
   protected readonly waits = computed(() => (this.card().waiting ? this.card().reason : null));
   protected readonly describedBy = computed(() => `bc-${this.card().key}-waits`);
+  /** The marker row's id (spec 020, T23); the row reads in the card's flow, the link's description stays the phrase. */
+  protected readonly markId = computed(() => `bc-${this.card().key}-mark`);
   /** The `waits on NNN` line's id (spec 025, T23): the title link's description names the blockers after the reason. */
   protected readonly holdId = computed(() => `bc-${this.card().key}-hold`);
   /**

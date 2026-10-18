@@ -622,11 +622,21 @@ test.describe('polish', () => {
 
       // spec 024: overview without lists (principal 2026-10-13): Next up and its copy chips left `/` for the workspace
       // dashboard, so the probe reads the Next up chips there (one per spec, as on `/` before; a row's reason chip
-      // repeats its spec's command by design) and asserts `/` holds none.
+      // repeats its spec's command by design) and asserts `/` holds none but the top waiting entry's (spec 020 T16).
       test(`polish: every copy chip on the workspace dashboard names its command, the overview has none, at ${String(width)}`, async ({ page }) => {
         await page.goto('/');
         await expect(page.locator('app-workspace-column').first()).toBeVisible();
-        await expect(page.locator('app-overview-page ui-command-chip'), 'the overview shows no copy chip').toHaveCount(0);
+        // Spec 020 T16 (ISC-238): the one chip of each column is its top waiting entry's; none stands anywhere else.
+        const overviewChips = page.locator('app-overview-page ui-command-chip');
+        const topChips = page.locator('app-overview-page [data-ui="waits-block"] [data-top] ui-command-chip');
+        await expect(overviewChips, 'the overview shows no copy chip outside a top waiting entry').toHaveCount(await topChips.count());
+        for (const block of await page.locator('app-overview-page [data-ui="waits-block"]').all()) {
+          await expect(block.locator('ui-command-chip'), 'at most one copy chip per column, the top entry\'s').toHaveCount(Math.min(1, await block.locator('[data-top] ui-command-chip').count()));
+        }
+        for (const chip of await topChips.all()) {
+          const command = normalized(await chip.locator('code').textContent());
+          expect.soft(await accessibleName(chip.getByRole('button')), `the copy chip of ${command} names its command`).toContain(command);
+        }
         await page.goto(`/w/${WORKSPACE}`);
         const chips = page.locator('app-next-up-list ui-command-chip').filter({ visible: true });
         await expect(chips.first(), 'the workspace dashboard shows Next up copy chips').toBeVisible();

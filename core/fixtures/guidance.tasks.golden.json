@@ -1,0 +1,536 @@
+{
+  "specs/001-flag-targeting": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-1",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/flag-targeting.ts"
+        ],
+        "text": "a flag rule targets users by attribute, within one evaluation",
+        "line": 14,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-1, not dispatched"
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-2",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/flag-targeting.ts"
+        ],
+        "text": "a rule with an unknown attribute is refused when saved",
+        "line": 15,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-2, not dispatched"
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-3",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/flag-targeting.ts"
+        ],
+        "text": "anti: a disabled rule still matches a user",
+        "line": 16,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-3, not dispatched"
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 3,
+      "boxes": {
+        "landed": 0,
+        "total": 3
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 3
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 3
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/002-audit-trail": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-4",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/audit-trail.ts"
+        ],
+        "text": "every flag change is recorded with its actor and time",
+        "line": 14,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "task of ISC-4, not dispatched"
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-5",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/audit-trail.ts"
+        ],
+        "text": "the audit trail lists changes newest first",
+        "line": 15,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "task of ISC-5, not dispatched"
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/audit-trail.ts"
+        ],
+        "text": "anti: a change is recorded without its actor",
+        "line": 16,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "task of ISC-6, not dispatched"
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 3,
+      "boxes": {
+        "landed": 0,
+        "total": 3
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 3
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 3
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/003-flag-expiry": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-7",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/flag-expiry.ts"
+        ],
+        "text": "a flag carries an optional expiry date",
+        "line": 14,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "task of ISC-7, not dispatched"
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/flag-expiry.ts"
+        ],
+        "text": "an expired flag is listed on the clean-up page",
+        "line": 15,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "task of ISC-8, not dispatched"
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-9",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/flag-expiry.ts"
+        ],
+        "text": "an expired flag keeps serving its last value",
+        "line": 16,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "task of ISC-9, not dispatched"
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 3,
+      "boxes": {
+        "landed": 0,
+        "total": 3
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 3
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 3
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/004-cache-layer": null,
+  "specs/005-sdk-rollout": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-12",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/sdk-rollout.ts"
+        ],
+        "text": "evaluate flags from one snapshot in the server sdk",
+        "line": 14,
+        "status": "closed",
+        "round": 2,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-13",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "sdk",
+        "state": "open",
+        "paths": [
+          "sdk/src/sdk-rollout.ts"
+        ],
+        "text": "reload the browser snapshot on a change event",
+        "line": 15,
+        "status": "held",
+        "round": 2,
+        "builder": "Engineer",
+        "reason": "state \"open\" · claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "state \"open\" · claim takeable, edges closed"
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-13",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "open",
+        "paths": [
+          "ops/sdk-rollout.md"
+        ],
+        "text": "add the staging sdk key to the ci secrets",
+        "line": 16,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "task of ISC-13, not dispatched"
+        }
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-14",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "sdk",
+        "state": "open",
+        "paths": [
+          "sdk/src/sdk-rollout.ts"
+        ],
+        "text": "roll the sdk out to the staging tenant",
+        "line": 17,
+        "status": "question",
+        "round": 2,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "claim takeable, edges closed"
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 4,
+      "boxes": {
+        "landed": 1,
+        "total": 4
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 1
+        },
+        {
+          "name": "sdk",
+          "count": 2
+        },
+        {
+          "name": "operator",
+          "count": 1
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 1
+        },
+        {
+          "name": "held",
+          "count": 1
+        },
+        {
+          "name": "question",
+          "count": 1
+        },
+        {
+          "name": "closed",
+          "count": 1
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/006-sdk-benchmarks": null,
+  "specs/007-segment-builder": null,
+  "specs/008-change-webhooks": null,
+  "specs/009-percent-rounding": null,
+  "specs/010-banner-copy": null,
+  "specs/011-flag-store": null,
+  "specs/012-segment-export": null
+}

@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readSpecRows } from './spec-table-model';
@@ -275,6 +276,45 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       expect(reason?.querySelector('ui-command-chip')).toBeNull();
     }
     expect(waiting).toBeGreaterThan(0);
+  });
+
+  // Spec 020 · T26 · ISC-240: with guidance, a row whose spec waits on you reads "mark · sentence · chip", a row whose
+  // spec is next "ring · sentence · chip"; the mark is the visible word, never on a Next row or any other row.
+  it('marks exactly the rows in "Waits on you" and gives every row with an entry its whole sentence and chip', async () => {
+    const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(harbor));
+    fixture.componentRef.setInput('archive', readArchiveRows(harbor));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    fixture.componentRef.setInput('guidance', guidance);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const own = (list: readonly GuidanceEntry[]) => list.filter((e) => e.item === 'spec');
+    const waits = own(guidance.waits);
+    const next = own(guidance.next);
+    expect(waits.length).toBeGreaterThan(0);
+    expect(next.length).toBeGreaterThan(0);
+    const marked = [...host.querySelectorAll('[data-waits-mark]')].map((m) => m.closest('[data-reason]')?.getAttribute('data-reason'));
+    expect(marked.sort()).toEqual(waits.map((e) => e.spec).sort());
+    for (const [entry, kind] of [...waits.map((e) => [e, 'waits'] as const), ...next.map((e) => [e, 'next'] as const)]) {
+      const guide = host.querySelector<HTMLElement>(`app-spec-row-guide[data-reason="${entry.spec}"]`);
+      expect(guide, entry.spec).not.toBeNull();
+      expect(guide?.getAttribute('data-guide')).toBe(kind);
+      expect(guide?.parentElement).toBe(rowOf(host, entry.spec).closest('li'));
+      expect(guide?.closest('a')).toBeNull();
+      expect(text(guide?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
+      expect(guide?.querySelector('ui-glyph')?.getAttribute('data-shape') ?? null).toBe(kind === 'next' ? 'ring' : null);
+      const sentence = text(guide?.querySelector('[data-guide-sentence]') ?? null);
+      expect(sentence.length, entry.spec).toBeGreaterThan(0);
+      expect(sentence.startsWith('guidance.')).toBe(false);
+      expect(guide?.querySelector('ui-command-chip code')?.textContent).toBe(entry.command);
+      expect(host.querySelector(`ui-reason[data-reason="${entry.spec}"]`)).toBeNull();
+    }
+    const guided = new Set([...waits, ...next].map((e) => e.spec));
+    for (const spec of GOLDEN.specs.filter((s) => !guided.has(s.id))) {
+      expect(host.querySelector(`app-spec-row-guide[data-reason="${spec.id}"]`), spec.id).toBeNull();
+    }
   });
 });
 

@@ -28,8 +28,10 @@
   }
 }
 
-/* The unreadable and loading columns: the column frame and ws-head without the component. */
+/* The unreadable and loading columns: the column frame and ws-head without the component. They take the same three
+   row tracks as a workspace column (spec 020), so they never stretch the identity track of their grid row. */
 .plain {
+  grid-row: span 3;
   display: flex;
   flex-direction: column;
   gap: 12px;

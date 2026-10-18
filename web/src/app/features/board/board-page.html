@@ -253,12 +253,15 @@
         }
 
         <!-- Compact (spec 024, design § Mobile "Unteres Sheet Needs you"; prototype `.sheet-bar`): the sticky bottom bar opens the cards waiting on you. -->
-        <button type="button" class="sheet-bar" data-sheet-bar aria-haspopup="dialog" (click)="needsOpen.set(true)">
-          <span class="grab" aria-hidden="true"></span>
-          <span>{{ 'board.workspace.sheetBar' | transloco: { count: b.total } }}</span>
-          <span class="needs-n">{{ 'board.rail.needsYouCount' | transloco: { count: needsYou().length } }}</span>
-        </button>
-        <ui-sheet [(open)]="needsOpen" [heading]="'board.workspace.needsYou' | transloco">
+        <!-- Spec 020 (T24, ISC-240): "Waits on you n" counts guidance.waits in the secondary tone and links to the dashboard's #waiting. -->
+        <div class="sheet-bar" data-sheet-bar>
+          <button type="button" class="bar-open" aria-haspopup="dialog" (click)="needsOpen.set(true)">
+            <span class="grab" aria-hidden="true"></span>
+            <span>{{ 'board.workspace.sheetBar' | transloco: { count: b.total } }}</span>
+          </button>
+          <a class="needs-n" data-waits-link [routerLink]="['/w', ws()]" fragment="waiting">{{ 'board.workspace.waitsCount' | transloco: { count: waitsCount() } }}</a>
+        </div>
+        <ui-sheet [(open)]="needsOpen" [heading]="'guidance.waits.label' | transloco">
           @if (needsYou().length === 0) {
             <p class="needs-none">{{ 'board.workspace.needsNone' | transloco }}</p>
           } @else {
@@ -573,7 +576,10 @@
         ><ui-icon name="shield-check" [size]="14" /><span class="vh">{{ 'board.workspace.column.fixedGate' | transloco }}</span></ui-term
       >
     }
-    @if (waiting(column.stage)) {
+    <!-- Spec 020 (T24): a stage that waits on you shows the open ring of 040, no own count; the hourglass stays a wait on others. -->
+    @if (yours(column.stage)) {
+      <span class="wait" data-open-stage><ui-glyph state="open" family="item" [size]="14" /><span class="vh">{{ 'board.workspace.column.openStage' | transloco }}</span></span>
+    } @else if (waiting(column.stage)) {
       <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
     }
     <span class="count" aria-hidden="true" [attr.data-morph]="drag.morph().includes(column.stage) ? '' : null">{{ column.count }}</span>

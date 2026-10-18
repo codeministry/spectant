@@ -75,6 +75,9 @@ import {
   STUB_PERSON,
   STUB_RUN,
   type StubRunState,
+  STUB_WAITS,
+  WAITS_HEADER,
+  WAITS_STATES,
   runActivity,
   STUB_LIBRARY,
   STUB_MIDNIGHT,
@@ -2736,5 +2739,60 @@ describe('stub API: the run release answers as run-release-route.ts does, per se
     expect([aborted.status, await aborted.json()]).toEqual([422, { error: 'release-refused', reason: 'run-aborted' }]);
     expect((await release('r-none', hash, session)).status).toBe(404);
     expect(await stateOf(session)).toBe('running');
+  });
+});
+
+describe('stub API: waiting entries via X-Spectant-Stub-Waits (spec 020, T15, ISC-238)', () => {
+  type Entry = { spec: string; item: string; ref: string | null; command: string | null };
+  type Dash = { guidance?: { waits: Entry[]; next: Entry[] } };
+  const as = (waits: string, extra: Record<string, string> = {}): Record<string, string> => ({ [WAITS_HEADER]: waits, ...extra });
+  const list = async (headers: Record<string, string>): Promise<string[]> => {
+    const res = await ask('/api/workspaces', { headers });
+    expect(res.status).toBe(200);
+    return ((await res.json()) as Json[]).map((w) => w['slug'] as string);
+  };
+  const dashboard = async (ws: string, headers: Record<string, string>): Promise<Dash> => {
+    const res = await ask(`/api/workspaces/${ws}/dashboard`, { headers });
+    expect({ ws, status: res.status }).toEqual({ ws, status: 200 });
+    return (await res.json()) as Dash;
+  };
+
+  test('0 | 1 | 7: the first workspace column holds that many waiting entries', async () => {
+    for (const state of WAITS_STATES) {
+      const slugs = await list(as(state));
+      expect(slugs).toEqual(STUB_WAITS.workspaces[state].map((w) => w.slug));
+      const first = slugs[0] as string;
+      expect({ state, waits: (await dashboard(first, as(state))).guidance?.waits.length }).toEqual({ state, waits: Number(state) });
+    }
+  });
+
+  test('0 and 7 serve the goldens as they are: lantern alone, harbor before lantern', async () => {
+    expect(await dashboard('lantern', as('0'))).toEqual(golden('lantern') as Dash);
+    expect(await dashboard('harbor', as('7'))).toEqual(golden('harbor') as Dash);
+    expect(await dashboard('lantern', as('7'))).toEqual(golden('lantern') as Dash);
+    expect((await ask('/api/workspaces/harbor/dashboard', { headers: as('0') })).status).toBe(404);
+  });
+
+  test("1 is beacon rebuilt by core without 009: its golden's entries but the close step, and 009 is no spec", async () => {
+    const beacon = (golden('beacon') as Dash).guidance as { waits: Entry[]; next: Entry[] };
+    const served = (await dashboard(STUB_RUN.workspace.slug, as('1'))).guidance;
+    const dropped = STUB_WAITS.dropped.slice(0, 3);
+    expect(served?.waits).toEqual(beacon.waits.filter((e) => e.spec !== dropped));
+    expect(served?.waits.map((e) => e.command)).toEqual(['/spec-review 004']);
+    expect(served?.next).toEqual(beacon.next.filter((e) => e.spec !== dropped));
+    expect((await ask(specRoutes.spec(STUB_RUN.workspace.slug, dropped), { headers: as('1') })).status).toBe(404);
+    const page = await ask(specRoutes.spec(STUB_RUN.workspace.slug, '004'), { headers: as('1') });
+    expect(page.status).toBe(200);
+    expect(((await page.json()) as { guidance?: { waits: Entry[] } }).guidance?.waits.map((e) => e.command)).toEqual(['/spec-review 004']);
+  });
+
+  test('an unknown value, or the header beside an overlay, is a 400', async () => {
+    const unknown = await ask('/api/workspaces', { headers: as('3') });
+    expect([unknown.status, await unknown.json()]).toEqual([400, { error: 'unknown-stub-waits', waits: '3', states: [...WAITS_STATES] }]);
+    const overlays: ReadonlyArray<Record<string, string>> = [{ [LOCKS_HEADER]: 'runs' }, { [WORKTREES_HEADER]: 'on' }, { [EDGES_HEADER]: 'met' }, { [MIDNIGHT_HEADER]: 'on' }];
+    for (const extra of overlays) {
+      const res = await ask('/api/workspaces', { headers: as('7', extra) });
+      expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-waits-with-overlay' });
+    }
   });
 });

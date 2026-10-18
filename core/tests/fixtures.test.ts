@@ -17,6 +17,7 @@ import { join, relative } from "node:path";
 
 import { buildDashboard } from "../src/dashboard.ts";
 import { withItemStates } from "../src/item-state.ts";
+import { guidanceOf, withGuidance } from "../src/guidance.ts";
 import { parseFrontmatter } from "../src/frontmatter.ts";
 import { parseMilestones } from "../src/milestones.ts";
 import { readTech } from "../src/tech.ts";
@@ -205,9 +206,13 @@ describe("golden snapshots", () => {
 
   // Spec 040 (T20, ISC-224): each spec row and story carries its item state, the `state` family's item (the tree's
   // activity reading at the live clock), so the golden is what the server answers at that clock; the rest of the model
-  // stays built without lock sources, as before.
+  // stays built without lock sources, as before. Spec 020 (ISC-237): the model carries the workspace guidance from the
+  // same items, composed as the server's `loadDashboard` composes it.
   test.each(trees)("%s.golden.json", (name) => {
-    const model = withItemStates(buildDashboard(readTree(name)), stateModel(join(FIXTURES, name)));
+    const workspace = readTree(name);
+    const dashboard = buildDashboard(workspace);
+    const items = stateModel(join(FIXTURES, name));
+    const model = withGuidance(withItemStates(dashboard, items), guidanceOf({ workspace, dashboard, items }));
     expectGolden(goldenPath(name, DASHBOARD_FAMILY), goldenText(model), UPDATE_COMMAND);
   });
 });

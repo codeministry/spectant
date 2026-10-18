@@ -609,6 +609,11 @@ export interface SpecPageModel {
   readonly areas: SpecAreas;
   /** Null when the workspace has no `specs/tldr.md`. */
   readonly tldr: SpecTldr | null;
+  /**
+   * The workspace guidance filtered to this spec (spec 020, ISC-237), as `SpecPageInput.guidance` hands it in; absent,
+   * the page carries none. The server always passes it.
+   */
+  readonly guidance?: Guidance;
 }
 
 export interface SpecPageInput {
@@ -640,6 +645,8 @@ export interface SpecPageInput {
   readonly mergeState?: readonly MergeState[];
   /** The spec's item (`itemStates`, spec 040, ISC-224), carried as `SpecHead.state`; absent, the head carries none. */
   readonly state?: ItemStateInfo;
+  /** The workspace's `guidanceOf` (spec 020); the page keeps this spec's entries. Absent, the page carries none. */
+  readonly guidance?: Guidance;
 }
 
 // ─── Worktrees (worktrees.ts) ────────────────────────────────────────────────────────────────────────────────────
@@ -1079,6 +1086,60 @@ export interface ItemStateInfo {
   readonly closedAs?: 'dropped' | 'struck';
   /** Exactly one, when a detail the state needs is missing; never an invented value (ISC-221.1). */
   readonly diagnostic?: Diagnostic;
+}
+
+// ─── Guidance (guidance.ts, spec 020) ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What a guidance entry stands for (ISC-237): a spec's own `open` item, an open claim with a `manual` probe, an open
+ * task in the `operator` lane, or an open question of the newest round.
+ */
+export type GuidanceItem = 'spec' | 'claim' | 'task' | 'question';
+
+/**
+ * Why an entry is listed, as a stable key with the values that fill it (ISC-237.1): the web turns key and values into
+ * one sentence of its en and de catalogs, so the same item reads the same sentence on every surface. `stage.<stage>.<i>`
+ * names the reason template `i` of the stage table row of `stage` whose state is `open`; `waiting.<kind>` a
+ * `WaitingItem` kind (`manual`, `operator`, `question`). `GUIDANCE_REASON_KEYS` lists every key.
+ */
+export interface GuidanceReason {
+  /** E.g. `stage.review.0`, `waiting.manual`. */
+  readonly key: string;
+  /** The template's placeholders as filled, e.g. `{ ids: 'ISC-3' }`; empty when the template has none. */
+  readonly values: Readonly<Record<string, string>>;
+  /** The core's own phrase, unchanged (the item's `reason`); the anti-check compares against it (ISC-243). */
+  readonly phrase: string;
+}
+
+/** One entry of `Guidance.waits` or `Guidance.next` (ISC-237), every field taken from the state model and the files. */
+export interface GuidanceEntry {
+  /** The spec `NNN` the entry belongs to. */
+  readonly spec: string;
+  readonly item: GuidanceItem;
+  /** `ISC-N` for a claim, `T<n>` for a task, the question's ref for a question; null for a spec. */
+  readonly ref: string | null;
+  /** The spec's title for a spec, the claim's or task's text or the question for the others. */
+  readonly title: string;
+  /** The item's command, e.g. `/spec-review 020`; null when the model names none. */
+  readonly command: string | null;
+  /** The spec's priority; a missing key reads `P3` as everywhere in core. */
+  readonly priority: Priority;
+  /**
+   * ISO 8601: since when the entry waits — the newest `events.jsonl` line moving the spec into its current stage, else
+   * frontmatter `updated:`; a question's round time. Null when the files give none; such an entry sorts after every
+   * dated one of its priority.
+   */
+  readonly since: string | null;
+  readonly reason: GuidanceReason;
+}
+
+/**
+ * The guidance of a workspace or one spec (ISC-237): `waits` every `open` item whose next step lies with the principal,
+ * `next` every other `open` spec item; each sorted by priority (P1 first), then `since` (oldest first), then spec id.
+ */
+export interface Guidance {
+  readonly waits: readonly GuidanceEntry[];
+  readonly next: readonly GuidanceEntry[];
 }
 
 export interface FrameCard {

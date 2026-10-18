@@ -17,6 +17,10 @@
   @case ('ok') {
     @if (model(); as m) {
       <div class="page">
+        @if (!wide()) {
+          <!-- Spec 020 (T19, ISC-239): below 1120 the next-step card is the guidance spot, right under the spec head. -->
+          <ng-container [ngTemplateOutlet]="nextStep" [ngTemplateOutletContext]="{ guide: true }" />
+        }
         <section class="kpi" data-section="kpi" [attr.aria-label]="'specDashboard.kpi.label' | transloco">
           <ui-kpi-tile
             class="kpi-hero"
@@ -66,13 +70,21 @@
             [label]="'specDashboard.kpi.waiting' | transloco"
             [value]="m.keyNumbers.waiting"
             [meta]="(m.keyNumbers.waiting > 0 ? 'specDashboard.kpi.waitingMeta' : 'specDashboard.kpi.waitingNone') | transloco"
-            [accent]="m.keyNumbers.waiting > 0 ? 'warning' : undefined"
+            [accent]="m.keyNumbers.waiting > 0 ? 'secondary' : undefined"
             [edge]="m.keyNumbers.waiting > 0 ? true : undefined"
             [glow]="m.keyNumbers.waiting > 0 ? false : undefined"
             [href]="href('')"
             fragment="waiting"
           />
         </section>
+
+        @if (wide()) {
+          <!-- Spec 020 (T19): from 1120 the next step sits right under the KPI band, beside the lanes, before the idea. -->
+          <div class="dash-2">
+            <ng-container [ngTemplateOutlet]="nextStep" [ngTemplateOutletContext]="{ guide: false }" />
+            <ng-container [ngTemplateOutlet]="lanes" />
+          </div>
+        }
 
         <section class="card idea" data-section="idea" aria-labelledby="spec-dashboard-idea">
           <p class="eyebrow" id="spec-dashboard-idea">
@@ -85,57 +97,9 @@
           }
         </section>
 
-        <div class="dash-2">
-        <section class="card next" data-section="next">
-          <!-- Prototype `.next-step` (spec 024): the eyebrow is the heading, "NEXT STEP · SINCE … VIA …", no h2 title.
-               Spec 006: the instant goes through `<ui-time-label>`; the capitals are `type-eyebrow`'s CSS only. -->
-          <h2 class="next-eyebrow type-eyebrow" data-next-eyebrow>{{ 'specDashboard.next.heading' | transloco }}@if (m.next.since; as since) { · <ui-time-label [key]="m.next.via ? 'specDashboard.next.sinceVia' : 'specDashboard.next.since'" [params]="{ via: m.next.via ?? '' }" [value]="since" />}</h2>
-          @if (m.next.command; as command) {
-            <ui-command-chip
-              [command]="command"
-              [copyLabel]="'specDashboard.next.copy' | transloco"
-              [copiedLabel]="'specDashboard.next.copied' | transloco"
-              [manualHint]="'specDashboard.next.manual' | transloco"
-            />
-          } @else {
-            <p class="muted">{{ 'specDashboard.next.done' | transloco }}</p>
-          }
-          @if (reasons().length > 0) {
-            <ul class="reasons" [attr.aria-label]="'specDashboard.next.reasons' | transloco">
-              @for (reason of reasons(); track $index) {
-                <li data-reason>{{ reason }}</li>
-              }
-            </ul>
-          }
-          <ui-stage-track size="labelled" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
-        </section>
-
-        <section class="card lanes" data-section="lanes">
-          <ui-section-header [heading]="'specDashboard.lanes.heading' | transloco" />
-          @if (m.lanes.length === 0) {
-            <p class="muted">{{ 'specDashboard.lanes.none' | transloco }}</p>
-          } @else {
-            <ul class="lane-list">
-              @for (lane of m.lanes; track lane.name) {
-                <li>
-                  <a
-                    class="lane"
-                    [attr.data-lane]="lane.name"
-                    [routerLink]="link('board')"
-                    [queryParams]="{ lane: lane.name }"
-                    [attr.aria-label]="'specDashboard.lanes.link' | transloco: { lane: lane.name, landed: lane.landed, total: lane.total }"
-                  >
-                    <span class="lane-name">{{ lane.name }}</span>
-                    <ui-meter [value]="lane.landed" [max]="lane.total" />
-                    <span class="lane-count">{{ lane.landed }}/{{ lane.total }}</span>
-                  </a>
-                </li>
-              }
-            </ul>
-          }
-        </section>
-
-        </div>
+        @if (!wide()) {
+          <ng-container [ngTemplateOutlet]="lanes" />
+        }
 
         @if (brief(); as tldr) {
           <app-brief class="tldr" data-section="tldr" [brief]="tldr" />
@@ -171,39 +135,116 @@
   }
 }
 
-<!-- The Spec context (018-B14): the rail's blocks from 1120 px (RailContent), the main column's last block below. -->
+<!--
+  The next step (prototype `.next-step`, spec 024; spec 020 T19, ISC-239). `guide` (below 1120) makes it the guidance
+  spot: `#waiting`, the marker when the spec itself waits, the copy chip and the spec's further waiting entries. From
+  1120 the head and the rail carry the command, so the card holds the sentence, the track and a link to the rail.
+-->
+<ng-template #nextStep let-guide="guide">
+  @if (model(); as m) {
+    <section
+      class="card next"
+      data-section="next"
+      [attr.data-form]="guide ? 'guide' : 'card'"
+      [attr.id]="guide ? 'waiting' : null"
+      [attr.data-guidance-spot]="guide ? '' : null"
+      [attr.data-waits]="guide && selfWaits() ? '' : null"
+      aria-labelledby="spec-dashboard-next"
+    >
+      <div class="next-head">
+        <!-- The eyebrow is the heading, "NEXT STEP · SINCE … VIA …" (spec 006: the instant through `<ui-time-label>`). -->
+        <h2 class="next-eyebrow type-eyebrow" id="spec-dashboard-next" data-next-eyebrow>{{ 'specDashboard.next.heading' | transloco }}@if (m.next.since; as since) { · <ui-time-label [key]="m.next.via ? 'specDashboard.next.sinceVia' : 'specDashboard.next.since'" [params]="{ via: m.next.via ?? '' }" [value]="since" />}</h2>
+        @if (guide && selfWaits()) {
+          <ui-chip class="mark" variant="status" tone="secondary" icon="user-round" data-waits-mark>{{ 'guidance.marker' | transloco }}</ui-chip>
+        }
+      </div>
+      @if (entry(); as own) {
+        <p class="sentence" data-guidance-reason>{{ own.reason | guidanceReason }}</p>
+      } @else if (reasons().length > 0) {
+        <ul class="reasons" [attr.aria-label]="'specDashboard.next.reasons' | transloco">
+          @for (reason of reasons(); track $index) {
+            <li data-reason>{{ reason }}</li>
+          }
+        </ul>
+      }
+      @if (m.next.command; as command) {
+        @if (guide) {
+          <ui-command-chip
+            data-guidance-command
+            [command]="command"
+            [copyLabel]="'specDashboard.next.copy' | transloco"
+            [copiedLabel]="'specDashboard.next.copied' | transloco"
+            [manualHint]="'specDashboard.next.manual' | transloco"
+          />
+        }
+      } @else {
+        <p class="muted">{{ 'specDashboard.next.done' | transloco }}</p>
+      }
+      <ui-stage-track size="labelled" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+      @if (guide) {
+        @if (alsoWaiting().length > 0) {
+          <ui-waits-block
+            class="also"
+            data-guidance-waits
+            scope="spec"
+            [entries]="alsoWaiting()"
+            [workspace]="ws()"
+            [limit]="null"
+            [chips]="true"
+            headingId="spec-dashboard-waits"
+          />
+        }
+      } @else if (waits().length > 0) {
+        <a class="waits-link" data-waits-link [routerLink]="link()" fragment="waiting">
+          <ui-icon name="user-round" [size]="14" />
+          {{ 'specDashboard.next.waitsLink' | transloco: { count: waits().length } }}
+        </a>
+      }
+    </section>
+  }
+</ng-template>
+
+<ng-template #lanes>
+  @if (model(); as m) {
+        <section class="card lanes" data-section="lanes">
+          <ui-section-header [heading]="'specDashboard.lanes.heading' | transloco" />
+          @if (m.lanes.length === 0) {
+            <p class="muted">{{ 'specDashboard.lanes.none' | transloco }}</p>
+          } @else {
+            <ul class="lane-list">
+              @for (lane of m.lanes; track lane.name) {
+                <li>
+                  <a
+                    class="lane"
+                    [attr.data-lane]="lane.name"
+                    [routerLink]="link('board')"
+                    [queryParams]="{ lane: lane.name }"
+                    [attr.aria-label]="'specDashboard.lanes.link' | transloco: { lane: lane.name, landed: lane.landed, total: lane.total }"
+                  >
+                    <span class="lane-name">{{ lane.name }}</span>
+                    <ui-meter [value]="lane.landed" [max]="lane.total" />
+                    <span class="lane-count">{{ lane.landed }}/{{ lane.total }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+  }
+</ng-template>
+
+<!--
+  The Spec context (018-B14): the rail's blocks from 1120 px (RailContent), the main column's last block below. It
+  holds `#waiting` only in the rail, which opens with the spec rail's guidance spot (Next step and the spec's own Waits on
+  you, `app-spec-rail-guide`); below 1120 the next-step card is the guidance spot and carries both (spec 020, T19).
+-->
 <ng-template #context>
   @if (model(); as m) {
-    <div class="context" data-spec-context id="waiting" [attr.data-form]="wide() ? 'rail' : 'inline'" role="group" [attr.aria-label]="'specDashboard.context.label' | transloco">
-      <section class="card rail-card" data-context-block="waiting" aria-labelledby="spec-context-waiting">
-        <div class="block-head">
-          <h2 id="spec-context-waiting">{{ 'specDashboard.waiting.heading' | transloco }}</h2>
-          <ui-chip data-count-badge variant="count" tone="secondary">{{ m.keyNumbers.waiting }}</ui-chip>
-        </div>
-        @if (m.waitingOnYou.length === 0) {
-          <p class="muted">{{ 'specDashboard.waiting.none' | transloco }}</p>
-        } @else {
-          <ul class="rows">
-            @for (item of m.waitingOnYou; track waitingKey(item)) {
-              <li class="wait-line" data-waiting-item [attr.data-waiting-kind]="item.kind" [attr.data-waiting-ref]="item.ref">
-                @if (item.kind === 'operator') {
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    disabled
-                    [checked]="item.checked ?? false"
-                    [attr.aria-label]="'specDashboard.waiting.checkLabel' | transloco: { ref: item.ref }"
-                  />
-                } @else {
-                  <ui-icon class="wait-icon" [name]="item.kind === 'question' ? 'circle-help' : 'circle-check'" [size]="16" />
-                }
-                <a class="wait-link" [routerLink]="waitingLink(item)"><span class="ref">{{ item.ref }}</span> · {{ item.title }}</a>
-                <ui-chip data-waiting-kind-label variant="plain">{{ 'specDashboard.context.kinds.' + item.kind | transloco }}</ui-chip>
-              </li>
-            }
-          </ul>
-        }
-      </section>
+    <div class="context" data-spec-context [attr.id]="wide() ? 'waiting' : null" [attr.data-form]="wide() ? 'rail' : 'inline'" role="group" [attr.aria-label]="'specDashboard.context.label' | transloco">
+      @if (wide()) {
+        <!-- Spec 020 (ISC-239): from 1120 px this rail is the guidance spot, as on every tab; below it the next-step card is. -->
+        <app-spec-rail-guide />
+      }
 
       <section class="card rail-card" data-context-block="warnings" aria-labelledby="spec-context-warnings">
         <div class="block-head">
@@ -211,7 +252,15 @@
           <ui-chip data-count-badge variant="count" tone="secondary">{{ m.areas.status.warnings }}</ui-chip>
         </div>
         @if (overlaps().length > 0) {
-          <app-overlap-lines data-context-overlaps [lines]="overlaps()" [ws]="ws()" [form]="wide() ? 'short' : 'full'" [anchors]="false" />
+          @if (wide()) {
+            <app-overlap-lines data-context-overlaps [lines]="overlaps()" [ws]="ws()" form="short" [anchors]="false" />
+          } @else {
+            <!-- Spec 020 (T19): below 1120 the overlap lines fold away, so they never push the guidance down. -->
+            <ui-disclosure data-overlaps-fold [count]="overlaps().length">
+              <span uiDisclosureSummary>{{ 'specDashboard.warnings.overlaps' | transloco }}</span>
+              <app-overlap-lines data-context-overlaps [lines]="overlaps()" [ws]="ws()" form="full" [anchors]="false" />
+            </ui-disclosure>
+          }
         }
         @if (contextWarnings().length === 0) {
           @if (overlaps().length === 0) {
