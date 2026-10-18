@@ -43,11 +43,13 @@ import { detectLifeos, lifeosApi } from "./lifeos.ts";
 import { notesApi, openNotes } from "./notes.ts";
 import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
 import { dataDir } from "./paths.ts";
+import { eventsApi } from "./events-route.ts";
 import { prototypeApi } from "./prototype.ts";
 import { openRegistry, type Registry, RegistryError, type Workspace } from "./registry.ts";
 import { openSettings, settingsApi } from "./settings.ts";
 import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
+import { createWatchHub } from "./watch.ts";
 
 const USAGE = `Usage: spectant [command] [options]
 
@@ -231,7 +233,7 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     // The run lock's abort age (spec 040, ISC-225), read per write so a changed `runAbortMinutes` applies at once.
     const abortAfterMs = (): number => settings.get().runAbortMinutes * 60_000;
     const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache(), notes, abortAfterMs });
-    const api = composeApi(
+    const reads = composeApi(
       settingsApi(settings),
       actorsApi(db),
       lifeosApi(lifeos),
@@ -240,6 +242,8 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
       specs,
       prototypeApi({ registry }),
     );
+    // The live update stream (spec 030, ISC-28) answers its views through the same read handlers a poll reaches.
+    const api = composeApi(eventsApi({ hub: createWatchHub({ registry }), reads }), reads);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();
