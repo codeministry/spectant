@@ -48,6 +48,8 @@ import { openRegistry } from "../server/src/registry.ts";
 import {
   ACTIVITY_HASH_HEADER,
   ACTORS_PATH,
+  EVENTS_PATH,
+  LIVE_EVENT,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
   SPEC_HASH_HEADER,
@@ -1671,5 +1673,60 @@ describe("ISC-210 worktree-copy reads: every file kind is served from the newer 
     } finally {
       await stop();
     }
+  }, 60_000);
+});
+
+// The live update stream (spec 030, ISC-28) under the same guard: with the stream open on a repository whose spec
+// worktree carries specs/ (so the watchers arm on the main checkout and on the copy), every read is made once and one
+// task box is ticked from outside in the worktree copy. The update arrives, and the only path that differs afterwards is
+// the ticked file: the watchers, the builds behind the frame and the heartbeat write nothing, `.git/` and each linked
+// worktree's `.git` included.
+describe("ISC-28 with the live stream: an open stream and its updates leave the repository byte-identical", () => {
+  test("readonly: live — stream open, a change from outside, every byte but the changed file kept, .git/ and worktrees included", async () => {
+    const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs: true });
+    const repo = planted.root;
+    const ticked = `${SPEC_WORKTREE}/specs/${SPEC_FOLDER}/tasks.md`;
+    const before = snapshot(repo);
+    expectWorktreesHashed(before);
+
+    const { url, stop } = await serve(repo, "live");
+    const abort = new AbortController();
+    try {
+      const res = await fetch(`${url}${EVENTS_PATH}`, { signal: abort.signal });
+      expect(res.status).toBe(200);
+      const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+      const decoder = new TextDecoder();
+      await readEverything(url, [SPEC_ID]);
+      await Bun.sleep(250);
+      expect(changed(before, snapshot(repo), { mtime: true })).toEqual([]);
+
+      const file = join(repo, ticked);
+      const text = readFileSync(file, "utf8");
+      expect(text).toMatch(/^- \[ \]/m);
+      writeFileSync(file, text.replace(/^- \[ \]/m, "- [x]"));
+
+      // Read until an update names the ticked spec; the probe of the 2 s bound is `tests/live.test.ts`.
+      const want = `"${specRoutes.spec(SLUG, SPEC_ID)}"`;
+      const deadline = Date.now() + 5_000;
+      let seen = "";
+      while (!(seen.includes(`event: ${LIVE_EVENT}`) && seen.includes(want))) {
+        const left = deadline - Date.now();
+        if (left <= 0) throw new Error(`no update for ${want} within 5 s`);
+        const chunk = await Promise.race([reader.read(), Bun.sleep(left).then(() => null)]);
+        if (chunk === null || chunk.done) continue;
+        seen += decoder.decode(chunk.value, { stream: true });
+      }
+      await readEverything(url, [SPEC_ID]);
+      abort.abort();
+    } finally {
+      abort.abort();
+      await stop();
+    }
+
+    const after = snapshot(repo);
+    expect(changed(before, after)).toEqual([ticked]);
+    expect(changed(before, after, { mtime: true })).toEqual([ticked]);
+    expect(gitPaths([...after.entries.keys()])).toEqual(gitPaths([...before.entries.keys()]));
+    expect(changed(before, after, { mtime: true }).filter((path) => gitPaths([path]).length > 0)).toEqual([]);
   }, 60_000);
 });
