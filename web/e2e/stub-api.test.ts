@@ -28,6 +28,7 @@ import type {
 } from '../../core/src/files';
 import type { PlanningModel } from '../../core/src/planning';
 import {
+  ACTIVITY_HASH_HEADER,
   ACTORS_ALLOW,
   ACTORS_PATH,
   ACTORS_STATUSES,
@@ -65,6 +66,7 @@ import {
   RESET_PATH,
   RUN_HEADER,
   STUB_EDGES,
+  STUB_PERSON,
   STUB_RUN,
   type StubRunState,
   runActivity,
@@ -1305,6 +1307,7 @@ describe('stub API matches the real server handlers byte for byte', () => {
       'boardQuery',
       'allocate',
       'backlog',
+      'runRelease',
       'library',
       'libraryDoc',
       'librarySearch',
@@ -1804,6 +1807,22 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
           [workspaceRoutes.backlog(WS), { method: 'POST', body: priority(empty, 'F99') }],
         ] satisfies Case[];
       })(),
+      // Spec 040 (ISC-226): beacon under the runs locks; its /spec-tasks 003 run is open, r-0308-1140 is aborted at STUB_NOW.
+      runRelease: await (async () => {
+        const runs = { [LOCKS_HEADER]: 'runs' };
+        const hash = (await ask('/api/workspaces/beacon/dashboard', { headers: runs })).headers.get(ACTIVITY_HASH_HEADER) ?? '';
+        const at = (run: string): string => workspaceRoutes.runRelease('beacon', run);
+        const sent = (h: string): Record<string, string> => ({ ...runs, [ACTIVITY_HASH_HEADER]: h });
+        return [
+          [at(STUB_RUN.run), { method: 'POST', headers: sent(hash), session: 't040-release-status' }],
+          [at(STUB_RUN.run), { method: 'POST', headers: runs }],
+          [at(STUB_RUN.run), { method: 'POST', headers: { ...evil, ...sent(hash) } }],
+          [workspaceRoutes.runRelease('nope', 'r-1'), { method: 'POST', headers: sent(hash) }],
+          [at(STUB_RUN.run), { method: 'GET', headers: runs }],
+          [at(STUB_RUN.run), { method: 'POST', headers: sent('0'.repeat(64)) }],
+          [at('r-0308-1140'), { method: 'POST', headers: sent(hash) }],
+        ] satisfies Case[];
+      })(),
       library: reads((ws) => workspaceRoutes.library(ws)),
       libraryDoc: [
         ...reads((ws) => workspaceRoutes.libraryDoc(ws, ws === 'lantern' ? '001-reading-list/plan.md' : '002-web-console/plan.md')),
@@ -1824,6 +1843,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       'boardQuery',
       'allocate',
       'backlog',
+      'runRelease',
       'library',
       'libraryDoc',
       'librarySearch',
@@ -2518,5 +2538,49 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
     const last = JSON.parse(runActivity(text, 'ended').trim().split('\n').at(-1) ?? '{}') as Json;
     expect(last).toEqual({ ts: STUB_RUN.endedAt, event: 'run-end', run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, spec: STUB_RUN.folder, outcome: 'ok' });
     expect(() => runActivity('', 'none')).toThrow();
+  });
+});
+
+// ---- the run release (spec 040, T33, ISC-226) -----------------------------------------------------------------------
+
+describe('stub API: the run release answers as run-release-route.ts does, per session (spec 040, ISC-226)', () => {
+  const WS = STUB_RUN.workspace.slug;
+  const RUNS = { [LOCKS_HEADER]: 'runs' };
+  type Row = { id: string; state?: { state: string; run?: { run: string } } };
+  const hashOf = async (session: string): Promise<string> =>
+    (await ask(`/api/workspaces/${WS}/dashboard`, { headers: RUNS, session })).headers.get(ACTIVITY_HASH_HEADER) ?? '';
+  const stateOf = async (session: string): Promise<string | undefined> =>
+    ((await (await ask(`/api/workspaces/${WS}/dashboard`, { headers: RUNS, session })).json()) as { specs: Row[] }).specs.find((r) => r.id === STUB_RUN.spec)?.state?.state;
+  const release = (run: string, hash: string | null, session: string): Promise<Response> =>
+    ask(workspaceRoutes.runRelease(WS, run), { method: 'POST', session, headers: { ...RUNS, ...(hash === null ? {} : { [ACTIVITY_HASH_HEADER]: hash }) } });
+
+  test('run release: the session\'s next reads show 003 no longer running; another session and a reset still see it running', async () => {
+    const session = 't040-release';
+    expect(await stateOf(session)).toBe('running');
+    const hash = await hashOf(session);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    const res = await release(STUB_RUN.run, hash, session);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { hash: string; event: Record<string, unknown> };
+    expect(body.event).toEqual({ ts: '2026-03-08T15:00:00.000Z', event: 'run-end', run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_PERSON, spec: STUB_RUN.folder, outcome: 'released' });
+    expect(await hashOf(session)).toBe(body.hash);
+    expect(await stateOf(session)).not.toBe('running');
+    expect(await stateOf('t040-release-other')).toBe('running');
+    // A second release of the ended run is 404; the old hash is no longer asked for.
+    expect((await release(STUB_RUN.run, body.hash, session)).status).toBe(404);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await stateOf(session)).toBe('running');
+  });
+
+  test('run release: 400 without the hash, 409 for a stale one, 422 for the aborted run r-0308-1140, 404 for an unknown run', async () => {
+    const session = 't040-release-refusals';
+    const hash = await hashOf(session);
+    expect((await release(STUB_RUN.run, null, session)).status).toBe(400);
+    const stale = await release(STUB_RUN.run, '0'.repeat(64), session);
+    expect([stale.status, await stale.json()]).toEqual([409, { error: 'hash-mismatch', files: ['.spectant/activity.jsonl'], expected: { activity: hash } }]);
+    const aborted = await release('r-0308-1140', hash, session);
+    expect([aborted.status, await aborted.json()]).toEqual([422, { error: 'release-refused', reason: 'run-aborted' }]);
+    expect((await release('r-none', hash, session)).status).toBe(404);
+    expect(await stateOf(session)).toBe('running');
   });
 });

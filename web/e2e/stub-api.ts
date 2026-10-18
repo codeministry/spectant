@@ -154,6 +154,7 @@ import type {
 import { parseActor } from '../../core/src/actor';
 import type { PlanningHolder, PlanningModel } from '../../core/src/planning';
 import {
+  ACTIVITY_HASH_HEADER,
   ACTORS_ALLOW,
   ACTORS_PATH,
   SPEC_HASH_HEADER,
@@ -162,6 +163,7 @@ import {
   isBacklogRequest,
   isBoardQuery,
   isTransitionRequest,
+  runReleaseRequestFromHeader,
   type ActorMapping,
   type AllocateRefused,
   type BacklogRefused,
@@ -1136,7 +1138,15 @@ type EdgeCore = {
   activityReading: (text: string) => unknown;
   withIdeaStates: (model: PlanningModel, items: readonly unknown[]) => PlanningModel;
   hashForGate: (file: string, text: string) => string;
+  /** core's `runLockOf` and the run release's pure helpers of `server/src/writes.contract.ts` (spec 040, ISC-226). */
+  runLockOf: (openRuns: readonly StubOpenRun[], target: { spec: string } | { idea: string }, options: { now: Date }) => unknown;
+  activityConflict: (sent: string, now: string) => unknown;
+  runReleaseEvent: (ts: string, run: StubOpenRun, viewer: string) => unknown;
+  runReleaseAppendBytes: (existing: string, event: unknown) => string;
 };
+
+/** An open run as core's `activityReading` lists it, as far as the release reads it. */
+type StubOpenRun = { run: string; command: string; spec?: string; idea?: string };
 
 function loadEdgeCore(): EdgeCore {
   const load = createRequire(import.meta.url);
@@ -1148,6 +1158,7 @@ function loadEdgeCore(): EdgeCore {
     ...['dashboard', 'planning', 'spec', 'claim-view', 'live', 'tasks', 'spec-edges', 'locks', 'gates', 'item-state'].map((name) => at('src', `${name}.ts`)),
   ];
   const [tree, planning, dashboard, plan, spec, claimView, live, tasks, edges, locks, gates, state] = modules;
+  const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'writes.contract.ts')) as Partial<EdgeCore>;
   const loaded: Partial<EdgeCore> = {
     readTreeAt: tree?.readTreeAt,
     ideaFilesAt: tree?.ideaFilesAt,
@@ -1167,6 +1178,10 @@ function loadEdgeCore(): EdgeCore {
     activityReading: locks?.activityReading,
     withIdeaStates: state?.withIdeaStates,
     hashForGate: gates?.hashForGate,
+    runLockOf: state?.runLockOf,
+    activityConflict: writes.activityConflict,
+    runReleaseEvent: writes.runReleaseEvent,
+    runReleaseAppendBytes: writes.runReleaseAppendBytes,
   };
   const missing = Object.entries(loaded).filter(([, value]) => (value as unknown) === undefined).map(([key]) => key);
   if (missing.length > 0) throw new Error(`stub-api: core exports no ${missing.join(', ')}`);
@@ -1346,12 +1361,13 @@ type RunVariant = { dashboard: { model: unknown; kpis: unknown }; planning: Plan
  * locks and the spec's edges (as the claims route reads them) and the live frame; timeline, frames and docs read no run
  * line and stay the golden's.
  */
-function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRunState): RunVariant {
+function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRunState, withReleases: (text: string) => string = (text) => text): RunVariant {
   const read = edge.readTreeAt(base.root);
   // The ended run wrote 003's tasks.md; the other variants read the tree as it is.
   const withTasks = (f: SpecFiles): SpecFiles => (state === 'ended' && f.folder === STUB_RUN.folder ? { ...f, texts: { ...f.texts, tasks: STUB_RUN_TASKS } } : f);
   const input: TreeInput = { ...read, specs: read.specs.map(withTasks) };
-  const locks = edge.activityReading(runActivity(readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'), state));
+  // The session's run releases (spec 040, ISC-226) append their run-end lines after the variant's edit.
+  const locks = edge.activityReading(withReleases(runActivity(readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'), state)));
   const workspace = { ...input, locks };
   const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS }) as ReadonlyArray<{ kind: string; id: string; spec?: string }>;
   const plain = edge.buildDashboard(input);
@@ -1639,16 +1655,40 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   // `X-Spectant-Stub-Run`, each variant built on the first request that asks for it and then held.
   const runWorkspaces: readonly StubWorkspace[] = [...workspaces.filter((w) => w.slug !== STUB_RUN.workspace.slug), STUB_RUN.workspace];
   let runBase: TreeGoldens | null = null;
-  const runViews = new Map<StubRunState, EdgeView>();
+  const runViews = new Map<string, EdgeView>();
+  /** The run variant a request names (`X-Spectant-Stub-Run`, absent: `running`). */
+  const runStateOf = (req: Request): StubRunState => {
+    const header = req.headers.get(RUN_HEADER) ?? 'running';
+    return isOneOf(RUN_STATES, header) ? header : 'running';
+  };
+  /**
+   * The session's run releases (spec 040, ISC-226), per workspace slug: the `run-end` lines `POST …/runs/:run/release`
+   * appended, applied in order after the run variant's edit, so the session's next reads show the run ended.
+   */
+  const releases = new Map<string, Map<string, unknown[]>>();
+  const withReleasesOf = (req: Request, ws: string) => (text: string): string =>
+    (releases.get(sessionOf(req))?.get(ws) ?? []).reduce<string>((acc, event) => acc + edgeCore.runReleaseAppendBytes(acc, event), text);
+  /** The workspace's `.spectant/activity.jsonl` as the request's variant and session read it; `''` without the file. */
+  const activityTextOf = (req: Request, ws: string, root: string): string => {
+    let text: string;
+    try {
+      text = readFileSync(join(root, '.spectant', 'activity.jsonl'), 'utf8');
+    } catch {
+      text = '';
+    }
+    const variant = req.headers.get(LOCKS_HEADER) === 'runs' && ws === STUB_RUN.workspace.slug ? runActivity(text, runStateOf(req)) : text;
+    return withReleasesOf(req, ws)(variant);
+  };
   /** The run variant a request asks for (`X-Spectant-Stub-Locks: runs`), null under any other lock fixture. */
   const runViewOf = (req: Request): EdgeView | null => {
     if (req.headers.get(LOCKS_HEADER) !== 'runs') return null;
-    const header = req.headers.get(RUN_HEADER) ?? 'running';
-    const state: StubRunState = isOneOf(RUN_STATES, header) ? header : 'running';
-    const held = runViews.get(state);
+    const state = runStateOf(req);
+    const own = releases.get(sessionOf(req))?.get(STUB_RUN.workspace.slug) ?? [];
+    const key = own.length === 0 ? state : `${state}\n${JSON.stringify(own)}`;
+    const held = runViews.get(key);
     if (held) return held;
     runBase ??= readTree(core, dir, STUB_RUN.workspace.golden);
-    const variant = runVariant(core, edgeCore, runBase, state);
+    const variant = runVariant(core, edgeCore, runBase, state, withReleasesOf(req, STUB_RUN.workspace.slug));
     const { slug } = STUB_RUN.workspace;
     const out: EdgeView = {
       dashboards: new Map([...dashboards, [slug, variant.dashboard]]),
@@ -1657,7 +1697,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       views: new Map(),
     };
     for (const s of STUB_STATES) out.views.set(s, view(s, false, out, runWorkspaces));
-    runViews.set(state, out);
+    runViews.set(key, out);
     return out;
   };
   /** Each workspace's catalog, built on first read (core's `readCatalog` is async) and then held: one per stub. */
@@ -1850,7 +1890,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
     const source = (runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
-    return workspaceJson(req, 200, bumpDashboard(source.get(slug)?.model, bumpsOf(req, slug)));
+    // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
+    const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
+    return workspaceJson(req, 200, bumpDashboard(source.get(slug)?.model, bumpsOf(req, slug)), activityHash);
   };
 
   /**
@@ -2236,6 +2278,40 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return workspaceJson(req, 200, { hash: rawSha256(plan.text), event: plan.event });
   };
 
+  /**
+   * `POST …/:ws/runs/:run/release` (`run-release-route.ts`, `writes.ts` `writeRunRelease`; spec 040, ISC-226) over the
+   * workspace's activity log as the request's run variant and session read it (`activityTextOf`): 400 without a
+   * well-formed `X-Spectant-Activity-Hash`, 404 for a run core's `activityReading` lists as no open run, 409
+   * `StaleActivity` for any other hash (or `X-Spectant-Stub-Write: stale`), 422 `run-aborted` for a run core's
+   * `runLockOf` reads `aborted` at `STUB_NOW` (beacon's `r-0308-1140`), else 200 with the `run-end` line by
+   * `STUB_PERSON` at `STUB_NOW`, kept for the session: its next reads (under `runs`, beacon rebuilt by core with the
+   * line) show the item no longer running. The stub always has a viewer, so it never answers `no-viewer`; never 423.
+   */
+  const runReleaseRoute = (req: Request, state: StubState, outcome: WriteOutcome, ws: string, run: string): Response => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'POST') return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('runRelease') });
+    const tree = readableTree(req, state, ws);
+    if (tree instanceof Response) return tree;
+    const request = runReleaseRequestFromHeader(req.headers.get(ACTIVITY_HASH_HEADER));
+    if (request === null) return workspaceJson(req, 400, { error: 'invalid-body' });
+    const text = activityTextOf(req, ws, tree.root);
+    const reading = edgeCore.activityReading(text) as { openRuns?: readonly StubOpenRun[] };
+    const open = (reading.openRuns ?? []).find((r) => r.run === run);
+    if (open === undefined) return workspaceJson(req, 404, { error: 'not-found' });
+    const now = rawSha256(text);
+    const stale = edgeCore.activityConflict(outcome === 'stale' ? '' : request.hash, now);
+    if (stale !== null) return workspaceJson(req, 409, stale);
+    const target = open.spec === undefined ? { idea: open.idea ?? '' } : { spec: open.spec };
+    if (edgeCore.runLockOf([open], target, { now: new Date(STUB_NOW) }) === null) {
+      return workspaceJson(req, 422, { error: 'release-refused', reason: 'run-aborted' });
+    }
+    const event = edgeCore.runReleaseEvent(new Date(STUB_NOW).toISOString(), open, STUB_PERSON);
+    const own = releases.get(sessionOf(req)) ?? new Map<string, unknown[]>();
+    own.set(ws, [...(own.get(ws) ?? []), event]);
+    releases.set(sessionOf(req), own);
+    return workspaceJson(req, 200, { hash: rawSha256(text + edgeCore.runReleaseAppendBytes(text, event)), event });
+  };
+
   const settingsRoute = async (req: Request): Promise<Response> => {
     if (!guarded(req)) return settingsError(403, { error: 'forbidden' });
     if (req.method === 'GET' || req.method === 'HEAD') return settingsJson(req, settingsOf(req));
@@ -2542,6 +2618,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       boardQueries.delete(sessionOf(req));
       workflows.delete(sessionOf(req));
       backlogs.delete(sessionOf(req));
+      releases.delete(sessionOf(req));
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
@@ -2609,6 +2686,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     if (family?.route === 'allocate') return allocateRoute(req, requested, locks, write, family);
     if (family?.route === 'backlog') return backlogRoute(req, requested, write, family.params.ws);
+    if (family?.route === 'runRelease') return runReleaseRoute(req, requested, write, family.params.ws, family.params.run);
     return specRoute(req, url, requested, locks, write);
   };
   return (req, url) => {

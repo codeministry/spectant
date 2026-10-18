@@ -71,6 +71,11 @@
  * the summary when the folder cannot be read), otherwise `backlog-route.ts` (400, 409 stale backlog, 422 refused, 200).
  * No lock source is read. The planning route serves `backlogHash` from the same raw bytes the write compares.
  *
+ * The run release (spec 040, ISC-226): `POST /api/workspaces/:ws/runs/:run/release` → `RunReleased`, matched by the
+ * same `matchWorkspacePath` with the backlog's guard order, otherwise `run-release-route.ts` (400 without the hash
+ * header, 404 no such open run, 409 stale log, 422 refused, 200). The dashboard sends the hash it compares,
+ * `X-Spectant-Activity-Hash`, the raw sha256 of `.spectant/activity.jsonl` (the empty text's without the file).
+ *
  * The library catalog (spec 017 T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, matched by
  * the same `matchWorkspacePath` with the planning route's guard order and statuses (403, 405 with `allowForWorkspace`,
  * 404 unknown workspace, 409 with the summary when the folder cannot be read). It answers core's `readCatalog` through
@@ -123,6 +128,7 @@ import { basename, dirname, join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
+import { runReleaseAnswer } from "./run-release-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
 import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { type RepoFileCopy, catalogSourceOf } from "../../core/src/library.ts";
@@ -156,6 +162,7 @@ import {
   isActorMappings,
   isBoardQuery,
   matchWorkspacePath,
+  ACTIVITY_HASH_HEADER,
 } from "./spec-routes.contract.ts";
 import {
   type CatalogLoad,
@@ -177,6 +184,7 @@ import {
   unreadableCode,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
+import { ACTIVITY_PATH } from "./writes.contract.ts";
 import { rawSha256 } from "./writes.ts";
 
 /** The list route; a dashboard is `${WORKSPACES_PATH}/:slug/dashboard`. */
@@ -448,7 +456,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     // The item states at this request's clock and the abort age as the setting now stands (spec 040, ISC-224).
     const loaded = await load(workspace.path, services, stateDir, stateClock());
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
-    return json(req, 200, loaded.model);
+    // The hash a run release sends back (spec 040, ISC-226): the raw bytes of the activity log, the empty text's without it.
+    return json(req, 200, loaded.model, { [ACTIVITY_HASH_HEADER]: rawSha256(readBytesIfExists(join(workspace.path, ACTIVITY_PATH)) ?? "") });
   };
 
   // The board's stages come from the reading's own lock source (the repository's activity log); no LifeOS path is read.
@@ -756,6 +765,23 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
   };
 
+  // The run release (spec 040, ISC-226): the route layer's 404 and 409 here, everything else in `run-release-route.ts`.
+  const runRelease = async (req: Request, slug: string, run: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const root = workspace.path;
+    const unreadable = workspaceUnreadable(root);
+    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
+    try {
+      const age = options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() };
+      const answer = await runReleaseAnswer({ root, now: clock(), run, headers: req.headers, ...age });
+      return json(req, answer.status, answer.body);
+    } catch (error) {
+      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
+      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+    }
+  };
+
   return (req, url) => {
     const { pathname } = url;
     const match = DASHBOARD_PATH.exec(pathname);
@@ -774,6 +800,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (workspaceRoute?.route === "backlog") {
       if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("backlog") });
       return backlog(req, workspaceRoute.params.ws);
+    }
+    if (workspaceRoute?.route === "runRelease") {
+      if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("runRelease") });
+      return runRelease(req, workspaceRoute.params.ws, workspaceRoute.params.run);
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
       const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : ALLOW;

@@ -27,8 +27,9 @@ as every existing route answers (plan 002's `not_found` is superseded). `tests/s
 
 ## The write path (spec 002)
 
-The app writes exactly four things into a registered repository, each on a user action, each through `writes.ts` and
-typed by `writes.contract.ts` (`WRITE_TABLE`, `WRITE_PATHS`): the reviewed mark (`.gates/reviewed.json` in the old
+The app writes into a registered repository along exactly eight write paths, the eight entries of `WRITE_PATHS`
+(`writes.contract.ts`), each through `writes.ts`. Four are the routes of specs 002 and 008, each on a user action and
+typed by `WRITE_TABLE`: the reviewed mark (`.gates/reviewed.json` in the old
 skill's byte format plus one `review → build` line appended to `events.jsonl`), one task checkbox (one `[ ]` ↔ `[x]`
 flip on one line of `tasks.md`, line endings kept), the stage move (`stage:` in `spec.md` plus one event line, spec
 008 T82) and the allocation of a story (spec 008 T86: `specs/NNN-slug/` created with `context.md`, `spec.md` and
@@ -56,6 +57,17 @@ to `specs/backlog.events.jsonl`, at the main checkout, under the raw sha256 chec
 no agent writes it, so no claim can hold it, and a lock check would block the backlog during every implementation
 round for nothing. core plans the write (`planBacklogMove`, `planBacklogPriority`); a refusal is 422 `backlog-refused`
 with core's reason, and nothing is written.
+
+The eighth path is the run release (spec 040, ISC-226, `WRITE_PATHS.runRelease`, `writeRunRelease`,
+`run-release-route.ts`), `POST /api/workspaces/:ws/runs/:run/release`. Its one file is `.spectant/activity.jsonl` at the
+main checkout, and its one change is one appended `run-end` line with `outcome: released`, the run's `command` and
+`spec` or `idea`, and the viewer's `u:` id as `session`: one `appendInPlace`, never a rewrite, no directory created.
+The client sends the raw sha256 of the whole file it rendered in `X-Spectant-Activity-Hash` (the dashboard sends it);
+the order is 400 (no hash header) → 404 (no such open run, unknown or already ended, as core's `activityReading` reads
+the file) → 409 `hash-mismatch` with the hash now → 422 `release-refused` (`no-viewer` without a `u:` id, there is no
+fallback; `run-aborted` when core's `runLockOf` reads the run `aborted`) → 200. No claim lock is read and no run locks
+it, so no 423. Reason: the plugin is the file's writer, so the app may only add one complete line, and only over the
+exact bytes the user saw; a line the plugin appended meanwhile is the 409, never a torn or lost line.
 
 The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every
 read route and every refused write, and after an accepted one only the files of that write's `WRITE_PATHS` entry may
@@ -99,7 +111,7 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Bind to `127.0.0.1` or `::1` only, never `0.0.0.0`. The app is a local single-user tool (ISC-1).
 - Make no outbound request. Loopback is the only network, and the dev-services probe checks local listeners only
   (ISC-2).
-- Never write into a registered repository beyond the four writes above: no other file, no `.git/` object, no index,
+- Never write into a registered repository beyond the eight write paths above: no other file, no `.git/` object, no index,
   no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
 - The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array) and the board query (spec 008, `board_query` table from migration 5: the board's last query string per workspace slug), never anything a repository says. Deleting it must lose nothing

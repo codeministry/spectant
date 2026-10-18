@@ -159,6 +159,12 @@ const REFUSABLE_WRITE = [200, 400, 403, 404, 405, 409, 422, 423] as const;
  */
 const BACKLOG_WRITE = [200, 400, 403, 404, 405, 409, 422] as const;
 /**
+ * The run release (spec 040, ISC-226): `BACKLOG_WRITE`'s statuses, since it reads no claim lock and no run locks it.
+ * 400 is a missing or malformed `X-Spectant-Activity-Hash`; 404 the unknown workspace, or a run that is unknown or
+ * already ended; 409 `hash-mismatch` or the unreadable workspace's `Unavailable`; 422 `release-refused`.
+ */
+const RUN_RELEASE_WRITE = [200, 400, 403, 404, 405, 409, 422] as const;
+/**
  * The app's own state (the database), never a repository file: 400 invalid body, no 409 (spec 008, T91, T92). The
  * board query's 404 is the unknown workspace; the actors route names none.
  */
@@ -265,6 +271,7 @@ export type WorkspaceRouteName =
   | 'boardQuery'
   | 'allocate'
   | 'backlog'
+  | 'runRelease'
   | 'library'
   | 'libraryDoc'
   | 'librarySearch'
@@ -279,6 +286,11 @@ export interface StoryParams extends WorkspaceParams {
   readonly slug: string;
 }
 
+/** The workspace slug and a run id as `.spectant/activity.jsonl` writes it (spec 040, ISC-226). */
+export interface RunParams extends WorkspaceParams {
+  readonly run: string;
+}
+
 /** The decoded params of each workspace route. */
 export interface WorkspaceRouteParams {
   planning: WorkspaceParams;
@@ -286,6 +298,7 @@ export interface WorkspaceRouteParams {
   boardQuery: WorkspaceParams;
   allocate: StoryParams;
   backlog: WorkspaceParams;
+  runRelease: RunParams;
   library: WorkspaceParams;
   /** The document's `path` is a query value, `LibraryDoc.path` (relative to `specs/`): `evidencePathQuery(url.search)`. */
   libraryDoc: WorkspaceParams;
@@ -307,6 +320,7 @@ export const workspaceRoutes = {
   boardQuery: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/board-query`,
   allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
   backlog: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/backlog`,
+  runRelease: (ws: string, run: string): string => `${SPEC_API_ROOT}/${enc(ws)}/runs/${enc(run)}/release`,
   library: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library`,
   /** `path` is a catalog document's `LibraryDoc.path` (`017-workspace-library/plan.md`, `tech.md`); it travels raw. */
   libraryDoc: (ws: string, path: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library/doc?path=${enc(path)}`,
@@ -346,6 +360,7 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
   { route: 'backlog', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/backlog`, statuses: BACKLOG_WRITE, request: 'BacklogRequest', response: 'BacklogWritten' },
+  { route: 'runRelease', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/runs/:run/release`, statuses: RUN_RELEASE_WRITE, request: 'RunReleaseRequest', response: 'RunReleased' },
   { route: 'library', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library`, statuses: READ, response: 'LibraryCatalog' },
   { route: 'libraryDoc', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/doc`, statuses: READ, response: 'LibraryDocPage' },
   { route: 'librarySearch', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/search`, statuses: READ, response: 'LibrarySearchResult' },
@@ -517,6 +532,7 @@ export interface WorkspaceRouteResponses {
   boardQuery: BoardQuery;
   allocate: IdeaAllocated;
   backlog: BacklogWritten;
+  runRelease: RunReleased;
   /** core's `readCatalog` over the workspace, as it is: metadata only, never a document's content. */
   library: LibraryCatalog;
   /**
@@ -570,6 +586,7 @@ export interface WorkspaceRouteRequests {
   boardQuery: BoardQuery;
   allocate: AllocateRequest;
   backlog: BacklogRequest;
+  runRelease: RunReleaseRequest;
 }
 
 /**
@@ -623,6 +640,7 @@ export const API_ERRORS = [
   'transition-refused',
   'allocate-refused',
   'backlog-refused',
+  'release-refused',
 ] as const;
 export type ApiError = (typeof API_ERRORS)[number];
 
@@ -698,7 +716,8 @@ export type WorkspaceRouteError<R extends WorkspaceRouteName = 'planning' | 'ide
   | MethodNotAllowed
   | ([R] extends ['boardQuery'] ? InvalidBody : Unavailable)
   | ([R] extends ['allocate'] ? InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked : never)
-  | ([R] extends ['backlog'] ? InvalidBody | Conflict<{ readonly backlog: string }> | BacklogRefused : never);
+  | ([R] extends ['backlog'] ? InvalidBody | Conflict<{ readonly backlog: string }> | BacklogRefused : never)
+  | ([R] extends ['runRelease'] ? InvalidBody | Conflict<{ readonly activity: string }> | RunReleaseRefused : never);
 
 export function isUnavailable(body: unknown): body is Unavailable {
   return typeof body === 'object' && body !== null && (body as { readable?: unknown }).readable === false;
@@ -760,6 +779,11 @@ export interface TaskCheckResponse {
  */
 export const REVIEWED_HASHES_HEADER = 'X-Spectant-Reviewed-Hashes';
 export const TASKS_HASH_HEADER = 'X-Spectant-Tasks-Hash';
+/**
+ * The raw sha256 hex of `.spectant/activity.jsonl` (spec 040, ISC-226), the empty text's without the file: sent on
+ * `GET /api/workspaces/:ws/dashboard`, the answer whose items show a run, and sent back on the run release.
+ */
+export const ACTIVITY_HASH_HEADER = 'X-Spectant-Activity-Hash';
 
 const HEX64 = /^[0-9a-f]{64}$/;
 const HASH_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
@@ -918,6 +942,53 @@ export interface BacklogRefused {
 }
 
 /**
+ * `POST /api/workspaces/:ws/runs/:run/release` (spec 040, ISC-226): end the open run `:run` as `released`. The route
+ * takes no body; its one input is the raw sha256 hex of `.spectant/activity.jsonl` the client rendered, sent in
+ * `ACTIVITY_HASH_HEADER` (`runReleaseRequestFromHeader`). The actor is not the client's to name: the server records
+ * the viewer's `u:` id, and without one it refuses (422 `no-viewer`).
+ */
+export interface RunReleaseRequest {
+  readonly hash: string;
+}
+
+/**
+ * The one line the release appends to `.spectant/activity.jsonl`: a `run-end` of the open run, keys in this order,
+ * `command` and `spec` or `idea` as the run's `run-start` wrote them, `session` the viewer's `u:` id, `outcome`
+ * `released`. core's `locks.ts` reads it as the run's end, so the run is no longer open.
+ */
+export interface RunReleaseEvent {
+  readonly ts: string;
+  readonly event: 'run-end';
+  readonly run: string;
+  readonly command: string;
+  readonly session: string;
+  readonly spec?: string;
+  readonly idea?: string;
+  readonly outcome: 'released';
+}
+
+/** 200 of the run release: `.spectant/activity.jsonl`'s new raw hash, for the next release, and the line appended. */
+export interface RunReleased {
+  readonly hash: string;
+  readonly event: RunReleaseEvent;
+}
+
+/** Why a release of an open run is refused: no `u:` viewer to name, or the run already reads `aborted`. */
+export const RELEASE_REFUSALS = ['no-viewer', 'run-aborted'] as const;
+export type ReleaseRefusal = (typeof RELEASE_REFUSALS)[number];
+
+/** 422 of the run release: the hash is current and the run open, but the release is refused. Nothing is written. */
+export interface RunReleaseRefused {
+  readonly error: 'release-refused';
+  readonly reason: ReleaseRefusal;
+}
+
+/** The release body from the `ACTIVITY_HASH_HEADER` value the client sends; null when absent or not 64 lowercase hex. */
+export function runReleaseRequestFromHeader(header: string | null): RunReleaseRequest | null {
+  return header !== null && HEX64.test(header) ? { hash: header } : null;
+}
+
+/**
  * One person of the actor table (`ActorRow` in `db.ts` without `updatedAt`, pinned by the contract test): the
  * `u:` id, the name the app shows, the git addresses seen for it. `GET /api/actors` answers every row ordered by id;
  * `PUT` takes the whole list (`isActorMappings`), replaces the table with it and answers the list as stored. The
@@ -944,7 +1015,7 @@ export type ActorsRequest = readonly ActorMapping[];
 export type ActorsError = Forbidden | MethodNotAllowed | InvalidBody;
 
 /** The 422 codes. */
-export const REFUSAL_ERRORS = ['transition-refused', 'allocate-refused', 'backlog-refused'] as const satisfies readonly ApiError[];
+export const REFUSAL_ERRORS = ['transition-refused', 'allocate-refused', 'backlog-refused', 'release-refused'] as const satisfies readonly ApiError[];
 
 const isPlainRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const hasOnlyKeys = (v: Record<string, unknown>, keys: readonly string[]): boolean =>

@@ -20,6 +20,9 @@
  * Spec 008 adds the stage move (`writeTransition`, T82) and the allocation of a story (`writeAllocate`, T86), which
  * creates `specs/NNN-slug/` (its one directory), writes three files there and removes the story file. Spec 036 adds
  * the backlog (`writeBacklog`), the one write that reads no lock source: `specs/backlog.md` belongs to no spec.
+ * Spec 040 adds the run release (`writeRunRelease`, ISC-226), the eighth write path and its one file,
+ * `.spectant/activity.jsonl` at the main checkout: exactly one `run-end` line with `outcome: released` and the
+ * viewer's `u:` id, appended under the raw sha256 of the whole file; never a rewrite, no directory created.
  *
  * Spec 027 (T22, ISC-181): the three writes on an existing spec (reviewed mark, tick, stage move) take the folder of
  * the spec's read source as `ref.dir`, the worktree copy's when `readSpecSource` reads the spec from it, so the file
@@ -38,7 +41,7 @@ import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { gateState, hashForGate, readGateMark, reviewedGate } from "../../core/src/gates.ts";
 import { type RunLockTarget, runLockOf } from "../../core/src/item-state.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
-import { readLockSources } from "../../core/src/locks.ts";
+import { activityReading, readLockSources } from "../../core/src/locks.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { specIdOf } from "../../core/src/spec-ref.ts";
@@ -49,6 +52,7 @@ import { takenSpecNumbers } from "./git.ts";
 import type { AllocateRequest, BacklogRequest, NotFound, ReviewedHashes, TransitionRequest } from "./spec-routes.contract.ts";
 import { readBytesIfExists, readIdeaFiles, readIfExists, readSpecFiles, readWorkspaceInput, viewerActorOf } from "./workspace-loader.ts";
 import {
+  ACTIVITY_PATH,
   BACKLOG_EVENTS_PATH,
   BACKLOG_PATH,
   CONTEXT_PATH,
@@ -60,11 +64,14 @@ import {
   type WriteRefused,
   type WriteStale,
   backlogConflict,
+  activityConflict,
   blockingLock,
   eventAppendBytes,
   ideaConflict,
   runLockedOf,
   type RunLocked,
+  runReleaseAppendBytes,
+  runReleaseEvent,
   specConflict,
   writeActorOf,
   writePathsOf,
@@ -484,4 +491,53 @@ export async function writeBacklog(input: BacklogWriteInput): Promise<WriteAnswe
   // A log whose last line lacks its newline gets one first, so the new event never fuses with it.
   appendInPlace(eventsPath, `${existing !== null && existing !== "" && !existing.endsWith("\n") ? "\n" : ""}${plan.line}`);
   return { status: 200, body: { hash: rawSha256(plan.text), event: plan.event } };
+}
+
+// ── the run release (spec 040, T35, ISC-226) ─────────────────────────────────────────────────────────────────────
+
+export interface RunReleaseWriteInput {
+  /** The repository root: the activity log lives once per repository, at the main checkout (`WRITE_TABLE.runRelease.root`). */
+  readonly root: string;
+  readonly now: Date;
+  /** The run id of the route, decoded once. */
+  readonly run: string;
+  /** The raw sha256 of `.spectant/activity.jsonl` the client rendered (`X-Spectant-Activity-Hash`). */
+  readonly hash: string;
+  /** The age after which an open run reads `aborted` (`runAbortMinutes` × 60 000); core's default when absent. */
+  readonly abortAfterMs?: number;
+}
+
+/**
+ * One run release (`WRITE_PATHS.runRelease`). Before the write's one await: the viewer's actor (`viewerActorOf`, no
+ * fallback: the release names a person or is refused). Then synchronously, so nothing in this process runs between the
+ * read, the checks and the append:
+ *
+ * 1. `.spectant/activity.jsonl` is read once (the empty text without it) and read by core (`activityReading`): no open
+ *    run with the id, unknown or already ended, is 404, nothing written;
+ * 2. its raw sha256 against the client's: a mismatch is 409 `StaleActivity` with the hash now, nothing written. The
+ *    hash covers the whole file, so a line the plugin appended since render is the 409, never a race;
+ * 3. no `u:` viewer is 422 `no-viewer`; a run core reads `aborted` (`runLockOf` over that run alone, at `now` and the
+ *    abort age) is 422 `run-aborted`: it locks nothing, so there is nothing to release. Nothing written;
+ * 4. on yes: one `appendInPlace` of the one `run-end` line (`runReleaseEvent`), after a newline when the log lacks its
+ *    last one. The run is then ended and the run lock of ISC-225 on its item lifted (another open run may still hold
+ *    it). No other file changes, and no directory is created.
+ */
+export async function writeRunRelease(input: RunReleaseWriteInput): Promise<WriteResult<"runRelease">> {
+  const { root, now, run, hash } = input;
+  const viewer = await viewerActorOf(root);
+  const path = join(root, ACTIVITY_PATH);
+  const raw = readBytesIfExists(path) ?? Buffer.alloc(0);
+  const text = raw.toString("utf8");
+  const open = (activityReading(text).openRuns ?? []).find((r) => r.run === run);
+  if (open === undefined) return { status: 404, body: { error: "not-found" } };
+  const stale = activityConflict(hash, rawSha256(raw));
+  if (stale !== null) return { status: 409, body: stale };
+  if (viewer === null) return { status: 422, body: { error: "release-refused", reason: "no-viewer" } };
+  const target: RunLockTarget = open.spec === undefined ? { idea: open.idea ?? "" } : { spec: open.spec };
+  const running = runLockOf([open], target, { now, ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }) });
+  if (running === null) return { status: 422, body: { error: "release-refused", reason: "run-aborted" } };
+  const event = runReleaseEvent(now.toISOString(), open, viewer);
+  const bytes = runReleaseAppendBytes(text, event);
+  appendInPlace(path, bytes);
+  return { status: 200, body: { hash: rawSha256(Buffer.concat([raw, Buffer.from(bytes, "utf8")])), event } };
 }

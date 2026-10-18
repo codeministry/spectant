@@ -1640,7 +1640,10 @@ fixture snapshot among them.
 
 ## Activity and lock lines
 
-Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sources can hold a claim:
+Read when present, never written by the app (spec 002, T20, `locks.ts`), with one exception: the run release (spec
+040, ISC-226) appends exactly one `run-end` line with `outcome: released` and the viewer's `u:` id to
+`.spectant/activity.jsonl`, under the sha256 check over the whole file, and never rewrites a line. Two sources can
+hold a claim:
 
 - **LifeOS frontier locks**, lock files under the LifeOS state directory, read only when LifeOS is present; without
   LifeOS no LifeOS path is read (ISC-37).

@@ -266,7 +266,7 @@ const boardQueryErrors: Equal<WorkspaceRouteError<"boardQuery">, NotFound | Forb
 const boardQueryBodies: Equal<[WorkspaceRouteResponses["boardQuery"], WorkspaceRouteRequests["boardQuery"]], [BoardQuery, BoardQuery]> = true;
 const workspaceFamilies: Equal<
   Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>,
-  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "backlog" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
+  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "backlog" | "runRelease" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
 > = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
@@ -301,6 +301,7 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
   backlog: (ws) => workspaceRoutes.backlog(ws),
+  runRelease: (ws) => workspaceRoutes.runRelease(ws, "r-0308-1452"),
   library: (ws) => workspaceRoutes.library(ws),
   libraryDoc: (ws) => workspaceRoutes.libraryDoc(ws, "001-lighthouse-map/plan.md"),
   librarySearch: (ws) => workspaceRoutes.librarySearch(ws, "beacon"),
@@ -337,6 +338,10 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
         expect({ ws, slug, match: matchWorkspacePath(story.pathname) }).toEqual({ ws, slug, match: { route: "idea", params: { ws, slug } } });
         const allocate = new URL(workspaceRoutes.allocate(ws, slug), "http://127.0.0.1:7717");
         expect({ ws, slug, match: matchWorkspacePath(allocate.pathname) }).toEqual({ ws, slug, match: { route: "allocate", params: { ws, slug } } });
+      }
+      for (const run of WS) {
+        const release = new URL(workspaceRoutes.runRelease(ws, run), "http://127.0.0.1:7717");
+        expect({ ws, run, match: matchWorkspacePath(release.pathname) }).toEqual({ ws, run, match: { route: "runRelease", params: { ws, run } } });
       }
       const board = new URL(workspaceRoutes.boardQuery(ws), "http://127.0.0.1:7717");
       expect({ ws, match: matchWorkspacePath(board.pathname) }).toEqual({ ws, match: { route: "boardQuery", params: { ws } } });
@@ -405,12 +410,12 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     const read = SPEC_ROUTE_TABLE.find((entry) => entry.route === "spec")?.statuses;
     const write = SPEC_ROUTE_TABLE.find((entry) => entry.route === "transition")?.statuses;
     for (const entry of WORKSPACE_ROUTE_TABLE) {
-      expect(entry.method).toBe(entry.route === "allocate" || entry.route === "backlog" ? "POST" : "GET");
+      expect(entry.method).toBe(entry.route === "allocate" || entry.route === "backlog" || entry.route === "runRelease" ? "POST" : "GET");
       if (entry.method === "GET") expect(entry.request === undefined).toBe(entry.write === undefined);
       expect(entry.statuses).toEqual(
         entry.route === "allocate"
           ? (write ?? [])
-          : entry.route === "backlog"
+          : entry.route === "backlog" || entry.route === "runRelease"
             ? (write ?? []).filter((status) => status !== 423)
             : entry.write === undefined
               ? (read ?? [])
@@ -424,6 +429,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
       ["backlog", "POST", `${SPEC_API_ROOT}/:ws/backlog`, null, "BacklogRequest", "BacklogWritten"],
+      ["runRelease", "POST", `${SPEC_API_ROOT}/:ws/runs/:run/release`, null, "RunReleaseRequest", "RunReleased"],
       ["library", "GET", `${SPEC_API_ROOT}/:ws/library`, null, null, "LibraryCatalog"],
       ["libraryDoc", "GET", `${SPEC_API_ROOT}/:ws/library/doc`, null, null, "LibraryDocPage"],
       ["librarySearch", "GET", `${SPEC_API_ROOT}/:ws/library/search`, null, null, "LibrarySearchResult"],
@@ -436,6 +442,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(allowForWorkspace("idea")).toBe("GET, HEAD");
     expect(allowForWorkspace("boardQuery")).toBe("GET, HEAD, PUT");
     expect(allowForWorkspace("allocate")).toBe("POST");
+    expect(allowForWorkspace("runRelease")).toBe("POST");
     for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) expect(allowForWorkspace(route)).toBe("GET, HEAD");
   });
 
@@ -663,7 +670,7 @@ describe("spec 008 bodies (T81): the shared shapes of the writes and resources",
   });
 
   test("the refusal codes are kebab-case and in API_ERRORS", () => {
-    expect([...REFUSAL_ERRORS]).toEqual(["transition-refused", "allocate-refused", "backlog-refused"]);
+    expect([...REFUSAL_ERRORS]).toEqual(["transition-refused", "allocate-refused", "backlog-refused", "release-refused"]);
     for (const code of REFUSAL_ERRORS) {
       expect(code).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
       expect(API_ERRORS as readonly string[]).toContain(code);
