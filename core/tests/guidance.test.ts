@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 import { buildSpecPage } from '../src/spec.ts';
 import type { GuidanceEntry, SpecFiles } from '../src/files.ts';
-import { guidanceOf, withGuidance } from '../src/guidance.ts';
+import { GUIDANCE_REASON_KEYS, GUIDANCE_REASONS, guidanceOf, withGuidance } from '../src/guidance.ts';
 import { itemStates } from '../src/item-state.ts';
 import { guidanceModel } from './helpers/guidance-model.ts';
 import { FIXTURES, fixtureTrees, folders } from './helpers/read-tree.ts';
@@ -136,5 +136,36 @@ describe('guidance', () => {
     ]);
     expect(triples(page.guidance?.next ?? [])).toEqual([['005', 'spec', null]]);
     expect(page.guidance).toEqual({ waits: guidance.waits.filter((e) => e.spec === '005'), next: guidance.next.filter((e) => e.spec === '005') });
+  });
+});
+
+describe('guidance: reason keys', () => {
+  test('every key is unique and generated from the reason list', () => {
+    expect(new Set(GUIDANCE_REASON_KEYS).size).toBe(GUIDANCE_REASON_KEYS.length);
+    expect(GUIDANCE_REASON_KEYS).toEqual(GUIDANCE_REASONS.map((r) => r.key));
+  });
+
+  test("every key a fixture tree's guidance produces is listed, its values naming exactly the template's placeholders", () => {
+    const trees = fixtureTrees().map((tree) => join(FIXTURES, tree)).filter(hasStateModel);
+    const seen = new Set<string>();
+    for (const root of trees) {
+      const { waits, next } = guidanceModel(root);
+      for (const e of [...waits, ...next]) {
+        const reason = GUIDANCE_REASONS.find((r) => r.key === e.reason.key);
+        expect({ root, key: e.reason.key, listed: reason !== undefined }).toEqual({ root, key: e.reason.key, listed: true });
+        expect(Object.keys(e.reason.values).sort()).toEqual([...(reason?.placeholders ?? [])].sort());
+        seen.add(e.reason.key);
+      }
+    }
+    expect(seen.size).toBeGreaterThan(0);
+  });
+
+  test('every placeholder of each template appears in that template', () => {
+    for (const r of GUIDANCE_REASONS) for (const p of r.placeholders) expect(r.template).toContain(`{${p}}`);
+    expect(GUIDANCE_REASONS.filter((r) => r.key.startsWith('waiting.')).map((r) => r.template)).toEqual([
+      '{ref} needs your confirmation',
+      '{ref} is your step',
+      'the newest round asks about {ref}',
+    ]);
   });
 });
