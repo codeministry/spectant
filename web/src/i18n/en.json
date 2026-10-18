@@ -2234,7 +2234,10 @@
       "confirm": "Release",
       "keep": "Keep",
       "released": "Run released",
-      "changed": "The run changed · reloaded"
+      "changed": "The run changed · reloaded",
+      "aborted": "The run reads aborted by now · reloaded",
+      "noViewer": "Release needs your person id: map your git identity under Settings · Actors",
+      "failed": "Not released · error {{status}}"
     }
   },
   "live": {

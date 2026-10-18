@@ -14,17 +14,22 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { Relation, RelationRef } from '../../../../../core/src/relations';
+import { boardRowsOf } from '../../features/board/board-model';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { UiItemState } from '../../shared/ui/item-state/item-state';
 import { RELATION_ICON } from '../../shared/ui/chip/chip-icons';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRing } from '../../shared/ui/ring/ring';
+import { releasableRun, RunRelease } from '../run-release/run-release';
 import { specLink } from '../shell/areas';
+import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { CHILD_CAP, DetailSelection, relationAt, SEL_PARAM, sidebarParents } from './selection';
 
@@ -52,10 +57,15 @@ interface SidebarLink {
  * a non-modal overlay from the right at medium (no scrim, no focus trap), and a modal bottom sheet (`ui-sheet`) at
  * compact. Escape closes in each and returns focus to the selected object's `[data-ref]` element; the selection
  * contract the views follow is in `selection.ts`.
+ *
+ * Spec 040 (T62, ISC-226): a spec or story whose run is open shows its state line under the header, with "Release
+ * run" (`app-run-release`) in the line's action slot, in every presentation, the compact sheet included. The state is
+ * the API's: the dashboard row's `state` for a spec, the planning tree's for a story. The API serves an item's newest
+ * open run only, so the section holds one button, for that run.
  */
 @Component({
   selector: 'app-detail-sidebar',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiRing, UiSheet],
+  imports: [NgTemplateOutlet, RouterLink, RunRelease, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './detail-sidebar.html',
   styleUrl: './detail-sidebar.css',
@@ -70,6 +80,7 @@ export class DetailSidebar {
 
   protected readonly selection = inject(DetailSelection);
   private readonly state = inject(ShellState);
+  private readonly data = inject(ShellData);
   private readonly doc = inject(DOCUMENT);
 
   protected readonly presentation = this.selection.presentation;
@@ -109,6 +120,22 @@ export class DetailSidebar {
   protected readonly hiddenChildren = computed(() => this.children().length - this.visibleChildren().length);
   /** Spec and claim carry edges; their empty Blockers section says so instead of disappearing. */
   protected readonly blockable = computed(() => this.shown()?.type === 'spec' || this.shown()?.type === 'claim');
+
+  /** The shown spec's or story's item while a run line's run is open on it (T62); null otherwise. */
+  protected readonly running = computed<ItemStateInfo | null>(() => {
+    const entry = this.shown();
+    if (entry?.type === 'spec') {
+      const result = this.data.dashboard.value();
+      const row = result?.kind === 'ok' ? boardRowsOf(result.body).find((r) => r.id === entry.id) : undefined;
+      return releasableRun(row?.state) ? (row?.state ?? null) : null;
+    }
+    if (entry?.type === 'idea') {
+      const state = this.data.ideas().find((idea) => idea.slug === entry.id)?.state;
+      return releasableRun(state) ? (state ?? null) : null;
+    }
+    return null;
+  });
+  protected readonly ws = computed(() => this.state.ws() ?? '');
 
   /** The spec page a spec, or a claim through its holding spec, opens; null for the other types. */
   protected readonly specPage = computed(() => {

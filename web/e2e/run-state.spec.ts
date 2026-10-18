@@ -18,7 +18,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { atWidth, expect, test, WIDTHS } from './fixtures';
-import { LOCKS_HEADER, RUN_HEADER, STUB_NOW, STUB_RUN, type StubRunState } from './stub-api';
+import { LOCKS_HEADER, RESET_PATH, RUN_HEADER, SESSION_HEADER, STUB_NOW, STUB_RUN, type StubRunState } from './stub-api';
 
 const WS = STUB_RUN.workspace.slug;
 
@@ -349,6 +349,43 @@ test.describe('run-state locked', () => {
       await expect(runCard(page)).not.toHaveClass(/cdk-drag-disabled/);
       await expect(runGrip(page)).not.toHaveAttribute('data-locked', /.*/);
       await expect(runGrip(page).locator('ui-icon[data-icon="grip-vertical"]')).toHaveCount(1);
+    });
+
+    // T62 · ISC-226: "Release run" in the status block appends the release for this stub session only; the refresh
+    // after the 200 reads 003 open with its command again, and the board card is draggable.
+    test('release: Release run on the running 003 confirms, ends the run, and 003 reads Tasks · open with /spec-tasks 003', async ({ page, request }) => {
+      const session = `run-release-${Date.now()}`;
+      await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+      await page.setExtraHTTPHeaders({ [LOCKS_HEADER]: 'runs', [SESSION_HEADER]: session });
+      try {
+        await open(page, `/w/${WS}/s/${STUB_RUN.spec}/status`);
+        const block = page.locator('app-status-block ui-item-state[data-block]');
+        await expect(block).toHaveAttribute('data-state', 'running');
+        const button = block.locator('app-run-release [data-release]');
+        await expect(button).toHaveText(/Release run/);
+        expect((await button.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+        await button.click();
+        const dialog = page.locator('[data-release-dialog]');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('[data-release-keep]')).toBeFocused();
+        const released = page.waitForResponse((r) => r.url().endsWith(`/release`) && r.request().method() === 'POST');
+        await dialog.locator('[data-release-confirm]').click();
+        expect((await released).status()).toBe(200);
+        await expect(block).toHaveAttribute('data-state', 'open');
+        await expect(block.locator('[data-item-line]')).toHaveText(/Tasks\s*·\s*open/);
+        await expect(page.locator('app-run-release [data-release]')).toHaveCount(0);
+
+        await open(page, `/w/${WS}/board`);
+        const state = cardState(page, CARD_KEY);
+        await expect(state).toHaveAttribute('data-state', 'open');
+        await expect(state.locator('[data-item-line]')).toHaveText(/Tasks\s*·\s*open/);
+        await expect(state.locator('ui-command-chip code')).toHaveText(STUB_RUN.command);
+        await expect(runCard(page)).not.toHaveClass(/cdk-drag-disabled/);
+        await expect(runGrip(page)).not.toHaveAttribute('data-locked', /.*/);
+        await expect(runCard(page).locator('[data-release]')).toHaveCount(0);
+      } finally {
+        await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+      }
     });
   });
 

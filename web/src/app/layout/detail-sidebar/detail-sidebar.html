@@ -36,6 +36,15 @@
       }
     </div>
 
+    @if (running(); as item) {
+      <!-- T62 · ISC-226: the open run with "Release run"; never on a board card. -->
+      <section class="sec run" data-section="run">
+        <ui-item-state [info]="item" [ws]="ws()">
+          <app-run-release uiItemStateAction [info]="item" />
+        </ui-item-state>
+      </section>
+    }
+
     <div class="prog" data-part="progress">
       @if (percent() !== null) {
         <ui-ring [value]="percent()" [size]="64" [stroke]="6" />

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { ItemStateInfo, SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
 import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
+import { RunRelease } from '../../../layout/run-release/run-release';
 import { UiActorChip } from '../../../shared/ui/actor-chip/actor-chip';
 import { UiItemState } from '../../../shared/ui/item-state/item-state';
 import { UiReason } from '../../../shared/ui/reason/reason';
@@ -22,11 +23,12 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
  * Spec 040 (T49, ISC-224): when the head carries the spec's `state`, the state chip stands beside the stage chip and
  * `ui-item-state`'s block form replaces the reason block: open with the reason and the command chip, waiting with its
  * links, running with the locked chip, the agent, "since …" and the start, aborted on its warning band, done with the
- * date. Without `state` (an older payload) the reason block stays as it was.
+ * date. Without `state` (an older payload) the reason block stays as it was. A running run of a run line carries
+ * "Release run" (`app-run-release`, T62, ISC-226) in the item's action slot.
  */
 @Component({
   selector: 'app-status-block',
-  imports: [TranslocoPipe, UiActorChip, UiItemState, UiReason, UiStageTrack, UiStateChip, UiTimeLabel],
+  imports: [RunRelease, TranslocoPipe, UiActorChip, UiItemState, UiReason, UiStageTrack, UiStateChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: 16px; min-inline-size: 0; }
@@ -54,7 +56,10 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
       }
     </p>
     @if (item(); as item) {
-      <ui-item-state block [info]="item" [ws]="ws()" [attr.data-next-command]="item.state === 'open' && item.command ? '' : null" />
+      <ui-item-state block [info]="item" [ws]="ws()" [attr.data-next-command]="item.state === 'open' && item.command ? '' : null">
+        <!-- T62 · ISC-226: "Release run" beside an open run's details; the button renders itself only for a releasable run. -->
+        <app-run-release uiItemStateAction [info]="item" />
+      </ui-item-state>
       @if (item.state === 'waiting' && reason(); as r) {
         <!-- ISC-122.3: a waiting stage's phrase stays verbatim in the block; the state line names what it waits on. -->
         <p class="phrase" data-phrase>{{ r.phrase }}</p>

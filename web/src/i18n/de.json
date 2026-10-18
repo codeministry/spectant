@@ -2234,7 +2234,10 @@
       "confirm": "Freigeben",
       "keep": "Behalten",
       "released": "Lauf freigegeben",
-      "changed": "Der Lauf hat sich geändert · neu geladen"
+      "changed": "Der Lauf hat sich geändert · neu geladen",
+      "aborted": "Der Lauf gilt inzwischen als abgebrochen · neu geladen",
+      "noViewer": "Für die Freigabe fehlt Ihre Personen-ID: Ordnen Sie Ihre Git-Identität unter Einstellungen · Akteure zu",
+      "failed": "Nicht freigegeben · Fehler {{status}}"
     }
   },
   "live": {
