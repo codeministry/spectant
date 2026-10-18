@@ -41,8 +41,11 @@ test.describe('truncate table', () => {
   test.use(atWidth(390));
 
   test('table: a long description is cut after one line at a whole word, and more… / less toggle it in place', async ({ page }) => {
-    await openHarbor(page);
-    const cut = page.locator('[data-panel="specs"] app-spec-row .d[data-clamp="cut"]');
+    // Spec 021 (design § P3 heights): below 640 px a marked row shows its mark where the description stood, and the
+    // first five rows of harbor are all marked; the open list (`?open=specs`) holds unmarked rows with a description.
+    await page.goto('/w/harbor?open=specs');
+    await expect(page.locator('[data-spec-row]').first()).toBeVisible();
+    const cut = page.locator('[data-panel="specs"] app-spec-row .d[data-clamp="cut"]:visible');
     await expect(cut.first()).toBeVisible();
     const id = (await cut.first().getAttribute('id'))?.replace(/^desc-/u, '') ?? '';
     // Pinned by id: the `data-clamp="cut"` locator would move on to the next cut row once this one opens.
@@ -76,7 +79,10 @@ test.describe('truncate table', () => {
     for (const d of await descriptions.all()) {
       const id = (await d.getAttribute('id'))?.replace(/^desc-/u, '') ?? '';
       const state = await d.getAttribute('data-clamp');
-      await expect(page.locator(`[data-more="${id}"]`)).toHaveCount(state === 'cut' ? 1 : 0);
+      // Spec 021 (design § P3 heights): the title is one line too, and the row's one "more…" opens both, so a row
+      // offers it when its title or its description is cut.
+      const title = await page.locator(`#rl-${id}`).getAttribute('data-clamp');
+      await expect(page.locator(`[data-more="${id}"]`)).toHaveCount(state === 'cut' || title === 'cut' ? 1 : 0);
     }
   });
 });
@@ -110,7 +116,7 @@ async function expectWholeSentences(page: Page): Promise<void> {
 test.describe('truncate next', () => {
   test.use(atWidth(1440));
 
-  test('next: a long rail card title is cut after two lines at a whole word, and more… / less outside the link toggle it', async ({
+  test('next: a long rail card title is cut after one line at a whole word, and more… / less outside the link toggle it', async ({
     page,
   }) => {
     await longNextTitle(page);
@@ -120,10 +126,11 @@ test.describe('truncate next', () => {
     await expect(cut.first()).toBeVisible();
     const id = (await cut.first().getAttribute('id')) ?? '';
     const title = page.locator(`#${id}`);
-    expectCutAtWord(await measure(title), 2);
+    // Spec 021 (T79): the rail title is clamped to one line, and `[data-next-card]` is the one card of every entry.
+    expectCutAtWord(await measure(title), 1);
 
-    const card = page.locator('[data-next-card]').filter({ has: title });
-    const more = card.locator('[data-next-more]');
+    const entry = page.locator('app-next-up-entry').filter({ has: title });
+    const more = entry.locator('[data-next-more]');
     await expect(more).toBeVisible();
     await expect(more).toHaveAttribute('aria-controls', id);
     await expect(page.locator('[data-next-link] [data-next-more]')).toHaveCount(0);
