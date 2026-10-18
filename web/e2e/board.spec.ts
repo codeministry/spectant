@@ -28,6 +28,7 @@ import { writePathsOf } from '../../server/src/writes.contract.ts';
 import type { PlanningModel } from '../../core/src/planning.ts';
 import { featureOrder } from '../src/app/features/backlog/backlog-order.ts';
 import { atWidth, expect, test } from './fixtures';
+import { type GuidanceView, shownReason } from './guidance-sentence';
 import { LOCKS_HEADER, RESET_PATH, WORKFLOW_PATH } from './stub-api';
 
 const SPEC = 'specs/002-web-console';
@@ -713,6 +714,7 @@ const PLANNING = {
   lantern: fixture('lantern.planning.golden.json') as PlanningGolden,
 } as const;
 const HARBOR_ROWS = (fixture('harbor.golden.json') as { specs: readonly DashboardRowGolden[] }).specs;
+const HARBOR_GUIDANCE = (fixture('harbor.golden.json') as { guidance?: GuidanceView }).guidance;
 const STAGE_WORDS = (JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', import.meta.url)), 'utf8')) as { stages: Readonly<Record<string, string>> })
   .stages;
 
@@ -849,7 +851,8 @@ test.describe('workspace board', () => {
       await expect(c006.locator('ui-type-glyph')).toHaveAttribute('data-type', String(r006.type));
       await expect(c006.locator('.r1 .num')).toHaveText(s006.id);
       await expect(c006.locator('a.title')).toHaveText(s006.title);
-      await expect(c006.locator('a.title')).toHaveAccessibleDescription(`waits: ${r006.nextReason}`);
+      // Spec 020 (T13, ISC-237.1): 006's guidance entry reads its catalogue sentence; 008 has none and keeps its phrase.
+      await expect(c006.locator('a.title')).toHaveAccessibleDescription(`waits: ${shownReason(HARBOR_GUIDANCE, '006', r006.nextReason)}`);
       await expect(c006.locator('[data-card-state] ui-item-state[data-state="open"] ui-command-chip')).toContainText(String(r006.nextCommand));
 
       // A story in idea: the idea chip with its slug in place of a number, its type's glyph, its feature and milestone,

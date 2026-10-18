@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import type { Guidance } from '../../../../../../core/src/files';
 import type { DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
@@ -38,6 +39,8 @@ export class NextUpList {
   /** The model's `nextUp`: the first rows with a next command. */
   readonly ids = input.required<readonly string[]>();
   readonly form = input<NextUpForm>('card');
+  /** `DashboardModel.guidance` (spec 020): each entry reads its spec's sentence from it (ISC-237.1). */
+  readonly guidance = input<Guidance | undefined>(undefined);
 
   protected readonly headingId = NEXT_UP_HEADING;
   protected readonly showAll = signal(false);

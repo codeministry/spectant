@@ -19,6 +19,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiGlyph } from '../../shared/ui/glyph/glyph';
+import { guidanceOfBody } from '../../shared/ui/guidance/guidance-entry';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
@@ -255,6 +256,7 @@ export class BoardPage {
     return buildBoard({
       planning: withMoves(planning, this.drag.moves()),
       rows: boardRowsOf(dashboard.kind === 'ok' ? dashboard.body : null),
+      guidance: guidanceOfBody(dashboard.kind === 'ok' ? dashboard.body : null),
       actors: this.data.actorList(),
       query: this.query(),
     });

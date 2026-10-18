@@ -24,6 +24,8 @@ import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
 import { UiReason } from '../../../shared/ui/reason/reason';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import type { Guidance, GuidanceReason } from '../../../../../../core/src/files';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { toneMark } from '../../../shared/ui/tone';
@@ -89,6 +91,12 @@ export class SpecTable {
   readonly ws = input.required<string>();
   readonly rows = input.required<readonly SpecTableRow[]>();
   readonly archive = input<readonly ArchiveRow[]>([]);
+  /** `DashboardModel.guidance` (spec 020): a row with its spec's own entry reads the entry's sentence (ISC-237.1). */
+  readonly guidance = input<Guidance | undefined>(undefined);
+  /** The row's guidance reason, or null for its phrase (`guidanceEntryOf`, shared with every surface). */
+  protected guidanceOf(id: string): GuidanceReason | null {
+    return guidanceEntryOf(this.guidance(), id)?.reason ?? null;
+  }
   /** The title of every spec the list knows, active or archived, by `NNN`: a waits chip names its blocker by it (T24). */
   protected readonly titles = computed<Readonly<Record<string, string>>>(() =>
     Object.fromEntries([...this.archive(), ...this.rows()].map((spec) => [spec.id, spec.title])),

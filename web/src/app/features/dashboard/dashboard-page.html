@@ -21,6 +21,7 @@
   <app-spec-table
     [ws]="ws()"
     [rows]="held().shown"
+    [guidance]="view()?.guidance"
     [changed]="refresh.changedRows()"
     [pending]="held().pending"
     (showPending)="showPending()"

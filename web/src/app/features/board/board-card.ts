@@ -10,6 +10,8 @@ import { UiActorChip } from '../../shared/ui/actor-chip/actor-chip';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiItemState } from '../../shared/ui/item-state/item-state';
 import { UiPriority } from '../../shared/ui/priority/priority';
+import { withReason } from '../../shared/ui/guidance/guidance-entry';
+import { GuidanceReasonPipe } from '../../shared/ui/guidance/guidance-reason.pipe';
 import { UiReason } from '../../shared/ui/reason/reason';
 import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
@@ -77,7 +79,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiItemState, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
+  imports: [CdkDragHandle, GuidanceReasonPipe, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiItemState, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.data-key]': 'card().key',
@@ -196,19 +198,21 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
             </div>
           }
 
-          @if (waits(); as reason) {
+          <!-- Spec 020 (T13, ISC-237.1): the spec's guidance entry reads its catalogue sentence; without one, the phrase. -->
+          @if (waits(); as phrase) {
+            @let reason = c.guidance | guidanceReason: phrase;
             <span class="vh" [id]="describedBy()">{{ 'board.workspace.card.waits' | transloco: { reason } }}</span>
           }
           @if (c.state || c.waits || waits()) {
             <div class="r4" data-card-state [attr.data-run]="c.state?.run ? c.state?.state : null">
               @if (c.state; as state) {
-                <ui-item-state [info]="state" [ws]="ws()" />
+                <ui-item-state [info]="withReason(state, c.guidance | guidanceReason: state.reason)" [ws]="ws()" />
               }
               @if (holdShown() && c.waits; as wait) {
                 <ui-waits-chip data-card-waits [id]="holdId()" [wait]="wait" [ws]="ws()" [titles]="c.waitTitles" />
               }
               @if (!c.state && waits(); as reason) {
-                <ui-reason [compact]="true" [phrase]="reason" [command]="c.command" />
+                <ui-reason [compact]="true" [phrase]="reason" [guidance]="c.guidance ?? null" [command]="c.command" />
               }
             </div>
           }
@@ -267,6 +271,7 @@ export class BoardCard {
   /** A run on the card's item is running (spec 040, T57): the grip locks. The state as served decides. */
   protected readonly locked = computed(() => this.card().state?.state === 'running');
   protected readonly ink = computed(() => reasonInk(this.card()));
+  protected readonly withReason = withReason;
   protected readonly glyph = computed<TypeGlyphKind>(() => this.card().type ?? 'idea');
   /** The phrase of a waiting card; null on every other card, which shows no reason line. */
   protected readonly waits = computed(() => (this.card().waiting ? this.card().reason : null));

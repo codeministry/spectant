@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { ItemStateInfo, SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
+import type { Guidance, ItemStateInfo, SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
+import { guidanceEntryOf, withReason } from '../../../shared/ui/guidance/guidance-entry';
+import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
 import { RunRelease } from '../../../layout/run-release/run-release';
 import { UiActorChip } from '../../../shared/ui/actor-chip/actor-chip';
@@ -28,7 +30,7 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
  */
 @Component({
   selector: 'app-status-block',
-  imports: [RunRelease, TranslocoPipe, UiActorChip, UiItemState, UiReason, UiStageTrack, UiStateChip, UiTimeLabel],
+  imports: [GuidanceReasonPipe, RunRelease, TranslocoPipe, UiActorChip, UiItemState, UiReason, UiStageTrack, UiStateChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: 16px; min-inline-size: 0; }
@@ -56,16 +58,18 @@ import { stageSourceOf, statusAssignee, statusReason, statusTrack } from './stat
       }
     </p>
     @if (item(); as item) {
-      <ui-item-state block [info]="item" [ws]="ws()" [attr.data-next-command]="item.state === 'open' && item.command ? '' : null">
+      <!-- Spec 020 (T13, ISC-237.1): the spec's guidance entry reads its catalogue sentence; without one, the phrase. -->
+      @let sentence = entryReason() | guidanceReason: item.reason;
+      <ui-item-state block [info]="withReason(item, sentence)" [ws]="ws()" [attr.data-next-command]="item.state === 'open' && item.command ? '' : null">
         <!-- T62 · ISC-226: "Release run" beside an open run's details; the button renders itself only for a releasable run. -->
         <app-run-release uiItemStateAction [info]="item" />
       </ui-item-state>
       @if (item.state === 'waiting' && reason(); as r) {
         <!-- ISC-122.3: a waiting stage's phrase stays verbatim in the block; the state line names what it waits on. -->
-        <p class="phrase" data-phrase>{{ r.phrase }}</p>
+        <p class="phrase" data-phrase>{{ entryReason() | guidanceReason: r.phrase }}</p>
       }
     } @else if (reason(); as r) {
-      <ui-reason [block]="true" [phrase]="r.phrase" [command]="command()" [attr.data-next-command]="command() ? '' : null" />
+      <ui-reason [block]="true" [phrase]="r.phrase" [guidance]="entryReason()" [command]="command()" [attr.data-next-command]="command() ? '' : null" />
     } @else {
       <p class="done" data-done>{{ 'status.where.done' | transloco }}</p>
     }
@@ -97,6 +101,11 @@ export class StatusBlock {
 
   /** The workspace slug, for the links of a waiting spec's state line. */
   readonly ws = input('');
+  /** `SpecPageModel.guidance` (spec 020): the spec's own entry turns the phrase into its sentence (ISC-237.1). */
+  readonly guidance = input<Guidance | undefined>(undefined);
+
+  protected readonly entryReason = computed(() => guidanceEntryOf(this.guidance(), this.head().id)?.reason ?? null);
+  protected readonly withReason = withReason;
 
   /**
    * The spec's item as the head carries it (spec 040, ISC-224); at wide an open command stays with the spec head, so

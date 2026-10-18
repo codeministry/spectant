@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
+import type { GuidanceReason } from '../../../../../../core/src/files';
 import { UiIcon } from '../../icons/icon';
+import { GuidanceReasonPipe } from '../guidance/guidance-reason.pipe';
 import type { IconName } from '../../icons/icons';
 import { UiClamp } from '../clamp/clamp';
 import { UiCommandChip } from '../command-chip/command-chip';
@@ -15,7 +17,7 @@ import { UiCommandChip } from '../command-chip/command-chip';
  */
 @Component({
   selector: 'ui-reason',
-  imports: [TranslocoPipe, UiClamp, UiCommandChip, UiIcon],
+  imports: [GuidanceReasonPipe, TranslocoPipe, UiClamp, UiCommandChip, UiIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-compact]': 'compact() && !block() ? "" : null', '[attr.data-block]': 'block() ? "" : null' },
   styles: `
@@ -37,19 +39,20 @@ import { UiCommandChip } from '../command-chip/command-chip';
     }
   `,
   template: `
+    @let text = guidance() | guidanceReason: phrase();
     <span class="line">
       <ui-icon [name]="icon()" [size]="14" [label]="'reason.glyph' | transloco" />
       @if (block()) {
-        <span class="phrase">{{ phrase() }}</span>
+        <span class="phrase">{{ text }}</span>
       } @else {
-        <span class="visually-hidden">{{ phrase() }}</span>
+        <span class="visually-hidden">{{ text }}</span>
         <span
           class="phrase"
           aria-hidden="true"
-          [uiClamp]="phrase()"
+          [uiClamp]="text"
           [uiClampLines]="lines()"
           #clamp="uiClamp"
-          [attr.title]="clamp.cut() ? phrase() : null"
+          [attr.title]="clamp.cut() ? text : null"
         ></span>
       }
     </span>
@@ -67,6 +70,11 @@ import { UiCommandChip } from '../command-chip/command-chip';
 export class UiReason {
   /** The stage table's phrase as core delivers it (`nextReason`); shown as is, never rewritten. */
   readonly phrase = input.required<string>();
+  /**
+   * The item's guidance reason (spec 020, ISC-237.1): when set, the catalogue sentence (`guidanceReason`) stands in for
+   * the phrase, so the same item reads the same sentence on every surface; null keeps the phrase (no guidance entry).
+   */
+  readonly guidance = input<GuidanceReason | null>(null);
   /** The next command (`/spec-review 008`); null for no chip (close-pending, a refusal without a command). */
   readonly command = input<string | null>(null);
   /** One line: the row and card variant; otherwise two. */

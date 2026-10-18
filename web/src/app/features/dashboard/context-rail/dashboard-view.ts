@@ -1,4 +1,4 @@
-import type { SpecWarning } from '../../../../../../core/src/files';
+import type { Guidance, SpecWarning } from '../../../../../../core/src/files';
 
 /**
  * The fields of core's `DashboardModel` (`core/src/dashboard.ts`) that Next up, Warnings and the context rail read —
@@ -27,4 +27,6 @@ export interface DashboardView {
   readonly specs: readonly DashboardRowView[];
   /** The ids of the first rows with a next command, in row order. */
   readonly nextUp: readonly string[];
+  /** The workspace guidance (spec 020, ISC-237); absent from a server without a clock. */
+  readonly guidance?: Guidance;
 }

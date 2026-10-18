@@ -4,6 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { type GuidanceView, shownReason } from './guidance-sentence';
 
 type GoldenEntry = { readonly kind: string; readonly derived: boolean; readonly id?: string; readonly ts: string };
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -58,7 +59,8 @@ test.describe('timeline', () => {
  * where every section stacks. `bun run e2e -- status -g "status tab"`.
  */
 type SpecGolden = {
-  readonly head: { readonly stage: string; readonly state?: { readonly reason?: string } };
+  readonly head: { readonly id: string; readonly stage: string; readonly state?: { readonly reason?: string } };
+  readonly guidance?: GuidanceView;
   readonly next: { readonly command: string | null; readonly reasons: readonly string[]; readonly since: string | null; readonly via: string | null };
   readonly waitingOnYou: readonly unknown[];
   readonly gates: Readonly<Record<string, { readonly state: string; readonly files?: readonly string[] }>>;
@@ -84,8 +86,11 @@ test.describe('status tab', () => {
     // The stage chip of the status block; the stage track's segments carry `data-stage` too, keyed by their stage.
     await expect(tab.locator('.stage-chip[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
     await expect(tab.locator('[data-next-command]')).toContainText(SPEC_002.next.command ?? '');
-    // Spec 040 (T49): the block shows the reason of the head's item state, not the first of `next.reasons`.
-    await expect(tab.locator('app-status-block [data-phrase]')).toHaveText(SPEC_002.head.state?.reason ?? '');
+    // Spec 040 (T49): the block shows the reason of the head's item state, not the first of `next.reasons`; since
+    // spec 020 (T13, ISC-237.1) as the catalogue sentence of the spec's guidance entry, read from en.json by key.
+    const sentence = shownReason(SPEC_002.guidance, SPEC_002.head.id, SPEC_002.head.state?.reason ?? '');
+    expect(sentence, '002 has a guidance entry whose sentence differs from the core phrase').not.toBe(SPEC_002.head.state?.reason);
+    await expect(tab.locator('app-status-block [data-phrase]')).toHaveText(sentence);
     await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons.slice(1)]);
     await expect(tab.locator('[data-waiting-row]')).toHaveCount(SPEC_002.waitingOnYou.length);
     await expect(tab.locator('ui-stage-track li[aria-current="step"]')).toHaveCount(1);

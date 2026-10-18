@@ -28,8 +28,9 @@ export class GuidanceReasonPipe implements PipeTransform {
   /** The active language's flattened catalogue; it emits again once a switched-to language has loaded. */
   private readonly catalogue = toSignal(this.transloco.selectTranslation());
 
-  transform(reason: GuidanceReason | null | undefined): string {
-    if (!reason) return '';
+  /** `fallback` is what no entry reads: a surface's own phrase where the guidance names no entry for its item. */
+  transform(reason: GuidanceReason | null | undefined, fallback = ''): string {
+    if (!reason) return fallback;
     const catalogue = this.catalogue();
     // Not loaded yet: the phrase stands in without a warning, the sentence follows on the next emission.
     if (!catalogue) return reason.phrase;

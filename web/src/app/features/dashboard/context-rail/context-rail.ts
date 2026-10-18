@@ -28,12 +28,12 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
   `,
   template: `
     <ng-template #railBlocks>
-      <app-next-up-list form="rail" [specs]="model().specs" [ids]="model().nextUp" />
+      <app-next-up-list form="rail" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
       <app-warnings-panel form="rail" [specs]="model().specs" [kpis]="model().kpis" />
     </ng-template>
     @if (!wide()) {
       @if (inline() !== 'warnings') {
-        <app-next-up-list form="card" [specs]="model().specs" [ids]="model().nextUp" />
+        <app-next-up-list form="card" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
       }
       @if (inline() !== 'next-up') {
         <app-warnings-panel form="section" [specs]="model().specs" [kpis]="model().kpis" />

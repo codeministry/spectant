@@ -2,7 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import type { Guidance } from '../../../../../../core/src/files';
 import type { DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
@@ -116,7 +118,7 @@ import type { NextUpForm } from './next-up-list';
     <!-- The reason line (ISC-122.3): the same phrase and chip as the dashboard row; the bare chip without a phrase. -->
     <ng-template #next let-compact="compact">
       @if (row().nextReason; as phrase) {
-        <ui-reason class="reason" data-next-reason [phrase]="phrase" [command]="row().nextCommand" [compact]="compact" />
+        <ui-reason class="reason" data-next-reason [phrase]="phrase" [guidance]="entryReason()" [command]="row().nextCommand" [compact]="compact" />
       } @else if (row().nextCommand; as command) {
         <ui-command-chip
           [command]="command"
@@ -133,6 +135,10 @@ export class NextUpEntry {
   readonly form = input<NextUpForm>('card');
   /** The five translated stage labels (`stages.*`), shared by every entry of the list. */
   readonly labels = input.required<readonly string[]>();
+  /** `DashboardModel.guidance` (spec 020): the spec's own entry turns the phrase into its sentence (ISC-237.1). */
+  readonly guidance = input<Guidance | undefined>(undefined);
+
+  protected readonly entryReason = computed(() => guidanceEntryOf(this.guidance(), this.row().id)?.reason ?? null);
 
   protected readonly current = computed(() => stageIndex(this.row().stage));
   /** One-based stage the accessible label names; a done spec names the last stage. */
