@@ -889,6 +889,8 @@ function relocked(core: Core, live: LiveFrame, claims: ClaimViewModel, all: read
       elapsedMs,
       stale: elapsedMs > live.staleAfterMs,
       ...workersOf(lock.actor, card.task),
+      // The item's run names the new holder too (spec 040): the same swap of session and actor, nothing recomputed.
+      ...(card.itemState?.run === undefined ? {} : { itemState: { ...card.itemState, run: { ...card.itemState.run, session: lock.session, actor: lock.actor } } }),
     };
   });
   return {

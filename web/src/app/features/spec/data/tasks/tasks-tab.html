@@ -111,7 +111,7 @@
             }
           </span>
           <span class="state">
-            @if (row.itemState; as item) {
+            @if (itemOf(row); as item) {
               <!-- spec 040 (T52): the state word from the model, the fine running state or the strike as its detail. -->
               <span class="status" [attr.data-item-state]="item.state" [attr.data-tone]="itemTone[item.state]"
                 ><ui-glyph [state]="item.state" family="item" [size]="14" />{{ 'states.item.' + item.state | transloco }}
@@ -163,11 +163,12 @@
             }
           </span>
           </span>
-          @if (row.itemState || row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id) || (specRun() && row.state !== 'struck')) {
+          @if (itemOf(row) || row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id) || (specRun() && row.state !== 'struck')) {
             <span class="extra">
-              @if (row.itemState; as item) {
+              @if (itemOf(row); as item) {
                 <!-- spec 040 (T54, ISC-224): the state's details (command, actor, duration, start, date) under the row. -->
-                <ui-item-state details data-task-item [info]="item" [ws]="state.ws() ?? ''" />
+                <!-- A row with live holders shows them once, through app-task-actors below; the details then leave theirs out. -->
+                <ui-item-state details data-task-item [info]="item" [ws]="state.ws() ?? ''" [noActor]="liveCards().has(row.id)" />
               }
               @if (row.state !== 'struck' && specRun(); as run) {
                 <span class="check-note" data-check-run-locked [id]="'task-' + row.id + '-run'">

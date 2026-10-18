@@ -28,7 +28,7 @@ import { type CheckEvent, type CheckState, checkBlock, IDLE, landedDelta, nextCh
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
-import type { FrameCard, ItemRun, ItemState, RunState, TaskRun } from '../../../../../../../core/src/files';
+import type { FrameCard, ItemRun, ItemState, ItemStateInfo, RunState, TaskRun } from '../../../../../../../core/src/files';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { elapsedText } from '../../../../shared/ui/item-state/duration';
 import { UiItemState } from '../../../../shared/ui/item-state/item-state';
@@ -182,6 +182,24 @@ export class TasksTab {
     if (result?.kind !== 'ok') return new Map();
     return new Map(result.body.cards.filter((card) => taskActorsOf(card) !== null).map((card) => [card.task, card]));
   });
+  /**
+   * Each task's item state as the live frame carries it (spec 040), by task id. The live frame reads the locks, so its
+   * item names the holder the frame shows; a row prefers it to the one the tasks route sent.
+   */
+  private readonly liveItems = computed<ReadonlyMap<string, ItemStateInfo>>(() => {
+    const result = this.live.hasValue() ? this.live.value() : undefined;
+    if (result?.kind !== 'ok') return new Map();
+    return new Map(result.body.cards.flatMap((card) => (card.itemState === undefined ? [] : [[card.task, card.itemState] as const])));
+  });
+  /**
+   * The row's item state: the tasks route's, with the live frame's in its place when that one carries a run (it names
+   * the holder the frame shows). A row without one (an older payload, or a tick that dropped it) stays without.
+   */
+  protected itemOf(row: { readonly id: string; readonly itemState?: ItemStateInfo }): ItemStateInfo | undefined {
+    if (row.itemState === undefined) return undefined;
+    const live = this.liveItems().get(row.id);
+    return live?.run === undefined ? row.itemState : live;
+  }
   /**
    * The run chip per task (spec 027, ISC-179.1): the live frame's run while tasks.md has not ticked the task, joined
    * by task id; the tick (`applied`) hands the row back to its state chip. The live frame is read again every refresh.

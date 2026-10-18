@@ -239,7 +239,8 @@ test.describe('tasks', () => {
         }
         for (const task of ['T28', 'T27', 'T29', 'T32']) {
           const row = await boxOf(taskRow(page, task));
-          const state = await boxOf(taskRow(page, task).locator('.state .status'));
+          // The whole slot: since spec 040 a row may carry its state word beside its own status word (a question).
+          const state = await boxOf(taskRow(page, task).locator('.state'));
           expect(state.right, `${task}: the state chip ends inside the row`).toBeLessThanOrEqual(row.right);
         }
       });

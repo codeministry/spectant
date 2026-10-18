@@ -93,6 +93,20 @@ describe('UiItemState (T45, ISC-224)', () => {
     expect(root.querySelector('[data-runs]')).toBeNull();
   });
 
+  it('noActor leaves the run\'s actor chip out, running and aborted, and keeps the other details', async () => {
+    for (const state of ['running', 'aborted'] as const) {
+      TestBed.inject(TranslocoService).setActiveLang('en');
+      const fixture = TestBed.createComponent(UiItemState);
+      fixture.componentRef.setInput('info', item({ state, run: run() }));
+      fixture.componentRef.setInput('details', true);
+      fixture.componentRef.setInput('noActor', true);
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      expect(root.querySelector('ui-actor-chip')).toBeNull();
+      expect(root.querySelector('ui-command-chip')).not.toBeNull();
+    }
+  });
+
   it('formats the duration in minutes from elapsedMs, in English and German', async () => {
     const under = await render(item({ state: 'running', run: run({ elapsedMs: 40_000 }) }));
     expect(line(under.root)).toBe('Tasks · running · since < 1 min');

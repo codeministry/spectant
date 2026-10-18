@@ -106,6 +106,17 @@ describe('TasksTab', () => {
     expect(root.querySelector('#task-T2 app-task-actors')).toBeNull();
   });
 
+  it('names a row\'s holder once: a row with live holders shows no second actor chip in its state details (spec 040)', async () => {
+    // T27 is held in the live frame; give its row the running item the server sends for such a task.
+    const actor = { raw: 'a:claude:sess-2', kind: 'agent', id: 'a:claude:sess-2', legacy: false } as const;
+    const held = { kind: 'task', id: 'T27', spec: '002', state: 'running', run: { run: 'a:claude:sess-2', command: '/spec-implement 002', session: 'a:claude:sess-2', actor, since: '2026-03-08T14:06:00Z', elapsedMs: 54 * 60_000, openRuns: 1, source: 'lock' } } as const;
+    setUp({ ...GOLDEN, tasks: GOLDEN.tasks.map((t) => (t.id === 'T27' ? { ...t, itemState: held } : t)) });
+    const { root } = await open();
+    const rows = [...root.querySelectorAll('[data-task-row]')].filter((row) => row.querySelector('app-task-actors') !== null);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.querySelector('ui-item-state[data-task-item] ui-actor-chip')).toBeNull();
+  });
+
   it('renders every checkbox enabled, checked from the done state, described by the helper line', async () => {
     setUp();
     const { root } = await open();

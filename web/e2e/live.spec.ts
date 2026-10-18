@@ -140,7 +140,8 @@ test.describe('subagents', () => {
           }
           await expect(surface.actors(page, 'T27')).toHaveCount(0);
           await expect(page.locator('app-task-actors')).toHaveCount(0);
-          await expect(page.locator('ui-actor-chip:is([data-kind="agent"], [data-kind="subagent"])')).toHaveCount(0);
+          // Spec 040: a task's state names the agent of its own task run (T28 here) inside ui-item-state; that is no lock holder.
+          await expect(page.locator('ui-actor-chip:is([data-kind="agent"], [data-kind="subagent"]):not(ui-item-state ui-actor-chip)')).toHaveCount(0);
         });
       });
     });

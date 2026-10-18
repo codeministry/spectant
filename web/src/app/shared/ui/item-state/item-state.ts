@@ -103,7 +103,9 @@ const SPLIT = '\u0000';
             @if (run.command; as command) {
               <ui-command-chip [command]="command" [lockedBy]="run" />
             }
-            <ui-actor-chip [actor]="run.actor" [active]="true" />
+            @if (!noActor()) {
+              <ui-actor-chip [actor]="run.actor" [active]="true" />
+            }
             @if (details() && duration(); as duration) {
               <span class="muted num" data-since>{{ 'itemState.since' | transloco: { duration } }}</span>
             }
@@ -119,7 +121,9 @@ const SPLIT = '\u0000';
         @case ('aborted') {
           @if (run) {
             <span class="muted" data-started>{{ started()[0] }}<ui-time [value]="run.since" />{{ started()[1] }}</span>
-            <ui-actor-chip [actor]="run.actor" [stale]="true" [staleAge]="duration() ?? undefined" />
+            @if (!noActor()) {
+              <ui-actor-chip [actor]="run.actor" [stale]="true" [staleAge]="duration() ?? undefined" />
+            }
             @if (run.command; as command) {
               <ui-command-chip [command]="command" />
             }
@@ -152,6 +156,8 @@ export class UiItemState {
   readonly block = input(false, { transform: booleanAttribute });
   /** The task row's form: the details alone, the duration among them (the row's status cell names the state). */
   readonly details = input(false, { transform: booleanAttribute });
+  /** Leave the run's actor chip out: the caller already shows who holds the item (a task row's agent and sub-agent). */
+  readonly noActor = input(false, { transform: booleanAttribute });
 
   private readonly transloco = inject(TranslocoService);
   private readonly lang = inject(LanguageService).current;
