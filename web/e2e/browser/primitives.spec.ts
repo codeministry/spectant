@@ -98,6 +98,14 @@ const pseudoOf = (part: string): string | null => /::(before|after)$/.exec(part)
 /** The fixture parts this spec leaves out (see the header): the live-board card's seam flag. */
 const NOT_PRIMITIVES = new Set(['seam-badge', 'seam-badge.seam']);
 
+/**
+ * Re-toned on purpose by spec 040 (ISC-224): the claim words that name an item state share that state's glyph in the
+ * family `item` (`ITEM_ALIASES`, web/src/app/shared/ui/glyph/states.ts), so claim `open` reads secondary and `taken`
+ * (now "running") primary, where the prototype drew them neutral and warning. Only their text colour is left out here;
+ * shape, size and every other property still match the prototype.
+ */
+const RETONED: Readonly<Record<string, readonly string[]>> = { glyph: ['color'], 'glyph.taken': ['color'], 'glyph .icon': ['color'] };
+
 const round = (n: number, places: number): number => Math.round(n * 10 ** places) / 10 ** places;
 
 /** Per-channel tolerance (0–255) for a colour, the OKLCH round-trip of a token written with three decimals. */
@@ -222,6 +230,7 @@ test.describe('primitives', () => {
         else {
           for (const [prop, expected] of Object.entries(want)) {
             if ((prop === 'border-color' || prop === 'border-style') && !draws(want['border-width'])) continue;
+            if (RETONED[part]?.includes(prop)) continue;
             const wanted = normalise(prop, expected);
             const actual = normalise(prop, got[prop] ?? '');
             if (!same(wanted, actual)) diffs.push(`${prop}: prototype ${expected} · app ${actual}`);
