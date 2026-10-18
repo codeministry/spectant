@@ -81,8 +81,14 @@ test.describe('reasons', () => {
     await page.goto('/w/harbor');
     await expect(page.locator('[data-spec-row]')).not.toHaveCount(0);
     let covered = 0;
-    for (const { id, phrase } of WAITING) {
-      await expectClampedPhrase(page.locator(`ui-reason[data-reason="${id}"]`), phrase, `dashboard row ${id}`);
+    for (const { id, phrase, raw } of WAITING) {
+      // Spec 020 (T26): a row with a guidance entry shows its sentence whole in the guide row, never clamped; a row
+      // without one keeps the clamped phrase of ui-reason.
+      if (phrase !== raw) {
+        await expect(page.locator(`app-spec-row-guide[data-reason="${id}"] [data-guide-sentence]`), `dashboard row ${id}`).toHaveText(phrase);
+      } else {
+        await expectClampedPhrase(page.locator(`ui-reason[data-reason="${id}"]`), phrase, `dashboard row ${id}`);
+      }
       covered++;
     }
     expect(covered).toBeGreaterThanOrEqual(MIN_COVERED);
