@@ -1417,6 +1417,48 @@ state the item kind never takes.
 | `task` | `aborted` | Its last run event is older than the claim stale age. | The claim stale age passes after its last run event. | A new run event, or its box is ticked. |
 | `task` | `done` | The task is ticked, dated by its `apply`; a struck task is done with `closedAs: struck`. | Its box is ticked, or it is struck. | Only when tasks.md changes. |
 
+## Guidance
+
+What waits on the user and what is next, per workspace (`guidance.ts`, `guidanceOf`, spec 020, ISC-237), derived from
+the files and § The state table above on every read, like the stage, and never stored. The dashboard model carries it
+as `guidance`; the spec page carries the same entries of its own spec only (`guidanceOfSpec`), so every surface shows
+one entry with one sentence. Only items in state `open` appear, split into two lists:
+
+- **Waits on you** (`waits`): every `open` item whose next step lies with the user: a spec's own item in a stage of
+  `PRINCIPAL_STAGES` (`review`, `code-review`, `close`); an open claim (not checked, not dropped) whose Test Strategy
+  row has type `manual`; an open task in lane `operator`; a `question` task of the newest `rounds.jsonl` line (the
+  highest `round`), while its spec is not done and its task, where the state model knows it, is open. The last three
+  are `waitingOnYouOf`, the one derivation the spec page's waiting-on-you list reads too.
+- **Next** (`next`): every other spec item in state `open`, one entry per spec; its open claims and tasks share its
+  command (`/spec-implement NNN`) and are not listed apart.
+
+Ideas, the reviewed and code-reviewed marks, and every item in `waiting`, `running`, `aborted` or `done` are in
+neither list.
+
+Each entry names its spec, item kind (`spec`, `claim`, `task`, `question`), ref (null for a spec), title, priority,
+command, since and reason. The **command** is the item's own from the state model; a question carries its spec's
+command while the spec is `open`, else null. **Since** is when the entry began to wait: for a spec, the `ts` of the
+newest valid `events.jsonl` line whose `to` is the spec's current stage, else its frontmatter `updated:`, else null; a
+claim or task takes its spec's since, a question the `ts` of its round line.
+
+Both lists sort the same way: priority (`P1` before `P2` before `P3` before `P4`; a missing `priority:` reads `P3`, as
+everywhere in core), then since, oldest first, an undated entry after every dated one of its priority, then spec id,
+then item kind in the order `spec`, `claim`, `task`, `question`, then ref in natural order (`ISC-2` before `ISC-10`,
+`T2` before `T10`).
+
+The **reason** is a stable key with the values of its placeholders and the English phrase, so the web renders one
+sentence per key from its own catalogs. A spec entry's key points at a Reason template of § The stage table: the
+templates there stay as they are, and the key adds an index, never a second wording. `GUIDANCE_REASONS` lists every
+key, generated from the stage table's rows in state `open` and the three waiting templates, never kept by hand.
+
+| Key | Phrase | Values |
+|-----|--------|--------|
+| `stage.<stage>.<i>` | the item's reason from its stage table row, unchanged | the filled placeholders of that row's template `i` (0-based, in the order the Reason column lists them; `matchReason` in `stage.ts`), e.g. `stage.review.0` with `{ state: "stale" }`, `stage.close.1` for `every claim is closed and the workflow has no code review` |
+| `waiting.manual` | `{ref} needs your confirmation` | `{ ref }`, the claim ID |
+| `waiting.operator` | `{ref} is your step` | `{ ref }`, the task ID |
+| `waiting.question` | `the newest round asks about {ref}` | `{ ref }`, the task ID of the question |
+| `phrase` | a spec's reason no template of its row matches | none; the surface shows the phrase as it stands (no fixture produces it) |
+
 ## The drift classes
 
 The audit of one spec against its master (`status.ts`, `driftReport`). A class is clean when empty, null or 0; any

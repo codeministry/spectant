@@ -15,6 +15,7 @@ import type { DashboardInput, DashboardModel, DashboardSpecRow } from '../src/da
 import type { LockReading, SpecFiles, SpecRead, Worktree } from '../src/files.ts';
 import { readLockSources } from '../src/locks.ts';
 import { withItemStates } from '../src/item-state.ts';
+import { guidanceOf, withGuidance } from '../src/guidance.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { STAGE_RULES, WAITING_STAGES, fillsTemplate } from '../src/stage.ts';
 import { assignWorktrees } from '../src/worktrees.ts';
@@ -236,8 +237,12 @@ describe('services', () => {
     const m = buildDashboard({ ...readTree('lantern'), services: [inBuilder, inSpec] });
     expect(m.services.map((s) => s.spec)).toEqual(['027', undefined]);
     expect(m.services.map((s) => 'spec' in s)).toEqual([true, false]);
-    // No service names a spec in the fixtures, so the harbor golden stays byte-identical (with its item states, spec 040).
-    expect(goldenText(withItemStates(buildDashboard(readTree('harbor')), stateModel(join(FIXTURES, 'harbor'))))).toBe(readFileSync(goldenPath('harbor', DASHBOARD_FAMILY), 'utf8'));
+    // No service names a spec in the fixtures, so the harbor golden stays byte-identical (with its item states, spec 040,
+    // and the guidance from them, spec 020).
+    const workspace = readTree('harbor');
+    const dashboard = buildDashboard(workspace);
+    const items = stateModel(join(FIXTURES, 'harbor'));
+    expect(goldenText(withGuidance(withItemStates(dashboard, items), guidanceOf({ workspace, dashboard, items })))).toBe(readFileSync(goldenPath('harbor', DASHBOARD_FAMILY), 'utf8'));
   });
 });
 

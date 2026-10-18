@@ -1146,6 +1146,9 @@ type EdgeCore = {
   buildDashboard: (input: unknown) => { kpis: unknown; specs: Array<{ slug: string; stage: string; stageSource: string; waits: SpecWait | null }> };
   itemStates: (input: unknown) => readonly unknown[];
   withItemStates: <T>(model: T, items: readonly unknown[]) => T;
+  /** core's guidance (spec 020, ISC-237), composed as the server's `loadDashboard` and spec route compose it. */
+  guidanceOf: (input: { workspace: unknown; dashboard: unknown; items: readonly unknown[] }) => unknown;
+  withGuidance: <T>(model: T, guidance: unknown) => T;
   taskRunsOf: (specs: readonly SpecFiles[], locks: unknown, now: Date) => unknown;
   DEFAULT_ABORT_AFTER_MS: number;
   buildPlanning: (input: unknown) => PlanningModel;
@@ -1175,9 +1178,9 @@ function loadEdgeCore(): EdgeCore {
   const modules = [
     at('tests', 'helpers', 'read-tree.ts'),
     at('tests', 'helpers', 'planning-model.ts'),
-    ...['dashboard', 'planning', 'spec', 'claim-view', 'live', 'tasks', 'spec-edges', 'locks', 'gates', 'item-state'].map((name) => at('src', `${name}.ts`)),
+    ...['dashboard', 'planning', 'spec', 'claim-view', 'live', 'tasks', 'spec-edges', 'locks', 'gates', 'item-state', 'guidance'].map((name) => at('src', `${name}.ts`)),
   ];
-  const [tree, planning, dashboard, plan, spec, claimView, live, tasks, edges, locks, gates, state] = modules;
+  const [tree, planning, dashboard, plan, spec, claimView, live, tasks, edges, locks, gates, state, guidance] = modules;
   const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'writes.contract.ts')) as Partial<EdgeCore>;
   const loaded: Partial<EdgeCore> = {
     readTreeAt: tree?.readTreeAt,
@@ -1186,6 +1189,8 @@ function loadEdgeCore(): EdgeCore {
     buildDashboard: dashboard?.buildDashboard,
     itemStates: state?.itemStates,
     withItemStates: state?.withItemStates,
+    guidanceOf: guidance?.guidanceOf,
+    withGuidance: guidance?.withGuidance,
     taskRunsOf: live?.taskRunsOf,
     DEFAULT_ABORT_AFTER_MS: state?.DEFAULT_ABORT_AFTER_MS,
     buildPlanning: plan?.buildPlanning,
@@ -1280,7 +1285,9 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
   // The item states as the state golden family builds them (core/tests/helpers/state-model.ts), over the edged tree.
   const stateWorkspace = { ...input, mergeState, locks };
   const items = edge.itemStates({ workspace: stateWorkspace, dashboard: edge.buildDashboard(stateWorkspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS });
-  const model = edge.withItemStates(edge.buildDashboard({ ...input, mergeState }), items);
+  const plainModel = edge.buildDashboard({ ...input, mergeState });
+  const guidance = edge.guidanceOf({ workspace: stateWorkspace, dashboard: plainModel, items });
+  const model = edge.withGuidance(edge.withItemStates(plainModel, items), guidance);
   const specTexts = new Map(input.specs.map((f) => [f.folder, f.texts.spec]));
   const specStates = model.specs.map((row) => {
     const spec = specTexts.get(row.slug);
@@ -1302,7 +1309,7 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
       const others = [...all.values()].filter((f) => f !== files);
       const id = golden.folder.slice(0, 3);
       const specItem = (items as ReadonlyArray<{ kind: string; id: string; spec?: string }>).find((i) => i.kind === 'spec' && i.id === id);
-      const page = edge.buildSpecPage({ files: { folder: files.folder, texts: own }, others, tldr, ...(workflow ? { workflow } : {}), mergeState, ...(specItem === undefined ? {} : { state: specItem }) });
+      const page = edge.buildSpecPage({ files: { folder: files.folder, texts: own }, others, tldr, ...(workflow ? { workflow } : {}), mergeState, ...(specItem === undefined ? {} : { state: specItem }), guidance });
       const claims = edge.buildClaimViews({ files, specEdges, now: LIVE_NOW });
       const { tasks: tasksText, rounds } = files.texts;
       const tasks = tasksText === undefined ? null : edge.parseTaskLines({ tasks: tasksText, ...(constitution === null ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), specEdges, itemStates: (items as ReadonlyArray<{ spec?: string }>).filter((i) => i.spec === id) });
@@ -1391,7 +1398,8 @@ function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRu
   const workspace = { ...input, locks };
   const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS }) as ReadonlyArray<{ kind: string; id: string; spec?: string }>;
   const plain = edge.buildDashboard(input);
-  const model = edge.withItemStates(plain, items);
+  const guidance = edge.guidanceOf({ workspace, dashboard: plain, items });
+  const model = edge.withGuidance(edge.withItemStates(plain, items), guidance);
   const { master, specs, archived, workflow, constitution, tldr } = input;
   const specTexts = new Map(specs.map((f) => [f.folder, f.texts.spec]));
   const specStates = plain.specs.map((row) => {
@@ -1412,7 +1420,7 @@ function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRu
       const own = { ...files.texts, ...(master === null ? {} : { master }), ...(constitution === null ? {} : { constitution }) };
       const others = [...all.values()].filter((f) => f !== files);
       const specItem = items.find((i) => i.kind === 'spec' && i.id === id);
-      const page = edge.buildSpecPage({ files: { folder: files.folder, texts: own }, others, tldr, ...(workflow ? { workflow } : {}), ...(specItem === undefined ? {} : { state: specItem }) });
+      const page = edge.buildSpecPage({ files: { folder: files.folder, texts: own }, others, tldr, ...(workflow ? { workflow } : {}), ...(specItem === undefined ? {} : { state: specItem }), guidance });
       const { tasks: tasksText, rounds } = files.texts;
       const tasks = tasksText === undefined ? null : edge.parseTaskLines({ tasks: tasksText, ...(constitution === null ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), itemStates: items.filter((i) => i.spec === id) });
       const live = edge.buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW });

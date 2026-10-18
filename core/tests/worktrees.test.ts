@@ -45,6 +45,7 @@ import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { itemStates, withItemStates } from '../src/item-state.ts';
+import { guidanceOf, withGuidance } from '../src/guidance.ts';
 import { stateInputAt } from './helpers/state-model.ts';
 import {
   assignWorktrees,
@@ -418,8 +419,11 @@ function harborFamilies(input: DashboardInput): Record<string, string> {
   const items = itemStates({ ...base, workspace, dashboard: buildDashboard(workspace) });
   const stateOf = (files: SpecFiles): { state?: (typeof items)[number] } =>
     ((state) => (state === undefined ? {} : { state }))(items.find((i) => i.kind === 'spec' && i.id === files.folder.slice(0, 3)));
+  // The workspace guidance (spec 020) from the same items, as the dashboard and spec goldens carry it.
+  const dashboard = buildDashboard(input);
+  const guidance = guidanceOf({ workspace, dashboard, items });
   return {
-    [DASHBOARD_FAMILY]: goldenText(withItemStates(buildDashboard(input), items)),
+    [DASHBOARD_FAMILY]: goldenText(withGuidance(withItemStates(dashboard, items), guidance)),
     spec: goldenText(
       keyed((files) =>
         buildSpecPage({
@@ -428,6 +432,7 @@ function harborFamilies(input: DashboardInput): Record<string, string> {
           tldr: input.tldr,
           ...(input.workflow ? { workflow: input.workflow } : {}),
           ...stateOf(files),
+          guidance,
         }),
       ),
     ),

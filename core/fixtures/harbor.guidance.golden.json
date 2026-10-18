@@ -1,0 +1,168 @@
+{
+  "waits": [
+    {
+      "spec": "006",
+      "priority": "P1",
+      "item": "spec",
+      "ref": null,
+      "title": "Stop a timed-out push from leaving a half-written manifest behind",
+      "command": "/spec-review 006",
+      "since": "2026-03-08T09:00:00Z",
+      "reason": {
+        "key": "stage.review.0",
+        "values": {
+          "state": "stale"
+        },
+        "phrase": "the reviewed mark is stale"
+      }
+    },
+    {
+      "spec": "002",
+      "priority": "P2",
+      "item": "claim",
+      "ref": "ISC-77",
+      "title": "Every interactive element in the error banner is reachable by keyboard and shows a focus ring.",
+      "command": "/spec-implement 002",
+      "since": "2026-03-04T09:00:00Z",
+      "reason": {
+        "key": "waiting.manual",
+        "values": {
+          "ref": "ISC-77"
+        },
+        "phrase": "ISC-77 needs your confirmation"
+      }
+    },
+    {
+      "spec": "002",
+      "priority": "P2",
+      "item": "task",
+      "ref": "T31",
+      "title": "screen-reader pass over the sync history (ISC-77)",
+      "command": "/spec-implement 002",
+      "since": "2026-03-04T09:00:00Z",
+      "reason": {
+        "key": "waiting.operator",
+        "values": {
+          "ref": "T31"
+        },
+        "phrase": "T31 is your step"
+      }
+    },
+    {
+      "spec": "002",
+      "priority": "P2",
+      "item": "question",
+      "ref": "T29",
+      "title": "should the empty state link to the sync docs or to the settings page?",
+      "command": "/spec-implement 002",
+      "since": "2026-03-08T16:30:00Z",
+      "reason": {
+        "key": "waiting.question",
+        "values": {
+          "ref": "T29"
+        },
+        "phrase": "the newest round asks about T29"
+      }
+    },
+    {
+      "spec": "005",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Decide which config format version 2 uses",
+      "command": "/spec-review 005",
+      "since": "2026-03-07T14:00:00Z",
+      "reason": {
+        "key": "stage.review.0",
+        "values": {
+          "state": "missing"
+        },
+        "phrase": "the reviewed mark is missing"
+      }
+    },
+    {
+      "spec": "005",
+      "priority": "P3",
+      "item": "claim",
+      "ref": "ISC-94",
+      "title": "the config format for version 2 is chosen and recorded as a decision.",
+      "command": "/spec-implement 005",
+      "since": "2026-03-07T14:00:00Z",
+      "reason": {
+        "key": "waiting.manual",
+        "values": {
+          "ref": "ISC-94"
+        },
+        "phrase": "ISC-94 needs your confirmation"
+      }
+    },
+    {
+      "spec": "004",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Delete old manifests on a written schedule without touching referenced ones",
+      "command": "/spec-code-review 004",
+      "since": "2026-03-08T12:00:00Z",
+      "reason": {
+        "key": "stage.code-review.0",
+        "values": {
+          "state": "stale"
+        },
+        "phrase": "every claim is closed and the code-reviewed mark is stale"
+      }
+    }
+  ],
+  "next": [
+    {
+      "spec": "002",
+      "priority": "P2",
+      "item": "spec",
+      "ref": null,
+      "title": "Show every sync run and its failures in a small web console",
+      "command": "/spec-implement 002",
+      "since": "2026-03-04T09:00:00Z",
+      "reason": {
+        "key": "stage.build.0",
+        "values": {
+          "ids": "ISC-75, ISC-76 and 1 more",
+          "is": "are"
+        },
+        "phrase": "ISC-75, ISC-76 and 1 more are takeable"
+      }
+    },
+    {
+      "spec": "009",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Find the largest blob chunk each target registry accepts",
+      "command": "/spec-implement 009",
+      "since": "2026-03-08T14:10:00Z",
+      "reason": {
+        "key": "stage.build.0",
+        "values": {
+          "ids": "ISC-131",
+          "is": "is"
+        },
+        "phrase": "ISC-131 is takeable"
+      }
+    },
+    {
+      "spec": "003",
+      "priority": "P3",
+      "item": "spec",
+      "ref": null,
+      "title": "Read the config through one loader in the CLI, the API and the console",
+      "command": "/spec-tasks 003",
+      "since": "2026-03-09T17:30:00Z",
+      "reason": {
+        "key": "stage.tasks.0",
+        "values": {
+          "claims": "13 claims"
+        },
+        "phrase": "13 claims and no tasks.md"
+      }
+    }
+  ]
+}

@@ -929,5 +929,74 @@
         }
       }
     ]
+  },
+  "guidance": {
+    "waits": [
+      {
+        "spec": "004",
+        "priority": "P3",
+        "item": "spec",
+        "ref": null,
+        "title": "Explain an outage in words on the status page",
+        "command": "/spec-review 004",
+        "since": "2026-03-07T15:00:00Z",
+        "reason": {
+          "key": "stage.review.0",
+          "values": {
+            "state": "stale"
+          },
+          "phrase": "the reviewed mark is stale"
+        }
+      },
+      {
+        "spec": "009",
+        "priority": "P3",
+        "item": "spec",
+        "ref": null,
+        "title": "Label every time on the status page with a time zone",
+        "command": "/spec-complete 009",
+        "since": "2026-03-08T11:00:00Z",
+        "reason": {
+          "key": "stage.close.1",
+          "values": {},
+          "phrase": "every claim is closed and the workflow has no code review"
+        }
+      }
+    ],
+    "next": [
+      {
+        "spec": "002",
+        "priority": "P3",
+        "item": "spec",
+        "ref": null,
+        "title": "Publish the state of every public check",
+        "command": "/spec-plan 002",
+        "since": "2026-03-05T09:00:00Z",
+        "reason": {
+          "key": "stage.plan.0",
+          "values": {
+            "type": "feature"
+          },
+          "phrase": "a feature spec needs plan.md and it is missing"
+        }
+      },
+      {
+        "spec": "008",
+        "priority": "P3",
+        "item": "spec",
+        "ref": null,
+        "title": "Find the largest history each format exports quickly",
+        "command": "/spec-implement 008",
+        "since": "2026-03-08T09:30:00Z",
+        "reason": {
+          "key": "stage.build.0",
+          "values": {
+            "ids": "ISC-25",
+            "is": "is"
+          },
+          "phrase": "ISC-25 is takeable"
+        }
+      }
+    ]
   }
 }
