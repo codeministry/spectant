@@ -17,6 +17,7 @@ import type { ItemRun } from '../../../../../../core/src/files';
 import { LanguageService } from '../../../core/language.service';
 import { UiIcon } from '../../icons/icon';
 import { elapsedText } from '../item-state/duration';
+import { UiLiveRegion } from '../live-region/live-region';
 
 /**
  * Copies `text`: the Clipboard API first, then a hidden textarea with the legacy copy command (WKWebView may refuse
@@ -59,8 +60,10 @@ function highlightMs(doc: Document): number {
 /**
  * A mono command with a copy button (`/spec-implement 012`, `spectant add <path-to-repo>`). On success the icon
  * swaps copy → check for `--motion-duration-highlight` (under reduced motion, where that token is 0ms, the check
- * holds until the button loses focus) and `copied` emits the command for the page's live region. When every copy
- * path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
+ * holds until the button loses focus) and `copied` emits the command. The clipboard gets the command trimmed, never a
+ * space before or after it, and the chip's own polite `ui-live-region` announces it ("Copied /spec-implement 012",
+ * `common.copied`; spec 020, ISC-241), so every surface confirms a copy the same way, without a toast. When every
+ * copy path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
  *
  * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec-implement 012"; ISC-142),
  * so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
@@ -77,7 +80,7 @@ function highlightMs(doc: Document): number {
 @Component({
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslocoPipe, UiIcon],
+  imports: [TranslocoPipe, UiIcon, UiLiveRegion],
   styles: `
     :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
     /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. */
@@ -127,8 +130,13 @@ function highlightMs(doc: Document): number {
     @if (state() === 'manual') {
       <span class="hint">{{ manualHint() }}</span>
     }
-    @if (lockedBy() && hintOpen()) {
-      <span class="hint" data-locked-hint>{{ lockedHint() }}</span>
+    @if (lockedBy()) {
+      @if (hintOpen()) {
+        <span class="hint" data-locked-hint>{{ lockedHint() }}</span>
+      }
+    } @else {
+      <!-- A locked chip copies nothing, so it carries no live region (an item-state line has none, spec 040). -->
+      <ui-live-region data-copy-announcer />
     }
   `,
 })
@@ -162,6 +170,7 @@ export class UiCommandChip {
 
   protected readonly state = signal<'idle' | 'copied' | 'manual'>('idle');
   private readonly code = viewChild.required<ElementRef<HTMLElement>>('code');
+  private readonly region = viewChild(UiLiveRegion);
   private readonly doc = inject(DOCUMENT);
   private timer: ReturnType<typeof setTimeout> | undefined;
   private holdUntilBlur = false;
@@ -171,10 +180,11 @@ export class UiCommandChip {
   }
 
   protected async copy(): Promise<void> {
-    const text = this.command();
+    const text = this.command().trim();
     clearTimeout(this.timer);
     if (await writeClipboard(text, this.doc)) {
       this.state.set('copied');
+      this.region()?.announce(this.transloco.translate('common.copied', { command: text }, this.lang()));
       this.copied.emit(text);
       const ms = highlightMs(this.doc);
       this.holdUntilBlur = ms === 0;

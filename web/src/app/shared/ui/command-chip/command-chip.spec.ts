@@ -79,6 +79,7 @@ describe('UiCommandChip', () => {
     expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock');
     expect(button?.getAttribute('aria-label')).toBe('Locked · /spec-tasks 037 is running · a:claude:sess-7 · since 3 min');
     expect(root.querySelector('[data-locked-hint]')).toBeNull();
+    expect(root.querySelector('ui-live-region'), 'a locked chip carries no live region').toBeNull();
     button?.click();
     await fixture.whenStable();
     expect(writeText).not.toHaveBeenCalled();
@@ -87,5 +88,32 @@ describe('UiCommandChip', () => {
     await fixture.whenStable();
     expect(root.querySelector('button ui-icon')?.getAttribute('data-icon')).toBe('copy');
     expect(root.querySelector('[data-locked-hint]')).toBeNull();
+    expect(root.querySelector('ui-live-region')?.textContent).toBe('');
+  });
+
+  // Spec 020, T28 · ISC-241: the clipboard gets exactly the command, without whitespace before or after, and the
+  // chip's own polite live region announces it ("Copied /spec-implement 012"); a repeat is announced again.
+  it('copies the trimmed command and announces it in its live region', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '  /spec-implement 012\n');
+    const emitted: string[] = [];
+    fixture.componentInstance.copied.subscribe((c) => emitted.push(c));
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const region = root.querySelector('ui-live-region');
+    expect(region?.getAttribute('aria-live')).toBe('polite');
+    expect(region?.textContent).toBe('');
+
+    root.querySelector('button')?.click();
+    await fixture.whenStable();
+    expect(writeText).toHaveBeenCalledWith('/spec-implement 012');
+    expect(emitted).toEqual(['/spec-implement 012']);
+    expect(region?.textContent).toBe('Copied /spec-implement 012');
+
+    root.querySelector('button')?.click();
+    await fixture.whenStable();
+    expect(region?.textContent).toBe(`Copied /spec-implement 012${String.fromCharCode(0xa0)}`);
   });
 });
