@@ -67,8 +67,10 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
       @if (top(); as first) {
         <ui-card class="top" side [padding]="16" data-top>
           <div class="head">
-            <a class="id" [routerLink]="specLink(first)">{{ first.spec }}</a>
-            @if (first.ref) {
+            <a class="id" [routerLink]="specLink(first)" [fragment]="fragmentOf(first)">{{ label(first) }}</a>
+            @if (kindKey(first); as kind) {
+              <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+            } @else if (first.ref) {
               <ui-chip variant="mono">{{ first.ref }}</ui-chip>
             }
             <span class="title" [title]="first.title">{{ first.title }}</span>
@@ -92,10 +94,12 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
         @if (rest().length > 0) {
           <ol class="rest">
             @for (entry of rest(); track key(entry)) {
-              <li data-row>
-                <a class="row" [routerLink]="specLink(entry)">
-                  <span class="id">{{ entry.spec }}</span>
-                  @if (entry.ref) {
+              <li data-row [attr.data-item]="entry.item">
+                <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
+                  <span class="id">{{ label(entry) }}</span>
+                  @if (kindKey(entry); as kind) {
+                    <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+                  } @else if (entry.ref) {
                     <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
                   }
                   <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
@@ -145,6 +149,13 @@ export class UiWaitsBlock {
   readonly moreLink = input<string | null>(null);
   /** The fragment of `moreLink`, the section that lists every entry. */
   readonly moreFragment = input('waiting');
+  /**
+   * `spec`: the block of one spec's page (spec 020 T20, design.md § Desktop Spec-Seite): each entry names its reference
+   * (`ISC-n`, `Tn`, the question's ref) instead of the spec number, with `ui-chip` small "manual", "operator" or
+   * "question", and links to its row in the Claims or Tasks tab (`#claim-ISC-n`, `#task-Tn`); a question and the spec
+   * itself link to the spec dashboard. `workspace` (the default) names the spec and links to its page.
+   */
+  readonly scope = input<'workspace' | 'spec'>('workspace');
   /** The id of the block's heading, the section's accessible name; unique on the page. */
   readonly headingId = input('waits-heading');
 
@@ -158,7 +169,28 @@ export class UiWaitsBlock {
 
   protected readonly key = waitsKey;
   protected specLink(entry: GuidanceEntry): string[] {
-    return ['/w', this.workspace(), 's', entry.spec];
+    const page = ['/w', this.workspace(), 's', entry.spec];
+    if (this.scope() !== 'spec') return page;
+    if (entry.item === 'claim') return [...page, 'claims'];
+    return entry.item === 'task' ? [...page, 'tasks'] : page;
+  }
+
+  /** The row an entry of the spec scope lands on; none for a spec-wide link. */
+  protected fragmentOf(entry: GuidanceEntry): string | undefined {
+    if (this.scope() !== 'spec' || entry.ref === null) return undefined;
+    if (entry.item === 'claim') return `claim-${entry.ref}`;
+    return entry.item === 'task' ? `task-${entry.ref}` : undefined;
+  }
+
+  /** The spec number, or in the spec scope the entry's own reference (the spec's own entry keeps its number). */
+  protected label(entry: GuidanceEntry): string {
+    return this.scope() === 'spec' && entry.ref !== null ? entry.ref : entry.spec;
+  }
+
+  /** The kind word of an item entry in the spec scope (`specDashboard.context.kinds.*`); null elsewhere. */
+  protected kindKey(entry: GuidanceEntry): 'manual' | 'operator' | 'question' | null {
+    if (this.scope() !== 'spec') return null;
+    return entry.item === 'claim' ? 'manual' : entry.item === 'task' ? 'operator' : entry.item === 'question' ? 'question' : null;
   }
 
   /** "waiting 2 d" (de „seit 2 d"), the unit's own word from the catalogue. */

@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
+import type { GateState, SpecPageModel } from '../../../../../../core/src/files';
 import { ApiClient } from '../../../core/api.service';
 import { specLink } from '../../../layout/shell/areas';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
+import { specGuide } from '../../../layout/spec-head/spec-guide';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
+import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
+import { UiWaitsBlock } from '../../../shared/ui/guidance/waits-block';
 import { UiKbd } from '../../../shared/ui/kbd/kbd';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
@@ -18,16 +20,20 @@ import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from '../dashboard/da
 import { openClaims } from '../status/status-model';
 
 /**
- * The spec rail (spec 024, the prototype's spec-detail `context-rail`: `whereCard`, `waitingCard` and the key line):
- * Where it stands (stage track, ring, next command and its reason, first takeable claim, warnings, gate rows), Waiting
- * on you and `[ ] previous / next spec · Esc`. `SpecPage` registers it with `RailContent` from 1120 px for every tab of
- * the Status, Data, Docs and Notes areas, so the rail is the same on each; the spec dashboard and the live board
- * register their own rail over it. It renders the spec payload the shell already loads (`ShellData.spec`) as it is and
- * reads the first takeable claim from the Claims route; nothing is counted here (ISC-72).
+ * The spec rail (spec 024, the prototype's spec-detail `context-rail`: `whereCard` and the key line). Spec 020 (T20,
+ * ISC-239) makes it the guidance spot of every tab it serves from 1120 px: on top "Next step" with the spec's catalogue
+ * sentence (`guidanceReason`), its copy chip and the marker "Waits on you" when the spec itself waits on you; then the
+ * spec's other waiting entries as `ui-waits-block` (scope `spec`: `ISC-n` / `Tn` instead of the spec number, limit 5, a
+ * chip on every row, "+n more" to the spec dashboard's `#waiting`), with no `operator` checkbox: the rail leads, the
+ * Tasks tab ticks. Below them Where it stands (stage track, ring, first takeable claim, warnings, gate rows) and
+ * `[ ] previous / next spec · Esc`. `SpecPage` registers it with `RailContent` from 1120 px for every tab of the
+ * Status, Data and Notes areas, so the rail is the same on each; the spec dashboard and the live board register their
+ * own rail over it. It renders the spec payload the shell already loads (`ShellData.spec`) as it is and reads the first
+ * takeable claim from the Claims route; nothing is counted here (ISC-72).
  */
 @Component({
   selector: 'app-spec-rail',
-  imports: [RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiKbd, UiRing, UiStageTrack],
+  imports: [GuidanceReasonPipe, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiKbd, UiRing, UiStageTrack, UiWaitsBlock],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-rail.html',
   // While the take chip's claims load the rail says it is busy, so a reader (and a screenshot) waits for the settled rail.
@@ -48,6 +54,16 @@ export class SpecRail {
     const result = this.data.spec.value();
     return result?.kind === 'ok' ? result.body : null;
   });
+
+  /** The guidance spot: the spec's own entry as the next step and the rest of its `waits` (`specGuide`). */
+  protected readonly guide = computed(() => {
+    const model = this.model();
+    return model === null ? null : specGuide(model.guidance, model);
+  });
+
+  protected readonly ws = computed(() => this.state.ws() ?? '');
+  /** "+n more" leads to the spec dashboard, whose `#waiting` lists every waiting entry of the spec. */
+  protected readonly dashboardLink = computed(() => specLink(this.ws(), this.model()?.head.id ?? this.state.specId() ?? '').join('/'));
 
   private readonly params = computed(() => {
     const ws = this.state.ws();
@@ -89,14 +105,5 @@ export class SpecRail {
   protected railGateIcon(state: GateState): 'check' | 'triangle-alert' | 'x' {
     if (state === 'ok' || state === 'fresh') return 'check';
     return state === 'stale' || state === 'warn' ? 'triangle-alert' : 'x';
-  }
-
-  protected waitingKey(item: WaitingItem): string {
-    return `${item.kind}-${item.ref}`;
-  }
-
-  /** A task waits on the board, a manual claim among the claims. */
-  protected waitingLink(item: WaitingItem): string[] {
-    return specLink(this.state.ws() ?? '', this.state.specId() ?? '', item.kind === 'manual' ? 'claims' : 'board');
   }
 }

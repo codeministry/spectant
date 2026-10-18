@@ -30,6 +30,7 @@ import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { GateButton } from './gate-button';
 import { OverlapLines } from './overlap-lines';
+import { SpecGuideCard } from './spec-guide';
 import { overlapLines, overlapsIn } from '../../features/dashboard/warnings-panel/overlap';
 import {
   type FeaturePlace,
@@ -80,12 +81,14 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  *   text. It wraps after the chip when wider than the left column, always at compact. Without a worktree the "No agent
  *   source" line renders exactly as before.
  *
+ * - The guide card (spec 020, T21, ISC-239): `app-spec-guide` under the head where the tab has no other guidance spot.
+ *
  * Values come from the spec payload, the dashboard row until it answers. The host carries `spec-head`, the class the
  * zen footer hides.
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, OverlapLines, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWaitsChip, UiWorktreeChip],
+  imports: [GateButton, OverlapLines, RouterLink, SpecGuideCard, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./spec-head.css', './spec-head.context.css', './spec-head.compact.css'],
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
@@ -285,6 +288,9 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
         </span>
       </div>
     }
+
+    <!-- Spec 020 (T21, ISC-239): the compact guide card where this tab has no other guidance spot (guideCardShown). -->
+    <app-spec-guide />
   `,
 })
 export class SpecHead {

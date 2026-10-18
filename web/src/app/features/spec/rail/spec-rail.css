@@ -66,9 +66,15 @@
   line-height: 16px;
 }
 
-.sr-next {
-  display: grid;
-  gap: 8px;
+/* Spec 020 (T20): the next step's catalogue sentence, 15/24, whole and wrapping on words, never cut (ISC-237.1). */
+.sr-sentence {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: break-word;
+}
+
+.sr-card[data-rail-block='next'] {
   justify-items: start;
 }
 
@@ -93,17 +99,13 @@
   font-family: var(--font-mono);
 }
 
-.sr-gates,
-.sr-rows {
+.sr-gates {
   display: grid;
   gap: 2px;
   margin: 0;
   padding: 0;
-  list-style: none;
-}
-
-.sr-gates {
   padding-block-start: 12px;
+  list-style: none;
   border-block-start: 1px solid var(--line);
 }
 
@@ -135,55 +137,6 @@
   color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
-}
-
-.sr-rows {
-  gap: 8px;
-}
-
-.sr-wait {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  align-items: center;
-  padding-block: 8px;
-  border-block-end: 1px solid var(--line);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.sr-wait:last-child {
-  border-block-end: 0;
-}
-
-.sr-box,
-.sr-box:disabled {
-  border: 1.5px solid var(--ques-ink);
-  border-radius: 4px;
-  opacity: 1;
-}
-
-.sr-wait-icon {
-  color: var(--ques-text);
-}
-
-.sr-wait-link {
-  flex: 1 1 10rem;
-  min-inline-size: 0;
-  color: inherit;
-  overflow-wrap: anywhere;
-  text-decoration: underline dotted var(--muted-ink);
-  text-underline-offset: 3px;
-}
-
-@media (hover: hover) {
-  .sr-wait-link:hover {
-    color: var(--disp-ink);
-  }
-}
-
-.sr-ref {
-  font-family: var(--font-mono);
 }
 
 .sr-kbd {

@@ -2460,10 +2460,12 @@
       "empty": "Nothing is waiting on you.",
       "more": "+{{n}} more",
       "since": "waiting {{time}}",
-      "showAll": "Show all {{count}}"
+      "showAll": "Show all {{count}}",
+      "waiting": "+{{n}} waiting"
     },
     "next": {
-      "label": "Next"
+      "label": "Next",
+      "step": "Next step"
     },
     "marker": "Waits on you"
   }

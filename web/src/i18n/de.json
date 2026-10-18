@@ -2460,10 +2460,12 @@
       "empty": "Nichts liegt bei Ihnen.",
       "more": "+{{n}} weitere",
       "since": "seit {{time}}",
-      "showAll": "Alle {{count}} anzeigen"
+      "showAll": "Alle {{count}} anzeigen",
+      "waiting": "+{{n}} bei Ihnen"
     },
     "next": {
-      "label": "Als Nächstes"
+      "label": "Als Nächstes",
+      "step": "Nächster Schritt"
     },
     "marker": "Liegt bei Ihnen"
   }
