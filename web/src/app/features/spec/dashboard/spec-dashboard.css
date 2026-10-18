@@ -152,13 +152,6 @@ blockquote {
   line-height: 20px;
 }
 
-.ref {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  line-height: 20px;
-}
-
 @container shell (width >= 640px) {
   .kpi {
     grid-template-columns: repeat(4, minmax(0, 1fr));

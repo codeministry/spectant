@@ -5,38 +5,7 @@
 -->
 @if (model(); as m) {
   <div class="sr" data-spec-rail role="group" [attr.aria-label]="'specDashboard.context.label' | transloco">
-    @if (guide(); as g) {
-      <section class="sr-card" data-rail-block="next" aria-labelledby="spec-rail-next">
-        <div class="sr-head">
-          <h2 id="spec-rail-next" class="sr-eyebrow">{{ 'guidance.next.step' | transloco }}</h2>
-          @if (g.waiting) {
-            <ui-chip variant="small" tone="secondary" icon="user-round" data-rail-marker>{{ 'guidance.marker' | transloco }}</ui-chip>
-          }
-        </div>
-        <p class="sr-sentence" data-rail-reason>{{ g.entry?.reason | guidanceReason: g.phrase }}</p>
-        @if (g.command; as command) {
-          <ui-command-chip
-            data-rail-next
-            [command]="command"
-            [copyLabel]="'common.copyCommand' | transloco"
-            [copiedLabel]="'common.copied' | transloco: { command }"
-            [manualHint]="'common.copyFallback' | transloco"
-          />
-        }
-      </section>
-      @if (g.others.length > 0) {
-        <ui-waits-block
-          data-rail-block="waits"
-          scope="spec"
-          headingId="spec-rail-waits"
-          [entries]="g.others"
-          [workspace]="ws()"
-          [limit]="5"
-          [chips]="true"
-          [moreLink]="dashboardLink()"
-        />
-      }
-    }
+    <app-spec-rail-guide />
 
     <section class="sr-card" data-rail-block="where" aria-labelledby="spec-rail-where">
       <h2 id="spec-rail-where" class="sr-eyebrow">{{ 'status.where.heading' | transloco }}</h2>

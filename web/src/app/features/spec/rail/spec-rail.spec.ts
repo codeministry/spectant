@@ -62,7 +62,7 @@ const chipCommands = (el: Element | null | undefined): string[] =>
 describe('app-spec-rail as the guidance spot (T20, ISC-239)', () => {
   it('leads with Next step: the catalogue sentence and the one chip of the next command', async () => {
     const root = await render();
-    const blocks = [...root.querySelectorAll('[data-spec-rail] > [data-rail-block]')].map((el) => el.getAttribute('data-rail-block'));
+    const blocks = [...root.querySelectorAll('[data-spec-rail] > [data-rail-block], [data-spec-rail] > app-spec-rail-guide > [data-rail-block]')].map((el) => el.getAttribute('data-rail-block'));
     expect(blocks).toEqual(['next', 'waits', 'where']);
     const next = root.querySelector('[data-rail-block="next"]');
     expect(text(next?.querySelector('h2'))).toBe(en.guidance.next.step);

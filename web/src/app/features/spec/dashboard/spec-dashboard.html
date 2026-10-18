@@ -186,6 +186,7 @@
           <ui-waits-block
             class="also"
             data-guidance-waits
+            scope="spec"
             [entries]="alsoWaiting()"
             [workspace]="ws()"
             [limit]="null"
@@ -234,40 +235,16 @@
 
 <!--
   The Spec context (018-B14): the rail's blocks from 1120 px (RailContent), the main column's last block below. It
-  holds `#waiting` only in the rail: below 1120 the guidance spot carries it (spec 020, T19).
+  holds `#waiting` only in the rail, which opens with the spec rail's guidance spot (Next step and the spec's own Waits on
+  you, `app-spec-rail-guide`); below 1120 the next-step card is the guidance spot and carries both (spec 020, T19).
 -->
 <ng-template #context>
   @if (model(); as m) {
     <div class="context" data-spec-context [attr.id]="wide() ? 'waiting' : null" [attr.data-form]="wide() ? 'rail' : 'inline'" role="group" [attr.aria-label]="'specDashboard.context.label' | transloco">
-      <section class="card rail-card" data-context-block="waiting" aria-labelledby="spec-context-waiting">
-        <div class="block-head">
-          <h2 id="spec-context-waiting">{{ 'specDashboard.waiting.heading' | transloco }}</h2>
-          <ui-chip data-count-badge variant="count" tone="secondary">{{ m.keyNumbers.waiting }}</ui-chip>
-        </div>
-        @if (m.waitingOnYou.length === 0) {
-          <p class="muted">{{ 'specDashboard.waiting.none' | transloco }}</p>
-        } @else {
-          <ul class="rows">
-            @for (item of m.waitingOnYou; track waitingKey(item)) {
-              <li class="wait-line" data-waiting-item [attr.data-waiting-kind]="item.kind" [attr.data-waiting-ref]="item.ref">
-                @if (item.kind === 'operator') {
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs"
-                    disabled
-                    [checked]="item.checked ?? false"
-                    [attr.aria-label]="'specDashboard.waiting.checkLabel' | transloco: { ref: item.ref }"
-                  />
-                } @else {
-                  <ui-icon class="wait-icon" [name]="item.kind === 'question' ? 'circle-help' : 'circle-check'" [size]="16" />
-                }
-                <a class="wait-link" [routerLink]="waitingLink(item)"><span class="ref">{{ item.ref }}</span> · {{ item.title }}</a>
-                <ui-chip data-waiting-kind-label variant="plain">{{ 'specDashboard.context.kinds.' + item.kind | transloco }}</ui-chip>
-              </li>
-            }
-          </ul>
-        }
-      </section>
+      @if (wide()) {
+        <!-- Spec 020 (ISC-239): from 1120 px this rail is the guidance spot, as on every tab; below it the next-step card is. -->
+        <app-spec-rail-guide />
+      }
 
       <section class="card rail-card" data-context-block="warnings" aria-labelledby="spec-context-warnings">
         <div class="block-head">

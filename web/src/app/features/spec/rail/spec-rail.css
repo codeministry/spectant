@@ -67,12 +67,6 @@
 }
 
 /* Spec 020 (T20): the next step's catalogue sentence, 15/24, whole and wrapping on words, never cut (ISC-237.1). */
-.sr-sentence {
-  margin: 0;
-  font-size: 15px;
-  line-height: 24px;
-  overflow-wrap: break-word;
-}
 
 .sr-card[data-rail-block='next'] {
   justify-items: start;

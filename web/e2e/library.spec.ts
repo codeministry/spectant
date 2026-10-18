@@ -336,11 +336,12 @@ test.describe('archived', () => {
     await pill(page, type).click();
     await expect(page).toHaveURL((url) => url.searchParams.get('type') === type && url.searchParams.get('archived') === '1');
     const typed = served.docs.filter((doc) => doc.type === type);
-    expect((await shownPaths(page)).sort()).toEqual(pathsOf(typed));
+    // The list re-renders after the URL moves: poll until it shows the same set, never read it once mid-render.
+    await expect.poll(async () => (await shownPaths(page)).sort()).toEqual(pathsOf(typed));
 
     await toggle.click();
     await expect(page).toHaveURL((url) => !url.searchParams.has('archived') && url.searchParams.get('type') === type);
-    expect(await shownPaths(page)).toEqual(pathsOf(typed.filter((doc) => doc.archived !== true)));
+    await expect.poll(() => shownPaths(page)).toEqual(pathsOf(typed.filter((doc) => doc.archived !== true)));
   });
 });
 

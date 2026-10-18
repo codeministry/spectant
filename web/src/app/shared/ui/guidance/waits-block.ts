@@ -29,7 +29,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
   selector: 'ui-waits-block',
   imports: [GuidanceReasonPipe, RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiGlyph, UiIcon, UiPriority, UiRelativeTime, UiSectionHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-count]': 'entries().length' },
+  host: { '[attr.data-count]': 'entries().length', '[attr.data-chips]': "chips() ? '' : null" },
   styles: `
     :host { display: block; min-inline-size: 0; }
     ui-section-header { margin-block-end: 8px; }
@@ -47,6 +47,9 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
     .rest li:last-child { border-block-end: 0; }
     .row { display: flex; flex: 1 1 24ch; gap: 8px; align-items: flex-start; min-block-size: 44px; min-inline-size: 0; color: inherit; text-decoration: none; }
     .row:hover .reason { text-decoration: underline; }
+    /* The short list on the start (no chips): the whole row is the 44 px link with 12 px inner padding (design.md § Start: 44 to 64 px a row). */
+    :host(:not([data-chips])) .rest li { padding-block: 0; }
+    :host(:not([data-chips])) .row { box-sizing: border-box; padding-block: 12px; }
     .row .id { line-height: 20px; }
     .row .reason { flex: 1 1 auto; min-inline-size: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
     .row ui-icon { flex: none; padding-block-start: 2px; color: var(--muted-ink); }

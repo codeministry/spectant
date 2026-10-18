@@ -121,7 +121,10 @@ for (const width of [1440, 600, 390] as const) {
     // through the workspace column to the workspace dashboard and its spec row. The budget is unchanged.
     test(`P1 clicks @${width}: the workspace column, the spec row on its dashboard, the spec, its claims, the card → visible and focused in ≤ ${BUDGET.clicks.steps} steps`, async ({ page }) => {
       await page.goto('/');
-      await expect(page.locator('app-overview-page a[href*="/s/"]'), 'the overview lists no spec').toHaveCount(0);
+      // Spec 020 T16 (ISC-238): the only spec links on `/` are the entries of a column's block "Waits on you".
+      await expect(page.locator('app-overview-page app-workspace-column').first()).toBeVisible();
+      const outside = await page.locator('app-overview-page a[href*="/s/"]').evaluateAll((els) => els.filter((el) => !el.closest('[data-ui="waits-block"]')).length);
+      expect(outside, 'the overview lists no spec outside Waits on you').toBe(0);
       const column = page.locator(`app-workspace-column[data-ws="${TARGET.ws}"] .ws-head a[href="/w/${TARGET.ws}"]`);
       await expect(column).toBeVisible();
       const steps = new StepCounter(page);

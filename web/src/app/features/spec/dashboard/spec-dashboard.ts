@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, type 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
+import type { GateState, SpecPageModel } from '../../../../../../core/src/files';
 import { type AreaId, areaById, areaPath, specLink } from '../../../layout/shell/areas';
 import { RailContent } from '../../../layout/shell/rail-content';
 import { ShellData } from '../../../layout/shell/shell-data.service';
@@ -31,6 +31,7 @@ import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
 import { Brief, type BriefModel } from '../../dashboard/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
+import { SpecRailGuide } from '../rail/spec-rail-guide';
 import { GATE_NAMES, GATE_TONE, quoteIdea, stageIndex, TRACK_STAGES } from './dashboard-model';
 
 /** The five area tiles in menu order, each with its provisional `g` key (the sequences themselves arrive with T102). */
@@ -124,6 +125,7 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
     AreaPlaceholder,
     UiTerm,
     Brief,
+    SpecRailGuide,
     NgTemplateOutlet,
     OverlapLines,
     RouterLink,
@@ -290,15 +292,6 @@ export class SpecDashboard {
   /** The prototype's gate-row icon: passed checks, stale or warning alerts, absent crosses. */
   protected gateIcon(state: GateState): IconName {
     return GATE_ICON[state];
-  }
-
-  /** A task waits on the board, a manual claim among the claims. */
-  protected waitingLink(item: WaitingItem): string[] {
-    return this.link(item.kind === 'manual' ? 'claims' : 'board');
-  }
-
-  protected waitingKey(item: WaitingItem): string {
-    return `${item.kind}-${item.ref}`;
   }
 
   protected reload(): void {
