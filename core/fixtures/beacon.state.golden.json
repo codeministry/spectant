@@ -850,6 +850,27 @@
   },
   {
     "kind": "idea",
+    "id": "cert-expiry",
+    "state": "aborted",
+    "stage": "idea",
+    "run": {
+      "run": "r-0308-1150",
+      "command": "/spec new cert-expiry",
+      "session": "a:claude:sess-72",
+      "actor": {
+        "raw": "a:claude:sess-72",
+        "kind": "agent",
+        "id": "a:claude:sess-72",
+        "legacy": false
+      },
+      "since": "2026-03-08T11:50:00Z",
+      "elapsedMs": 11400000,
+      "openRuns": 1,
+      "source": "run"
+    }
+  },
+  {
+    "kind": "idea",
     "id": "digest-emails",
     "state": "open",
     "stage": "idea",

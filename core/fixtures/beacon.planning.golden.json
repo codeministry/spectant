@@ -99,7 +99,7 @@
     "done"
   ],
   "stageCounts": {
-    "idea": 2,
+    "idea": 3,
     "plan": 1,
     "tasks": 1,
     "review": 1,
@@ -374,6 +374,36 @@
       "unheld": [],
       "ideas": [
         {
+          "slug": "cert-expiry",
+          "title": "An HTTPS check warns two weeks before the certificate of its site expires.",
+          "type": "feature",
+          "feature": "F3",
+          "milestone": null,
+          "priority": "P2",
+          "path": "specs/ideas/cert-expiry.md",
+          "state": {
+            "kind": "idea",
+            "id": "cert-expiry",
+            "state": "aborted",
+            "stage": "idea",
+            "run": {
+              "run": "r-0308-1150",
+              "command": "/spec new cert-expiry",
+              "session": "a:claude:sess-72",
+              "actor": {
+                "raw": "a:claude:sess-72",
+                "kind": "agent",
+                "id": "a:claude:sess-72",
+                "legacy": false
+              },
+              "since": "2026-03-08T11:50:00Z",
+              "elapsedMs": 11400000,
+              "openRuns": 1,
+              "source": "run"
+            }
+          }
+        },
+        {
           "slug": "digest-emails",
           "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
           "type": "feature",
@@ -647,6 +677,36 @@
   ],
   "ideas": [
     {
+      "slug": "cert-expiry",
+      "title": "An HTTPS check warns two weeks before the certificate of its site expires.",
+      "type": "feature",
+      "feature": "F3",
+      "milestone": null,
+      "priority": "P2",
+      "path": "specs/ideas/cert-expiry.md",
+      "state": {
+        "kind": "idea",
+        "id": "cert-expiry",
+        "state": "aborted",
+        "stage": "idea",
+        "run": {
+          "run": "r-0308-1150",
+          "command": "/spec new cert-expiry",
+          "session": "a:claude:sess-72",
+          "actor": {
+            "raw": "a:claude:sess-72",
+            "kind": "agent",
+            "id": "a:claude:sess-72",
+            "legacy": false
+          },
+          "since": "2026-03-08T11:50:00Z",
+          "elapsedMs": 11400000,
+          "openRuns": 1,
+          "source": "run"
+        }
+      }
+    },
+    {
       "slug": "digest-emails",
       "title": "The on-call person can choose one daily digest email instead of an alert per outage.",
       "type": "feature",
@@ -754,6 +814,7 @@
         "claim:ISC-9",
         "claim:ISC-29",
         "claim:ISC-30",
+        "idea:cert-expiry",
         "idea:digest-emails"
       ],
       "blockers": []
@@ -1440,6 +1501,19 @@
       "parents": [
         "spec:010",
         "feature:F7"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "idea:cert-expiry": {
+      "ref": "idea:cert-expiry",
+      "type": "idea",
+      "id": "cert-expiry",
+      "title": "An HTTPS check warns two weeks before the certificate of its site expires.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "feature:F3"
       ],
       "children": [],
       "blockers": []

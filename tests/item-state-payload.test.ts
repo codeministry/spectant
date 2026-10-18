@@ -99,8 +99,10 @@ describe("state payload (spec 040, ISC-224)", () => {
       const page = (await get(workspaceRoutes.idea(SLUG, idea.slug))) as IdeaPage;
       expect({ story: idea.slug, state: page.idea.state }).toEqual({ story: idea.slug, state: itemOf("idea", idea.slug) });
     }
-    // Not vacuous: one story has an open run (`/spec new uptime-badges`), the other offers its command.
+    // Not vacuous: one story has an open run (`/spec new uptime-badges`), one a run open past the abort age (`/spec new
+    // cert-expiry`), the third offers its command.
     expect(planning.ideas.map((idea) => [idea.slug, idea.state?.state])).toEqual([
+      ["cert-expiry", "aborted"],
       ["digest-emails", "open"],
       ["uptime-badges", "running"],
     ]);

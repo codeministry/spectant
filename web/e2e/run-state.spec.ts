@@ -9,7 +9,7 @@
  * - surfaces: each of the five forms with its details on the board card, the status block, the idea card (board story
  *   card and the dashboard's ideas panel), the claim row and the task row, at the Mobile and the Desktop width. An idea
  *   is never `waiting` (a story carries no edges) and never `done` (an allocated story becomes a spec), so the idea
- *   card shows open and running only; beacon holds no aborted idea run.
+ *   card shows open, running and aborted, one beacon story each.
  * - tasks-run: the board polls once per refresh tick while the run variant changes between two polls: 003 reads
  *   "Tasks · open" with `/spec-tasks 003`, then "Tasks · running" with the command, the actor and the duration, then the
  *   stage its files give once the run ended ("Review · open" with `/spec-review 003`).
@@ -29,8 +29,12 @@ type Form =
   | { state: 'aborted'; line?: string; command: string; actor: string; started: string }
   | { state: 'done'; line?: string; date: string; closedAs?: 'dropped' | 'struck' };
 
-/** Asserts that `item` (a `ui-item-state`) shows `form`: its state, its head where given, and each of its details. */
-async function expectForm(item: Locator, form: Form): Promise<void> {
+/**
+ * Asserts that `item` (a `ui-item-state`) shows `form`: its state, its head where given, and each of its details.
+ * `holder` is where the run's actor chip stands when the surface names the holder outside the state (a task row's
+ * live holders); the item then carries no actor chip of its own, so the holder is named once.
+ */
+async function expectForm(item: Locator, form: Form, holder?: Locator): Promise<void> {
   await expect(item).toBeVisible();
   await expect(item).toHaveAttribute('data-state', form.state);
   if (form.line !== undefined) await expect(item.locator('[data-item-line]')).toHaveText(form.line);
@@ -51,7 +55,8 @@ async function expectForm(item: Locator, form: Form): Promise<void> {
     case 'running': {
       await expect(command).toHaveText(form.command);
       await expect(item.locator('ui-command-chip .chip')).toHaveAttribute('data-locked', '');
-      const actor = item.locator('ui-actor-chip');
+      const actor = holder ?? item.locator('ui-actor-chip');
+      if (holder !== undefined) await expect(item.locator('ui-actor-chip')).toHaveCount(0);
       await expect(actor).toHaveAttribute('title', form.actor);
       await expect(actor).toHaveAttribute('data-active', '');
       await expect(item).toContainText(`since ${form.since}`);
@@ -59,7 +64,8 @@ async function expectForm(item: Locator, form: Form): Promise<void> {
     }
     case 'aborted': {
       await expect(item.locator('[data-started]')).toHaveText(`started ${form.started}`);
-      const actor = item.locator('ui-actor-chip');
+      const actor = holder ?? item.locator('ui-actor-chip');
+      if (holder !== undefined) await expect(item.locator('ui-actor-chip')).toHaveCount(0);
       await expect(actor).toHaveAttribute('title', form.actor);
       await expect(actor).toHaveAttribute('data-stale', '');
       await expect(command).toHaveText(form.command);
@@ -99,10 +105,11 @@ const SPEC_FORMS: ReadonlyArray<{ folder: string; column: string; form: Form }> 
   { folder: '001-check-scheduler', column: 'Done', form: { state: 'done', line: 'Done', date: '03/04/2026' } },
 ];
 
-/** The two forms an idea can take, and beacon's story in each. */
+/** The three forms an idea can take, and beacon's story in each. */
 const IDEA_FORMS: ReadonlyArray<{ slug: string; form: Form }> = [
   { slug: 'digest-emails', form: { state: 'open', line: 'Idea · open', command: '/spec new digest-emails' } },
   { slug: 'uptime-badges', form: { state: 'running', line: 'Idea · running · since 15 min', command: '/spec new uptime-badges', actor: 'a:claude:sess-71', since: '15 min' } },
+  { slug: 'cert-expiry', form: { state: 'aborted', command: '/spec new cert-expiry', actor: 'a:claude:sess-72', started: '03/08/2026, 12:50 PM' } },
 ];
 
 test.describe('run-state surfaces', () => {
@@ -137,12 +144,15 @@ test.describe('run-state surfaces', () => {
         });
       }
 
-      test(`surfaces: the idea card shows open and running with their details, on the board and in the ideas panel (${project})`, async ({ page }) => {
+      test(`surfaces: the idea card shows open, running and aborted with their details, on the board and in the ideas panel (${project})`, async ({ page }) => {
         await open(page, `/w/${WS}/board`);
         for (const { slug, form } of IDEA_FORMS) await expectForm(await boardCard(page, `idea:${slug}`, 'Idea'), form);
+        // The aborted run's state word is the warning chip in the head, set off from the line, as on a spec card.
+        await expect((await boardCard(page, 'idea:cert-expiry', 'Idea')).locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
         await open(page, `/w/${WS}`);
         await page.locator('app-ideas-panel [data-ideas-title]').click();
         for (const { slug, form } of IDEA_FORMS) await expectForm(page.locator(`app-ideas-panel li[data-idea="${slug}"] ui-item-state`), form);
+        await expect(page.locator('app-ideas-panel li[data-idea="cert-expiry"] ui-item-state [data-item-line] ui-state-chip')).toHaveText(/aborted/i);
       });
 
       test(`surfaces: the claim row shows each of the five forms with its details (${project})`, async ({ page }) => {
@@ -176,7 +186,9 @@ test.describe('run-state surfaces', () => {
         for (const [id, form, word] of forms) {
           await expect(row(id).word).toHaveAttribute('data-item-state', form.state);
           await expect(row(id).word).toHaveText(word, { ignoreCase: true });
-          await expectForm(row(id).item, form);
+          // T3 and T4 are held in the live frame: the row names their holder once, in its live holders (ISC-131.1).
+          const held = id === 'T3' || id === 'T4' ? page.locator(`#task-${id} app-task-actors ui-actor-chip`).last() : undefined;
+          await expectForm(row(id).item, form, held);
         }
       });
     });

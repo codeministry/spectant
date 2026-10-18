@@ -25,3 +25,4 @@
 {"ts":"2026-03-08T14:40:00Z","event":"run-start","run":"r-0308-1440","command":"/spec-implement 005","session":"a:claude:sess-52","spec":"005-probe-agents"}
 {"ts":"2026-03-08T14:45:00Z","event":"run-start","run":"r-0308-1445","command":"/spec new uptime-badges","session":"a:claude:sess-71","idea":"uptime-badges"}
 {"ts":"2026-03-08T14:52:00Z","event":"run-start","run":"r-0308-1452","command":"/spec-tasks 003","session":"a:claude:sess-32","spec":"003-alert-rules"}
+{"ts":"2026-03-08T11:50:00Z","event":"run-start","run":"r-0308-1150","command":"/spec new cert-expiry","session":"a:claude:sess-72","idea":"cert-expiry"}

@@ -13,3 +13,4 @@ The backlog: one story per file, shaped but not yet a spec.
 | Story | Milestone | Priority | Spec |
 |-------|-----------|----------|------|
 | digest-emails | — | P3 | — |
+| cert-expiry | — | P2 | — |

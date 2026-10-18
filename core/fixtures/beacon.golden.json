@@ -855,8 +855,36 @@
   "services": [],
   "diagnostics": [],
   "ideas": {
-    "count": 2,
+    "count": 3,
     "list": [
+      {
+        "feature": "F3",
+        "milestone": null,
+        "slug": "cert-expiry",
+        "title": "An HTTPS check warns two weeks before the certificate of its site expires.",
+        "priority": "P2",
+        "state": {
+          "kind": "idea",
+          "id": "cert-expiry",
+          "state": "aborted",
+          "stage": "idea",
+          "run": {
+            "run": "r-0308-1150",
+            "command": "/spec new cert-expiry",
+            "session": "a:claude:sess-72",
+            "actor": {
+              "raw": "a:claude:sess-72",
+              "kind": "agent",
+              "id": "a:claude:sess-72",
+              "legacy": false
+            },
+            "since": "2026-03-08T11:50:00Z",
+            "elapsedMs": 11400000,
+            "openRuns": 1,
+            "source": "run"
+          }
+        }
+      },
       {
         "feature": "F3",
         "milestone": null,

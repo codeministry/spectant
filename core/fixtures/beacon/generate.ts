@@ -16,7 +16,8 @@
  * type runs its default row.
  *
  * Stage table row → item:
- *   row 1  idea           specs/ideas/uptime-badges.md (an open run on it), specs/ideas/digest-emails.md
+ *   row 1  idea           specs/ideas/uptime-badges.md (an open run on it: running), specs/ideas/digest-emails.md
+ *                         (no run: open), specs/ideas/cert-expiry.md (a run open past 120 minutes: aborted)
  *   row 2  done           001-check-scheduler   feature, `phase: complete`, events.jsonl from creation to done
  *   row 3  plan           002-status-page       feature without plan.md, no reviewed mark
  *   row 4  tasks          003-alert-rules       feature with plan.md, three claims, no tasks.md
@@ -56,6 +57,8 @@
  *   14:40 run-start  `/spec-implement 005` on 005, no end (second open run on 005, the newest)
  *   14:45 run-start  `/spec new uptime-badges` on the idea `uptime-badges`, no end
  *   14:52 run-start  `/spec-tasks 003` on 003, no end: open 8 minutes
+ *   11:50 run-start  `/spec new cert-expiry` on the idea `cert-expiry`, no end: open 190 minutes, older than 120 —
+ *                    aborted. Appended last, out of time order, so the line number of every earlier line holds.
  */
 
 import {createHash} from "node:crypto";
@@ -506,6 +509,7 @@ The backlog: one story per file, shaped but not yet a spec.
 | Story | Milestone | Priority | Spec |
 |-------|-----------|----------|------|
 | digest-emails | — | P3 | — |
+| cert-expiry | — | P2 | — |
 `;
 
 // ── the activity log ───────────────────────────────────────────────────────────────────────────────────
@@ -548,6 +552,7 @@ const ACTIVITY = [
     runStart("14:40", "r-0308-1440", "/spec-implement 005", "a:claude:sess-52", on("005-probe-agents")),
     runStart("14:45", "r-0308-1445", "/spec new uptime-badges", "a:claude:sess-71", {idea: "uptime-badges"}),
     runStart("14:52", "r-0308-1452", "/spec-tasks 003", "a:claude:sess-32", on("003-alert-rules")),
+    runStart("11:50", "r-0308-1150", "/spec new cert-expiry", "a:claude:sess-72", {idea: "cert-expiry"}),
 ];
 
 // ── write ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -560,6 +565,7 @@ write("specs/workflow.md", WORKFLOW);
 write("specs/ideas/README.md", IDEAS_INDEX);
 write("specs/ideas/uptime-badges.md", story("uptime-badges", "F2", "P2", "Each public check offers a small uptime badge a project can embed in its README."));
 write("specs/ideas/digest-emails.md", story("digest-emails", "F3", "P3", "The on-call person can choose one daily digest email instead of an alert per outage."));
+write("specs/ideas/cert-expiry.md", story("cert-expiry", "F3", "P2", "An HTTPS check warns two weeks before the certificate of its site expires."));
 for (const f of FOLDERS) {
     const base = `specs/${f.def.dir}`;
     const texts: Record<string, string> = {"spec.md": specMd(f.def)};
