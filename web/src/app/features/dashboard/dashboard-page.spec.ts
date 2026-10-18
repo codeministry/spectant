@@ -54,11 +54,15 @@ function readingOrder(root: HTMLElement): string[] {
   return order;
 }
 
+/** Harbor's body with its TL;DR fresh or stale (the golden's own brief is stale), or with no TL;DR at all. */
+const withBrief = (stale: boolean | null): unknown => ({ ...harbor, brief: stale === null ? null : { ...harbor.brief, stale } });
+const fresh = withBrief(false);
+
 /** The dashboard body the stubbed shell data serves; a test may swap it before rendering. */
-const body = signal<unknown>(harbor);
+const body = signal<unknown>(fresh);
 
 beforeEach(() => {
-  body.set(harbor);
+  body.set(fresh);
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -134,6 +138,35 @@ describe('DashboardPage dashboard order', () => {
     expect(root.querySelector('app-next-up-list')).toBeNull();
     expect(root.querySelector('app-context-rail')?.hasAttribute('aria-owns')).toBe(false);
   });
+
+  for (const tier of ['compact', 'medium', 'wide'] as const) {
+    it(`dashboard order: a stale brief stands behind the spec list at ${tier}`, async () => {
+      body.set(withBrief(true));
+      const { root, main } = await render(tier);
+      expect(readingOrder(root)).toEqual(['app-kpi-band', 'app-next-up-list', 'app-spec-table', 'app-brief']);
+      expect(readingOrder(main)).toEqual(['app-kpi-band', 'app-next-up-list', 'app-spec-table', 'app-brief']);
+      // Right after the spec list's "Show all n", before the backlog and the warnings; one copy only.
+      expect(main.querySelectorAll('app-brief')).toHaveLength(1);
+      expect(main.querySelector('app-spec-table')?.nextElementSibling?.tagName.toLowerCase()).toBe('app-brief');
+      expect(main.querySelector('app-brief')?.hasAttribute('data-stale')).toBe(true);
+    });
+
+    it(`dashboard order: a fresh brief stays second, right after the KPI band at ${tier}`, async () => {
+      body.set(withBrief(false));
+      const { root, main } = await render(tier);
+      expect(readingOrder(root)).toEqual([...PARTS]);
+      expect(main.querySelectorAll('app-brief')).toHaveLength(1);
+      expect(main.querySelector('app-kpi-band')?.nextElementSibling?.tagName.toLowerCase()).toBe('app-brief');
+      expect(main.querySelector('app-brief')?.hasAttribute('data-stale')).toBe(false);
+    });
+
+    it(`dashboard order: no brief renders no TL;DR card in either place at ${tier}`, async () => {
+      body.set(withBrief(null));
+      const { root } = await render(tier);
+      expect(root.querySelector('app-brief')).toBeNull();
+      expect(readingOrder(root)).toEqual(['app-kpi-band', 'app-next-up-list', 'app-spec-table']);
+    });
+  }
 
   it('binds the archived count of the KPIs to the spec list head', async () => {
     // The KPI count, not the length of the archive block the body happens to carry.

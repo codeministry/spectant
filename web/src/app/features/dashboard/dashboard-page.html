@@ -17,7 +17,8 @@
     @if (!railHolds() && view.guidance; as guidance) {
       <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
     }
-    <!-- Spec 021 (ISC-246): the DOM order KPI band, TL;DR, Next up, spec list at every tier. -->
+    <!-- Spec 021 (ISC-246): the DOM order KPI band, TL;DR, Next up, spec list at every tier; a stale TL;DR moves behind
+         the spec list (ISC-247). -->
     <app-kpi-band [model]="view" [ws]="ws()" [changed]="refresh.changedKpis()" />
     @if (briefSlot() === 'lead') {
       <app-brief [brief]="view.brief" />
@@ -40,7 +41,7 @@
     [preview]="previewId()"
     (queryChange)="setQuery($event)"
   />
-  <!-- The TL;DR's trailing place, right after the spec list's "Show all n" (`briefSlot`). -->
+  <!-- The TL;DR's trailing place, right after the spec list's "Show all n": a stale TL;DR stands here (`briefSlot`). -->
   @if (view(); as view) {
     @if (briefSlot() === 'trail') {
       <app-brief [brief]="view.brief" />
