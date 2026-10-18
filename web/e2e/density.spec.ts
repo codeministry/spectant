@@ -7,6 +7,11 @@
  *   with 22 specs and a fresh, sectioned TL;DR) the TL;DR card shows its first section and folds the rest; the spec list
  *   shows its head with the counters and its first `SPEC_ROW_CAP` rows; "show all N" opens the rest, writes
  *   `open=specs` into the address, a reload keeps it open, and closing it removes the key.
+ * - names (T51 · ISC-248, `bun run e2e -- density -g names`): against the dense stub, whose long titles and goals give
+ *   every Next-up entry, the spec rows and the spec head of `STUB_DENSE.goalSpec` a "More…" through overflow, the
+ *   dashboard and that spec page at 1440, 600 and 390 px carry no two visible interactive targets with the same
+ *   accessible name, and every "More…" / "Less" / "Show all" / "Show whole" toggle names its object beyond its word.
+ *   The names are Chromium's own (the CDP accessibility tree), not a re-implementation of the name computation.
  *
  * Expected texts come from the stub's own fixture (`STUB_DENSE`), never from a literal copy of it.
  */
@@ -118,5 +123,197 @@ for (const width of WIDTHS) {
       await expect.poll(() => openKeys(page)).not.toContain('specs');
       expect(new URL(page.url()).searchParams.has('open')).toBe(false);
     });
+  });
+}
+
+/**
+ * The accessible roles a user can act on. `DisclosureTriangle` is Chromium's role for `<summary>`; `combobox` covers a
+ * `<select>`. Options inside a closed list are not targets of the view, so `option` is left out.
+ */
+const TARGET_ROLES = new Set([
+  'link',
+  'button',
+  'DisclosureTriangle',
+  'checkbox',
+  'radio',
+  'switch',
+  'textbox',
+  'searchbox',
+  'combobox',
+  'listbox',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'tab',
+  'slider',
+  'spinbutton',
+]);
+
+/** A toggle's visible word: "More…", "Less", "Show all …", "Show whole …". Its name must name more than the word. */
+const TOGGLE_WORD = /^(?:more…|less|show (?:all|whole))(?=\s|,|$)/iu;
+
+/** One visible interactive target: Chromium's role and accessible name, and what it shows. */
+interface Target {
+  readonly role: string;
+  readonly name: string;
+  readonly text: string;
+  /** The element's tag and `data-*` hooks, so a failure says which element it is. */
+  readonly hook: string;
+}
+
+/** Runs on the element: in the layout, not `aria-hidden` or inert, and its visible text and hooks. */
+const DESCRIBE = `function () {
+  const el = this;
+  const box = el.getBoundingClientRect();
+  const visible = box.width > 0 && box.height > 0 && el.checkVisibility({ visibilityProperty: true })
+    && el.closest('[aria-hidden="true"], [inert]') === null;
+  const hooks = [...el.attributes].filter((a) => a.name.startsWith('data-') && !a.name.startsWith('data-ng')).map((a) => a.value === '' ? a.name : a.name + '=' + a.value);
+  let owner = el.parentElement;
+  while (owner !== null && !owner.tagName.startsWith('APP-')) owner = owner.parentElement;
+  const where = owner === null ? '' : 'in ' + owner.tagName.toLowerCase();
+  const href = el.getAttribute('href');
+  return {
+    visible,
+    text: (el.innerText ?? el.textContent ?? '').replace(/\\s+/gu, ' ').trim(),
+    href,
+    hook: [el.tagName.toLowerCase(), ...hooks, href === null ? '' : 'href=' + href, where].filter(Boolean).join(' '),
+  };
+}`;
+
+const squash = (text: string): string => text.replace(/\s+/gu, ' ').trim();
+
+/**
+ * Every visible interactive target of the whole document (not only the viewport) with the accessible name Chromium
+ * computed for it: the CDP accessibility tree drops `aria-hidden`, `display: none` and inert subtrees as ignored, and
+ * each remaining node is checked for a layout box on its element.
+ */
+async function visibleTargets(page: Page): Promise<Target[]> {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('DOM.enable');
+    await cdp.send('Accessibility.enable');
+    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
+    const targets: Target[] = [];
+    for (const node of nodes) {
+      const role = String(node.role?.value ?? '');
+      if (node.ignored || node.backendDOMNodeId === undefined || !TARGET_ROLES.has(role)) continue;
+      const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: node.backendDOMNodeId });
+      if (object.objectId === undefined) continue;
+      const { result } = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: DESCRIBE, returnByValue: true });
+      const info = result.value as { visible: boolean; text: string; hook: string };
+      if (!info.visible) continue;
+      targets.push({ role, name: squash(String(node.name?.value ?? '')), text: info.text, hook: info.hook });
+    }
+    return targets;
+  } finally {
+    await cdp.detach();
+  }
+}
+
+/**
+ * Targets outside ISC-248, left out of the duplicate check (never a toggle, which ISC-248 names). Each entry is a
+ * repeated name another spec owns:
+ * - copy chips: the same command (`Copy /spec-implement 002`) offered in each place it applies (Next up, the spec row's
+ *   guide, Waits on you, the warnings panel, the spec head, the rail guide); one action with one result wherever it is
+ *   pressed (specs 020 and 025).
+ * - the warnings panel's spec-id links (`004`): each warning and overlap names the spec it concerns by its id and leads
+ *   to the same selection (`?sel=spec:<id>`) as every other link of that id in the panel.
+ */
+const OUT_OF_SCOPE: ReadonlyArray<(target: Target) => boolean> = [
+  (t) => t.role === 'button' && t.name.startsWith('Copy /'),
+  (t) => t.role === 'link' && /^\d{3}$/u.test(t.name) && t.hook.endsWith(' in app-warnings-panel'),
+];
+
+/** The names two or more visible targets share, with the targets that share each (case and spacing folded). */
+function duplicates(targets: readonly Target[]): Record<string, string[]> {
+  const byName = new Map<string, Target[]>();
+  for (const target of targets) {
+    if (target.name === '') continue;
+    if (!TOGGLE_WORD.test(target.text) && OUT_OF_SCOPE.some((excluded) => excluded(target))) continue;
+    const key = target.name.toLowerCase();
+    byName.set(key, [...(byName.get(key) ?? []), target]);
+  }
+  const shared: Record<string, string[]> = {};
+  for (const [name, list] of byName) if (list.length > 1) shared[name] = list.map((t) => `${t.role} ${t.hook}`);
+  return shared;
+}
+
+/** Scroll every scroller to its end and back, so content deferred to the viewport is in the tree. */
+async function scrollThrough(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const scrollers = [document.scrollingElement, ...document.querySelectorAll('*')].filter(
+      (el): el is Element => el !== null && el.scrollHeight > el.clientHeight + 1,
+    );
+    for (const el of scrollers) el.scrollTop = el.scrollHeight;
+    for (const el of scrollers) el.scrollTop = 0;
+  });
+}
+
+/** The overflow toggles of the view: Next up and the spec rows on the dashboard, the goal in the spec head. */
+const overflowToggles = (page: Page): Locator => page.locator('[data-next-more], app-spec-table [data-more], app-spec-head [data-more]');
+
+/** Wait until the clamp measured: the view's overflow toggles are there and their count holds still. */
+async function togglesSettled(page: Page, ready: Locator): Promise<void> {
+  await expect(ready.first()).toBeVisible();
+  await scrollThrough(page);
+  let last = -1;
+  await expect
+    .poll(async () => {
+      const count = await overflowToggles(page).count();
+      const settled = count === last;
+      last = count;
+      return settled;
+    })
+    .toBe(true);
+}
+
+const NAME_VIEWS = [
+  {
+    view: 'dashboard',
+    path: `/w/${STUB_DENSE.workspace.slug}`,
+    // Every Next-up entry's title overflows under the dense stub (T34), so its "More…" is the clamp's sign of life.
+    ready: (page: Page): Locator => page.locator('[data-next-more]').nth(STUB_DENSE.next - 1),
+  },
+  {
+    view: 'spec page',
+    path: `/w/${STUB_DENSE.workspace.slug}/s/${STUB_DENSE.goalSpec}`,
+    ready: (page: Page): Locator => page.locator('app-spec-head [data-more]'),
+  },
+] as const;
+
+for (const width of WIDTHS) {
+  test.describe(`density names at ${width}`, () => {
+    test.use(atWidth(width));
+
+    for (const { view, path, ready } of NAME_VIEWS) {
+      test(`density names: no two visible targets of the ${view} share a name at ${width}`, async ({ page }) => {
+        await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on' });
+        await page.goto(path);
+        await togglesSettled(page, ready(page));
+
+        const targets = await visibleTargets(page);
+        expect(targets.length).toBeGreaterThan(0);
+        expect(duplicates(targets), `targets of the ${view} at ${width} sharing a name`).toEqual({});
+      });
+
+      test(`density names: every toggle of the ${view} names its object at ${width}`, async ({ page }) => {
+        await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on' });
+        await page.goto(path);
+        await togglesSettled(page, ready(page));
+
+        const toggles = (await visibleTargets(page)).filter((t) => TOGGLE_WORD.test(t.text));
+        // Every overflow toggle of the view counts, plus its "Show all" / "Show whole" folds.
+        expect(toggles.length).toBeGreaterThanOrEqual(await overflowToggles(page).count());
+        const unnamed = toggles
+          .filter((t) => {
+            const word = TOGGLE_WORD.exec(t.text)?.[0] ?? t.text;
+            const object = squash(t.name.slice(word.length).replace(/^[\s,]+/u, ''));
+            // Label in name (WCAG 2.5.3): the name starts with the visible word and names an object after it.
+            return !t.name.toLowerCase().startsWith(word.toLowerCase()) || object === '';
+          })
+          .map((t) => `${t.hook}: "${t.text}" named "${t.name}"`);
+        expect(unnamed, `toggles of the ${view} at ${width} named only by their word`).toEqual([]);
+      });
+    }
   });
 }

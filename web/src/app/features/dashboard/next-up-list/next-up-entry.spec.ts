@@ -80,7 +80,7 @@ describe('NextUpEntry expand toggle names its entry (spec 021, T31, ISC-248)', (
       const { more, id } = await render(LONG, form);
       expect(more()).not.toBeNull();
       expect(more()?.textContent.trim()).toBe('More…');
-      expect(accessibleName(more() as HTMLButtonElement)).toBe(`More… ${id} ${LONG}`);
+      expect(accessibleName(more() as HTMLButtonElement)).toBe(`More… ${id} ${LONG}, next up`);
     });
 
     it(`${form}: the open state "Less" is named "Less <id> <title>"`, async () => {
@@ -89,15 +89,15 @@ describe('NextUpEntry expand toggle names its entry (spec 021, T31, ISC-248)', (
       await fixture.whenStable();
       expect(more()?.getAttribute('aria-expanded')).toBe('true');
       expect(more()?.textContent.trim()).toBe('Less');
-      expect(accessibleName(more() as HTMLButtonElement)).toBe(`Less ${id} ${LONG}`);
+      expect(accessibleName(more() as HTMLButtonElement)).toBe(`Less ${id} ${LONG}, next up`);
     });
 
     it(`${form}: the German names start with the visible text and name the entry`, async () => {
       const { fixture, more, id } = await render(LONG, form, 'de');
-      expect(accessibleName(more() as HTMLButtonElement)).toBe(`Mehr… ${id} ${LONG}`);
+      expect(accessibleName(more() as HTMLButtonElement)).toBe(`Mehr… ${id} ${LONG}, Next up`);
       more()?.click();
       await fixture.whenStable();
-      expect(accessibleName(more() as HTMLButtonElement)).toBe(`Weniger ${id} ${LONG}`);
+      expect(accessibleName(more() as HTMLButtonElement)).toBe(`Weniger ${id} ${LONG}, Next up`);
     });
 
     it(`${form}: a title that fits gets no toggle`, async () => {
