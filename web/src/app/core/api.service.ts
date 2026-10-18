@@ -252,6 +252,15 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Spec 030 (T12, ISC-28): put a stream answer (`LiveView` of the live update stream) into the ETag cache as if a
+   * `GET` on `path` had answered it, replacing any older entry, so the next read sends `If-None-Match: etag` and a 304
+   * answers `body`. `path` is the read route's request path, the key `get()` uses for the same request.
+   */
+  prime(path: string, etag: string, body: unknown): void {
+    this.cache.set(path, { etag, body });
+  }
+
   workspaces(): Promise<ApiResult<readonly WorkspaceListEntry[]>> {
     return this.get(WORKSPACES_URL);
   }
