@@ -38,7 +38,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join, relative } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
-import type { TasksTab } from "../core/src/files.ts";
+import type { Guidance, TasksTab } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { dashboardApi } from "../server/src/api.ts";
@@ -595,6 +595,80 @@ describe("ISC-173: the planning lenses, the redirects and the sidebar leave the 
         expect({ page, status: res.status }).toEqual({ page, status: 200 });
         expect(await res.text()).toContain("<title>spectant</title>");
       }
+
+      stop.abort();
+      expect(await done).toBe(0);
+    } finally {
+      stop.abort();
+      log.mockRestore();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+    expect(lstatSync(join(copy, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+  });
+});
+
+// The next-step guidance (spec 020 T32, ISC-243) under the same guard, through the served app on its own copy, `.git/`
+// included: the dashboard carries the workspace-wide `guidance` (`waits` and `next`), the spec page of a spec the
+// guidance names carries that spec's slice of it, entry for entry and in the same order, and both routes are read,
+// revalidated and HEAD. Copying an entry's command is the browser's clipboard and reaches no route, so these reads are
+// every server read behind the guidance on the four surfaces; the browser side is `bun run e2e -- guidance -g anti`.
+// The copy stays byte-identical, every mtime and `.git/index` kept.
+describe("ISC-243 guidance: the dashboard's and a spec page's guidance leave the repository byte-identical", () => {
+  test("readonly: the dashboard and a spec page carry the guidance, read, revalidated and HEAD, and change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "guidance-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+    const indexMtimeBefore = lstatSync(join(copy, ".git", "index")).mtimeMs;
+
+    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-guidance-")) };
+    const lines: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const stop = new AbortController();
+    try {
+      expect(await run(["add", copy], manifest(), { env })).toBe(0);
+      const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
+      const deadline = Date.now() + 5_000;
+      let url = "";
+      while (url === "") {
+        url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+        if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+        if (url === "") await Bun.sleep(5);
+      }
+
+      /** GET (200 with an ETag), its revalidation (304) and HEAD (200) of one route; the GET's guidance. */
+      const readGuidance = async (path: string): Promise<Guidance | undefined> => {
+        const first = await fetch(`${url}${path}`);
+        expect({ path, status: first.status }).toEqual({ path, status: 200 });
+        const etag = first.headers.get("etag") ?? "";
+        expect(etag).not.toBe("");
+        expect((await fetch(`${url}${path}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
+        expect((await fetch(`${url}${path}`, { method: "HEAD" })).status).toBe(200);
+        return ((await first.json()) as { guidance?: Guidance }).guidance;
+      };
+
+      // The dashboard: the Start's "Waits on you" and the workspace dashboard's Next read it.
+      const dashboard = await readGuidance(`/api/workspaces/${SLUG}/dashboard`);
+      expect(dashboard).toBeDefined();
+      const entries = [...(dashboard?.waits ?? []), ...(dashboard?.next ?? [])];
+      expect(entries.length).toBeGreaterThan(0);
+      for (const entry of entries) {
+        expect(entry.spec).toMatch(/^\d{3}$/);
+        expect(entry.reason.key).not.toBe("");
+        expect(entry.reason.phrase).not.toBe("");
+      }
+
+      // A spec page the guidance names: its slice is the dashboard's entries of that spec, in the same order.
+      const id = entries[0]?.spec ?? "";
+      expect(await readGuidance(specRoutes.spec(SLUG, id))).toEqual({
+        waits: (dashboard?.waits ?? []).filter((e) => e.spec === id),
+        next: (dashboard?.next ?? []).filter((e) => e.spec === id),
+      });
 
       stop.abort();
       expect(await done).toBe(0);
