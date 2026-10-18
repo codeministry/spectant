@@ -8,7 +8,7 @@
 // `SpecRef.dir` is the only absolute path that leaves this module. It is server-internal; the API layer maps it to a
 // path tail before anything reaches a client.
 import { readdirSync, type Dirent } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
 import { SPEC_FOLDER, SPEC_ID, specIdOf, specSlugOf } from './spec-ref.ts';
 
@@ -68,6 +68,20 @@ export function resolveSpec(workspaceRoot: string, ref: string): SpecRef | NotFo
     if (byFolder.length > 0) return single(ref, byFolder, 'unknown-slug');
   }
   return single(ref, specs.filter((s) => ref !== '' && specSlugOf(s.slug) === ref), 'unknown-slug');
+}
+
+/**
+ * The id (`NNN`) of the spec folder that `repoPath` lies in, or null when it lies in none (spec 030, ISC-28). `repoPath`
+ * is relative to a repository root or a spec worktree root, as a file watcher reports it, separated by `/` or the
+ * platform separator. It names a spec by the folder rule `listSpecs` reads with: a `SPEC_FOLDER` name one level under
+ * `specs/` or `specs/archive/`, the folder itself included, so a created, renamed or archived folder counts. Every
+ * other path, `ISA.md`, `specs/ideas/`, `specs/tldr.md` and `.spectant/` among them, belongs to no spec. Pure: it
+ * never touches the file system, so a path whose folder has since gone still maps to its id.
+ */
+export function specIdOfPath(repoPath: string): string | null {
+  const parts = repoPath.split(sep === '/' ? '/' : /[/\\]/u);
+  const folder = parts[0] === 'specs' ? (parts[1] === 'archive' ? parts[2] : parts[1]) : undefined;
+  return folder === undefined ? null : (SPEC_FOLDER.exec(folder)?.[1] ?? null);
 }
 
 /** The registry entry whose slug equals `slug` exactly, or `not_found`. */
