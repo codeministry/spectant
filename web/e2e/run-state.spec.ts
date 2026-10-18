@@ -13,6 +13,7 @@
  * - tasks-run: the board polls once per refresh tick while the run variant changes between two polls: 003 reads
  *   "Tasks · open" with `/spec-tasks 003`, then "Tasks · running" with the command, the actor and the duration, then the
  *   stage its files give once the run ended ("Review · open" with `/spec-review 003`).
+ * - locked (T60, ISC-225.1): `bun run e2e -- run-state -g locked`, the running 003 locks its copy chip and its card.
  */
 import type { Locator, Page } from '@playwright/test';
 
@@ -224,5 +225,150 @@ test.describe('run-state tasks-run', () => {
     await page.clock.fastForward(ONE_TICK_MS);
     await expect(card).toHaveAttribute('data-stage', 'review');
     await expectForm(item, { state: 'open', line: 'Review · open', command: '/spec-review 003' });
+  });
+});
+
+// ─── A running run locks its item (T60, ISC-225.1) ───────────────────────────────────────────────────────────────────
+//
+// `bun run e2e -- run-state -g locked`: while 003's `/spec-tasks 003` runs, its copy chip (board card and status
+// block) is locked and names the run, and its card does not move: a real mouse drag onto another column leaves it in
+// Tasks with the run's refusal under it, as Shift+→ does; at 390 "Move to…" disables every entry under the same notice.
+// Under `X-Spectant-Stub-Run: none` the same chip copies and the grip is the plain grip: the contrast that makes the
+// locked assertions fail without the run.
+
+const LOCKED_NAME = `Locked · ${STUB_RUN.command} is running · ${STUB_RUN.session} · since 8 min`;
+const LOCKED_HINT = 'Running for 8 min · copyable once it ends';
+const RUN_REFUSAL = `Not moved — ${STUB_RUN.spec} is running: ${STUB_RUN.command} · ${STUB_RUN.session} · since 8 min`;
+const CARD_KEY = `spec:${STUB_RUN.folder}`;
+
+const lockedColumn = (page: Page, stage: string): Locator => page.locator(`app-board-page section[data-col="${stage}"]`).first();
+const runCard = (page: Page): Locator => page.locator(`app-board-page app-board-card[data-key="${CARD_KEY}"]`);
+const runGrip = (page: Page): Locator => runCard(page).locator('[data-grip]');
+/** The refusal notice in the card's own list item, right under the card. */
+const runNotice = (page: Page): Locator => page.locator(`app-board-card[data-key="${CARD_KEY}"] + app-refusal-notice`);
+
+/**
+ * Clicks the chip's button over a cleared clipboard and returns what the clipboard then holds. A locked button is
+ * `aria-disabled` but pressable (it opens the hint line), so Playwright's enabled check is skipped for it.
+ */
+async function clickChip(page: Page, chip: Locator, locked = false): Promise<string> {
+  await page.evaluate(() => navigator.clipboard.writeText(''));
+  await chip.locator('button').click({ force: locked });
+  return page.evaluate(() => navigator.clipboard.readText());
+}
+
+/** `chip` is locked: lock glyph, `aria-disabled`, the run in its name; a press copies nothing and opens the hint line. */
+async function expectLockedChip(page: Page, chip: Locator): Promise<void> {
+  await expect(chip.locator('code')).toHaveText(STUB_RUN.command);
+  await expect(chip.locator('.chip')).toHaveAttribute('data-locked', '');
+  const button = chip.locator('button');
+  await expect(button).toHaveAttribute('aria-disabled', 'true');
+  await expect(button).toHaveAccessibleName(LOCKED_NAME);
+  await expect(button.locator('ui-icon')).toHaveAttribute('data-icon', 'lock');
+  await expect(chip.locator('[data-locked-hint]')).toHaveCount(0);
+  expect(await clickChip(page, chip, true), 'a locked chip copies nothing').toBe('');
+  await expect(button).not.toHaveAttribute('data-copied', /.*/);
+  await expect(chip.locator('[data-locked-hint]')).toHaveText(LOCKED_HINT);
+}
+
+/** The card stands in Tasks, its grip locked with the lock glyph, and its drag item disabled. */
+async function expectLockedCard(page: Page): Promise<void> {
+  await expect(lockedColumn(page, 'tasks').locator(`app-board-card[data-key="${CARD_KEY}"]`)).toHaveCount(1);
+  await expect(runCard(page)).toHaveClass(/cdk-drag-disabled/);
+  await expect(runGrip(page)).toHaveAttribute('data-locked', '');
+  await expect(runGrip(page).locator('ui-icon[data-icon="lock"]')).toHaveCount(1);
+}
+
+/** `notice` is the run's refusal, in the one line that names the spec, the command, the actor and the duration. */
+async function expectRunRefusal(notice: Locator): Promise<void> {
+  await expect(notice).toHaveAttribute('data-refusal', 'run-locked');
+  await expect(notice.locator('[data-head][data-run-refusal]')).toHaveText(RUN_REFUSAL);
+}
+
+test.describe('run-state locked', () => {
+  test.use({ clockAt: STUB_NOW, permissions: ['clipboard-read', 'clipboard-write'], extraHTTPHeaders: { [LOCKS_HEADER]: 'runs' } });
+
+  test.describe('Desktop', () => {
+    test.use(atWidth(WIDTHS.desktop));
+
+    test('locked: the copy chip of the running 003 is locked and names the run, on the board card and in the status block', async ({ page }) => {
+      await open(page, `/w/${WS}/board`);
+      await expectLockedChip(page, runCard(page).locator('[data-card-state] ui-command-chip'));
+      await open(page, `/w/${WS}/s/${STUB_RUN.spec}/status`);
+      await expectLockedChip(page, page.locator('app-status-block ui-item-state[data-block] ui-command-chip'));
+    });
+
+    test('locked: a mouse drag of the running card onto another column leaves it in Tasks and shows the run’s refusal; Shift+→ shows the same', async ({ page }) => {
+      const posts: string[] = [];
+      page.on('request', (req) => {
+        if (req.method() === 'POST') posts.push(new URL(req.url()).pathname);
+      });
+      await open(page, `/w/${WS}/board`);
+      await expectLockedCard(page);
+      await expect(runNotice(page)).toHaveCount(0);
+
+      // A press on the grip, a few moves past the CDK's threshold, over the Review column, released there.
+      const grip = runGrip(page);
+      await grip.scrollIntoViewIfNeeded();
+      const from = await grip.boundingBox();
+      const to = await lockedColumn(page, 'review').boundingBox();
+      if (from === null || to === null) throw new Error('the grip or the Review column is not rendered');
+      const [x0, y0] = [from.x + from.width / 2, from.y + from.height / 2];
+      const [x1, y1] = [to.x + to.width / 2, to.y + Math.min(to.height / 2, 96)];
+      await page.mouse.move(x0, y0);
+      await page.mouse.down();
+      await page.mouse.move(x0 + 8, y0 + 8, { steps: 4 });
+      await page.mouse.move(x1, y1, { steps: 16 });
+      // The card never lifts: no column shows a drop hint.
+      await expect(page.locator('app-board-page section[data-col][data-drop]')).toHaveCount(0);
+      await page.mouse.up();
+
+      await expectLockedCard(page);
+      await expect(lockedColumn(page, 'review').locator(`app-board-card[data-key="${CARD_KEY}"]`)).toHaveCount(0);
+      await expectRunRefusal(runNotice(page));
+      expect(posts, 'nothing is sent for a held card').toEqual([]);
+
+      // ✕ dismisses it; Shift+→ on the focused card brings the same refusal back, and the card stays.
+      await runNotice(page).locator('[data-dismiss]').click();
+      await expect(runNotice(page)).toHaveCount(0);
+      await runCard(page).locator('a.title').focus();
+      await page.keyboard.press('Shift+ArrowRight');
+      await expectRunRefusal(runNotice(page));
+      await expectLockedCard(page);
+      expect(posts).toEqual([]);
+    });
+
+    test('locked: without the run (Stub-Run none) the same chip copies and the grip is the plain grip', async ({ page }) => {
+      await page.setExtraHTTPHeaders({ [LOCKS_HEADER]: 'runs', [RUN_HEADER]: 'none' });
+      await open(page, `/w/${WS}/board`);
+      const chip = runCard(page).locator('[data-card-state] ui-command-chip');
+      await expect(chip.locator('code')).toHaveText(STUB_RUN.command);
+      await expect(chip.locator('.chip')).not.toHaveAttribute('data-locked', /.*/);
+      await expect(chip.locator('button')).not.toHaveAttribute('aria-disabled', /.*/);
+      expect(await clickChip(page, chip)).toBe(STUB_RUN.command);
+      await expect(runCard(page)).not.toHaveClass(/cdk-drag-disabled/);
+      await expect(runGrip(page)).not.toHaveAttribute('data-locked', /.*/);
+      await expect(runGrip(page).locator('ui-icon[data-icon="grip-vertical"]')).toHaveCount(1);
+    });
+  });
+
+  test.describe('Mobile', () => {
+    test.use(atWidth(WIDTHS.phone));
+
+    test('locked: at 390 “Move to…” of the running card disables every entry under the run’s refusal', async ({ page }) => {
+      await open(page, `/w/${WS}/board?col=tasks`);
+      await expect(page.locator('app-board-page')).toHaveAttribute('data-tier', 'compact');
+      await expectLockedChip(page, runCard(page).locator('[data-card-state] ui-command-chip'));
+      await runGrip(page).click();
+      const menu = page.locator('[data-move-menu]');
+      await expect(menu).toBeVisible();
+      await expect(menu).toHaveAttribute('data-surface', 'sheet');
+      await expectRunRefusal(page.locator('app-refusal-notice[data-move-run]'));
+      await expect(page.locator('app-refusal-notice[data-move-run] [data-dismiss]')).toHaveCount(0);
+      const entries = menu.locator('[data-move-to]');
+      expect(await entries.count()).toBeGreaterThan(1);
+      for (const entry of await entries.all()) await expect(entry).toHaveAttribute('aria-disabled', 'true');
+      await expect(runNotice(page)).toHaveCount(0);
+    });
   });
 });

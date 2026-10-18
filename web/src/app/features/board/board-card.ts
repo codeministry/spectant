@@ -221,7 +221,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
           aria-haspopup="dialog"
           [attr.data-locked]="locked() ? '' : null"
           [attr.aria-label]="'board.workspace.card.move' | transloco: { id: c.id ?? c.slug }"
-          (click)="moveMenu.emit(grip)"
+          (pointerdown)="onGripPress($event, grip)"
+          (click)="onGripClick($event, grip)"
           #grip
         >
           <ui-icon class="i-grip" [name]="locked() ? 'lock' : 'grip-vertical'" [size]="16" />
@@ -241,6 +242,21 @@ export class BoardCard {
   readonly moveMenu = output<HTMLElement>();
   /** Shift+← (-1) or Shift+→ (1) on the card: the board moves it to the previous or next allowed stage (T127). */
   readonly step = output<-1 | 1>();
+
+  /**
+   * A locked grip answers the press itself (spec 040, T60, ISC-225.1): the drag is disabled, so a drag attempt never
+   * lifts the card, and its release over another column sends no click to the grip. The press emits `moveMenu`, so the
+   * board shows the run's refusal (or, at compact, the menu with every entry disabled); the click of that same press
+   * is skipped. Enter and Space (a click with `detail` 0) still come through the click.
+   */
+  protected onGripPress(event: PointerEvent, grip: HTMLElement): void {
+    if (this.locked() && event.button === 0) this.moveMenu.emit(grip);
+  }
+
+  protected onGripClick(event: MouseEvent, grip: HTMLElement): void {
+    if (this.locked() && event.detail > 0) return;
+    this.moveMenu.emit(grip);
+  }
 
   protected onStep(event: Event, dir: -1 | 1): void {
     event.preventDefault();

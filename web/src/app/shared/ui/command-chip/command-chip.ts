@@ -88,6 +88,8 @@ function highlightMs(doc: Document): number {
     .hint { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
     .chip[data-locked] { background: var(--color-base-300); }
     .chip[data-locked] code { color: var(--muted-ink); }
+    /* daisyUI drops pointer events on an aria-disabled .btn; the locked button stays pressable for its hint line. */
+    .copy[data-locked] { pointer-events: auto; cursor: not-allowed; }
   `,
   template: `
     <span class="chip" [attr.data-locked]="lockedBy() ? '' : null">
