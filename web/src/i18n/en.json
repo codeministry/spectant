@@ -1418,6 +1418,7 @@
       "sheetBar": "This board · {{count}} cards",
       "needsYou": "Needs you",
       "needsNone": "Nothing waits on you.",
+      "waitsCount": "Waits on you {{count}}",
       "bandMeter": "{{done}} of {{count}} done",
       "search": {
         "label": "Search cards",
@@ -1440,6 +1441,7 @@
         "gateReviewed": "reviewed mark",
         "gateClosed": "every claim closed",
         "waitingStage": "a waiting stage",
+        "openStage": "a stage that waits on you",
         "fold": "Fold {{stage}}",
         "unfold": "Open {{stage}}",
         "folded": "folded"

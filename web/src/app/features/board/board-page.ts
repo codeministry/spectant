@@ -92,6 +92,8 @@ const GATE_TEXT: Partial<Record<WorkflowStage, string>> = {
 export const gateOf = (stage: WorkflowStage): string | null => (FIXED_GATES.includes(stage) ? (GATE_TEXT[stage] ?? null) : null);
 
 const WAITING: ReadonlySet<string> = WAITING_STAGES;
+/** The waiting stages that wait on another spec, not on you (spec 020, T24): their heads keep the hourglass. */
+const WAITS_ON_OTHERS: ReadonlySet<string> = new Set(['blocked', 'close-pending']);
 
 /** Two stage sets hold the same stages: the measured set only changes (and re-renders) when a column crosses the edge. */
 const sameStages = (a: ReadonlySet<WorkflowStage>, b: ReadonlySet<WorkflowStage>): boolean => a.size === b.size && [...a].every((s) => b.has(s));
@@ -238,6 +240,8 @@ export class BoardPage {
   protected readonly edges = CARD_EDGE;
   protected readonly gateOf = gateOf;
   protected readonly waiting = (stage: WorkflowStage): boolean => WAITING.has(stage);
+  /** A waiting stage that waits on you, not on another spec (spec 020, T24): its head shows the ring of `open`. */
+  protected readonly yours = (stage: WorkflowStage): boolean => WAITING.has(stage) && !WAITS_ON_OTHERS.has(stage);
   /** Types the shared head templates' untyped outlet context (a column head, a band head). */
   protected readonly asColumn = (column: BoardColumn): BoardColumn => column;
   protected readonly asBand = (band: BandHead): BandHead => band;
@@ -253,10 +257,11 @@ export class BoardPage {
     if (served === null || dashboard === undefined) return null;
     const held = [...this.writer.held().values()].filter((op) => op.op === 'move');
     const planning = held.length === 0 ? served : withBacklog(served, held);
+    const guidance = this.guidance();
     return buildBoard({
       planning: withMoves(planning, this.drag.moves()),
       rows: boardRowsOf(dashboard.kind === 'ok' ? dashboard.body : null),
-      guidance: guidanceOfBody(dashboard.kind === 'ok' ? dashboard.body : null),
+      ...(guidance ? { guidance } : {}),
       actors: this.data.actorList(),
       query: this.query(),
     });
@@ -311,7 +316,18 @@ export class BoardPage {
   /** Compact (spec 024, design § Mobile): the bottom sheet with the cards waiting on you, opened from the sheet bar. */
   protected readonly needsOpen = signal(false);
   /** The cards waiting on the principal, in board order (the sheet bar's count and the sheet's rows). */
-  protected readonly needsYou = computed(() => this.board()?.cards.filter((c) => c.waitsOnYou) ?? []);
+  protected readonly needsYou = computed(() => {
+    const cards = this.board()?.cards ?? [];
+    // Spec 020 (T24): with guidance, the cards whose spec stands in `guidance.waits`; without a clock, the stage's guess.
+    return this.guidance() ? cards.filter((c) => c.marked) : cards.filter((c) => c.waitsOnYou);
+  });
+  /** `DashboardModel.guidance` of the workspace (spec 020); undefined from a server without a clock. */
+  protected readonly guidance = computed(() => {
+    const dashboard = this.data.dashboard.value();
+    return guidanceOfBody(dashboard?.kind === 'ok' ? dashboard.body : null);
+  });
+  /** The sheet bar's "Waits on you n" (spec 020, T24): every entry of `guidance.waits`, else the cards waiting on you. */
+  protected readonly waitsCount = computed(() => this.guidance()?.waits.length ?? this.needsYou().length);
   /** The column switch has scrolled away under the header: the sticky bar shows in its place. */
   protected readonly switchAway = signal(false);
   private readonly switchRef = viewChild<ElementRef<HTMLElement>>('colswitch');

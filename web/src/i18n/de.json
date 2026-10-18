@@ -1418,6 +1418,7 @@
       "sheetBar": "Dieses Board · {{count}} Karten",
       "needsYou": "Wartet auf Sie",
       "needsNone": "Nichts wartet auf Sie.",
+      "waitsCount": "Liegt bei Ihnen {{count}}",
       "bandMeter": "{{done}} von {{count}} erledigt",
       "search": {
         "label": "Karten durchsuchen",
@@ -1440,6 +1441,7 @@
         "gateReviewed": "Review-Marke",
         "gateClosed": "jeder Claim geschlossen",
         "waitingStage": "eine wartende Stage",
+        "openStage": "eine Stage, die bei Ihnen liegt",
         "fold": "{{stage}} einklappen",
         "unfold": "{{stage}} aufklappen",
         "folded": "eingeklappt"

@@ -107,6 +107,27 @@ describe('UiItemState (T45, ISC-224)', () => {
     }
   });
 
+  it('reasoned (spec 020, T23): an open item shows its whole reason between the head and the chip; waiting is unchanged', async () => {
+    const sentence = 'Read the spec and confirm it: your review is still missing, and building needs it.';
+    TestBed.inject(TranslocoService).setActiveLang('en');
+    const fixture = TestBed.createComponent(UiItemState);
+    fixture.componentRef.setInput('info', item({ state: 'open', stage: 'review', command: '/spec-review 037', reason: sentence }));
+    fixture.componentRef.setInput('reasoned', true);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.hasAttribute('data-reasoned')).toBe(true);
+    const shown = root.querySelector('[data-reason-shown]');
+    expect(text(shown)).toBe(sentence);
+    expect(shown?.classList.contains('vh')).toBe(false);
+    const order = [...(root.querySelector('.details')?.children ?? [])].map((el) => el.tagName.toLowerCase());
+    expect(order.slice(0, 2)).toEqual(['span', 'ui-command-chip']);
+    expect(root.querySelectorAll('[data-phrase]')).toHaveLength(1);
+
+    fixture.componentRef.setInput('info', item({ state: 'waiting', stage: 'plan', reason: sentence, waits: { specs: ['025'], claims: [], siblings: [] } }));
+    await fixture.whenStable();
+    expect(root.querySelector('[data-reason-shown]')).toBeNull();
+  });
+
   it('formats the duration in minutes from elapsedMs, in English and German', async () => {
     const under = await render(item({ state: 'running', run: run({ elapsedMs: 40_000 }) }));
     expect(line(under.root)).toBe('Tasks · running · since < 1 min');

@@ -214,6 +214,11 @@ export interface BoardCard {
   readonly waiting: boolean;
   /** Waits on the principal: a waiting stage whose row has a command, other than the waits on a spec or a claim. */
   readonly waitsOnYou: boolean;
+  /**
+   * Spec 020 (T23, ISC-240): the spec's own entry stands in `guidance.waits`, so the card carries the "Waits on you"
+   * marker; absent or false for an idea, a Next item and a server without a clock.
+   */
+  readonly marked?: boolean;
   /** The raw sha256 of spec.md the transition sends back; null for an idea and where the server hashed none. */
   readonly hash: string | null;
   /** The story file for an idea (`specs/ideas/<slug>.md`); null for a spec. */
@@ -469,6 +474,7 @@ export function buildBoard(input: BoardInput): BoardModel {
       command,
       waiting: WAITING_STAGES.has(stage),
       waitsOnYou: WAITING_STAGES.has(stage) && !WAITS_ON_OTHERS.has(stage) && command !== null,
+      marked: input.guidance?.waits.some((e) => e.item === 'spec' && e.spec === (entry?.holder.id ?? row?.id)) ?? false,
       hash: entry?.holder.hash ?? null,
       path: null,
       targets: dropTargetsOf(base, planning.workflow, stages),

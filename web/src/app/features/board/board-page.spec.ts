@@ -176,7 +176,7 @@ describe('BoardPage (T121, ISC-129)', () => {
     expect(col(page, 'plan')?.hasAttribute('data-stub')).toBe(true);
   });
 
-  it('puts the gate dfn on review and done only, with the catalogue gate text, and the hourglass on waiting stages', async () => {
+  it('puts the gate dfn on review and done only; the ring of open on a stage that waits on you, the hourglass on a wait on others', async () => {
     const page = await open('/w/harbor/board');
     const gated = [...page.querySelectorAll<HTMLElement>('.scroller [data-col]')].filter((c) => c.querySelector('ui-term dfn'));
     expect(gated.map((c) => c.dataset['col'])).toEqual(['review', 'done']);
@@ -184,8 +184,13 @@ describe('BoardPage (T121, ISC-129)', () => {
     expect(text(col(page, 'done')?.querySelector('ui-term [role="tooltip"]'))).toBe('every claim closed');
     expect(text(col(page, 'review')?.querySelector('dfn'))).toBe('fixed gate');
     expect(col(page, 'build')?.querySelector('ui-term')).toBeNull();
-    expect(col(page, 'review')?.querySelector('.wait')).not.toBeNull();
-    expect(col(page, 'close-pending')?.querySelector('.wait')).not.toBeNull();
+    // Spec 020 (T24): the hourglass on review gives way to 040's ring of open, with no count of its own.
+    const ring = col(page, 'review')?.querySelector('.head [data-open-stage]');
+    expect(ring?.querySelector('ui-glyph')?.getAttribute('data-shape')).toBe('ring');
+    expect(text(ring)).toBe('a stage that waits on you');
+    expect(col(page, 'review')?.querySelector('.head ui-icon[data-icon="hourglass"]')).toBeNull();
+    expect(col(page, 'close-pending')?.querySelector('.head ui-icon[data-icon="hourglass"]')).not.toBeNull();
+    expect(col(page, 'close-pending')?.querySelector('.head [data-open-stage]')).toBeNull();
     expect(col(page, 'build')?.querySelector('.wait')).toBeNull();
     expect(text(col(page, 'review')?.querySelector('.head .count'))).toBe('2');
     expect(col(page, 'review')?.getAttribute('aria-label')).toBe('Review, 2 cards, 2 wait on you');
@@ -493,6 +498,27 @@ describe('BoardPage source chip (T163, ISC-133.1)', () => {
 
 // T124 · ISC-129.2: at the compact tier the board is one column picked by a wrapping radio `ui-segmented`; the strip
 // and the horizontal scroller are not rendered, so nothing on the page can scroll sideways.
+
+describe('BoardPage "Waits on you" sheet bar (spec 020, T24, ISC-240)', () => {
+  it('counts every guidance.waits entry in the secondary link to the dashboard\'s #waiting; the start still opens the sheet', async () => {
+    const page = await open('/w/harbor/board', undefined, undefined, 'compact');
+    const bar = page.querySelector<HTMLElement>('[data-sheet-bar]');
+    const link = bar?.querySelector<HTMLAnchorElement>('a[data-waits-link]');
+    expect(text(link)).toBe(`Waits on you ${String(dashboard.guidance.waits.length)}`);
+    expect(dashboard.guidance.waits.length).toBe(7);
+    expect(link?.getAttribute('href')).toBe('/w/harbor#waiting');
+    expect(bar?.querySelector('button.bar-open')?.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(bar?.querySelector('button a')).toBeNull();
+    expect(text(bar)).not.toContain('Needs you');
+  });
+
+  it('without guidance (a server without a clock) the bar counts the cards waiting on you', async () => {
+    const bare: Record<string, unknown> = { ...dashboard };
+    delete bare['guidance'];
+    const page = await open('/w/harbor/board', undefined, bare, 'compact');
+    expect(text(page.querySelector('[data-sheet-bar] a[data-waits-link]'))).toBe('Waits on you 3');
+  });
+});
 
 describe('BoardPage compact (T124, ISC-129.2)', () => {
   const radios = (page: HTMLElement): HTMLButtonElement[] => [...page.querySelectorAll<HTMLButtonElement>('.colswitch [role="radio"]')];
