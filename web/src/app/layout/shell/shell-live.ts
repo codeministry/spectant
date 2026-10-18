@@ -39,7 +39,7 @@ type Pop = 'live' | 'interval';
       @let servicesText =
         services().length === 0
           ? ('shell.live.servicesDown' | transloco)
-          : ('shell.live.servicesUp' | transloco: { count: services().length });
+          : ((services().length === 1 ? 'shell.live.servicesUp.one' : 'shell.live.servicesUp.other') | transloco: { count: services().length });
       <button
         #liveTrigger
         type="button"
@@ -90,7 +90,7 @@ type Pop = 'live' | 'interval';
         <div class="pop-head">{{ 'shell.live.heading' | transloco }}</div>
         <div class="service" data-live-reading>
           <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
-          <span class="grow">{{ 'shell.live.reading' | transloco: { count: workspaceCount(), seconds: seconds() } }}</span>
+          <span class="grow">{{ (workspaceCount() === 1 ? 'shell.live.reading.one' : 'shell.live.reading.other') | transloco: { count: workspaceCount(), seconds: seconds() } }}</span>
         </div>
         <div class="service meta updated" data-live-updated>
           {{ 'shell.live.updated' | transloco }} {{ 'shell.live.ago' | transloco: ago() }}

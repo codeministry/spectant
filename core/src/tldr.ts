@@ -1,7 +1,7 @@
 // The TL;DR (`specs/tldr.md`) and its staleness (T38, ISC-16), ported from the old SpecTldr: sections by their
-// `<!-- section: key -->` markers, `generated:` from the frontmatter. Stale when a spec's `updated:` or its newest
-// round is later than `generated:` (no file time, no clock, so fixtures stay deterministic); incomplete when a section
-// is missing or an open spec goes unnamed.
+// `<!-- section: key -->` markers, `generated:` and the optional `lang:` from the frontmatter. Stale when a spec's
+// `updated:` or its newest round is later than `generated:` (no file time, no clock, so fixtures stay deterministic);
+// incomplete when a section is missing or an open spec goes unnamed.
 //
 // Pure: text in, model out. No file system, no Bun API. Malformed input yields diagnostics, never a throw.
 import type { Diagnostic } from './diagnostics.ts';
@@ -16,6 +16,11 @@ export interface TldrDocument {
   readonly generated: string | null;
   /** Markdown per section key, in file order; unknown keys kept. */
   readonly sections: Readonly<Record<string, string>>;
+  /**
+   * The primary language from `lang:`, a BCP 47 tag such as `de` or `de-CH` (spec 021, ISC-247), trimmed; null when
+   * absent, empty or no such tag. Optional in the file, so a missing or malformed value is never a diagnostic.
+   */
+  readonly lang: string | null;
   readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -49,7 +54,21 @@ function names(text: string, number: string): boolean {
   return new RegExp(String.raw`\b${number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\b`).test(text);
 }
 
-/** Read tldr.md: `generated:` and the text between one section marker and the next, a repeated key appended. */
+/**
+ * A BCP 47 language tag as `lang:` takes it: a primary subtag of two or three letters, then hyphenated subtags of one to
+ * eight letters or digits (`de`, `en`, `de-CH`, `zh-Hant-TW`). Shape only, no registry lookup.
+ */
+const LANG_TAG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
+
+/** `lang:` trimmed when it is a language tag, else null. */
+function langOf(value: string | undefined): string | null {
+  const lang = value?.trim() ?? '';
+  return LANG_TAG.test(lang) ? lang : null;
+}
+
+/**
+ * Read tldr.md: `generated:`, `lang:` and the text between one section marker and the next, a repeated key appended.
+ */
 export function parseTldr(text: string): TldrDocument {
   const fm = parseFrontmatter(text);
   const diagnostics: Diagnostic[] = [...fm.diagnostics];
@@ -60,7 +79,12 @@ export function parseTldr(text: string): TldrDocument {
     diagnostics.push({ severity: 'warning', code: 'tldr-generated-invalid', message: `generated ${generated} is no ISO 8601 time, so the TL;DR counts as stale.` });
   }
 
-  return { generated: generated === '' ? null : generated, sections: sectionsByMarker(fm.body), diagnostics };
+  return {
+    generated: generated === '' ? null : generated,
+    sections: sectionsByMarker(fm.body),
+    lang: langOf(fm.values.lang),
+    diagnostics,
+  };
 }
 
 /**

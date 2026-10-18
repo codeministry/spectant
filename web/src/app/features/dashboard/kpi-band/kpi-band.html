@@ -2,12 +2,13 @@
 @let master = k.master;
 @let noValue = 'common.noValue' | transloco;
 @let complete = k.stageGroups?.complete ?? noValue;
-@let ofSpecs = 'kpi.of' | transloco: { total: (specsKey(k.specs) | transloco: { count: k.specs }) };
-@let warningsRef = (k.specsWithWarnings ?? noValue) + ' ' + ofSpecs;
-@let fogRef = (k.specsWithFog ?? noValue) + ' ' + ofSpecs;
+@let warningsRef = inSpecsKey(k.specs) | transloco: { count: k.specsWithWarnings ?? noValue, total: k.specs };
+@let fogRef = inSpecsKey(k.specs) | transloco: { count: k.specsWithFog ?? noValue, total: k.specs };
+<!-- The ring alone carries the master percent; the line below it names closed and open only (ISC-245.1). -->
+@let masterMeta = master === null ? undefined : ('kpi.closedOpen' | transloco: { closed: master.closed, open: masterOpen() });
 <!--
   The prototype's kpi-band (app.js pageWorkspace): six tiles, each a ui-card with explicit edge and glow. Each shows its
-  number with a reference (a fraction, or "n of N specs" in the meta line) and a statement line (spec 021, ISC-245).
+  number with a reference (a fraction, or "in n of N specs" in the meta line) and a statement line (spec 021, ISC-245).
 -->
 <div class="band">
   <ui-kpi-tile
@@ -19,7 +20,7 @@
     [label]="'kpi.masterClaims' | transloco"
     [value]="master ? master.closed : noValue"
     [denominator]="master?.total"
-    [meta]="masterPercent() === null ? undefined : ('kpi.closedCaption' | transloco: { percent: masterPercent(), open: masterOpen() })"
+    [meta]="masterMeta"
   >
     <ui-ring visual [value]="masterPercent()" [size]="112" [stroke]="10" />
     <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
@@ -131,6 +132,9 @@
               {{ noValue }}
             }
           </div>
+          @if (masterMeta) {
+            <span class="ref">{{ masterMeta }}</span>
+          }
           <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
         </div>
       </div>

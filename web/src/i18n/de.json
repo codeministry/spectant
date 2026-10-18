@@ -35,8 +35,14 @@
     "skipToSpecs": "Zu den Specs springen",
     "titlePrefix": "Specs",
     "eyebrow": {
-      "dashboard": "Dashboard · {{count}} Specs",
-      "workspace": "{{workspace}} · {{count}} Specs"
+      "dashboard": {
+        "one": "Dashboard · {{count}} Spec",
+        "other": "Dashboard · {{count}} Specs"
+      },
+      "workspace": {
+        "one": "{{workspace}} · {{count}} Spec",
+        "other": "{{workspace}} · {{count}} Specs"
+      }
     },
     "search": {
       "short": "Specs durchsuchen …",
@@ -95,6 +101,10 @@
     "warnings": "Warnungen",
     "fog": "Offener Fog",
     "of": "von {{total}}",
+    "inSpecs": {
+      "one": "in {{count}} von {{total}} Spec",
+      "other": "in {{count}} von {{total}} Specs"
+    },
     "archive": "Archiv",
     "takeableCaption": "Claims bereit zum Bauen",
     "archiveCaption": "archivierte Spec",
@@ -251,7 +261,10 @@
   "overview": {
     "title": "Alle Workspaces",
     "eyebrow": "Spectant · {{workspaces}} Workspaces · {{specs}} Specs",
-    "showAllIn": "Alle {{count}} in {{workspace}} anzeigen →",
+    "showAllIn": {
+      "one": "{{count}} in {{workspace}} anzeigen →",
+      "other": "Alle {{count}} in {{workspace}} anzeigen →"
+    },
     "open": "{{workspace}} öffnen →",
     "empty": {
       "title": "Fügen Sie Ihren ersten Workspace hinzu",
@@ -305,7 +318,10 @@
     },
     "loading": "Index wird geladen …",
     "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}",
-    "wsSpecs": "{{count}} Specs"
+    "wsSpecs": {
+      "one": "{{count}} Spec",
+      "other": "{{count}} Specs"
+    }
   },
   "shortcuts": {
     "title": "Tastenkürzel",
@@ -387,14 +403,24 @@
       "intro": "Wie Spectant auf diesem Rechner aussieht. Nichts hier berührt ein Repository.",
       "display": "Anzeige, noch nicht gespeichert",
       "density": "Dichte",
+      "densityHint": "Gilt für Board, Flow-Ansicht und Spec-Zeile.",
       "comfortable": "Bequem",
       "compact": "Kompakt",
       "reducedMotion": "Weniger Bewegung"
     },
     "workspacesCard": {
-      "registered": "{{ count }} registriert",
-      "readable": "{{ count }} lesbar",
-      "missing": "{{ count }} Ordner nicht gefunden",
+      "registered": {
+        "one": "{{ count }} registriert",
+        "other": "{{ count }} registriert"
+      },
+      "readable": {
+        "one": "{{ count }} lesbar",
+        "other": "{{ count }} lesbar"
+      },
+      "missing": {
+        "one": "{{ count }} Ordner nicht gefunden",
+        "other": "{{ count }} Ordner nicht gefunden"
+      },
       "registry": "Register im Datenverzeichnis der App",
       "manage": "Workspaces verwalten",
       "manageMeta": "hinzufügen, umbenennen, umsortieren, entfernen"
@@ -435,7 +461,10 @@
   },
   "settingsWorkspaces": {
     "title": "Workspaces",
-    "registered": "· {{count}} registriert",
+    "registered": {
+      "one": "· {{count}} registriert",
+      "other": "· {{count}} registriert"
+    },
     "add": {
       "path": "Repository-Pfad",
       "pathPlaceholder": "~/code/mein-repo",
@@ -564,7 +593,10 @@
       "unreadable": "Nicht lesbar",
       "manage": "Workspaces verwalten",
       "head": "Alle Workspaces ({{count}})",
-      "showAll": "Alle {{count}} Workspaces zeigen"
+      "showAll": {
+        "one": "{{count}} Workspace zeigen",
+        "other": "Alle {{count}} Workspaces zeigen"
+      }
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
@@ -645,12 +677,18 @@
       "updated": "Aktualisiert vor",
       "ago": "{{value}} {{unit}}",
       "heading": "Live",
-      "reading": "Liest {{count}} Workspace(s) · alle {{seconds}} s",
+      "reading": {
+        "one": "Liest {{count}} Workspace · alle {{seconds}} s",
+        "other": "Liest {{count}} Workspaces · alle {{seconds}} s"
+      },
       "board": "Round-Board öffnen",
       "services": "Dev-Dienste",
       "openService": "{{kind}} auf Port {{port}} in neuem Tab öffnen",
       "noServices": "In diesem Workspace läuft kein Dev-Dienst.",
-      "servicesUp": "{{count}} Dev-Dienst(e) aktiv",
+      "servicesUp": {
+        "one": "{{count}} Dev-Dienst aktiv",
+        "other": "{{count}} Dev-Dienste aktiv"
+      },
       "servicesDown": "Kein Dev-Dienst aktiv"
     },
     "zen": {
@@ -696,8 +734,14 @@
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "planning": "{{milestones}} Meilensteine · {{features}} Features",
-        "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
-        "milestones": "{{count}} Meilensteine · nächster {{next}}",
+        "features": {
+          "one": "{{count}} Feature · {{closed}}/{{total}} geschlossen",
+          "other": "{{count}} Features · {{closed}}/{{total}} geschlossen"
+        },
+        "milestones": {
+          "one": "{{count}} Meilenstein · nächster {{next}}",
+          "other": "{{count}} Meilensteine · nächster {{next}}"
+        },
         "library": "{{docs}} Dokumente · {{stale}} veraltet · {{missing}} fehlen",
         "libraryLoading": "Alle Dokumente, Artefakte und Prototypen"
       }
@@ -1256,6 +1300,8 @@
     "more": "Mehr…",
     "less": "Weniger",
     "goalMore": "Mehr… Goal von {{id}}",
+    "goalLess": "Weniger, Goal von {{id}}",
+    "details": "Details zu {{id}}",
     "notes": "Notizen",
     "notesCount": {
       "one": "{{count}} Notiz",
@@ -1280,7 +1326,10 @@
     }
   },
   "refresh": {
-    "newSpecs": "{{count}} neu",
+    "newSpecs": {
+      "one": "{{count}} neu",
+      "other": "{{count}} neu"
+    },
     "announcement": "Dashboard aktualisiert: {{changed}} geändert, {{added}} neu"
   },
   "notes": {
@@ -2035,7 +2084,10 @@
     "parents": "Eltern",
     "children": "Kinder",
     "blockers": "Blocker",
-    "more": "+{{count}} weitere",
+    "more": {
+      "one": "+{{count}} weitere",
+      "other": "+{{count}} weitere"
+    },
     "noBlockers": "Keine Blocker",
     "waiting": "offen",
     "claimsClosed": "Claims geschlossen",
@@ -2486,9 +2538,18 @@
       "missingBodyPlain": "Die Stage der Spec verlangt dieses Dokument."
     },
     "head": {
-      "docs": "{{count}} Dokumente",
-      "fog": "{{count}} offen",
-      "fogLabel": "Die {{count}} offenen Punkte von {{spec}} zeigen",
+      "docs": {
+        "one": "{{count}} Dokument",
+        "other": "{{count}} Dokumente"
+      },
+      "fog": {
+        "one": "{{count}} offen",
+        "other": "{{count}} offen"
+      },
+      "fogLabel": {
+        "one": "Den {{count}} offenen Punkt von {{spec}} zeigen",
+        "other": "Die {{count}} offenen Punkte von {{spec}} zeigen"
+      },
       "claims": "Claims",
       "claimsText": "{{closed}} von {{total}} Claims geschlossen",
       "tasks": "Tasks",
@@ -2515,12 +2576,21 @@
     },
     "evidence": {
       "toggle": "Evidence",
-      "label": "{{count}} Evidence-Dateien von {{spec}}",
-      "more": "{{count}} weitere zeigen"
+      "label": {
+        "one": "{{count}} Evidence-Datei von {{spec}}",
+        "other": "{{count}} Evidence-Dateien von {{spec}}"
+      },
+      "more": {
+        "one": "{{count}} weitere zeigen",
+        "other": "{{count}} weitere zeigen"
+      }
     },
     "meta": {
       "image": "Bild · {{path}}",
-      "prototype": "{{count}} Seiten · {{pages}}",
+      "prototype": {
+        "one": "{{count}} Seite · {{pages}}",
+        "other": "{{count}} Seiten · {{pages}}"
+      },
       "noDate": "—"
     },
     "loading": "Die Library wird geladen",
@@ -2572,7 +2642,7 @@
     "nameBare": "Wartet auf Spec {{id}}",
     "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
     "more": "Wartet auch auf {{ids}}",
-    "partial": "{{held}} von {{open}} offenen Tasks gehalten",
+    "partial": "{{held}} von {{open}} offenen Tasks warten",
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },

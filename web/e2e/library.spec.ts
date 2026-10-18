@@ -65,7 +65,7 @@ const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, im
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const EN = read('../src/i18n/en.json') as {
   library: {
-    meta: { image: string; prototype: string };
+    meta: { image: string; prototype: { one: string; other: string } };
     outdated: string;
     missing: string;
     control: Record<ControlKey, { word: string; one: string; other: string; none: string }>;
@@ -109,7 +109,7 @@ function expectedRow(doc: LibraryDoc): Row {
   const file = `specs/${doc.path}`;
   const meta =
     doc.media === 'prototype'
-      ? template(EN.library.meta.prototype, { count: doc.pages?.length ?? 0, pages: (doc.pages ?? []).join(', ') })
+      ? template(doc.pages?.length === 1 ? EN.library.meta.prototype.one : EN.library.meta.prototype.other, { count: doc.pages?.length ?? 0, pages: (doc.pages ?? []).join(', ') })
       : doc.media === 'image'
         ? template(EN.library.meta.image, { path: file })
         : file;

@@ -1888,6 +1888,20 @@ From `core/fixtures/harbor/specs/tldr.md`:
 Answer the empty-state question in 002, then run the code review for 004.
 ```
 
+The optional frontmatter key `lang:` names the TL;DR's primary language as a BCP 47 tag (spec 021, ISC-247): a primary
+subtag of two or three letters, then hyphenated subtags of one to eight letters or digits, such as `de`, `en` or
+`de-CH`. `parseTldr` trims it and carries it as `TldrDocument.lang`, and the dashboard as `brief.lang`. A missing, empty
+or malformed value is `null` and never a diagnostic, since the key is optional; staleness does not touch it, so a stale
+TL;DR still names its language. The web app compares it with the interface language: on a mismatch the TL;DR card
+carries a language chip and its text block the `lang` attribute; `null` shows neither.
+
+From `core/fixtures/library/specs/tldr.md`:
+
+```markdown
+generated: 2026-03-08T12:00:00Z
+lang: de
+```
+
 ## The tech page
 
 `specs/tech.md` (`tech.ts`, spec 023): the repository's technical documentation, written by hand or by the skill's

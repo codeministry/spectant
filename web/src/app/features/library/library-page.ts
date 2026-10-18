@@ -702,7 +702,7 @@ export class LibraryPage {
   private metaRuns(doc: LibraryDoc, query: string): readonly TextRun[] | null {
     if (doc.media === 'prototype') {
       const pages = doc.pages ?? [];
-      return [{ text: this.transloco.translate('library.meta.prototype', { count: pages.length, pages: pages.join(', ') }), hit: false }];
+      return [{ text: this.transloco.translate(pages.length === 1 ? 'library.meta.prototype.one' : 'library.meta.prototype.other', { count: pages.length, pages: pages.join(', ') }), hit: false }];
     }
     const path = this.filePath(doc);
     if (doc.media === 'image') return [{ text: this.transloco.translate('library.meta.image', { path }), hit: false }];

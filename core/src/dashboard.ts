@@ -1040,8 +1040,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
       generated: tldr.generated,
       stale: state.stale,
       sections: tldr.sections,
-      // Read from `lang:` in T12 (spec 021, ISC-247); until then no brief names a language.
-      lang: null,
+      lang: tldr.lang,
       // Only a worktree copy is named (spec 039, ISC-209), so a brief read from the main checkout stays as it was.
       ...(input.tldrSource?.kind === 'worktree' ? { source: input.tldrSource } : {}),
     };

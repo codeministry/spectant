@@ -85,7 +85,7 @@ test.describe('blockers waits: the spec edges hold their specs (waiting)', () =>
         const chip = headChip(page);
         await expectChip(chip, partial.on, '002 head');
         await expect(chip).not.toHaveAttribute('data-full');
-        await expect(chip.locator('[data-waits-meta]')).toHaveText(`· ${String(partial.tasks.length)} of 5 open tasks held`);
+        await expect(chip.locator('[data-waits-meta]')).toHaveText(`· ${String(partial.tasks.length)} of 5 open tasks waiting`);
         await expect(chip.locator('a[data-waits]')).toBeVisible();
       });
     });

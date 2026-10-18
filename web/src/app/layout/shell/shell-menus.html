@@ -39,7 +39,7 @@
           (click)="close('workspace')"
         >
           <ui-icon name="layers" [size]="16" />
-          <span class="entry-name">{{ 'shell.workspace.showAll' | transloco: { count: workspaceEntries().length } }}</span>
+          <span class="entry-name">{{ (workspaceEntries().length === 1 ? 'shell.workspace.showAll.one' : 'shell.workspace.showAll.other') | transloco: { count: workspaceEntries().length } }}</span>
           @if (singleKeys()) {
             <ui-kbd class="entry-kbd" aria-hidden="true">g a</ui-kbd>
           }

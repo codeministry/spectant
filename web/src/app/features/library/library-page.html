@@ -180,7 +180,7 @@
                     <a class="lib-ghead-link" [routerLink]="specPage(head.key)">
                       <span class="lib-ghead-id">{{ head.key }}</span><span class="lib-ghead-dot" aria-hidden="true">·</span><span class="lib-ghead-slug">{{ head.slug }}</span>
                     </a>
-                    <span class="lib-ghead-count" [attr.aria-label]="'library.head.docs' | transloco: { count: view.group.count }">{{ view.group.count }}</span>
+                    <span class="lib-ghead-count" [attr.aria-label]="(view.group.count === 1 ? 'library.head.docs.one' : 'library.head.docs.other') | transloco: { count: view.group.count }">{{ view.group.count }}</span>
                   </p>
                   <div class="lib-ghead-chips">
                     @if (head.head.type; as type) {
@@ -194,9 +194,9 @@
                         [routerLink]="[]"
                         [queryParams]="fogParams(head.key)"
                         queryParamsHandling="merge"
-                        [attr.aria-label]="'library.head.fogLabel' | transloco: { count: head.head.fog, spec: head.key }"
+                        [attr.aria-label]="(head.head.fog === 1 ? 'library.head.fogLabel.one' : 'library.head.fogLabel.other') | transloco: { count: head.head.fog, spec: head.key }"
                       >
-                        <ui-icon name="cloud-fog" [size]="12" />{{ 'library.head.fog' | transloco: { count: head.head.fog } }}
+                        <ui-icon name="cloud-fog" [size]="12" />{{ (head.head.fog === 1 ? 'library.head.fog.one' : 'library.head.fog.other') | transloco: { count: head.head.fog } }}
                       </a>
                     }
                   </div>
@@ -241,7 +241,7 @@
                     class="lib-evidence-toggle"
                     data-library-evidence-toggle
                     [attr.aria-expanded]="evidence.open"
-                    [attr.aria-label]="'library.evidence.label' | transloco: { count: evidence.count, spec: groupLabel(view.group.spec) }"
+                    [attr.aria-label]="(evidence.count === 1 ? 'library.evidence.label.one' : 'library.evidence.label.other') | transloco: { count: evidence.count, spec: groupLabel(view.group.spec) }"
                     (click)="toggleEvidence(view.group.key, evidence.open)"
                   >
                     <span class="lib-type" data-type="evidence"><ui-icon name="file-text" [size]="12" />{{ 'library.evidence.toggle' | transloco }}</span>
@@ -256,7 +256,7 @@
                     </ul>
                     @if (evidence.rest > 0) {
                       <button ui-button variant="ghost" size="sm" type="button" class="lib-more" data-library-evidence-more (click)="moreEvidence(view.group.key)">
-                        {{ 'library.evidence.more' | transloco: { count: evidence.next } }}
+                        {{ (evidence.next === 1 ? 'library.evidence.more.one' : 'library.evidence.more.other') | transloco: { count: evidence.next } }}
                       </button>
                     }
                   }

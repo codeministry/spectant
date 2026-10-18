@@ -95,7 +95,7 @@
         }
         @if (hiddenChildren() > 0) {
           <button type="button" class="more" data-more (click)="allChildren.set(true)">
-            {{ 'sidebar.more' | transloco: { count: hiddenChildren() } }}
+            {{ (hiddenChildren() === 1 ? 'sidebar.more.one' : 'sidebar.more.other') | transloco: { count: hiddenChildren() } }}
           </button>
         }
       </section>

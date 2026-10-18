@@ -28,6 +28,10 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  * the Specs panel and the warnings in one column below wide; at wide Next up and the warnings move into the shell's
  * context rail through `RailContent` (spec 002's rail slot), so the main column holds band, Brief and Specs.
  *
+ * Spec 021 (ISC-246): the reading order is KPI band, TL;DR, Next up, spec list at every tier. At wide Next up stands
+ * only visually in the rail; `app-context-rail` keeps its place in the main column and owns the rail's block for
+ * assistive technology (`aria-owns`, see `ContextRail`), so there is exactly one copy and one order everywhere.
+ *
  * The KPI band (T61), the Brief (T62) and Next up with the warnings (T64, `app-context-rail`, which registers the rail
  * blocks at wide) are wired here. The section ids `specs`, `archive` (spec table), `next-up` and `warnings` (their own
  * components) are the targets of the tiles, the `g` jumps and the header's spec picker.
@@ -105,6 +109,11 @@ export class DashboardPage {
   protected readonly ideas = computed(() => readIdeas(this.body()));
   /** The rail holds Next up and the warnings at wide; below it Next up follows the Brief and the warnings follow the Specs panel. */
   protected readonly railHolds = computed(() => this.state.tier() === 'wide');
+  /**
+   * Where the TL;DR stands: `lead`, second after the KPI band, or `trail`, right after the spec list (spec 021,
+   * ISC-247: a stale TL;DR moves behind the list). Every TL;DR leads until the stale rule is wired here.
+   */
+  protected readonly briefSlot = computed<'lead' | 'trail'>(() => 'lead');
 
   private readonly table = viewChild(SpecTable);
   /** The selected spec id as the URL names it (`?sel=spec:<id>`); null for no selection or another type. */

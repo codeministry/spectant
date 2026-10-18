@@ -158,8 +158,8 @@ export class KpiBand {
     }));
   });
 
-  /** The catalogue key of "N specs" in the plural form `count` takes. */
-  protected specsKey(count: number): string {
-    return count === 1 ? 'specs.count.one' : 'specs.count.other';
+  /** The catalogue key of "in n of N specs" in the plural form the total `total` takes. */
+  protected inSpecsKey(total: number): string {
+    return total === 1 ? 'kpi.inSpecs.one' : 'kpi.inSpecs.other';
   }
 }

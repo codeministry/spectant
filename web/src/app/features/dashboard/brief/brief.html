@@ -6,6 +6,13 @@
       @if (asOf(); as asOf) {
         <ui-time-label class="brief-as-of type-meta" data-brief-as-of key="brief.asOf" timeParam="date" form="date" [value]="asOf" />
       }
+      @if (langCode(); as code) {
+        <!-- Spec 021 (T29, ISC-247): the brief's language, only when it differs from the interface's. -->
+        <ui-chip class="brief-lang" data-brief-lang>
+          <span aria-hidden="true">{{ code }}</span>
+          <span class="visually-hidden">{{ 'brief.lang' | transloco: { lang: textLang() } }}</span>
+        </ui-chip>
+      }
       @if (brief.stale) {
         <ui-chip class="brief-stale" data-brief-stale tone="warning" icon="clock">{{ 'brief.stale' | transloco }}</ui-chip>
       }
@@ -15,7 +22,7 @@
     </div>
     @if (sectioned()) {
       <!-- Spec 021 (T26, ISC-246): the first section stands whole; one toggle in the footer opens the others. -->
-      <div class="brief-prose" data-brief-prose data-brief-first [innerHTML]="firstHtml()"></div>
+      <div class="brief-prose" data-brief-prose data-brief-first [attr.lang]="textLang()" [innerHTML]="firstHtml()"></div>
       @if (restHtml(); as rest) {
         <ui-disclosure class="brief-fold" data-brief-fold [open]="wholeOpen()" (openChange)="setWhole($event)">
           <span uiDisclosureSummary class="brief-toggle" data-brief-toggle>
@@ -23,7 +30,7 @@
             <span class="visually-hidden">{{ 'brief.showWholeName' | transloco }}</span>
           </span>
           <span uiDisclosureActions class="brief-actions"><ng-container [ngTemplateOutlet]="commandChip" /></span>
-          <div class="brief-prose" data-brief-rest [innerHTML]="rest"></div>
+          <div class="brief-prose" data-brief-rest [attr.lang]="textLang()" [innerHTML]="rest"></div>
         </ui-disclosure>
       } @else {
         <div class="brief-foot" data-brief-foot><ng-container [ngTemplateOutlet]="commandChip" /></div>
@@ -33,6 +40,7 @@
         class="brief-prose"
         data-brief-prose
         [id]="bodyId"
+        [attr.lang]="textLang()"
         [attr.data-clipped]="open() ? null : ''"
         [innerHTML]="html()"
       ></div>

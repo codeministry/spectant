@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
@@ -71,7 +72,11 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  *   goal sentence, clamped by `uiClamp` (one line wide, two below) with a "More…" named for the goal of its spec
  *   (ISC-248), then one meta line: updated, round, uncommitted files, the provenance and the "No agent source" text.
  * - The overlaps (spec 021 T37, ISC-250): every overlap of the spec in one collapsed `ui-disclosure` "N overlaps" beside
- *   the meta line (its own line at compact and once open), its state in `?open=overlaps` (`OpenState`), on every tab.
+ *   the meta line (its own line once open), its state in `?open=overlaps` (`OpenState`), on every tab.
+ * - Compact (spec 021 T67, ISC-250): the meta line, the next command and Notes leave the head's visible lines for one
+ *   collapsed `ui-disclosure` "Details of NNN" beside the overlaps fold, so the head stays under 20 % of the first
+ *   screen at 390 px; the gate button stays in the title row. Medium and wide keep the layout above. The goal toggle's
+ *   name follows its visible word: "More… goal of NNN" collapsed, "Less, goal of NNN" open (label in name).
  * - The agent banner (3 px orange edge, agent dot, `lock` "writes paused") while a lock source reports a lock (ISC-90);
  *   without one the "No agent source" note joins the meta lines when the server read no source (ISC-86).
  * - The provenance line (spec 027 design.md § Across viewports 1, ISC-175, ISC-181): for a spec with a worktree,
@@ -90,6 +95,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
   selector: 'app-spec-head',
   imports: [
     GateButton,
+    NgTemplateOutlet,
     OverlapLines,
     RouterLink,
     SpecGuideCard,
@@ -216,28 +222,14 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
           }
         </h1>
         <div class="actions" data-head-actions>
-          @if (command(); as command) {
-            <ui-command-chip
-              class="command"
-              data-head-command
-              [command]="command"
-              [copyLabel]="'common.copyCommand' | transloco"
-              [copiedLabel]="'common.copied' | transloco: { command }"
-              [manualHint]="'common.copyFallback' | transloco"
-            />
+          @if (!compact()) {
+            <ng-container [ngTemplateOutlet]="commandTpl" />
           }
           @if (showGate()) {
             <app-gate-button size="inline" />
           }
-          @if (notesLink(); as link) {
-            <a class="notes-pill" data-notes-pill [routerLink]="link">
-              <ui-icon name="sticky-note" [size]="14" />
-              @if (notes(); as count) {
-                {{ (count === 1 ? 'specHead.notesCount.one' : 'specHead.notesCount.other') | transloco: { count } }}
-              } @else {
-                {{ 'specHead.notes' | transloco }}
-              }
-            </a>
+          @if (!compact()) {
+            <ng-container [ngTemplateOutlet]="notesTpl" />
           }
         </div>
       </div>
@@ -259,7 +251,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
               data-more
               [attr.aria-expanded]="expanded()"
               [attr.aria-controls]="goalId"
-              [attr.aria-label]="expanded() ? null : ('specHead.goalMore' | transloco: { id: id() })"
+              [attr.aria-label]="(expanded() ? 'specHead.goalLess' : 'specHead.goalMore') | transloco: { id: id() }"
               (click)="expanded.set(!expanded())"
             >
               {{ (expanded() ? 'specHead.less' : 'specHead.more') | transloco }}
@@ -267,56 +259,113 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
           }
         </div>
       }
-      @if (meta().length > 0 || provenance() || noSource() || overlaps().length > 0) {
+      @if (compact()) {
+        <!-- Spec 021 T67 (ISC-250): at compact the meta line, the next command and Notes fold into "Details of NNN". -->
+        @if (hasDetails() || overlaps().length > 0) {
+          <div class="meta-row">
+            @if (overlaps().length > 0) {
+              <ng-container [ngTemplateOutlet]="overlapTpl" />
+            }
+            @if (hasDetails()) {
+              <ui-disclosure class="overlap-fold" data-head-details [open]="detailsOpen()" (openChange)="detailsOpen.set($event)">
+                <span uiDisclosureSummary class="fold-summary">{{ 'specHead.details' | transloco: { id: id() } }}</span>
+                @if (hasMeta()) {
+                  <ng-container [ngTemplateOutlet]="metaTpl" />
+                }
+                @if (command() || notesLink()) {
+                  <div class="details-actions" data-head-details-actions>
+                    <ng-container [ngTemplateOutlet]="commandTpl" />
+                    <ng-container [ngTemplateOutlet]="notesTpl" />
+                  </div>
+                }
+              </ui-disclosure>
+            }
+          </div>
+        }
+      } @else if (hasMeta() || overlaps().length > 0) {
         <div class="meta-row">
-          @if (meta().length > 0 || provenance() || noSource()) {
-            <p class="meta" data-meta>
-              @for (part of meta(); track $index) {
-                <span class="part">{{ part }}</span>
-              }
-              @if (provenance(); as prov) {
-                <span class="part provenance" data-provenance>
-                  <ui-worktree-chip data-head-worktree [worktree]="prov.worktree" [mismatch]="prov.mismatch" [source]="prov.source" [tier]="chipTier()" />
-                  @if (prov.note || noSource()) {
-                    <span class="source-line">
-                      @if (prov.note; as note) {
-                        <span class="source-note" data-source-note>
-                          <span class="read"><ui-icon name="folder-git-2" [size]="12" />{{ 'specHead.source.read' | transloco }}</span>
-                          @if (note.kind === 'behind') {
-                            <span class="seg"
-                              >{{ 'specHead.source.main' | transloco }}
-                              <ui-chip class="main-stage" data-main-stage variant="small">{{ 'stages.' + note.stage | transloco }}</ui-chip></span
-                            >
-                            <span class="seg mono" data-main-progress>{{ note.closed }}/{{ note.total }}</span>
-                          } @else {
-                            <span class="seg">{{ (note.kind === 'equal' ? 'specHead.source.equal' : 'specHead.source.absent') | transloco }}</span>
-                          }
-                        </span>
-                      }
-                      @if (noSource()) {
-                        <span data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
-                      }
-                    </span>
-                  }
-                </span>
-              } @else if (noSource()) {
-                <span class="part no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
-              }
-            </p>
+          @if (hasMeta()) {
+            <ng-container [ngTemplateOutlet]="metaTpl" />
           }
           @if (overlaps().length > 0) {
-            <!-- Spec 021 T37 (ISC-250): every overlap in one collapsed disclosure, its open state in ?open=overlaps. -->
-            <ui-disclosure class="overlap-fold" data-head-overlap-fold [open]="overlapsOpen()" (openChange)="setOverlapsOpen($event)">
-              <span uiDisclosureSummary class="fold-summary">
-                <ui-icon class="warn-icon" name="triangle-alert" [size]="14" />
-                {{ (overlaps().length === 1 ? 'warnings.overlap.disclosure.one' : 'warnings.overlap.disclosure.other') | transloco: { count: overlaps().length } }}
-              </span>
-              <app-overlap-lines class="overlaps" data-head-overlaps [lines]="overlaps()" [ws]="state.ws() ?? ''" [fold]="false" />
-            </ui-disclosure>
+            <ng-container [ngTemplateOutlet]="overlapTpl" />
           }
         </div>
       }
     </div>
+
+    <ng-template #commandTpl>
+      @if (command(); as command) {
+        <ui-command-chip
+          class="command"
+          data-head-command
+          [command]="command"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      }
+    </ng-template>
+
+    <ng-template #notesTpl>
+      @if (notesLink(); as link) {
+        <a class="notes-pill" data-notes-pill [routerLink]="link">
+          <ui-icon name="sticky-note" [size]="14" />
+          @if (notes(); as count) {
+            {{ (count === 1 ? 'specHead.notesCount.one' : 'specHead.notesCount.other') | transloco: { count } }}
+          } @else {
+            {{ 'specHead.notes' | transloco }}
+          }
+        </a>
+      }
+    </ng-template>
+
+    <ng-template #overlapTpl>
+      <!-- Spec 021 T37 (ISC-250): every overlap in one collapsed disclosure, its open state in ?open=overlaps. -->
+      <ui-disclosure class="overlap-fold" data-head-overlap-fold [open]="overlapsOpen()" (openChange)="setOverlapsOpen($event)">
+        <span uiDisclosureSummary class="fold-summary">
+          <ui-icon class="warn-icon" name="triangle-alert" [size]="14" />
+          {{ (overlaps().length === 1 ? 'warnings.overlap.disclosure.one' : 'warnings.overlap.disclosure.other') | transloco: { count: overlaps().length } }}
+        </span>
+        <app-overlap-lines class="overlaps" data-head-overlaps [lines]="overlaps()" [ws]="state.ws() ?? ''" [fold]="false" />
+      </ui-disclosure>
+    </ng-template>
+
+    <ng-template #metaTpl>
+      <p class="meta" data-meta>
+        @for (part of meta(); track $index) {
+          <span class="part">{{ part }}</span>
+        }
+        @if (provenance(); as prov) {
+          <span class="part provenance" data-provenance>
+            <ui-worktree-chip data-head-worktree [worktree]="prov.worktree" [mismatch]="prov.mismatch" [source]="prov.source" [tier]="chipTier()" />
+            @if (prov.note || noSource()) {
+              <span class="source-line">
+                @if (prov.note; as note) {
+                  <span class="source-note" data-source-note>
+                    <span class="read"><ui-icon name="folder-git-2" [size]="12" />{{ 'specHead.source.read' | transloco }}</span>
+                    @if (note.kind === 'behind') {
+                      <span class="seg"
+                        >{{ 'specHead.source.main' | transloco }}
+                        <ui-chip class="main-stage" data-main-stage variant="small">{{ 'stages.' + note.stage | transloco }}</ui-chip></span
+                      >
+                      <span class="seg mono" data-main-progress>{{ note.closed }}/{{ note.total }}</span>
+                    } @else {
+                      <span class="seg">{{ (note.kind === 'equal' ? 'specHead.source.equal' : 'specHead.source.absent') | transloco }}</span>
+                    }
+                  </span>
+                }
+                @if (noSource()) {
+                  <span data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
+                }
+              </span>
+            }
+          </span>
+        } @else if (noSource()) {
+          <span class="part no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
+        }
+      </p>
+    </ng-template>
 
     @if (lock(); as held) {
       <div class="banner" data-agent-banner role="status">
@@ -344,6 +393,7 @@ export class SpecHead {
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly tier = this.state.tier;
+  protected readonly compact = computed(() => this.tier() === 'compact');
 
   private readonly body = computed<SpecPageModel | null>(() => {
     const spec = this.data.spec.value();
@@ -488,6 +538,13 @@ export class SpecHead {
   protected readonly expanded = signal(false);
   protected readonly goalId = nextId('spec-goal');
   protected readonly goalLines = computed(() => goalLines(this.tier()));
+
+  /** The meta line renders when any of its parts does: updated, round, uncommitted files, provenance, "No agent source". */
+  protected readonly hasMeta = computed(() => this.meta().length > 0 || this.provenance() !== null || this.noSource());
+  /** Spec 021 T67 (ISC-250): "Details of NNN" at compact holds the meta line, the next command and Notes. */
+  protected readonly hasDetails = computed(() => this.hasMeta() || this.command() !== null || this.notesLink() !== null);
+  /** Collapsed on every visit; the address schema (`?open=`) carries only the shared folds. */
+  protected readonly detailsOpen = signal(false);
 
   // ─── Overlaps (spec 021 T37, ISC-250) ───────────────────────────────────────────────────────────────────────────
   private readonly openState = inject(OpenState);

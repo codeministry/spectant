@@ -71,7 +71,7 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
     .set-row { display: grid; gap: var(--space-2); align-items: center; padding: 12px 0; border-block-start: 1px solid var(--line); }
     .set-row:first-of-type { border-block-start: 0; }
     .set-row ui-segmented, .set-row .switch { justify-self: start; }
-    @container (inline-size >= 560px) { .set-row { grid-template-columns: 200px minmax(0, 1fr); } }
+    @container (inline-size >= 560px) { .set-row { grid-template-columns: 200px minmax(0, 1fr); } .set-row .row-hint { grid-column: 2; } }
     .demo-block { margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
     .demo-head { display: flex; gap: 8px; align-items: center; }
     fieldset { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
@@ -141,6 +141,7 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
                 [value]="density()"
                 (valueChange)="setDensity($event)"
               />
+              <p class="meta row-hint" data-setting-hint="density">{{ 'settings.appearance.densityHint' | transloco }}</p>
             </div>
             <div class="demo-block" data-demo>
               <div class="demo-head" data-demo-head>
@@ -170,18 +171,18 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
         <ui-card [padding]="0">
           <div class="c-head">
             <h2 id="settings-workspaces">{{ 'settings.nav.workspaces' | transloco }}</h2>
-            <span class="meta">{{ 'settings.workspacesCard.registered' | transloco: { count: registry().total } }}</span>
+            <span class="meta">{{ (registry().total === 1 ? 'settings.workspacesCard.registered.one' : 'settings.workspacesCard.registered.other') | transloco: { count: registry().total } }}</span>
           </div>
           <div class="card-pad">
             <div class="sum-line" data-workspaces-summary>
               <span class="check-line s-ok"
                 ><span class="sdot" aria-hidden="true"></span
-                >{{ 'settings.workspacesCard.readable' | transloco: { count: registry().readable } }}</span
+                >{{ (registry().readable === 1 ? 'settings.workspacesCard.readable.one' : 'settings.workspacesCard.readable.other') | transloco: { count: registry().readable } }}</span
               >
               @if (registry().missing > 0) {
                 <span class="check-line s-red"
                   ><span class="sdot" aria-hidden="true"></span
-                  >{{ 'settings.workspacesCard.missing' | transloco: { count: registry().missing } }}</span
+                  >{{ (registry().missing === 1 ? 'settings.workspacesCard.missing.one' : 'settings.workspacesCard.missing.other') | transloco: { count: registry().missing } }}</span
                 >
               }
               <span class="meta">{{ 'settings.workspacesCard.registry' | transloco }}</span>

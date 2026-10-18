@@ -17,15 +17,20 @@
     @if (!railHolds() && view.guidance; as guidance) {
       <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
     }
+    <!-- Spec 021 (ISC-246): the DOM order KPI band, TL;DR, Next up, spec list at every tier. -->
     <app-kpi-band [model]="view" [ws]="ws()" [changed]="refresh.changedKpis()" />
-    <app-brief [brief]="view.brief" />
+    @if (briefSlot() === 'lead') {
+      <app-brief [brief]="view.brief" />
+    }
     <!-- One context-rail: at wide it hands Waits on you, Next up and the warnings to the shell's rail (the docked
-         detail sidebar stands in for them while something is selected, spec 026), below wide it renders Next up here. -->
+         detail sidebar stands in for them while something is selected, spec 026), below wide it renders Next up here.
+         At wide this host stays Next up's place in the reading order: it owns the rail's block (`aria-owns`). -->
     <app-context-rail [model]="view" [ws]="ws()" inline="next-up" />
   }
   <app-spec-table
     [ws]="ws()"
     [rows]="held().shown"
+    [archivedCount]="view()?.kpis.archived ?? null"
     [guidance]="view()?.guidance"
     [changed]="refresh.changedRows()"
     [pending]="held().pending"
@@ -35,6 +40,12 @@
     [preview]="previewId()"
     (queryChange)="setQuery($event)"
   />
+  <!-- The TL;DR's trailing place, right after the spec list's "Show all n" (`briefSlot`). -->
+  @if (view(); as view) {
+    @if (briefSlot() === 'trail') {
+      <app-brief [brief]="view.brief" />
+    }
+  }
   <!-- The backlog after the Specs panel at every tier, the desktop's closing group of the spec list (T138). -->
   @if (ideas().count > 0) {
     <app-ideas-panel [ws]="ws()" [ideas]="ideas()" />

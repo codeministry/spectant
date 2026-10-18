@@ -30,13 +30,18 @@ const TILES = [
   ['fog', 'fog'],
 ] as const;
 
-type Catalogue = { kpi: { statement: Record<string, string>; of: string }; specs: { count: { other: string } } };
+type Catalogue = {
+  kpi: { statement: Record<string, string>; closedOpen: string; inSpecs: { one: string; other: string } };
+};
 const catalogue = (lang: Lang) => CATALOGUES[lang] as unknown as Catalogue;
 /** The direction a statement line must name in words, per language. */
 const DIRECTION: Record<Lang, RegExp> = { en: /(more|fewer) is better/, de: /(mehr|weniger) ist besser/ };
-/** "n of N specs" as the catalogue words it. */
-const ofSpecs = (lang: Lang, n: number) =>
-  `${String(n)} ${catalogue(lang).kpi.of.replace('{{total}}', catalogue(lang).specs.count.other.replace('{{count}}', String(K.specs)))}`;
+/** "in n of N specs" as the catalogue words it; `n` a number or the dash. */
+const ofSpecs = (lang: Lang, n: number | string) =>
+  catalogue(lang).kpi.inSpecs.other.replace('{{count}}', String(n)).replace('{{total}}', String(K.specs));
+/** "c closed · o open" as the catalogue words it. */
+const closedOpen = (lang: Lang, closed: number | string, open: number | string) =>
+  catalogue(lang).kpi.closedOpen.replace('{{closed}}', String(closed)).replace('{{open}}', String(open));
 
 describe('KpiBand', () => {
   beforeEach(() => {
@@ -131,7 +136,11 @@ describe('KpiBand', () => {
       it(`kpi-band: every key the band reads stands in the ${lang} catalogue`, () => {
         const words = catalogue(lang).kpi;
         for (const [, key] of TILES) expect(words.statement[key], key).toBeTruthy();
-        expect(words.of).toContain('{{total}}');
+        for (const form of ['one', 'other'] as const) {
+          expect(words.inSpecs[form], `inSpecs.${form}`).toContain('{{count}}');
+          expect(words.inSpecs[form], `inSpecs.${form}`).toContain('{{total}}');
+        }
+        expect(words.closedOpen).not.toContain('%');
       });
     }
 
@@ -164,15 +173,42 @@ describe('KpiBand', () => {
       const { text } = await render(BARE);
       expect(text('takeable', '.figure')?.replace(/ /g, '')).toBe(`${String(K.takeable)}/—`);
       expect(text('specs', '.figure')?.replace(/ /g, '')).toBe(`—/${String(K.specs)}`);
-      expect(text('warnings', '.meta')).toBe(ofSpecs('en', K.specsWithWarnings).replace(String(K.specsWithWarnings), '—'));
+      expect(text('warnings', '.meta')).toBe(ofSpecs('en', '—'));
     });
   });
 
-  it('renders the master tile as it is: fraction, percent caption and ring', async () => {
+  describe('kpi-band master: the master tile names its percent once (spec 021, ISC-245.1)', () => {
+    // 308 of 400 closed: 77 %, and neither the fraction nor the open count contains "77".
+    const AT_77: KpiBandModel = { kpis: { ...HARBOR.kpis, master: { closed: 308, total: 400 } } };
+    const percents = (node: Element | null | undefined) => node?.textContent.match(/\d+\s*%/g) ?? [];
+
+    for (const lang of LANGS) {
+      it(`kpi-band master: the ring carries the percent, the line below reads closed and open without it, every tier (${lang})`, async () => {
+        const { fixture, tile, pulse, squash } = await render(AT_77);
+        TestBed.inject(TranslocoService).setActiveLang(lang);
+        const meta = closedOpen(lang, 308, 92);
+
+        for (const tier of ['wide', 'medium', 'compact'] as const) {
+          TestBed.inject(ShellState).tier.set(tier);
+          await fixture.whenStable();
+          const top = pulse?.querySelector('.top');
+
+          expect(percents(tile('master')), `${tier} band tile`).toEqual(['77%']);
+          expect(percents(tile('master')?.querySelector('ui-ring')), `${tier} band ring`).toEqual(['77%']);
+          expect(squash(tile('master')?.querySelector('.meta')), `${tier} band meta`).toBe(meta);
+          expect(percents(top), `${tier} pulse row`).toEqual(['77%']);
+          expect(percents(top?.querySelector('ui-ring')), `${tier} pulse ring`).toEqual(['77%']);
+          expect(squash(top?.querySelector('.ref')), `${tier} pulse meta`).toBe(meta);
+        }
+      });
+    }
+  });
+
+  it('renders the master tile as it is: fraction, closed and open caption, and the ring with the percent', async () => {
     const { text } = await render();
 
     expect(text('master', '.figure')?.replace(/ /g, '')).toBe(MASTER);
-    expect(text('master', '.meta')).toBe(`${PCT} % closed · ${OPEN} open`);
+    expect(text('master', '.meta')).toBe(closedOpen('en', K.master.closed, OPEN));
     expect(text('master', 'ui-ring .text')?.replace(/ /g, '')).toBe(`${PCT}%`);
   });
 
@@ -244,7 +280,7 @@ describe('KpiBand', () => {
     const { fixture, text } = await render();
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(text('master', '.meta')).toBe(`${PCT} % geschlossen · ${OPEN} offen`);
+    expect(text('master', '.meta')).toBe(`${String(K.master.closed)} geschlossen · ${OPEN} offen`);
     expect(text('warnings', '.meta')).toBe(ofSpecs('de', K.specsWithWarnings));
   });
 

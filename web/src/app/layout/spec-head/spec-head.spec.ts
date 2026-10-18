@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import en from '../../../i18n/en.json';
 import specGolden from '../../../../../core/fixtures/harbor.spec.golden.json';
@@ -483,7 +483,7 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
     expect(text(link)).toBe('waits on 006');
     expect(link?.getAttribute('href')).toBe('/w/harbor/s/006');
     expect(link?.getAttribute('aria-label')).toBe('Waits on spec 006, Search index');
-    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 of 7 open tasks held');
+    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 of 7 open tasks waiting');
   });
 
   it('stands on blocked with the chip and no meta (full)', async () => {
@@ -633,10 +633,106 @@ describe('SpecHead density (T37, T38, ISC-250)', () => {
         await settle();
         expect(goal?.getAttribute('data-clamp')).toBe('open');
         expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+        // T67: the name follows the visible word once open (label in name).
+        expect(text(toggle)).toBe(en.specHead.less);
+        expect(toggle?.getAttribute('aria-label')).toBe('Less, goal of 002');
         expect(text(goal)).toBe(GOLDEN['specs/002-web-console'].ideaQuote);
       } finally {
         height.mockRestore();
       }
+    });
+  }
+});
+
+// Spec 021, T64 · ISC-252.1: the waits scope in the spec head names what it counts, held of open tasks, so no number in
+// the head reads as a count of open tasks when it means held ones; in en and de. No golden carries a partial hold, so
+// the numbers are pinned against the payload's `heldTasks` / `openTasks` (core's count over the same task rows).
+describe('SpecHead waits scope (T64, ISC-252.1)', () => {
+  type Body = { head: Record<string, unknown> };
+  const GOLDEN = specGolden as unknown as Record<string, Body>;
+  const partial = { spec: '002', blockers: ['006'], heldTasks: 4, openTasks: 7, full: false };
+  const with002 = () => {
+    const golden = GOLDEN['specs/002-web-console'];
+    return ok({ ...golden, head: { ...golden.head, stage: 'build', waits: partial } });
+  };
+  const DASHBOARD = { ...HARBOR, specs: [...HARBOR.specs, { id: '006', title: 'Search index', type: 'feature', stage: 'review' }] };
+  const CASES = [
+    ['en', '· 4 of 7 open tasks waiting', /^· \d+ of \d+ open tasks waiting$/u],
+    ['de', '· 4 von 7 offenen Tasks warten', /^· \d+ von \d+ offenen Tasks warten$/u],
+  ] as const;
+
+  for (const [lang, expected, shape] of CASES) {
+    it(`spec-head waits count: names 4 held of 7 open tasks (${lang})`, async () => {
+      setUp(unserved, with002, DASHBOARD);
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const root = await open('/w/harbor/s/002/status');
+      const meta = text(chip(root, 'waits')?.querySelector('[data-waits-meta]') ?? null);
+      expect(meta).toBe(expected);
+      // What it counts is named: held tasks out of open tasks, never a bare "n of m open tasks".
+      expect(meta).toMatch(shape);
+      // The numbers are held first, then open, as core counts them.
+      expect(meta.match(/\d+/gu)).toEqual([String(partial.heldTasks), String(partial.openTasks)]);
+    });
+  }
+});
+
+// Spec 021, T67 · ISC-250 (design.md § Mobile, spec dashboard item 2): at compact the meta line, the next command and
+// Notes fold into one collapsed "Details of NNN"; the overlaps keep their own fold in the head; medium and wide unchanged.
+describe('SpecHead details at compact (T67, ISC-250)', () => {
+  type Body = { head: Record<string, unknown> };
+  const GOLDEN = specGolden as unknown as Record<string, Body>;
+  const with002 = () => ok(GOLDEN['specs/002-web-console']);
+  const overlap = { specs: ['002', '004'], paths: ['web/a.ts'], waiting: '002', edge: '(after: 004)' };
+  const overlapRows = {
+    ...HARBOR,
+    specs: [
+      { id: '002', title: 'Web console', type: 'feature', stage: 'build', warnings: [{ kind: 'spec-overlap', text: 'shares 1 file with 004, no edge', overlap }] },
+      { id: '004', title: 'Search', type: 'feature', stage: 'plan', warnings: [] },
+    ],
+  };
+  const details = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('ui-disclosure[data-head-details]');
+  const toggle = (root: HTMLElement): HTMLButtonElement | null => details(root)?.querySelector<HTMLButtonElement>('button[aria-expanded]') ?? null;
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('folds the meta line, the next command and Notes into a collapsed "Details of 002" at compact', async () => {
+    setUp(unserved, with002, overlapRows);
+    const root = await open('/w/harbor/s/002/status', 'compact');
+    expect(root.querySelectorAll('ui-disclosure[data-head-details]')).toHaveLength(1);
+    expect(text(toggle(root))).toBe('Details of 002');
+    expect(toggle(root)?.getAttribute('aria-expanded')).toBe('false');
+    // Out of the title row, into the details.
+    const row = root.querySelector<HTMLElement>('[data-title-row]');
+    expect(row?.querySelector('[data-head-command]')).toBeNull();
+    expect(row?.querySelector('[data-notes-pill]')).toBeNull();
+    expect(details(root)?.querySelector('[data-meta]')).not.toBeNull();
+    expect(details(root)?.querySelector('[data-head-details-actions] [data-head-command]')).not.toBeNull();
+    expect(details(root)?.querySelector('[data-head-details-actions] [data-notes-pill]')).not.toBeNull();
+    expect(root.querySelectorAll('[data-meta]')).toHaveLength(1);
+    // The overlaps keep their own fold in the head, outside the details.
+    expect(root.querySelector('ui-disclosure[data-head-overlap-fold]')).not.toBeNull();
+    expect(details(root)?.querySelector('[data-head-overlap-fold]')).toBeNull();
+    toggle(root)?.click();
+    await settle();
+    expect(details(root)?.hasAttribute('data-open')).toBe(true);
+    expect(toggle(root)?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('reads "Details zu 002" in German', async () => {
+    setUp(unserved, with002);
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    const root = await open('/w/harbor/s/002/status', 'compact');
+    expect(text(toggle(root))).toBe('Details zu 002');
+  });
+
+  for (const tier of ['medium', 'wide'] as const) {
+    it(`keeps the command and Notes in the title row and the meta line visible, no details (${tier})`, async () => {
+      setUp(unserved, with002);
+      const root = await open('/w/harbor/s/002/status', tier);
+      expect(details(root)).toBeNull();
+      const row = root.querySelector<HTMLElement>('[data-title-row]');
+      expect(row?.querySelector('[data-head-actions] [data-head-command]')).not.toBeNull();
+      expect(row?.querySelector('[data-head-actions] [data-notes-pill]')).not.toBeNull();
+      expect(root.querySelector('.meta-row > [data-meta]')).not.toBeNull();
     });
   }
 });

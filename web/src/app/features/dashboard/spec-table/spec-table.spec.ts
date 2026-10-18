@@ -368,7 +368,7 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
     expect(link?.parentElement).toBe(chip?.closest('ui-waits-chip')?.parentElement);
     expect(text(chip)).toBe('waits on 002');
     expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
-    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 of 3 open tasks held');
+    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 of 3 open tasks waiting');
     expect(host.querySelector('[data-waits-meta]')).toBeNull();
     // Keyboard order: the row link, then its chip.
     const order = [...host.querySelectorAll('a')].filter((a) => a === link || a === chip);

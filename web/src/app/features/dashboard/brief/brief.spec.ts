@@ -289,3 +289,97 @@ describe('Brief folded to its first section (spec 021, T26)', () => {
     expect(toggle()?.querySelector('[data-brief-toggle] > [aria-hidden="true"]')?.textContent.trim()).toBe('Ganzes TL;DR zeigen');
   });
 });
+
+// Spec 021 (T28, ISC-247): `lang:` in the frontmatter of specs/tldr.md names the brief's language. Only when its
+// primary subtag differs from the interface language does the card carry a language chip in its head line and its
+// text block (the first section and the folded rest) the `lang` attribute; without `lang` (null) neither appears.
+describe('Brief language: chip and lang attribute on a mismatch (spec 021, T28)', () => {
+  const SECTIONED: BriefModel = {
+    markdown: '# TL;DR — harbor\n\n<!-- section: overview -->\n…',
+    generated: GENERATED,
+    stale: true,
+    lang: null,
+    sections: { overview: 'Der Abgleich ist fertig.', risks: '- Der Umbau des Laders betrifft jedes Paket.' },
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function render(brief: BriefModel, ui: 'en' | 'de' = 'en') {
+    TestBed.inject(TranslocoService).setActiveLang(ui);
+    const fixture = TestBed.createComponent(Brief);
+    fixture.componentRef.setInput('brief', brief);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const chip = () => host.querySelector<HTMLElement>('[data-brief-head] ui-chip[data-brief-lang]');
+    const first = () => host.querySelector<HTMLElement>('[data-brief-first]');
+    const rest = () => host.querySelector<HTMLElement>('[data-brief-rest]');
+    return { fixture, host, chip, first, rest };
+  }
+
+  it('a German brief in the English UI carries the chip "DE" and lang="de" on both parts of its text block', async () => {
+    const { host, chip, first, rest } = await render({ ...SECTIONED, lang: 'de' });
+    expect(chip()?.querySelector('[aria-hidden="true"]')?.textContent.trim()).toBe('DE');
+    expect(chip()?.querySelector('.visually-hidden')?.textContent.trim()).toBe('Language of the text: de');
+    expect(first()?.getAttribute('lang')).toBe('de');
+    expect(rest()?.getAttribute('lang')).toBe('de');
+    // Head line order: as of …, then the language chip, then the stale chip.
+    const asOf = host.querySelector('[data-brief-as-of]') as Node;
+    const stale = host.querySelector('[data-brief-stale]') as Node;
+    expect(chip()?.compareDocumentPosition(asOf)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+    expect(chip()?.compareDocumentPosition(stale)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('a brief in the UI language carries neither chip nor lang attribute, compared by primary subtag', async () => {
+    for (const [lang, ui] of [['en', 'en'], ['en-GB', 'en'], ['de', 'de'], ['de-CH', 'de']] as const) {
+      const { host, chip, first, rest } = await render({ ...SECTIONED, lang }, ui);
+      expect(chip()).toBeNull();
+      expect(first()?.hasAttribute('lang')).toBe(false);
+      expect(rest()?.hasAttribute('lang')).toBe(false);
+      host.remove();
+    }
+  });
+
+  it('an English brief in the German UI carries the chip "EN" named in German and lang="en"', async () => {
+    const { chip, first, rest } = await render({ ...SECTIONED, lang: 'en' }, 'de');
+    expect(chip()?.querySelector('[aria-hidden="true"]')?.textContent.trim()).toBe('EN');
+    expect(chip()?.querySelector('.visually-hidden')?.textContent.trim()).toBe('Sprache des Textes: en');
+    expect(first()?.getAttribute('lang')).toBe('en');
+    expect(rest()?.getAttribute('lang')).toBe('en');
+  });
+
+  it('a brief without lang shows neither chip nor attribute, in English and German', async () => {
+    for (const ui of ['en', 'de'] as const) {
+      const { host, chip } = await render(SECTIONED, ui);
+      expect(chip()).toBeNull();
+      expect(host.querySelector('[data-brief-head] ui-chip:not([data-brief-stale])')).toBeNull();
+      expect(host.querySelector('[lang]')).toBeNull();
+      host.remove();
+    }
+  });
+
+  it('the brief chip follows a switch of the UI language', async () => {
+    const { fixture, chip, first } = await render({ ...SECTIONED, lang: 'de' });
+    expect(chip()).not.toBeNull();
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(chip()).toBeNull();
+    expect(first()?.hasAttribute('lang')).toBe(false);
+  });
+
+  it('a brief without sections carries lang on its clipped text block too', async () => {
+    const { host, chip } = await render({ ...SECTIONED, sections: {}, lang: 'de' });
+    expect(chip()).not.toBeNull();
+    expect(host.querySelector('[data-brief-prose][data-clipped]')?.getAttribute('lang')).toBe('de');
+  });
+});

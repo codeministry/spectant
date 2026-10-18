@@ -1,7 +1,8 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, ViewEncapsulation } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { RepoFileSource } from '../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
 import { OpenState } from '../../../shared/open-state';
@@ -28,6 +29,11 @@ export interface BriefModel {
    * its first section and folds the others (spec 021); without it (a spec's own TL;DR) it clips the whole text.
    */
   readonly sections?: Readonly<Record<string, string>>;
+  /**
+   * The brief's primary language from `lang:` in the frontmatter, a BCP 47 tag such as `de` (`DashboardBrief.lang`,
+   * spec 021, ISC-247); null or absent when the file names none.
+   */
+  readonly lang?: string | null;
 }
 
 /** The skill command that writes (or refreshes) `specs/tldr.md`. */
@@ -53,6 +59,10 @@ export const TLDR_COMMAND = '/spec-tldr';
  * and the `/spec-tldr` chip share the footer, the toggle at the start, the chip at the end. The text before the first
  * marker (the file's own title) is not shown: the card's label names it. A brief without sections keeps the clip.
  *
+ * Spec 021 (T29, ISC-247): when the brief's `lang:` differs from the interface language by its primary subtag, a
+ * `ui-chip` with the upper-case code ("DE", named by `brief.lang`) stands after the as-of date and before "stale", and
+ * every text block carries `lang`, so hyphenation and screen readers know the language. Without `lang:` neither shows.
+ *
  * Not encapsulated: the prose is `[innerHTML]`; every selector in the stylesheet starts with `app-brief`.
  */
 @Component({
@@ -76,6 +86,21 @@ export class Brief {
   protected readonly bodyId = nextId('brief-body');
 
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly transloco = inject(TranslocoService);
+  private readonly uiLang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+  /**
+   * The brief's `lang:` when its primary subtag differs from the interface language (spec 021, ISC-247): the card then
+   * carries a language chip and its text block the `lang` attribute. Null when it matches (`de-CH` in a German UI) or
+   * the file names no language, so neither appears.
+   */
+  protected readonly textLang = computed(() => {
+    const lang = this.brief()?.lang?.trim() ?? '';
+    if (lang === '') return null;
+    return primarySubtag(lang) === primarySubtag(this.uiLang()) ? null : lang;
+  });
+  /** The language chip's visible code, upper-case (`DE`). */
+  protected readonly langCode = computed(() => this.textLang()?.toUpperCase() ?? null);
 
   /**
    * The `generated:` instant, shown as its local date by `<ui-time-label form="date">` (spec 006); null when absent or
@@ -121,4 +146,9 @@ export class Brief {
   protected toggle(): void {
     this.open.update((open) => !open);
   }
+}
+
+/** The primary language subtag of a BCP 47 tag, lower-case: `de-CH` → `de`. */
+function primarySubtag(tag: string): string {
+  return tag.split('-', 1)[0].toLowerCase();
 }

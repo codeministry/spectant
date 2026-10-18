@@ -11,7 +11,7 @@ import { CATALOGUES, LANGS } from '../../i18n/catalogues';
 /** The plural forms whose presence makes an object a plural object. */
 const PLURAL_FORMS: ReadonlySet<string> = new Set(['none', 'zero', 'one', 'two', 'few', 'many', 'other']);
 /** `{{count}}` followed by a word or another interpolation: the count quantifies it. */
-const COUNT_TEXT = /\{\{count\}\}\s+(?:\p{L}|\{\{)/u;
+const COUNT_TEXT = /\{\{\s*count\s*\}\}\s+(?:\p{L}|\{\{)/u;
 
 /** One catalogue key: a plain text, or a plural object with whether it holds both `one` and `other`. */
 type Entry = { readonly kind: 'text'; readonly value: string } | { readonly kind: 'plural'; readonly complete: boolean };

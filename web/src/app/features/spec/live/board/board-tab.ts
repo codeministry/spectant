@@ -6,6 +6,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { CardState, Frame, FrameCard, LiveFrame, RunState } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { RefreshService } from '../../../../core/refresh.service';
+import { type Density, isDensity, SettingsService } from '../../../../core/settings.service';
 import { type RailBadge, RailContent } from '../../../../layout/shell/rail-content';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
@@ -58,7 +59,6 @@ import {
 } from './board-model';
 
 type AnyFrame = Frame | LiveFrame;
-type Density = 'comfortable' | 'compact';
 
 type BarTab = 'frame' | 'needs';
 
@@ -71,6 +71,8 @@ const PLAY_STEP_MS = 1200;
  * later task. The web never reads rounds.jsonl
  * and scrubbing writes no file: every control is a query param (`?view`, `?frame`, `?q`, `?hide`, `?lanes`,
  * `?density`), so reload and back land on the same board (the keyboard service writes `?view` and `?frame` too).
+ * The density defaults to the stored setting (spec 021, ISC-254); `?density` overrides it for this view only, and the
+ * density switch writes only that param, never the setting.
  *
  * Lanes come in constitution order (the spec model's `lanes`), then lanes only the cards name, `operator` last. Each
  * lane holds four sections (Needs you, In flight with the lock's session, Waiting grouped by reason, Landed). At wide
@@ -118,6 +120,7 @@ export class BoardTab {
   protected readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
   private readonly refresher = inject(RefreshService);
+  private readonly settings = inject(SettingsService);
 
   private readonly params = computed(() => {
     const ws = this.state.ws();
@@ -161,7 +164,11 @@ export class BoardTab {
   private readonly previous = computed<AnyFrame | null>(() => this.frames()[this.index() - 1] ?? null);
 
   protected readonly view = computed(() => (this.query().get('view') === 'flow' ? 'flow' : 'lanes'));
-  protected readonly density = computed<Density>(() => (this.query().get('density') === 'compact' ? 'compact' : 'comfortable'));
+  /** `?density` for this view, else the stored setting (ISC-254); an unknown value falls back to the setting. */
+  protected readonly density = computed<Density>(() => {
+    const param = this.query().get('density');
+    return isDensity(param) ? param : this.settings.settings().density;
+  });
   protected readonly search = computed(() => this.query().get('q') ?? '');
   protected readonly hiddenStates = computed(() => new Set(parseList(this.query().get('hide'))));
   protected readonly hiddenLanes = computed(() => new Set(parseList(this.query().get('lanes'))));
@@ -407,8 +414,13 @@ export class BoardTab {
     this.setQuery({ view: view === 'flow' ? 'flow' : 'lanes' });
   }
 
+  /**
+   * Flips this view's density through `?density` alone (ISC-254); the setting is never written here. Landing back on
+   * the stored value drops the param, so the view follows the setting again.
+   */
   protected toggleDensity(): void {
-    this.setQuery({ density: this.density() === 'compact' ? null : 'compact' });
+    const next: Density = this.density() === 'compact' ? 'comfortable' : 'compact';
+    this.setQuery({ density: next === this.settings.settings().density ? null : next });
   }
 
   protected pickLane(lane: string | undefined): void {
