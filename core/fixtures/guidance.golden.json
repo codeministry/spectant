@@ -1,0 +1,952 @@
+{
+  "kpis": {
+    "specs": 12,
+    "building": 4,
+    "scoping": 7,
+    "master": {
+      "closed": 8,
+      "total": 29
+    },
+    "claims": {
+      "closed": 6,
+      "total": 27
+    },
+    "tasks": {
+      "landed": 1,
+      "total": 13
+    },
+    "takeable": 2,
+    "warnings": 8,
+    "fog": 0,
+    "attention": 8,
+    "archived": 0
+  },
+  "stageCounts": {
+    "plan": 1,
+    "tasks": 1,
+    "review": 4,
+    "build": 1,
+    "blocked": 1,
+    "code-review": 1,
+    "close-pending": 1,
+    "close": 1,
+    "done": 1
+  },
+  "specs": [
+    {
+      "id": "010",
+      "slug": "010-banner-copy",
+      "title": "Name the flag and its owner in the stale-flag banner",
+      "type": "bug",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "close",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 1,
+        "total": 1
+      },
+      "tasks": null,
+      "nextCommand": "/spec-complete 010",
+      "nextReason": "every claim is closed and the workflow has no code review",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "closed",
+          "text": "every claim closed, phase not complete"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-04T10:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": null,
+      "lastRound": null,
+      "goal": "The banner names the flag and its owner.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "010",
+        "state": "open",
+        "stage": "close",
+        "command": "/spec-complete 010",
+        "reason": "every claim is closed and the workflow has no code review"
+      }
+    },
+    {
+      "id": "004",
+      "slug": "004-cache-layer",
+      "title": "Read flags through a cache without serving stale values",
+      "type": "refactor",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "code-review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-code-review 004",
+      "nextReason": "every claim is closed and the code-reviewed mark is stale",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "closed",
+          "text": "every claim closed, phase not complete"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-02T12:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "stale",
+          "detail": "worktree tree id unavailable",
+          "at": "2026-03-05T15:00:00Z"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in spec.md",
+          "files": [
+            "spec.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-05T16:00:00Z",
+      "lastRound": null,
+      "goal": "Flag reads hit a cache that never outlives a change by more than a second.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "004",
+        "state": "open",
+        "stage": "code-review",
+        "command": "/spec-code-review 004",
+        "reason": "every claim is closed and the code-reviewed mark is stale"
+      }
+    },
+    {
+      "id": "001",
+      "slug": "001-flag-targeting",
+      "title": "Target a flag at users by attribute",
+      "type": "feature",
+      "priority": "P1",
+      "phase": "building",
+      "stage": "review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      },
+      "nextCommand": "/spec-review 001",
+      "nextReason": "the reviewed mark is stale",
+      "takeable": [],
+      "taken": [],
+      "assignee": {
+        "raw": "u:7b2e4f10",
+        "kind": "person",
+        "id": "u:7b2e4f10",
+        "legacy": false
+      },
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+          "command": "/spec-review 001"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "stale",
+          "detail": "changed since the review: spec.md, plan.md, tasks.md",
+          "at": "2026-03-05T11:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-05T12:00:00Z",
+      "lastRound": null,
+      "goal": "A flag rule targets the users whose attributes match it.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "001",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 001",
+        "reason": "the reviewed mark is stale"
+      }
+    },
+    {
+      "id": "002",
+      "slug": "002-audit-trail",
+      "title": "Record who changed which flag",
+      "type": "feature",
+      "priority": "P2",
+      "phase": "building",
+      "stage": "review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      },
+      "nextCommand": "/spec-review 002",
+      "nextReason": "the reviewed mark is missing",
+      "takeable": [],
+      "taken": [],
+      "assignee": {
+        "raw": "u:7b2e4f10",
+        "kind": "person",
+        "id": "u:7b2e4f10",
+        "legacy": false
+      },
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 002"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-06T09:00:00Z",
+      "lastRound": null,
+      "goal": "Every flag change is recorded with its actor and time.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "002",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 002",
+        "reason": "the reviewed mark is missing"
+      }
+    },
+    {
+      "id": "003",
+      "slug": "003-flag-expiry",
+      "title": "Let a flag expire and list it for clean-up",
+      "type": "feature",
+      "priority": "P2",
+      "phase": "building",
+      "stage": "review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      },
+      "nextCommand": "/spec-review 003",
+      "nextReason": "the reviewed mark is stale",
+      "takeable": [],
+      "taken": [],
+      "assignee": {
+        "raw": "u:7b2e4f10",
+        "kind": "person",
+        "id": "u:7b2e4f10",
+        "legacy": false
+      },
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+          "command": "/spec-review 003"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "stale",
+          "detail": "changed since the review: spec.md, plan.md, tasks.md",
+          "at": "2026-03-03T15:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-04T08:00:00Z",
+      "lastRound": null,
+      "goal": "A flag carries an expiry date and an expired flag is listed for clean-up.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "003",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 003",
+        "reason": "the reviewed mark is stale"
+      }
+    },
+    {
+      "id": "009",
+      "slug": "009-percent-rounding",
+      "title": "Serve a percentage rollout to the share it names",
+      "type": "bug",
+      "priority": "P1",
+      "phase": "building",
+      "stage": "review",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-review 009",
+      "nextReason": "the reviewed mark is missing",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 009"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-07T09:00:00Z",
+      "lastRound": null,
+      "goal": "A percentage rollout serves the share it names, and a user keeps their variant.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "009",
+        "state": "running",
+        "stage": "review",
+        "run": {
+          "run": "r-0308-1430",
+          "command": "/spec-review 009",
+          "session": "a:claude:sess-91",
+          "actor": {
+            "raw": "a:claude:sess-91",
+            "kind": "agent",
+            "id": "a:claude:sess-91",
+            "legacy": false
+          },
+          "since": "2026-03-08T14:30:00Z",
+          "elapsedMs": 1800000,
+          "openRuns": 1,
+          "source": "run"
+        }
+      }
+    },
+    {
+      "id": "005",
+      "slug": "005-sdk-rollout",
+      "title": "Evaluate flags locally in the server and browser SDKs",
+      "type": "feature",
+      "priority": "P2",
+      "phase": "building",
+      "stage": "build",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 1,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 1,
+        "total": 4
+      },
+      "nextCommand": "/spec-implement 005",
+      "nextReason": "ISC-13 and ISC-14 are takeable",
+      "takeable": [
+        "ISC-13",
+        "ISC-14"
+      ],
+      "taken": [],
+      "assignee": {
+        "raw": "u:7b2e4f10",
+        "kind": "person",
+        "id": "u:7b2e4f10",
+        "legacy": false
+      },
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-03-04T12:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-07T10:00:00Z",
+      "lastRound": "2026-03-07T10:00:00Z",
+      "goal": "The SDKs evaluate flags locally from one snapshot and reload it on change.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "005",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 005",
+        "reason": "ISC-13 and ISC-14 are takeable"
+      }
+    },
+    {
+      "id": "012",
+      "slug": "012-segment-export",
+      "title": "Export a segment's rules as CSV",
+      "type": "bug",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "blocked",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-status 012",
+      "nextReason": "waits on 007",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-07T12:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-07T11:00:00Z",
+      "lastRound": null,
+      "goal": "A segment exports as a CSV of its rules, without user identifiers, once segments exist.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": {
+        "spec": "012",
+        "blockers": [
+          "007"
+        ],
+        "heldTasks": 0,
+        "openTasks": 0,
+        "full": true
+      },
+      "state": {
+        "kind": "spec",
+        "id": "012",
+        "state": "waiting",
+        "stage": "blocked",
+        "waits": {
+          "specs": [
+            "007"
+          ],
+          "claims": [],
+          "siblings": []
+        }
+      }
+    },
+    {
+      "id": "008",
+      "slug": "008-change-webhooks",
+      "title": "Send a signed webhook on every flag change",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "tasks",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": null,
+      "nextCommand": "/spec-tasks 008",
+      "nextReason": "3 claims and no tasks.md",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 008"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-04T14:00:00Z",
+      "lastRound": null,
+      "goal": "A flag change sends a signed webhook, retried on failure.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "008",
+        "state": "open",
+        "stage": "tasks",
+        "command": "/spec-tasks 008",
+        "reason": "3 claims and no tasks.md"
+      }
+    },
+    {
+      "id": "007",
+      "slug": "007-segment-builder",
+      "title": "Build reusable user segments in the console",
+      "type": "feature",
+      "priority": "P1",
+      "phase": "building",
+      "stage": "plan",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": null,
+      "nextCommand": "/spec-plan 007",
+      "nextReason": "a feature spec needs plan.md and it is missing",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 007"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in plan.md",
+          "files": [
+            "plan.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-06T09:00:00Z",
+      "lastRound": null,
+      "goal": "A segment is built once in the console and reused by several flags.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "007",
+        "state": "open",
+        "stage": "plan",
+        "command": "/spec-plan 007",
+        "reason": "a feature spec needs plan.md and it is missing"
+      }
+    },
+    {
+      "id": "006",
+      "slug": "006-sdk-benchmarks",
+      "title": "Find the snapshot size every SDK evaluates quickly",
+      "type": "spike",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "close-pending",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F5 waits on spec 005",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-03T10:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-06T10:00:00Z",
+      "lastRound": null,
+      "goal": "A recorded table names each SDK's evaluation time and a decision names the limit.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "006",
+        "state": "waiting",
+        "stage": "close-pending",
+        "waits": {
+          "specs": [],
+          "claims": [],
+          "siblings": [
+            "005"
+          ]
+        }
+      }
+    },
+    {
+      "id": "011",
+      "slug": "011-flag-store",
+      "title": "Store each flag with its rules in one document",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "complete",
+      "stage": "done",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-02T16:00:00Z",
+      "lastRound": null,
+      "goal": "A flag and its rules are one document, written atomically.",
+      "worktree": null,
+      "source": "main",
+      "main": null,
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "011",
+        "state": "done",
+        "stage": "done",
+        "doneAt": "2026-03-02T16:00:00Z"
+      }
+    }
+  ],
+  "nextUp": [
+    "010",
+    "004",
+    "001"
+  ],
+  "warningGroups": [
+    {
+      "kind": "review",
+      "items": [
+        {
+          "spec": "001",
+          "warning": {
+            "kind": "review",
+            "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+            "command": "/spec-review 001"
+          }
+        },
+        {
+          "spec": "002",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 002"
+          }
+        },
+        {
+          "spec": "003",
+          "warning": {
+            "kind": "review",
+            "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
+            "command": "/spec-review 003"
+          }
+        },
+        {
+          "spec": "009",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 009"
+          }
+        },
+        {
+          "spec": "008",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 008"
+          }
+        },
+        {
+          "spec": "007",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 007"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "closed",
+      "items": [
+        {
+          "spec": "010",
+          "warning": {
+            "kind": "closed",
+            "text": "every claim closed, phase not complete"
+          }
+        },
+        {
+          "spec": "004",
+          "warning": {
+            "kind": "closed",
+            "text": "every claim closed, phase not complete"
+          }
+        }
+      ]
+    }
+  ],
+  "archive": [],
+  "brief": null,
+  "services": [],
+  "diagnostics": [],
+  "ideas": {
+    "count": 1,
+    "list": [
+      {
+        "feature": "F1",
+        "milestone": null,
+        "slug": "flag-templates",
+        "title": "A new flag can start from a template that carries the team's usual targeting rules.",
+        "priority": "P1",
+        "state": {
+          "kind": "idea",
+          "id": "flag-templates",
+          "state": "open",
+          "stage": "idea",
+          "command": "/spec new flag-templates",
+          "reason": "the story is shaped but has no spec"
+        }
+      }
+    ]
+  }
+}

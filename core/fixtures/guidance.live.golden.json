@@ -1,0 +1,703 @@
+{
+  "specs/001-flag-targeting": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "waiting",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-1",
+        "lane": "api",
+        "text": "a flag rule targets users by attribute, within one evaluation",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-1, not dispatched"
+        }
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-2",
+        "lane": "api",
+        "text": "a rule with an unknown attribute is refused when saved",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-2, not dispatched"
+        }
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-3",
+        "lane": "api",
+        "text": "anti: a disabled rule still matches a user",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "task of ISC-3, not dispatched"
+        }
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/002-audit-trail": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "waiting",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-4",
+        "lane": "api",
+        "text": "every flag change is recorded with its actor and time",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is missing",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "task of ISC-4, not dispatched"
+        }
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-5",
+        "lane": "api",
+        "text": "the audit trail lists changes newest first",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is missing",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "task of ISC-5, not dispatched"
+        }
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-6",
+        "lane": "api",
+        "text": "anti: a change is recorded without its actor",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is missing",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "task of ISC-6, not dispatched"
+        }
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/003-flag-expiry": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "waiting",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-7",
+        "lane": "api",
+        "text": "a flag carries an optional expiry date",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "task of ISC-7, not dispatched"
+        }
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-8",
+        "lane": "api",
+        "text": "an expired flag is listed on the clean-up page",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "task of ISC-8, not dispatched"
+        }
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-9",
+        "lane": "api",
+        "text": "an expired flag keeps serving its last value",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "spec not reviewed — the reviewed mark is stale",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "003",
+          "state": "open",
+          "command": "/spec-implement 003",
+          "reason": "task of ISC-9, not dispatched"
+        }
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 3
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/004-cache-layer": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/005-sdk-rollout": {
+    "index": 4,
+    "kind": "live",
+    "round": 2,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "question",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-12",
+        "lane": "api",
+        "text": "evaluate flags from one snapshot in the server sdk",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-13",
+        "lane": "sdk",
+        "text": "reload the browser snapshot on a change event",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "builder": "Engineer",
+        "tries": 2,
+        "reason": "state \"open\" · claim takeable, edges closed",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "state \"open\" · claim takeable, edges closed"
+        }
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-13",
+        "lane": "operator",
+        "text": "add the staging sdk key to the ci secrets",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorOpen",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "task of ISC-13, not dispatched"
+        }
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-14",
+        "lane": "sdk",
+        "text": "roll the sdk out to the staging tenant",
+        "parallel": false,
+        "seam": false,
+        "state": "question",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed",
+        "note": "question: roll out to every staging tenant or to the first one only?",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "claim takeable, edges closed"
+        }
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 1,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 1,
+        "total": 4
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [
+      {
+        "task": "T4",
+        "claim": "ISC-14",
+        "lane": "sdk",
+        "text": "roll the sdk out to the staging tenant",
+        "parallel": false,
+        "seam": false,
+        "state": "question",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed",
+        "note": "question: roll out to every staging tenant or to the first one only?",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "claim takeable, edges closed"
+        }
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-13",
+        "lane": "operator",
+        "text": "add the staging sdk key to the ci secrets",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorOpen",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "005",
+          "state": "open",
+          "command": "/spec-implement 005",
+          "reason": "task of ISC-13, not dispatched"
+        }
+      }
+    ],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/006-sdk-benchmarks": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/007-segment-builder": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/008-change-webhooks": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 3
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/009-percent-rounding": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/010-banner-copy": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 1,
+        "total": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/011-flag-store": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  },
+  "specs/012-segment-export": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
+  }
+}

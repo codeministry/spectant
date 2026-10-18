@@ -19,6 +19,7 @@ import type { CodeReviewMode, SpecFiles, SpecType, StageSource, Workflow, Workfl
 import { parseFrontmatter } from '../src/frontmatter.ts';
 import type { MarkState } from '../src/gates.ts';
 import {
+  PRINCIPAL_STAGES,
   SPEC_RULES,
   STAGE_RULES,
   STORY_RULE,
@@ -31,6 +32,7 @@ import {
   defaultWorkflowRow,
   fillReason,
   fillsTemplate,
+  matchReason,
   nextCommand,
   nextCommandWithReason,
   reasonOf,
@@ -680,6 +682,21 @@ const WALK: Readonly<Record<string, readonly Walked[]>> = {
     ['specs/010-renew-api-key', 'done', null, 'every claim of the chore is closed'],
     ['specs/011-maintenance-windows', 'blocked', '/spec-status 011', 'waits on 002'],
   ],
+  // Spec 020: the guidance tree, each spec standing where its waits or next case needs it (guidance/generate.ts).
+  guidance: [
+    ['specs/001-flag-targeting', 'review', '/spec-review 001', 'the reviewed mark is stale'],
+    ['specs/002-audit-trail', 'review', '/spec-review 002', 'the reviewed mark is missing'],
+    ['specs/003-flag-expiry', 'review', '/spec-review 003', 'the reviewed mark is stale'],
+    ['specs/004-cache-layer', 'code-review', '/spec-code-review 004', 'every claim is closed and the code-reviewed mark is stale'],
+    ['specs/005-sdk-rollout', 'build', '/spec-implement 005', 'ISC-13 and ISC-14 are takeable'],
+    ['specs/006-sdk-benchmarks', 'close-pending', null, 'every claim is closed and F5 waits on spec 005'],
+    ['specs/007-segment-builder', 'plan', '/spec-plan 007', 'a feature spec needs plan.md and it is missing'],
+    ['specs/008-change-webhooks', 'tasks', '/spec-tasks 008', '3 claims and no tasks.md'],
+    ['specs/009-percent-rounding', 'review', '/spec-review 009', 'the reviewed mark is missing'],
+    ['specs/010-banner-copy', 'close', '/spec-complete 010', 'every claim is closed and the workflow has no code review'],
+    ['specs/011-flag-store', 'done', null, 'phase: complete'],
+    ['specs/012-segment-export', 'blocked', '/spec-status 012', 'waits on 007'],
+  ],
 };
 
 interface SpecPageGolden {
@@ -728,8 +745,9 @@ describe('every fixture spec derives the stage table row it names (ISC-79)', () 
   }
 
   test('the walk compared every listed spec', () => {
-    // 15, plus the three specs of milestone-lines (spec 026), plus the eleven of beacon (spec 040).
-    expect(compared).toBe(29);
+    // 15, plus the three specs of milestone-lines (spec 026), plus the eleven of beacon (spec 040), plus the twelve of
+    // guidance (spec 020).
+    expect(compared).toBe(41);
   });
 });
 
@@ -1358,4 +1376,106 @@ describe('none timeline (ISC-183.2)', () => {
     expect(steps(files)).toEqual(steps(files, 'spec'));
     expect(steps(files).map(([, to]) => to)).toEqual(['review', 'build']);
   });
+});
+
+// ─── The reason a phrase fills, for the guidance (spec 020, T4, ISC-237) ────────────────────────────────────────────
+
+describe('guidance: matchReason', () => {
+  const openRules = SPEC_RULES.filter((rule) => rule.state === 'open');
+
+  test('the principal stages are review, code-review and close', () => {
+    expect([...PRINCIPAL_STAGES]).toEqual(['review', 'code-review', 'close']);
+  });
+
+  // One input per open row and form, so each phrase is the one the rule's own `explain` fills.
+  const explained: ReadonlyArray<[string, StageInput]> = [
+    ['plan', at({ hasPlan: false })],
+    ['tasks', at({ hasTasks: false })],
+    ['review, missing', at({ reviewed: 'missing' })],
+    ['review, stale', at({ reviewed: 'stale' })],
+    ['build, one id', at({})],
+    ['build, two ids', at({ takeable: ['ISC-2', 'ISC-10'], partition: { takeable: 2, open: 1, closed: 1, dropped: 0 } })],
+    ['build, many ids', at({ takeable: ['ISC-2', 'ISC-3', 'ISC-10'], partition: { takeable: 3, open: 0, closed: 1, dropped: 0 } })],
+    ['build, a count only', at({ takeable: [], partition: { takeable: 2, open: 1, closed: 1, dropped: 0 } })],
+    ['code-review, missing', at({ ...ALL_CLOSED })],
+    ['code-review, stale', at({ ...ALL_CLOSED, codeReviewed: 'stale' })],
+    ['close, code-reviewed', at({ ...ALL_CLOSED, codeReviewed: 'fresh' })],
+    ['close, no code review', at({ ...ALL_CLOSED, codeReview: 'none' })],
+  ];
+
+  test('the cases reach every template of every open spec row', () => {
+    const reached = new Set(
+      explained.map(([, input]) => {
+        const step = nextCommandWithReason(input);
+        const rule = STAGE_RULES[step.row - 1];
+        if (rule?.subject !== 'spec') throw new Error(`no spec row ${step.row}`);
+        return `${rule.stage}:${rule.explain(input).form ?? 0}`;
+      }),
+    );
+    expect(reached).toEqual(new Set(openRules.flatMap((rule) => rule.reasons.map((_template, i) => `${rule.stage}:${i}`))));
+  });
+
+  for (const [name, input] of explained) {
+    test(`${name}: the explained phrase round-trips to its form and values`, () => {
+      const step = nextCommandWithReason(input);
+      const rule = STAGE_RULES[step.row - 1];
+      if (rule?.subject !== 'spec') throw new Error(`no spec row ${step.row}`);
+      const { form = 0, values = {} } = rule.explain(input);
+      expect(matchReason(rule.stage, step.reason)).toEqual({ form, values: { ...values } });
+    });
+  }
+
+  const SAMPLE: Readonly<Record<string, string>> = { is: 'are', state: 'missing' };
+  const filled = (template: string): { phrase: string; values: Record<string, string> } => {
+    const values: Record<string, string> = {};
+    const phrase = template.replace(/\{([a-zA-Z]+)\}/g, (_m, name: string) => {
+      const value = SAMPLE[name] ?? `sample ${name} text`;
+      values[name] = value;
+      return value;
+    });
+    return { phrase, values };
+  };
+
+  test('every template of every open spec row, filled with sample text, round-trips', () => {
+    for (const rule of openRules) {
+      rule.reasons.forEach((template, form) => {
+        const { phrase, values } = filled(template);
+        expect(matchReason(rule.stage, phrase)).toEqual({ form, values });
+      });
+    }
+  });
+
+  test('a phrase of another row returns null', () => {
+    const stages: readonly Stage[] = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close-pending', 'close', 'done'];
+    for (const rule of SPEC_RULES) {
+      for (const template of rule.reasons) {
+        const { phrase } = filled(template);
+        for (const stage of stages) {
+          if (stage === rule.stage && rule.state === 'open') continue;
+          expect(matchReason(stage, phrase)).toBeNull();
+        }
+      }
+    }
+  });
+
+  test('a row that is not open matches nothing, its own phrases included', () => {
+    expect(matchReason('blocked', '3 open claims, none takeable')).toBeNull();
+    expect(matchReason('close-pending', 'every claim is closed and F6 waits on spec 009')).toBeNull();
+    expect(matchReason('done', 'phase: complete')).toBeNull();
+  });
+
+  test('the closed placeholders {is} and {state} capture their word, and only it', () => {
+    expect(matchReason('build', 'ISC-2 and ISC-10 are takeable')).toEqual({ form: 0, values: { ids: 'ISC-2 and ISC-10', is: 'are' } });
+    expect(matchReason('build', 'ISC-2 is takeable')).toEqual({ form: 0, values: { ids: 'ISC-2', is: 'is' } });
+    expect(matchReason('build', 'ISC-2 were takeable')).toBeNull();
+    expect(matchReason('review', 'the reviewed mark is stale')).toEqual({ form: 0, values: { state: 'stale' } });
+    expect(matchReason('review', 'the reviewed mark is fresh')).toBeNull();
+    expect(matchReason('code-review', 'every claim is closed and the code-reviewed mark is missing')).toEqual({ form: 0, values: { state: 'missing' } });
+  });
+
+  test('a phrase with text around its template matches nothing', () => {
+    expect(matchReason('review', 'the reviewed mark is stale; 1 item waits on you')).toBeNull();
+    expect(matchReason('close', 'every claim is closed and code-reviewed.')).toBeNull();
+  });
+
 });

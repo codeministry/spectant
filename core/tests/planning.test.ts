@@ -1332,8 +1332,8 @@ describe('planning: legacy', () => {
   const NEW_CODES = new Set(['feature-milestone-unknown', 'milestone-mismatch']);
   const legacy = fixtureTrees().filter((tree) => tree !== 'milestone-lines' && tree !== 'backlog-ranks');
 
-  test('legacy: the six legacy fixtures are exactly those whose master carries no Milestone: line', () => {
-    expect(legacy).toEqual(['beacon', 'empty-master', 'harbor', 'lantern', 'leadgen', 'spectant-001']);
+  test('legacy: the seven legacy fixtures are exactly those whose master carries no Milestone: line', () => {
+    expect(legacy).toEqual(['beacon', 'empty-master', 'guidance', 'harbor', 'lantern', 'leadgen', 'spectant-001']);
     for (const tree of fixtureTrees()) {
       const master = readTree(tree).master;
       const lines = master === null ? 0 : core.parseClaims(master).features.filter((f) => f.milestone !== null).length;

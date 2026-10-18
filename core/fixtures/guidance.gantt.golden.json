@@ -1,0 +1,70 @@
+{
+  "asOf": "2026-03-20",
+  "axis": null,
+  "groups": [
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 8,
+      "total": 29,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F1",
+          "id": "F1",
+          "name": "Targeting",
+          "closed": 0,
+          "total": 10,
+          "priority": "P3",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F2",
+          "id": "F2",
+          "name": "Audit",
+          "closed": 0,
+          "total": 6,
+          "priority": "P3",
+          "rank": 2,
+          "mark": null
+        },
+        {
+          "ref": "feature:F3",
+          "id": "F3",
+          "name": "Flag lifecycle",
+          "closed": 1,
+          "total": 4,
+          "priority": "P3",
+          "rank": 3,
+          "mark": null
+        },
+        {
+          "ref": "feature:F4",
+          "id": "F4",
+          "name": "Storage",
+          "closed": 4,
+          "total": 4,
+          "priority": "P3",
+          "rank": 4,
+          "mark": null
+        },
+        {
+          "ref": "feature:F5",
+          "id": "F5",
+          "name": "SDKs",
+          "closed": 3,
+          "total": 5,
+          "priority": "P3",
+          "rank": 5,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}

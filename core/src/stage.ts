@@ -430,14 +430,64 @@ const escapeRe = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '
 const CLOSED_PLACEHOLDERS: Readonly<Record<string, string>> = { is: '(?:is|are)', state: '(?:missing|stale)' };
 
 /**
+ * The whole-phrase pattern of `template`: its text literal, each `{placeholder}` a named group (`{is}` and `{state}`
+ * one of their words, every other one some non-empty text), a repeated placeholder a back-reference to its first.
+ * `fillsTemplate` tests with it and `matchReason` reads the groups, so there is one matcher, not two.
+ */
+function templatePattern(template: string): RegExp {
+  const seen = new Set<string>();
+  const parts = template.split(/(\{[a-zA-Z]+\})/);
+  const pattern = parts
+    .map((part, i) => {
+      if (i % 2 === 0) return escapeRe(part);
+      const name = part.slice(1, -1);
+      if (seen.has(name)) return `\\k<${name}>`;
+      seen.add(name);
+      return `(?<${name}>${CLOSED_PLACEHOLDERS[name] ?? '.+'})`;
+    })
+    .join('');
+  return new RegExp(`^${pattern}$`);
+}
+
+/**
  * Whether `phrase` is `template` with every `{placeholder}` filled: `{is}` and `{state}` by one of their words, every
  * other one by some non-empty text. The closed sets keep the templates apart (`{ids} {is} takeable` never reads
  * `3 open claims, none takeable`).
  */
 export function fillsTemplate(template: string, phrase: string): boolean {
-  const parts = template.split(/(\{[a-zA-Z]+\})/);
-  const pattern = parts.map((part, i) => (i % 2 === 0 ? escapeRe(part) : (CLOSED_PLACEHOLDERS[part.slice(1, -1)] ?? '.+'))).join('');
-  return new RegExp(`^${pattern}$`).test(phrase);
+  return templatePattern(template).test(phrase);
+}
+
+// ─── The reason a phrase fills (spec 020, T4, ISC-237) ──────────────────────────────────────────────────────────────
+
+/**
+ * The stages whose next step lies with the principal: a spec there waits on a person's review, code review or close,
+ * so the guidance lists it under "Waits on you" (spec 020).
+ */
+export const PRINCIPAL_STAGES: readonly Stage[] = ['review', 'code-review', 'close'];
+
+/** Which template of a row a reason phrase fills: its index in the row's `reasons` and the placeholders' values. */
+export interface ReasonMatch {
+  readonly form: number;
+  readonly values: Record<string, string>;
+}
+
+/**
+ * The template of `stage`'s row that `phrase` fills, with the captured placeholder values: among the spec rows of the
+ * stage table whose stage is `stage` and whose state is `open` (the rows `stageRuleOf` of item-state.ts resolves an
+ * open spec item to), the first template `fillsTemplate` accepts, by the same pattern. Null when none matches, and for
+ * every stage without an open row (`blocked`, `close-pending`, `done`). It takes no workflow: a workflow chooses a
+ * type's stages, never a row's reasons.
+ */
+export function matchReason(stage: Stage, phrase: string): ReasonMatch | null {
+  for (const rule of SPEC_RULES) {
+    if (rule.stage !== stage || rule.state !== 'open') continue;
+    for (const [form, template] of rule.reasons.entries()) {
+      const match = templatePattern(template).exec(phrase);
+      if (match !== null) return { form, values: { ...match.groups } };
+    }
+  }
+  return null;
 }
 
 /**

@@ -1,0 +1,1363 @@
+{
+  "asOf": "2026-03-20",
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "close",
+          "done"
+        ],
+        "codeReview": "none"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "feature"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "file",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "tasks",
+    "review",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 1,
+    "plan": 1,
+    "tasks": 1,
+    "review": 4,
+    "build": 1,
+    "blocked": 1,
+    "close-pending": 1,
+    "code-review": 1,
+    "close": 1,
+    "done": 1
+  },
+  "features": [
+    {
+      "id": "F1",
+      "name": "Targeting",
+      "why": "a flag reaches exactly the users it is meant for.",
+      "rank": 1,
+      "priority": "P3",
+      "closed": 0,
+      "total": 10,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "text": "A flag rule targets users by attribute, within one evaluation.",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-2",
+          "text": "A rule with an unknown attribute is refused when saved.",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-3",
+          "text": "a disabled rule still matches a user.",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-17",
+          "text": "A segment is built from attribute rules in the console.",
+          "closed": false,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-18",
+          "text": "A segment can be reused by several flags.",
+          "closed": false,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-19",
+          "text": "deleting a segment in use is allowed.",
+          "closed": false,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-23",
+          "text": "A percentage rollout of 33 percent serves 33 percent of users, within one percent.",
+          "closed": false,
+          "dropped": false,
+          "holder": "009"
+        },
+        {
+          "id": "ISC-24",
+          "text": "a user flips between variants across evaluations.",
+          "closed": false,
+          "dropped": false,
+          "holder": "009"
+        },
+        {
+          "id": "ISC-28",
+          "text": "A segment exports as a CSV of its rules.",
+          "closed": false,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-29",
+          "text": "an export lists a user identifier.",
+          "closed": false,
+          "dropped": false,
+          "holder": "012"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-flag-targeting",
+          "title": "Target a flag at users by attribute",
+          "archived": false,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P1",
+          "hash": "0857dbe300b5afe81604efafe932a7778feb83bea51ec8bf87cac8147b9b7431",
+          "assignee": {
+            "raw": "u:7b2e4f10",
+            "kind": "person",
+            "id": "u:7b2e4f10",
+            "legacy": false
+          },
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "007",
+          "slug": "007-segment-builder",
+          "title": "Build reusable user segments in the console",
+          "archived": false,
+          "stage": "plan",
+          "stageSource": "derived",
+          "priority": "P1",
+          "hash": "a613c6cea35b86a066bec60fcaedfbad0545e1e3aa81781eb3f9805adcfeebcc",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "009",
+          "slug": "009-percent-rounding",
+          "title": "Serve a percentage rollout to the share it names",
+          "archived": false,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P1",
+          "hash": "8abe5a17d06e6febae055e47927e8edb6f522245b778fd9d96192aed86269d50",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        },
+        {
+          "id": "012",
+          "slug": "012-segment-export",
+          "title": "Export a segment's rules as CSV",
+          "archived": false,
+          "stage": "blocked",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "bdac86c10a2148efa22107129455213950942a06e07fecf27234400c4a337c3d",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "flag-templates",
+          "title": "A new flag can start from a template that carries the team's usual targeting rules.",
+          "type": "feature",
+          "feature": "F1",
+          "milestone": null,
+          "priority": "P1",
+          "path": "specs/ideas/flag-templates.md",
+          "state": {
+            "kind": "idea",
+            "id": "flag-templates",
+            "state": "open",
+            "stage": "idea",
+            "command": "/spec new flag-templates",
+            "reason": "the story is shaped but has no spec"
+          }
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "Audit",
+      "why": "every change to a flag can be traced to a person and a time.",
+      "rank": 2,
+      "priority": "P3",
+      "closed": 0,
+      "total": 6,
+      "claims": [
+        {
+          "id": "ISC-4",
+          "text": "Every flag change is recorded with its actor and time.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-5",
+          "text": "The audit trail lists changes newest first.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-6",
+          "text": "a change is recorded without its actor.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-20",
+          "text": "A flag change sends a signed webhook.",
+          "closed": false,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-21",
+          "text": "A failed webhook is retried three times.",
+          "closed": false,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-22",
+          "text": "a webhook carries a secret value.",
+          "closed": false,
+          "dropped": false,
+          "holder": "008"
+        }
+      ],
+      "holders": [
+        {
+          "id": "002",
+          "slug": "002-audit-trail",
+          "title": "Record who changed which flag",
+          "archived": false,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P2",
+          "hash": "aba0ba6d0d867bc5459f26799f5bc7f2acc35330e202e197e40ca89d83d04d1b",
+          "assignee": {
+            "raw": "u:7b2e4f10",
+            "kind": "person",
+            "id": "u:7b2e4f10",
+            "legacy": false
+          },
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "008",
+          "slug": "008-change-webhooks",
+          "title": "Send a signed webhook on every flag change",
+          "archived": false,
+          "stage": "tasks",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "6949cb909bff7ecf64af16b86593b398828d24ccb983edc0fc413591415f7311",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 3
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F3",
+      "name": "Flag lifecycle",
+      "why": "old flags are found and removed instead of piling up.",
+      "rank": 3,
+      "priority": "P3",
+      "closed": 1,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-7",
+          "text": "A flag carries an optional expiry date.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-8",
+          "text": "An expired flag is listed on the clean-up page.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-9",
+          "text": "An expired flag keeps serving its last value.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-25",
+          "text": "The stale-flag banner names the flag and its owner.",
+          "closed": true,
+          "dropped": false,
+          "holder": "010"
+        }
+      ],
+      "holders": [
+        {
+          "id": "003",
+          "slug": "003-flag-expiry",
+          "title": "Let a flag expire and list it for clean-up",
+          "archived": false,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P2",
+          "hash": "9939405d7c7ba0cc902f945af0302720d2d0207b76f68459ae23cbc247c0dd51",
+          "assignee": {
+            "raw": "u:7b2e4f10",
+            "kind": "person",
+            "id": "u:7b2e4f10",
+            "legacy": false
+          },
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "010",
+          "slug": "010-banner-copy",
+          "title": "Name the flag and its owner in the stale-flag banner",
+          "archived": false,
+          "stage": "close",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "e146c077c927f137da7d6430b070294232291249567a5f6b357412f2639215ba",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 1
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F4",
+      "name": "Storage",
+      "why": "flag reads stay fast and writes stay consistent.",
+      "rank": 4,
+      "priority": "P3",
+      "closed": 4,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-10",
+          "text": "Flag reads hit the cache before the store.",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-11",
+          "text": "a cached flag outlives its change by more than one second.",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-26",
+          "text": "Flags are stored with their rules in one document.",
+          "closed": true,
+          "dropped": false,
+          "holder": "011"
+        },
+        {
+          "id": "ISC-27",
+          "text": "A store write is atomic per flag.",
+          "closed": true,
+          "dropped": false,
+          "holder": "011"
+        }
+      ],
+      "holders": [
+        {
+          "id": "004",
+          "slug": "004-cache-layer",
+          "title": "Read flags through a cache without serving stale values",
+          "archived": false,
+          "stage": "code-review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "d64daa052f160134c15de137aa2b8affb93dd339f886572b80f85360c71d7690",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        },
+        {
+          "id": "011",
+          "slug": "011-flag-store",
+          "title": "Store each flag with its rules in one document",
+          "archived": false,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "5178052d0ce091916815905e717c6cebb35792d99879d084abc007ea5cd3db5b",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F5",
+      "name": "SDKs",
+      "why": "every service evaluates flags locally, without a call per request.",
+      "rank": 5,
+      "priority": "P3",
+      "closed": 3,
+      "total": 5,
+      "claims": [
+        {
+          "id": "ISC-12",
+          "text": "The server SDK evaluates flags locally from one snapshot.",
+          "closed": true,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-13",
+          "text": "The browser SDK reloads its snapshot on a change event.",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-14",
+          "text": "A rollout to the staging tenant is confirmed by hand on the staging console.",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        },
+        {
+          "id": "ISC-15",
+          "text": "A recorded table names the evaluation time of each SDK at ten thousand flags.",
+          "closed": true,
+          "dropped": false,
+          "holder": "006"
+        },
+        {
+          "id": "ISC-16",
+          "text": "A decision names the snapshot size limit.",
+          "closed": true,
+          "dropped": false,
+          "holder": "006"
+        }
+      ],
+      "holders": [
+        {
+          "id": "005",
+          "slug": "005-sdk-rollout",
+          "title": "Evaluate flags locally in the server and browser SDKs",
+          "archived": false,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P2",
+          "hash": "7ee78482699fd393dec7e839a50f4944f51d9205a8c561383903cfa41a54d061",
+          "assignee": {
+            "raw": "u:7b2e4f10",
+            "kind": "person",
+            "id": "u:7b2e4f10",
+            "legacy": false
+          },
+          "waits": null,
+          "main": true,
+          "held": 3
+        },
+        {
+          "id": "006",
+          "slug": "006-sdk-benchmarks",
+          "title": "Find the snapshot size every SDK evaluates quickly",
+          "archived": false,
+          "stage": "close-pending",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "ef9c9c988b0bbbb5e5d63f487a3c1ae2f428d08d5b0f31b5f94ccd6ab5dbe105",
+          "assignee": null,
+          "waits": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    }
+  ],
+  "milestones": [],
+  "unassignedFeatures": [
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5"
+  ],
+  "ideas": [
+    {
+      "slug": "flag-templates",
+      "title": "A new flag can start from a template that carries the team's usual targeting rules.",
+      "type": "feature",
+      "feature": "F1",
+      "milestone": null,
+      "priority": "P1",
+      "path": "specs/ideas/flag-templates.md",
+      "state": {
+        "kind": "idea",
+        "id": "flag-templates",
+        "state": "open",
+        "stage": "idea",
+        "command": "/spec new flag-templates",
+        "reason": "the story is shaped but has no spec"
+      }
+    }
+  ],
+  "recount": {
+    "closed": 8,
+    "total": 29
+  },
+  "diagnostics": [],
+  "relations": {
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Targeting",
+      "closed": 0,
+      "total": 10,
+      "parents": [],
+      "children": [
+        "spec:001",
+        "spec:007",
+        "spec:009",
+        "spec:012",
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3",
+        "claim:ISC-17",
+        "claim:ISC-18",
+        "claim:ISC-19",
+        "claim:ISC-23",
+        "claim:ISC-24",
+        "claim:ISC-28",
+        "claim:ISC-29",
+        "idea:flag-templates"
+      ],
+      "blockers": []
+    },
+    "feature:F2": {
+      "ref": "feature:F2",
+      "type": "feature",
+      "id": "F2",
+      "title": "Audit",
+      "closed": 0,
+      "total": 6,
+      "parents": [],
+      "children": [
+        "spec:002",
+        "spec:008",
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-20",
+        "claim:ISC-21",
+        "claim:ISC-22"
+      ],
+      "blockers": []
+    },
+    "feature:F3": {
+      "ref": "feature:F3",
+      "type": "feature",
+      "id": "F3",
+      "title": "Flag lifecycle",
+      "closed": 1,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "spec:003",
+        "spec:010",
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9",
+        "claim:ISC-25"
+      ],
+      "blockers": []
+    },
+    "feature:F4": {
+      "ref": "feature:F4",
+      "type": "feature",
+      "id": "F4",
+      "title": "Storage",
+      "closed": 4,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "spec:004",
+        "spec:011",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-26",
+        "claim:ISC-27"
+      ],
+      "blockers": []
+    },
+    "feature:F5": {
+      "ref": "feature:F5",
+      "type": "feature",
+      "id": "F5",
+      "title": "SDKs",
+      "closed": 3,
+      "total": 5,
+      "parents": [],
+      "children": [
+        "spec:005",
+        "spec:006",
+        "claim:ISC-12",
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16"
+      ],
+      "blockers": []
+    },
+    "spec:001": {
+      "ref": "spec:001",
+      "type": "spec",
+      "id": "001",
+      "title": "Target a flag at users by attribute",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:002": {
+      "ref": "spec:002",
+      "type": "spec",
+      "id": "002",
+      "title": "Record who changed which flag",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:003": {
+      "ref": "spec:003",
+      "type": "spec",
+      "id": "003",
+      "title": "Let a flag expire and list it for clean-up",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:004": {
+      "ref": "spec:004",
+      "type": "spec",
+      "id": "004",
+      "title": "Read flags through a cache without serving stale values",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [
+        "claim:ISC-10",
+        "claim:ISC-11"
+      ],
+      "blockers": [],
+      "stage": "code-review"
+    },
+    "spec:005": {
+      "ref": "spec:005",
+      "type": "spec",
+      "id": "005",
+      "title": "Evaluate flags locally in the server and browser SDKs",
+      "closed": 1,
+      "total": 3,
+      "parents": [
+        "feature:F5"
+      ],
+      "children": [
+        "claim:ISC-12",
+        "claim:ISC-13",
+        "claim:ISC-14"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:006": {
+      "ref": "spec:006",
+      "type": "spec",
+      "id": "006",
+      "title": "Find the snapshot size every SDK evaluates quickly",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F5"
+      ],
+      "children": [
+        "claim:ISC-15",
+        "claim:ISC-16"
+      ],
+      "blockers": [],
+      "stage": "close-pending"
+    },
+    "spec:007": {
+      "ref": "spec:007",
+      "type": "spec",
+      "id": "007",
+      "title": "Build reusable user segments in the console",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-17",
+        "claim:ISC-18",
+        "claim:ISC-19"
+      ],
+      "blockers": [],
+      "stage": "plan"
+    },
+    "spec:008": {
+      "ref": "spec:008",
+      "type": "spec",
+      "id": "008",
+      "title": "Send a signed webhook on every flag change",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [
+        "claim:ISC-20",
+        "claim:ISC-21",
+        "claim:ISC-22"
+      ],
+      "blockers": [],
+      "stage": "tasks"
+    },
+    "spec:009": {
+      "ref": "spec:009",
+      "type": "spec",
+      "id": "009",
+      "title": "Serve a percentage rollout to the share it names",
+      "closed": 0,
+      "total": 2,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-23",
+        "claim:ISC-24"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:010": {
+      "ref": "spec:010",
+      "type": "spec",
+      "id": "010",
+      "title": "Name the flag and its owner in the stale-flag banner",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-25"
+      ],
+      "blockers": [],
+      "stage": "close"
+    },
+    "spec:011": {
+      "ref": "spec:011",
+      "type": "spec",
+      "id": "011",
+      "title": "Store each flag with its rules in one document",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [
+        "claim:ISC-26",
+        "claim:ISC-27"
+      ],
+      "blockers": [],
+      "stage": "done"
+    },
+    "spec:012": {
+      "ref": "spec:012",
+      "type": "spec",
+      "id": "012",
+      "title": "Export a segment's rules as CSV",
+      "closed": 0,
+      "total": 2,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-28",
+        "claim:ISC-29"
+      ],
+      "blockers": [],
+      "stage": "blocked"
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "A flag rule targets users by attribute, within one evaluation.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "A rule with an unknown attribute is refused when saved.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "a disabled rule still matches a user.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-17": {
+      "ref": "claim:ISC-17",
+      "type": "claim",
+      "id": "ISC-17",
+      "title": "A segment is built from attribute rules in the console.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-18": {
+      "ref": "claim:ISC-18",
+      "type": "claim",
+      "id": "ISC-18",
+      "title": "A segment can be reused by several flags.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-19": {
+      "ref": "claim:ISC-19",
+      "type": "claim",
+      "id": "ISC-19",
+      "title": "deleting a segment in use is allowed.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-23": {
+      "ref": "claim:ISC-23",
+      "type": "claim",
+      "id": "ISC-23",
+      "title": "A percentage rollout of 33 percent serves 33 percent of users, within one percent.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:009",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-24": {
+      "ref": "claim:ISC-24",
+      "type": "claim",
+      "id": "ISC-24",
+      "title": "a user flips between variants across evaluations.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:009",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-28": {
+      "ref": "claim:ISC-28",
+      "type": "claim",
+      "id": "ISC-28",
+      "title": "A segment exports as a CSV of its rules.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-29": {
+      "ref": "claim:ISC-29",
+      "type": "claim",
+      "id": "ISC-29",
+      "title": "an export lists a user identifier.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "Every flag change is recorded with its actor and time.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "The audit trail lists changes newest first.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "a change is recorded without its actor.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-20": {
+      "ref": "claim:ISC-20",
+      "type": "claim",
+      "id": "ISC-20",
+      "title": "A flag change sends a signed webhook.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-21": {
+      "ref": "claim:ISC-21",
+      "type": "claim",
+      "id": "ISC-21",
+      "title": "A failed webhook is retried three times.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-22": {
+      "ref": "claim:ISC-22",
+      "type": "claim",
+      "id": "ISC-22",
+      "title": "a webhook carries a secret value.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "A flag carries an optional expiry date.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "An expired flag is listed on the clean-up page.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "An expired flag keeps serving its last value.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-25": {
+      "ref": "claim:ISC-25",
+      "type": "claim",
+      "id": "ISC-25",
+      "title": "The stale-flag banner names the flag and its owner.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:010",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "Flag reads hit the cache before the store.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-11": {
+      "ref": "claim:ISC-11",
+      "type": "claim",
+      "id": "ISC-11",
+      "title": "a cached flag outlives its change by more than one second.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-26": {
+      "ref": "claim:ISC-26",
+      "type": "claim",
+      "id": "ISC-26",
+      "title": "Flags are stored with their rules in one document.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:011",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-27": {
+      "ref": "claim:ISC-27",
+      "type": "claim",
+      "id": "ISC-27",
+      "title": "A store write is atomic per flag.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:011",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-12": {
+      "ref": "claim:ISC-12",
+      "type": "claim",
+      "id": "ISC-12",
+      "title": "The server SDK evaluates flags locally from one snapshot.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-13": {
+      "ref": "claim:ISC-13",
+      "type": "claim",
+      "id": "ISC-13",
+      "title": "The browser SDK reloads its snapshot on a change event.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-14": {
+      "ref": "claim:ISC-14",
+      "type": "claim",
+      "id": "ISC-14",
+      "title": "A rollout to the staging tenant is confirmed by hand on the staging console.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-15": {
+      "ref": "claim:ISC-15",
+      "type": "claim",
+      "id": "ISC-15",
+      "title": "A recorded table names the evaluation time of each SDK at ten thousand flags.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-16": {
+      "ref": "claim:ISC-16",
+      "type": "claim",
+      "id": "ISC-16",
+      "title": "A decision names the snapshot size limit.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "idea:flag-templates": {
+      "ref": "idea:flag-templates",
+      "type": "idea",
+      "id": "flag-templates",
+      "title": "A new flag can start from a template that carries the team's usual targeting rules.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "pages": null,
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-flag-targeting",
+      "title": "Target a flag at users by attribute",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A flag rule targets the users whose attributes match it.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 10
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the SDKs read a snapshot and never the store.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 16
+      },
+      "fog": []
+    },
+    {
+      "id": "002",
+      "slug": "002-audit-trail",
+      "title": "Record who changed which flag",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Every flag change is recorded with its actor and time.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 10
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the SDKs read a snapshot and never the store.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 16
+      },
+      "fog": []
+    },
+    {
+      "id": "003",
+      "slug": "003-flag-expiry",
+      "title": "Let a flag expire and list it for clean-up",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A flag carries an expiry date and an expired flag is listed for clean-up.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 14
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the SDKs read a snapshot and never the store.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 16
+      },
+      "fog": []
+    },
+    {
+      "id": "004",
+      "slug": "004-cache-layer",
+      "title": "Read flags through a cache without serving stale values",
+      "type": "refactor",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Flag reads hit a cache that never outlives a change by more than a second.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 15
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "005",
+      "slug": "005-sdk-rollout",
+      "title": "Evaluate flags locally in the server and browser SDKs",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>The SDKs evaluate flags locally from one snapshot and reload it on change.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 13
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the SDKs read a snapshot and never the store.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 16
+      },
+      "fog": []
+    },
+    {
+      "id": "006",
+      "slug": "006-sdk-benchmarks",
+      "title": "Find the snapshot size every SDK evaluates quickly",
+      "type": "spike",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A recorded table names each SDK&#39;s evaluation time and a decision names the limit.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 14
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "007",
+      "slug": "007-segment-builder",
+      "title": "Build reusable user segments in the console",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A segment is built once in the console and reused by several flags.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 13
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "008",
+      "slug": "008-change-webhooks",
+      "title": "Send a signed webhook on every flag change",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A flag change sends a signed webhook, retried on failure.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 10
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>One module per concern, behind the API; the SDKs read a snapshot and never the store.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 16
+      },
+      "fog": []
+    },
+    {
+      "id": "009",
+      "slug": "009-percent-rounding",
+      "title": "Serve a percentage rollout to the share it names",
+      "type": "bug",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A percentage rollout serves the share it names, and a user keeps their variant.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 14
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "010",
+      "slug": "010-banner-copy",
+      "title": "Name the flag and its owner in the stale-flag banner",
+      "type": "bug",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>The banner names the flag and its owner.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 8
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "011",
+      "slug": "011-flag-store",
+      "title": "Store each flag with its rules in one document",
+      "type": "feature",
+      "phase": "complete",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A flag and its rules are one document, written atomically.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  console --&gt; api --&gt; store --&gt; sdk</pre><figcaption>flowchart</figcaption></figure>",
+        "toc": [],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n  console --> api --> store --> sdk",
+            "caption": "flowchart"
+          }
+        ],
+        "sections": [],
+        "wordCount": 10
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "012",
+      "slug": "012-segment-export",
+      "title": "Export a segment's rules as CSV",
+      "type": "bug",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A segment exports as a CSV of its rules, without user identifiers, once segments exist.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 15
+      },
+      "approach": null,
+      "fog": []
+    }
+  ]
+}

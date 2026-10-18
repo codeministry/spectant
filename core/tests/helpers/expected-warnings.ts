@@ -28,4 +28,6 @@ export const EXPECTED_WARNINGS: Record<string, string[]> = {
   "backlog-ranks": [],
   // Spec 040: the item-state tree carries every stage row and its run lines without a dashboard warning.
   beacon: [],
+  // Spec 020: the guidance tree carries waits and next cases in every principal stage without a dashboard warning.
+  guidance: [],
 };

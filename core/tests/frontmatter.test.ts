@@ -31,8 +31,8 @@ describe('fixtures', () => {
   test('the corpus holds the spec and master files the parsers are measured on', () => {
     // 20, plus milestone-lines' master and its three specs (spec 026), plus the five files spec 017 added, plus the
     // seven specs of the edges tree (spec 025), plus backlog-ranks' master (spec 036), plus beacon's master and its
-    // eleven specs (spec 040).
-    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(49);
+    // eleven specs (spec 040), plus guidance's master and its twelve specs (spec 020).
+    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(62);
   });
 
   test.each(files)('%s parses without an error diagnostic', (rel) => {

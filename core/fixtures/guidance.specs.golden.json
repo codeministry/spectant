@@ -1,0 +1,196 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-flag-targeting",
+      "folder": "specs/001-flag-targeting",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "events",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/001-flag-targeting",
+        "folder": "specs/001-flag-targeting",
+        "slug": "specs/001-flag-targeting"
+      }
+    },
+    {
+      "id": "002",
+      "slug": "002-audit-trail",
+      "folder": "specs/002-audit-trail",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "events"
+      ],
+      "resolves": {
+        "id": "specs/002-audit-trail",
+        "folder": "specs/002-audit-trail",
+        "slug": "specs/002-audit-trail"
+      }
+    },
+    {
+      "id": "003",
+      "slug": "003-flag-expiry",
+      "folder": "specs/003-flag-expiry",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "events",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/003-flag-expiry",
+        "folder": "specs/003-flag-expiry",
+        "slug": "specs/003-flag-expiry"
+      }
+    },
+    {
+      "id": "004",
+      "slug": "004-cache-layer",
+      "folder": "specs/004-cache-layer",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed",
+        "gateCodeReviewed"
+      ],
+      "resolves": {
+        "id": "specs/004-cache-layer",
+        "folder": "specs/004-cache-layer",
+        "slug": "specs/004-cache-layer"
+      }
+    },
+    {
+      "id": "005",
+      "slug": "005-sdk-rollout",
+      "folder": "specs/005-sdk-rollout",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "rounds",
+        "events",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/005-sdk-rollout",
+        "folder": "specs/005-sdk-rollout",
+        "slug": "specs/005-sdk-rollout"
+      }
+    },
+    {
+      "id": "006",
+      "slug": "006-sdk-benchmarks",
+      "folder": "specs/006-sdk-benchmarks",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/006-sdk-benchmarks",
+        "folder": "specs/006-sdk-benchmarks",
+        "slug": "specs/006-sdk-benchmarks"
+      }
+    },
+    {
+      "id": "007",
+      "slug": "007-segment-builder",
+      "folder": "specs/007-segment-builder",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/007-segment-builder",
+        "folder": "specs/007-segment-builder",
+        "slug": "specs/007-segment-builder"
+      }
+    },
+    {
+      "id": "008",
+      "slug": "008-change-webhooks",
+      "folder": "specs/008-change-webhooks",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan"
+      ],
+      "resolves": {
+        "id": "specs/008-change-webhooks",
+        "folder": "specs/008-change-webhooks",
+        "slug": "specs/008-change-webhooks"
+      }
+    },
+    {
+      "id": "009",
+      "slug": "009-percent-rounding",
+      "folder": "specs/009-percent-rounding",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/009-percent-rounding",
+        "folder": "specs/009-percent-rounding",
+        "slug": "specs/009-percent-rounding"
+      }
+    },
+    {
+      "id": "010",
+      "slug": "010-banner-copy",
+      "folder": "specs/010-banner-copy",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/010-banner-copy",
+        "folder": "specs/010-banner-copy",
+        "slug": "specs/010-banner-copy"
+      }
+    },
+    {
+      "id": "011",
+      "slug": "011-flag-store",
+      "folder": "specs/011-flag-store",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/011-flag-store",
+        "folder": "specs/011-flag-store",
+        "slug": "specs/011-flag-store"
+      }
+    },
+    {
+      "id": "012",
+      "slug": "012-segment-export",
+      "folder": "specs/012-segment-export",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/012-segment-export",
+        "folder": "specs/012-segment-export",
+        "slug": "specs/012-segment-export"
+      }
+    }
+  ]
+}
