@@ -15,7 +15,9 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { atWidth, expect, test } from './fixtures';
+import { type GuidanceView, sentenceOf } from './guidance-sentence';
 import { klm, StepCounter, StepRecorder, trail } from './steps';
+import { WAITS_HEADER } from './stub-api';
 
 const TARGET = { ws: 'harbor', spec: '007', claim: 'ISC-126', number: '126' };
 const ENTRY = `claim:${TARGET.ws}:${TARGET.claim}`;
@@ -250,3 +252,89 @@ for (const width of [1440, 600, 390] as const) {
     });
   });
 }
+
+/*
+ * Usage path P2 · waiting spec with its command (spec 020, ISC-242; notation of spec 018): from `/` at 1440 px to the
+ * command of the top entry of "Waits on you" in the clipboard and its reason on screen.
+ *
+ *   bun run e2e -- path -g P2
+ *
+ * With `X-Spectant-Stub-Waits: 7` the first column is harbor, its golden as it is (the fixture of ISC-237). The top
+ * entry stands highlighted in the column's block "Waits on you" with its sentence and its copy chip above the fold, so
+ * the path is one click on the chip (M + P + B = 2.65 s); reading the reason is not a step. The goal holds only when
+ * the clipboard holds the API body's `guidance.waits[0].command` byte for byte and the top entry's sentence, built from
+ * the English catalogue (`guidance-sentence.ts`), is wholly on screen. Spec 018's Ist: 1 step and 2.7 s for the
+ * command; the reason and the waiting spec were not reachable.
+ */
+const P2 = { ws: 'harbor', headers: { [WAITS_HEADER]: '7' } } as const;
+const P2_BUDGET = { steps: 1, seconds: 3 } as const;
+
+type P2Entry = GuidanceView['waits'][number] & { readonly command: string | null };
+type P2Body = { readonly guidance?: { readonly waits: readonly P2Entry[] } };
+
+const p2Text = (s: string | null | undefined): string => (s ?? '').replace(/\s+/gu, ' ').trim();
+
+test.describe('P2 · step counter', () => {
+  test('P2 counter: one click on the copy chip costs M + P + B = 2.65 s, within the 3 s budget', () => {
+    const r = new StepRecorder();
+    r.click('copy chip');
+    expect(r.count).toBe(1);
+    expect(klm(r.sequence)).toBe(2.65);
+  });
+});
+
+test.describe('P2 · waiting spec with its command @1440', () => {
+  test.use(atWidth(1440));
+
+  test(`P2 waits @1440: one click on the top waiting entry's copy chip → its command in the clipboard and its reason on screen in ≤ ${P2_BUDGET.steps} step and ≤ ${P2_BUDGET.seconds} s`, async ({ page, context, request }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.context().setExtraHTTPHeaders(P2.headers);
+    const listed = await request.get('/api/workspaces', { headers: P2.headers });
+    expect(listed.status(), 'GET /api/workspaces').toBe(200);
+    const first = ((await listed.json()) as Array<{ slug: string; readable: boolean }>).find((w) => w.readable);
+    expect(first?.slug, 'the first column is the fixture of ISC-237').toBe(P2.ws);
+    const answer = await request.get(`/api/workspaces/${P2.ws}/dashboard`, { headers: P2.headers });
+    expect(answer.status(), `GET dashboard of ${P2.ws}`).toBe(200);
+    const body = (await answer.json()) as P2Body;
+    expect(body.guidance, `${P2.ws}: the dashboard carries guidance`).toBeDefined();
+    const top = body.guidance?.waits[0];
+    expect(top, `${P2.ws}: something waits`).toBeDefined();
+    const command = top?.command ?? '';
+    expect(command, 'the top entry has a command').not.toBe('');
+    const sentence = top ? sentenceOf(top.reason) : '';
+
+    await page.goto('/');
+    const entry = page.locator(`[data-ui="workspace-column"][data-ws="${P2.ws}"] [data-ui="waits-block"] [data-top]`);
+    await expect(entry, 'the top waiting entry stands highlighted').toBeVisible();
+    await expect(entry.locator('.id')).toHaveText(top?.spec ?? '');
+    const chip = entry.locator('ui-command-chip');
+    await expect(chip.locator('code'), 'the chip shows the top entry\'s command').toHaveText(command);
+    expect(await page.evaluate(() => window.scrollY), 'the start opens unscrolled').toBe(0);
+    await page.evaluate(() => navigator.clipboard.writeText(''));
+    const steps = new StepCounter(page);
+
+    // The chip must already be wholly on screen (`clickOn` asserts it); where it is not, the scroll to it counts.
+    const button = chip.locator('button');
+    const onScreen = await button.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
+    });
+    if (!onScreen) await steps.scrollTo(button);
+    await steps.clickOn(button, `copy ${top?.spec ?? ''}`);
+
+    // The Ist and the budget first (soft), so a failing goal below still reports the counted steps.
+    const seconds = klm(steps.sequence);
+    test.info().annotations.push({
+      type: 'P2 waits @1440',
+      description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}`,
+    });
+    expect.soft(steps.count, 'P2 steps').toBeLessThanOrEqual(P2_BUDGET.steps);
+    expect.soft(seconds, 'P2 KLM seconds').toBeLessThanOrEqual(P2_BUDGET.seconds);
+
+    await expect(button, 'the visible confirmation').toHaveAttribute('data-copied', '');
+    expect(await page.evaluate(() => navigator.clipboard.readText()), 'the clipboard holds the command byte for byte').toBe(command);
+    const reason = entry.locator('[data-reason]');
+    expect(p2Text(await reason.textContent()), 'the top entry\'s reason').toBe(p2Text(sentence));
+    await expect(reason, 'the reason is wholly on screen').toBeInViewport({ ratio: 1 });
+  });
+});
