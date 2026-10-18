@@ -87,6 +87,10 @@
  *   `0` lists lantern alone (its golden holds no waiting entry), `1` lists beacon rebuilt by core without its folder
  *   `009-timezone-labels` (`runVariant`; only 004's review waits) before lantern, `7` lists harbor (its golden's
  *   seven) before lantern. A 400 beside `X-Spectant-Stub-Locks: runs`, `-Worktrees: on`, `-Edges` or `-Midnight: on`.
+ * - `X-Spectant-Stub-Dense: off | on` (spec 021, T5; absent: `off`, the goldens as they are): `on` lists harbor alone,
+ *   its dashboard rebuilt by core over its tree plus fourteen done specs and a fresh TL;DR (`STUB_DENSE`): 22 specs,
+ *   3 Next-up entries, a long first brief section, harbor's own warnings. Its other routes stay the golden's. A 400
+ *   beside `X-Spectant-Stub-Waits`, `-Locks: runs`, `-Worktrees: on`, `-Edges` or `-Midnight: on`.
  * - `X-Spectant-Stub-Write: ok | stale | locked` scripts the two writes (absent: `ok`). `ok` answers as the server
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
  *   `locked` always 423 `Locked`. The board writes (transition, allocate) honour it the same way.
@@ -1470,6 +1474,172 @@ export const STUB_WAITS = {
   dropped: '009-timezone-labels',
 } as const;
 
+// ---- the dense workspace (spec 021, T5) ---------------------------------------------------------------------------
+
+/**
+ * The dense workspace (spec 021, T5, ISC-246, path P3): `X-Spectant-Stub-Dense: on` lists harbor alone, its dashboard
+ * rebuilt by core (`denseDashboard`) over harbor's tree plus the fourteen done specs of `STUB_DENSE.added` and the fresh
+ * `specs/tldr.md` of `STUB_DENSE.tldr`: 22 specs, Next up harbor's own three (a done spec has no next step) and a brief
+ * that is not stale, its first section a long, realistic overview. Every other harbor route (spec pages, planning,
+ * library) stays the golden's, so an added spec's page is a 404. Absent or `off`: the goldens as they are.
+ */
+export const DENSE_STATES = ['off', 'on'] as const;
+export type StubDenseState = (typeof DENSE_STATES)[number];
+export const DENSE_HEADER = 'X-Spectant-Stub-Dense';
+
+/** One added spec: a closed chore whose two claims carry their evidence, read by core as `phase: complete`. */
+type DenseSpec = { slug: string; title: string; goal: string; updated: string };
+
+const DENSE_ADDED: readonly DenseSpec[] = [
+  { slug: '010-tag-filter-rules', title: 'Filter mirrored tags by pattern', goal: 'A sync mirrors only the tags its include and exclude patterns select.', updated: '2026-02-02T10:00:00Z' },
+  { slug: '011-digest-pinning', title: 'Pin a mirrored image to its digest', goal: 'A pinned image is mirrored by its manifest digest, never by a moving tag.', updated: '2026-02-04T11:30:00Z' },
+  { slug: '012-sync-dry-run', title: 'Preview a sync without pushing', goal: 'A dry run lists every blob and manifest a sync would push and pushes none.', updated: '2026-02-06T09:15:00Z' },
+  { slug: '013-rate-limit-backoff', title: 'Back off when the registry rate-limits', goal: 'A 429 from the registry pauses the sync for the time it names and then resumes it.', updated: '2026-02-09T14:00:00Z' },
+  { slug: '014-history-export', title: 'Export the sync history as CSV', goal: 'The sync history leaves the console as one CSV file with a row per run.', updated: '2026-02-11T16:20:00Z' },
+  { slug: '015-multi-arch-manifests', title: 'Mirror every platform of a multi-arch image', goal: 'An image index is mirrored with every platform manifest it lists.', updated: '2026-02-13T08:45:00Z' },
+  { slug: '016-mirror-health', title: 'Report each mirror’s health in one command', goal: 'One command names every mirror that is behind, failing or unreachable.', updated: '2026-02-16T13:10:00Z' },
+  { slug: '017-credential-helper', title: 'Read registry credentials through a helper', goal: 'Credentials come from the configured credential helper and never sit in the config.', updated: '2026-02-18T10:40:00Z' },
+  { slug: '018-proxy-support', title: 'Sync through an HTTP proxy', goal: 'A sync reaches the registry through the proxy the environment names.', updated: '2026-02-20T15:00:00Z' },
+  { slug: '019-layer-dedup', title: 'Skip layers the target already holds', goal: 'A layer the target registry already holds is mounted, not uploaded again.', updated: '2026-02-23T09:30:00Z' },
+  { slug: '020-schedule-pause', title: 'Pause a schedule without deleting it', goal: 'A paused schedule keeps its settings and starts no run until it is resumed.', updated: '2026-02-25T12:00:00Z' },
+  { slug: '021-log-redaction', title: 'Redact tokens from the sync log', goal: 'No token, password or signed URL appears in the sync log.', updated: '2026-02-27T17:45:00Z' },
+  { slug: '022-config-validate', title: 'Validate the config before a run', goal: 'A config error stops the run before the first request and names its line.', updated: '2026-03-02T11:15:00Z' },
+  { slug: '023-failure-webhook', title: 'Notify a webhook when a sync fails', goal: 'A failed sync posts its error and the mirror’s name to the configured webhook.', updated: '2026-03-04T14:30:00Z' },
+];
+
+/** After every harbor spec's `updated:` and newest round, so core reads the brief as fresh (`tldrState`). */
+const DENSE_GENERATED = '2026-03-09T18:00:00Z';
+
+const DENSE_TLDR = `---
+generated: ${DENSE_GENERATED}
+---
+
+# TL;DR — harbor
+
+<!-- section: overview -->
+Harbor mirrors container images between registries, and the 0.9 line is mostly about the console and the config.
+Fourteen smaller specs closed over the last five weeks, from tag filters and digest pinning to the failure webhook,
+so the sync itself is feature-complete for this milestone. The web console (002) is in its last build round with
+five claims open, one of them a question about the empty state that only you can answer. Retention policies (004)
+have every claim closed and wait for their code review; the partial push (006) waits for your review of its spec.
+The config loader rewrite (003) has its claims but no tasks yet, and the config format choice (005) still carries two
+fog lines. Two specs opened this week, referrers support (008) and chunked upload limits (009), are scoped and
+building in parallel with the console.
+
+<!-- section: try -->
+Run \`harbor sync --dry-run\` against the sample config, then open the console on port 4200 and walk the sync history.
+
+<!-- section: per-spec -->
+- **002** Web console: 25 of 30 closed; one question open about the empty state.
+- **003** Config loader rewrite: claims written, tasks not yet.
+- **004** Retention policies: all 30 closed; waits for its code review.
+- **005** Config format choice: two fog lines to resolve before the decision.
+- **006** Partial push: waits for its spec review.
+- **007** Rotate the mirror token: both claims closed.
+- **008** Referrers support: one sibling still open before it closes.
+- **009** Chunked upload limits: building.
+
+<!-- section: risks -->
+The config loader rewrite touches every package at once; its parity snapshots are the only guard.
+
+<!-- section: next -->
+Answer the empty-state question in 002, then run the code review for 004.
+`;
+
+export const STUB_DENSE = {
+  workspace: { slug: 'harbor', name: 'harbor', golden: 'harbor' } satisfies StubWorkspace,
+  /** Harbor's eight active specs plus the added ones. */
+  specs: 22,
+  /** Next up: harbor's own three. */
+  next: 3,
+  added: DENSE_ADDED,
+  generated: DENSE_GENERATED,
+  tldr: DENSE_TLDR,
+} as const;
+
+/** One added spec's two claim lines, as its spec.md and the master's feature `DENSE_FEATURE` both hold them. */
+function denseClaims(spec: DenseSpec, index: number): [string, string] {
+  return [`- [x] ISC-${301 + 2 * index}: ${spec.goal}`, `- [x] ISC-${302 + 2 * index}: Anti: a sync configured without it behaves differently than before.`];
+}
+
+/** The master's feature that owns the added specs' claims, so core reads them without drift. */
+const DENSE_FEATURE = 'F8';
+
+/** Harbor's master with the feature `DENSE_FEATURE` and every added claim before its milestones. */
+function denseMaster(master: string | null): string | null {
+  if (master === null) return null;
+  const section = `### ${DENSE_FEATURE} · Sync operations\nWhy: the small changes that make a scheduled sync safe to leave alone.\n\n${DENSE_ADDED.flatMap(denseClaims).join('\n')}\n\n`;
+  const at = master.indexOf('## Milestones');
+  if (at < 0) throw new Error('stub-api: harbor ISA.md has no ## Milestones section for the dense feature');
+  return `${master.slice(0, at)}${section}${master.slice(at)}`;
+}
+
+/** One added spec's folder as core reads it: a closed chore, two checked claims with their evidence. */
+function denseSpecFiles(spec: DenseSpec, index: number): SpecFiles {
+  const id = spec.slug.slice(0, 3);
+  const [a, b] = [301 + 2 * index, 302 + 2 * index];
+  const [claimA, claimB] = denseClaims(spec, index);
+  const text = `---
+task: "${spec.title}"
+slug: ${spec.slug}
+spec_type: chore
+isa_master: ../../ISA.md
+isa_feature: ${DENSE_FEATURE}
+constitution: ../constitution.md
+phase: complete
+progress: 2/2
+started: ${spec.updated.slice(0, 10)}T08:00:00Z
+updated: ${spec.updated}
+context_sufficient: true
+interview_invoked: false
+---
+
+# ${id} — ${spec.title}
+
+## Problem
+
+The sync had no way to do this, so it was done by hand around the tool.
+
+## Goal
+
+${spec.goal}
+
+## Claims
+
+${claimA}
+${claimB}
+
+## Test Strategy
+
+| isc | type | check | threshold | tool | anchors_to | severity |
+|-----|------|-------|-----------|------|------------|----------|
+| ISC-${a} | bun-test | the behaviour the goal names | as stated | \`bun test tests/${spec.slug.slice(4)}.test.ts\` | literal |  |
+| ISC-${b} | bun-test | a sync without the setting | unchanged | \`bun test tests/${spec.slug.slice(4)}.test.ts -t "default"\` | derived: no-regression |  |
+
+## Verification
+
+- ISC-${a}: \`bun test tests/${spec.slug.slice(4)}.test.ts\` passed, ${spec.updated.slice(0, 10)}
+- ISC-${b}: \`bun test tests/${spec.slug.slice(4)}.test.ts -t "default"\` passed, ${spec.updated.slice(0, 10)}
+`;
+  return { folder: spec.slug, texts: { spec: text } };
+}
+
+/**
+ * Harbor's dashboard under `X-Spectant-Stub-Dense: on`, composed as `runVariant` composes beacon's: core's
+ * `buildDashboard` over harbor's tree plus the added specs and the fresh brief, the items over its activity log at
+ * `STUB_NOW`, `guidanceOf` over them.
+ */
+function denseDashboard(edge: EdgeCore, root: string): { model: unknown; kpis: unknown } {
+  const read = edge.readTreeAt(root);
+  const input: TreeInput = { ...read, master: denseMaster(read.master), specs: [...read.specs, ...DENSE_ADDED.map(denseSpecFiles)], tldr: DENSE_TLDR };
+  const locks = edge.activityReading(readFileSync(join(root, '.spectant', 'activity.jsonl'), 'utf8'));
+  const workspace = { ...input, locks };
+  const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS });
+  const plain = edge.buildDashboard(input);
+  const model = edge.withGuidance(edge.withItemStates(plain, items), edge.guidanceOf({ workspace, dashboard: plain, items }));
+  return { model, kpis: (model as { kpis: unknown }).kpis };
+}
+
 const SPEC_FOLDER = /^(\d{3})-(.+)$/;
 const SPEC_ID = /^\d{3}$/;
 
@@ -1792,6 +1962,24 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     waitsViews.set(state, out);
     return out;
   };
+  // The dense variant (spec 021, T5), built on the first request that asks for it and then held.
+  let denseView: EdgeView | null = null;
+  /** The dense variant a request asks for (`X-Spectant-Stub-Dense: on`), null otherwise. */
+  const denseViewOf = (req: Request): EdgeView | null => {
+    if (req.headers.get(DENSE_HEADER) !== 'on') return null;
+    if (denseView) return denseView;
+    const w = STUB_DENSE.workspace;
+    const tree = trees.get(w.slug) ?? readTree(core, dir, w.golden);
+    const out: EdgeView = {
+      dashboards: new Map([[w.slug, denseDashboard(edgeCore, tree.root)]]),
+      trees: new Map([[w.slug, tree]]),
+      plannings: new Map([[w.slug, plannings.get(w.slug) ?? readPlanning(dir, w.golden)]]),
+      views: new Map(),
+    };
+    for (const s of STUB_STATES) out.views.set(s, view(s, false, out, [w]));
+    denseView = out;
+    return out;
+  };
   /** Each workspace's catalog, built on first read (core's `readCatalog` is async) and then held: one per stub. */
   const catalogs = new Map<string, Promise<StubCatalog>>();
   const catalogOf = (slug: string, tree: TreeGoldens): Promise<StubCatalog> => {
@@ -1849,6 +2037,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return found;
   };
   const viewOf = (req: Request, state: StubState): StateView => {
+    const dense = denseViewOf(req);
+    if (dense) return dense.views.get(state) ?? view(state, false, dense, [STUB_DENSE.workspace]);
     const waited = waitsViewOf(req);
     if (waited) return waited.views.get(state) ?? view(state, false, waited);
     const ran = runViewOf(req);
@@ -2021,7 +2211,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
    * when one was sent (the counts stay the tree's: the specs' stages are not re-derived).
    */
   const planningOf = (req: Request, slug: string): PlanningModel | undefined => {
-    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? ((waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug);
+    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? ((denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug);
     const workflow = workflows.get(sessionOf(req))?.get(slug);
     return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
   };
@@ -2059,7 +2249,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    const source = (waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
+    const source = (denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
     return workspaceJson(req, 200, bumpDashboard(source.get(slug)?.model, bumpsOf(req, slug)), activityHash);
@@ -2829,6 +3019,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (waits !== null && !isOneOf(WAITS_STATES, waits)) return settingsError(400, { error: 'unknown-stub-waits', waits, states: [...WAITS_STATES] });
     if (waits !== null && (locks === 'runs' || worktrees === 'on' || edges !== 'off' || midnight === 'on')) {
       return settingsError(400, { error: 'stub-waits-with-overlay', waits, locks, worktrees, edges, midnight });
+    }
+    const dense = req.headers.get(DENSE_HEADER) ?? 'off';
+    if (!isOneOf(DENSE_STATES, dense)) return settingsError(400, { error: 'unknown-stub-dense', dense, states: [...DENSE_STATES] });
+    if (dense === 'on' && (waits !== null || locks === 'runs' || worktrees === 'on' || edges !== 'off' || midnight === 'on')) {
+      return settingsError(400, { error: 'stub-dense-with-overlay', dense, waits, locks, worktrees, edges, midnight });
     }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
     // After the header checks: a stream's headers are the ones its synthetic reads go out with.

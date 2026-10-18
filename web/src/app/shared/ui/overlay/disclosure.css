@@ -62,3 +62,20 @@
   min-block-size: 0;
   overflow: hidden;
 }
+
+/* The optional heading around the button: it lays out like the plain head, the consumer's summary carries the type. */
+.heading {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  font: inherit;
+}
+
+/* The tokens are 0ms here already (motion.css); the primitive also drops the height morph and the chevron turn. */
+@media (prefers-reduced-motion: reduce) {
+  .region,
+  .chevron {
+    transition: none;
+  }
+}

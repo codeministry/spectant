@@ -61,6 +61,9 @@ import {
 } from '../../server/src/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
+  DENSE_HEADER,
+  DENSE_STATES,
+  STUB_DENSE,
   EDGES_HEADER,
   EDGE_STATES,
   EMPTY_CATALOG,
@@ -2793,6 +2796,72 @@ describe('stub API: waiting entries via X-Spectant-Stub-Waits (spec 020, T15, IS
     for (const extra of overlays) {
       const res = await ask('/api/workspaces', { headers: as('7', extra) });
       expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-waits-with-overlay' });
+    }
+  });
+});
+
+describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5, ISC-246)', () => {
+  type Dash = {
+    kpis: unknown;
+    specs: Array<{ id: string; stage: string }>;
+    warningGroups: unknown;
+    guidance?: { next: Array<{ spec: string; command: string | null }> };
+    brief: { generated: string | null; stale: boolean; sections: Record<string, string> } | null;
+  };
+  const on = (extra: Record<string, string> = {}): Record<string, string> => ({ [DENSE_HEADER]: 'on', ...extra });
+  const dashboard = async (headers: Record<string, string>): Promise<Dash> => {
+    const res = await ask(`/api/workspaces/${STUB_DENSE.workspace.slug}/dashboard`, { headers });
+    expect(res.status).toBe(200);
+    return (await res.json()) as Dash;
+  };
+
+  test('on: the start lists the one dense workspace, its counts its dashboard kpis', async () => {
+    const res = await ask('/api/workspaces', { headers: on() });
+    expect(res.status).toBe(200);
+    const list = (await res.json()) as Json[];
+    expect(list.map((w) => w['slug'])).toEqual([STUB_DENSE.workspace.slug]);
+    expect(list[0]?.['counts']).toEqual((await dashboard(on())).kpis);
+    expect((await ask('/api/workspaces/lantern/dashboard', { headers: on() })).status).toBe(404);
+  });
+
+  test('on: 22 specs, 3 next-up entries and a fresh TL;DR whose first section is long, each core-derived', async () => {
+    const served = await dashboard(on());
+    expect(served.specs).toHaveLength(STUB_DENSE.specs);
+    expect(served.specs).toHaveLength(22);
+    expect(served.guidance?.next).toHaveLength(3);
+    // The added specs are done, so Next up is harbor's own three.
+    const harbor = golden('harbor') as Dash;
+    expect(served.guidance?.next.map((e) => e.command)).toEqual(harbor.guidance?.next.map((e) => e.command));
+    expect(served.specs.slice(-STUB_DENSE.added.length).every((s) => s.stage === 'done')).toBe(true);
+    // The added claims stand in the master, so they add no drift: the warnings are harbor's own.
+    expect(served.warningGroups).toEqual(harbor.warningGroups);
+    expect(served.brief?.stale).toBe(false);
+    expect(served.brief?.generated).toBe(STUB_DENSE.generated);
+    const [first, ...rest] = Object.entries(served.brief?.sections ?? {});
+    expect(first?.[0]).toBe('overview');
+    expect(first?.[1].length).toBeGreaterThanOrEqual(600);
+    expect(first?.[1].split(/(?<=\.)\s+/).length).toBeGreaterThanOrEqual(5);
+    expect(rest.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('off or absent serves the goldens as they are', async () => {
+    expect(await dashboard({ [DENSE_HEADER]: 'off' })).toEqual(golden('harbor') as Dash);
+    expect(await dashboard({})).toEqual(golden('harbor') as Dash);
+  });
+
+  test('an unknown value, or on beside an overlay, is a 400', async () => {
+    const unknown = await ask('/api/workspaces', { headers: { [DENSE_HEADER]: 'yes' } });
+    expect([unknown.status, await unknown.json()]).toEqual([400, { error: 'unknown-stub-dense', dense: 'yes', states: [...DENSE_STATES] }]);
+    const overlays: ReadonlyArray<Record<string, string>> = [
+      { [WAITS_HEADER]: '7' },
+      { [LOCKS_HEADER]: 'runs' },
+      { [WORKTREES_HEADER]: 'on' },
+      { [EDGES_HEADER]: 'met' },
+      { [MIDNIGHT_HEADER]: 'on' },
+    ];
+    for (const extra of overlays) {
+      const res = await ask('/api/workspaces', { headers: on(extra) });
+      expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-dense-with-overlay' });
     }
   });
 });
