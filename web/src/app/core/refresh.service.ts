@@ -1,6 +1,10 @@
 import { DestroyRef, DOCUMENT, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
+import type { LiveUpdate } from '../../../../server/src/spec-routes.contract';
 import { ShellData } from '../layout/shell/shell-data.service';
+import { ShellState } from '../layout/shell/shell-state.service';
+import { ApiClient } from './api.service';
+import { LiveStreamService } from './live-stream.service';
 import { SettingsService } from './settings.service';
 
 /** What one refresh changed on the open workspace's dashboard, keyed stably so the view can mark it in place. */
@@ -56,17 +60,24 @@ export function diffDashboards(before: unknown, after: unknown): DashboardDiff {
 }
 
 /**
- * The live refresh (T68, ISC-62; design.md § Header, § Live update). Every `settings.refreshSeconds` while the page is
- * visible, and once when it becomes visible again, it reloads the shell's `resource()`s through `ApiClient`'s ETag
- * cache: a 304 costs no body, and a reload keeps the resources' last value, so no view is torn down and the DOM nodes
- * holding a number keep their identity while the number changes. The palette's "Refresh now" and the `r` key call
- * `refresh()`.
- * After each refresh the diff is exposed for in-place marks (`changedKpis`, `changedRows`, `newSpecs`)
- * and put into one polite `announcement`, only when something changed.
+ * The live refresh (T68, ISC-62; spec 030, ISC-28; design.md § Header, § Live update). The live update stream
+ * (`LiveStreamService`) is the primary path: each `update` frame is put into `ApiClient`'s ETag cache (`prime`), and
+ * when it names the open workspace the shell's `resource()`s reload through that cache, so each read is a 304 that
+ * renders the frame's body through the same `ApiClient` read a poll takes, never a body set from outside it. The
+ * poll is the fallback: only while the stream is not connected, every `settings.refreshSeconds` while the page is
+ * visible; after a reconnect the shell refreshes once to catch what the gap missed. Once when the page becomes visible
+ * again it refreshes either way. A 304 costs no body, and a reload keeps the resources' last value, so no view is torn
+ * down and the DOM nodes holding a number keep their identity while the number changes. The palette's "Refresh now"
+ * and the `r` key call `refresh()`.
+ * After each refresh, streamed or polled, the diff is exposed for in-place marks (`changedKpis`, `changedRows`,
+ * `newSpecs`) and put into one polite `announcement`, only when something changed.
  */
 @Injectable({ providedIn: 'root' })
 export class RefreshService {
   private readonly data = inject(ShellData);
+  private readonly state = inject(ShellState);
+  private readonly api = inject(ApiClient);
+  private readonly live = inject(LiveStreamService);
   private readonly settings = inject(SettingsService);
   private readonly document = inject(DOCUMENT);
   private readonly transloco = inject(TranslocoService);
@@ -103,12 +114,23 @@ export class RefreshService {
 
   constructor() {
     effect((onCleanup) => {
+      if (this.live.connected()) return;
       const ms = this.settings.settings().refreshSeconds * 1000;
       const timer = setInterval(() => {
         if (this.document.visibilityState === 'visible') this.refresh();
       }, ms);
       onCleanup(() => clearInterval(timer));
     });
+
+    let opened = false;
+    effect(() => {
+      if (!this.live.connected()) return;
+      if (opened) untracked(() => this.refresh());
+      opened = true;
+    });
+
+    // Every frame, as it arrives: a signal would keep only the last of two frames that land before effects run.
+    inject(DestroyRef).onDestroy(this.live.onUpdate((update) => this.apply(update)));
 
     effect(() => {
       const result = this.data.dashboard.value() as { kind?: string; body?: unknown } | undefined;
@@ -137,6 +159,19 @@ export class RefreshService {
     this.data.spec.reload();
     this.refreshesState.update((count) => count + 1);
     this.lastRefreshState.set(Date.now());
+  }
+
+  /**
+   * One frame of the live update stream (spec 030, ISC-28): every view goes into the ETag cache under the read path the
+   * server built it for. The workspace list is no workspace's, so it reloads on every frame; the open workspace's frame
+   * then refreshes the shell as a poll would, and the reads answer 304 with the frame's bodies. The open spec reloads
+   * whether or not a view names its path, since the route may name it by folder or slug while the stream names the id;
+   * a frame for another workspace touches nothing else.
+   */
+  apply(update: LiveUpdate): void {
+    for (const view of update.views) this.api.prime(view.path, view.etag, view.body);
+    if (update.ws === this.state.ws()) this.refresh();
+    else this.data.workspaces.reload();
   }
 
   private settle(after: unknown): void {

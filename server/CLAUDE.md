@@ -130,7 +130,7 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - The data directory is `$XDG_DATA_HOME/spectant` when that variable is set, otherwise `~/.spectant/`, following the
   XDG convention (ISC-21).
 - The version is inlined at build time with `--define`, because a compiled binary has no `package.json` beside it.
-- Every JSON route sends an ETag, so the web app's polling stays cheap.
+- Every JSON route sends an ETag, so the live stream's revalidations and the fallback poll stay cheap.
 - Embedded assets are served through an explicit content-type map (html, js, css, woff2, svg, json). The binary has
   no filesystem to guess from.
 - Unknown non-API paths fall back to `index.html`, so `/w/…` deep links load the app.
@@ -148,6 +148,23 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - `bun run test:install:linux`: runs `install.sh` as a non-root user in an Ubuntu container against a local release
   directory (ISC-10 to ISC-12).
 - `bun run build`: the four-target build, darwin-arm64, darwin-x64, linux-arm64 and linux-x64 (ISC-8).
+
+## The live update stream (spec 030)
+
+- `GET /api/events` (`EVENTS_PATH`, `server/src/events-route.ts`) is the push path. While at least one stream is
+  open, `server/src/watch.ts` watches, per registered repository and per live spec worktree inside it, `specs/`
+  recursively, the root for `ISA.md` and `.spectant/`. It watches directories, never the files themselves, so an
+  editor's write-and-rename still reports. Reason: these are the files the read routes read; a change only in git
+  state (a commit, a merge) is left to the poll.
+- Changes are collected for `SETTLE_MS` per workspace. The read routes they touch (the workspace list, the dashboard,
+  the planning tree, each changed spec by the id `core/`'s `specIdOfPath` reads) are then answered once by the same
+  composed handlers a poll reaches and sent to every stream as one `update` frame (`LiveUpdate`). Reason: the bytes
+  and ETags equal a GET's, so the client primes its cache and revalidates to 304s, and nothing is modelled twice.
+- One build per workspace at a time; a change during a build is folded into one follow-up.
+- A `: ping` comment every `HEARTBEAT_MS` (5 s) keeps the stream under Bun's 10 s idle timeout and re-syncs the
+  watchers with the registry and the worktrees.
+- Watchers exist only while a stream is open, and they only read: `tests/readonly.test.ts -t "readonly: live"`
+  hashes the repository and its worktrees around an open stream; `tests/live.test.ts` is the 2 s probe (ISC-28).
 
 ## LifeOS detection
 

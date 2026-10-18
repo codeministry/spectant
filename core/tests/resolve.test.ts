@@ -1,9 +1,9 @@
 // T13 (spec 002, ISC-71): a workspace slug or spec ref resolves to exactly the entry it names, or to not-found with a
 // reason. Never to another spec. The server's 404 (T45) and the web's not-found page (T48) sit on top of this.
 import { describe, expect, test } from 'bun:test';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
-import { listSpecs, resolveSpec, resolveWorkspace } from '../src/resolve.ts';
+import { listSpecs, resolveSpec, resolveWorkspace, specIdOfPath } from '../src/resolve.ts';
 
 const FIXTURES = join(import.meta.dir, '..', 'fixtures');
 const HARBOR = join(FIXTURES, 'harbor');
@@ -155,4 +155,69 @@ describe('resolveWorkspace', () => {
   test('an empty registry finds nothing', () => {
     expect(resolveWorkspace([], 'harbor')).toMatchObject({ kind: 'not_found', reason: 'unknown-workspace' });
   });
+});
+
+// T2 (spec 030, ISC-28): the watcher maps a changed path to the spec it belongs to, by the folder rule `listSpecs`
+// reads with, so the server keeps no second rule. Paths are relative to a repository root or a spec worktree root.
+describe('specIdOfPath', () => {
+  const owned: ReadonlyArray<readonly [string, string]> = [
+    ['specs/030-live-update-sse/tasks.md', '030'],
+    ['specs/030-live-update-sse/spec.md', '030'],
+    ['specs/030-live-update-sse/.design/board.md', '030'],
+    ['specs/002-web-console/.gates/reviewed.json', '002'],
+    ['specs/002-web-console/events.jsonl', '002'],
+    ['specs/archive/001-manifest-sync/spec.md', '001'],
+    ['specs/archive/001-manifest-sync/.gates/code-reviewed.json', '001'],
+    // The folder itself, as a recursive watch reports a created, renamed or archived folder.
+    ['specs/030-live-update-sse', '030'],
+    ['specs/archive/001-manifest-sync', '001'],
+    ['specs/030-live-update-sse/', '030'],
+  ];
+
+  for (const [path, id] of owned) {
+    test(`"${path}" belongs to ${id}`, () => {
+      expect(specIdOfPath(path)).toBe(id);
+    });
+  }
+
+  test('the platform separator is accepted as well as /', () => {
+    expect(specIdOfPath(join('specs', '030-live-update-sse', 'tasks.md'))).toBe('030');
+    expect(specIdOfPath(join('specs', 'archive', '001-manifest-sync', '.gates', 'reviewed.json'))).toBe('001');
+    expect(specIdOfPath(['specs', '002-web-console', 'plan.md'].join(sep))).toBe('002');
+  });
+
+  const unowned = [
+    'ISA.md',
+    'specs/ideas/faster-sync.md',
+    'specs/ideas',
+    'specs/tldr.md',
+    'specs/tech.md',
+    'specs/constitution.md',
+    'specs/backlog.md',
+    'specs/backlog.events.jsonl',
+    'specs/tokens.jsonl',
+    'specs',
+    'specs/archive',
+    'specs/archive/README.md',
+    '.spectant/activity.jsonl',
+    '',
+    // Not the folder rule: no three-digit id, or not one level under specs/ or specs/archive/.
+    'specs/30-short/spec.md',
+    'specs/0030-wide/spec.md',
+    'specs/030-/spec.md',
+    'specs/archive/archive/001-manifest-sync/spec.md',
+    'specs/ideas/030-nested/spec.md',
+    'docs/specs/030-live-update-sse/spec.md',
+    '030-live-update-sse/spec.md',
+    'Specs/030-live-update-sse/spec.md',
+    // Absolute or escaping paths are not repository-relative.
+    '/specs/030-live-update-sse/spec.md',
+    '../specs/030-live-update-sse/spec.md',
+  ];
+
+  for (const path of unowned) {
+    test(`"${path}" belongs to no spec`, () => {
+      expect(specIdOfPath(path)).toBeNull();
+    });
+  }
 });

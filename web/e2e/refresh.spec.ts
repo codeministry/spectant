@@ -49,6 +49,93 @@ test.describe('refresh', () => {
   });
 });
 
+/** The open workspace's dashboard read, the one `RefreshService` revalidates against the primed ETag cache. */
+const DASHBOARD = '/api/workspaces/harbor/dashboard';
+/** The live update stream (`EVENTS_PATH`, `server/src/spec-routes.contract.ts`). */
+const EVENTS = '/api/events';
+/** ISC-28: a change reaches an open page within 2 s. */
+const LIVE_BUDGET_MS = 2_000;
+/** The poll interval for the live cases: far beyond the budget, so no poll can explain a change inside it. */
+const POLL_SECONDS = 60;
+
+/** One read the page sent after the bump: its path, the ETag it revalidated with, and the answer's status. */
+type Read = { path: string; ifNoneMatch: string | undefined; status: number };
+
+/**
+ * ISC-28 (spec 030, T19): the live update stream at browser level. The poll interval is 60 s and no clock is faked, so
+ * only the push can move a page inside 2 s. Each case opens one page of harbor, waits for its `GET /api/events`, sets a
+ * marker on `window`, bumps harbor for its session and measures until the page holds the bumped dashboard: the
+ * dashboard shows the new KPI value in the same DOM node; the board and the spec page show no KPI, so there the proof
+ * is the shell's dashboard read revalidating with the bumped ETag (primed from the frame) and answered 304, beside the
+ * page's own view (planning tree, spec page) revalidated to a 304 too. After it the marker is still set and no frame
+ * navigated: no reload. `bun run e2e -- refresh -g live`.
+ */
+test.describe('refresh live', () => {
+  test.use({ ...atWidth(1440), clockAt: null });
+
+  const PAGES = [
+    { name: 'dashboard', url: '/w/harbor', ready: '[data-kpi="claims"] .value', view: DASHBOARD },
+    { name: 'board', url: '/w/harbor/board', ready: 'app-board-card', view: '/api/workspaces/harbor/planning' },
+    { name: 'spec page', url: '/w/harbor/s/002', ready: 'app-spec-dashboard', view: '/api/workspaces/harbor/specs/002' },
+  ] as const;
+
+  for (const { name, url, ready, view } of PAGES) {
+    test(`live: a bump reaches the open ${name} over the stream within 2 s, with no poll and no reload`, async ({ page, request }, info) => {
+      const session = `refresh-live-${info.testId}-${String(info.retry)}`;
+      const headers = { [SESSION]: session };
+      await page.setExtraHTTPHeaders(headers);
+      await request.post('/api/__stub/reset', { headers });
+      const saved = await request.put('/api/settings', { data: { refreshSeconds: POLL_SECONDS }, headers });
+      expect(saved.ok()).toBe(true);
+
+      const stream = page.waitForResponse((res) => new URL(res.url()).pathname === EVENTS && res.status() === 200);
+      await page.goto(url);
+      await stream;
+      await expect(page.locator(ready).first()).toBeVisible();
+      const value = page.locator('[data-kpi="claims"] .value');
+      const node = name === 'dashboard' ? await value.elementHandle() : null;
+      if (node !== null) await expect(value).toHaveText(BEFORE);
+
+      await page.evaluate(() => {
+        (window as unknown as { __live?: string }).__live = 'kept';
+      });
+      let navigations = 0;
+      page.on('framenavigated', () => {
+        navigations += 1;
+      });
+      const reads: Read[] = [];
+      page.on('response', (res) => {
+        const path = new URL(res.url()).pathname;
+        if (path.startsWith('/api/') && path !== EVENTS) reads.push({ path, ifNoneMatch: res.request().headers()['if-none-match'], status: res.status() });
+      });
+      const revalidated = (path: string): Promise<unknown> =>
+        page.waitForResponse((res) => new URL(res.url()).pathname === path && res.status() === 304, { timeout: LIVE_BUDGET_MS });
+      const dashboardRead = revalidated(DASHBOARD);
+      const viewRead = revalidated(view);
+
+      const started = Date.now();
+      expect((await request.post('/api/__stub/bump?ws=harbor', { headers })).status()).toBe(204);
+      if (node !== null) await expect.poll(() => node.evaluate((el) => el.textContent.trim()), { timeout: LIVE_BUDGET_MS }).toBe(AFTER);
+      await Promise.all([dashboardRead, viewRead]);
+      const elapsed = Date.now() - started;
+      expect(elapsed, `the bump took ${String(elapsed)} ms to reach the ${name}`).toBeLessThan(LIVE_BUDGET_MS);
+
+      // The page holds the bumped dashboard: every read of it since the bump revalidated with the bumped ETag, a 304.
+      const bumped = (await request.get(DASHBOARD, { headers })).headers()['etag'];
+      expect(bumped).toBeTruthy();
+      const dashboardReads = reads.filter((read) => read.path === DASHBOARD);
+      expect(dashboardReads.length).toBeGreaterThan(0);
+      expect(dashboardReads).toEqual(dashboardReads.map((read) => ({ ...read, ifNoneMatch: bumped, status: 304 })));
+      if (node !== null) {
+        expect(await node.evaluate((el) => el.isConnected)).toBe(true);
+        await expect(value).toHaveText(AFTER);
+      }
+      expect(await page.evaluate(() => (window as unknown as { __live?: string }).__live)).toBe('kept');
+      expect(navigations).toBe(0);
+    });
+  }
+});
+
 /** One `layout-shift` entry without recent input, with the nodes it moved (for the failure message). */
 type Shift = { value: number; nodes: string[] };
 type ClsProbe = { __cls: () => Shift[] };

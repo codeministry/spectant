@@ -252,6 +252,15 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Spec 030 (T12, ISC-28): put a stream answer (`LiveView` of the live update stream) into the ETag cache as if a
+   * `GET` on `path` had answered it, replacing any older entry, so the next read sends `If-None-Match: etag` and a 304
+   * answers `body`. `path` is the read route's request path, the key `get()` uses for the same request.
+   */
+  prime(path: string, etag: string, body: unknown): void {
+    this.cache.set(path, { etag, body });
+  }
+
   workspaces(): Promise<ApiResult<readonly WorkspaceListEntry[]>> {
     return this.get(WORKSPACES_URL);
   }
@@ -289,11 +298,12 @@ export class ApiClient {
     return this.get(url, (headers) => {
       this.specHashes.set(url, parseReviewedHashes(headers.get(REVIEWED_HASHES_HEADER)));
       this.specFileHashes.set(url, headers.get(SPEC_HASH_HEADER));
-    });
+    }, true);
   }
 
   /**
-   * The raw spec.md hash `X-Spectant-Spec-Hash` carried on the last 200 of `GET …/:id` (a 304 keeps it), the hash
+   * The raw spec.md hash `X-Spectant-Spec-Hash` carried on the last `GET …/:id`, 200 or 304 (the server sends it on both;
+   * after a live update primed the cache the read is a 304, spec 030), the hash
    * `transition()` sends; null before the spec was read or when the header is absent.
    */
   specHash(ws: string, id: string): string | null {

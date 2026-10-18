@@ -2,8 +2,14 @@ import { HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { DocsPage, LibraryCatalog } from '../../../../core/src/files';
-import type { ActorMapping, IdeaPage, LibrarySearchResult } from '../../../../server/src/spec-routes.contract';
-import { ApiClient, type PlanningBody, planningUrl } from './api.service';
+import {
+  type ActorMapping,
+  type IdeaPage,
+  type LibrarySearchResult,
+  type LiveView,
+  specRoutes,
+} from '../../../../server/src/spec-routes.contract';
+import { ApiClient, dashboardUrl, type PlanningBody, planningUrl } from './api.service';
 
 const PLANNING_URL = '/api/workspaces/harbor/planning';
 
@@ -297,6 +303,20 @@ describe('ApiClient spec 008 routes', () => {
       await result;
       expect(api.specHash('harbor', '003')).toBe(HEX_A);
     });
+
+    // Spec 030 (ISC-28): after a stream prime the spec read is a 304, so the hashes it carries must still be taken.
+    it('takes the spec hash from a 304 as well', async () => {
+      const first = api.spec('harbor', '003');
+      http.expectOne('/api/workspaces/harbor/specs/003').flush({}, { headers: { ETag: '"s1"', 'X-Spectant-Spec-Hash': HEX_A } });
+      await first;
+      api.prime('/api/workspaces/harbor/specs/003', '"s2"', { primed: true });
+      const second = api.spec('harbor', '003');
+      const request = http.expectOne('/api/workspaces/harbor/specs/003');
+      expect(request.request.headers.get('If-None-Match')).toBe('"s2"');
+      request.flush(null, { status: 304, statusText: 'Not Modified', headers: { 'X-Spectant-Spec-Hash': HEX_B } });
+      expect(await second).toMatchObject({ kind: 'ok', body: { primed: true } });
+      expect(api.specHash('harbor', '003')).toBe(HEX_B);
+    });
   });
 
   // T13 · ISC-195: the backlog write of spec 036, `POST …/:ws/backlog` with the op and the raw hash of
@@ -431,5 +451,73 @@ describe('ApiClient library routes (spec 017, T25, ISC-156)', () => {
     // archived (spec 034, ISC-187.1): the path lies below archive/, the route names the spec folder.
     const archived = { path: 'archive/001-x/.design/prototype', spec: '001-x', type: 'prototype' as const, archived: true as const };
     expect(api.prototypeUrl('harbor', archived, 'index.html')).toBe('/proto/harbor/001-x/prototype/index.html');
+  });
+});
+
+// ─── Spec 030 (T11, ISC-28): a stream answer primes the ETag cache ──────────────────────────────────────────────────
+
+describe('ApiClient.prime (spec 030, T11, ISC-28)', () => {
+  let api: ApiClient;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    api = TestBed.inject(ApiClient);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  // A `LiveView` as the stream carries it: the read route's request path, its ETag and its parsed body.
+  const DASHBOARD = '/api/workspaces/harbor/dashboard';
+  const view: LiveView = { path: DASHBOARD, etag: '"d2"', body: { specs: ['live'] } };
+
+  it('keys the primed answer by the path get() reads: the next GET sends If-None-Match, a 304 answers the primed body', async () => {
+    expect(dashboardUrl('harbor')).toBe(view.path);
+    api.prime(view.path, view.etag, view.body);
+
+    const read = api.dashboard('harbor');
+    const request = http.expectOne(DASHBOARD);
+    expect(request.request.headers.get('If-None-Match')).toBe('"d2"');
+    request.flush(null, { status: 304, statusText: 'Not Modified' });
+    expect(await read).toEqual({ kind: 'ok', body: view.body, etag: '"d2"', notModified: true });
+  });
+
+  it('replaces an older cached answer of the same path', async () => {
+    const stale = { specs: ['polled'] };
+    const first = api.dashboard('harbor');
+    http.expectOne(DASHBOARD).flush(stale, { headers: { ETag: '"d1"' } });
+    expect(await first).toEqual({ kind: 'ok', body: stale, etag: '"d1"', notModified: false });
+
+    api.prime(view.path, view.etag, view.body);
+
+    const second = api.dashboard('harbor');
+    const request = http.expectOne(DASHBOARD);
+    expect(request.request.headers.get('If-None-Match')).toBe('"d2"');
+    request.flush(null, { status: 304, statusText: 'Not Modified' });
+    expect(await second).toEqual({ kind: 'ok', body: view.body, etag: '"d2"', notModified: true });
+  });
+
+  it('primes the spec and planning paths under the keys their reads use, and no other path', async () => {
+    const spec = { id: '003' };
+    const planning = { features: [] } as unknown as PlanningBody;
+    api.prime(specRoutes.spec('harbor', '003'), '"s1"', spec);
+    api.prime(PLANNING_URL, '"p9"', planning);
+
+    const specRead = api.spec('harbor', '003');
+    const specRequest = http.expectOne('/api/workspaces/harbor/specs/003');
+    expect(specRequest.request.headers.get('If-None-Match')).toBe('"s1"');
+    specRequest.flush(null, { status: 304, statusText: 'Not Modified' });
+    expect(await specRead).toEqual({ kind: 'ok', body: spec, etag: '"s1"', notModified: true });
+
+    const planningRead = api.planning('harbor');
+    const planningRequest = http.expectOne(PLANNING_URL);
+    expect(planningRequest.request.headers.get('If-None-Match')).toBe('"p9"');
+    planningRequest.flush(null, { status: 304, statusText: 'Not Modified' });
+    expect(await planningRead).toEqual({ kind: 'ok', body: planning, etag: '"p9"', notModified: true });
+
+    // Another workspace's dashboard was never primed: its read goes out without a validator.
+    void api.dashboard('quay');
+    expect(http.expectOne('/api/workspaces/quay/dashboard').request.headers.has('If-None-Match')).toBe(false);
   });
 });

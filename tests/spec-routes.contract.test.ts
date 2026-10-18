@@ -37,6 +37,12 @@ import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   ACTORS_STATUSES,
+  EVENTS_ALLOW,
+  EVENTS_PATH,
+  EVENTS_STATUSES,
+  LIVE_EVENT,
+  type LiveUpdate,
+  isLiveUpdate,
   type ActorMapping,
   type ActorsError,
   type ActorsRequest,
@@ -616,6 +622,30 @@ describe("spec 008 bodies (T81): the shared shapes of the writes and resources",
     expect(ACTORS_PATH).toBe("/api/actors");
     expect(ACTORS_ALLOW).toBe("GET, HEAD, PUT");
     expect([...ACTORS_STATUSES]).toEqual([200, 304, 400, 403, 405]);
+  });
+
+  test("the live update stream (spec 030 T4): one path beside the actors, GET only, the update frame's shape", () => {
+    expect(EVENTS_PATH).toBe("/api/events");
+    expect(EVENTS_ALLOW).toBe("GET");
+    expect([...EVENTS_STATUSES]).toEqual([200, 403, 405]);
+    expect(LIVE_EVENT).toBe("update");
+    const update: LiveUpdate = {
+      ws: "harbor",
+      views: [{ path: "/api/workspaces/harbor/dashboard", etag: '"abc"', body: { specs: [] } }],
+    };
+    expect(isLiveUpdate(update)).toBe(true);
+    expect(isLiveUpdate({ ws: "harbor", views: [] })).toBe(true);
+    expect(isLiveUpdate({ ws: "harbor", views: [{ path: "/api/workspaces", etag: '"e"', body: null }] })).toBe(true);
+    expect(isLiveUpdate(null)).toBe(false);
+    expect(isLiveUpdate([update])).toBe(false);
+    expect(isLiveUpdate({ views: [] })).toBe(false);
+    expect(isLiveUpdate({ ws: 1, views: [] })).toBe(false);
+    expect(isLiveUpdate({ ws: "harbor", views: {} })).toBe(false);
+    expect(isLiveUpdate({ ws: "harbor", views: [], extra: 1 })).toBe(false);
+    expect(isLiveUpdate({ ws: "harbor", views: [{ path: "/other/dashboard", etag: '"e"', body: {} }] })).toBe(false);
+    expect(isLiveUpdate({ ws: "harbor", views: [{ path: "/api/workspaces", body: {} }] })).toBe(false);
+    expect(isLiveUpdate({ ws: "harbor", views: [{ path: "/api/workspaces", etag: '"e"' }] })).toBe(false);
+    expect(isLiveUpdate({ ws: "harbor", views: [{ path: "/api/workspaces", etag: '"e"', body: {}, x: 1 }] })).toBe(false);
   });
 
 

@@ -32,8 +32,14 @@ import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   ACTORS_STATUSES,
+  EVENTS_ALLOW,
+  EVENTS_PATH,
+  EVENTS_STATUSES,
   GOLDEN_FAMILY,
   JSON_ANSWER,
+  LIVE_EVENT,
+  type LiveUpdate,
+  isLiveUpdate,
   type LibrarySearchResult,
   PROTOTYPE_ALLOW,
   PROTOTYPE_CSP,
@@ -1483,6 +1489,139 @@ describe('POST /api/__stub/bump (T68)', () => {
   });
 });
 
+/** One SSE frame: its comment line, or its `event:` name and `data:` text. */
+type SseFrame = { comment: string } | { event: string; data: string };
+
+/**
+ * Reads SSE frames off an open stream answer. `next` gives the next frame, `'end'` once the stream closed and
+ * `'timeout'` when nothing complete arrived within `ms`; `update` skips comment frames up to the next event.
+ */
+function sseReader(res: Response): {
+  next: (ms?: number) => Promise<SseFrame | 'end' | 'timeout'>;
+  update: (ms?: number) => Promise<SseFrame | 'end' | 'timeout'>;
+  cancel: () => Promise<void>;
+} {
+  const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let pending: ReturnType<typeof reader.read> | null = null;
+  const parse = (raw: string): SseFrame => {
+    const lines = raw.split('\n');
+    const comment = lines.find((line) => line.startsWith(':'));
+    if (comment !== undefined) return { comment: comment.slice(1).trim() };
+    const field = (name: string): string[] => lines.filter((line) => line.startsWith(`${name}:`)).map((line) => line.slice(name.length + 1).trimStart());
+    return { event: field('event')[0] ?? 'message', data: field('data').join('\n') };
+  };
+  const next = async (ms = 2000): Promise<SseFrame | 'end' | 'timeout'> => {
+    for (;;) {
+      const at = buffer.indexOf('\n\n');
+      if (at !== -1) {
+        const raw = buffer.slice(0, at);
+        buffer = buffer.slice(at + 2);
+        return parse(raw);
+      }
+      // A read that lost the race stays pending and is awaited by the next call, so no chunk is dropped.
+      const reading = (pending ??= reader.read());
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<'timeout'>((resolve) => {
+        timer = setTimeout(() => resolve('timeout'), ms);
+      });
+      const got = await Promise.race([reading, late]);
+      clearTimeout(timer);
+      if (got === 'timeout') return 'timeout';
+      pending = null;
+      if (got.done) return 'end';
+      buffer += decoder.decode(got.value, { stream: true });
+    }
+  };
+  const update = async (ms = 2000): Promise<SseFrame | 'end' | 'timeout'> => {
+    for (;;) {
+      const frame = await next(ms);
+      if (typeof frame === 'string' || !('comment' in frame)) return frame;
+    }
+  };
+  return { next, update, cancel: () => reader.cancel() };
+}
+
+describe('GET /api/events (spec 030, T17)', () => {
+  const HARBOR = '/api/workspaces/harbor/dashboard';
+  type Kpis = { kpis: { claims: { closed: number } } };
+
+  test('answers 200 text/event-stream with no-cache and opens with a ": ping" comment; 403 foreign, 405 with Allow: GET', async () => {
+    const res = await ask(EVENTS_PATH, { session: 'events-head' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('text/event-stream');
+    expect(res.headers.get('Cache-Control')).toBe('no-cache');
+    const sse = sseReader(res);
+    expect(await sse.next()).toEqual({ comment: 'ping' });
+    await sse.cancel();
+
+    for (const method of ['POST', 'PUT', 'DELETE', 'HEAD']) {
+      const wrong = await ask(EVENTS_PATH, method === 'HEAD' || method === 'DELETE' ? { method } : { method, body: '{}' });
+      expect({ method, status: wrong.status, allow: wrong.headers.get('Allow') }).toEqual({ method, status: 405, allow: EVENTS_ALLOW });
+      // HEAD answers without a body, as every JSON answer of the stub does.
+      if (method !== 'HEAD') expect(await wrong.json()).toEqual({ error: 'method-not-allowed' });
+    }
+    const foreign = await call(api, new Request(`${ORIGIN}${EVENTS_PATH}`, { headers: { Host: 'evil.example' } }));
+    expect(foreign.status).toBe(403);
+    expect(await foreign.json()).toEqual({ error: 'forbidden' });
+    expect((await ask(EVENTS_PATH, { headers: { Origin: 'https://evil.example' } })).status).toBe(403);
+  });
+
+  test('a bump pushes one update frame to every open stream of the session; each view is the stub GET answer, byte for byte', async () => {
+    const session = 'events-bump';
+    const other = 'events-bystander';
+    const closed = ((await (await ask(HARBOR, { session })).json()) as Kpis).kpis.claims.closed;
+    const first = sseReader(await ask(EVENTS_PATH, { session }));
+    const second = sseReader(await ask(EVENTS_PATH, { session }));
+    const bystander = sseReader(await ask(EVENTS_PATH, { session: other }));
+    for (const sse of [first, second, bystander]) expect(await sse.next()).toEqual({ comment: 'ping' });
+
+    expect((await ask('/api/__stub/bump?ws=harbor', { method: 'POST', session })).status).toBe(204);
+
+    for (const sse of [first, second]) {
+      const frame = await sse.update();
+      if (typeof frame === 'string' || 'comment' in frame) throw new Error(`no update frame: ${JSON.stringify(frame)}`);
+      expect(frame.event).toBe(LIVE_EVENT);
+      const update = JSON.parse(frame.data) as unknown;
+      expect(isLiveUpdate(update)).toBe(true);
+      const { ws, views } = update as LiveUpdate;
+      expect(ws).toBe('harbor');
+      const paths = views.map((view) => view.path);
+      expect(paths.slice(0, 2)).toEqual([HARBOR, workspaceRoutes.planning('harbor')]);
+      expect(paths).toContain(specRoutes.spec('harbor', '002'));
+      expect(paths.slice(2).every((path) => /^\/api\/workspaces\/harbor\/specs\/\d{3}$/.test(path))).toBe(true);
+      expect(new Set(paths).size).toBe(paths.length);
+      for (const view of views) {
+        const res = await ask(view.path, { session });
+        expect({ path: view.path, status: res.status, etag: res.headers.get('ETag') }).toEqual({ path: view.path, status: 200, etag: view.etag });
+        expect({ path: view.path, body: (await res.json()) as unknown }).toEqual({ path: view.path, body: view.body });
+      }
+      expect((views[0]?.body as Kpis).kpis.claims.closed).toBe(closed + 1);
+    }
+    // Another session's stream sees no bump of this one: nothing but heartbeats.
+    expect(await bystander.update(300)).toBe('timeout');
+
+    // The reset closes that session's streams, and only that session's.
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    expect(await first.update()).toBe('end');
+    expect(await second.update()).toBe('end');
+    expect(await bystander.update(300)).toBe('timeout');
+    expect((await ask(RESET_PATH, { method: 'POST', session: other })).status).toBe(204);
+    expect(await bystander.update()).toBe('end');
+  });
+
+  test('a bump with no open stream answers 204 as before; a stream opened after it carries no frame for it', async () => {
+    const session = 'events-late';
+    expect((await ask('/api/__stub/bump?ws=lantern', { method: 'POST', session })).status).toBe(204);
+    const sse = sseReader(await ask(EVENTS_PATH, { session }));
+    expect(await sse.next()).toEqual({ comment: 'ping' });
+    expect(await sse.update(300)).toBe('timeout');
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    expect(await sse.update()).toBe('end');
+  });
+});
+
 describe('PUT /api/__stub/workflow (T151)', () => {
   const PLANNING = '/api/workspaces/harbor/planning';
   const HARBOR_FEATURE = ['plan', 'review', 'tasks', 'build', 'code-review', 'close', 'done'];
@@ -1864,6 +2003,21 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       [ACTORS_PATH, { method: 'DELETE' }],
     ]);
     expect(actors).toEqual({ statuses: [...ACTORS_STATUSES], allow: [ACTORS_ALLOW] });
+    // The live update stream (spec 030): its 200 stays open, so each answer's body is cancelled after its status.
+    const events = new Set<number>();
+    const eventsAllow = new Set<string>();
+    for (const [path, init] of [
+      [EVENTS_PATH, { session: 't030-events-status' }],
+      [EVENTS_PATH, { headers: evil }],
+      [EVENTS_PATH, { method: 'POST', body: '{}' }],
+      [EVENTS_PATH, { method: 'HEAD' }],
+    ] satisfies Case[]) {
+      const res = await ask(path, init);
+      events.add(res.status);
+      if (res.status === 405) eventsAllow.add(res.headers.get('Allow') ?? '');
+      await res.body?.cancel();
+    }
+    expect({ statuses: [...events].sort((a, b) => a - b), allow: [...eventsAllow] }).toEqual({ statuses: [...EVENTS_STATUSES], allow: [EVENTS_ALLOW] });
   });
 });
 
