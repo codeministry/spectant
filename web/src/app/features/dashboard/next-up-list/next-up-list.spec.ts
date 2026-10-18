@@ -1,12 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import empty from '../../../../../../core/fixtures/empty-master.golden.json';
+import guided from '../../../../../../core/fixtures/guidance.golden.json';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import lantern from '../../../../../../core/fixtures/lantern.golden.json';
+import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import type { DashboardView as DashboardModel, DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
-import { NextUpList } from './next-up-list';
+import { NEXT_UP_SHOWN, NextUpList } from './next-up-list';
 
 const HARBOR = harbor as unknown as DashboardModel;
 const LANTERN = lantern as unknown as DashboardModel;
@@ -158,4 +160,70 @@ describe('NextUpList reason line (T137, ISC-122.3)', () => {
       }
     });
   }
+});
+
+// Spec 020 · T25 · ISC-240: with guidance, Next up holds `guidance.next` only, in its order, each entry with its
+// catalogue sentence in full (no clamp), the ring of "open" instead of the hourglass, the entry's command as its chip
+// and no "Waits on you" mark; the specs that wait on you are not in it.
+describe('NextUpList reads guidance.next (spec 020, T25, ISC-240)', () => {
+  const GUIDED = guided as unknown as DashboardModel & { guidance: Guidance };
+
+  async function renderGuided(model: DashboardModel & { guidance: Guidance }, form: 'card' | 'rail'): Promise<HTMLElement> {
+    const fixture = TestBed.createComponent(NextUpList);
+    fixture.componentRef.setInput('specs', model.specs);
+    fixture.componentRef.setInput('ids', model.nextUp);
+    fixture.componentRef.setInput('guidance', model.guidance);
+    fixture.componentRef.setInput('form', form);
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  const sentence = (entry: GuidanceEntry): string =>
+    entry.reason.key === 'phrase'
+      ? entry.reason.phrase
+      : TestBed.inject(TranslocoService).translate(`guidance.reason.${entry.reason.key}`, entry.reason.values);
+
+  for (const form of ['card', 'rail'] as const) {
+    it(`lists guidance.next in its order with the whole sentence, the ring and the entry's chip, no mark (${form})`, async () => {
+      const root = await renderGuided(GUIDED, form);
+      const next = GUIDED.guidance.next.filter((e) => e.item === 'spec');
+      expect(next.length).toBeGreaterThan(0);
+      expect(entries(root)).toEqual(next.map((e) => e.spec));
+      for (const id of GUIDED.guidance.waits.map((e) => e.spec)) {
+        if (!next.some((e) => e.spec === id)) expect(root.querySelector(`[data-next-entry="${id}"]`), id).toBeNull();
+      }
+      for (const entry of next) {
+        const el = root.querySelector(`[data-next-entry="${entry.spec}"]`) as HTMLElement;
+        const guide = el.querySelector('[data-next-guide]') as HTMLElement;
+        expect(guide, entry.spec).not.toBeNull();
+        expect(el.querySelector('ui-reason')).toBeNull();
+        const text = guide.querySelector('[data-next-sentence]')?.textContent ?? '';
+        expect(text, entry.spec).toBe(sentence(entry));
+        expect(text.startsWith('guidance.')).toBe(false);
+        expect(guide.querySelector('.visually-hidden')).toBeNull();
+        expect(guide.querySelector('ui-glyph')?.getAttribute('data-shape')).toBe('ring');
+        expect(guide.querySelector('.sentence ui-icon')).toBeNull();
+        expect(guide.querySelector('ui-command-chip code')?.textContent).toBe(entry.command);
+        expect(el.querySelectorAll('ui-command-chip').length).toBe(1);
+        expect(el.querySelector('[data-waits-mark]')).toBeNull();
+      }
+    });
+  }
+
+  it('folds the entries of guidance.next past the third behind "Show all n", in guidance order', async () => {
+    const extra = GUIDED.specs.filter((r) => !GUIDED.guidance.next.some((e) => e.spec === r.id)).slice(0, 2);
+    const template = GUIDED.guidance.next[0];
+    const next = [...GUIDED.guidance.next, ...extra.map((r) => ({ ...template, spec: r.id, command: `/spec-plan ${r.id}` }))];
+    const root = await renderGuided({ ...GUIDED, guidance: { ...GUIDED.guidance, next } }, 'card');
+    expect(entries(root.querySelector('[data-next-primary]') as HTMLElement)).toEqual(next.slice(0, NEXT_UP_SHOWN).map((e) => e.spec));
+    expect(root.querySelector('[data-next-count]')?.textContent.trim()).toBe(String(next.length));
+    expect(entries(root.querySelector('[data-show-all]') as HTMLElement)).toEqual(next.slice(NEXT_UP_SHOWN).map((e) => e.spec));
+  });
+
+  it('says nothing is ready to build when guidance.next is empty, even though nextUp names specs', async () => {
+    const root = await renderGuided({ ...GUIDED, guidance: { ...GUIDED.guidance, next: [] } }, 'rail');
+    expect(GUIDED.nextUp.length).toBeGreaterThan(0);
+    expect(entries(root)).toEqual([]);
+    expect(root.querySelector('[data-next-empty]')).not.toBeNull();
+  });
 });

@@ -82,6 +82,11 @@
  *   log, never written by hand: `none` drops its run-start line, so 003 reads `open` with `/spec-tasks 003`;
  *   `running` is the log as it is, every body beacon's golden (003 `running` since 14:52); `ended` appends its
  *   `run-end` with outcome `ok`, so 003 reads the state its files give, which no file change moves: `open` again.
+ * - `X-Spectant-Stub-Waits: 0 | 1 | 7` (spec 020, T15) picks how many entries wait on the principal in the first
+ *   workspace column of the start (`STUB_WAITS`; absent: the goldens as they are), each body core's own output:
+ *   `0` lists lantern alone (its golden holds no waiting entry), `1` lists beacon rebuilt by core without its folder
+ *   `009-timezone-labels` (`runVariant`; only 004's review waits) before lantern, `7` lists harbor (its golden's
+ *   seven) before lantern. A 400 beside `X-Spectant-Stub-Locks: runs`, `-Worktrees: on`, `-Edges` or `-Midnight: on`.
  * - `X-Spectant-Stub-Write: ok | stale | locked` scripts the two writes (absent: `ok`). `ok` answers as the server
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
  *   `locked` always 423 `Locked`. The board writes (transition, allocate) honour it the same way.
@@ -1388,8 +1393,17 @@ type RunVariant = { dashboard: { model: unknown; kpis: unknown }; planning: Plan
  * locks and the spec's edges (as the claims route reads them) and the live frame; timeline, frames and docs read no run
  * line and stay the golden's.
  */
-function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRunState, withReleases: (text: string) => string = (text) => text): RunVariant {
-  const read = edge.readTreeAt(base.root);
+function runVariant(
+  core: Core,
+  edge: EdgeCore,
+  base: TreeGoldens,
+  state: StubRunState,
+  withReleases: (text: string) => string = (text) => text,
+  without: ReadonlySet<string> = new Set(),
+): RunVariant {
+  const onDisk = edge.readTreeAt(base.root);
+  // A folder left out (the waits variant `1`, spec 020 T15) is read as if the tree had none.
+  const read = { ...onDisk, specs: onDisk.specs.filter((f) => !without.has(f.folder)) };
   // The ended run wrote 003's tasks.md; the other variants read the tree as it is.
   const withTasks = (f: SpecFiles): SpecFiles => (state === 'ended' && f.folder === STUB_RUN.folder ? { ...f, texts: { ...f.texts, tasks: STUB_RUN_TASKS } } : f);
   const input: TreeInput = { ...read, specs: read.specs.map(withTasks) };
@@ -1413,7 +1427,7 @@ function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRu
   const edges = edge.resolveEdges({ specs, archived, constitution }, []).edges;
   const tree: TreeGoldens = {
     ...base,
-    specs: base.specs.map((golden): SpecGoldens => {
+    specs: base.specs.filter((golden) => !without.has(golden.folder)).map((golden): SpecGoldens => {
       const files = all.get(golden.folder);
       if (files === undefined) throw new Error(`stub-api: ${base.golden} has no folder ${golden.folder}`);
       const id = golden.folder.slice(0, 3);
@@ -1432,6 +1446,29 @@ function runVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: StubRu
   };
   return { dashboard: { model, kpis: (model as { kpis: unknown }).kpis }, planning, tree };
 }
+
+// ---- waiting-entry variants (spec 020, T15) -----------------------------------------------------------------------
+
+/**
+ * The waits variants (spec 020, T15, ISC-238): `X-Spectant-Stub-Waits` picks the workspace list, so the start's first
+ * column holds 0, 1 or 7 entries in `guidance.waits`. Every body is core's: lantern's and harbor's goldens as they are,
+ * and for `1` beacon rebuilt by core (`runVariant`, its log as it is) without `STUB_WAITS.dropped`, whose close step
+ * is beacon's second waiting entry; 004's review is then the only one.
+ */
+export const WAITS_STATES = ['0', '1', '7'] as const;
+export type StubWaitsState = (typeof WAITS_STATES)[number];
+export const WAITS_HEADER = 'X-Spectant-Stub-Waits';
+
+const LANTERN: StubWorkspace = { slug: 'lantern', name: 'lantern', golden: 'lantern' };
+export const STUB_WAITS = {
+  workspaces: {
+    '0': [LANTERN],
+    '1': [STUB_RUN.workspace, LANTERN],
+    '7': [{ slug: 'harbor', name: 'harbor', golden: 'harbor' }, LANTERN],
+  } satisfies Record<StubWaitsState, readonly StubWorkspace[]>,
+  /** The beacon folder the `1` variant leaves out. */
+  dropped: '009-timezone-labels',
+} as const;
 
 const SPEC_FOLDER = /^(\d{3})-(.+)$/;
 const SPEC_ID = /^\d{3}$/;
@@ -1728,6 +1765,33 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     runViews.set(key, out);
     return out;
   };
+  // The waits variants (spec 020, T15), each built on the first request that asks for it and then held.
+  const waitsViews = new Map<StubWaitsState, EdgeView>();
+  /** The waits variant a request asks for (`X-Spectant-Stub-Waits`), null without the header. */
+  const waitsViewOf = (req: Request): EdgeView | null => {
+    const state = req.headers.get(WAITS_HEADER);
+    if (state === null || !isOneOf(WAITS_STATES, state)) return null;
+    const held = waitsViews.get(state);
+    if (held) return held;
+    const from = STUB_WAITS.workspaces[state];
+    const out: EdgeView = { dashboards: new Map(), trees: new Map(), plannings: new Map(), views: new Map() };
+    for (const w of from) {
+      if (state === '1' && w.slug === STUB_RUN.workspace.slug) {
+        runBase ??= readTree(core, dir, STUB_RUN.workspace.golden);
+        const variant = runVariant(core, edgeCore, runBase, 'running', undefined, new Set([STUB_WAITS.dropped]));
+        out.dashboards.set(w.slug, variant.dashboard);
+        out.trees.set(w.slug, variant.tree);
+        out.plannings.set(w.slug, variant.planning);
+      } else {
+        out.dashboards.set(w.slug, dashboards.get(w.slug) ?? readDashboard(dir, w.golden));
+        out.trees.set(w.slug, trees.get(w.slug) ?? readTree(core, dir, w.golden));
+        out.plannings.set(w.slug, plannings.get(w.slug) ?? readPlanning(dir, w.golden));
+      }
+    }
+    for (const s of STUB_STATES) out.views.set(s, view(s, false, out, from));
+    waitsViews.set(state, out);
+    return out;
+  };
   /** Each workspace's catalog, built on first read (core's `readCatalog` is async) and then held: one per stub. */
   const catalogs = new Map<string, Promise<StubCatalog>>();
   const catalogOf = (slug: string, tree: TreeGoldens): Promise<StubCatalog> => {
@@ -1785,6 +1849,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return found;
   };
   const viewOf = (req: Request, state: StubState): StateView => {
+    const waited = waitsViewOf(req);
+    if (waited) return waited.views.get(state) ?? view(state, false, waited);
     const ran = runViewOf(req);
     if (ran) return ran.views.get(state) ?? view(state, false, ran, runWorkspaces);
     if (midnightOn(req)) return viewsMidnight.get(state) ?? view(state, false, { dashboards, trees: treesMidnight });
@@ -1955,7 +2021,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
    * when one was sent (the counts stay the tree's: the specs' stages are not re-derived).
    */
   const planningOf = (req: Request, slug: string): PlanningModel | undefined => {
-    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? ((runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug);
+    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? ((waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug);
     const workflow = workflows.get(sessionOf(req))?.get(slug);
     return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
   };
@@ -1993,7 +2059,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    const source = (runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
+    const source = (waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
     return workspaceJson(req, 200, bumpDashboard(source.get(slug)?.model, bumpsOf(req, slug)), activityHash);
@@ -2758,6 +2824,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (run !== null && locks !== 'runs') return settingsError(400, { error: 'stub-run-without-runs', run, locks });
     if (locks === 'runs' && (worktrees === 'on' || edges !== 'off' || midnight === 'on')) {
       return settingsError(400, { error: 'stub-runs-with-overlay', locks, worktrees, edges, midnight });
+    }
+    const waits = req.headers.get(WAITS_HEADER);
+    if (waits !== null && !isOneOf(WAITS_STATES, waits)) return settingsError(400, { error: 'unknown-stub-waits', waits, states: [...WAITS_STATES] });
+    if (waits !== null && (locks === 'runs' || worktrees === 'on' || edges !== 'off' || midnight === 'on')) {
+      return settingsError(400, { error: 'stub-waits-with-overlay', waits, locks, worktrees, edges, midnight });
     }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
     // After the header checks: a stream's headers are the ones its synthetic reads go out with.

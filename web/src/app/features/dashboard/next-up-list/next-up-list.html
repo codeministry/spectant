@@ -25,16 +25,16 @@
 <ng-template #body>
   @if (entries().length > 0) {
     <ol class="entries" data-next-primary>
-      @for (row of entries(); track row.id) {
-        <li><app-next-up-entry [row]="row" [form]="form()" [labels]="stageLabels()" [guidance]="guidance()" /></li>
+      @for (item of entries(); track item.row.id) {
+        <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [form]="form()" [labels]="stageLabels()" [guidance]="guidance()" /></li>
       }
     </ol>
     @if (more().length > 0) {
       <ui-disclosure class="fold" data-show-all [(open)]="showAll">
         <span uiDisclosureSummary>{{ 'nextUp.showAll' | transloco: { count: total() } }}</span>
         <ol class="entries">
-          @for (row of more(); track row.id) {
-            <li><app-next-up-entry [row]="row" [form]="form()" [labels]="stageLabels()" [guidance]="guidance()" /></li>
+          @for (item of more(); track item.row.id) {
+            <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [form]="form()" [labels]="stageLabels()" [guidance]="guidance()" /></li>
           }
         </ol>
       </ui-disclosure>
