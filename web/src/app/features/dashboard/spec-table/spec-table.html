@@ -105,6 +105,7 @@
             [titles]="titles()"
             [mark]="guide ? (guide.waits ? 'waits' : 'next') : null"
             [stageLabels]="stageLabels()"
+            [density]="density()"
             [descriptionExpanded]="moreOpen().has(row.id)"
             (descriptionOverflow)="setOverflow(row.id, $event)"
           >
@@ -139,7 +140,7 @@
               [style.position-anchor]="'--desc-' + row.id"
               [attr.data-more]="row.id"
               [attr.aria-expanded]="moreOpen().has(row.id)"
-              [attr.aria-controls]="'desc-' + row.id"
+              [attr.aria-controls]="(descShown(row) ? 'desc-' : 'rl-') + row.id"
               [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
               (click)="toggleMore(row.id)"
             >

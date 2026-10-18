@@ -9,6 +9,7 @@ import { UiPriority } from '../../../shared/ui/priority/priority';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from '../../../shared/ui/type-glyph/type-glyph';
 import { UiWaitsChip } from '../../../shared/ui/waits-chip/waits-chip';
+import type { Density } from '../../../core/settings.service';
 import { stageIndex } from '../../spec/dashboard/dashboard-model';
 import { PHASE_TONES, type SpecTableRow } from './spec-table-model';
 
@@ -26,11 +27,14 @@ const AGENT_KEY = 'specs.agentWorking';
  * link to the blocker, lifted above the stretched link. The title cuts first, the chip never; the partial scope lives
  * only in the chip's accessible name (no `.meta` in the list).
  *
- * Forms (spec 021, design § P3 heights): `normal` reads the `specs` container the list declares. From 640 px it is one
+ * Forms (spec 021, design § P3 heights): the row reads the `specs` container the list declares. From 640 px it is one
  * 48 px line, `id | title · description | mark | agent | priority | mini track | phase | meter + a/b`; below 640 px two
  * lines, `id | title | a/b` over `mark · phase · priority` (without guidance `phase · priority · description`),
- * without meter bar and track. `dense`
- * is the overview column's single 48 px line without description, agent dot and phase chip.
+ * without meter bar and track.
+ *
+ * Density (spec 021, ISC-254): the list resolves it, the stored setting or the view's `?density=`. `compact` drops the
+ * description and nothing else: at wide the title stands alone on its line, below 640 px line 2 is `mark · phase ·
+ * priority`. The guidance reason stays the row link's description either way (R1).
  */
 @Component({
   selector: 'app-spec-row',
@@ -41,7 +45,8 @@ const AGENT_KEY = 'specs.agentWorking';
   host: {
     '[attr.data-density]': 'density()',
     '[attr.data-mark]': 'mark()',
-    '[attr.data-desc]': "row().description ? '' : null",
+    '[attr.data-desc]': "description() ? '' : null",
+    '[attr.data-overflow]': "overflowing() ? '' : null",
     '[attr.data-expanded]': "descriptionExpanded() ? '' : null",
   },
 })
@@ -52,7 +57,10 @@ export class SpecRow {
   readonly row = input.required<SpecTableRow>();
   /** The five stage labels, translated once by the list. */
   readonly stageLabels = input.required<readonly string[]>();
-  readonly density = input<'normal' | 'dense'>('normal');
+  /** The resolved density (ISC-254): `compact` shows no description. */
+  readonly density = input<Density>('comfortable');
+  /** The description the row shows: the model's (ISC-249), none at `compact` density. */
+  protected readonly description = computed(() => (this.density() === 'compact' ? null : this.row().description));
   /**
    * The row's guidance mark (spec 021, R1): `waits` shows the visible "Waits on you" chip, `next` the open ring, null
    * neither. The list derives it from the spec's own guidance entry; the entry's reason is the row link's description.
@@ -72,10 +80,13 @@ export class SpecRow {
   /** The title's clamp sits on the list's projected row link (T24). */
   private readonly titleClamps = contentChildren(UiClamp, { descendants: true });
 
+  /** Title or description is cut; without a description the title line then keeps room for the list's "more…". */
+  protected readonly overflowing = computed(() => [...this.titleClamps(), ...this.clamps()].some((clamp) => clamp.overflows()));
+
   constructor() {
     let last = false;
     effect(() => {
-      const overflows = [...this.titleClamps(), ...this.clamps()].some((clamp) => clamp.overflows());
+      const overflows = this.overflowing();
       if (overflows !== last) this.descriptionOverflow.emit((last = overflows));
     });
   }

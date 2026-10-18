@@ -1,7 +1,10 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
+import { type Density, SETTINGS_URL, SettingsService } from '../../../core/settings.service';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
@@ -639,5 +642,83 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     await fixture.whenStable();
     expect(text(more)).toBe('Less');
     expect(more?.getAttribute('aria-label')).toBe('Less 002 Spec 002');
+  });
+});
+
+// Spec 021 (T48, ISC-254): the row density comes from the stored setting; `?density=` overrides it for this view only
+// and never writes the setting. Compact drops the description: the title stands alone at wide, and line 2 of the
+// compact tier carries only mark, phase and priority.
+describe('SpecTable density (spec 021, T48, ISC-254)', () => {
+  async function renderWith(url: string, stored: Density) {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const settings = TestBed.inject(SettingsService);
+    const loaded = settings.load();
+    http.expectOne((r) => r.method === 'GET' && r.url === SETTINGS_URL).flush({ density: stored });
+    await loaded;
+    await TestBed.inject(Router).navigateByUrl(url);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(BODY));
+    fixture.componentRef.setInput('archive', readArchiveRows(BODY));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const row = (id: string) => host.querySelector<HTMLElement>(`app-spec-row:has([data-spec-row="${id}"])`);
+    const writes = () => http.match((r) => r.url === SETTINGS_URL && r.method !== 'GET');
+    return { row, writes, settings };
+  }
+
+  it('a comfortable setting shows the description where it differs from the title', async () => {
+    const { row, writes } = await renderWith('/', 'comfortable');
+    expect(row('002')?.getAttribute('data-density')).toBe('comfortable');
+    expect(text(row('002')?.querySelector('.d'))).toBe('Serves the dashboard.');
+    expect(row('002')?.hasAttribute('data-desc')).toBe(true);
+    expect(row('002')?.querySelector('a.row-link')?.getAttribute('aria-describedby')).toContain('desc-002');
+    expect(row('003')?.querySelector('.d')).toBeNull();
+    expect(writes()).toEqual([]);
+  });
+
+  it('a compact setting drops the description: the title stands alone and the link names no description', async () => {
+    const { row, writes } = await renderWith('/', 'compact');
+    const compact = row('002');
+    expect(compact?.getAttribute('data-density')).toBe('compact');
+    expect(compact?.querySelector('.d')).toBeNull();
+    expect(compact?.hasAttribute('data-desc')).toBe(false);
+    expect(compact?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').not.toContain('desc-002');
+    expect(text(compact?.querySelector('a.row-link'))).toBe('Spec 002');
+    // Only the description leaves: agent dot, phase chip, priority, track and a/b stay.
+    expect(compact?.querySelector('.rtrack .agent-dot')).not.toBeNull();
+    expect(text(compact?.querySelector('.rtrack ui-chip.phase'))).toBe('building');
+    expect(compact?.querySelector('.rtrack ui-priority')).not.toBeNull();
+    expect(text(compact?.querySelector('.rmeter .frac'))).toBe('25/30');
+    expect(writes()).toEqual([]);
+  });
+
+  it('?density=compact overrides a comfortable setting for this view and writes no setting', async () => {
+    const { row, writes, settings } = await renderWith('/?density=compact', 'comfortable');
+    expect(row('002')?.getAttribute('data-density')).toBe('compact');
+    expect(row('002')?.querySelector('.d')).toBeNull();
+    expect(settings.settings().density).toBe('comfortable');
+    expect(writes()).toEqual([]);
+  });
+
+  it('?density=comfortable overrides a compact setting; an unknown value falls back to the setting', async () => {
+    const first = await renderWith('/?density=comfortable', 'compact');
+    expect(first.row('002')?.getAttribute('data-density')).toBe('comfortable');
+    expect(text(first.row('002')?.querySelector('.d'))).toBe('Serves the dashboard.');
+    TestBed.resetTestingModule();
+    const second = await renderWith('/?density=dense', 'compact');
+    expect(second.row('002')?.getAttribute('data-density')).toBe('compact');
+    expect(second.writes()).toEqual([]);
   });
 });

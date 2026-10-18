@@ -14,9 +14,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { SettingsService } from '../../../core/settings.service';
+import { type Density, isDensity, SettingsService } from '../../../core/settings.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { OpenState } from '../../../shared/open-state';
@@ -103,6 +103,15 @@ export class SpecTable {
   private readonly transloco = inject(TranslocoService);
   private readonly settings = inject(SettingsService);
   private readonly shell = inject(ShellState);
+  private readonly params = toSignal(inject(ActivatedRoute).queryParamMap, { requireSync: true });
+  /**
+   * The rows' density (spec 021, ISC-254): `?density=` for this view, else the stored setting, as on the board; an
+   * unknown value falls back to the setting. The list never writes the setting.
+   */
+  protected readonly density = computed<Density>(() => {
+    const param = this.params().get('density');
+    return isDensity(param) ? param : this.settings.settings().density;
+  });
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   readonly ws = input.required<string>();
@@ -237,11 +246,16 @@ export class SpecTable {
 
   /**
    * The row link's description (spec 021, R1): the visible "Waits on you" mark, the reason (`why-<id>`, hidden) and the
-   * description line, each when the row has it; null when it has none.
+   * description line, each when the row shows it (no description line at compact density); null when it has none.
    */
   protected describedBy(row: SpecTableRow, waits: boolean, why: boolean): string | null {
-    const ids = [waits ? `mark-${row.id}` : '', why ? `why-${row.id}` : '', row.description ? `desc-${row.id}` : ''].filter(Boolean);
+    const ids = [waits ? `mark-${row.id}` : '', why ? `why-${row.id}` : '', this.descShown(row) ? `desc-${row.id}` : ''].filter(Boolean);
     return ids.length > 0 ? ids.join(' ') : null;
+  }
+
+  /** The row renders its description line: it has one and the density is not `compact` (ISC-254). */
+  protected descShown(row: SpecTableRow): boolean {
+    return row.description !== null && this.density() !== 'compact';
   }
 
   /** The row link's tooltip: the title, and the reason on its own line when the row has one (R1). */
