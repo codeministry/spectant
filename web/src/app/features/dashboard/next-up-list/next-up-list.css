@@ -1,13 +1,14 @@
 /*
  * Next up (T64, ported in T90 from the prototype's `styles.css`: `.rail-block > .eyebrow` l.415, `[data-ui="next-up-list"]`
- * l.353, `.next-row` l.480-481). Tokens only; spacing on the 8 px scale.
+ * l.353, `.next-row` l.480-481). Tokens only; spacing on the 8 px scale. Spec 021 (T79, P3 heights): both forms are one
+ * card of rows under hairlines.
  */
 :host {
   display: block;
   min-inline-size: 0;
 }
 
-/* Rail form: the eyebrow heading with its count on the right, 12 px above the cards. */
+/* Rail form: the eyebrow heading with its count on the right, 12 px above the card. */
 .eyebrow {
   display: flex;
   justify-content: space-between;
@@ -18,6 +19,11 @@
 
 .eyebrow h2 {
   margin: 0;
+}
+
+/* Card form: 8 px under the section header instead of its 16 (spec 021, T79). */
+ui-section-header {
+  margin-block-end: var(--space-2);
 }
 
 .count {
@@ -31,18 +37,9 @@
   list-style: none;
 }
 
-/* Card form: next-rows inside one card, separated by hairlines. */
-:host([data-form='card']) .entries > li + li {
+/* The rows sit inside one card, separated by hairlines. */
+.entries > li + li {
   border-block-start: 1px solid var(--line);
-}
-
-/* Rail form: one next-card per entry, 16 px apart. */
-:host([data-form='rail']) .entries {
-  gap: 16px;
-}
-
-:host([data-form='rail']) .fold .entries {
-  padding-block-start: 16px;
 }
 
 /* Prototype `[data-ui=empty-state].small`: start-aligned, 24 × 16 px inset, 8 px gaps, at most 520 px wide. */
@@ -66,15 +63,15 @@
   color: var(--muted);
 }
 
-/* Card form: the card has no padding (the rows carry their own), so the fold and the empty line inset themselves 12 px
-   like a next-row; the folded rows step back out to the card edges under a hairline. */
-:host([data-form='card']) .fold {
+/* The card has no padding (the rows carry their own), so the fold insets itself 12 px like a row; the folded rows step
+   back out to the card edges under a hairline. */
+.fold {
   display: block;
   padding-inline: 12px;
   border-block-start: 1px solid var(--line);
 }
 
-:host([data-form='card']) .fold .entries {
+.fold .entries {
   margin-inline: -12px;
   border-block-start: 1px solid var(--line);
 }

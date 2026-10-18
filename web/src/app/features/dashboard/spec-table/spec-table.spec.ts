@@ -5,6 +5,7 @@ import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readSpecRows } from './spec-table-model';
 
@@ -113,11 +114,39 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
     expect(rowA.querySelector('.rtrack .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
     expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
-    expect(text(rowA.querySelector('.rtrack ui-chip'))).toBe('building');
+    expect(text(rowA.querySelector('.rtrack ui-chip.phase'))).toBe('building');
     expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
     expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(rowB.querySelector('.rtitle .d')).toBeNull();
     expect(rowB.querySelector('.agent-dot')).toBeNull();
+  });
+
+  // Spec 021 · T73 · ISC-246.1 (design § P3 heights): at wide the row is one line, the description inline behind the
+  // title in the same cell, then mark, agent dot, priority, mini track, phase, then meter + a/b; nothing under the row.
+  it('lays the wide row out as one line: id | title · description | mark, agent, priority, track, phase | meter (T73)', async () => {
+    const { host } = await render();
+    const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
+    const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rtrack', 'rmeter']);
+    expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
+    expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
+    expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ragent', 'rprio', 'ui-stage-track', 'phase']);
+    expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(true);
+    expect(rowB.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(false);
+    expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
+    for (const row of [rowA, rowB]) {
+      expect([...row.children].filter((c) => !c.classList.contains('row-more')).map((c) => c.tagName.toLowerCase())).toEqual(['app-spec-row']);
+    }
+  });
+
+  // Spec 021 · T80: the sort control follows the counter chips in the DOM (and so in focus order), before the filters.
+  it('puts the sort control right behind the counter chips, before the filter chips (T80)', async () => {
+    const { host } = await render();
+    const head = host.querySelector('.t-head') as HTMLElement;
+    const sort = head.querySelector('[data-control="sort"]') as HTMLElement;
+    expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
+    const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
+    expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {
@@ -259,31 +288,35 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     }
   });
 
-  // spec 024 (principal 2026-10-13, "Hybrid"): only a waiting spec's row carries its reason, without the command chip,
-  // which moved to the rail (design B23/B24); ISC-122.3's phrase is unchanged.
-  it("puts a waiting row's nextReason verbatim in ui-reason outside the row link, and no reason in any other row", async () => {
+  // spec 024 (principal 2026-10-13, "Hybrid"): only a waiting spec's row carries its reason, without the command chip;
+  // ISC-122.3's phrase is unchanged. Spec 021 (R1): the phrase is the row link's description, no visible line.
+  it("makes a waiting row's nextReason verbatim the row link's description, no line of its own, and no reason elsewhere", async () => {
     const host = await renderHarbor();
     let waiting = 0;
+    expect(host.querySelector('ui-reason, app-spec-row-guide, ui-command-chip')).toBeNull();
     for (const spec of GOLDEN.specs) {
-      const reason = host.querySelector<HTMLElement>(`ui-reason[data-reason="${spec.id}"]`);
+      const link = host.querySelector<HTMLElement>(`[data-spec-row="${spec.id}"]`);
+      const reason = host.querySelector<HTMLElement>(`#why-${spec.id}`);
       if (!WAITING_STAGES.has(spec.stage as Stage)) {
         expect(reason, spec.id).toBeNull();
+        expect(link?.getAttribute('aria-describedby') ?? '').not.toContain('why-');
         continue;
       }
       waiting += 1;
-      expect(reason, spec.id).not.toBeNull();
-      expect(reason?.hasAttribute('data-compact')).toBe(true);
-      expect(reason?.querySelector('.visually-hidden')?.textContent).toBe(spec.nextReason);
+      expect(reason?.textContent, spec.id).toBe(spec.nextReason);
+      expect(reason?.hidden).toBe(true);
       expect(reason?.closest('a')).toBeNull();
-      expect(reason?.parentElement).toBe(rowOf(host, spec.id).closest('li'));
-      expect(reason?.querySelector('ui-command-chip')).toBeNull();
+      expect(reason?.parentElement).toBe(rowOf(host, spec.id));
+      expect(link?.getAttribute('aria-describedby')?.split(' ')).toContain(`why-${spec.id}`);
+      expect(link?.getAttribute('title')).toContain(spec.nextReason);
     }
     expect(waiting).toBeGreaterThan(0);
   });
 
-  // Spec 020 · T26 · ISC-240: with guidance, a row whose spec waits on you reads "mark · sentence · chip", a row whose
-  // spec is next "ring · sentence · chip"; the mark is the visible word, never on a Next row or any other row.
-  it('marks exactly the rows in "Waits on you" and gives every row with an entry its whole sentence and chip', async () => {
+  // Spec 020 · T26 · ISC-240, refined by spec 021 (R1, T73): with guidance, a row whose spec waits on you carries the
+  // visible mark "Waits on you" in its line, a row whose spec is next the open ring; the entry's sentence is the row
+  // link's description and tooltip. No guide row, no command chip in the list; no mark on any other row.
+  it('marks exactly the rows in "Waits on you" in their line and makes every entry\'s sentence the row link\'s description', async () => {
     const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
     // Spec 021 (T25): every harbor row in view, past the fold's first 5.
     await TestBed.inject(Router).navigateByUrl('/?open=specs');
@@ -300,26 +333,67 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     const next = own(guidance.next);
     expect(waits.length).toBeGreaterThan(0);
     expect(next.length).toBeGreaterThan(0);
-    const marked = [...host.querySelectorAll('[data-waits-mark]')].map((m) => m.closest('[data-reason]')?.getAttribute('data-reason'));
+    expect(host.querySelector('app-spec-row-guide, ui-reason, ui-command-chip')).toBeNull();
+    const marked = [...host.querySelectorAll('[data-waits-mark]')].map((m) => m.closest('li')?.querySelector('[data-spec-row]')?.getAttribute('data-spec-row'));
     expect(marked.sort()).toEqual(waits.map((e) => e.spec).sort());
     for (const [entry, kind] of [...waits.map((e) => [e, 'waits'] as const), ...next.map((e) => [e, 'next'] as const)]) {
-      const guide = host.querySelector<HTMLElement>(`app-spec-row-guide[data-reason="${entry.spec}"]`);
-      expect(guide, entry.spec).not.toBeNull();
-      expect(guide?.getAttribute('data-guide')).toBe(kind);
-      expect(guide?.parentElement).toBe(rowOf(host, entry.spec).closest('li'));
-      expect(guide?.closest('a')).toBeNull();
-      expect(text(guide?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
-      expect(guide?.querySelector('ui-glyph')?.getAttribute('data-shape') ?? null).toBe(kind === 'next' ? 'ring' : null);
-      const sentence = text(guide?.querySelector('[data-guide-sentence]') ?? null);
+      const li = rowOf(host, entry.spec);
+      const row = li.querySelector<HTMLElement>('app-spec-row');
+      const link = li.querySelector<HTMLElement>('[data-spec-row]');
+      expect(row?.getAttribute('data-mark'), entry.spec).toBe(kind);
+      // The mark leads the track cell, in the row's one line; outside the row link.
+      const mark = row?.querySelector('.rtrack > .rmark');
+      expect(mark?.parentElement?.firstElementChild).toBe(mark);
+      expect(mark?.closest('a')).toBeNull();
+      expect(text(row?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
+      expect(row?.querySelector('[data-next-mark] ui-glyph')?.getAttribute('data-shape') ?? null).toBe(kind === 'next' ? 'ring' : null);
+      const why = li.querySelector<HTMLElement>(`#why-${entry.spec}`);
+      expect(why?.hidden, entry.spec).toBe(true);
+      expect(why?.getAttribute('data-guide')).toBe(kind);
+      const sentence = text(why);
       expect(sentence.length, entry.spec).toBeGreaterThan(0);
       expect(sentence.startsWith('guidance.')).toBe(false);
-      expect(guide?.querySelector('ui-command-chip code')?.textContent).toBe(entry.command);
-      expect(host.querySelector(`ui-reason[data-reason="${entry.spec}"]`)).toBeNull();
+      const described = link?.getAttribute('aria-describedby')?.split(' ') ?? [];
+      expect(described.slice(0, kind === 'waits' ? 2 : 1)).toEqual(kind === 'waits' ? [`mark-${entry.spec}`, `why-${entry.spec}`] : [`why-${entry.spec}`]);
+      expect(link?.getAttribute('title')).toContain(sentence);
     }
     const guided = new Set([...waits, ...next].map((e) => e.spec));
     for (const spec of GOLDEN.specs.filter((s) => !guided.has(s.id))) {
-      expect(host.querySelector(`app-spec-row-guide[data-reason="${spec.id}"]`), spec.id).toBeNull();
+      expect(rowOf(host, spec.id).querySelector('app-spec-row')?.hasAttribute('data-mark'), spec.id).toBe(false);
+      expect(rowOf(host, spec.id).querySelector('.rmark'), spec.id).toBeNull();
     }
+  });
+
+  // Spec 021 · T74 (design § P3 heights): below 640 px of list the row's two lines are `id | title | a/b` over the mark
+  // (or, without guidance, the description) · phase · priority. The host attributes the 640 px query reads: a marked
+  // row hides its description there, so line 2 starts with the mark; the meter bar and the track are the query's to hide.
+  it('gives the compact row its two lines: the a/b in the meter cell, mark or description, phase and priority below (T74)', async () => {
+    const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
+    await TestBed.inject(Router).navigateByUrl('/?open=specs');
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(harbor));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    fixture.componentRef.setInput('guidance', guidance);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const waiting = guidance.waits.find((e) => e.item === 'spec');
+    const plain = GOLDEN.specs.find((s) => !guidanceEntryOf(guidance, s.id));
+    expect(waiting && plain).toBeTruthy();
+    for (const id of [waiting?.spec ?? '', plain?.id ?? '']) {
+      const row = rowOf(host, id).querySelector('app-spec-row') as HTMLElement;
+      // Line 1: id, title (the row link), a/b.
+      expect(row.querySelector('.rid .rnum')?.textContent.trim()).toBe(id);
+      expect(row.querySelector('.tline [data-spec-row]')).not.toBeNull();
+      expect(row.querySelector('.rmeter .frac')?.textContent).toMatch(/^\d+\/\d+$/);
+      // Line 2: phase and priority in the track cell, the mark first on a marked row.
+      expect(row.querySelector('.rtrack .phase')).not.toBeNull();
+      expect(row.querySelector('.rtrack .rprio')).not.toBeNull();
+    }
+    const marked = rowOf(host, waiting?.spec ?? '').querySelector('app-spec-row') as HTMLElement;
+    expect(marked.getAttribute('data-mark')).toBe('waits');
+    expect(marked.querySelector('.rtrack')?.firstElementChild?.hasAttribute('data-waits-mark')).toBe(true);
+    expect(rowOf(host, plain?.id ?? '').querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
   });
 });
 

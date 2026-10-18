@@ -2704,7 +2704,14 @@
       "more": "+{{n}} weitere",
       "since": "seit {{time}}",
       "showAll": "Alle {{count}} anzeigen",
-      "waiting": "+{{n}} bei Ihnen"
+      "waiting": "+{{n}} bei Ihnen",
+      "foldName": "+{{n}} weitere · Liegt bei Ihnen, alle {{count}} zeigen",
+      "fewer": "Weniger zeigen",
+      "fewerName": "Weniger zeigen · Liegt bei Ihnen, nur der oberste Eintrag",
+      "headLinkName": {
+        "one": "Liegt bei Ihnen · {{count}} Eintrag, zur Liste",
+        "other": "Liegt bei Ihnen · {{count}} Einträge, zur Liste"
+      }
     },
     "next": {
       "label": "Als Nächstes",

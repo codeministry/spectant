@@ -89,7 +89,7 @@
  *   seven) before lantern. A 400 beside `X-Spectant-Stub-Locks: runs`, `-Worktrees: on`, `-Edges` or `-Midnight: on`.
  * - `X-Spectant-Stub-Dense: off | on` (spec 021, T5; absent: `off`, the goldens as they are): `on` lists harbor alone,
  *   its dashboard rebuilt by core over its tree plus fourteen done specs and a fresh TL;DR (`STUB_DENSE`): 22 specs,
- *   3 Next-up entries, a long first brief section, harbor's own warnings. Harbor's 002 to 006 and 009 carry the long
+ *   3 Next-up entries, a first brief section of at most 400 characters, harbor's own warnings. Harbor's 002 to 006 and 009 carry the long
  *   titles and goals of `STUB_DENSE.long` (T34, ISC-248), so every spec row's and Next-up entry's "More…" appears
  *   through overflow; the spec page of each such spec is core's over the edited spec.md, so `/w/harbor/s/002` shows a
  *   goal sentence long enough for the spec head's goal toggle at every width (`STUB_DENSE.goalSpec`); every other
@@ -1497,7 +1497,7 @@ export const STUB_WAITS = {
  * The dense workspace (spec 021, T5, ISC-246, path P3): `X-Spectant-Stub-Dense: on` lists harbor alone, its dashboard
  * rebuilt by core (`denseDashboard`) over harbor's tree plus the fourteen done specs of `STUB_DENSE.added` and the fresh
  * `specs/tldr.md` of `STUB_DENSE.tldr`: 22 specs, Next up harbor's own three (a done spec has no next step) and a brief
- * that is not stale, its first section a long, realistic overview. T34 lengthens titles and goals (`DENSE_LONG`) and
+ * that is not stale, its first section a realistic overview of at most 400 characters (decision E1). T34 lengthens titles and goals (`DENSE_LONG`) and
  * rebuilds those specs' pages; T53 adds one long library document (`DENSE_DOC`). Every other harbor route (the other
  * spec pages, planning, the rest of the library) stays the golden's, so an added spec's page is a 404. Absent or
  * `off`: the goldens as they are.
@@ -1536,14 +1536,10 @@ generated: ${DENSE_GENERATED}
 # TL;DR — harbor
 
 <!-- section: overview -->
-Harbor mirrors container images between registries, and the 0.9 line is mostly about the console and the config.
-Fourteen smaller specs closed over the last five weeks, from tag filters and digest pinning to the failure webhook,
-so the sync itself is feature-complete for this milestone. The web console (002) is in its last build round with
-five claims open, one of them a question about the empty state that only you can answer. Retention policies (004)
-have every claim closed and wait for their code review; the partial push (006) waits for your review of its spec.
-The config loader rewrite (003) has its claims but no tasks yet, and the config format choice (005) still carries two
-fog lines. Two specs opened this week, referrers support (008) and chunked upload limits (009), are scoped and
-building in parallel with the console.
+Harbor mirrors container images between registries; the 0.9 line is about the console and the config.
+Fourteen smaller specs closed in five weeks, so the sync is feature-complete for this milestone. The web console
+(002) is in its last build round with one question only you can answer. Retention policies (004) wait for code
+review, and the partial push (006) waits for your review of its spec.
 
 <!-- section: try -->
 Run \`harbor sync --dry-run\` against the sample config, then open the console on port 4200 and walk the sync history.

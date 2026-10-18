@@ -4,6 +4,7 @@ import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import type { DashboardView as DashboardModel, DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { stageIndex } from '../../spec/dashboard/dashboard-model';
 import { NextUpEntry } from './next-up-entry';
 
 const HARBOR = harbor as unknown as DashboardModel;
@@ -103,6 +104,21 @@ describe('NextUpEntry expand toggle names its entry (spec 021, T31, ISC-248)', (
     it(`${form}: a title that fits gets no toggle`, async () => {
       const { more } = await render(SHORT, form);
       expect(more()).toBeNull();
+    });
+  }
+
+  // Spec 021 (T79, P3 heights): the rail row has no labelled stage track; its title link names the stage after the
+  // visible title, in both languages, and the title stays one line (the toggle opens it).
+  for (const [lang, stage] of [['en', 'Stage'], ['de', 'Stage']] as const) {
+    it(`rail (${lang}): the title link's name is "<title>, ${stage} n of 5: <label>", and there is no stage track`, async () => {
+      const { host } = await render(SHORT, 'rail', lang);
+      const link = host.querySelector('a[data-next-link]') as HTMLElement;
+      const of = lang === 'en' ? 'of' : 'von';
+      const index = Math.min(stageIndex(HARBOR.specs[0].stage), LABELS.length - 1) + 1;
+      expect(accessibleName(link)).toBe(`${SHORT}, ${stage} ${index} ${of} 5: ${LABELS[index - 1]}`);
+      expect(host.querySelector('ui-stage-track')).toBeNull();
+      expect(host.querySelector('ui-card')).toBeNull();
+      expect(host.querySelector('[data-next-row] h3 ui-id-chip')).not.toBeNull();
     });
   }
 

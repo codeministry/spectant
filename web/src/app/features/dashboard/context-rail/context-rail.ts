@@ -17,7 +17,8 @@ export const RAIL_NEXT_UP = 'rail-next-up';
 
 /**
  * The dashboard's context rail (T64, design.md § Desktop): Waits on you (spec 020 T17, the section `#waiting`, at wide
- * only: below wide the page puts it before the KPI card), Next up, then Warnings, nothing else. At wide it registers
+ * only: at medium the page puts it before the KPI band, at compact after the spec list with a link in the page head,
+ * spec 021 ISC-246.1), Next up, then Warnings, nothing else. At wide it registers
  * both as rail blocks with spec 002's seam (`RailContent`, rendered by the shell's `app-rail-slot`), the way the board
  * does, plus the collapsed strip's two counts; below wide it renders them in place — Next up as one card, then
  * Warnings as the `#warnings` section after it at compact and medium alike (018-B15). `inline` lets a page split the

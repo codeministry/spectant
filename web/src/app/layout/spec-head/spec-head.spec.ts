@@ -717,6 +717,27 @@ describe('SpecHead details at compact (T67, ISC-250)', () => {
     expect(toggle(root)?.getAttribute('aria-expanded')).toBe('true');
   });
 
+  // Spec 021 T70 (ISC-250): the title row's one action at compact is the gate button, icon only beside the title; its
+  // label stays its accessible name, so it never wraps under the title. Medium and wide keep the 32 px inline button.
+  it('keeps the gate button beside the title at compact, icon only, its label as its name', async () => {
+    setUp(unserved, with002);
+    const root = await open('/w/harbor/s/002/status', 'compact');
+    const row = root.querySelector<HTMLElement>('[data-title-row]');
+    const gate = row?.querySelector<HTMLElement>('[data-head-actions] app-gate-button');
+    expect(gate?.getAttribute('data-size')).toBe('icon');
+    expect(row?.querySelectorAll('[data-head-actions] > *')).toHaveLength(1);
+    expect(text(gate?.querySelector('[data-gate-action] .gate-label') ?? null)).toBe('Re-mark');
+    expect(details(root)?.querySelector('app-gate-button')).toBeNull();
+  });
+
+  for (const tier of ['medium', 'wide'] as const) {
+    it(`keeps the inline gate button with its visible label (${tier})`, async () => {
+      setUp(unserved, with002);
+      const root = await open('/w/harbor/s/002/status', tier);
+      expect(root.querySelector('[data-title-row] [data-head-actions] app-gate-button')?.getAttribute('data-size')).toBe('inline');
+    });
+  }
+
   it('reads "Details zu 002" in German', async () => {
     setUp(unserved, with002);
     TestBed.inject(TranslocoService).setActiveLang('de');

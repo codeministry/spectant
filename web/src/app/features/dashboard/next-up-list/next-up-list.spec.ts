@@ -74,20 +74,28 @@ describe('NextUpList', () => {
     expect(root.querySelector('[data-show-all]')).toBeNull();
   });
 
-  it('gives each entry a labelled stage track and a takeable chip at the rail form only', async () => {
+  // Spec 021 (T79, P3 heights): the rail drops the labelled stage track; the stage moves into the title link's
+  // accessible name, after the visible title (label in name), and the takeable chip stays.
+  it('names each rail entry with its stage instead of a labelled stage track, and keeps the takeable chip', async () => {
     let chips = 0;
     let rail: HTMLElement | null = null;
     for (const model of [HARBOR, LANTERN]) {
       rail = await render(model, 'rail');
+      expect(rail.querySelector('ui-stage-track')).toBeNull();
       for (const id of model.nextUp) {
         const entry = rail.querySelector(`[data-next-primary] [data-next-entry="${id}"]`) as HTMLElement;
-        const track = entry.querySelector('ui-stage-track ol');
-        expect(track?.getAttribute('aria-label')).toMatch(/^Stage \d of 5: /);
+        const spec = model.specs.find((r) => r.id === id) as DashboardSpecRow;
+        const link = entry.querySelector('a[data-next-link]') as HTMLElement;
+        const name = link.textContent.replace(/\s+/g, ' ').trim();
+        expect(name, id).toMatch(new RegExp(`^${spec.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, Stage \\d of 5: \\S`));
+        expect(link.querySelector('.title')?.textContent.trim()).toBe(spec.title);
+        expect(link.querySelector('[data-next-stage]')?.classList).toContain('visually-hidden');
         const takeable = entry.querySelector('[data-next-takeable]');
-        const first = model.specs.find((r) => r.id === id)?.takeable[0];
+        const first = spec.takeable[0];
         if (first) {
           chips += 1;
           expect(takeable?.textContent.trim()).toBe(`takeable ${first}`);
+          expect(takeable?.parentElement?.hasAttribute('data-next-foot')).toBe(true);
         } else expect(takeable).toBeNull();
       }
     }
@@ -96,25 +104,36 @@ describe('NextUpList', () => {
 
     const card = await render(HARBOR, 'card');
     expect(card.querySelector('[data-next-primary] ui-stage-track')).toBeNull();
+    expect(card.querySelector('[data-next-stage]')).toBeNull();
     expect(card.getAttribute('data-form')).toBe('card');
   });
 
-  it('ports the rail from the prototype: an eyebrow heading with the count, then one next-card per entry', async () => {
+  it('builds the rail as one card of rows under the eyebrow: one list, hairline-separated items, no card per entry', async () => {
     const root = await render(HARBOR, 'rail');
     const eyebrow = root.querySelector('[data-next-eyebrow]') as HTMLElement;
     expect(eyebrow.querySelector('#next-up')?.classList).toContain('type-eyebrow');
     const withCommand = HARBOR.specs.filter((r) => r.nextCommand !== null).length;
     expect(eyebrow.querySelector('[data-next-count]')?.textContent.trim()).toBe(String(withCommand));
     expect(root.querySelector('ui-section-header')).toBeNull();
+    const cards = root.querySelectorAll('ui-card');
+    expect(cards.length).toBe(1);
+    const card = cards[0] as HTMLElement;
+    expect(card.hasAttribute('data-next-card')).toBe(true);
+    expect(card.hasAttribute('data-edge')).toBe(false);
+    const items = [...card.querySelectorAll(':scope [data-next-primary] > li')];
+    expect(items.map((li) => li.querySelector('[data-next-entry]')?.getAttribute('data-next-entry'))).toEqual([...HARBOR.nextUp]);
     for (const id of HARBOR.nextUp) {
-      const card = root.querySelector(`[data-next-primary] [data-next-entry="${id}"] ui-card[data-next-card]`) as HTMLElement;
-      expect(card).not.toBeNull();
-      expect(card.hasAttribute('data-edge')).toBe(false);
-      const title = card.querySelector('h3') as HTMLElement;
+      const item = card.querySelector(`[data-next-entry="${id}"] [data-next-row]`) as HTMLElement;
+      expect(item, id).not.toBeNull();
+      const title = item.querySelector('h3') as HTMLElement;
       expect(title.querySelector('ui-id-chip')?.textContent.trim()).toBe(id);
-      expect(title.querySelector('a[data-next-link]')?.textContent.trim()).toBe(row(id).title);
-      expect(card.querySelector('[data-next-foot] ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
+      expect(title.querySelector('a[data-next-link] .title')?.textContent.trim()).toBe(row(id).title);
+      expect(item.querySelector('[data-next-foot] ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
     }
+    // The hairline between rows is the list's own rule, the same in both forms (the card has no padding of its own).
+    const sheets = [...document.querySelectorAll('style')].map((s) => s.textContent).join('\n');
+    const hairline = sheets.split('}').find((rule) => rule.includes('+ li') && rule.includes('border-block-start: 1px solid var(--line)'));
+    expect(hairline?.trim()).toMatch(/^\.entries\S*\s*>\s*li\S*\s*\+\s*li\S*\s*\{/);
   });
 
   it('ports the card form to next-rows under the section header: id and title, the command below', async () => {

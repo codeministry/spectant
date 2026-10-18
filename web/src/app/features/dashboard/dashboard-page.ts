@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, linkedSignal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { altTyped } from '../../core/keyboard-bindings';
 import { RefreshService } from '../../core/refresh.service';
@@ -10,6 +10,7 @@ import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { UiChip } from '../../shared/ui/chip/chip';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
@@ -19,7 +20,7 @@ import type { DashboardView } from './context-rail/dashboard-view';
 import { type DashboardIdeas, IdeasPanel } from './ideas-panel/ideas-panel';
 import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
 import { SpecTable } from './spec-table/spec-table';
-import { WaitingSection } from './context-rail/waiting-section';
+import { WAITING_FRAGMENT, WaitingSection } from './context-rail/waiting-section';
 import { WarningsPanel } from './warnings-panel/warnings-panel';
 import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readSpecRows } from './spec-table/spec-table-model';
 
@@ -48,7 +49,7 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiWsBadge, KpiBand, Brief, ContextRail, SpecTable, WaitingSection, WarningsPanel, IdeasPanel],
+  imports: [RouterLink, TranslocoPipe, NotFound, UiChip, UiNotice, UiPageHead, UiWsBadge, KpiBand, Brief, ContextRail, SpecTable, WaitingSection, WarningsPanel, IdeasPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
@@ -110,6 +111,16 @@ export class DashboardPage {
   protected readonly ideas = computed(() => readIdeas(this.body()));
   /** The rail holds Next up and the warnings at wide; below it Next up follows the Brief and the warnings follow the Specs panel. */
   protected readonly railHolds = computed(() => this.state.tier() === 'wide');
+  /**
+   * Where the section `#waiting` stands below wide (spec 021, ISC-246.1, decision E3): `lead`, before the KPI band, at
+   * medium (020's order); `trail`, after the spec list (and a stale TL;DR), before the backlog and the warnings, at
+   * compact, where the page head links to it instead. Null at wide: the rail holds it.
+   */
+  protected readonly waitsSlot = computed<'lead' | 'trail' | null>(() => {
+    const tier = this.state.tier();
+    return tier === 'wide' ? null : tier === 'compact' ? 'trail' : 'lead';
+  });
+  protected readonly waitingFragment = WAITING_FRAGMENT;
   /**
    * Where the TL;DR stands (spec 021, ISC-247): `lead`, second after the KPI band, while it is fresh; `trail`, right
    * after the spec list's "Show all n", once core calls it stale (`DashboardBrief.stale`, never recomputed here), so an

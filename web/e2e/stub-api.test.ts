@@ -2825,7 +2825,7 @@ describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5,
     expect((await ask('/api/workspaces/lantern/dashboard', { headers: on() })).status).toBe(404);
   });
 
-  test('on: 22 specs, 3 next-up entries and a fresh TL;DR whose first section is long, each core-derived', async () => {
+  test('on: 22 specs, 3 next-up entries and a fresh TL;DR whose first section is a short overview, each core-derived', async () => {
     const served = await dashboard(on());
     expect(served.specs).toHaveLength(STUB_DENSE.specs);
     expect(served.specs).toHaveLength(22);
@@ -2840,9 +2840,23 @@ describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5,
     expect(served.brief?.generated).toBe(STUB_DENSE.generated);
     const [first, ...rest] = Object.entries(served.brief?.sections ?? {});
     expect(first?.[0]).toBe('overview');
-    expect(first?.[1].length).toBeGreaterThanOrEqual(600);
-    expect(first?.[1].split(/(?<=\.)\s+/).length).toBeGreaterThanOrEqual(5);
+    expect(first?.[1].split(/(?<=\.)\s+/).length).toBeGreaterThanOrEqual(3);
     expect(rest.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('on: the TL;DR first section stands alone in at most 400 characters (spec 021, T72, ISC-246.1)', async () => {
+    const served = await dashboard(on());
+    const [first] = Object.entries(served.brief?.sections ?? {});
+    expect(first?.[0]).toBe('overview');
+    const raw = /<!-- section: overview -->\n([\s\S]*?)\n\n/u.exec(STUB_DENSE.tldr)?.[1] ?? '';
+    const text = raw.replace(/\s+/gu, ' ').trim();
+    expect(text.length).toBeGreaterThan(200);
+    expect(text.length).toBeLessThanOrEqual(400);
+    // One paragraph of prose: no list item, no sub-heading, no link.
+    expect(raw).not.toMatch(/^\s*(?:[-*+]|\d+\.)\s/mu);
+    expect(raw).not.toMatch(/^#/mu);
+    expect(raw).not.toMatch(/\]\(|<a\s|https?:\/\//u);
+    expect(first?.[1].replace(/\s+/gu, ' ').trim()).toContain(text.slice(0, 60));
   });
 
   test('off or absent serves the goldens as they are', async () => {

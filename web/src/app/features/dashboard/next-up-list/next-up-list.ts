@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -12,7 +11,10 @@ import { UiSectionHeader } from '../../../shared/ui/section-header/section-heade
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { NextUpEntry } from './next-up-entry';
 
-/** `rail`: one compact card per entry with the labelled stage track (wide); `card`: one card of rows (below wide). */
+/**
+ * `rail` (wide): one card of rows under the eyebrow, each row's sentence above its command and takeable chips, the stage
+ * in the title link's name (spec 021, T79); `card` (below wide): one card of rows under the section header.
+ */
 export type NextUpForm = 'rail' | 'card';
 
 /** One Next up entry: the spec's row and, with guidance, the `guidance.next` entry it stands for (spec 020). */
@@ -30,13 +32,13 @@ export const NEXT_UP_HEADING = 'next-up';
 /**
  * Next up (T64, design.md § Desktop / Mobile / Tablet): the model's `nextUp` ids resolved to their rows, in the model's
  * order; every further row with a next command sits behind "Show all n" in row order. Each entry links to the spec
- * preview (`?spec=<id>`, T69) and carries its next command with copy; the rail form adds the labelled stage track and
- * the first takeable claim. Nothing is counted or ranked here: the order and the commands are the parser's.
+ * preview (`?spec=<id>`, T69) and carries its next command with copy; the rail form adds the stage (in the link's name)
+ * and the first takeable claim. Nothing is counted or ranked here: the order and the commands are the parser's.
  * With nothing to run it says so and, when specs wait on fog, links to the fog filter (`?phase=fog`).
  */
 @Component({
   selector: 'app-next-up-list',
-  imports: [NextUpEntry, NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiDisclosure, UiIcon, UiSectionHeader],
+  imports: [NextUpEntry, RouterLink, TranslocoPipe, UiCard, UiDisclosure, UiIcon, UiSectionHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './next-up-list.html',
   styleUrl: './next-up-list.css',

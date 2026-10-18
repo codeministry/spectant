@@ -226,7 +226,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
             <ng-container [ngTemplateOutlet]="commandTpl" />
           }
           @if (showGate()) {
-            <app-gate-button size="inline" />
+            <app-gate-button [size]="compact() ? 'icon' : 'inline'" />
           }
           @if (!compact()) {
             <ng-container [ngTemplateOutlet]="notesTpl" />

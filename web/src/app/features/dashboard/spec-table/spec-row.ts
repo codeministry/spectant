@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
+import { UiGlyph } from '../../../shared/ui/glyph/glyph';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiPriority } from '../../../shared/ui/priority/priority';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
@@ -25,17 +26,24 @@ const AGENT_KEY = 'specs.agentWorking';
  * link to the blocker, lifted above the stretched link. The title cuts first, the chip never; the partial scope lives
  * only in the chip's accessible name (no `.meta` in the list).
  *
- * Forms: `normal` reads the `specs` container the list declares, one 48-64 px line from 760 px and two lines below
- * it (id and title, then track and meter); `dense` is the overview column's single 48 px line without description,
- * agent dot and phase chip.
+ * Forms (spec 021, design § P3 heights): `normal` reads the `specs` container the list declares. From 640 px it is one
+ * 48 px line, `id | title · description | mark | agent | priority | mini track | phase | meter + a/b`; below 640 px two
+ * lines, `id | title | a/b` over `mark · phase · priority` (without guidance `phase · priority · description`),
+ * without meter bar and track. `dense`
+ * is the overview column's single 48 px line without description, agent dot and phase chip.
  */
 @Component({
   selector: 'app-spec-row',
-  imports: [TranslocoPipe, UiChip, UiClamp, UiMeter, UiPriority, UiStageTrack, UiTypeGlyph, UiWaitsChip],
+  imports: [TranslocoPipe, UiChip, UiClamp, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTypeGlyph, UiWaitsChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-row.html',
   styleUrl: './spec-row.css',
-  host: { '[attr.data-density]': 'density()' },
+  host: {
+    '[attr.data-density]': 'density()',
+    '[attr.data-mark]': 'mark()',
+    '[attr.data-desc]': "row().description ? '' : null",
+    '[attr.data-expanded]': "descriptionExpanded() ? '' : null",
+  },
 })
 export class SpecRow {
   private readonly transloco = inject(TranslocoService);
@@ -45,6 +53,11 @@ export class SpecRow {
   /** The five stage labels, translated once by the list. */
   readonly stageLabels = input.required<readonly string[]>();
   readonly density = input<'normal' | 'dense'>('normal');
+  /**
+   * The row's guidance mark (spec 021, R1): `waits` shows the visible "Waits on you" chip, `next` the open ring, null
+   * neither. The list derives it from the spec's own guidance entry; the entry's reason is the row link's description.
+   */
+  readonly mark = input<'waits' | 'next' | null>(null);
   /** Title and description show in full (the list's "more…" toggle, ISC-111). */
   readonly descriptionExpanded = input(false);
   /** Whether the title needs more than its line or the description more than its two, so the list offers "more…" outside the row link. */

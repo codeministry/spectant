@@ -31,6 +31,10 @@ type WriteState =
  * and posts them; 200 closes it, 409 shows an inline alert with Reload (ISC-26), 423 names the lock's session.
  *
  * `size="block"` is the Status tab's full-width 48 px button; `size="inline"` the head's 32 px one in its cluster.
+ * `size="icon"` (spec 021 T70, ISC-250) is the compact head's 28 px square beside the title: the state icon and tone
+ * stay visible, the label stays in the button as its accessible name, and the hint and the changed files stay in the
+ * accessibility tree (visually hidden; the dialog lists the changed files again), so the button never wraps under the
+ * title. 44 px under coarse pointers.
  */
 @Component({
   selector: 'app-gate-button',
@@ -55,6 +59,12 @@ type WriteState =
     .changed { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: flex-end; margin: 0; padding: 0; list-style: none; }
     :host([data-size='block']) .changed { justify-content: flex-start; }
     .changed code { font-size: 11px; line-height: 16px; overflow-wrap: normal; word-break: normal; }
+    /* size="icon": a 28 px square; label, hint and changed files visually hidden, still read. */
+    :host([data-size='icon']) .gate-button { inline-size: 28px; min-block-size: 28px; block-size: 28px; padding: 0; }
+    @media (pointer: coarse) { :host([data-size='icon']) .gate-button { inline-size: 44px; min-block-size: 44px; block-size: 44px; } }
+    :host([data-size='icon']) :is(.gate-label, .gate-hint, .changed) {
+      position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
     /* Prototype [data-ui=confirm-dialog]: 520 px, 96 px from the top, card, radius-card, scrim with blur 4. */
     ui-dialog { --ui-dialog-size: 520px; --ui-dialog-top: 96px; --ui-dialog-padding: 24px; }
     .dialog-body { display: grid; gap: 16px; }
@@ -85,21 +95,21 @@ type WriteState =
           @case ('paused') {
             <button type="button" class="btn btn-primary btn-sm gate-button" data-gate-action data-state="paused" disabled>
               <ui-icon name="lock" [size]="16" />
-              {{ 'status.gate.ready' | transloco }}
+              <span class="gate-label">{{ 'status.gate.ready' | transloco }}</span>
             </button>
             <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
           }
           @case ('done') {
             <button type="button" class="btn btn-sm gate-button done" data-gate-action data-state="done" (click)="openDialog()">
               <ui-icon name="check" [size]="16" />
-              {{ 'status.gate.remark' | transloco }}
+              <span class="gate-label">{{ 'status.gate.remark' | transloco }}</span>
             </button>
             <span class="gate-hint" data-gate-hint><ui-time-label key="status.gate.done" [value]="m.gates.reviewed.at ?? ''" /></span>
           }
           @case ('stale') {
             <button type="button" class="btn btn-sm gate-button stale" data-gate-action data-state="stale" (click)="openDialog()">
               <ui-icon name="triangle-alert" [size]="16" />
-              {{ 'status.gate.stale' | transloco }}
+              <span class="gate-label">{{ 'status.gate.stale' | transloco }}</span>
             </button>
             <span class="gate-hint" data-gate-hint><ui-time-label key="status.gate.hint.stale" [value]="m.gates.reviewed.at ?? ''" /></span>
             @if (m.gates.reviewed.files?.length) {
@@ -113,7 +123,7 @@ type WriteState =
           @default {
             <button type="button" class="btn btn-primary btn-sm gate-button" data-gate-action data-state="ready" (click)="openDialog()">
               <ui-icon name="flag" [size]="16" />
-              {{ 'status.gate.ready' | transloco }}
+              <span class="gate-label">{{ 'status.gate.ready' | transloco }}</span>
             </button>
             <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.ready' | transloco }}</span>
           }
@@ -211,7 +221,7 @@ type WriteState =
   `,
 })
 export class GateButton {
-  readonly size = input<'block' | 'inline'>('block');
+  readonly size = input<'block' | 'inline' | 'icon'>('block');
 
   private readonly api = inject(ApiClient);
   private readonly data = inject(ShellData);

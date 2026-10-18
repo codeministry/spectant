@@ -9,12 +9,20 @@
     <div class="h1-row" ngProjectAs="h1">
       <ui-ws-badge class="page-mark" size="page" [name]="ws()" aria-hidden="true" />
       <h1 class="type-page-title">{{ 'shell.pages.specs' | transloco }} <span class="h1-ws">· {{ ws() }}</span></h1>
+      <!-- Spec 021 (ISC-246.1, E3): at compact the section #waiting stands after the spec list; the head links to it. -->
+      @if (waitsSlot() === 'trail' && view()?.guidance; as guidance) {
+        <a class="waits-link" data-waits-link [routerLink]="['/w', ws()]" [fragment]="waitingFragment" queryParamsHandling="preserve">
+          <span aria-hidden="true">{{ 'guidance.waits.label' | transloco }}</span>
+          <ui-chip variant="count" tone="secondary" aria-hidden="true">{{ guidance.waits.length }}</ui-chip>
+          <span class="visually-hidden">{{ (guidance.waits.length === 1 ? 'guidance.waits.headLinkName.one' : 'guidance.waits.headLinkName.other') | transloco: { count: guidance.waits.length } }}</span>
+        </a>
+      }
     </div>
   </ui-page-head>
   @if (view(); as view) {
-    <!-- Spec 020 T17: the section `#waiting`. Below wide it opens the main column before the KPI card; at wide it is
-         the rail's first block, above Next up (the context rail registers it). -->
-    @if (!railHolds() && view.guidance; as guidance) {
+    <!-- Spec 020 T17: the section `#waiting`. At medium it opens the main column before the KPI band; at wide it is
+         the rail's first block, above Next up (the context rail registers it); at compact it follows the spec list. -->
+    @if (waitsSlot() === 'lead' && view.guidance; as guidance) {
       <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
     }
     <!-- Spec 021 (ISC-246): the DOM order KPI band, TL;DR, Next up, spec list at every tier; a stale TL;DR moves behind
@@ -45,6 +53,10 @@
   @if (view(); as view) {
     @if (briefSlot() === 'trail') {
       <app-brief [brief]="view.brief" />
+    }
+    <!-- Spec 021 (ISC-246.1, E3): at compact the section #waiting stands here, after the list, before the backlog. -->
+    @if (waitsSlot() === 'trail' && view.guidance; as guidance) {
+      <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
     }
   }
   <!-- The backlog after the Specs panel at every tier, the desktop's closing group of the spec list (T138). -->

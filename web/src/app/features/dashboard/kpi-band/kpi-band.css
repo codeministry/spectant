@@ -17,7 +17,13 @@
   gap: 16px;
 }
 
-/* Wide: one row, the master tile wider than the five beside it. */
+/*
+ * Wide: one row, the master tile twice as wide as the five beside it (spec 021, P3 heights). The template turns the
+ * master tile to the default tile's 16 px padding with an 88 px ring; its number keeps the hero's 40 px on a 40 px
+ * line. Narrower than 2fr, the band beside the 352 px rail at 1440 leaves the master's text column too narrow for its
+ * fraction and its closed · open line. The template drops the Specs tile's phase legend at wide (the spec list's
+ * filter chips carry its counts).
+ */
 :host([data-tier='wide']) .band {
   grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr));
 }
@@ -81,16 +87,37 @@
   font-weight: 600;
 }
 
-/* `.pulse-in`, `.pulse-top`, `.pulse-stats`. */
+/* `.pulse-in`, `.pulse-top`, `.pulse-stats`, 12 px apart (spec 021, P3 heights). */
 .pulse-in {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .top {
   display: flex;
   gap: 16px;
   align-items: center;
+}
+
+.lead {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* Eyebrow and number on one line, the number at the end. */
+.head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-inline-size: 0;
+}
+
+.head > .type-eyebrow {
+  overflow: hidden;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .figure {
@@ -103,6 +130,19 @@
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0;
+}
+
+/* The wide master tile's number (see the band rule above). */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host([data-tier='wide']) .master ::ng-deep .figure {
+  font-size: 40px;
+  line-height: 40px;
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host([data-tier='wide']) .master ::ng-deep .den {
+  font-size: 20px;
+  line-height: 20px;
 }
 
 .claims {
@@ -133,19 +173,42 @@
   color: var(--muted-ink);
 }
 
+/* Reference and statement as one text of at most two lines: on one line where they fit. */
+.say {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.say > .ref,
+.say > .statement {
+  display: inline;
+}
+
+.say > .ref::after {
+  content: ' · ' / '';
+}
+
 /* `.pulse-stats` as a 2 × 2 grid: Specs, Takeable, Warnings, Open fog. */
 .cells {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  padding-block-start: 16px;
+  gap: 12px 16px;
+  padding-block-start: 12px;
   border-block-start: 1px solid var(--line);
 }
 
 .cells a {
   display: grid;
   align-content: start;
-  gap: 2px;
+  gap: 0;
   min-inline-size: 0;
   color: inherit;
   text-decoration: none;

@@ -15,14 +15,14 @@
     class="master"
     data-kpi="master"
     [attr.data-tint]="tint()('master')"
-    variant="hero"
+    [variant]="wide() ? 'default' : 'hero'"
     [glow]="true"
     [label]="'kpi.masterClaims' | transloco"
     [value]="master ? master.closed : noValue"
     [denominator]="master?.total"
     [meta]="masterMeta"
   >
-    <ui-ring visual [value]="masterPercent()" [size]="112" [stroke]="10" />
+    <ui-ring visual [value]="masterPercent()" [size]="wide() ? 88 : 112" [stroke]="wide() ? 8 : 10" />
     <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
   </ui-kpi-tile>
 
@@ -55,14 +55,17 @@
     [fragment]="targets.specs"
   >
     <ui-meter [segments]="phases()" [label]="'kpi.specs' | transloco" />
-    <!-- Spans, not a list: the tile's body is phrasing content inside a link. -->
-    <span class="legend">
-      @for (part of phases(); track part.key) {
-        <span class="entry" [style.--dot]="part.mark">
-          {{ 'phases.' + part.phase | transloco }} <b class="count">{{ part.count }}</b>
-        </span>
-      }
-    </span>
+    <!-- Spans, not a list: the tile's body is phrasing content inside a link. None at wide, where the spec list's
+         filter chips carry the same counts; the meter keeps its label. -->
+    @if (!wide()) {
+      <span class="legend">
+        @for (part of phases(); track part.key) {
+          <span class="entry" [style.--dot]="part.mark">
+            {{ 'phases.' + part.phase | transloco }} <b class="count">{{ part.count }}</b>
+          </span>
+        }
+      </span>
+    }
     <span class="statement foot">{{ 'kpi.statement.specs' | transloco }}</span>
   </ui-kpi-tile>
 
@@ -117,25 +120,33 @@
   </ui-kpi-tile>
 </div>
 
-<!-- The prototype's Pulse card, the band's compact form: the master row and the spec claims over a 2 × 2 grid. -->
+<!--
+  The prototype's Pulse card, the band's compact form: the master row and the spec claims over a 2 × 2 grid. In the
+  master row and in every cell the eyebrow and the number share one line; the reference and the statement run below
+  as one text of at most two lines (spec 021, P3 heights).
+-->
 <div class="pulse" data-kpi="pulse">
   <ui-card [glow]="true" [padding]="16">
     <div class="pulse-in">
       <div class="top">
         <ui-ring [value]="masterPercent()" [size]="72" [stroke]="8" />
         <div class="lead">
-          <div class="type-eyebrow">{{ 'kpi.masterClaims' | transloco }}</div>
-          <div class="figure type-kpi-value" data-stat="master" [attr.data-tint]="tint()('master')">
-            @if (master) {
-              {{ master.closed }}<small class="den">/{{ master.total }}</small>
-            } @else {
-              {{ noValue }}
-            }
+          <div class="head">
+            <div class="type-eyebrow">{{ 'kpi.masterClaims' | transloco }}</div>
+            <div class="figure type-kpi-value" data-stat="master" [attr.data-tint]="tint()('master')">
+              @if (master) {
+                {{ master.closed }}<small class="den">/{{ master.total }}</small>
+              } @else {
+                {{ noValue }}
+              }
+            </div>
           </div>
-          @if (masterMeta) {
-            <span class="ref">{{ masterMeta }}</span>
-          }
-          <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
+          <div class="say">
+            @if (masterMeta) {
+              <span class="ref">{{ masterMeta }}</span>
+            }
+            <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
+          </div>
         </div>
       </div>
       <div class="claims">
@@ -148,26 +159,42 @@
       </div>
       <div class="cells">
         <a [routerLink]="href()" [fragment]="targets.specs" data-cell="specs">
-          <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span>
-          <b data-stat="specs" [attr.data-tint]="tint()('specs')">{{ complete }}<small class="den">/{{ k.specs }}</small></b>
-          <span class="statement">{{ 'kpi.statement.specs' | transloco }}</span>
+          <span class="head">
+            <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span>
+            <b data-stat="specs" [attr.data-tint]="tint()('specs')">{{ complete }}<small class="den">/{{ k.specs }}</small></b>
+          </span>
+          <span class="say">
+            <span class="statement">{{ 'kpi.statement.specs' | transloco }}</span>
+          </span>
         </a>
         <a [routerLink]="href()" [queryParams]="takeableQuery" [fragment]="targets.specs" data-cell="takeable">
-          <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span>
-          <b data-stat="takeable" [attr.data-tint]="tint()('takeable')">{{ k.takeable }}<small class="den">/{{ k.openClaims ?? noValue }}</small></b>
-          <span class="statement">{{ 'kpi.statement.takeable' | transloco }}</span>
+          <span class="head">
+            <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span>
+            <b data-stat="takeable" [attr.data-tint]="tint()('takeable')">{{ k.takeable }}<small class="den">/{{ k.openClaims ?? noValue }}</small></b>
+          </span>
+          <span class="say">
+            <span class="statement">{{ 'kpi.statement.takeable' | transloco }}</span>
+          </span>
         </a>
         <a [routerLink]="href()" [fragment]="targets.warnings" data-cell="warnings">
-          <span class="type-eyebrow">{{ 'kpi.warnings' | transloco }}</span>
-          <b data-stat="warnings" [attr.data-tint]="tint()('warnings')">{{ k.warnings }}</b>
-          <span class="ref">{{ warningsRef }}</span>
-          <span class="statement">{{ 'kpi.statement.warnings' | transloco }}</span>
+          <span class="head">
+            <span class="type-eyebrow">{{ 'kpi.warnings' | transloco }}</span>
+            <b data-stat="warnings" [attr.data-tint]="tint()('warnings')">{{ k.warnings }}</b>
+          </span>
+          <span class="say">
+            <span class="ref">{{ warningsRef }}</span>
+            <span class="statement">{{ 'kpi.statement.warnings' | transloco }}</span>
+          </span>
         </a>
         <a [routerLink]="href()" [queryParams]="fogQuery" [fragment]="targets.specs" data-cell="fog">
-          <span class="type-eyebrow">{{ 'kpi.fog' | transloco }}</span>
-          <b data-stat="fog" [attr.data-tint]="tint()('fog')">{{ k.fog }}</b>
-          <span class="ref">{{ fogRef }}</span>
-          <span class="statement">{{ 'kpi.statement.fog' | transloco }}</span>
+          <span class="head">
+            <span class="type-eyebrow">{{ 'kpi.fog' | transloco }}</span>
+            <b data-stat="fog" [attr.data-tint]="tint()('fog')">{{ k.fog }}</b>
+          </span>
+          <span class="say">
+            <span class="ref">{{ fogRef }}</span>
+            <span class="statement">{{ 'kpi.statement.fog' | transloco }}</span>
+          </span>
         </a>
       </div>
     </div>

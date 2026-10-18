@@ -168,6 +168,45 @@ describe('DashboardPage dashboard order', () => {
     });
   }
 
+  /** The main column's direct children in DOM order, by tag. */
+  const children = (main: HTMLElement): string[] => [...(main.querySelector('app-dashboard-page')?.children ?? [])].map((el) => el.tagName.toLowerCase());
+
+  it('dashboard order: at compact #waiting follows the spec list, before the warnings, and the head links to it', async () => {
+    const { main } = await render('compact');
+    const order = children(main);
+    expect(main.querySelectorAll('app-waiting-section')).toHaveLength(1);
+    expect(order.indexOf('app-waiting-section')).toBe(order.indexOf('app-spec-table') + 1);
+    expect(order.indexOf('app-waiting-section')).toBeLessThan(order.indexOf('app-warnings-panel'));
+    expect(order.indexOf('app-waiting-section')).toBeGreaterThan(order.indexOf('app-kpi-band'));
+    const link = main.querySelector('ui-page-head [data-waits-link]');
+    // The test shell routes no workspace slug; the fragment is the target.
+    expect(link?.getAttribute('href')).toMatch(/^\/w\/[^#]*#waiting$/);
+    expect(link?.querySelector('ui-chip')?.textContent.trim()).toBe(String(harbor.guidance.waits.length));
+    expect(link?.querySelector('.visually-hidden')?.textContent.trim()).toBe(`Waits on you · ${String(harbor.guidance.waits.length)} entries, go to the list`);
+  });
+
+  it('dashboard order: at compact a stale brief keeps its place right after the list, #waiting after it', async () => {
+    body.set(withBrief(true));
+    const { main } = await render('compact');
+    const order = children(main);
+    expect(order.slice(order.indexOf('app-spec-table'), order.indexOf('app-spec-table') + 3)).toEqual(['app-spec-table', 'app-brief', 'app-waiting-section']);
+  });
+
+  it('dashboard order: at medium #waiting stays before the KPI band (spec 020) and the head has no link', async () => {
+    const { main } = await render('medium');
+    const order = children(main);
+    expect(order.indexOf('app-waiting-section')).toBe(order.indexOf('app-kpi-band') - 1);
+    expect(main.querySelectorAll('app-waiting-section')).toHaveLength(1);
+    expect(main.querySelector('[data-waits-link]')).toBeNull();
+  });
+
+  it('dashboard order: at wide #waiting is the rail block only and the head has no link', async () => {
+    const { main, rail } = await render('wide');
+    expect(main.querySelector('app-waiting-section')).toBeNull();
+    expect(rail.querySelectorAll('app-waiting-section')).toHaveLength(1);
+    expect(main.querySelector('[data-waits-link]')).toBeNull();
+  });
+
   it('binds the archived count of the KPIs to the spec list head', async () => {
     // The KPI count, not the length of the archive block the body happens to carry.
     expect(harbor.archive.length).not.toBe(7);

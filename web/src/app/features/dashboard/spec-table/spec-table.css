@@ -76,7 +76,7 @@
 
 .rows {
   container: specs / inline-size;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   border-block-start: 1px solid var(--line);
   list-style: none;
@@ -342,12 +342,6 @@
   .row-more {
     min-block-size: 44px;
   }
-}
-
-/* The reason line under the row (ISC-122.3), aligned with the title column like "more…": it pulls into the row's
-   bottom padding, and after "more…" the two margins collapse, so it follows that toggle directly. */
-.row-reason {
-  margin: -8px 16px 8px 80px;
 }
 
 /* Spec 024 (principal 2026-10-13 "Hybrid", ISC-111 refined): the row's description is one muted line with "more…" at

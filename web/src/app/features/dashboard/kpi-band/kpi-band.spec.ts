@@ -109,7 +109,10 @@ describe('KpiBand', () => {
     it('kpi-band: the Specs tile reads the stage groups the model counts, no split computed in the web', async () => {
       // Groups that disagree with `specs - building - scoping`: the band must show the model's numbers.
       const model: KpiBandModel = { kpis: { ...HARBOR.kpis, stageGroups: { scoping: 2, building: 1, complete: 5 } } };
-      const { tile, text, squash } = await render(model);
+      const { fixture, tile, text, squash } = await render(model);
+      // The legend stands below wide only (P3 heights); at medium it names the model's counts.
+      TestBed.inject(ShellState).tier.set('medium');
+      await fixture.whenStable();
       const legend = [...(tile('specs')?.querySelectorAll('.legend .entry') ?? [])].map((entry) => squash(entry));
 
       expect(text('specs', '.figure')?.replace(/ /g, '')).toBe(`5/${String(K.specs)}`);
@@ -212,9 +215,57 @@ describe('KpiBand', () => {
     expect(text('master', 'ui-ring .text')?.replace(/ /g, '')).toBe(`${PCT}%`);
   });
 
-  it('ports the prototype tiles: hero ring 112, lime claims meter, "Takeable now", no reserved slot', async () => {
-    const { host, tile, text } = await render();
+  describe('kpi-band heights: the one-row band at wide and the Pulse card at compact (spec 021, ISC-246.1, P3)', () => {
+    it('kpi-band heights: at wide the master tile is a 16 px tile with an 88 px ring; at medium the 112 px hero', async () => {
+      const { fixture, tile } = await render();
+      const look = () => ({
+        variant: tile('master')?.getAttribute('data-variant'),
+        padding: tile('master')?.querySelector<HTMLElement>('ui-card')?.style.padding,
+        ring: tile('master')?.querySelector('ui-ring')?.getAttribute('data-size'),
+      });
+
+      expect(look()).toEqual({ variant: 'default', padding: '16px', ring: '88' });
+      TestBed.inject(ShellState).tier.set('medium');
+      await fixture.whenStable();
+      expect(look()).toEqual({ variant: 'hero', padding: '24px', ring: '112' });
+    });
+
+    it('kpi-band heights: the Specs tile drops its phase legend at wide and keeps the labelled split meter', async () => {
+      const { fixture, tile } = await render();
+      const meter = () => tile('specs')?.querySelector('ui-meter');
+
+      expect(tile('specs')?.querySelector('.legend')).toBeNull();
+      expect(meter()?.getAttribute('aria-label')).toBe('Specs');
+      for (const tier of ['medium', 'compact'] as const) {
+        TestBed.inject(ShellState).tier.set(tier);
+        await fixture.whenStable();
+        expect(tile('specs')?.querySelectorAll('.legend .entry').length, tier).toBe(3);
+      }
+    });
+
+    it('kpi-band heights: in the Pulse card the eyebrow and the number share a line, reference and statement one text below', async () => {
+      const { pulse, cell, squash } = await render();
+      const head = pulse?.querySelector('.top .lead > .head');
+      const say = pulse?.querySelector('.top .lead > .say');
+
+      expect([...(head?.children ?? [])].map((node) => node.className.split(' ')[0])).toEqual(['type-eyebrow', 'figure']);
+      expect([...(say?.children ?? [])].map((node) => node.className)).toEqual(['ref', 'statement']);
+      for (const name of ['specs', 'takeable', 'warnings', 'fog']) {
+        const link = cell(name);
+        expect([...(link?.children ?? [])].map((node) => node.className), name).toEqual(['head', 'say']);
+        expect(link?.querySelector('.head > .type-eyebrow + b'), name).not.toBeNull();
+        expect(link?.querySelector('.say > .statement'), name).not.toBeNull();
+      }
+      expect(squash(cell('warnings')?.querySelector('.say > .ref'))).toBe(ofSpecs('en', K.specsWithWarnings));
+      expect(squash(cell('fog')?.querySelector('.say > .ref'))).toBe(ofSpecs('en', K.specsWithFog));
+    });
+  });
+
+  it('ports the prototype tiles: hero ring 112 below wide, lime claims meter, "Takeable now", no reserved slot', async () => {
+    const { fixture, host, tile, text } = await render();
     const claimsMeter = tile('claims')?.querySelector('ui-meter');
+    TestBed.inject(ShellState).tier.set('medium');
+    await fixture.whenStable();
 
     expect(tile('master')?.querySelector('ui-ring')?.getAttribute('data-size')).toBe('112');
     expect(claimsMeter?.getAttribute('aria-valuenow')).toBe(String(K.claims.closed));

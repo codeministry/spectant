@@ -89,15 +89,42 @@
   justify-self: stretch;
 }
 
-/* spec 021 § Library reader (ISC-251): each `##` a disclosure, the whole row its toggle (48 px, the primitive's); the
-   heading in the brand face 15/24, the first sentence whole under it, 13/20 muted, both aligned past the chevron. */
+/* spec 021 § Library reader (ISC-251, ISC-251.1): each `##` a disclosure, the heading in the brand face 15/24, the
+   first sentence whole under it, 13/20 muted, both aligned past the chevron. A collapsed section is 57 px (1 + 36 - 8
+   + 20 + 8), not the 73 px of the primitive's 48 px head, so twenty of them fit three screens; the whole collapsed
+   row, sentence included, stays the toggle (at least 48 px) through the button's own hit area below. */
 .lib-sections {
   display: grid;
 }
 
 .lib-section {
+  position: relative;
   border-block-start: 1px solid var(--line);
   scroll-margin-block-start: 80px;
+}
+
+/*
+ * The primitive's 48 px summary is the row's height elsewhere; here the heading line sets it (36 px, 44 px under
+ * coarse pointers). The primitive has no size option yet, so this reaches into its button, as the spec head does.
+ */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.lib-section ::ng-deep .summary {
+  min-block-size: 36px;
+}
+
+/* Collapsed, the button's hit area spans the whole section, heading and sentence, so a click on the sentence opens it. */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.lib-section:not([data-open]) ::ng-deep .summary::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+@media (pointer: coarse) {
+  /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+  .lib-section ::ng-deep .summary {
+    min-block-size: 44px;
+  }
 }
 
 .lib-section-title {
@@ -108,7 +135,7 @@
 }
 
 .lib-section-sentence {
-  margin: -8px 0 12px;
+  margin: -8px 0 8px;
   padding-inline-start: 24px;
   color: var(--muted-ink);
   font-size: 13px;

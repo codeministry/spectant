@@ -2704,7 +2704,14 @@
       "more": "+{{n}} more",
       "since": "waiting {{time}}",
       "showAll": "Show all {{count}}",
-      "waiting": "+{{n}} waiting"
+      "waiting": "+{{n}} waiting",
+      "foldName": "+{{n}} more · Waits on you, show all {{count}}",
+      "fewer": "Show fewer",
+      "fewerName": "Show fewer · Waits on you, only the top entry",
+      "headLinkName": {
+        "one": "Waits on you · {{count}} entry, go to the list",
+        "other": "Waits on you · {{count}} entries, go to the list"
+      }
     },
     "next": {
       "label": "Next",

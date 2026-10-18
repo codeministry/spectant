@@ -26,9 +26,9 @@ import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
-import { UiReason } from '../../../shared/ui/reason/reason';
 import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
-import type { Guidance, GuidanceEntry, GuidanceReason } from '../../../../../../core/src/files';
+import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
+import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { toneMark } from '../../../shared/ui/tone';
@@ -36,7 +36,6 @@ import { specSlugOf } from '../../../../../../core/src/spec-ref';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { SpecRow } from './spec-row';
-import { SpecRowGuide } from './spec-row-guide';
 import {
   ALL,
   applyListQuery,
@@ -89,12 +88,11 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
     UiIcon,
     UiPopover,
     UiPopoverTrigger,
-    UiReason,
+    GuidanceReasonPipe,
     UiRovingItem,
     UiRovingList,
     UiSheet,
     SpecRow,
-    SpecRowGuide,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-table.html',
@@ -112,13 +110,10 @@ export class SpecTable {
   readonly archive = input<readonly ArchiveRow[]>([]);
   /** `DashboardModel.guidance` (spec 020): a row with its spec's own entry reads the entry's sentence (ISC-237.1). */
   readonly guidance = input<Guidance | undefined>(undefined);
-  /** The row's guidance reason, or null for its phrase (`guidanceEntryOf`, shared with every surface). */
-  protected guidanceOf(id: string): GuidanceReason | null {
-    return guidanceEntryOf(this.guidance(), id)?.reason ?? null;
-  }
   /**
-   * The row's reason row (spec 020, T26, ISC-240): its spec's own entry and whether it stands in "Waits on you" (the
-   * row then carries the mark); null without an entry, so a spec waiting on another keeps its reason line.
+   * The row's guidance (spec 020, T26, ISC-240; spec 021 R1): its spec's own entry and whether it stands in "Waits on
+   * you" (the row then carries the mark, a Next entry the ring); null without an entry, so a spec waiting on another
+   * reads its phrase. The entry's sentence is the row link's description.
    */
   protected guideOf(id: string): { readonly entry: GuidanceEntry; readonly waits: boolean } | null {
     const guidance = this.guidance();
@@ -235,9 +230,23 @@ export class SpecTable {
     return row !== null;
   }
 
-  /** A waiting spec (core's `WAITING_STAGES`) is the only one whose row carries its reason line (ISC-122.3, spec 024). */
+  /** A waiting spec (core's `WAITING_STAGES`) is the only one without guidance whose row reads its phrase (ISC-122.3). */
   protected isWaiting(stage: string): boolean {
     return WAITING_STAGES.has(stage as Stage);
+  }
+
+  /**
+   * The row link's description (spec 021, R1): the visible "Waits on you" mark, the reason (`why-<id>`, hidden) and the
+   * description line, each when the row has it; null when it has none.
+   */
+  protected describedBy(row: SpecTableRow, waits: boolean, why: boolean): string | null {
+    const ids = [waits ? `mark-${row.id}` : '', why ? `why-${row.id}` : '', row.description ? `desc-${row.id}` : ''].filter(Boolean);
+    return ids.length > 0 ? ids.join(' ') : null;
+  }
+
+  /** The row link's tooltip: the title, and the reason on its own line when the row has one (R1). */
+  protected linkTitle(title: string, why: string): string {
+    return why ? `${title}\n${why}` : title;
   }
 
   protected readonly stageLabels = computed(() => {

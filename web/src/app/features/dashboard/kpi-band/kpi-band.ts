@@ -80,8 +80,8 @@ export function kpiTileOf(path: string): KpiTile | null {
 
 /**
  * The dashboard's KPI band (T61, ported in T87 from the prototype's `app.js` kpiBand and `styles.css` kpi-band /
- * Pulse; six tiles since spec 021, ISC-245): Master claims with its 112 px ring, Spec claims with a lime meter, Specs
- * (complete of all, with the stage-group split and its legend), Takeable now (of the open claims), Warnings and Open
+ * Pulse; six tiles since spec 021, ISC-245): Master claims with its ring (112 px, 88 at wide), Spec claims with a lime
+ * meter, Specs (complete of all, with the stage-group split; its legend below wide only), Takeable now (of the open claims), Warnings and Open
  * fog (each with the specs it sits in). Every tile shows its number with a reference, a fraction or "of N", and a
  * statement line that says in words which direction is good; the archived count lives in the spec list's head. Every
  * tile is a `ui-card` with the prototype's explicit edge and glow (hero glow only). The shell's tier (`data-tier`)
@@ -109,6 +109,11 @@ export class KpiBand {
   /** The interface language on the host, so the statement lines hyphenate in it (`hyphens: auto`). */
   protected readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   protected readonly tier = inject(ShellState).tier;
+  /**
+   * The wide one-row band (spec 021, P3 heights): the master tile drops to the default tile's 16 px padding with an
+   * 88 px ring (40 px number, kpi-band.css), so the band stays one short row; medium keeps the 112 px hero.
+   */
+  protected readonly wide = computed(() => this.tier() === 'wide');
 
   /**
    * `a` / `b`, flipped by every refresh that changed a value: the two tint rules name two keyframes, so the fade

@@ -27,6 +27,15 @@
   }
 </span>
 <span class="rtrack">
+  <!-- Spec 021 (R1): the guidance mark sits in the row, "Waits on you" as the visible word or the Next ring; the reason
+       itself is the row link's description (the list's hidden `why-<id>`). -->
+  @if (mark() === 'waits') {
+    <ui-chip class="rmark" variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id">{{
+      'guidance.marker' | transloco
+    }}</ui-chip>
+  } @else if (mark() === 'next') {
+    <span class="rmark" data-next-mark><ui-glyph state="open" family="item" [size]="14" /></span>
+  }
   @if (density() === 'normal') {
     <span class="ragent">
       @if (row().agent) {
