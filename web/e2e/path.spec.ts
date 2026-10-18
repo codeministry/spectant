@@ -4,7 +4,8 @@
  *
  *   bun run e2e -- path -g P1
  *
- * Budgets: palette ≤ 5 steps and ≤ 5 s KLM, clicks ≤ 8 steps. Every interaction goes through `StepCounter`
+ * Budgets: palette ≤ 5 steps and ≤ 5 s KLM, clicks ≤ 8 steps at 1440 and 600 px and ≤ 9 at 390 px (refined with spec 021:
+ * the spec list folds after five rows, so the click route takes one "Show all" step). Every interaction goes through `StepCounter`
  * (`steps.ts`), and each run writes its measured steps, KLM seconds and step trail to the test's annotations, so the
  * report carries the Ist. At 390 px there is no hardware keyboard (spec 019 design, "Palette und Claim-Sprung"): a
  * tap on the header's search button stands in for ⌘K and the on-screen Go key for Enter, each one step.
@@ -22,7 +23,9 @@ import { WAITS_HEADER } from './stub-api';
 const TARGET = { ws: 'harbor', spec: '007', claim: 'ISC-126', number: '126' };
 const ENTRY = `claim:${TARGET.ws}:${TARGET.claim}`;
 const CLAIM_URL = new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}/claims#claim-${TARGET.claim}$`);
-const BUDGET = { palette: { steps: 5, seconds: 5 }, clicks: { steps: 8 } } as const;
+const BUDGET = { palette: { steps: 5, seconds: 5 }, clicks: { steps: 8, compact: 9 } } as const;
+/** The click-route budget at a width: one step more at 390 px since the spec list folds (ISC-139.1, refined by spec 021). */
+const clickBudget = (width: number): number => (width === 390 ? BUDGET.clicks.compact : BUDGET.clicks.steps);
 
 const paletteOf = (page: Page) => page.locator('app-command-palette dialog');
 const claimCard = (page: Page) => page.locator(`#claim-${TARGET.claim}`);
@@ -120,8 +123,8 @@ for (const width of [1440, 600, 390] as const) {
     });
 
     // spec 024: overview without lists (principal 2026-10-13): `/` no longer lists specs, so the click route goes
-    // through the workspace column to the workspace dashboard and its spec row. The budget is unchanged.
-    test(`P1 clicks @${width}: the workspace column, the spec row on its dashboard, the spec, its claims, the card → visible and focused in ≤ ${BUDGET.clicks.steps} steps`, async ({ page }) => {
+    // through the workspace column to the workspace dashboard and its spec row. The budget is unchanged but at 390 px.
+    test(`P1 clicks @${width}: the workspace column, the spec row on its dashboard, the spec, its claims, the card → visible and focused in ≤ ${String(clickBudget(width))} steps`, async ({ page }) => {
       await page.goto('/');
       // Spec 020 T16 (ISC-238): the only spec links on `/` are the entries of a column's block "Waits on you".
       await expect(page.locator('app-overview-page app-workspace-column').first()).toBeVisible();
@@ -179,7 +182,7 @@ for (const width of [1440, 600, 390] as const) {
 
       await expectGoal(page, new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}/claims$`));
       const ist = record('clicks', width, steps);
-      expect.soft(ist.count, 'click-route steps').toBeLessThanOrEqual(BUDGET.clicks.steps);
+      expect.soft(ist.count, 'click-route steps').toBeLessThanOrEqual(clickBudget(width));
     });
   });
 }
