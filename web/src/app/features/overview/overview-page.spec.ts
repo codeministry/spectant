@@ -118,15 +118,55 @@ describe('OverviewPage (T65, ISC-16)', () => {
       const column = root.querySelector(`.overview [data-ws="${ws}"]`);
       expect(column).not.toBeNull();
       expect(column?.querySelectorAll('[data-ui="kpi-tile"]').length).toBe(4);
-      expect(column?.querySelector('.next, .next-row, [data-next], .dense-list, .d-row, a.open-link, ui-command-chip, ui-empty-state')).toBeNull();
+      expect(column?.querySelector('.next, .next-row, [data-next], .dense-list, .d-row, a.open-link, ui-empty-state')).toBeNull();
       expect(text(column)).not.toContain('Next up');
-      expect(column?.querySelector('a[href*="/s/"]')).toBeNull();
-      const links = [...(column?.querySelectorAll('a[href]') ?? [])];
+      // Spec 020 T16: the only spec links and the only chip on `/` sit in the block "Waits on you".
+      const outside = (selector: string) => [...(column?.querySelectorAll(selector) ?? [])].filter((el) => !el.closest('[data-ui="waits-block"]'));
+      expect(outside('ui-command-chip, a[href*="/s/"]')).toEqual([]);
+      const links = outside('a[href]');
       expect(links.map((link) => link.getAttribute('href'))).toEqual([`/w/${ws}`, `/w/${ws}`]);
       expect(column?.querySelector('a [data-ws-cover]')).not.toBeNull();
       expect(column?.querySelector('.ws-head a h2')).not.toBeNull();
     }
     expect(root.querySelector('[data-footer-note]')).not.toBeNull();
+  });
+
+  // spec 020 T16 (ISC-238)
+  it('puts "Waits on you" between the identity and the kpi-strip: the top entry with its chip, four more as links, "+n more" to #waiting', async () => {
+    const { root } = await render([entry('harbor'), entry('lantern')]);
+    const column = root.querySelector('.overview [data-ws="harbor"]');
+    expect([...(column?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['app-ws-identity', 'ui-waits-block', 'div']);
+    const block = column?.querySelector('[data-ui="waits-block"]');
+    const waits = harbor.guidance.waits;
+    expect(waits.length).toBe(7);
+    expect(block?.getAttribute('data-count')).toBe('7');
+    const top = block?.querySelector('[data-top]');
+    expect(text(top?.querySelector('a.id'))).toBe(waits[0]?.spec);
+    expect(top?.querySelector('a.id')?.getAttribute('href')).toBe(`/w/harbor/s/${waits[0]?.spec ?? ''}`);
+    expect(text(top?.querySelector('[data-reason]'))).not.toBe('');
+    expect(top?.querySelector('ui-command-chip')?.textContent).toContain(waits[0]?.command);
+    const rows = [...(block?.querySelectorAll('[data-row]') ?? [])];
+    expect(rows.length).toBe(4);
+    expect(rows.map((row) => text(row.querySelector('.id')))).toEqual(waits.slice(1, 5).map((e) => e.spec));
+    for (const row of rows) {
+      expect(row.querySelector('a[href*="/w/harbor/s/"]')).not.toBeNull();
+      expect(text(row.querySelector('[data-reason]'))).not.toBe('');
+      expect(row.querySelector('ui-command-chip')).toBeNull();
+    }
+    expect(block?.querySelectorAll('ui-command-chip').length).toBe(1);
+    const more = block?.querySelector('a[data-more]');
+    expect(text(more)).toBe('+2 more');
+    expect(more?.getAttribute('href')).toBe('/w/harbor#waiting');
+    expect(block?.querySelector('h3')?.id).toBe('waits-harbor');
+    expect(text(column)).not.toContain('Next up');
+  });
+
+  it('says in one sentence that nothing waits, with no card and no link, when the workspace has no waiting entry', async () => {
+    const { root } = await render([entry('lantern')]);
+    const block = root.querySelector('[data-ws="lantern"] [data-ui="waits-block"]');
+    expect(block?.getAttribute('data-count')).toBe('0');
+    expect(text(block?.querySelector('[data-empty]'))).toBe('Nothing is waiting on you.');
+    expect(block?.querySelector('[data-top], [data-row], [data-more], ui-command-chip')).toBeNull();
   });
 
   it('shows an unreadable workspace as a notice in its column and loads no dashboard for it', async () => {

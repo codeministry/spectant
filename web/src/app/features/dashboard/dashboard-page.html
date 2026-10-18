@@ -12,11 +12,16 @@
     </div>
   </ui-page-head>
   @if (view(); as view) {
+    <!-- Spec 020 T17: the section `#waiting`. Below wide it opens the main column before the KPI card; at wide it is
+         the rail's first block, above Next up (the context rail registers it). -->
+    @if (!railHolds() && view.guidance; as guidance) {
+      <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
+    }
     <app-kpi-band [model]="view" [ws]="ws()" [changed]="refresh.changedKpis()" />
     <app-brief [brief]="view.brief" />
-    <!-- One context-rail: at wide it hands Next up and the warnings to the shell's rail (the docked detail sidebar
-         stands in for them while something is selected, spec 026), below wide it renders Next up here. -->
-    <app-context-rail [model]="view" inline="next-up" />
+    <!-- One context-rail: at wide it hands Waits on you, Next up and the warnings to the shell's rail (the docked
+         detail sidebar stands in for them while something is selected, spec 026), below wide it renders Next up here. -->
+    <app-context-rail [model]="view" [ws]="ws()" inline="next-up" />
   }
   <app-spec-table
     [ws]="ws()"

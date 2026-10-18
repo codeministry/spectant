@@ -1,3 +1,5 @@
+import type { GuidanceEntry } from '../../../../../core/src/files';
+import { guidanceOfBody } from '../../shared/ui/guidance/guidance-entry';
 import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
 
 /** How many Next up rows a workspace column shows (tiles.md § index.html: "up to 3"). */
@@ -38,6 +40,8 @@ export interface OverviewColumn {
   readonly next: readonly ColumnRow[];
   /** Every active spec in the model's row order. */
   readonly list: readonly ColumnRow[];
+  /** `guidance.waits` as served, in core's order (spec 020, ISC-237); empty when the body carries no guidance. */
+  readonly waits: readonly GuidanceEntry[];
   /** Epoch ms the dashboard answered; the ws-head's "Updated n s ago". */
   readonly loadedAt: number;
 }
@@ -51,7 +55,7 @@ const fraction = (value: unknown): Fraction | null =>
 
 /**
  * Reads a dashboard body narrowly (it is untyped in web, see `DashboardBody` in `core/api.service.ts`): the strip's
- * KPIs as served, the active rows and the Next up ids. Derives nothing but the three-row cut; never throws.
+ * KPIs as served, the active rows, the Next up ids and `guidance.waits` as served. Derives nothing but the three-row cut; never throws.
  */
 export function readColumn(
   entry: { readonly slug: string; readonly name: string; readonly pathTail: string },
@@ -79,7 +83,8 @@ export function readColumn(
   const next = ids
     .flatMap((id) => list.filter((row) => row.id === id && row.nextCommand !== null))
     .slice(0, NEXT_UP_LIMIT);
-  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, loadedAt };
+  const waits = guidanceOfBody(body)?.waits ?? [];
+  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, loadedAt };
 }
 
 /** The workspace badge's monogram (prototype `identity.js` `mono`): first letters of two words, else two letters. */

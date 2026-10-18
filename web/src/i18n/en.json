@@ -929,7 +929,7 @@
       "agentsWorking": "{{count}} agents working",
       "noAgent": "No agent working",
       "gates": "Gates",
-      "waiting": "Waiting on you",
+      "waiting": "Waits on you",
       "waitingMeta": "decisions · checks · gates",
       "waitingNone": "nothing"
     },
@@ -947,7 +947,8 @@
       "copied": "Copied",
       "manual": "Select and press ⌘C",
       "done": "Nothing left to run: the spec is done.",
-      "reasons": "Why this step"
+      "reasons": "Why this step",
+      "waitsLink": "Waits on you: {{count}}"
     },
     "waiting": {
       "heading": "Waiting on you",
@@ -1005,7 +1006,8 @@
     },
     "warnings": {
       "heading": "Warnings",
-      "none": "No warnings."
+      "none": "No warnings.",
+      "overlaps": "Overlaps"
     },
     "gates": {
       "heading": "Gates",
@@ -2457,7 +2459,8 @@
       "label": "Waits on you",
       "empty": "Nothing is waiting on you.",
       "more": "+{{n}} more",
-      "since": "waiting {{time}}"
+      "since": "waiting {{time}}",
+      "showAll": "Show all {{count}}"
     },
     "next": {
       "label": "Next"

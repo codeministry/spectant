@@ -19,6 +19,7 @@ import type { DashboardView } from './context-rail/dashboard-view';
 import { type DashboardIdeas, IdeasPanel } from './ideas-panel/ideas-panel';
 import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
 import { SpecTable } from './spec-table/spec-table';
+import { WaitingSection } from './context-rail/waiting-section';
 import { WarningsPanel } from './warnings-panel/warnings-panel';
 import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readSpecRows } from './spec-table/spec-table-model';
 
@@ -42,7 +43,7 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiWsBadge, KpiBand, Brief, ContextRail, SpecTable, WarningsPanel, IdeasPanel],
+  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiWsBadge, KpiBand, Brief, ContextRail, SpecTable, WaitingSection, WarningsPanel, IdeasPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',

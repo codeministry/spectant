@@ -5,13 +5,15 @@ import type { DashboardView } from './dashboard-view';
 import { type RailBadge, RailContent } from '../../../layout/shell/rail-content';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { NextUpList } from '../next-up-list/next-up-list';
+import { WaitingSection } from './waiting-section';
 import { WarningsPanel } from '../warnings-panel/warnings-panel';
 
 /** Which parts render in place below wide; at wide the rail always holds both. */
 export type ContextRailInline = 'all' | 'next-up' | 'warnings';
 
 /**
- * The dashboard's context rail (T64, design.md § Desktop): Next up, then Warnings, nothing else. At wide it registers
+ * The dashboard's context rail (T64, design.md § Desktop): Waits on you (spec 020 T17, the section `#waiting`, at wide
+ * only: below wide the page puts it before the KPI card), Next up, then Warnings, nothing else. At wide it registers
  * both as rail blocks with spec 002's seam (`RailContent`, rendered by the shell's `app-rail-slot`), the way the board
  * does, plus the collapsed strip's two counts; below wide it renders them in place — Next up as one card, then
  * Warnings as the `#warnings` section after it at compact and medium alike (018-B15). `inline` lets a page split the
@@ -19,7 +21,7 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
  */
 @Component({
   selector: 'app-context-rail',
-  imports: [NextUpList, WarningsPanel],
+  imports: [NextUpList, WaitingSection, WarningsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-context-rail': '', '[attr.data-tier]': 'tier()' },
   styles: `
@@ -28,6 +30,9 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
   `,
   template: `
     <ng-template #railBlocks>
+      @if (model().guidance; as guidance) {
+        <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
+      }
       <app-next-up-list form="rail" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
       <app-warnings-panel form="rail" [specs]="model().specs" [kpis]="model().kpis" />
     </ng-template>
@@ -44,6 +49,8 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
 export class ContextRail {
   readonly model = input.required<DashboardView>();
   readonly inline = input<ContextRailInline>('all');
+  /** The workspace slug the waiting entries link into; the rail block `#waiting` needs it (spec 020 T17). */
+  readonly ws = input('');
 
   private readonly state = inject(ShellState);
   private readonly transloco = inject(TranslocoService);

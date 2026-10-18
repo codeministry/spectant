@@ -929,7 +929,7 @@
       "agentsWorking": "{{count}} Agenten arbeiten",
       "noAgent": "Kein Agent arbeitet",
       "gates": "Gates",
-      "waiting": "Wartet auf Sie",
+      "waiting": "Liegt bei Ihnen",
       "waitingMeta": "Entscheidungen · Prüfungen · Gates",
       "waitingNone": "nichts"
     },
@@ -947,7 +947,8 @@
       "copied": "Kopiert",
       "manual": "Markieren und ⌘C drücken",
       "done": "Nichts mehr auszuführen: Die Spec ist abgeschlossen.",
-      "reasons": "Warum dieser Schritt"
+      "reasons": "Warum dieser Schritt",
+      "waitsLink": "Liegt bei Ihnen: {{count}}"
     },
     "waiting": {
       "heading": "Wartet auf Sie",
@@ -1005,7 +1006,8 @@
     },
     "warnings": {
       "heading": "Warnungen",
-      "none": "Keine Warnungen."
+      "none": "Keine Warnungen.",
+      "overlaps": "Überschneidungen"
     },
     "gates": {
       "heading": "Gates",
@@ -2457,7 +2459,8 @@
       "label": "Liegt bei Ihnen",
       "empty": "Nichts liegt bei Ihnen.",
       "more": "+{{n}} weitere",
-      "since": "seit {{time}}"
+      "since": "seit {{time}}",
+      "showAll": "Alle {{count}} anzeigen"
     },
     "next": {
       "label": "Als Nächstes"

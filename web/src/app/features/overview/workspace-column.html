@@ -4,6 +4,17 @@
   <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
 </app-ws-identity>
 
+<!-- Spec 020 T16 (ISC-238): what waits on you, between the identity and the kpi-strip; Next up stays off `/` (024 T79). -->
+<ui-waits-block
+  data-ui="waits-block"
+  [entries]="c.waits"
+  [workspace]="c.slug"
+  [limit]="limit"
+  [moreLink]="'/w/' + c.slug"
+  moreFragment="waiting"
+  [headingId]="'waits-' + c.slug"
+/>
+
 <div data-ui="kpi-strip">
   <ui-card data-ui="kpi-tile" data-kpi="master" [padding]="0">
     <div class="tile mini-ring">

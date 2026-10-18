@@ -15,6 +15,10 @@ import { UiTimeLabel } from '../../../shared/time';
 import { UiTerm } from '../../../shared/ui/term/term';
 import type { IconName } from '../../../shared/icons/icons';
 import { UiChip } from '../../../shared/ui/chip/chip';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
+import { UiWaitsBlock } from '../../../shared/ui/guidance/waits-block';
+import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
 import { UiKbd } from '../../../shared/ui/kbd/kbd';
@@ -106,6 +110,13 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
  * is `#waiting`, the last block of the main column, so exactly one copy renders per width and the KPI "Waiting on you"
  * jumps to it on this page. No number is counted here (ISC-72); layouts follow design.md per tier through the shell's
  * container queries.
+ *
+ * Spec 020 (T19, ISC-239): below 1120 the next-step card is the guidance spot, the page's first block right under the
+ * spec head: the eyebrow with the marker "Waits on you" when the spec itself waits, the catalogue sentence, the copy
+ * chip, the stage track and the spec's further waiting entries as `ui-waits-block` (no limit, a chip on each row); it
+ * carries `#waiting`, the KPI's target, and the Spec context's overlaps fold into a disclosure. From 1120 the rail is
+ * the guidance spot and holds `#waiting`: the card moves under the KPI band, before the idea, without a chip of its own
+ * (the head and the rail carry the command) and links "Waits on you: n" to the rail.
  */
 @Component({
   selector: 'app-spec-dashboard',
@@ -118,7 +129,10 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
     RouterLink,
     TranslocoPipe,
     UiChip,
+    GuidanceReasonPipe,
     UiCommandChip,
+    UiDisclosure,
+    UiWaitsBlock,
     UiEmptyState,
     UiIcon,
     UiKbd,
@@ -200,8 +214,29 @@ export class SpecDashboard {
     return text ? quoteIdea(text, this.lang()) : null;
   });
 
-  /** At most three reasons (design.md § Next step). */
+  /** At most three reasons (design.md § Next step); shown only where the guidance names no entry for the spec. */
   protected readonly reasons = computed(() => this.model()?.next.reasons.slice(0, 3) ?? []);
+
+  /**
+   * Spec 020 (T19, ISC-239, ISC-237.1): the spec's own guidance entry, whose catalogue sentence stands in the next-step
+   * card as it does on every other surface; null without guidance or without an open item (the reasons stay then).
+   */
+  protected readonly entry = computed(() => {
+    const m = this.model();
+    return guidanceEntryOf(m?.guidance, m?.head.id);
+  });
+  /** The spec's entries in "Waits on you", in core's order (ISC-237). */
+  protected readonly waits = computed(() => this.model()?.guidance?.waits ?? []);
+  /** Whether the spec itself waits on the principal: the marker beside the guide's eyebrow. */
+  protected readonly selfWaits = computed(() => {
+    const own = this.entry();
+    return own !== null && this.waits().includes(own);
+  });
+  /** The spec's other waiting entries (claims, tasks, questions): the guide lists them under its own step. */
+  protected readonly alsoWaiting = computed(() => {
+    const own = this.entry();
+    return this.waits().filter((entry) => entry !== own);
+  });
   protected readonly stageLabels = computed(() => {
     this.lang();
     return TRACK_STAGES.map((stage) => this.transloco.translate(`stages.${stage}`));
