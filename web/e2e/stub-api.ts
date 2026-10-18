@@ -60,6 +60,11 @@
  *   spec, or `locked`) → 422 (a move the workflow row does not list) → 200 (the holder moved); `POST …/ideas/:slug/
  *   allocate` 400 → 404 → 409 (hash not the story file's, or `stale`) → 423 (`locked` only) → 422 (`not-in-index`
  *   from the golden's `ideas-index` finding) → 200 (the story gone, the new spec at `plan`).
+ * - `GET /api/events` (`EVENTS_PATH`, spec 030, plan 030 § Interfaces) → 200 `text/event-stream`, `Cache-Control:
+ *   no-cache`, and the stream stays open: a `: ping` comment at once and every `LIVE_HEARTBEAT_MS`, and one
+ *   `event: update` (`LIVE_EVENT`) frame whose `data:` is a `LiveUpdate` per `POST /api/__stub/bump` of the stream's
+ *   session (below). 403 `{error: "forbidden"}` for a foreign `Host` or a cross-site `Origin`, 405 with
+ *   `Allow: GET` (`EVENTS_ALLOW`) for any other method, HEAD included. Open streams are held in memory per session.
  * - Any other `/api` path is the server's JSON 404, `{error: "not found"}`.
  *
  * Test controls, which the real server does not have (web/e2e/README.md § The stub API), each chosen per request so
@@ -83,10 +88,16 @@
  * - `X-Spectant-Stub-Library: catalog | empty` picks the library (absent: `catalog`): `empty` answers every readable
  *   workspace with `EMPTY_CATALOG`, a workspace without one document (the `empty` state lists no workspace at all).
  * - `X-Spectant-Stub-Session: <id>` scopes the settings and the writes (absent: one shared session);
- *   `POST /api/__stub/reset` restores that session's settings and notes and drops its writes and bumps (204).
+ *   `POST /api/__stub/reset` restores that session's settings and notes, drops its writes and bumps and closes its
+ *   open `/api/events` streams (204).
  * - `POST /api/__stub/bump?ws=<slug>` changes that workspace's dashboard for that session between two polls (T68,
  *   ISC-62): each call raises `kpis.claims.closed` by one, so the body and its ETag change as a file on disk would.
- *   204; 404 for a workspace the stub does not hold; 405 with `Allow: POST` for another method.
+ *   Before its 204 it also pushes one `update` frame to every open `/api/events` stream of that session (spec 030,
+ *   T17), as the real stream does after a change on disk: `{ws, views}` with the workspace's dashboard, planning tree
+ *   and every spec page (`specs/NNN`), each view's `etag` and `body` the stub's own `GET` of that path with the
+ *   stream's headers, so a page that primes its cache with them gets a 304 on its next poll; a path that does not
+ *   answer 200 under those headers is left out. 404 for a workspace the stub does not hold; 405 with `Allow: POST`
+ *   for another method.
  * - `PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that
  *   workspace's workflow file (T151, ISC-123): core's `parseWorkflow` reads the text, and that session's planning tree
  *   carries the result as its `workflow` until a reset, so the next read shows the changed table (body and ETag). 204;
@@ -157,7 +168,14 @@ import {
   ACTIVITY_HASH_HEADER,
   ACTORS_ALLOW,
   ACTORS_PATH,
+  EVENTS_ALLOW,
+  EVENTS_PATH,
+  LIVE_EVENT,
   SPEC_HASH_HEADER,
+  type LiveUpdate,
+  type LiveView,
+  specRoutes,
+  workspaceRoutes,
   isActorMappings,
   isAllocateRequest,
   isBacklogRequest,
@@ -264,6 +282,8 @@ export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
 export const WORKFLOW_PATH = '/api/__stub/workflow';
 export const BUMP_RUN_PATH = '/api/__stub/bump-run';
+/** The stub stream's heartbeat, the real route's `: ping` interval (plan 030), under Bun's `idleTimeout` of 10 s. */
+export const LIVE_HEARTBEAT_MS = 5_000;
 
 /**
  * The worktree overlay of spec 027 (T33, `stub-board.ts`): `off`, the goldens as they are; `on`, harbor's worktree
@@ -1770,7 +1790,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   /** Bumps per session, then per workspace slug. */
   const bumps = new Map<string, Map<string, number>>();
   const bumpsOf = (req: Request, slug: string): number => bumps.get(sessionOf(req))?.get(slug) ?? 0;
-  const bumpRoute = (req: Request, url: URL): Response => {
+  const bumpRoute = async (req: Request, url: URL): Promise<Response> => {
     if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
     const slug = url.searchParams.get('ws');
     if (slug === null || !dashboards.has(slug)) return settingsError(404, { error: 'not-found' });
@@ -1778,7 +1798,83 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const own = bumps.get(id) ?? new Map<string, number>();
     own.set(slug, (own.get(slug) ?? 0) + 1);
     bumps.set(id, own);
+    // Pushed before the 204, so a caller that awaited the bump finds the frame already on every open stream.
+    await pushUpdate(id, slug);
     return new Response(null, { status: 204 });
+  };
+
+  // ---- the live update stream (spec 030, T17), per session like the bumps ----
+
+  /** An open `GET /api/events`: its session, what its synthetic reads go out with, and how to write to or end it. */
+  type LiveStream = { session: string; origin: string; headers: Headers; send: (text: string) => void; close: () => void };
+  const streams = new Set<LiveStream>();
+  /**
+   * `GET /api/events` (plan 030 § Interfaces): 403 for a foreign `Host` or `Origin`, 405 with `EVENTS_ALLOW` for any
+   * other method, else 200 `text/event-stream` that stays open: a `: ping` comment at once and every
+   * `LIVE_HEARTBEAT_MS`, one `LIVE_EVENT` frame per bump of the session. It ends on a reset of the session or when the
+   * reader cancels.
+   */
+  const eventsRoute = (req: Request): Response => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET') return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: EVENTS_ALLOW });
+    const headers = new Headers(req.headers);
+    headers.delete('If-None-Match');
+    const encoder = new TextEncoder();
+    let drop = (): void => undefined;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        let open = true;
+        const send = (text: string): void => {
+          if (open) controller.enqueue(encoder.encode(text));
+        };
+        const timer = setInterval(() => send(': ping\n\n'), LIVE_HEARTBEAT_MS);
+        drop = (): void => {
+          open = false;
+          clearInterval(timer);
+          streams.delete(stream);
+        };
+        const close = (): void => {
+          if (!open) return;
+          drop();
+          controller.close();
+        };
+        const stream: LiveStream = { session: sessionOf(req), origin: new URL(req.url).origin, headers, send, close };
+        streams.add(stream);
+        req.signal.addEventListener('abort', () => drop(), { once: true });
+        send(': ping\n\n');
+      },
+      cancel() {
+        drop();
+      },
+    });
+    return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
+  };
+  /**
+   * The `LiveUpdate` a stream gets for a change of workspace `ws`: the dashboard, the planning tree and each spec page of
+   * that workspace, each the answer of the stub's own `GET` with the stream's headers (the same body and ETag a poll of
+   * that page gets); a path that does not answer 200 for it is left out, and no 200 at all sends no frame.
+   */
+  const liveUpdateOf = async (stream: LiveStream, ws: string): Promise<LiveUpdate | null> => {
+    const read = (path: string): Request => new Request(`${stream.origin}${path}`, { headers: stream.headers });
+    const state = stream.headers.get(STATE_HEADER) ?? defaultState;
+    const found = isOneOf(STUB_STATES, state) ? viewOf(read(workspaceRoutes.planning(ws)), state).workspaces.get(ws) : undefined;
+    const ids = found && 'tree' in found ? [...new Set(found.tree.specs.map((spec) => spec.spec.head.id))] : [];
+    const paths = [`${WORKSPACES_PATH}/${encodeURIComponent(ws)}/dashboard`, workspaceRoutes.planning(ws), ...ids.map((id) => specRoutes.spec(ws, id))];
+    const views: LiveView[] = [];
+    for (const path of paths) {
+      const req = read(path);
+      const res = await answer(req, new URL(req.url));
+      if (res.status === 200) views.push({ path, etag: res.headers.get('ETag') ?? '', body: (await res.json()) as unknown });
+    }
+    return views.length === 0 ? null : { ws, views };
+  };
+  /** One `LIVE_EVENT` frame for workspace `ws` to every open stream of the session, each built from its own headers. */
+  const pushUpdate = async (session: string, ws: string): Promise<void> => {
+    for (const stream of [...streams]) {
+      if (stream.session !== session) continue;
+      const update = await liveUpdateOf(stream, ws);
+      if (update !== null) stream.send(`event: ${LIVE_EVENT}\ndata: ${JSON.stringify(update)}\n\n`);
+    }
   };
   /** Run bumps (T33) per session, then per `<slug>\0<spec key>\0<task>`: how many run events each task moved on. */
   const runBumps = new Map<string, Map<string, number>>();
@@ -2619,6 +2715,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       workflows.delete(sessionOf(req));
       backlogs.delete(sessionOf(req));
       releases.delete(sessionOf(req));
+      for (const stream of [...streams]) if (stream.session === sessionOf(req)) stream.close();
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
@@ -2655,6 +2752,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return settingsError(400, { error: 'stub-runs-with-overlay', locks, worktrees, edges, midnight });
     }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
+    // After the header checks: a stream's headers are the ones its synthetic reads go out with.
+    if (pathname === EVENTS_PATH) return eventsRoute(req);
 
     if (noteAllowFor(pathname) !== null) {
       const state = req.headers.get(STATE_HEADER) ?? defaultState;
@@ -2689,11 +2788,12 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (family?.route === 'runRelease') return runReleaseRoute(req, requested, write, family.params.ws, family.params.run);
     return specRoute(req, url, requested, locks, write);
   };
-  return (req, url) => {
+  const answer: ApiHandler = (req, url) => {
     const edges = req.headers.get(EDGES_HEADER);
     const wanted = edges === 'waiting' || edges === 'met';
     return wanted && !edgeViews.has(edges) ? buildEdges().then(() => handle(req, url)) : handle(req, url);
   };
+  return answer;
 }
 
 const REVIEWED_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
