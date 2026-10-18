@@ -39,6 +39,7 @@ function parse(data: unknown): LiveUpdate | null {
 export class LiveStreamService {
   private readonly connectedState = signal(false);
   private readonly updatesState = signal<LiveUpdate | null>(null);
+  private readonly listeners = new Set<(update: LiveUpdate) => void>();
 
   /** True while the stream is open; false before the first `open` and after every `error` until the next. */
   readonly connected = this.connectedState.asReadonly();
@@ -53,8 +54,22 @@ export class LiveStreamService {
     source.addEventListener('error', () => this.connectedState.set(false));
     source.addEventListener(LIVE_EVENT, (event) => {
       const update = parse((event as MessageEvent<unknown>).data);
-      if (update !== null) this.updatesState.set(update);
+      if (update === null) return;
+      for (const listener of this.listeners) listener(update);
+      this.updatesState.set(update);
     });
     inject(DestroyRef).onDestroy(() => source.close());
+  }
+
+  /**
+   * Calls `listener` with every valid frame, synchronously as it arrives, before `updates` moves; returns the
+   * unsubscribe. A consumer that must see every frame (the refresh primes each one) listens here, since `updates` keeps
+   * only the last of frames that arrive before effects run.
+   */
+  onUpdate(listener: (update: LiveUpdate) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 }

@@ -102,6 +102,20 @@ describe('LiveStreamService', () => {
     expect(service.connected()).toBe(true);
   });
 
+  it('hands every valid frame to an onUpdate listener as it arrives, two in one tick included, until unsubscribed', () => {
+    const source = theSource();
+    const seen: LiveUpdate[] = [];
+    const off = service.onUpdate((frame) => seen.push(frame));
+    const other: LiveUpdate = { ws: 'lantern', views: [] };
+    source.emit(LIVE_EVENT, JSON.stringify(update));
+    source.emit(LIVE_EVENT, '{nope');
+    source.emit(LIVE_EVENT, JSON.stringify(other));
+    expect(seen).toEqual([update, other]);
+    off();
+    source.emit(LIVE_EVENT, JSON.stringify(update));
+    expect(seen).toHaveLength(2);
+  });
+
   it('listens only for the update event name, not unnamed messages', () => {
     const source = theSource();
     source.emit('message', JSON.stringify(update));

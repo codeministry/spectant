@@ -303,6 +303,20 @@ describe('ApiClient spec 008 routes', () => {
       await result;
       expect(api.specHash('harbor', '003')).toBe(HEX_A);
     });
+
+    // Spec 030 (ISC-28): after a stream prime the spec read is a 304, so the hashes it carries must still be taken.
+    it('takes the spec hash from a 304 as well', async () => {
+      const first = api.spec('harbor', '003');
+      http.expectOne('/api/workspaces/harbor/specs/003').flush({}, { headers: { ETag: '"s1"', 'X-Spectant-Spec-Hash': HEX_A } });
+      await first;
+      api.prime('/api/workspaces/harbor/specs/003', '"s2"', { primed: true });
+      const second = api.spec('harbor', '003');
+      const request = http.expectOne('/api/workspaces/harbor/specs/003');
+      expect(request.request.headers.get('If-None-Match')).toBe('"s2"');
+      request.flush(null, { status: 304, statusText: 'Not Modified', headers: { 'X-Spectant-Spec-Hash': HEX_B } });
+      expect(await second).toMatchObject({ kind: 'ok', body: { primed: true } });
+      expect(api.specHash('harbor', '003')).toBe(HEX_B);
+    });
   });
 
   // T13 · ISC-195: the backlog write of spec 036, `POST …/:ws/backlog` with the op and the raw hash of
