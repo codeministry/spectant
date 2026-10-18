@@ -76,12 +76,40 @@ const written = (from: WorkflowStage, to: WorkflowStage): WriteResult<'transitio
   },
 });
 
-async function open(answer: WriteResult<'transition'>, tier: Tier = 'wide', url = '/w/harbor/board'): Promise<HTMLElement> {
+/** Harbor with 003 held by a running `/spec-tasks 003` (spec 040, T58): the dashboard row's state as core serves it. */
+const RUNNING = {
+  ...dashboard,
+  specs: dashboard.specs.map((row) =>
+    row.id === '003'
+      ? {
+          ...row,
+          state: {
+            kind: 'spec',
+            id: '003',
+            state: 'running',
+            stage: 'tasks',
+            run: {
+              run: 'r-0308-1452',
+              command: '/spec-tasks 003',
+              session: 'a:claude:sess-32',
+              actor: { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false },
+              since: '2026-03-08T14:52:00Z',
+              elapsedMs: 480_000,
+              openRuns: 1,
+              source: 'run',
+            },
+          },
+        }
+      : row,
+  ),
+} as typeof dashboard;
+
+async function open(answer: WriteResult<'transition'>, tier: Tier = 'wide', url = '/w/harbor/board', dash: typeof dashboard = dashboard): Promise<HTMLElement> {
   calls = [];
   stubOverlays();
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
-    dashboard: () => Promise.resolve(ok(dashboard)),
+    dashboard: () => Promise.resolve(ok(dash)),
     planning: () => Promise.resolve(ok(PLANNING)),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
     actors: () => Promise.resolve(ok([])),
@@ -310,5 +338,36 @@ describe('Shift+←/→ on a focused card (T127, ISC-130)', () => {
     const moved = page.querySelector('section.one app-board-card[data-key="spec:006-partial-push"] [data-grip]');
     expect(moved).not.toBeNull();
     expect(document.activeElement).toBe(moved);
+  });
+});
+
+// Spec 040 (T58, ISC-225.1): at compact a running card's ellipsis still opens "Move to…", every entry disabled, the
+// run's refusal (the notice the drag and the keys show) above them without its ✕; nothing is sent.
+describe('Move to… for a card a running run holds (T58, ISC-225.1)', () => {
+  it('every entry is disabled and the run refusal stands above them; a choice sends nothing', async () => {
+    const page = await open(written('tasks', 'review'), 'compact', '/w/harbor/board?col=tasks', RUNNING);
+    gripOf(page, C003.key).click();
+    await settle();
+    const list = menu(page);
+    expect(list).not.toBeNull();
+    const entries = [...(list?.querySelectorAll<HTMLButtonElement>('[data-move-to]') ?? [])];
+    expect(entries.length).toBeGreaterThan(1);
+    expect(entries.every((e) => e.getAttribute('aria-disabled') === 'true')).toBe(true);
+    const notice = list?.parentElement?.querySelector<HTMLElement>('app-refusal-notice[data-move-run]');
+    expect(notice?.getAttribute('data-refusal')).toBe('run-locked');
+    expect(notice?.compareDocumentPosition(list as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(text(notice?.querySelector('[data-head]'))).toBe('Not moved — 003 is running: /spec-tasks 003 · a:claude:sess-32 · since 8 min');
+    expect(notice?.querySelector('[data-dismiss]')).toBeNull();
+    entry(page, 'review')?.click();
+    await settle();
+    expect(calls).toEqual([]);
+  });
+
+  it('a card no run holds shows no run notice', async () => {
+    const page = await open(written('tasks', 'review'), 'compact', '/w/harbor/board?col=review', RUNNING);
+    gripOf(page, C006.key).click();
+    await settle();
+    expect(menu(page)).not.toBeNull();
+    expect(page.querySelector('app-refusal-notice[data-move-run]')).toBeNull();
   });
 });

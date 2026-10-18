@@ -1,0 +1,11 @@
+{
+  "gate": "code-reviewed",
+  "at": "2026-03-08T09:30:00Z",
+  "actor": "a:claude:sess-60",
+  "tree": "198f4e3e29e8633898359ca4f94f05397aa0138f",
+  "head": "8c5af5c557389290383210097aa0b83f29cf94c2",
+  "branch": "feature/006-retry-backoff",
+  "code": 0,
+  "security": 0,
+  "note": "no findings; tree changed since"
+}

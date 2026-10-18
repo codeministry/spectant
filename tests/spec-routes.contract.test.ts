@@ -266,7 +266,7 @@ const boardQueryErrors: Equal<WorkspaceRouteError<"boardQuery">, NotFound | Forb
 const boardQueryBodies: Equal<[WorkspaceRouteResponses["boardQuery"], WorkspaceRouteRequests["boardQuery"]], [BoardQuery, BoardQuery]> = true;
 const workspaceFamilies: Equal<
   Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>,
-  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "backlog" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
+  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "backlog" | "runRelease" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
 > = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
@@ -301,6 +301,7 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
   backlog: (ws) => workspaceRoutes.backlog(ws),
+  runRelease: (ws) => workspaceRoutes.runRelease(ws, "r-0308-1452"),
   library: (ws) => workspaceRoutes.library(ws),
   libraryDoc: (ws) => workspaceRoutes.libraryDoc(ws, "001-lighthouse-map/plan.md"),
   librarySearch: (ws) => workspaceRoutes.librarySearch(ws, "beacon"),
@@ -337,6 +338,10 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
         expect({ ws, slug, match: matchWorkspacePath(story.pathname) }).toEqual({ ws, slug, match: { route: "idea", params: { ws, slug } } });
         const allocate = new URL(workspaceRoutes.allocate(ws, slug), "http://127.0.0.1:7717");
         expect({ ws, slug, match: matchWorkspacePath(allocate.pathname) }).toEqual({ ws, slug, match: { route: "allocate", params: { ws, slug } } });
+      }
+      for (const run of WS) {
+        const release = new URL(workspaceRoutes.runRelease(ws, run), "http://127.0.0.1:7717");
+        expect({ ws, run, match: matchWorkspacePath(release.pathname) }).toEqual({ ws, run, match: { route: "runRelease", params: { ws, run } } });
       }
       const board = new URL(workspaceRoutes.boardQuery(ws), "http://127.0.0.1:7717");
       expect({ ws, match: matchWorkspacePath(board.pathname) }).toEqual({ ws, match: { route: "boardQuery", params: { ws } } });
@@ -405,12 +410,12 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     const read = SPEC_ROUTE_TABLE.find((entry) => entry.route === "spec")?.statuses;
     const write = SPEC_ROUTE_TABLE.find((entry) => entry.route === "transition")?.statuses;
     for (const entry of WORKSPACE_ROUTE_TABLE) {
-      expect(entry.method).toBe(entry.route === "allocate" || entry.route === "backlog" ? "POST" : "GET");
+      expect(entry.method).toBe(entry.route === "allocate" || entry.route === "backlog" || entry.route === "runRelease" ? "POST" : "GET");
       if (entry.method === "GET") expect(entry.request === undefined).toBe(entry.write === undefined);
       expect(entry.statuses).toEqual(
         entry.route === "allocate"
           ? (write ?? [])
-          : entry.route === "backlog"
+          : entry.route === "backlog" || entry.route === "runRelease"
             ? (write ?? []).filter((status) => status !== 423)
             : entry.write === undefined
               ? (read ?? [])
@@ -424,6 +429,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
       ["backlog", "POST", `${SPEC_API_ROOT}/:ws/backlog`, null, "BacklogRequest", "BacklogWritten"],
+      ["runRelease", "POST", `${SPEC_API_ROOT}/:ws/runs/:run/release`, null, "RunReleaseRequest", "RunReleased"],
       ["library", "GET", `${SPEC_API_ROOT}/:ws/library`, null, null, "LibraryCatalog"],
       ["libraryDoc", "GET", `${SPEC_API_ROOT}/:ws/library/doc`, null, null, "LibraryDocPage"],
       ["librarySearch", "GET", `${SPEC_API_ROOT}/:ws/library/search`, null, null, "LibrarySearchResult"],
@@ -436,6 +442,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(allowForWorkspace("idea")).toBe("GET, HEAD");
     expect(allowForWorkspace("boardQuery")).toBe("GET, HEAD, PUT");
     expect(allowForWorkspace("allocate")).toBe("POST");
+    expect(allowForWorkspace("runRelease")).toBe("POST");
     for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) expect(allowForWorkspace(route)).toBe("GET, HEAD");
   });
 
@@ -663,7 +670,7 @@ describe("spec 008 bodies (T81): the shared shapes of the writes and resources",
   });
 
   test("the refusal codes are kebab-case and in API_ERRORS", () => {
-    expect([...REFUSAL_ERRORS]).toEqual(["transition-refused", "allocate-refused", "backlog-refused"]);
+    expect([...REFUSAL_ERRORS]).toEqual(["transition-refused", "allocate-refused", "backlog-refused", "release-refused"]);
     for (const code of REFUSAL_ERRORS) {
       expect(code).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
       expect(API_ERRORS as readonly string[]).toContain(code);
@@ -709,6 +716,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
         uncommittedFiles: "req",
         // spec 008: optional until their fill-ins (T39, T47, T65) set them.
         priority: "opt", stageSource: "opt", assignee: "opt",
+        // spec 040: the spec's item state, as the board card's row carries it (ISC-224)
+        state: "opt",
         // spec 027: the spec's worktree, its read source and the main copy's stage and progress (ISC-175, ISC-181)
         worktree: "opt", source: "opt", main: "opt",
         // spec 025: what the spec waits on, the row's `waits` (ISC-163)
@@ -743,6 +752,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
       afterSpecs: "opt",
       // spec 025: the specs an open spec edge on the claim waits on (ISC-163)
       waitsOn: "opt",
+      // spec 040: the claim's state in the one model, given a clock (ISC-223)
+      itemState: "opt",
     });
     expect([
       ...shapeProblems("claims", value, keysOf<ClaimViewModel>({ claims: "req", features: "req", fog: "req", counts: "req" })),
@@ -768,6 +779,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
       line: "req", status: "req", round: "req", builder: "req", reason: "req", note: "req", pathNote: "req",
       // spec 025: the spec edges of the task's `(after: …)` (ISC-162)
       afterSpecs: "opt",
+      // spec 040: the task's state in the one model, injected by the caller (ISC-223)
+      itemState: "opt",
     });
     expect([
       ...shapeProblems("tasks", value, keysOf<TasksTab>({ tasks: "req", probeMapping: "req", counts: "req", diagnostics: "req" })),
@@ -811,7 +824,8 @@ describe("the dashboard golden (core/fixtures/<tree>.golden.json) is a Dashboard
       kpis: "req", stageCounts: "req", specs: "req", nextUp: "req", warningGroups: "req", archive: "req", brief: "req",
       services: "req", diagnostics: "req", ideas: "req",
     });
-    const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req" });
+    // spec 040: `state`, the story's item state (ISC-224), set by the server's loader at its clock.
+    const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req", state: "opt" });
     expect([
       ...shapeProblems("dashboard", value, model),
       ...shapeProblems("dashboard.ideas", value.ideas, keysOf<DashboardIdeas>({ count: "req", list: "req" })),

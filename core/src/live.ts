@@ -30,6 +30,11 @@
 //                     `.worktrees/NNN-slug`, names this spec's number (spec 041, ISC-213), so a line naming neither
 //                     counts for no spec. The run is additive: the card's state stays what layers 1–3 made it. A card
 //                     without a run has no `run`.
+//   5. item state     (spec 040, ISC-223) every card of a tasks.md line carries `itemState`, its task's item of the one
+//                     state model: item-state.ts `claimStates` and `taskStates` over this frame's lock reading, layer
+//                     4's runs, spec edges, clock and stale age, equal to what `itemStates` gives the task. It is
+//                     additive too: `state`, `running`, `stale` and `run.state` stay, as the finer words of it. A
+//                     carried card without a tasks.md line has none.
 //
 // The frame adds the agents rail (one entry per session holding a lock here, oldest lock first), the Needs you list
 // (question, concerns, open operator steps) and the round group `inRound`: the cards with a run whose task tasks.md has
@@ -43,11 +48,12 @@
 import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, TaskRow, TaskRun } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, ItemStateInfo, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
 import type { MarkState } from './gates.ts';
+import { claimStates, taskStates } from './item-state.ts';
 import { runSpecOf, runStates } from './locks.ts';
 import { specIdOf } from './spec-ref.ts';
 import { heldLocks } from './status.ts';
@@ -81,7 +87,8 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   const locks = heldLocks(reading.locks, ours);
   const held = new Map(locks.map((l) => [l.claim, l]));
 
-  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state, input.specEdges ?? []);
+  const reviewed = reviewedGate(files.texts).check.state;
+  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewed, input.specEdges ?? []);
   /** Layer 3: a held lock puts a card in flight. */
   const lockLayer = (card: FrameCard): LiveCard => {
     const lock = held.get(card.claim);
@@ -93,10 +100,12 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   // Layer 4: the run, after every other field (CARD_KEYS order).
   const ticked = new Set(rows.filter((r) => r.state === 'done').map((r) => r.id));
   const runs = specRuns(reading, specIdOf(files.folder), rows, overlaid, ticked);
+  const states = taskItemStates(input, claims, reviewed, [...runs.values()], now, staleAfterMs);
   const cards: LiveCard[] = overlaid.map((card): LiveCard => {
     const live = lockLayer(card);
     const run = card.state === 'absent' ? undefined : runs.get(card.task);
-    return run === undefined ? live : { ...live, run };
+    const itemState = states.get(card.task);
+    return { ...live, ...(run === undefined ? {} : { run }), ...(itemState === undefined ? {} : { itemState }) };
   });
 
   const present = cards.filter((c) => c.state !== 'absent');
@@ -133,6 +142,36 @@ function specRuns(reading: LockReading, specId: string | null, rows: readonly Ta
   const claimOf = new Map<string, string>(rows.length === 0 ? cards.map((c) => [c.task, c.claim]) : rows.map((r) => [r.id, r.claim]));
   const ours = (reading.runs ?? []).filter((r) => claimOf.has(r.task) && (r.claim === undefined ? specId !== null && runSpecOf(r) === specId : r.claim === claimOf.get(r.task)));
   return new Map(runStates({ ...reading, runs: ours }, ticked).map((run) => [run.task, run]));
+}
+
+/**
+ * Layer 5 (spec 040, ISC-223): each task's item of the one state model, by task id. The claims go through item-state.ts
+ * `claimStates` and the task lines, parsed with rounds and spec edges as the model reads them, through `taskStates`,
+ * with this frame's lock reading, runs, clock and stale age; nothing here derives a state itself.
+ */
+function taskItemStates(input: LiveFrameInput, claims: readonly Claim[], reviewed: MarkState, runs: readonly TaskRun[], now: number, staleAfterMs: number): Map<string, ItemStateInfo> {
+  const { tasks, rounds, constitution } = input.files.texts;
+  if (tasks === undefined) return new Map();
+  const spec = specIdOf(input.files.folder) ?? input.files.folder;
+  const specEdges = input.specEdges ?? [];
+  const clock = { now, staleAfterMs };
+  const claimItems = claimStates({ spec, claims, locks: input.locks.locks, reviewed, specEdges, ...clock });
+  const rows = parseTaskLines({ tasks, ...(constitution === undefined ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), specEdges }).tasks;
+  return new Map(taskStates({ spec, tasks: rows, claims: claimItems, runs, specEdges, ...clock }).map((item) => [item.id, item]));
+}
+
+/**
+ * Each active spec's task runs (ISC-179) by spec number, as its live frame folds them (`LiveCard.run`): the
+ * `ItemStateInput.taskRuns` every caller of item-state.ts `itemStates` passes (spec 040, ISC-224), so the run events
+ * are matched to a spec's tasks in this one place. A folder without spec.md has none.
+ */
+export function taskRunsOf(specs: readonly SpecFiles[], locks: LockReading, now: Date): Record<string, readonly TaskRun[]> {
+  const out: Record<string, readonly TaskRun[]> = {};
+  for (const files of specs) {
+    if (files.texts.spec === undefined) continue;
+    out[specIdOf(files.folder) ?? files.folder] = buildLiveFrame({ files, locks, now }).cards.flatMap((card) => (card.run == null ? [] : [card.run]));
+  }
+  return out;
 }
 
 /** The run states the round counts, in run order; the group lists them reversed, furthest along first. */
@@ -258,6 +297,7 @@ const CARD_KEYS: ReadonlyArray<keyof LiveCard> = [
   'agent',
   'subagent',
   'run',
+  'itemState',
 ];
 
 /** `now − since` in milliseconds; 0 for a timestamp that does not parse or lies ahead of the clock. */

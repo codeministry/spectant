@@ -19,6 +19,8 @@ export interface Settings {
   railCollapsed: boolean;
   /** The Notes area's import notice was dismissed (spec 002, ISC-95). */
   notesImportDismissed: boolean;
+  /** Minutes after which an open run reads aborted and no longer locks its item (spec 040, ISC-222.1). */
+  runAbortMinutes: number;
 }
 
 /** `SettingsSchema`'s defaults: what a fresh install gets, and what the app shows until `/api/settings` answers. */
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   singleKeyShortcuts: true,
   railCollapsed: false,
   notesImportDismissed: false,
+  runAbortMinutes: 120,
 });
 
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
@@ -36,11 +39,12 @@ export const SETTINGS_URL = '/api/settings';
 
 const isThemeMode = (value: unknown): value is ThemeMode => value === 'system' || value === 'light' || value === 'dark';
 const isRefresh = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 3600;
+const isAbortMinutes = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 1440;
 
 /** A server answer read field by field; a field that fails its check reads as its default, as the server does. */
 function sanitize(raw: unknown): Settings {
   const value = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed } = value;
+  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes } = value;
   return {
     theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme,
     language: typeof language === 'string' && isLang(language) ? language : DEFAULT_SETTINGS.language,
@@ -48,6 +52,7 @@ function sanitize(raw: unknown): Settings {
     singleKeyShortcuts: typeof singleKeyShortcuts === 'boolean' ? singleKeyShortcuts : DEFAULT_SETTINGS.singleKeyShortcuts,
     railCollapsed: typeof railCollapsed === 'boolean' ? railCollapsed : DEFAULT_SETTINGS.railCollapsed,
     notesImportDismissed: typeof notesImportDismissed === 'boolean' ? notesImportDismissed : DEFAULT_SETTINGS.notesImportDismissed,
+    runAbortMinutes: isAbortMinutes(runAbortMinutes) ? runAbortMinutes : DEFAULT_SETTINGS.runAbortMinutes,
   };
 }
 

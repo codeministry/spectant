@@ -73,11 +73,16 @@ function refused(p: TransitionPlan): Extract<TransitionPlan, { ok: false }> {
   return p;
 }
 
-/** Harbor 008 with `stage: build`, which its last event (`to: build`) confirms: explicit build under the spike row. */
+/**
+ * Harbor 008 with `stage: build`, which its last event (`to: build`) confirms: explicit build under the spike row.
+ * Every claim of 008 is closed, so the files derive further; that event is a step back from `close`, which holds
+ * build (ISC-221.2).
+ */
 function harbor008AtBuild(): SpecFiles {
   const base = harbor('008-referrers-support');
   const spec = (base.texts.spec ?? '').replace('\ncontext_log:', '\nstage: build\ncontext_log:');
-  return { ...base, texts: { ...base.texts, spec } };
+  const back = '{"ts":"2026-03-09T10:00:00Z","from":"close","to":"build","command":"/spec-implement 008","actor":"u:3f9c0a7d"}\n';
+  return { ...base, texts: { ...base.texts, spec, events: `${base.texts.events ?? ''}${back}` } };
 }
 
 describe('planTransition: an accepted move (T71, ISC-121)', () => {
@@ -168,10 +173,11 @@ describe('planTransition: the fixed gates (T71, ISC-121)', () => {
   });
 
   test('the chore reaches done once every claim is closed', () => {
-    // With every claim closed the chore derives done (row 6); an explicit build, its event agreeing, stands before it.
+    // With every claim closed the chore derives done (row 6); an explicit build, its event agreeing, stands before it
+    // only after a step back (ISC-221.2): a forward move into build would yield to the derived done.
     const base = harbor('007-rotate-mirror-token');
     const spec = (base.texts.spec ?? '').replace('\nphase:', '\nstage: build\nphase:');
-    const events = '{"ts":"2026-03-09T09:00:00Z","from":"review","to":"build","command":"/spec-review 007","actor":"u:3f9c0a7d"}\n';
+    const events = '{"ts":"2026-03-09T09:00:00Z","from":"done","to":"build","command":"/spec-review 007","actor":"u:3f9c0a7d"}\n';
     const p = accepted(plan({ ...base, texts: { ...base.texts, spec, events } }, 'done', { workflow: DEFAULT_WF }));
     expect([p.from, p.to]).toEqual(['build', 'done']);
     expect(p.event.command).toBe('/spec-implement 007');

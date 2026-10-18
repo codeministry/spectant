@@ -151,6 +151,18 @@ describe('BoardPage (T121, ISC-129)', () => {
     expect(col(page, stage)?.hasAttribute('data-stub')).toBe(false);
   });
 
+  // Spec 040 (T48, ISC-224): a run never hides behind a fold; the stub says "1 running" under its count.
+  it('shows the half glyph and "1 running" in a folded column\'s stub when a card in it runs, nothing otherwise', async () => {
+    const run = { kind: 'spec', id: '006', state: 'running', stage: 'review' };
+    const body = { ...dashboard, specs: dashboard.specs.map((r) => (r.id === '006' ? { ...r, state: run } : r)) };
+    const page = await open('/w/harbor/board?fold=review&fold=build', undefined, body);
+    const note = col(page, 'review')?.querySelector('[data-stub-running]');
+    expect(text(note)).toBe('1 running');
+    expect(note?.querySelector('ui-glyph svg')?.getAttribute('data-state')).toBe('running');
+    expect(col(page, 'build')?.hasAttribute('data-stub')).toBe(true);
+    expect(col(page, 'build')?.querySelector('[data-stub-running]')).toBeNull();
+  });
+
   it('unfolds the last folded column and closes the last opened one, dropping ?fold= and ?open= from the URL', async () => {
     const page = await open('/w/harbor/board?fold=review&open=plan');
     expect(col(page, 'review')?.hasAttribute('data-stub')).toBe(true);

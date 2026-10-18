@@ -32,10 +32,14 @@
  * the detail sidebar reads both from here, so there is no relations route and nothing new is read or written.
  * Spec 025 (T32, ISC-170.1): it also carries the spec edges `resolveEdges` resolves against the reading's merge state
  * (`specEdges`, absent without any), from which the Diagram lens draws its `spec-edge` arrows.
+ * Spec 040 (ISC-224): every story of it (`ideas`, and those under a feature or a milestone) carries its `idea` item as
+ * `IdeaRef.state`, core's `ideaStateOf` over the reading's open runs at the request clock and the `runAbortMinutes`
+ * abort age, attached by `withIdeaStates`: the dashboard model lists no stories, so the board reads them from here.
  *
  * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
- * `matchWorkspacePath` with the same guard order. It reads the story folder alone, never the whole workspace: a story
- * page needs no spec folder or lock source. Each story comes from its read source (`readIdeaSources`, `readRepoFile`,
+ * `matchWorkspacePath` with the same guard order. It reads the story folder and the activity log alone, never the
+ * whole workspace: a story page needs no spec folder, and its state (`idea.state`, spec 040, ISC-224, `ideaStateOf` at
+ * the request clock and abort age) only the open runs. Each story comes from its read source (`readIdeaSources`, `readRepoFile`,
  * spec 039, ISC-209), so a story a spec worktree changed last shows that version and `source` names the worktree; the
  * git facts behind it are the worktree view's, kept while the repository state stands. The slug must be one
  * `readIdeas` lists, so a path out of the folder, the index or a skipped file is a 404 before any file is opened by
@@ -66,6 +70,11 @@
  * `matchWorkspacePath` with the allocation's guard order (403, 405 with `Allow: POST`, 404 unknown workspace, 409 with
  * the summary when the folder cannot be read), otherwise `backlog-route.ts` (400, 409 stale backlog, 422 refused, 200).
  * No lock source is read. The planning route serves `backlogHash` from the same raw bytes the write compares.
+ *
+ * The run release (spec 040, ISC-226): `POST /api/workspaces/:ws/runs/:run/release` → `RunReleased`, matched by the
+ * same `matchWorkspacePath` with the backlog's guard order, otherwise `run-release-route.ts` (400 without the hash
+ * header, 404 no such open run, 409 stale log, 422 refused, 200). The dashboard sends the hash it compares,
+ * `X-Spectant-Activity-Hash`, the raw sha256 of `.spectant/activity.jsonl` (the empty text's without the file).
  *
  * The library catalog (spec 017 T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, matched by
  * the same `matchWorkspacePath` with the planning route's guard order and statuses (403, 405 with `allowForWorkspace`,
@@ -119,6 +128,7 @@ import { basename, dirname, join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
+import { runReleaseAnswer } from "./run-release-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
 import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { type RepoFileCopy, catalogSourceOf } from "../../core/src/library.ts";
@@ -126,6 +136,8 @@ import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePat
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 import { techSectionHeads } from "../../core/src/tech.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
+import { ideaStateOf, withIdeaStates } from "../../core/src/item-state.ts";
+import { readLockSources } from "../../core/src/locks.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
@@ -150,12 +162,14 @@ import {
   isActorMappings,
   isBoardQuery,
   matchWorkspacePath,
+  ACTIVITY_HASH_HEADER,
 } from "./spec-routes.contract.ts";
 import {
   type CatalogLoad,
   type CopiesLoad,
   type DashboardLoad,
   type ServicesProbe,
+  type StateClock,
   type UnreadableCode,
   type WorkspaceReading,
   loadCatalog,
@@ -170,6 +184,7 @@ import {
   unreadableCode,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
+import { ACTIVITY_PATH } from "./writes.contract.ts";
 import { rawSha256 } from "./writes.ts";
 
 /** The list route; a dashboard is `${WORKSPACES_PATH}/:slug/dashboard`. */
@@ -276,8 +291,11 @@ export type WorkspaceSummary = {
 
 export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;
-  /** Reads one workspace; `loadDashboard` by default. Tests inject another loader. */
-  loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null) => Promise<DashboardLoad>;
+  /**
+   * Reads one workspace; `loadDashboard` by default. Tests inject another loader. The dashboard route passes `clock`
+   * (spec 040, ISC-224): `now` and the `runAbortMinutes` abort age the rows' and stories' item states are derived at.
+   */
+  loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null, clock?: StateClock) => Promise<DashboardLoad>;
   /**
    * Reads one workspace's files for the planning route; `readWorkspaceInput` by default, the same read `loadDashboard`
    * starts from. Whoever injects `loadWorkspace` injects this too, so both workspace routes answer from one source.
@@ -308,8 +326,17 @@ export type DashboardApiOptions = {
    * declined, so the server's JSON 404 applies; every other route here reads no database.
    */
   db?: Database;
-  /** The allocation's clock (its event's `ts`, `started`, `created`); `new Date()` by default. Tests pin it. */
+  /**
+   * The allocation's clock (its event's `ts`, `started`, `created`) and the dashboard's item-state clock (spec 040,
+   * ISC-224); `new Date()` by default. Tests pin it.
+   */
   now?: () => Date;
+  /**
+   * The age after which an open run reads `aborted` (spec 040): it stops locking a story's allocation (ISC-225), and
+   * the dashboard's rows and stories read it so (ISC-224). The `runAbortMinutes` setting × 60 000, read per request.
+   * Absent, core's default.
+   */
+  abortAfterMs?: () => number;
 };
 
 /** The local calendar date of `date` as `YYYY-MM-DD`: the day the user sees, not the UTC one. */
@@ -414,6 +441,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const searchTexts = new Map<string, Map<string, SearchText>>();
   const today = options.today ?? (() => localDate());
   const clock = options.now ?? (() => new Date());
+  /** This request's clock and the abort age as the setting now stands (spec 040, ISC-224), for every item state. */
+  const stateClock = (): StateClock => ({ now: clock(), ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }) });
 
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();
@@ -424,9 +453,11 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const dashboard = async (req: Request, slug: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
-    const loaded = await load(workspace.path, services, stateDir);
+    // The item states at this request's clock and the abort age as the setting now stands (spec 040, ISC-224).
+    const loaded = await load(workspace.path, services, stateDir, stateClock());
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
-    return json(req, 200, loaded.model);
+    // The hash a run release sends back (spec 040, ISC-226): the raw bytes of the activity log, the empty text's without it.
+    return json(req, 200, loaded.model, { [ACTIVITY_HASH_HEADER]: rawSha256(readBytesIfExists(join(workspace.path, ACTIVITY_PATH)) ?? "") });
   };
 
   // The board's stages come from the reading's own lock source (the repository's activity log); no LifeOS path is read.
@@ -452,7 +483,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       backlog: backlogBytes === null ? null : backlogBytes.toString("utf8"),
       backlogHash: rawSha256(backlogBytes ?? ""),
     });
-    return json(req, 200, model);
+    // Each story's item from its open runs at this request's clock (spec 040, ISC-224).
+    const at = stateClock();
+    const openRuns = reading.input.locks?.openRuns ?? [];
+    return json(req, 200, withIdeaStates(model, model.ideas.map((idea) => ideaStateOf(idea.slug, openRuns, at))));
   };
 
   // The catalog as core's readCatalog builds it, metadata only, never reshaped (header).
@@ -665,9 +699,11 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       const text = bytes.toString("utf8");
       const ref = readIdeas({ ...files, [name]: text }).ideas.find((r) => r.slug === story);
       if (ref === undefined) return json(req, 404, { error: "not-found" });
+      // The story's state from the activity log's open runs alone (spec 040, ISC-224), as the planning route reads it.
+      const { openRuns = [] } = await readLockSources({ repoRoot: root });
       // A story renders as a Docs tab that is not the Design tab: images confined to the workspace, no spec assets.
       const body: WorkspaceRouteResponses["idea"] = {
-        idea: ref,
+        idea: { ...ref, state: ideaStateOf(story, openRuns, stateClock()) },
         page: renderDocsMarkdown(text, docsRenderOptions(root, path, "plan")),
         hash: rawSha256(bytes),
         ...(read.source.kind === "worktree" ? { source: read.source } : {}),
@@ -704,7 +740,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const unreadable = workspaceUnreadable(root);
     if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
     try {
-      const answer = await allocateAnswer({ root, slug: story, stateDir, now: clock(), text: await req.text() });
+      const age = options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() };
+      const answer = await allocateAnswer({ root, slug: story, stateDir, now: clock(), text: await req.text(), ...age });
       return json(req, answer.status, answer.body);
     } catch (error) {
       if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
@@ -721,6 +758,23 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
     try {
       const answer = await backlogAnswer({ root, now: clock(), text: await req.text() });
+      return json(req, answer.status, answer.body);
+    } catch (error) {
+      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
+      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+    }
+  };
+
+  // The run release (spec 040, ISC-226): the route layer's 404 and 409 here, everything else in `run-release-route.ts`.
+  const runRelease = async (req: Request, slug: string, run: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const root = workspace.path;
+    const unreadable = workspaceUnreadable(root);
+    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
+    try {
+      const age = options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() };
+      const answer = await runReleaseAnswer({ root, now: clock(), run, headers: req.headers, ...age });
       return json(req, answer.status, answer.body);
     } catch (error) {
       if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
@@ -746,6 +800,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (workspaceRoute?.route === "backlog") {
       if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("backlog") });
       return backlog(req, workspaceRoute.params.ws);
+    }
+    if (workspaceRoute?.route === "runRelease") {
+      if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("runRelease") });
+      return runRelease(req, workspaceRoute.params.ws, workspaceRoute.params.run);
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
       const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : ALLOW;

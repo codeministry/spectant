@@ -68,11 +68,14 @@ export function rowChecked(row: TaskRowView, state: CheckState): boolean {
 
 /**
  * The row as it stands after a 200: a tick is `done`, an untick `open` (a checked box outranks an unfinished round);
- * a write that left the box as the file had it keeps the row as read.
+ * a write that left the box as the file had it keeps the row as read. The row's `itemState` (spec 040) was read before
+ * the write, so a written row drops it and shows its status word until the next read brings the server's state; the
+ * web derives no state of its own.
  */
 export function withCheck(row: TaskRowView, state: CheckState): TaskRowView {
   if (state.kind !== 'written' || (row.state === 'done') === state.checked) return row;
-  return state.checked ? { ...row, state: 'done', status: 'done' } : { ...row, state: 'open', status: 'open' };
+  const read = { ...row, itemState: undefined };
+  return state.checked ? { ...read, state: 'done', status: 'done' } : { ...read, state: 'open', status: 'open' };
 }
 
 /** How a written state moves the "boxes ticked" count: +1, -1 or 0. */

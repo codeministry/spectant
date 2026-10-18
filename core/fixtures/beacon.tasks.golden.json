@@ -1,0 +1,604 @@
+{
+  "specs/001-check-scheduler": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-1",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/check-scheduler.ts"
+        ],
+        "text": "a check runs at the interval its definition names, within one second",
+        "line": 14,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-2",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/check-scheduler.ts"
+        ],
+        "text": "a check that times out is recorded as down, never as up",
+        "line": 15,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-3",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/check-scheduler.ts"
+        ],
+        "text": "two checks on one host never run at the same instant",
+        "line": 16,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 3,
+      "boxes": {
+        "landed": 3,
+        "total": 3
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 3
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "done",
+          "count": 3
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/002-status-page": null,
+  "specs/003-alert-rules": null,
+  "specs/004-incident-notes": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-10",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/incident-notes.ts"
+        ],
+        "text": "an incident note is attached to the outage it describes",
+        "line": 14,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-10, not dispatched"
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-11",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/incident-notes.ts"
+        ],
+        "text": "incident notes show on the status page, newest first",
+        "line": 15,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-11, not dispatched"
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-12",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/incident-notes.ts"
+        ],
+        "text": "editing a note keeps its first publication time",
+        "line": 16,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "004",
+          "state": "open",
+          "command": "/spec-implement 004",
+          "reason": "task of ISC-12, not dispatched"
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 3,
+      "boxes": {
+        "landed": 0,
+        "total": 3
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 3
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 3
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/005-probe-agents": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-13",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "a probe agent registers with a one-time token",
+        "line": 14,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "005",
+          "state": "done",
+          "doneAt": "2026-03-08T14:14:00Z"
+        }
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-14",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "a registered agent reports its results over one connection",
+        "line": 15,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "005",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-15",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "an agent that stops reporting is shown as silent within two intervals",
+        "line": 16,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T3",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T3",
+            "actor": {
+              "raw": "a:claude:sess-51/T3",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T3",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:32:00Z",
+            "elapsedMs": 1680000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "building"
+        }
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "a check can be pinned to one region's agents",
+        "line": 17,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "005",
+          "state": "aborted",
+          "run": {
+            "run": "a:claude:sess-50/T4",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-50/T4",
+            "actor": {
+              "raw": "a:claude:sess-50/T4",
+              "kind": "subagent",
+              "id": "a:claude:sess-50",
+              "task": "T4",
+              "legacy": false
+            },
+            "since": "2026-03-08T13:41:00Z",
+            "elapsedMs": 4740000,
+            "openRuns": 1,
+            "source": "task-run"
+          }
+        }
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-18",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "sign agent results",
+        "line": 18,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T5",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T5",
+            "actor": {
+              "raw": "a:claude:sess-51/T5",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T5",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:31:00Z",
+            "elapsedMs": 1740000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "patched"
+        }
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-18",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "reject results with a failed signature",
+        "line": 19,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "005",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-51/T6",
+            "command": "/spec-implement 005",
+            "session": "a:claude:sess-51/T6",
+            "actor": {
+              "raw": "a:claude:sess-51/T6",
+              "kind": "subagent",
+              "id": "a:claude:sess-51",
+              "task": "T6",
+              "legacy": false
+            },
+            "since": "2026-03-08T14:35:00Z",
+            "elapsedMs": 1500000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "applied-open"
+        }
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "open",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "drop results of a revoked agent",
+        "line": 20,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T5"
+        ],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "005",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-18"
+            ],
+            "siblings": []
+          }
+        }
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-19",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "struck",
+        "paths": [
+          "api/src/probe-agents.ts"
+        ],
+        "text": "agent self-update channel",
+        "line": 21,
+        "status": "struck",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": "dropped with ISC-19, see Decisions 2026-03-07",
+        "pathNote": null,
+        "edges": [],
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "005",
+          "state": "done",
+          "doneAt": "2026-03-07",
+          "closedAs": "struck"
+        }
+      }
+    ],
+    "probeMapping": [],
+    "counts": {
+      "rows": 8,
+      "boxes": {
+        "landed": 2,
+        "total": 7
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 8
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 5
+        },
+        {
+          "name": "done",
+          "count": 2
+        },
+        {
+          "name": "struck",
+          "count": 1
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/006-retry-backoff": null,
+  "specs/007-history-export": null,
+  "specs/008-export-formats": null,
+  "specs/009-timezone-labels": null,
+  "specs/010-renew-api-key": null,
+  "specs/011-maintenance-windows": null
+}

@@ -77,6 +77,7 @@ export class StatusTab {
   private readonly fragment = toSignal(this.route.fragment, { initialValue: this.route.snapshot.fragment });
 
   protected readonly tier = this.state.tier;
+  protected readonly ws = this.state.ws;
   protected readonly gateNames = GATE_NAMES;
   protected readonly segments = pathSegments;
 

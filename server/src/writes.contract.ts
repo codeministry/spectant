@@ -28,15 +28,28 @@
  *
  * Spec 008 (T81) adds two writes, declared here and served by later tasks (`WRITE_TABLE`, `WRITE_PATHS`):
  *
- * | write | trigger | client's hash | 200 | 409 `hash-mismatch` | 422 | 423 `locked` |
- * |-------|---------|---------------|-----|---------------------|-----|--------------|
- * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` |
- * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` |
- * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
- * | allocate | `POST …/ideas/:slug/allocate` (T87) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
- * | backlog | `POST …/:ws/backlog` (spec 036) | raw `specs/backlog.md`, `PlanningModel.backlogHash` | `BacklogWritten` | `StaleBacklog` | `BacklogRefused` | — |
+ * | write | trigger | client's hash | 200 | 409 `hash-mismatch` | 422 | 423 `locked` | 423 `run-locked` |
+ * |-------|---------|---------------|-----|---------------------|-----|--------------|------------------|
+ * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` | `RunLocked` |
+ * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` | `RunLocked` |
+ * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` | `RunLocked` |
+ * | allocate | `POST …/ideas/:slug/allocate` (T87) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` | `RunLocked` |
+ * | backlog | `POST …/:ws/backlog` (spec 036) | raw `specs/backlog.md`, `PlanningModel.backlogHash` | `BacklogWritten` | `StaleBacklog` | `BacklogRefused` | — | — |
+ * | run release | `POST …/:ws/runs/:run/release` (spec 040) | raw `.spectant/activity.jsonl`, `X-Spectant-Activity-Hash` | `RunReleased` | `StaleActivity` | `RunReleaseRefused` | — | — |
  *
- * These five are every write the app makes on a user's action. The backlog write, the seventh write path, reads no lock
+ * The run lock (spec 040, T30, ISC-225): while a run on the write's item is `running` (core's `runLockOf`, the decision
+ * `itemStates` takes; a run on the spec for the first three, a run on the story for the allocation), the write is
+ * refused with 423 `RunLocked`: `{error: 'run-locked', run, command, actor, since}` of the newest running run, nothing
+ * written. An `aborted` run (older than the `runAbortMinutes` setting) locks nothing. The checks keep one order:
+ * 400 → 404 → 409 → 423 (a claim lock's `locked` first, then the run's `run-locked`) → 422 → 200, so a stale hash is
+ * still the plain 409 while a run is open. The allocation's 423 is reachable through the run alone: a story has no claim.
+ *
+ * The run release (spec 040, T33, ISC-226), the eighth write path, appends one `run-end` line with `outcome: released`
+ * and the viewer's `u:` id to `.spectant/activity.jsonl` at the main checkout, under the raw sha256 of the whole file.
+ * Its order is 400 (no hash header) → 404 (no such open run) → 409 → 422 (`no-viewer`, `run-aborted`) → 200; it reads
+ * no claim lock and no run locks it, so it has no 423.
+ *
+ * These six are every write the app makes on a user's action. The backlog write, the seventh write path, reads no lock
  * source and never answers 423 (`WRITE_TABLE.backlog.locked` is null): `specs/backlog.md` belongs to no spec, and no
  * agent writes it. The feature-level code-review mark
  * (`.gates/code-reviewed.json` in each folder of a main feature, plus one event line each) is the fifth write path,
@@ -60,14 +73,16 @@
 import { parseActor } from '../../core/src/actor.ts';
 import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
-import type { ClaimLock, EventLine, LockSource } from '../../core/src/files.ts';
+import type { ActorRef, ClaimLock, EventLine, ItemRun, LockSource } from '../../core/src/files.ts';
 import {
+  ACTIVITY_HASH_HEADER,
   REVIEWED_HASHES_HEADER,
   REVIEWED_HASH_FILES,
   SPEC_HASH_HEADER,
   TASKS_HASH_HEADER,
   isGateReviewedRequest,
   isTaskCheckRequest,
+  RELEASE_REFUSALS,
   isTransitionRequest,
   parseReviewedHashes,
   specRoutes,
@@ -85,6 +100,9 @@ import type {
   Locked,
   ReviewedHashFile,
   ReviewedHashes,
+  RunReleaseEvent,
+  RunReleaseRefused,
+  RunReleased,
   SpecRouteName,
   TaskCheckRequest,
   TaskCheckResponse,
@@ -120,7 +138,7 @@ export const writeRoutes = {
 export const WRITE_STATUSES = [200, 400, 409, 423] as const;
 
 /** The error codes only a write sends, all in `API_ERRORS`. */
-export const WRITE_ERRORS = ['invalid-body', 'hash-mismatch', 'locked'] as const satisfies readonly ApiError[];
+export const WRITE_ERRORS = ['invalid-body', 'hash-mismatch', 'locked', 'run-locked'] as const satisfies readonly ApiError[];
 
 /** The GET header each write's hash comes from, on the answer the client rendered. */
 export const WRITE_HASH_HEADER = {
@@ -138,11 +156,13 @@ export const CONTEXT_PATH = FILE_KINDS.context.path;
 /** The backlog and its event log, relative to the repository root (spec 036). */
 export const BACKLOG_PATH = FILE_KINDS.backlog.repoPath ?? '';
 export const BACKLOG_EVENTS_PATH = FILE_KINDS.backlogEvents.repoPath ?? '';
+/** The activity log, relative to the main checkout (spec 040, ISC-226): the one file the run release appends to. */
+export const ACTIVITY_PATH = '.spectant/activity.jsonl';
 
 // ─── The four app writes (spec 008, T81) ─────────────────────────────────────────────────────────────────────────
 
 /** Every write the app makes on a user's action, in table order; the first three are `WRITE_ROUTES`. */
-export const WRITE_OPERATIONS = ['gateReviewed', 'taskCheck', 'transition', 'allocate', 'backlog'] as const;
+export const WRITE_OPERATIONS = ['gateReviewed', 'taskCheck', 'transition', 'allocate', 'backlog', 'runRelease'] as const;
 export type WriteOperation = (typeof WRITE_OPERATIONS)[number];
 
 export interface WriteTableEntry {
@@ -151,14 +171,19 @@ export interface WriteTableEntry {
   /** `normalised` by `hashForGate` (the reviewed mark), or `raw` file bytes. */
   readonly hash: 'normalised' | 'raw';
   /** The 409 body, by type name: `hash-mismatch` with `files` and `expected`, nothing written. */
-  readonly conflict: 'StaleGate' | 'StaleTasks' | 'StaleSpec' | 'StaleIdea' | 'StaleBacklog';
+  readonly conflict: 'StaleGate' | 'StaleTasks' | 'StaleSpec' | 'StaleIdea' | 'StaleBacklog' | 'StaleActivity';
   /** The 422 body, by type name; null for a write the workflow never refuses. */
-  readonly refused: 'TransitionRefused' | 'AllocateRefused' | 'BacklogRefused' | null;
+  readonly refused: 'TransitionRefused' | 'AllocateRefused' | 'BacklogRefused' | 'RunReleaseRefused' | null;
   /**
    * The 423 body, by type name: the same `{error: 'locked', lock}` for every write that reads the lock sources; null for
    * the backlog write, which reads none (spec 036).
    */
   readonly locked: 'Locked' | null;
+  /**
+   * The 423 body while a run on the write's item is `running` (spec 040, ISC-225): `RunLocked` for every write on a spec
+   * or a story; null for the backlog write, which belongs to no item a run works on.
+   */
+  readonly runLocked: 'RunLocked' | null;
   /**
    * True while its route is registered and served (`SPEC_ROUTE_TABLE`, or `WORKSPACE_ROUTE_TABLE` for `allocate`);
    * false while its route has no handler (every one has since T87).
@@ -173,11 +198,12 @@ export interface WriteTableEntry {
 
 /** The five writes with their hash, 409, 422 and 423 forms and the root their paths resolve against (the header's table). */
 export const WRITE_TABLE = {
-  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true, root: 'source' },
-  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true, root: 'source' },
-  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true, root: 'source' },
-  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: true, root: 'main' },
-  backlog: { hashFrom: 'PlanningModel.backlogHash', hash: 'raw', conflict: 'StaleBacklog', refused: 'BacklogRefused', locked: null, registered: true, root: 'main' },
+  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'source' },
+  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'source' },
+  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'source' },
+  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', runLocked: 'RunLocked', registered: true, root: 'main' },
+  backlog: { hashFrom: 'PlanningModel.backlogHash', hash: 'raw', conflict: 'StaleBacklog', refused: 'BacklogRefused', locked: null, runLocked: null, registered: true, root: 'main' },
+  runRelease: { hashFrom: ACTIVITY_HASH_HEADER, hash: 'raw', conflict: 'StaleActivity', refused: 'RunReleaseRefused', locked: null, runLocked: null, registered: true, root: 'main' },
 } as const satisfies Record<WriteOperation, WriteTableEntry>;
 
 /**
@@ -220,6 +246,10 @@ export const WRITE_PATHS = {
   // The seventh path (spec 036): the feature backlog, rewritten in place, and its event log, appended, by the backlog
   // route (`writeBacklog`). Once per repository, at the main checkout; it creates no directory.
   backlog: { writes: [BACKLOG_PATH, BACKLOG_EVENTS_PATH], removes: [], creates: null },
+  // The eighth path (spec 040, ISC-226): the run release, one `run-end` line with `outcome: released` appended to the
+  // activity log by the release route (`writeRunRelease`). Once per repository, at the main checkout; never a rewrite,
+  // and it creates no directory (the file holds the open run, so it exists).
+  runRelease: { writes: [ACTIVITY_PATH], removes: [], creates: null },
 } as const satisfies Record<WriteOperation | 'codeReviewFeature' | 'tokens', WritePaths>;
 
 /** `WRITE_PATHS[op]` for one spec folder (`NNN-slug`) and, for `allocate`, the story's slug. */
@@ -326,6 +356,28 @@ export function eventAppendBytes(existing: string | null, event: EventLine): str
   return `${lead}${JSON.stringify(event)}\n`;
 }
 
+// ─── The run release (spec 040, ISC-226) ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * The one line the release appends for the open run `run` (an `OpenRun` of core's reading): `{ts, event: 'run-end',
+ * run, command, session, spec | idea, outcome: 'released'}`, `command` and the item as the run's `run-start` wrote
+ * them, `session` the viewer's `u:` id.
+ */
+export function runReleaseEvent(
+  ts: string,
+  run: { readonly run: string; readonly command: string; readonly spec?: string; readonly idea?: string },
+  viewer: string,
+): RunReleaseEvent {
+  const item = run.spec === undefined ? { idea: run.idea ?? '' } : { spec: run.spec };
+  return { ts, event: 'run-end', run: run.run, command: run.command, session: viewer, ...item, outcome: 'released' };
+}
+
+/** The bytes appended to `.spectant/activity.jsonl`: one JSON line, after a newline when the log lacks its last one. */
+export function runReleaseAppendBytes(existing: string, event: RunReleaseEvent): string {
+  const lead = existing !== '' && !existing.endsWith('\n') ? '\n' : '';
+  return `${lead}${JSON.stringify(event)}\n`;
+}
+
 // ─── Answers ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** 200 of the gate write: the base answer plus the event line appended. */
@@ -362,6 +414,12 @@ export interface StaleBacklog extends Conflict<{ readonly backlog: string }> {
   readonly expected: { readonly backlog: string };
 }
 
+/** 409 of the run release: `.spectant/activity.jsonl` changed since render; its raw hash now. Nothing was written. */
+export interface StaleActivity extends Conflict<{ readonly activity: string }> {
+  readonly files: readonly ['.spectant/activity.jsonl'];
+  readonly expected: { readonly activity: string };
+}
+
 /** 409 of the allocation: the story file changed since render; its path and raw hash now. Nothing was written. */
 export interface StaleIdea extends Conflict<{ readonly idea: string }> {
   readonly files: readonly [string];
@@ -374,6 +432,7 @@ export interface WriteOk {
   transition: TransitionWritten;
   allocate: IdeaAllocated;
   backlog: BacklogWritten;
+  runRelease: RunReleased;
 }
 
 export interface WriteStale {
@@ -382,6 +441,7 @@ export interface WriteStale {
   transition: StaleSpec;
   allocate: StaleIdea;
   backlog: StaleBacklog;
+  runRelease: StaleActivity;
 }
 
 /** The 422 of the three writes the workflow, the index or the backlog's rules may refuse. */
@@ -389,6 +449,7 @@ export interface WriteRefused {
   transition: TransitionRefused;
   allocate: AllocateRefused;
   backlog: BacklogRefused;
+  runRelease: RunReleaseRefused;
 }
 
 /**
@@ -434,6 +495,11 @@ export function backlogConflict(sent: string, now: string): StaleBacklog | null 
   return sent === now ? null : { error: 'hash-mismatch', files: ['specs/backlog.md'], expected: { backlog: now } };
 }
 
+/** The run release's 409 (raw `.spectant/activity.jsonl` hashes), or null when they match. */
+export function activityConflict(sent: string, now: string): StaleActivity | null {
+  return sent === now ? null : { error: 'hash-mismatch', files: [ACTIVITY_PATH], expected: { activity: now } };
+}
+
 /**
  * The 423 for the locks held on this spec's claims (the live reading's `locks`), or null when none is held. Any lock
  * blocks either write; the answer names the lock on `claim` (the task's claim; null for the gate) first, then a
@@ -444,6 +510,25 @@ export function blockingLock(locks: readonly ClaimLock[], claim: string | null):
   let best: ClaimLock | null = null;
   for (const l of locks) if (best === null || rank(l) < rank(best)) best = l;
   return best === null ? null : { error: 'locked', lock: best };
+}
+
+/**
+ * 423 while a run on the write's item is `running` (spec 040, ISC-225): the newest running run's id, command, actor
+ * and start, as core's `runLockOf` gives them. Nothing was written. The web client reads it from spec 040's T56 on;
+ * until then `writeAnswerOf` does not fit it, so a client that cannot show it takes it as an unknown failure.
+ */
+export interface RunLocked {
+  readonly error: 'run-locked';
+  readonly run: string;
+  /** `ItemRun.command`: a run line always names one (locks.ts skips a line without), so null only by the model's type. */
+  readonly command: string | null;
+  readonly actor: ActorRef;
+  readonly since: string;
+}
+
+/** The 423 for the run that locks the write's item (core's `runLockOf`), or null when no run is running on it. */
+export function runLockedOf(run: Pick<ItemRun, 'run' | 'command' | 'actor' | 'since'> | null): RunLocked | null {
+  return run === null ? null : { error: 'run-locked', run: run.run, command: run.command, actor: run.actor, since: run.since };
 }
 
 /** The page's words when no lock source is present (ISC-86). */
@@ -462,9 +547,9 @@ const HEX64 = /^[0-9a-f]{64}$/;
  * `noPropertyAccessFromIndexSignature` admits the dot access this file uses (T111).
  */
 type RecKey =
-  | 'actor' | 'at' | 'backlog' | 'checked' | 'claim' | 'command' | 'error' | 'event' | 'expected' | 'feature' | 'files'
-  | 'folder' | 'from' | 'hash' | 'hashes' | 'id' | 'idea' | 'kind' | 'line' | 'lock' | 'lockSource' | 'number' | 'reason'
-  | 'removed' | 'session' | 'since' | 'source' | 'spec' | 'task' | 'tasks' | 'text' | 'to' | 'ts';
+  | 'activity' | 'actor' | 'at' | 'backlog' | 'checked' | 'claim' | 'command' | 'error' | 'event' | 'expected' | 'feature' | 'files'
+  | 'folder' | 'from' | 'hash' | 'hashes' | 'id' | 'idea' | 'kind' | 'line' | 'lock' | 'lockSource' | 'number' | 'outcome' | 'reason'
+  | 'removed' | 'run' | 'session' | 'since' | 'source' | 'spec' | 'task' | 'tasks' | 'text' | 'to' | 'ts';
 type Rec = Partial<Record<RecKey, unknown>>;
 const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isHex = (v: unknown): boolean => typeof v === 'string' && HEX64.test(v);
@@ -534,7 +619,18 @@ function isBacklogEvent(v: unknown): boolean {
   return v.kind === 'priority' && PRIORITIES.includes(v.from) && PRIORITIES.includes(v.to);
 }
 
+/** The release's line: `runReleaseEvent`'s keys in order, a person's `u:` session, exactly one of `spec` and `idea`. */
+function isReleaseEvent(v: unknown): boolean {
+  if (!isRec(v)) return false;
+  const item = typeof v.spec === 'string' ? 'spec' : 'idea';
+  if (Object.keys(v).join() !== ['ts', 'event', 'run', 'command', 'session', item, 'outcome'].join()) return false;
+  const filled = (s: unknown): boolean => typeof s === 'string' && s !== '';
+  const person = typeof v.session === 'string' && parseActor(v.session).kind === 'person';
+  return filled(v.ts) && !Number.isNaN(Date.parse(v.ts as string)) && v.event === 'run-end' && filled(v.run) && filled(v.command) && person && filled(v[item]) && v.outcome === 'released';
+}
+
 function isOk(route: WriteOperation, b: Rec): boolean {
+  if (route === 'runRelease') return isHex(b.hash) && isReleaseEvent(b.event);
   if (route === 'backlog') return isHex(b.hash) && isBacklogEvent(b.event);
   if (!isLockSource(b.lockSource)) return false;
   if (route === 'gateReviewed') return typeof b.at === 'string' && isHashes(b.hashes) && isReviewedEvent(b.event);
@@ -558,6 +654,7 @@ function isStale(route: WriteOperation, b: Rec): boolean {
   const files = b.files as unknown[];
   if (route === 'allocate') return files.length === 1 && isStoryPath(files[0]) && isHex(b.expected.idea);
   if (route === 'backlog') return files.length === 1 && files[0] === BACKLOG_PATH && isHex(b.expected.backlog);
+  if (route === 'runRelease') return files.length === 1 && files[0] === ACTIVITY_PATH && isHex(b.expected.activity);
   if (!isFileList(files)) return false;
   if (route === 'gateReviewed') return isHashes(b.expected);
   if (route === 'transition') return files.length === 1 && files[0] === SPEC_PATH && isHex(b.expected.spec);
@@ -569,6 +666,7 @@ function isStale(route: WriteOperation, b: Rec): boolean {
  * allocation's (`folder-exists` or `not-in-index`, with the folder it would create, or null).
  */
 function isRefused(route: WriteOperation, b: Rec): boolean {
+  if (route === 'runRelease') return b.error === 'release-refused' && (RELEASE_REFUSALS as readonly unknown[]).includes(b.reason);
   if (route === 'backlog') return b.error === 'backlog-refused' && typeof b.reason === 'string';
   if (route === 'transition') {
     return b.error === 'transition-refused' && typeof b.reason === 'string' && (b.command === null || typeof b.command === 'string');
@@ -589,6 +687,8 @@ function isRefused(route: WriteOperation, b: Rec): boolean {
  */
 export function writeAnswerOf<R extends WriteOperation>(route: R, status: number, body: unknown): WriteAnswer<R> | null {
   if (!isRec(body)) return null;
+  // The run release reads no lock: no 423 body fits it (spec 040, ISC-226).
+  if (route === 'runRelease' && status === 423) return null;
   const fits =
     (status === 200 && isOk(route, body)) ||
     (status === 400 && body.error === 'invalid-body') ||

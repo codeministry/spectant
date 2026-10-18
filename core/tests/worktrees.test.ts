@@ -44,6 +44,8 @@ import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { listSpecs } from '../src/resolve.ts';
 import { buildSpecPage } from '../src/spec.ts';
+import { itemStates, withItemStates } from '../src/item-state.ts';
+import { stateInputAt } from './helpers/state-model.ts';
 import {
   assignWorktrees,
   copyDirFor,
@@ -410,8 +412,14 @@ function harborFamilies(input: DashboardInput): Record<string, string> {
     );
   const master = input.master === null ? {} : { master: input.master };
   const constitution = input.constitution === null ? {} : { constitution: input.constitution };
+  // The item states (spec 040) as the goldens carry them: this input with harbor's activity reading at the live clock.
+  const base = stateInputAt(HARBOR);
+  const workspace = { ...input, ...(base.workspace.locks === undefined ? {} : { locks: base.workspace.locks }) };
+  const items = itemStates({ ...base, workspace, dashboard: buildDashboard(workspace) });
+  const stateOf = (files: SpecFiles): { state?: (typeof items)[number] } =>
+    ((state) => (state === undefined ? {} : { state }))(items.find((i) => i.kind === 'spec' && i.id === files.folder.slice(0, 3)));
   return {
-    [DASHBOARD_FAMILY]: goldenText(buildDashboard(input)),
+    [DASHBOARD_FAMILY]: goldenText(withItemStates(buildDashboard(input), items)),
     spec: goldenText(
       keyed((files) =>
         buildSpecPage({
@@ -419,6 +427,7 @@ function harborFamilies(input: DashboardInput): Record<string, string> {
           others: all.filter((other) => other !== files),
           tldr: input.tldr,
           ...(input.workflow ? { workflow: input.workflow } : {}),
+          ...stateOf(files),
         }),
       ),
     ),

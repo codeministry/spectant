@@ -83,6 +83,7 @@ export function deriveStages(files: SpecFiles, events?: readonly EventLine[], co
       // A replay from the files: this path runs only without events, so no explicit stage can apply.
       explicitStage: null,
       lastEventTo: null,
+      lastEventFrom: null,
       // Every claim is open here, so row 7 (`close-pending`) cannot match whatever the code review.
       codeReview: 'spec',
       mainFeature: null,

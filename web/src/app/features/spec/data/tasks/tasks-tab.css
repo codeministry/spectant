@@ -225,7 +225,7 @@ h2 {
 }
 
 
-.status[data-tone='closed'] {
+.status[data-tone='closed'], .status[data-tone='done'] {
   background: var(--clos-t);
   color: var(--clos-ink);
 }
@@ -254,6 +254,12 @@ h2 {
 .status[data-tone='question'] {
   background: var(--ques-t);
   color: var(--ques-ink);
+}
+
+/* Spec 040 (T52): an aborted run in the warning tint. */
+.status[data-tone='aborted'] {
+  background: var(--hover-t);
+  color: var(--hover-ink);
 }
 
 /* The sub-line (edges, hold / question / operator / strike reason) spans title to builder. */
@@ -456,11 +462,6 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.status[data-tone='done'] {
-  background: var(--clos-t);
-  color: var(--clos-ink);
 }
 
 /* Prototype `.cbx`: a 20 px box, 2 px track ring, lime when ticked; held dashed; locked and conflict orange. */

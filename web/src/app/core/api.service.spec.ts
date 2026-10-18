@@ -111,6 +111,23 @@ describe('ApiClient spec 008 routes', () => {
       expect(await locked).toEqual({ kind: 'answer', answer: { status: 423, body: lockedBody } });
     });
 
+    // Spec 040 (T56, ISC-225.1): the run's 423 is its own kind with the run; the claim lock's 423 stays an answer.
+    it('answers a 423 run-locked as run-locked with the run, and an unfit one as error', async () => {
+      const actor = { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false };
+      const runBody = { error: 'run-locked', run: 'r-0308-1452', command: '/spec-tasks 003', actor, since: '2026-03-08T14:52:00Z' };
+      const running = api.transition('harbor', '003', 'review', HEX_A);
+      http.expectOne(URL).flush(runBody, { status: 423, statusText: 'Locked' });
+      expect(await running).toEqual({ kind: 'run-locked', body: runBody });
+
+      const unfit = api.transition('harbor', '003', 'review', HEX_A);
+      http.expectOne(URL).flush({ ...runBody, actor: 'a:claude:sess-32' }, { status: 423, statusText: 'Locked' });
+      expect(await unfit).toEqual({ kind: 'error', status: 423 });
+
+      const allocating = api.allocate('harbor', 'uptime-badges', HEX_A);
+      http.expectOne('/api/workspaces/harbor/ideas/uptime-badges/allocate').flush(runBody, { status: 423, statusText: 'Locked' });
+      expect(await allocating).toEqual({ kind: 'run-locked', body: runBody });
+    });
+
     it('answers a body that does not fit its status, a 404 and a network failure as error', async () => {
       const unfit = api.transition('harbor', '003', 'review', HEX_A);
       http.expectOne(URL).flush({ ...written, to: 'build' });
@@ -233,6 +250,42 @@ describe('ApiClient spec 008 routes', () => {
       const missing = api.putBoardQuery('nowhere', '');
       http.expectOne('/api/workspaces/nowhere/board-query').flush({ error: 'not-found' }, { status: 404, statusText: 'Not Found' });
       expect(await missing).toEqual({ kind: 'error', status: 404, error: 'not-found' });
+    });
+  });
+
+  // Spec 040, T61 · ISC-226: the dashboard's `X-Spectant-Activity-Hash` (200 and 304) is the hash the release sends
+  // back in the same header; the answers are the contract's, through `writeAnswerOf`.
+  describe('run release', () => {
+    it('keeps the activity hash of the last dashboard read, a 304 included', async () => {
+      expect(api.activityHash('beacon')).toBeNull();
+      const first = api.dashboard('beacon');
+      http.expectOne('/api/workspaces/beacon/dashboard').flush({}, { headers: { ETag: '"d1"', 'X-Spectant-Activity-Hash': HEX_A } });
+      await first;
+      expect(api.activityHash('beacon')).toBe(HEX_A);
+      const second = api.dashboard('beacon');
+      http.expectOne('/api/workspaces/beacon/dashboard').flush(null, { status: 304, statusText: 'Not Modified', headers: { 'X-Spectant-Activity-Hash': HEX_B } });
+      expect((await second).kind).toBe('ok');
+      expect(api.activityHash('beacon')).toBe(HEX_B);
+    });
+
+    it('posts the hash in X-Spectant-Activity-Hash and types 200, 409 and 422', async () => {
+      const event = { ts: '2026-03-08T15:00:00.000Z', event: 'run-end', run: 'r-1', command: '/spec-tasks 003', session: 'u:3f9c0a7d', spec: '003', outcome: 'released' };
+      const ok = api.releaseRun('beacon', 'r-1', HEX_A);
+      const req = http.expectOne('/api/workspaces/beacon/runs/r-1/release');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.headers.get('X-Spectant-Activity-Hash')).toBe(HEX_A);
+      req.flush({ hash: HEX_B, event });
+      expect(await ok).toEqual({ kind: 'answer', answer: { status: 200, body: { hash: HEX_B, event } } });
+
+      const stale = { error: 'hash-mismatch', files: ['.spectant/activity.jsonl'], expected: { activity: HEX_B } };
+      const conflict = api.releaseRun('beacon', 'r-1', HEX_A);
+      http.expectOne('/api/workspaces/beacon/runs/r-1/release').flush(stale, { status: 409, statusText: 'Conflict' });
+      expect(await conflict).toEqual({ kind: 'answer', answer: { status: 409, body: stale } });
+
+      const refused = { error: 'release-refused', reason: 'no-viewer' };
+      const noViewer = api.releaseRun('beacon', 'r-1', HEX_A);
+      http.expectOne('/api/workspaces/beacon/runs/r-1/release').flush(refused, { status: 422, statusText: 'Unprocessable' });
+      expect(await noViewer).toEqual({ kind: 'answer', answer: { status: 422, body: refused } });
     });
   });
 

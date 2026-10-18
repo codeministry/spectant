@@ -244,8 +244,8 @@
     "claimStates": {
       "open": "open",
       "takeable": "takeable",
-      "taken": "taken",
-      "blocked": "blocked",
+      "taken": "running",
+      "blocked": "waiting",
       "closed": "closed",
       "dropped": "dropped"
     },
@@ -450,12 +450,12 @@
     "card": {
       "waiting": "waiting",
       "dispatched": "dispatched",
-      "running": "in flight",
+      "running": "running",
       "question": "question",
       "concerns": "concerns",
       "fail": "fail",
-      "done": "done",
-      "closed": "closed",
+      "done": "landed",
+      "closed": "done",
       "absent": "absent",
       "operatorOpen": "your step",
       "operatorDone": "step done",
@@ -473,10 +473,17 @@
     "claim": {
       "open": "open",
       "takeable": "takeable",
-      "taken": "taken",
-      "blocked": "blocked",
+      "taken": "running",
+      "blocked": "waiting",
       "closed": "closed",
       "dropped": "dropped"
+    },
+    "item": {
+      "open": "open",
+      "waiting": "waiting",
+      "running": "running",
+      "aborted": "aborted",
+      "done": "done"
     }
   },
   "scrubber": {
@@ -746,8 +753,8 @@
       "all": "All",
       "open": "open",
       "takeable": "takeable",
-      "taken": "taken",
-      "blocked": "blocked",
+      "taken": "running",
+      "blocked": "waiting",
       "closed": "closed",
       "dropped": "dropped"
     },
@@ -851,8 +858,8 @@
     },
     "status": {
       "open": "open",
-      "dispatched": "dispatched",
-      "held": "held",
+      "dispatched": "running",
+      "held": "waiting",
       "question": "question",
       "concerns": "concerns",
       "fail": "fail",
@@ -1136,8 +1143,8 @@
       "error": "The open claims could not be read.",
       "groups": {
         "takeable": "takeable",
-        "taken": "taken",
-        "blocked": "blocked",
+        "taken": "running",
+        "blocked": "waiting",
         "open": "open"
       },
       "waitsOn": "waits on {{ids}}",
@@ -1659,6 +1666,31 @@
       "term": "Chore",
       "common": "Chore",
       "definition": "The seventh spec type: `spec.md` only, review then build then done, no code review."
+    },
+    "open": {
+      "term": "Open",
+      "common": "To do",
+      "definition": "The item state in which the next command lies with the user, given with its reason."
+    },
+    "waiting": {
+      "term": "Waiting",
+      "common": "Blocked",
+      "definition": "The item state in which the item hangs on another item, given as what it waits on."
+    },
+    "running": {
+      "term": "Running",
+      "common": "In progress",
+      "definition": "The item state while a run is open on the item and younger than the abort age; the run locks the item."
+    },
+    "aborted": {
+      "term": "Aborted",
+      "common": "Stalled",
+      "definition": "The item state of a run without end that is older than the abort age; it locks nothing."
+    },
+    "done": {
+      "term": "Done",
+      "common": "Done",
+      "definition": "The item state of a finished item; a dropped claim or a struck task is done with that as its detail."
     }
   },
   "planning": {
@@ -2160,7 +2192,53 @@
     "unmapped": "unmapped"
   },
   "reason": {
-    "glyph": "waits"
+    "glyph": "open"
+  },
+  "itemState": {
+    "line": "{{stage}} · {{state}}",
+    "since": "since {{duration}}",
+    "started": "started {{time}}",
+    "waitsOn": "waits on {{items}}",
+    "doneOn": "done {{date}}",
+    "noRelease": "no release",
+    "closedAs": {
+      "dropped": "dropped",
+      "struck": "struck"
+    },
+    "abortedFor": "no release for {{duration}}",
+    "duration": {
+      "underMinute": "< 1 min",
+      "minutes": "{{minutes}} min",
+      "hours": "{{hours}} h {{minutes}} min"
+    },
+    "runs": {
+      "one": "{{count}} run",
+      "other": "{{count}} runs"
+    },
+    "runningCount": {
+      "one": "{{count}} running",
+      "other": "{{count}} running"
+    },
+    "locked": {
+      "chip": "Locked · {{command}} is running · {{actor}}",
+      "hint": "Running for {{duration}} · copyable once it ends",
+      "checkbox": "locked · {{session}}",
+      "notice": "{{spec}} is running · {{command}} · since {{duration}} — ticks locked",
+      "move": "{{spec}} is running · {{command}} · {{actor}} · since {{duration}}"
+    },
+    "refusal": "Not moved — {{spec}} is running: {{command}} · {{actor}} · since {{duration}}",
+    "release": {
+      "button": "Release run",
+      "question": "The agent may still be writing. Release the run?",
+      "explain": "The run in the chat goes on; the app only lifts the lock.",
+      "confirm": "Release",
+      "keep": "Keep",
+      "released": "Run released",
+      "changed": "The run changed · reloaded",
+      "aborted": "The run reads aborted by now · reloaded",
+      "noViewer": "Release needs your person id: map your git identity under Settings · Actors",
+      "failed": "Not released · error {{status}}"
+    }
   },
   "live": {
     "taskActors": "Working on {{ task }}",

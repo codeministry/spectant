@@ -18,6 +18,7 @@ import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
+import { UiGlyph } from '../../shared/ui/glyph/glyph';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
@@ -177,6 +178,7 @@ export const dividerShown = (band: BandPlace, first: boolean): BandDivider | nul
     UiCard,
     UiCommandChip,
     UiEmptyState,
+    UiGlyph,
     UiIcon,
     UiIconButton,
     UiMeter,
@@ -695,15 +697,24 @@ export class BoardPage {
     void this.drag.move(this.ws(), event.item.data, this.drag.dropTarget(event));
   }
 
-  /** The grip was clicked without a drag (T127): "Move to…" opens on it, the grip focused so Esc returns there. */
+  /**
+   * The grip was clicked without a drag (T127): "Move to…" opens on it, the grip focused so Esc returns there. A card a
+   * running run holds (spec 040, T57) shows the run's refusal under it instead at medium and wide; at compact the menu
+   * opens with every entry disabled and the same notice above them (T58).
+   */
   protected openMenu(card: BoardCardModel, grip: HTMLElement): void {
     if (this.dragClick) return;
     grip.focus({ preventScroll: true });
+    if (!this.compact() && this.drag.holdRun(card, card.stage)) return;
     this.menu()?.openFor(card, grip);
   }
 
-  /** Shift+← / Shift+→ on a card (T127): the same move to the previous or next allowed stage, no menu. */
+  /**
+   * Shift+← / Shift+→ on a card (T127): the same move to the previous or next allowed stage, no menu. A card a running
+   * run holds shows the run's refusal instead, whichever way a target lies (spec 040, T57).
+   */
   protected async step(card: BoardCardModel, dir: -1 | 1): Promise<void> {
+    if (this.drag.holdRun(card, card.stage)) return;
     const to = stepTarget(card, this.board()?.stages ?? [], dir);
     if (to === null) return;
     const outcome = await this.drag.move(this.ws(), card, to);

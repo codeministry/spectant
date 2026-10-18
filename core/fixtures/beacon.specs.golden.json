@@ -1,0 +1,178 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-check-scheduler",
+      "folder": "specs/001-check-scheduler",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "events",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/001-check-scheduler",
+        "folder": "specs/001-check-scheduler",
+        "slug": "specs/001-check-scheduler"
+      }
+    },
+    {
+      "id": "002",
+      "slug": "002-status-page",
+      "folder": "specs/002-status-page",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/002-status-page",
+        "folder": "specs/002-status-page",
+        "slug": "specs/002-status-page"
+      }
+    },
+    {
+      "id": "003",
+      "slug": "003-alert-rules",
+      "folder": "specs/003-alert-rules",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan"
+      ],
+      "resolves": {
+        "id": "specs/003-alert-rules",
+        "folder": "specs/003-alert-rules",
+        "slug": "specs/003-alert-rules"
+      }
+    },
+    {
+      "id": "004",
+      "slug": "004-incident-notes",
+      "folder": "specs/004-incident-notes",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/004-incident-notes",
+        "folder": "specs/004-incident-notes",
+        "slug": "specs/004-incident-notes"
+      }
+    },
+    {
+      "id": "005",
+      "slug": "005-probe-agents",
+      "folder": "specs/005-probe-agents",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/005-probe-agents",
+        "folder": "specs/005-probe-agents",
+        "slug": "specs/005-probe-agents"
+      }
+    },
+    {
+      "id": "006",
+      "slug": "006-retry-backoff",
+      "folder": "specs/006-retry-backoff",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed",
+        "gateCodeReviewed"
+      ],
+      "resolves": {
+        "id": "specs/006-retry-backoff",
+        "folder": "specs/006-retry-backoff",
+        "slug": "specs/006-retry-backoff"
+      }
+    },
+    {
+      "id": "007",
+      "slug": "007-history-export",
+      "folder": "specs/007-history-export",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/007-history-export",
+        "folder": "specs/007-history-export",
+        "slug": "specs/007-history-export"
+      }
+    },
+    {
+      "id": "008",
+      "slug": "008-export-formats",
+      "folder": "specs/008-export-formats",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/008-export-formats",
+        "folder": "specs/008-export-formats",
+        "slug": "specs/008-export-formats"
+      }
+    },
+    {
+      "id": "009",
+      "slug": "009-timezone-labels",
+      "folder": "specs/009-timezone-labels",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/009-timezone-labels",
+        "folder": "specs/009-timezone-labels",
+        "slug": "specs/009-timezone-labels"
+      }
+    },
+    {
+      "id": "010",
+      "slug": "010-renew-api-key",
+      "folder": "specs/010-renew-api-key",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/010-renew-api-key",
+        "folder": "specs/010-renew-api-key",
+        "slug": "specs/010-renew-api-key"
+      }
+    },
+    {
+      "id": "011",
+      "slug": "011-maintenance-windows",
+      "folder": "specs/011-maintenance-windows",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/011-maintenance-windows",
+        "folder": "specs/011-maintenance-windows",
+        "slug": "specs/011-maintenance-windows"
+      }
+    }
+  ]
+}

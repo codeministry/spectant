@@ -23,7 +23,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 67
+        "line": 67,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-4",
@@ -49,7 +60,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 68
+        "line": 68,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-4",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-5",
@@ -75,7 +97,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 69
+        "line": 69,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-5",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-6",
@@ -99,7 +132,18 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 70
+        "line": 70,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-6",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "claim ISC-6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "ISC-7",
@@ -123,7 +167,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 71
+        "line": 71,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-7",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "ISC-7 is takeable"
+        }
       },
       {
         "id": "ISC-8",
@@ -151,7 +203,20 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 72
+        "line": 72,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-8",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-7"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "ISC-9",
@@ -175,7 +240,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 73
+        "line": 73,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-9",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "ISC-9 is takeable"
+        }
       },
       {
         "id": "ISC-10",
@@ -203,7 +276,20 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 74
+        "line": 74,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-10",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-9"
+            ],
+            "siblings": []
+          }
+        }
       }
     ],
     "features": [
@@ -261,7 +347,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 33
+        "line": 33,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-11",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "ISC-11 is takeable"
+        }
       },
       {
         "id": "ISC-12",
@@ -285,7 +379,15 @@
         "lock": null,
         "dropped": null,
         "noteCount": 0,
-        "line": 34
+        "line": 34,
+        "itemState": {
+          "kind": "claim",
+          "id": "ISC-12",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "ISC-12 is takeable"
+        }
       }
     ],
     "features": [],

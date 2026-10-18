@@ -18,6 +18,9 @@
 // `SPEC_ID` and `specIdOf`) rides it whole, so a reader can match an edge's `NNN` to its active or archived folder.
 // spec-edges.ts (`resolveEdges`, `edgeMet`) takes the folder texts and the server's merge state from the caller, runs
 // no git and reads no file, and rides it whole.
+// Spec 040's item-state.ts (`itemStates`, `STATE_TABLE`, the default ages) takes the parsed workspace, the dashboard
+// model and the task runs from the caller, imports dashboard.ts for types only and neither gates.ts nor locks.ts, so it
+// rides it whole; its types `ItemStateInfo`, `ItemState`, `ItemRun`, `ItemWaits` and `OpenRun` ride with files.ts.
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';
@@ -47,6 +50,7 @@ export * from './backlog.ts';
 export * from './tech.ts';
 export * from './worktrees.ts';
 export * from './repo-source.ts';
+export * from './item-state.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';
 export type * from './library.ts';

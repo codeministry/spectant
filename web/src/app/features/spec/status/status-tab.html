@@ -80,6 +80,7 @@
                 [actors]="actors()"
                 [compact]="tier() === 'compact'"
                 [showCommand]="tier() !== 'wide'"
+                [ws]="ws() ?? ''"
                 [since]="m.next.since ? { at: m.next.since, via: m.next.via ?? '' } : null"
               />
               @if (m.next.reasons.length > 1) {

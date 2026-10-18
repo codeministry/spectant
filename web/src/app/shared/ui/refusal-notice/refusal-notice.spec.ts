@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
-import type { BacklogRefusal } from './refusal';
+import type { BoardRefusal, Refusal } from './refusal';
 import { RefusalNotice } from './refusal-notice';
 
 // T21 · ISC-198 (design 037 § Ablehnung): the board's `app-refusal-notice`, moved to shared/ui for its second consumer,
@@ -14,16 +14,17 @@ import { RefusalNotice } from './refusal-notice';
 @Component({
   imports: [RefusalNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<app-refusal-notice [refusal]="refusal()" (closed)="closed = closed + 1" />`,
+  template: `<app-refusal-notice [refusal]="refusal()" [dismissible]="dismissible()" (closed)="closed = closed + 1" />`,
 })
 class Host {
-  readonly refusal = signal<BacklogRefusal>({ op: 'move', feature: 'F8', priority: null, kind: 'refused', reason: 'F8 is not in that milestone' });
+  readonly dismissible = signal(true);
+  readonly refusal = signal<Refusal>({ op: 'move', feature: 'F8', priority: null, kind: 'refused', reason: 'F8 is not in that milestone' });
   closed = 0;
 }
 
 let fixture: ComponentFixture<Host>;
 
-async function mount(refusal: BacklogRefusal, lang: 'en' | 'de' = 'en'): Promise<HTMLElement> {
+async function mount(refusal: Refusal, lang: 'en' | 'de' = 'en'): Promise<HTMLElement> {
   TestBed.configureTestingModule({
     imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
   });
@@ -87,5 +88,37 @@ describe('refusal-notice for a backlog write (T21, ISC-198)', () => {
     const n = await mount({ op: 'move', feature: 'F8', priority: null, kind: 'refused', reason: 'no' });
     n.querySelector<HTMLButtonElement>('[data-dismiss]')?.click();
     expect(fixture.componentInstance.closed).toBe(1);
+  });
+});
+
+// Spec 040 (T59, ISC-225.1): a run holds the item. One line under one key on every path, fail tone as an alert; the
+// menu's notice has no ✕; a detail the run's source does not name reads "—".
+describe('refusal-notice for a running run (T59, ISC-225.1)', () => {
+  const RUN: BoardRefusal = {
+    key: 'spec:003-config-loader',
+    id: '003',
+    stage: 'tasks',
+    to: 'review',
+    kind: 'run-locked',
+    command: '/spec-tasks 003',
+    actor: 'a:claude:sess-32',
+    elapsedMs: 480_000,
+  };
+
+  it('names the item, the command, the actor and the duration in one line, fail tone as an alert', async () => {
+    const n = await mount(RUN);
+    expect(n.getAttribute('data-refusal')).toBe('run-locked');
+    expect(text(n.querySelector('[data-head][data-run-refusal]'))).toBe('Not moved — 003 is running: /spec-tasks 003 · a:claude:sess-32 · since 8 min');
+    expect(n.querySelector('ui-reason')).toBeNull();
+    expect(n.querySelector('ui-notice')?.getAttribute('role')).toBe('alert');
+    expect(n.querySelector('[data-dismiss]')).not.toBeNull();
+  });
+
+  it('German from the de catalogue, "—" for what the source does not name, and no ✕ where it is not dismissible', async () => {
+    const n = await mount({ ...RUN, actor: null, elapsedMs: null }, 'de');
+    expect(text(n.querySelector('[data-head]'))).toBe('Nicht verschoben — 003 läuft: /spec-tasks 003 · — · seit —');
+    fixture.componentInstance.dismissible.set(false);
+    fixture.detectChanges();
+    expect(n.querySelector('[data-dismiss]')).toBeNull();
   });
 });

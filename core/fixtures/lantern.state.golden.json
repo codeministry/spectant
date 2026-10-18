@@ -1,0 +1,246 @@
+[
+  {
+    "kind": "spec",
+    "id": "001",
+    "state": "open",
+    "stage": "build",
+    "command": "/spec-implement 001",
+    "reason": "ISC-7 and ISC-9 are takeable"
+  },
+  {
+    "kind": "review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "done",
+    "doneAt": "2026-03-04T10:00:00Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "001"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-3",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-3 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-4",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-4 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-5",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-5 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-6",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-6 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-7",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "ISC-7 is takeable"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-8",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-7"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-9",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "ISC-9 is takeable"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-10",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-9"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T2 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T3 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T4",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T4 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T5",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "task of ISC-7, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T6",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-7"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T7",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "task of ISC-9, not dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T8",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-9"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "002",
+    "state": "open",
+    "stage": "build",
+    "command": "/spec-implement 002",
+    "reason": "ISC-11 and ISC-12 are takeable"
+  },
+  {
+    "kind": "review-mark",
+    "id": "002",
+    "spec": "002",
+    "state": "done",
+    "doneAt": "2026-03-06T10:30:00Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "002",
+    "spec": "002",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "002"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-11",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "ISC-11 is takeable"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-12",
+    "spec": "002",
+    "state": "open",
+    "command": "/spec-implement 002",
+    "reason": "ISC-12 is takeable"
+  }
+]

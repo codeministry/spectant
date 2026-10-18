@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import beacon from '../../../../../../core/fixtures/beacon.golden.json';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import lantern from '../../../../../../core/fixtures/lantern.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
@@ -13,6 +14,7 @@ import { type DashboardIdeas, IdeasPanel } from './ideas-panel';
 
 const HARBOR = (harbor as unknown as { ideas: DashboardIdeas }).ideas;
 const LANTERN = (lantern as unknown as { ideas: DashboardIdeas }).ideas;
+const BEACON = (beacon as unknown as { ideas: DashboardIdeas }).ideas;
 
 beforeEach(() => {
   TestBed.configureTestingModule({
@@ -81,6 +83,32 @@ describe('IdeasPanel (T138, ISC-124.2)', () => {
     });
     expect(root.querySelector('[data-idea="lone"] [data-idea-where]')).toBeNull();
     expect(root.querySelector('[data-idea="half"] [data-idea-where]')?.textContent.trim()).toBe('F1');
+  });
+
+  // Spec 040 (T50, ISC-224): each story's state line from its served state.
+  it('shows each story\'s state line: harbor\'s open with `/spec new <slug>`, beacon\'s running story with its run', async () => {
+    const { root } = await render(HARBOR);
+    for (const idea of HARBOR.list) {
+      const state = root.querySelector<HTMLElement>(`[data-idea="${idea.slug}"] ui-item-state`);
+      expect(state?.dataset['state']).toBe('open');
+      expect(state?.querySelector('[data-item-line]')?.textContent.replace(/\s+/g, ' ').trim()).toBe('Idea · open');
+      expect(state?.querySelector('ui-command-chip')?.textContent).toContain(`/spec new ${idea.slug}`);
+    }
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
+      providers: [provideRouter([]), { provide: ShellData, useValue: { planningModel: () => null } }, { provide: ShellState, useValue: { tier: () => 'wide' } }],
+    });
+    const run = await render(BEACON);
+    const running = run.root.querySelector<HTMLElement>('[data-idea="uptime-badges"] ui-item-state');
+    expect(running?.dataset['state']).toBe('running');
+    expect(running?.querySelector('ui-command-chip')?.textContent).toContain('/spec new uptime-badges');
+    expect(running?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-71');
+  });
+
+  it('shows no state line for a story the server served without a state', async () => {
+    const { root } = await render({ count: 1, list: [{ slug: 'lone', title: 'Lone', feature: null, milestone: null, priority: 'P3' }] });
+    expect(root.querySelector('[data-idea="lone"] ui-item-state')).toBeNull();
   });
 
   it('renders nothing on lantern, which has no story', async () => {

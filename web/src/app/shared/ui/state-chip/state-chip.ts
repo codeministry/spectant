@@ -5,9 +5,9 @@ import { UiGlyph } from '../glyph/glyph';
 import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec, stateKey } from '../glyph/states';
 
 /**
- * A state chip (ISC-88): the 14 px glyph, the state word as visible text (never tooltip-only) from `states.card.*` /
- * `states.claim.*`, tinted by the state's one tone. The same table drives the glyph, so glyph, word and colour can
- * never disagree.
+ * A state chip (ISC-88): the 14 px glyph, the state word as visible text (never tooltip-only) from `states.card.*`,
+ * `states.claim.*` or `states.item.*` (spec 040), tinted by the state's one tone. The same table drives the glyph, so
+ * glyph, word and colour can never disagree; `aborted` is the warning chip on `--hover-t`.
  *
  * `small`: the board card's form (the prototype's `.schip`): the word alone in the 10 px `small` chip, since the card
  * already leads with the state's glyph; it never wraps and ends in an ellipsis when the card header runs out of room.
@@ -34,7 +34,7 @@ import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec, stateKey } f
 })
 export class UiStateChip {
   readonly state = input.required<GlyphState>();
-  /** Needed only for `closed`, the one word of both families. */
+  /** Needed for a word of two families (`closed`; `open`, `waiting`, `running`, `done` of the item family). */
   readonly family = input<GlyphFamily>();
   /** The board card's one-line form (see above). */
   readonly small = input(false, { transform: booleanAttribute });

@@ -28,6 +28,7 @@ import type {
 } from '../../core/src/files';
 import type { PlanningModel } from '../../core/src/planning';
 import {
+  ACTIVITY_HASH_HEADER,
   ACTORS_ALLOW,
   ACTORS_PATH,
   ACTORS_STATUSES,
@@ -63,7 +64,12 @@ import {
   MIDNIGHT_HEADER,
   MIDNIGHT_STATES,
   RESET_PATH,
+  RUN_HEADER,
   STUB_EDGES,
+  STUB_PERSON,
+  STUB_RUN,
+  type StubRunState,
+  runActivity,
   STUB_LIBRARY,
   STUB_MIDNIGHT,
   STUB_MILESTONE,
@@ -661,7 +667,7 @@ describe('stub API: the library (spec 017, T3)', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false };
+  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 
@@ -1301,6 +1307,7 @@ describe('stub API matches the real server handlers byte for byte', () => {
       'boardQuery',
       'allocate',
       'backlog',
+      'runRelease',
       'library',
       'libraryDoc',
       'librarySearch',
@@ -1800,6 +1807,22 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
           [workspaceRoutes.backlog(WS), { method: 'POST', body: priority(empty, 'F99') }],
         ] satisfies Case[];
       })(),
+      // Spec 040 (ISC-226): beacon under the runs locks; its /spec-tasks 003 run is open, r-0308-1140 is aborted at STUB_NOW.
+      runRelease: await (async () => {
+        const runs = { [LOCKS_HEADER]: 'runs' };
+        const hash = (await ask('/api/workspaces/beacon/dashboard', { headers: runs })).headers.get(ACTIVITY_HASH_HEADER) ?? '';
+        const at = (run: string): string => workspaceRoutes.runRelease('beacon', run);
+        const sent = (h: string): Record<string, string> => ({ ...runs, [ACTIVITY_HASH_HEADER]: h });
+        return [
+          [at(STUB_RUN.run), { method: 'POST', headers: sent(hash), session: 't040-release-status' }],
+          [at(STUB_RUN.run), { method: 'POST', headers: runs }],
+          [at(STUB_RUN.run), { method: 'POST', headers: { ...evil, ...sent(hash) } }],
+          [workspaceRoutes.runRelease('nope', 'r-1'), { method: 'POST', headers: sent(hash) }],
+          [at(STUB_RUN.run), { method: 'GET', headers: runs }],
+          [at(STUB_RUN.run), { method: 'POST', headers: sent('0'.repeat(64)) }],
+          [at('r-0308-1140'), { method: 'POST', headers: sent(hash) }],
+        ] satisfies Case[];
+      })(),
       library: reads((ws) => workspaceRoutes.library(ws)),
       libraryDoc: [
         ...reads((ws) => workspaceRoutes.libraryDoc(ws, ws === 'lantern' ? '001-reading-list/plan.md' : '002-web-console/plan.md')),
@@ -1820,6 +1843,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       'boardQuery',
       'allocate',
       'backlog',
+      'runRelease',
       'library',
       'libraryDoc',
       'librarySearch',
@@ -2341,7 +2365,10 @@ describe('stub API: the near-midnight instant via X-Spectant-Stub-Midnight (spec
   });
 
   test('on: the reviewed mark, the gate event and the newest round of harbor 002 carry the instant, in every lock fixture', async () => {
-    for (const locks of LOCK_STATES) {
+    // `runs` (spec 040, T53) serves its own rebuilt tree and refuses every overlay.
+    const runs = await ask(specRoutes.spec(workspace, spec), { headers: { ...on, [LOCKS_HEADER]: 'runs' } });
+    expect({ status: runs.status, error: ((await runs.json()) as Json)['error'] }).toEqual({ status: 400, error: 'stub-runs-with-overlay' });
+    for (const locks of LOCK_STATES.filter((l) => l !== 'runs')) {
       const page = await read<SpecPageModel>(specRoutes.spec(workspace, spec), { ...on, [LOCKS_HEADER]: locks });
       expect(page.gates.reviewed.at).toBe(instant);
       expect(page.gates.reviewed.state).toBe(goldenPage.gates.reviewed.state);
@@ -2388,5 +2415,172 @@ describe('stub API: the near-midnight instant via X-Spectant-Stub-Midnight (spec
     expect(STUB_MILESTONE.target).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(local(STUB_MILESTONE.target, STUB_MIDNIGHT.zones.west.timezoneId).day).toBe(STUB_MILESTONE.misreadWest);
     expect(local(STUB_MILESTONE.target, STUB_MIDNIGHT.zones.east.timezoneId).day).toBe(STUB_MILESTONE.target);
+  });
+});
+
+describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224)', () => {
+  type Headers = Record<string, string>;
+  type Item = { kind: string; id: string; state: string; command?: string; run?: { run: string; command: string; session: string; since: string } };
+  type Row = { id: string; state?: Item };
+  type Holder = { slug: string; stage?: string };
+  const WS = STUB_RUN.workspace.slug;
+  const as = (run?: StubRunState): Headers => ({ [LOCKS_HEADER]: 'runs', ...(run === undefined ? {} : { [RUN_HEADER]: run }) });
+  const read = async <T>(path: string, headers: Headers): Promise<T> => {
+    const res = await ask(path, { headers });
+    expect({ path, status: res.status }).toEqual({ path, status: 200 });
+    return (await res.json()) as T;
+  };
+  const rows = async (headers: Headers): Promise<Row[]> => (await read<{ specs: Row[] }>(`/api/workspaces/${WS}/dashboard`, headers)).specs;
+  const planning = (headers: Headers): Promise<PlanningModel> => read<PlanningModel>(workspaceRoutes.planning(WS), headers);
+  const holderOf = (model: PlanningModel, slug: string): Holder | undefined => {
+    let found: Holder | undefined;
+    const walk = (value: unknown): void => {
+      if (Array.isArray(value)) value.forEach(walk);
+      else if (typeof value === 'object' && value !== null) {
+        const v = value as Json;
+        if (v['slug'] === slug && typeof v['stage'] === 'string') found ??= v as unknown as Holder;
+        Object.values(v).forEach(walk);
+      }
+    };
+    walk(model.features);
+    return found;
+  };
+  /** 003's answers on the four routes: its dashboard row's and page head's state, its board stage and its Tasks tab. */
+  const answersOf = async (headers: Headers): Promise<{ row?: Item; head?: Item; stage?: string; tasks: unknown }> => {
+    const row = (await rows(headers)).find((r) => r.id === STUB_RUN.spec);
+    const page = await read<SpecPageModel>(specRoutes.spec(WS, STUB_RUN.spec), headers);
+    const tasks = await read<unknown>(specRoutes.tasks(WS, STUB_RUN.spec), headers);
+    return { row: row?.state, head: page.head.state as Item | undefined, stage: holderOf(await planning(headers), STUB_RUN.folder)?.stage, tasks };
+  };
+  const OPEN = { kind: 'spec', id: STUB_RUN.spec, state: 'open', command: STUB_RUN.command };
+
+  test('runs: beacon is listed after the default workspaces; without runs it is no workspace', async () => {
+    const list = await read<Json[]>('/api/workspaces', as());
+    expect(list.map((w) => w['slug'])).toEqual(['harbor', 'lantern', WS]);
+    expect(list.at(-1)).toEqual({ slug: WS, name: WS, pathTail: WS, readable: true, counts: golden(WS)['kpis'] });
+    expect((await ask(`/api/workspaces/${WS}/dashboard`)).status).toBe(404);
+    expect((await ask(workspaceRoutes.planning(WS))).status).toBe(404);
+  });
+
+  test('running (and no run header): beacon answers its goldens, rebuilt by core from the log as it is', async () => {
+    for (const headers of [as(), as('running')]) {
+      expect(await read<unknown>(`/api/workspaces/${WS}/dashboard`, headers)).toEqual(golden(WS));
+      const { backlogHash, ...served } = await planning(headers);
+      expect(backlogHash).toBe(EMPTY_SHA256);
+      expect(served).toEqual(golden(`${WS}.planning`) as unknown as PlanningModel);
+      const pages = golden(`${WS}.spec`) as Record<string, SpecPageModel>;
+      const tabs = golden(`${WS}.tasks`) as Record<string, TasksTab | null>;
+      for (const [key, page] of Object.entries(pages)) {
+        const id = page.head.id;
+        expect({ key, page: await read<SpecPageModel>(specRoutes.spec(WS, id), headers) }).toEqual({ key, page });
+        expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: tabs[key] ?? null });
+      }
+    }
+  });
+
+  test('none | running | ended: 003 answers open with its command, running with the run, then what its files give', async () => {
+    const none = await answersOf(as('none'));
+    const running = await answersOf(as('running'));
+    const ended = await answersOf(as('ended'));
+    expect(none.row).toMatchObject(OPEN);
+    expect(none.row?.run).toBeUndefined();
+    expect(running.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'running', run: { run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, since: STUB_RUN.since } });
+    // The run wrote tasks.md, so after its end 003 reads the stage and state its files then give: review, open.
+    expect(ended.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'open', stage: 'review', command: '/spec-review 003' });
+    expect(ended.row?.run).toBeUndefined();
+    expect(ended.stage).toBe('review');
+    expect(ended.tasks).not.toBeNull();
+    for (const answer of [none, running, ended]) expect(answer.head).toEqual(answer.row);
+    for (const answer of [none, running]) {
+      expect(answer.stage).toBe('tasks');
+      // Before the run ends 003 has no tasks.md.
+      expect(answer.tasks).toBeNull();
+    }
+    // Only 003's item moves: every other row, and the stories, read the same in all three.
+    const others = async (headers: Headers): Promise<Row[]> => (await rows(headers)).filter((r) => r.id !== STUB_RUN.spec);
+    const stories = async (headers: Headers): Promise<unknown> => (await planning(headers)).ideas.map((i) => [i.slug, i.state]);
+    for (const run of ['none', 'ended'] as const) {
+      expect(await others(as(run))).toEqual(await others(as('running')));
+      expect(await stories(as(run))).toEqual(await stories(as('running')));
+    }
+  });
+
+  test('a task row answers its item in every variant: the tasks of 005 do not move with 003', async () => {
+    const tab = async (run: StubRunState): Promise<unknown[]> => (await read<TasksTab>(specRoutes.tasks(WS, '005'), as(run))).tasks.map((t) => [t.id, t.itemState]);
+    const running = await tab('running');
+    expect(running.length).toBeGreaterThan(0);
+    expect(await tab('none')).toEqual(running);
+    expect(await tab('ended')).toEqual(running);
+  });
+
+  test("the idea page carries the planning payload's story state", async () => {
+    for (const idea of (await planning(as())).ideas) {
+      const page = await read<{ idea: { state?: unknown } }>(workspaceRoutes.idea(WS, idea.slug), as());
+      expect({ slug: idea.slug, state: page.idea.state }).toEqual({ slug: idea.slug, state: idea.state });
+    }
+  });
+
+  test('header errors: an unknown run, a run without the runs locks, runs beside an overlay', async () => {
+    const answer = async (headers: Headers): Promise<[number, unknown]> => {
+      const res = await ask(`/api/workspaces/${WS}/dashboard`, { headers });
+      return [res.status, ((await res.json()) as Json)['error']];
+    };
+    expect(await answer({ ...as(), [RUN_HEADER]: 'paused' })).toEqual([400, 'unknown-stub-run']);
+    expect(await answer({ [RUN_HEADER]: 'none' })).toEqual([400, 'stub-run-without-runs']);
+    expect(await answer({ ...as(), [EDGES_HEADER]: 'waiting' })).toEqual([400, 'stub-runs-with-overlay']);
+    expect(await answer({ ...as(), [WORKTREES_HEADER]: 'on' })).toEqual([400, 'stub-runs-with-overlay']);
+  });
+
+  test('runActivity: none drops the one run-start, ended appends its run-end with outcome ok, running keeps the log', () => {
+    const text = readFileSync(join(FIXTURES, WS, '.spectant', 'activity.jsonl'), 'utf8');
+    expect(runActivity(text, 'running')).toBe(text);
+    expect(runActivity(text, 'none').split('\n').filter((l) => l.includes(STUB_RUN.run))).toEqual([]);
+    const last = JSON.parse(runActivity(text, 'ended').trim().split('\n').at(-1) ?? '{}') as Json;
+    expect(last).toEqual({ ts: STUB_RUN.endedAt, event: 'run-end', run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, spec: STUB_RUN.folder, outcome: 'ok' });
+    expect(() => runActivity('', 'none')).toThrow();
+  });
+});
+
+// ---- the run release (spec 040, T33, ISC-226) -----------------------------------------------------------------------
+
+describe('stub API: the run release answers as run-release-route.ts does, per session (spec 040, ISC-226)', () => {
+  const WS = STUB_RUN.workspace.slug;
+  const RUNS = { [LOCKS_HEADER]: 'runs' };
+  type Row = { id: string; state?: { state: string; run?: { run: string } } };
+  const hashOf = async (session: string): Promise<string> =>
+    (await ask(`/api/workspaces/${WS}/dashboard`, { headers: RUNS, session })).headers.get(ACTIVITY_HASH_HEADER) ?? '';
+  const stateOf = async (session: string): Promise<string | undefined> =>
+    ((await (await ask(`/api/workspaces/${WS}/dashboard`, { headers: RUNS, session })).json()) as { specs: Row[] }).specs.find((r) => r.id === STUB_RUN.spec)?.state?.state;
+  const release = (run: string, hash: string | null, session: string): Promise<Response> =>
+    ask(workspaceRoutes.runRelease(WS, run), { method: 'POST', session, headers: { ...RUNS, ...(hash === null ? {} : { [ACTIVITY_HASH_HEADER]: hash }) } });
+
+  test('run release: the session\'s next reads show 003 no longer running; another session and a reset still see it running', async () => {
+    const session = 't040-release';
+    expect(await stateOf(session)).toBe('running');
+    const hash = await hashOf(session);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    const res = await release(STUB_RUN.run, hash, session);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { hash: string; event: Record<string, unknown> };
+    expect(body.event).toEqual({ ts: '2026-03-08T15:00:00.000Z', event: 'run-end', run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_PERSON, spec: STUB_RUN.folder, outcome: 'released' });
+    expect(await hashOf(session)).toBe(body.hash);
+    expect(await stateOf(session)).not.toBe('running');
+    expect(await stateOf('t040-release-other')).toBe('running');
+    // A second release of the ended run is 404; the old hash is no longer asked for.
+    expect((await release(STUB_RUN.run, body.hash, session)).status).toBe(404);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await stateOf(session)).toBe('running');
+  });
+
+  test('run release: 400 without the hash, 409 for a stale one, 422 for the aborted run r-0308-1140, 404 for an unknown run', async () => {
+    const session = 't040-release-refusals';
+    const hash = await hashOf(session);
+    expect((await release(STUB_RUN.run, null, session)).status).toBe(400);
+    const stale = await release(STUB_RUN.run, '0'.repeat(64), session);
+    expect([stale.status, await stale.json()]).toEqual([409, { error: 'hash-mismatch', files: ['.spectant/activity.jsonl'], expected: { activity: hash } }]);
+    const aborted = await release('r-0308-1140', hash, session);
+    expect([aborted.status, await aborted.json()]).toEqual([422, { error: 'release-refused', reason: 'run-aborted' }]);
+    expect((await release('r-none', hash, session)).status).toBe(404);
+    expect(await stateOf(session)).toBe('running');
   });
 });

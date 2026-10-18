@@ -816,7 +816,6 @@ test.describe('workspace board', () => {
       await page.goto(wsBoard('harbor'));
       await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(planning).length);
       const cardIn = (stage: string, key: string): Locator => page.locator(`app-board-page section[data-col="${stage}"] app-board-card[data-key="${key}"]`);
-      const accessiblePhrase = (card: Locator): Promise<string | null> => card.locator('ui-reason .visually-hidden').evaluate((el) => el.textContent);
 
       // 008 waits in close-pending: the reason line carries the row's phrase and no command chip (close-pending has none).
       const s008 = holderOf(planning, '008');
@@ -825,7 +824,7 @@ test.describe('workspace board', () => {
       const c008 = cardIn('close-pending', `spec:${s008.slug}`);
       await expect(c008).toHaveCount(1);
       await expect(c008.locator('ui-type-glyph')).toHaveAttribute('data-type', String(r008.type));
-      await expect(c008.locator('.num')).toHaveText(s008.id);
+      await expect(c008.locator('.r1 .num')).toHaveText(s008.id);
       await expect(c008.locator('a.title')).toHaveText(s008.title);
       await expect(c008.locator('ui-priority')).toHaveAttribute('data-level', s008.priority);
       await expect(c008.locator('.chip.feat')).toHaveText(String(f008?.id));
@@ -833,9 +832,10 @@ test.describe('workspace board', () => {
       await expect(c008.locator('ui-actor-chip')).toHaveAttribute('data-kind', 'person');
       await expect(c008.locator('ui-actor-chip')).toContainText(String(s008.assignee?.id));
       expect(r008.nextCommand).toBeNull();
-      await expect(c008.locator('ui-reason')).toHaveCount(1);
-      expect(await accessiblePhrase(c008)).toBe(r008.nextReason);
-      await expect(c008.locator('ui-reason ui-command-chip')).toHaveCount(0);
+      // Spec 040 (T48): the state line replaces the reason line; the phrase stays the link's description.
+      await expect(c008.locator('[data-card-state] ui-item-state[data-state="waiting"]')).toHaveCount(1);
+      await expect(c008.locator('a.title')).toHaveAccessibleDescription(`waits: ${r008.nextReason}`);
+      await expect(c008.locator('[data-card-state] ui-command-chip')).toHaveCount(0);
 
       // 006 is the P1 card; it waits in review with the row's phrase and command.
       const s006 = holderOf(planning, '006');
@@ -847,10 +847,10 @@ test.describe('workspace board', () => {
       await expect(c006.locator('ui-priority [role="img"]')).toHaveAccessibleName('priority P1');
       await expect(c006.locator('ui-priority [role="img"] > span')).toHaveText('P1');
       await expect(c006.locator('ui-type-glyph')).toHaveAttribute('data-type', String(r006.type));
-      await expect(c006.locator('.num')).toHaveText(s006.id);
+      await expect(c006.locator('.r1 .num')).toHaveText(s006.id);
       await expect(c006.locator('a.title')).toHaveText(s006.title);
-      expect(await accessiblePhrase(c006)).toBe(r006.nextReason);
-      await expect(c006.locator('ui-reason ui-command-chip')).toContainText(String(r006.nextCommand));
+      await expect(c006.locator('a.title')).toHaveAccessibleDescription(`waits: ${r006.nextReason}`);
+      await expect(c006.locator('[data-card-state] ui-item-state[data-state="open"] ui-command-chip')).toContainText(String(r006.nextCommand));
 
       // A story in idea: the idea chip with its slug in place of a number, its type's glyph, its feature and milestone,
       // no assignee and no reason line (a story does not wait).
@@ -860,7 +860,7 @@ test.describe('workspace board', () => {
       await expect(cIdea).toHaveCount(1);
       await expect(cIdea).toHaveAttribute('data-kind', 'idea');
       await expect(cIdea.locator('.idea .slug')).toHaveText(story.slug);
-      await expect(cIdea.locator('.num')).toHaveCount(0);
+      await expect(cIdea.locator('.r1 .num')).toHaveCount(0);
       await expect(cIdea.locator('ui-type-glyph')).toHaveAttribute('data-type', String(story.type));
       await expect(cIdea.locator('a.title')).toHaveText(story.title);
       await expect(cIdea.locator('ui-priority')).toHaveAttribute('data-level', story.priority);
@@ -877,7 +877,7 @@ test.describe('workspace board', () => {
         for (const holder of feature.holders.filter((h) => !h.archived && h.main && h.stage !== null)) {
           const card = cardIn(String(holder.stage), `spec:${holder.slug}`);
           await expect(card, holder.slug).toHaveCount(1);
-          await expect(card.locator('.num'), holder.slug).toHaveText(holder.id);
+          await expect(card.locator('.r1 .num'), holder.slug).toHaveText(holder.id);
           await expect(card.locator('a.title'), holder.slug).toHaveText(holder.title);
           await expect(card.locator('ui-priority'), holder.slug).toHaveAttribute('data-level', holder.priority);
           await expect(card.locator('.chip.feat'), holder.slug).toHaveText(feature.id);

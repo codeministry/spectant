@@ -19,6 +19,7 @@ export const ICON_NAMES = [
   'layout-dashboard',
   'list-checks',
   'lock',
+  'lock-open',
   'maximize-2',
   'minimize-2',
   'monitor',

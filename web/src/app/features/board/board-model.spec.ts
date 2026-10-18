@@ -125,6 +125,15 @@ describe('buildBoard (T120, ISC-129)', () => {
     expect(column(board({ type: ['bug'] }), 'build')?.stub).toEqual({ kind: 'empty', hidden: 2 });
   });
 
+  it('counts the shown cards whose served state is running per column (spec 040, T48), none on harbor', () => {
+    expect(board().columns.every((c) => c.running === 0)).toBe(true);
+    const run = { kind: 'spec', id: '006', state: 'running', stage: 'review' } as const;
+    const rows = (dashboard.specs as unknown as readonly BoardRow[]).map((r) => (r.id === '006' ? { ...r, state: run } : r));
+    const model = buildBoard({ planning: planningGolden as unknown as PlanningModel, rows });
+    expect(column(model, 'review')?.running).toBe(1);
+    expect(card(model, '006')?.state).toBe(run);
+  });
+
   it('resolves a mapped person to its display name and leaves an unmapped one without a name', () => {
     const named = board({}, [{ id: PERSON, displayName: 'Harbor maintainer' }]);
     expect(card(named, '002')).toMatchObject({ assigneeName: 'Harbor maintainer' });

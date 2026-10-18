@@ -29,7 +29,7 @@ describe('UiReason (ISC-122.3)', () => {
     const { host } = await render({ phrase, command: '/spec-review 008' });
     const icon = host.querySelector('ui-icon svg');
     expect(icon?.getAttribute('role')).toBe('img');
-    expect(icon?.getAttribute('aria-label')).toBe('waits');
+    expect(icon?.getAttribute('aria-label')).toBe('open');
     expect(host.querySelector('.phrase')?.textContent).toBe(phrase);
     expect(host.querySelector('.visually-hidden')?.textContent).toBe(phrase);
     expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec-review 008');
@@ -48,7 +48,7 @@ describe('UiReason (ISC-122.3)', () => {
     expect(host.getAttribute('data-compact')).toBe('');
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(host.querySelector('ui-icon svg')?.getAttribute('aria-label')).toBe('wartet');
+    expect(host.querySelector('ui-icon svg')?.getAttribute('aria-label')).toBe('offen');
     expect(host.querySelector('.phrase')?.textContent).toBe(phrase);
   });
 

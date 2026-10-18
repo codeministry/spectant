@@ -30,6 +30,18 @@
 //    `.worktrees/NNN-slug` (`runSpecOf`, spec 041, ISC-213); one that names neither is kept on `runs`, counts for no
 //    spec and raises a `locks-activity-unassigned` warning at its line.
 //
+//    The run lifecycle events (spec 040, ISC-222): `{ts, event: "run-start" | "run-end", run, command, session,
+//    spec | idea, outcome?}`, one when a command starts on a spec or an idea and one when it ends. `ts`, `run`,
+//    `command` and `session` are required, and exactly one of `spec` or `idea`; `outcome`, read on `run-end` only, is
+//    `ok`, `error` or `released` when present. A line that breaks any of this is malformed and skipped. Starts and ends
+//    pair by `run`: a `run-start` without a later `run-end` of its id is an open run, collected on the reading as
+//    `openRuns` in file order. A `run-end` for a run that is not open (unknown or already ended) is one
+//    `locks-activity-run-unmatched` warning, and a `run-start` reusing a run id is one `locks-activity-run-duplicate`
+//    warning; both are skipped. Neither event holds a claim or names a task. `openRuns` is set only when the log holds at
+//    least one `run-start` or `run-end` line, so a log without them reads exactly as before (ISC-222.2); for the same
+//    reason the `activity-event-unknown` text still lists the six older events only, and an unknown event is one that is
+//    none of the eight.
+//
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
 // With no state directory given, nothing outside `repoRoot` is touched (ISC-37).
 //
@@ -43,7 +55,19 @@ import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import { legacyActorWarning, parseActor, type ActorSighting } from './actor.ts';
-import type { AgentLockSource, ClaimLock, LockDiagnostic, LockReadInput, LockReading, RunEvent, RunState, TaskRun } from './files.ts';
+import type {
+  AgentLockSource,
+  ClaimLock,
+  LockDiagnostic,
+  LockReadInput,
+  LockReading,
+  OpenRun,
+  RunEvent,
+  RunLifecycleEvent,
+  RunOutcome,
+  RunState,
+  TaskRun,
+} from './files.ts';
 
 /** LifeOS's default stale TTL for a frontier lock: a session silent this long has died or moved on. */
 export const FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
@@ -57,6 +81,10 @@ type RunLine = NonNullable<LockReading['runs']>[number];
 const RUN_STATE: Readonly<Record<RunEvent, RunState>> = { dispatch: 'dispatched', build: 'building', patch: 'patched', apply: 'applied' };
 
 const isRunEvent = (event: string): event is RunEvent => Object.hasOwn(RUN_STATE, event);
+
+const isLifecycleEvent = (event: string): event is RunLifecycleEvent => event === 'run-start' || event === 'run-end';
+
+const OUTCOMES: ReadonlySet<string> = new Set<RunOutcome>(['ok', 'error', 'released']);
 
 /** A spec session ref: an agent session whose id is `spec-NNN`, alone or with its task (`a:claude:spec-041/T3`). */
 const SPEC_SESSION = /^a:[^:/]+:spec-(\d{3})(?:\/|$)/u;
@@ -97,6 +125,8 @@ interface SourceRead {
   readonly diagnostics: LockDiagnostic[];
   /** The run events read, in file order; only the activity log carries them. */
   readonly runs: RunLine[];
+  /** The open runs (spec 040, ISC-222); absent unless the activity log holds a `run-start` or `run-end` line. */
+  readonly openRuns?: OpenRun[];
 }
 
 const ABSENT: SourceRead = { present: false, locks: [], diagnostics: [], runs: [] };
@@ -171,6 +201,49 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
   return { present: true, locks, diagnostics, runs: [] };
 }
 
+/** The run lifecycle state of one activity log (spec 040, ISC-222): open runs by id in start order, every id started. */
+interface LifecycleState {
+  readonly open: Map<string, OpenRun>;
+  readonly started: Set<string>;
+}
+
+/**
+ * Reads one `run-start` or `run-end` line into `state`: a start opens its run, an end closes it. A malformed line, an
+ * end without an open run and a start reusing a run id each push one warning and change nothing. Returns the session's
+ * actor sighting when the line was well-formed, for the file's one `actor-legacy` warning.
+ */
+function readLifecycle(entry: Record<string, unknown>, event: RunLifecycleEvent, line: number, state: LifecycleState, diagnostics: LockDiagnostic[]): ActorSighting | null {
+  const { ts, run, command, session, spec, idea, outcome } = entry;
+  if (!filled(ts) || !filled(run) || !filled(command) || !filled(session)) {
+    diagnostics.push(warning('locks-activity-malformed', `The ${event} line lacks a ts, a run, a command or a session; it is skipped.`, { line }));
+    return null;
+  }
+  if (filled(spec) === filled(idea)) {
+    const why = filled(spec) ? 'names both a spec and an idea' : 'names neither a spec nor an idea';
+    diagnostics.push(warning('locks-activity-malformed', `The ${event} line of run ${run} ${why}; it is skipped.`, { line }));
+    return null;
+  }
+  if (event === 'run-end' && outcome !== undefined && !(typeof outcome === 'string' && OUTCOMES.has(outcome))) {
+    const message = `The run-end line of run ${run} carries the outcome ${JSON.stringify(outcome)}, none of ok, error or released; it is skipped.`;
+    diagnostics.push(warning('locks-activity-malformed', message, { line }));
+    return null;
+  }
+  const actor = parseActor(session);
+  if (event === 'run-end') {
+    if (!state.open.delete(run)) {
+      diagnostics.push(warning('locks-activity-run-unmatched', `The run-end line of run ${run} ends no open run; it is skipped.`, { line }));
+    }
+    return { ref: actor, line };
+  }
+  if (state.started.has(run)) {
+    diagnostics.push(warning('locks-activity-run-duplicate', `The run-start line reuses the run id ${run}; it is skipped.`, { line }));
+    return { ref: actor, line };
+  }
+  state.started.add(run);
+  state.open.set(run, { run, command, session, actor, since: ts, ...(filled(spec) ? { spec } : {}), ...(filled(idea) ? { idea } : {}), line });
+  return { ref: actor, line };
+}
+
 /** The claim a malformed activity entry still names, so its warning reaches that claim's row. */
 const claimOf = (entry: Record<string, unknown>): { claim?: string } => (typeof entry.claim === 'string' && entry.claim !== '' ? { claim: entry.claim } : {});
 
@@ -182,12 +255,18 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
     if (errorCode(error) === 'ENOENT' || errorCode(error) === 'ENOTDIR') return ABSENT;
     return { present: false, locks: [], diagnostics: [warning('locks-activity-unreadable', `.spectant/activity.jsonl could not be read (${errorCode(error) || 'error'}).`)], runs: [] };
   }
+  return parseActivity(text);
+}
 
+/** The text of `.spectant/activity.jsonl` read as its source: pure, the one parse `readActivity` and `activityReading` share. */
+function parseActivity(text: string): SourceRead {
   const held = new Map<string, ClaimLock>();
   const diagnostics: LockDiagnostic[] = [];
   const runs: RunLine[] = [];
   const actors: Array<ActorSighting & { readonly claim?: string }> = [];
   let unknownSeen = false;
+  const lifecycle: LifecycleState = { open: new Map(), started: new Set() };
+  let lifecycleLines = 0;
   text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     if (raw.trim() === '') return;
@@ -207,8 +286,16 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
       diagnostics.push(warning('locks-activity-malformed', 'The line names no event; it is skipped.', { line, ...claimOf(entry) }));
       return;
     }
+    if (isLifecycleEvent(event)) {
+      // Additive (spec 040, ISC-222.2): these lines touch neither the locks nor the task runs.
+      lifecycleLines += 1;
+      const sighting = readLifecycle(entry, event, line, lifecycle, diagnostics);
+      if (sighting !== null) actors.push(sighting);
+      return;
+    }
     if (event !== 'claim' && event !== 'release' && !isRunEvent(event)) {
       // One warning per file, at the first unknown event; it and every later unknown line are skipped, the rest is read.
+      // The text names the six older events only, so a log without run lines warns byte for byte as before spec 040.
       if (!unknownSeen) {
         unknownSeen = true;
         const message = `The event ${JSON.stringify(event)} is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.`;
@@ -262,7 +349,7 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
   const legacy = legacyActorWarning(actors, 'session');
   const first = actors.find((a) => a.ref.legacy);
   if (legacy !== null && first !== undefined) diagnostics.push({ ...legacy, ...(first.claim === undefined ? {} : { claim: first.claim }) });
-  return { present: true, locks: [...held.values()].sort(byClaim), diagnostics, runs };
+  return { present: true, locks: [...held.values()].sort(byClaim), diagnostics, runs, ...(lifecycleLines > 0 ? { openRuns: [...lifecycle.open.values()] } : {}) };
 }
 
 /**
@@ -297,6 +384,20 @@ export async function readLockSources(input: LockReadInput): Promise<LockReading
     input.lifeosStateDir ? readFrontier(input.repoRoot, input.lifeosStateDir, now) : Promise.resolve(ABSENT),
     readActivity(input.repoRoot),
   ]);
+  return readingOf(frontier, activity);
+}
+
+/**
+ * The reading `readLockSources` gives for a repository whose `.spectant/activity.jsonl` holds `text` and with no
+ * LifeOS state directory, without touching the file system (spec 040, T53): for a caller that holds an edited log in
+ * memory, such as the e2e stub's run variants, so the locks, task runs and open runs stay this module's parse.
+ */
+export function activityReading(text: string): LockReading {
+  return readingOf(ABSENT, parseActivity(text));
+}
+
+/** The two sources' reads as one reading: activity's locks first, frontier's last (a last-wins consumer takes it). */
+function readingOf(frontier: SourceRead, activity: SourceRead): LockReading {
   const sources: AgentLockSource[] = [];
   if (frontier.present) sources.push('frontier');
   if (activity.present) sources.push('activity');
@@ -307,5 +408,6 @@ export async function readLockSources(input: LockReadInput): Promise<LockReading
     locks: [...activity.locks, ...frontier.locks],
     diagnostics: [...frontier.diagnostics, ...activity.diagnostics],
     runs: activity.runs,
+    ...(activity.openRuns === undefined ? {} : { openRuns: activity.openRuns }),
   };
 }

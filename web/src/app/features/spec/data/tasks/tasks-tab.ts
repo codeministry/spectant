@@ -28,7 +28,11 @@ import { type CheckEvent, type CheckState, checkBlock, IDLE, landedDelta, nextCh
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
-import type { FrameCard, RunState, TaskRun } from '../../../../../../../core/src/files';
+import type { FrameCard, ItemRun, ItemState, ItemStateInfo, RunState, TaskRun } from '../../../../../../../core/src/files';
+import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
+import { elapsedText } from '../../../../shared/ui/item-state/duration';
+import { UiItemState } from '../../../../shared/ui/item-state/item-state';
+import { UiNotice } from '../../../../shared/ui/notice/notice';
 import { taskActorsOf } from '../../live/live-frame';
 import { TaskActors } from '../../live/task-actors/task-actors';
 import { RunChip } from '../../live/card/card';
@@ -45,6 +49,12 @@ export type CheckLine =
   | { readonly kind: 'conflict' }
   | { readonly kind: 'failed'; readonly status: number }
   | { readonly kind: 'no-hash' };
+
+/** Spec 040 (T52): the status chip's tint per item state, the existing tones reused; aborted is the warning tint. */
+const ITEM_TONE: Readonly<Record<ItemState, string>> = { open: 'open', waiting: 'held', running: 'dispatched', aborted: 'aborted', done: 'done' };
+
+/** The row's own words that stay a chip beside the state word (design § task row). */
+const OWN_WORDS: ReadonlySet<string> = new Set(['question', 'concerns', 'fail']);
 
 /** The statuses whose round card carries a reason worth a sub-line (a hold, a fail, a question, concerns). */
 const REASONED = new Set(['held', 'fail', 'concerns', 'question']);
@@ -104,10 +114,31 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
  * locked, conflict, failed). A 200 updates the row from the answer's line, makes the answer's hash the one the next
  * tick sends, and confirms through the app's single toast; a 409 shows an inline alert whose Reload reads the list
  * again; a lock (the lock source's or a 423's) shows "locked · <session>" as text.
+ *
+ * Spec 040 (T52, ISC-224): a row with `itemState` shows its state word in the status cell, the fine ISC-179 state as
+ * the detail of running ("running · building") and question, concerns and fail as their own chip beside it; a row
+ * without one keeps its status chip. While the spec head's state is `running` from a run line, every box is locked
+ * (lock icon, `aria-disabled`, "locked · <session>" as its description, a click writes nothing) and a notice at the
+ * top names the run. Nothing here derives a state; it reads `itemState` and the head's `state`.
  */
 @Component({
   selector: 'app-tasks-tab',
-  imports: [RouterLink, RunChip, TaskActors, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiLiveRegion, UiRovingItem, UiRovingList],
+  imports: [
+    RouterLink,
+    RunChip,
+    TaskActors,
+    TranslocoPipe,
+    UiChip,
+    UiEmptyState,
+    UiFilterChips,
+    UiGlyph,
+    UiIcon,
+    UiItemState,
+    UiLiveRegion,
+    UiNotice,
+    UiRovingItem,
+    UiRovingList,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'tasks' },
   templateUrl: './tasks-tab.html',
@@ -115,6 +146,8 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
 })
 export class TasksTab {
   protected readonly chipIcon = chipIcon;
+  protected readonly itemTone = ITEM_TONE;
+  protected readonly ownWords = OWN_WORDS;
   private readonly api = inject(ApiClient);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -149,6 +182,24 @@ export class TasksTab {
     if (result?.kind !== 'ok') return new Map();
     return new Map(result.body.cards.filter((card) => taskActorsOf(card) !== null).map((card) => [card.task, card]));
   });
+  /**
+   * Each task's item state as the live frame carries it (spec 040), by task id. The live frame reads the locks, so its
+   * item names the holder the frame shows; a row prefers it to the one the tasks route sent.
+   */
+  private readonly liveItems = computed<ReadonlyMap<string, ItemStateInfo>>(() => {
+    const result = this.live.hasValue() ? this.live.value() : undefined;
+    if (result?.kind !== 'ok') return new Map();
+    return new Map(result.body.cards.flatMap((card) => (card.itemState === undefined ? [] : [[card.task, card.itemState] as const])));
+  });
+  /**
+   * The row's item state: the tasks route's, with the live frame's in its place when that one carries a run (it names
+   * the holder the frame shows). A row without one (an older payload, or a tick that dropped it) stays without.
+   */
+  protected itemOf(row: { readonly id: string; readonly itemState?: ItemStateInfo }): ItemStateInfo | undefined {
+    if (row.itemState === undefined) return undefined;
+    const live = this.liveItems().get(row.id);
+    return live?.run === undefined ? row.itemState : live;
+  }
   /**
    * The run chip per task (spec 027, ISC-179.1): the live frame's run while tasks.md has not ticked the task, joined
    * by task id; the tick (`applied`) hands the row back to its state chip. The live frame is read again every refresh.
@@ -363,6 +414,35 @@ export class TasksTab {
     return block?.kind === 'no-hash' ? block : null;
   }
 
+  /**
+   * Spec 040 (T52, ISC-225): the run standing on this spec, read from the spec head's `state` (`running` from a run
+   * line); null otherwise, and while the spec payload has not answered.
+   */
+  protected readonly specRun = computed<ItemRun | null>(() => {
+    const result = this.data.spec.value();
+    const item = result?.kind === 'ok' ? result.body.head.state : undefined;
+    return item?.state === 'running' && item.run?.source === 'run' ? item.run : null;
+  });
+
+  /** "3 min" for the notice, from the run's `elapsedMs` (the refresh tick moves it; no timer here). */
+  protected readonly runDuration = computed(() => {
+    const run = this.specRun();
+    if (!run) return '';
+    const { key, params } = elapsedText(run.elapsedMs);
+    return this.transloco.translate(key, params);
+  });
+
+  /** The box's description: its run lock or check line first, then the helper. */
+  protected describedBy(row: TaskRowView): string {
+    const ids = [this.specRun() ? `task-${row.id}-run` : null, this.checkLine(row) ? `task-${row.id}-check` : null, 'tasks-helper'];
+    return ids.filter((id) => id !== null).join(' ');
+  }
+
+  /** A locked box stays focusable (`aria-disabled`), so its click is stopped before it toggles or writes. */
+  protected guardRun(event: Event): void {
+    if (this.specRun()) event.preventDefault();
+  }
+
   /** Applies one event to a row's state; false when the state did not change (the list was read again meanwhile). */
   private transition(id: string, event: CheckEvent): boolean {
     const current = this.checkOf(id);
@@ -377,7 +457,7 @@ export class TasksTab {
     const ws = this.state.ws();
     const id = this.state.specId();
     const hash = this.writeHash();
-    if (ws === null || id === null || hash === null || this.blocked(row)) return;
+    if (ws === null || id === null || hash === null || this.blocked(row) || this.specRun() !== null) return;
     this.transition(row.id, { type: 'tick', checked });
     const result = await this.api.taskCheck(ws, id, row.id, hash, checked);
     if (!this.transition(row.id, { type: 'answer', result }) || result.kind !== 'ok') return;

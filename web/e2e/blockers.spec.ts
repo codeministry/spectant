@@ -56,8 +56,9 @@ const rowChip = (page: Page, id: string): Locator =>
   page.locator(`app-spec-row:has(a.row-link[data-spec-row="${id}"]) ui-waits-chip[data-row-waits]`);
 
 /** Every surface a wait shows on, counted on its page: chips, held-task reasons, the live board's waits group. */
+// A state line (spec 040) may name a feature sibling it waits on, which is no spec edge; the edge count leaves it out.
 async function waitsOnPage(page: Page): Promise<number> {
-  const hits = page.locator('ui-waits-chip, [data-waits], [data-task-waits], [data-wait-group], [data-wait-spec]');
+  const hits = page.locator(':is(ui-waits-chip, [data-waits], [data-task-waits], [data-wait-group], [data-wait-spec]):not(ui-item-state *)');
   return hits.count();
 }
 
@@ -94,8 +95,8 @@ test.describe('blockers waits: the spec edges hold their specs (waiting)', () =>
     await open(page, `/w/${WS}/board`);
     const held = page.locator(`[data-col="blocked"] app-board-card[data-key="${FULL_CARD}"]`);
     await expect(held, '009 stands in the Blocked column').toHaveCount(1);
-    await expectChip(held.locator('ui-waits-chip[data-card-waits]'), full.on, '009 card');
-    await expectChip(card(page, PARTIAL_CARD).locator('ui-waits-chip[data-card-waits]'), partial.on, '002 card');
+    await expectChip(held.locator('[data-card-state] ui-waits-chip'), full.on, '009 card');
+    await expectChip(card(page, PARTIAL_CARD).locator('[data-card-state] ui-waits-chip'), partial.on, '002 card');
   });
 
   test('waits: the dashboard rows of 002 and 009 carry their chips, and a chip opens the blocker', async ({ page }) => {

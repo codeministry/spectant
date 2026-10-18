@@ -2,7 +2,10 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
+import { ApiClient } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { RailSlot } from '../shell/rail-slot';
 import { ShellData } from '../shell/shell-data.service';
@@ -42,8 +45,14 @@ class DockHost {
 
 const tier = signal<Tier>('medium');
 
+/** The dashboard as `ShellData.dashboard.value()` serves it; a test sets a row's `state` (spec 040, T62). */
+const dashboard = signal<unknown>(undefined);
+const ideas = signal<ReadonlyArray<{ readonly slug: string; readonly state?: ItemStateInfo }>>([]);
+
 function setup(): void {
   tier.set('medium');
+  dashboard.set(undefined);
+  ideas.set([]);
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -55,7 +64,9 @@ function setup(): void {
     providers: [
       provideRouter([{ path: '**', component: Blank }]),
       { provide: ShellState, useValue: { tier, ws: signal('harbor') } },
-      { provide: ShellData, useValue: { planningModel: signal({ relations: INDEX }) } },
+      { provide: ShellData, useValue: { planningModel: signal({ relations: INDEX }), dashboard: { value: dashboard }, ideas } },
+      { provide: ApiClient, useValue: { activityHash: () => null, releaseRun: vi.fn() } },
+      { provide: RefreshService, useValue: { refresh: vi.fn() } },
     ],
   });
 }
@@ -243,6 +254,27 @@ describe('DetailSidebar', () => {
     dock.destroy();
     await float.whenStable();
     expect(q(hostOf(float), 'h2[data-part="title"]')).not.toBeNull();
+  });
+
+  // Spec 040, T62 · ISC-226: a spec or story whose run is open shows its state line with "Release run".
+  it('shows a running spec’s state line with "Release run", and nothing for a spec without a run', async () => {
+    const running: ItemStateInfo = {
+      kind: 'spec',
+      id: '025',
+      state: 'running',
+      stage: 'build',
+      run: { run: 'r-1', command: '/spec-implement 025', session: 'a:claude:s1', actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false }, since: '2026-10-17T14:02:00Z', elapsedMs: 180_000, openRuns: 1, source: 'run' },
+    };
+    dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', state: running }] } });
+    await go('/w/harbor?sel=spec:025');
+    const fixture = await render();
+    const host = hostOf(fixture);
+    expect(q(host, '[data-section="run"] ui-item-state')?.getAttribute('data-state')).toBe('running');
+    expect(q(host, '[data-section="run"] [data-release]')?.textContent).toContain('Release run');
+    dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', state: { ...running, state: 'open', run: undefined } }] } });
+    await fixture.whenStable();
+    expect(q(host, '[data-section="run"]')).toBeNull();
+    expect(q(host, '[data-release]')).toBeNull();
   });
 
   it('is a modal bottom sheet below 640', async () => {

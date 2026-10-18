@@ -20,7 +20,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "012",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 012",
+        "reason": "ISC-334 is takeable"
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -172,7 +180,14 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "022",
+        "state": "done",
+        "stage": "done",
+        "doneAt": "2026-09-28T12:46:09Z"
+      }
     },
     "keyNumbers": {
       "claims": {

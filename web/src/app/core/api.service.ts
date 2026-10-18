@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { ClaimLock, LibraryCatalog, LibraryDoc } from '../../../../core/src/files';
 import {
+  ACTIVITY_HASH_HEADER,
   ACTORS_PATH,
   type ActorMapping,
   type ActorsRequest,
@@ -36,7 +37,7 @@ import {
   type WorkspaceRouteResponses,
   type LibraryDocPage,
 } from '../../../../server/src/spec-routes.contract';
-import { type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
+import { type RunLocked, type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
 import type { Priority, WorkflowStage } from '../../../../core/src/files';
 import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
 
@@ -52,7 +53,33 @@ export type BacklogOp =
 
 export type WriteResult<R extends WriteOperation> =
   | { readonly kind: 'answer'; readonly answer: WriteAnswer<R> }
+  | (R extends RunLockedWrite ? { readonly kind: 'run-locked'; readonly body: RunLocked } : never)
   | { readonly kind: 'error'; readonly status: number };
+
+/**
+ * The writes a running run on their item refuses with 423 `run-locked` (spec 040, T56, ISC-225.1): the stage move and
+ * the allocation. The backlog write belongs to no item and the run release reads no run lock; neither answers it. `WriteAnswer` keeps its 423 arm for the
+ * claim lock (`Locked`, read as `body.lock`); the run's 423 is its own result kind, so no caller takes one for the
+ * other.
+ */
+export type RunLockedWrite = Exclude<WriteOperation, 'backlog' | 'runRelease'>;
+
+/** The 423 body of a running run (`RunLocked`, `runLockedOf` in the writes contract): the run, its command, actor and start. */
+export const isRunLocked = (body: unknown): body is RunLocked => {
+  if (typeof body !== 'object' || body === null) return false;
+  const b = body as Partial<Record<keyof RunLocked, unknown>>;
+  const actor = b.actor as { readonly id?: unknown; readonly raw?: unknown } | null | undefined;
+  return (
+    b.error === 'run-locked' &&
+    typeof b.run === 'string' &&
+    (b.command === null || typeof b.command === 'string') &&
+    typeof b.since === 'string' &&
+    typeof actor === 'object' &&
+    actor !== null &&
+    typeof actor.id === 'string' &&
+    typeof actor.raw === 'string'
+  );
+};
 
 /**
  * What a `PUT` of a stored setting answers (the actor names, the board query): the body as stored when it fits the
@@ -203,8 +230,13 @@ export class ApiClient {
   private readonly tasksHashes = new Map<string, string | null>();
   private readonly specHashes = new Map<string, ReviewedHashes | null>();
   private readonly specFileHashes = new Map<string, string | null>();
+  private readonly activityHashes = new Map<string, string | null>();
 
-  async get<T>(url: string, onHeaders?: (headers: HttpHeaders) => void): Promise<ApiResult<T>> {
+  /**
+   * A GET through the ETag cache. `onHeaders` sees the headers of a 200; with `notModified` set it sees those of a 304
+   * too, for a header the server sends on both (the dashboard's activity hash, which can move while the body stays).
+   */
+  async get<T>(url: string, onHeaders?: (headers: HttpHeaders) => void, notModified = false): Promise<ApiResult<T>> {
     const cached = this.cache.get(url);
     const headers = cached ? new HttpHeaders({ 'If-None-Match': cached.etag }) : undefined;
     try {
@@ -215,6 +247,7 @@ export class ApiClient {
       else this.cache.set(url, { etag, body: response.body });
       return { kind: 'ok', body: response.body as T, etag, notModified: false };
     } catch (failure: unknown) {
+      if (notModified && failure instanceof HttpErrorResponse && failure.status === 304) onHeaders?.(failure.headers);
       return this.answer<T>(failure, cached);
     }
   }
@@ -224,7 +257,26 @@ export class ApiClient {
   }
 
   dashboard(ws: string): Promise<ApiResult<DashboardBody>> {
-    return this.get(dashboardUrl(ws));
+    const url = dashboardUrl(ws);
+    return this.get(url, (headers) => this.activityHashes.set(url, headers.get(ACTIVITY_HASH_HEADER)), true);
+  }
+
+  /**
+   * Spec 040 (T61, ISC-226): the raw `.spectant/activity.jsonl` hash `X-Spectant-Activity-Hash` carried on the last
+   * `GET …/dashboard` (200 or 304), the hash `releaseRun()` sends; null before the dashboard was read or without it.
+   */
+  activityHash(ws: string): string | null {
+    return this.activityHashes.get(dashboardUrl(ws)) ?? null;
+  }
+
+  /**
+   * Spec 040 (T61, ISC-226): `POST …/:ws/runs/:run/release` with the activity hash the page rendered in
+   * `X-Spectant-Activity-Hash` and no body. 200 `RunReleased` (the log's new hash and the `run-end` line), 409
+   * `StaleActivity`, 422 `RunReleaseRefused` (`no-viewer`, `run-aborted`), validated like `transition()`; a 404
+   * (the run is unknown or already ended) is an `error`.
+   */
+  releaseRun(ws: string, run: string, hash: string): Promise<WriteResult<'runRelease'>> {
+    return this.write('runRelease', workspaceRoutes.runRelease(ws, run), null, new HttpHeaders({ [ACTIVITY_HASH_HEADER]: hash }));
   }
 
   /** The planning tree (spec 003, ISC-103): core's `PlanningModel`, served as it is, ETag-cached like `dashboard()`. */
@@ -475,12 +527,16 @@ export class ApiClient {
     }
   }
 
-  /** A write's answer through the contract's `writeAnswerOf`: the status and body of a 2xx or an error alike. */
-  private async write<R extends WriteOperation>(route: R, url: string, body: unknown): Promise<WriteResult<R>> {
+  /**
+   * A write's answer through the contract's `writeAnswerOf`: the status and body of a 2xx or an error alike. A 423
+   * `run-locked` of the stage move or the allocation, which `writeAnswerOf` does not fit, is `run-locked` with the run
+   * (spec 040, T56, ISC-225.1).
+   */
+  private async write<R extends WriteOperation>(route: R, url: string, body: unknown, headers?: HttpHeaders): Promise<WriteResult<R>> {
     let status: number;
     let answer: unknown;
     try {
-      const response = await firstValueFrom(this.http.post<unknown>(url, body, { observe: 'response' }));
+      const response = await firstValueFrom(this.http.post<unknown>(url, body, { observe: 'response', headers }));
       status = response.status;
       answer = response.body;
     } catch (failure: unknown) {
@@ -489,7 +545,9 @@ export class ApiClient {
       answer = failure.error;
     }
     const typed = writeAnswerOf(route, status, answer);
-    return typed === null ? { kind: 'error', status } : { kind: 'answer', answer: typed };
+    if (typed !== null) return { kind: 'answer', answer: typed };
+    if (status === 423 && route !== 'backlog' && route !== 'runRelease' && isRunLocked(answer)) return { kind: 'run-locked', body: answer } as WriteResult<R>;
+    return { kind: 'error', status };
   }
 
   /** A `PUT` whose 200 body must pass the contract's validator `fits`; anything else is an `error`. */

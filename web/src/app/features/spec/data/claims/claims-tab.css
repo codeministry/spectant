@@ -371,6 +371,22 @@
   line-height: 20px;
 }
 
+/* Spec 040 (T51): a run's band in its state's tint; the state line sits at the end of the head otherwise. */
+.taken-line.band {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--disp-t);
+}
+
+.taken-line.band[data-state='aborted'] {
+  background: var(--hover-t);
+}
+
+.item-state {
+  margin-inline-start: auto;
+}
+
 .agent-dot {
   inline-size: 8px;
   block-size: 8px;

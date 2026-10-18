@@ -227,12 +227,15 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const lifeos = detectLifeos(options.env ?? process.env);
     // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
     const notes = openNotes(db);
-    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache(), notes });
+    const settings = openSettings(db);
+    // The run lock's abort age (spec 040, ISC-225), read per write so a changed `runAbortMinutes` applies at once.
+    const abortAfterMs = (): number => settings.get().runAbortMinutes * 60_000;
+    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache(), notes, abortAfterMs });
     const api = composeApi(
-      settingsApi(openSettings(db)),
+      settingsApi(settings),
       actorsApi(db),
       lifeosApi(lifeos),
-      dashboardApi({ registry, lifeos, db }),
+      dashboardApi({ registry, lifeos, db, abortAfterMs }),
       notesApi({ store: notes, registry }),
       specs,
       prototypeApi({ registry }),

@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ClaimViewModel, SpecPageModel } from "../core/src/files.ts";
+import type { ClaimViewModel, ItemStateInfo, SpecPageModel } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
@@ -94,13 +94,18 @@ function expectedSpecPage(): SpecPageModel {
   };
 }
 
-/** harbor 002's claim view golden with ISC-74 taken by the activity lock. */
+/**
+ * harbor 002's claim view golden with ISC-74 taken by the activity lock; its `itemState` (spec 040) is the `state`
+ * golden's item of ISC-74, built with that lock at the same clock.
+ */
 function expectedClaims(): ClaimViewModel {
   const model = golden("harbor", "claim-view")[KEY] as ClaimViewModel;
   const lock = { source: ISC_74_LOCK.source, session: ISC_74_LOCK.session, since: ISC_74_LOCK.since };
+  const items = JSON.parse(readFileSync(join(FIXTURES, "harbor.state.golden.json"), "utf8")) as ItemStateInfo[];
+  const itemState = items.find((i) => i.kind === "claim" && i.spec === "002" && i.id === "ISC-74");
   return {
     ...model,
-    claims: model.claims.map((c) => (c.id === "ISC-74" ? { ...c, state: "taken", lock } : c)),
+    claims: model.claims.map((c) => (c.id === "ISC-74" ? { ...c, state: "taken", lock, ...(itemState === undefined ? {} : { itemState }) } : c)),
     counts: { ...model.counts, takeable: model.counts.takeable - 1, taken: model.counts.taken + 1 },
   };
 }
@@ -524,6 +529,8 @@ describe("the story route (T88, ISC-124.2)", () => {
       milestone: "Harbor 2.0",
       priority: "P3",
       path: "specs/ideas/console-audit-log.md",
+      // Spec 040 (ISC-224): no run is open on the story, so its item offers `/spec new`.
+      state: { kind: "idea", id: "console-audit-log", stage: "idea", state: "open", command: "/spec new console-audit-log", reason: "the story is shaped but has no spec" },
     });
     const bytes = readFileSync(STORY);
     expect(body.hash).toBe(new Bun.CryptoHasher("sha256").update(bytes).digest("hex"));

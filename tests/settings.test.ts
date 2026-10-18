@@ -70,11 +70,11 @@ function put(server: RunningServer, body: unknown, headers: Record<string, strin
 
 describe("SettingsSchema", () => {
   test("holds exactly the plan's four keys, each default passing its own validator", () => {
-    expect(Object.keys(SettingsSchema).sort()).toEqual(["language", "notesImportDismissed", "railCollapsed", "refreshSeconds", "singleKeyShortcuts", "theme"]);
+    expect(Object.keys(SettingsSchema).sort()).toEqual(["language", "notesImportDismissed", "railCollapsed", "refreshSeconds", "runAbortMinutes", "singleKeyShortcuts", "theme"]);
     for (const [key, spec] of Object.entries(SettingsSchema)) {
       expect({ key, valid: spec.validate(spec.default) }).toEqual({ key, valid: true });
     }
-    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 });
   });
 
   test("the validators accept the plan's values and refuse everything else", () => {
@@ -92,6 +92,14 @@ describe("SettingsSchema", () => {
     for (const flag of ["false", 0, null]) expect(SettingsSchema.railCollapsed.validate(flag)).toBe(false);
     for (const flag of [true, false]) expect(SettingsSchema.notesImportDismissed.validate(flag)).toBe(true);
     for (const flag of ["true", 1, null]) expect(SettingsSchema.notesImportDismissed.validate(flag)).toBe(false);
+  });
+
+  test("runAbortMinutes defaults to 120 and accepts whole minutes from 5 to 1440 (spec 040, ISC-222.1)", () => {
+    expect(SettingsSchema.runAbortMinutes.default).toBe(120);
+    for (const minutes of [5, 120, 1440]) expect(SettingsSchema.runAbortMinutes.validate(minutes)).toBe(true);
+    for (const minutes of [0, 4, 1441, 2.5, -120, Number.NaN, "120", null]) {
+      expect(SettingsSchema.runAbortMinutes.validate(minutes)).toBe(false);
+    }
   });
 });
 

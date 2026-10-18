@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -40,13 +41,34 @@ type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' 
 let harness: RouterTestingHarness;
 let calls: Array<{ ws: string; id: string; to: WorkflowStage; hash: string }>;
 let planningLoads: number;
+let dashboardLoads: number;
 
-async function open(answer: WriteResult<'transition'>, tier: Tier = 'wide', url = '/w/harbor/board'): Promise<{ page: HTMLElement; drag: BoardDrag }> {
+/** Harbor with 003 held by a running `/spec-tasks 003` (spec 040, T57): the dashboard row's state as core serves it. */
+const RUN_ACTOR = { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false } as const;
+const RUNNING_003 = {
+  kind: 'spec',
+  id: '003',
+  state: 'running',
+  stage: 'tasks',
+  run: { run: 'r-0308-1452', command: '/spec-tasks 003', session: 'a:claude:sess-32', actor: RUN_ACTOR, since: '2026-03-08T14:52:00Z', elapsedMs: 480_000, openRuns: 1, source: 'run' },
+};
+const RUNNING = { ...dashboard, specs: dashboard.specs.map((row) => (row.id === '003' ? { ...row, state: RUNNING_003 } : row)) } as typeof dashboard;
+
+async function open(
+  answer: WriteResult<'transition'>,
+  tier: Tier = 'wide',
+  url = '/w/harbor/board',
+  dash: typeof dashboard = dashboard,
+): Promise<{ page: HTMLElement; drag: BoardDrag }> {
   calls = [];
   planningLoads = 0;
+  dashboardLoads = 0;
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
-    dashboard: () => Promise.resolve(ok(dashboard)),
+    dashboard: () => {
+      dashboardLoads++;
+      return Promise.resolve(ok(dash));
+    },
     planning: () => {
       planningLoads++;
       return Promise.resolve(ok(PLANNING));
@@ -249,5 +271,65 @@ describe('the refusal notice (T126, ISC-130)', () => {
     drag.start(C003);
     await settle();
     expect(notice(page)).toBeNull();
+  });
+});
+
+// Spec 040 (T57, T59, ISC-225.1): a card a running run holds does not lift and shows a lock in its grip; the keys and
+// a press on the grip show the run's refusal and send nothing; a 423 run-locked (a run started after the render) shows
+// the same notice and reloads the dashboard and the planning tree.
+describe('a card a running run holds (T57, T59, ISC-225.1)', () => {
+  const card = (page: HTMLElement): HTMLElement | null => page.querySelector<HTMLElement>('app-board-card[data-key="spec:003-config-loader"]');
+  const notice = (page: HTMLElement): HTMLElement | null => page.querySelector<HTMLElement>('[data-key="spec:003-config-loader"] + app-refusal-notice');
+  const RUN_TEXT = 'Not moved — 003 is running: /spec-tasks 003 · a:claude:sess-32 · since 8 min';
+
+  it('is not draggable; its grip is locked, shows the lock icon and its item is cdk-drag-disabled', async () => {
+    const { page, drag } = await open(answer(written('tasks', 'review')), 'wide', '/w/harbor/board', RUNNING);
+    const grip = card(page)?.querySelector<HTMLElement>('[data-grip]');
+    expect(grip?.hasAttribute('data-locked')).toBe(true);
+    expect(grip?.querySelector('ui-icon.i-grip')?.getAttribute('data-icon')).toBe('lock');
+    expect(card(page)?.classList.contains('cdk-drag-disabled')).toBe(true);
+    const lifted = BOARD.cards.find((c) => c.key === 'spec:003-config-loader');
+    expect(lifted && drag.draggable({ ...lifted, state: RUNNING_003 as BoardCard['state'] })).toBe(false);
+    const other = card(page)?.parentElement?.querySelector('app-board-card:not([data-key="spec:003-config-loader"]) [data-grip]');
+    expect(other?.hasAttribute('data-locked') ?? false).toBe(false);
+  });
+
+  it('Shift+→ shows the run refusal under the card and sends nothing', async () => {
+    const { page } = await open(answer(written('tasks', 'review')), 'wide', '/w/harbor/board', RUNNING);
+    card(page)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
+    await settle();
+    expect(calls).toEqual([]);
+    const n = notice(page);
+    expect(n?.getAttribute('data-refusal')).toBe('run-locked');
+    expect(text(n?.querySelector('[data-head]'))).toBe(RUN_TEXT);
+    expect(TestBed.inject(ToastService).message()).toBeNull();
+  });
+
+  it('a press on the locked grip at wide shows the same refusal instead of "Move to…"', async () => {
+    const { page } = await open(answer(written('tasks', 'review')), 'wide', '/w/harbor/board', RUNNING);
+    card(page)?.querySelector<HTMLButtonElement>('[data-grip]')?.click();
+    await settle();
+    expect(page.querySelector('[data-move-menu]')).toBeNull();
+    expect(text(notice(page)?.querySelector('[data-head]'))).toBe(RUN_TEXT);
+    expect(calls).toEqual([]);
+  });
+
+  it('a 423 run-locked on a drop shows the same notice and reloads the dashboard and the planning tree', async () => {
+    const body = { error: 'run-locked', run: 'r-0308-1452', command: '/spec-tasks 003', actor: RUN_ACTOR, since: '2026-03-08T14:52:00Z' } as const;
+    const { page, drag } = await open({ kind: 'run-locked', body });
+    const before = { dashboard: dashboardLoads, planning: planningLoads };
+    vi.useFakeTimers({ now: Date.parse('2026-03-08T15:00:30Z'), toFake: ['Date'] });
+    try {
+      await drag.drop('harbor', C003, 'review');
+    } finally {
+      vi.useRealTimers();
+    }
+    await settle();
+    expect(calls).toHaveLength(1);
+    const n = notice(page);
+    expect(n?.getAttribute('data-refusal')).toBe('run-locked');
+    expect(text(n?.querySelector('[data-head]'))).toBe(RUN_TEXT);
+    expect(dashboardLoads).toBeGreaterThan(before.dashboard);
+    expect(planningLoads).toBeGreaterThan(before.planning);
   });
 });

@@ -22,7 +22,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T2",
@@ -45,7 +56,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T3",
@@ -68,7 +90,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T4",
@@ -91,7 +124,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T5",
@@ -114,7 +158,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T6",
@@ -137,7 +192,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T7",
@@ -160,7 +226,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T8",
@@ -183,7 +260,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T9",
@@ -206,7 +294,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T10",
@@ -229,7 +328,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T11",
@@ -255,7 +365,18 @@
           "T9",
           "T10"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T12",
@@ -280,7 +401,18 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T13",
@@ -305,7 +437,18 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T14",
@@ -330,7 +473,18 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T15",
@@ -355,7 +509,18 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T16",
@@ -380,7 +545,15 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       },
       {
         "id": "T17",
@@ -403,7 +576,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T18",
@@ -426,7 +610,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T18",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T18 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T19",
@@ -449,7 +644,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T19",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T19 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T20",
@@ -472,7 +678,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T20",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T21",
@@ -495,7 +712,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T21",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T21 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T22",
@@ -518,7 +746,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T22",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T23",
@@ -541,7 +780,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T23",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T23 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T24",
@@ -564,7 +814,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T24",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T25",
@@ -587,7 +848,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T25",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T25 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T26",
@@ -610,7 +882,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T26",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T27",
@@ -633,7 +913,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T27",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T28",
@@ -661,7 +949,15 @@
           "T26",
           "T27"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T28",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "after T24, T25, T26, T27 still open"
+        }
       },
       {
         "id": "T29",
@@ -686,7 +982,15 @@
         "edges": [
           "T28"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T28"
+        }
       },
       {
         "id": "T30",
@@ -711,7 +1015,15 @@
         "edges": [
           "T28"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T30",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T28"
+        }
       },
       {
         "id": "T31",
@@ -736,7 +1048,15 @@
         "edges": [
           "T28"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T31",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T28"
+        }
       },
       {
         "id": "T35",
@@ -759,7 +1079,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T35",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T35 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T32",
@@ -782,7 +1113,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T32",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T33",
@@ -807,7 +1146,15 @@
         "edges": [
           "T32"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T33",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "after T32 still open"
+        }
       },
       {
         "id": "T34",
@@ -832,7 +1179,15 @@
         "edges": [
           "T33"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T34",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T33"
+        }
       },
       {
         "id": "T36",
@@ -857,7 +1212,15 @@
         "edges": [
           "T33"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T36",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T33"
+        }
       },
       {
         "id": "T37",
@@ -882,7 +1245,15 @@
         "edges": [
           "T33"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T37",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T33"
+        }
       },
       {
         "id": "T38",
@@ -907,7 +1278,15 @@
         "edges": [
           "T33"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T38",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T33"
+        }
       },
       {
         "id": "T39",
@@ -935,7 +1314,15 @@
           "T37",
           "T38"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T39",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "after T34, T36, T37, T38 still open"
+        }
       },
       {
         "id": "T40",
@@ -960,7 +1347,15 @@
         "edges": [
           "T39"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T40",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T39"
+        }
       },
       {
         "id": "T41",
@@ -985,7 +1380,15 @@
         "edges": [
           "T39"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T41",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T39"
+        }
       },
       {
         "id": "T45",
@@ -1008,7 +1411,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T45",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T45 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T46",
@@ -1031,7 +1445,18 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T46",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T46 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "id": "T42",
@@ -1054,7 +1479,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T42",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T43",
@@ -1077,7 +1510,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T43",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T44",
@@ -1102,7 +1543,15 @@
         "edges": [
           "T42"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T44",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "after T42 still open"
+        }
       },
       {
         "id": "T47",
@@ -1127,7 +1576,15 @@
         "edges": [
           "T39"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T47",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T39"
+        }
       },
       {
         "id": "T48",
@@ -1150,7 +1607,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T48",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T49",
@@ -1173,7 +1638,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T49",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T50",
@@ -1196,7 +1669,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T50",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T51",
@@ -1221,7 +1702,15 @@
         "edges": [
           "T39"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T51",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T39"
+        }
       },
       {
         "id": "T52",
@@ -1246,7 +1735,15 @@
         "edges": [
           "T39"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T52",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T39"
+        }
       },
       {
         "id": "T53",
@@ -1271,7 +1768,15 @@
         "edges": [
           "T11"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T53",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T54",
@@ -1294,7 +1799,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T54",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T55",
@@ -1317,7 +1830,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T55",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T56",
@@ -1340,7 +1861,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T56",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "claim already closed — task should be [x]; strike or check it"
+        }
       },
       {
         "id": "T57",
@@ -1366,7 +1895,15 @@
           "T28",
           "T39"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T57",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T28, T39"
+        }
       },
       {
         "id": "T58",
@@ -1389,7 +1926,15 @@
         "note": null,
         "pathNote": null,
         "edges": [],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T58",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "width 4 reached"
+        }
       },
       {
         "id": "T59",
@@ -1419,7 +1964,15 @@
           "T39",
           "T58"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T59",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T39"
+        }
       },
       {
         "id": "T60",
@@ -1444,7 +1997,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T60",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T61",
@@ -1469,7 +2030,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T61",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T62",
@@ -1494,7 +2063,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T62",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T63",
@@ -1519,7 +2096,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T63",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T64",
@@ -1544,7 +2129,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T64",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T65",
@@ -1569,7 +2162,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T65",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T66",
@@ -1594,7 +2195,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T66",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T67",
@@ -1619,7 +2228,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T67",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T68",
@@ -1644,7 +2261,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T68",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T69",
@@ -1669,7 +2294,20 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T69",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-61"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "T70",
@@ -1694,7 +2332,20 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T70",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-60"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "T71",
@@ -1719,7 +2370,20 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T71",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-60"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "T72",
@@ -1744,7 +2408,20 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T72",
+          "spec": "001",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-62"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "id": "T73",
@@ -1769,7 +2446,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T73",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T74",
@@ -1794,7 +2479,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T74",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T75",
@@ -1819,7 +2512,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T75",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T76",
@@ -1844,7 +2545,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T76",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T77",
@@ -1869,7 +2578,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T77",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T78",
@@ -1894,7 +2611,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T78",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T79",
@@ -1919,7 +2644,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T79",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T80",
@@ -1944,7 +2677,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T80",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T81",
@@ -1969,7 +2710,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T81",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T82",
@@ -1994,7 +2743,15 @@
         "edges": [
           "T59"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T82",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "behind open seam T59"
+        }
       },
       {
         "id": "T83",
@@ -2020,7 +2777,15 @@
           "T11",
           "T78"
         ],
-        "afterSpecs": []
+        "afterSpecs": [],
+        "itemState": {
+          "kind": "task",
+          "id": "T83",
+          "spec": "001",
+          "state": "open",
+          "command": "/spec-implement 001",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       }
     ],
     "probeMapping": [

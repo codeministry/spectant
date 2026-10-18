@@ -22,6 +22,8 @@ export interface GateWriteInput {
   readonly constitution: string | null;
   /** The event's actor: `writeActorOf` of the viewer's `u:` id (T80). */
   readonly actor: string;
+  /** The run lock's abort age (`WriteInput.abortAfterMs`, spec 040). */
+  readonly abortAfterMs?: number;
 }
 
 export function writeGateReviewed(input: GateWriteInput): Promise<WriteResult<"gateReviewed">> {
@@ -30,6 +32,7 @@ export function writeGateReviewed(input: GateWriteInput): Promise<WriteResult<"g
     root: input.root,
     stateDir: input.stateDir,
     now,
+    ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }),
     read: () => {
       const files = readSpecFiles(ref);
       const hashes = gateHashes(files.texts);

@@ -8,6 +8,13 @@
       </p>
     </div>
 
+    @if (specRun(); as run) {
+      <!-- spec 040 (T52, ISC-225): a run stands on the spec, so every tick is locked until it ends. -->
+      <ui-notice tone="info" icon="lock" data-run-notice>{{
+        'itemState.locked.notice' | transloco: { spec: state.specId() ?? '', command: run.command ?? '', duration: runDuration() }
+      }}</ui-notice>
+    }
+
     <div class="toolbar">
       <ui-filter-chips
         data-filter="lane"
@@ -76,10 +83,12 @@
                   [checked]="isChecked(row)"
                   [disabled]="blocked(row) || specWait(row) !== null"
                   [attr.aria-label]="'tasks.checkbox' | transloco: { id: row.id }"
-                  [attr.aria-describedby]="checkLine(row) ? 'task-' + row.id + '-check tasks-helper' : 'tasks-helper'"
+                  [attr.aria-disabled]="specRun() ? 'true' : null"
+                  [attr.aria-describedby]="describedBy(row)"
+                  (click)="guardRun($event)"
                   (change)="tick(row, box.checked)"
                 />
-                @if (checkLine(row)?.kind === 'locked') {
+                @if (checkLine(row)?.kind === 'locked' || specRun()) {
                   <ui-icon class="box-lock" name="lock" [size]="11" aria-hidden="true" />
                 }
                 @if (checkOf(row.id).kind === 'saving') {
@@ -101,7 +110,24 @@
               <span class="text" [attr.title]="row.text">{{ row.text }}</span>
             }
           </span>
-          <span class="state"><span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span></span>
+          <span class="state">
+            @if (itemOf(row); as item) {
+              <!-- spec 040 (T52): the state word from the model, the fine running state or the strike as its detail. -->
+              <span class="status" [attr.data-item-state]="item.state" [attr.data-tone]="itemTone[item.state]"
+                ><ui-glyph [state]="item.state" family="item" [size]="14" />{{ 'states.item.' + item.state | transloco }}
+                @if (item.state === 'running' && item.detail) {
+                  · {{ 'states.run.' + item.detail | transloco }}
+                } @else if (item.closedAs) {
+                  · {{ 'itemState.closedAs.' + item.closedAs | transloco }}
+                }</span
+              >
+              @if (ownWords.has(row.status)) {
+                <span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span>
+              }
+            } @else {
+              <span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span>
+            }
+          </span>
           <span class="meta">
           <span class="claim">
             <a data-claim [routerLink]="[...specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-chip variant="take" icon="hand">{{ row.claim }}</ui-chip></a>
@@ -137,8 +163,18 @@
             }
           </span>
           </span>
-          @if (row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id)) {
+          @if (itemOf(row) || row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id) || (specRun() && row.state !== 'struck')) {
             <span class="extra">
+              @if (itemOf(row); as item) {
+                <!-- spec 040 (T54, ISC-224): the state's details (command, actor, duration, start, date) under the row. -->
+                <!-- A row with live holders shows them once, through app-task-actors below; the details then leave theirs out. -->
+                <ui-item-state details data-task-item [info]="item" [ws]="state.ws() ?? ''" [noActor]="liveCards().has(row.id)" />
+              }
+              @if (row.state !== 'struck' && specRun(); as run) {
+                <span class="check-note" data-check-run-locked [id]="'task-' + row.id + '-run'">
+                  <ui-icon name="lock" [size]="13" />{{ 'itemState.locked.checkbox' | transloco: { session: run.session } }}
+                </span>
+              }
               @if (specWait(row); as specs) {
                 <!-- spec 025 (T26): the held task's reason, `clock` (never `lock`, a session's), the blocker as a link. -->
                 <span class="sub waits" data-task-waits>

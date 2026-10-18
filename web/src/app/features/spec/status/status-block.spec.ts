@@ -1,8 +1,11 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import type { SpecPageModel, Workflow } from '../../../../../../core/src/files';
 import planningGolden from '../../../../../../core/fixtures/harbor.planning.golden.json';
 import specGolden from '../../../../../../core/fixtures/harbor.spec.golden.json';
+import beaconGolden from '../../../../../../core/fixtures/beacon.spec.golden.json';
+import beaconPlanning from '../../../../../../core/fixtures/beacon.planning.golden.json';
 import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { formatInstant } from '../../../shared/time';
@@ -26,6 +29,7 @@ beforeEach(() => {
         preloadLangs: true,
       }),
     ],
+    providers: [provideRouter([])],
   });
 });
 
@@ -41,11 +45,17 @@ async function render(key: string, inputs: Record<string, unknown> = {}) {
   return { m, host: fixture.nativeElement as HTMLElement };
 }
 
+/** The same spec with its head as a payload before spec 040 served it: no `state`. */
+async function renderLegacy(key: string, inputs: Record<string, unknown> = {}) {
+  const head = { ...spec(key).head, state: undefined };
+  return render(key, { head, ...inputs });
+}
+
 const t = (key: string) => TestBed.inject(TranslocoService).translate(key);
 
-describe('StatusBlock (T132, ISC-122.3)', () => {
+describe('StatusBlock without an item state (T132, ISC-122.3; payloads before spec 040)', () => {
   it('draws the feature row with build current, the phrase unclamped and the command chip (002)', async () => {
-    const { m, host } = await render('002-web-console');
+    const { m, host } = await renderLegacy('002-web-console');
     const items = [...host.querySelectorAll('ui-stage-track li')];
     expect(items.map((li) => li.getAttribute('data-stage'))).toEqual(['plan', 'review', 'tasks', 'build', 'code-review', 'close', 'done']);
     expect(host.querySelector('ui-stage-track li[aria-current="step"]')?.getAttribute('data-stage')).toBe('build');
@@ -63,19 +73,19 @@ describe('StatusBlock (T132, ISC-122.3)', () => {
   });
 
   it('hands the command to the spec head at wide', async () => {
-    const { host } = await render('002-web-console', { showCommand: false });
+    const { host } = await renderLegacy('002-web-console', { showCommand: false });
     expect(host.querySelector('ui-reason ui-command-chip')).toBeNull();
     expect(host.querySelector('ui-reason .phrase')).not.toBeNull();
   });
 
   it('draws the compact track with the current word under its segment', async () => {
-    const { host } = await render('002-web-console', { compact: true });
+    const { host } = await renderLegacy('002-web-console', { compact: true });
     expect(host.querySelector('ui-stage-track')?.getAttribute('data-size')).toBe('compact');
     expect(host.querySelector('ui-stage-track .word')?.textContent.trim()).toBe('Build');
   });
 
   it('marks close-pending on the track and shows the phrase without a command (008)', async () => {
-    const { m, host } = await render('008-referrers-support');
+    const { m, host } = await renderLegacy('008-referrers-support');
     const current = host.querySelector('ui-stage-track li[aria-current="step"]');
     expect(current?.getAttribute('data-stage')).toBe('code-review');
     expect(current?.getAttribute('data-detour')).toBe('close-pending');
@@ -88,7 +98,7 @@ describe('StatusBlock (T132, ISC-122.3)', () => {
   });
 
   it('shows the whole row done and the done line instead of a reason (007)', async () => {
-    const { host } = await render('007-rotate-mirror-token');
+    const { host } = await renderLegacy('007-rotate-mirror-token');
     expect([...host.querySelectorAll('ui-stage-track li')].map((li) => li.getAttribute('data-state'))).toEqual(['done', 'done', 'done']);
     expect(host.querySelector('ui-reason')).toBeNull();
     expect(host.querySelector('[data-done]')?.textContent.trim()).toBe(t('status.where.done'));
@@ -134,5 +144,84 @@ describe('StatusBlock since (T11, ISC-114.1)', () => {
   it('shows no caption without an event into the current stage', async () => {
     const { host } = await render('002-web-console', { since: null });
     expect(host.querySelector('[data-since]')).toBeNull();
+  });
+});
+
+describe('StatusBlock item state (spec 040, T49, ISC-224)', () => {
+  const BEACON = beaconGolden as unknown as Record<string, SpecPageModel>;
+  const BEACON_WORKFLOW = beaconPlanning.workflow as unknown as Workflow;
+
+  async function renderBeacon(key: string) {
+    const m = BEACON[`specs/${key}`] as SpecPageModel | undefined;
+    if (!m) throw new Error(`beacon.spec.golden.json holds no ${key}`);
+    const fixture = TestBed.createComponent(StatusBlock);
+    fixture.componentRef.setInput('head', m.head);
+    fixture.componentRef.setInput('next', m.next);
+    fixture.componentRef.setInput('workflow', BEACON_WORKFLOW);
+    fixture.componentRef.setInput('ws', 'beacon');
+    await fixture.whenStable();
+    return { m, host: fixture.nativeElement as HTMLElement };
+  }
+
+  it('puts the state chip beside the stage chip and the block state line below (open, 002)', async () => {
+    const { m, host } = await render('002-web-console');
+    expect(host.querySelector('[data-state-chip]')?.getAttribute('data-state')).toBe('open');
+    const line = host.querySelector('ui-item-state');
+    expect(line?.getAttribute('data-block')).toBe('');
+    expect(line?.getAttribute('data-state')).toBe('open');
+    expect(line?.querySelector('ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+    expect(line?.textContent).toContain(m.head.state?.reason ?? '-');
+    expect(host.querySelector('[data-next-command]')?.textContent).toContain('/spec-implement 002');
+    expect(host.querySelector('ui-reason')).toBeNull();
+  });
+
+  it('leaves an open command to the spec head at wide', async () => {
+    const { host } = await render('002-web-console', { showCommand: false });
+    expect(host.querySelector('ui-item-state ui-command-chip')).toBeNull();
+    expect(host.querySelector('ui-item-state')?.getAttribute('data-state')).toBe('open');
+  });
+
+  it('running: the locked command chip, the agent, "since 8 min" and the start (beacon 003)', async () => {
+    const { m, host } = await renderBeacon('003-alert-rules');
+    expect(host.querySelector('[data-state-chip]')?.getAttribute('data-state')).toBe('running');
+    const line = host.querySelector('ui-item-state');
+    expect(line?.getAttribute('data-state')).toBe('running');
+    expect(line?.querySelector('ui-command-chip [data-locked]')).not.toBeNull();
+    expect(line?.querySelector('ui-command-chip code')?.textContent).toBe('/spec-tasks 003');
+    expect(line?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-32');
+    expect(line?.querySelector('[data-item-line]')?.textContent).toContain('since 8 min');
+    const since = m.head.state?.run?.since ?? '';
+    expect(Date.parse(line?.querySelector('[data-started] time')?.getAttribute('datetime') ?? '')).toBe(Date.parse(since));
+  });
+
+  it('aborted: the warning chip with start and actor, the command free again (beacon 006)', async () => {
+    const { host } = await renderBeacon('006-retry-backoff');
+    expect(host.querySelector('[data-state-chip]')?.getAttribute('data-state')).toBe('aborted');
+    const line = host.querySelector('ui-item-state');
+    expect(line?.getAttribute('data-state')).toBe('aborted');
+    expect(line?.querySelector('[data-started]')).not.toBeNull();
+    expect(line?.querySelector('ui-command-chip [data-locked]')).toBeNull();
+  });
+
+  it('waiting: what it waits on as a link, no command (beacon 011)', async () => {
+    const { host } = await renderBeacon('011-maintenance-windows');
+    const line = host.querySelector('ui-item-state');
+    expect(line?.getAttribute('data-state')).toBe('waiting');
+    expect(line?.querySelector('ui-waits-chip a')?.getAttribute('href')).toContain('/w/beacon/s/002');
+    expect(line?.querySelector('ui-command-chip')).toBeNull();
+  });
+
+  it('done: the date, no second done chip beside the done stage (beacon 001)', async () => {
+    const { host } = await renderBeacon('001-check-scheduler');
+    expect(host.querySelector('[data-state-chip]')).toBeNull();
+    expect(host.querySelector('ui-item-state [data-done] time')).not.toBeNull();
+  });
+
+  it('falls back to the reason block when the head carries no state (older payloads)', async () => {
+    const head = { ...spec('002-web-console').head, state: undefined };
+    const { host } = await render('002-web-console', { head });
+    expect(host.querySelector('ui-item-state')).toBeNull();
+    expect(host.querySelector('[data-state-chip]')).toBeNull();
+    expect(host.querySelector('ui-reason ui-command-chip code')?.textContent).toBe('/spec-implement 002');
   });
 });

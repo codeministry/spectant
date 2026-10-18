@@ -119,13 +119,13 @@ const ariaLabel = (root: HTMLElement, type: string) => figure(root, type)?.query
 const KEY_TEXT = /\bstages\.|help\.workflow\./;
 
 describe('HelpPage glossary (ISC-116)', () => {
-  it('renders the thirteen rows of GLOSSARY in English, verbatim: term, common term, German, definition', async () => {
+  it('renders the eighteen rows of GLOSSARY in English, verbatim: term, common term, German, definition', async () => {
     setUp();
     const { root } = await open(null);
     const headers = [...root.querySelectorAll('table[data-glossary] thead th')].map(text);
     expect(headers).toEqual(['Spectant term', 'Common term', 'German', 'Definition']);
     const rows = glossaryRows(root);
-    expect(rows).toHaveLength(13);
+    expect(rows).toHaveLength(18);
     expect(rows.map(cells)).toEqual(GLOSSARY.map((row) => [row.term, row.common, row.german, row.definition.replace(/`/g, '')]));
     expect(rows[2]?.id).toBe('term-claim');
     expect(rows[2]?.querySelector('td[lang="de"]')).not.toBeNull();

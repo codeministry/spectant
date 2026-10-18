@@ -1,0 +1,1234 @@
+[
+  {
+    "kind": "spec",
+    "id": "001",
+    "state": "open",
+    "stage": "review",
+    "command": "/spec-review 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-review 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "001",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "001"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-2",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-3",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-4",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-5",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-5 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-6",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-7",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-5.1",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-5.1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-5.2",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-5.2 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-8",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-8 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-8.1",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-8.1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-9",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-9 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-10",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-10 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-11",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-12",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-12 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-13",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-14",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-15",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-16",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-16.1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-16.2",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-17",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-17.1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-18",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-18 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-18.1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-18.3",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-18.2",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-18.2 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-19",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-19.1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-20",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-21",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-21 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-22",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-22 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-60",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-60.1",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-60"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-60.2",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-60"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-61",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-61.1",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-61"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-61.2",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-62",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-62.1",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-62"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-63",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-63.1",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-64",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-65",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-66",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "the reviewed mark is missing"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-67",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-67 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-67.1",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-67.1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T2 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T3 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T4",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T4 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T5",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T5 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T6",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T6 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T7",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T7 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T8",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T8 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T9",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T9 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T10",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T10 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T11",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T11 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T12",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T12 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T13",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T13 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T14",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T14 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T15",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T15 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T16",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "operator lane — the principal's own action, never auto-dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T17",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T17 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T18",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T18 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T19",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T19 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T20",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T20 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T21",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T21 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T22",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T22 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T23",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T23 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T24",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T24 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T25",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T25 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T26",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T27",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T28",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "after T24, T25, T26, T27 still open"
+  },
+  {
+    "kind": "task",
+    "id": "T29",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T28"
+  },
+  {
+    "kind": "task",
+    "id": "T30",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T28"
+  },
+  {
+    "kind": "task",
+    "id": "T31",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T28"
+  },
+  {
+    "kind": "task",
+    "id": "T35",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T35 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T32",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T33",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "after T32 still open"
+  },
+  {
+    "kind": "task",
+    "id": "T34",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T33"
+  },
+  {
+    "kind": "task",
+    "id": "T36",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T33"
+  },
+  {
+    "kind": "task",
+    "id": "T37",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T33"
+  },
+  {
+    "kind": "task",
+    "id": "T38",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T33"
+  },
+  {
+    "kind": "task",
+    "id": "T39",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "after T34, T36, T37, T38 still open"
+  },
+  {
+    "kind": "task",
+    "id": "T40",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T39"
+  },
+  {
+    "kind": "task",
+    "id": "T41",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T39"
+  },
+  {
+    "kind": "task",
+    "id": "T45",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T45 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T46",
+    "spec": "001",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T46 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T42",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T43",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T44",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "after T42 still open"
+  },
+  {
+    "kind": "task",
+    "id": "T47",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T39"
+  },
+  {
+    "kind": "task",
+    "id": "T48",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T49",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T50",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T51",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T39"
+  },
+  {
+    "kind": "task",
+    "id": "T52",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T39"
+  },
+  {
+    "kind": "task",
+    "id": "T53",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T54",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T55",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T56",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "claim already closed — task should be [x]; strike or check it"
+  },
+  {
+    "kind": "task",
+    "id": "T57",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T28, T39"
+  },
+  {
+    "kind": "task",
+    "id": "T58",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "width 4 reached"
+  },
+  {
+    "kind": "task",
+    "id": "T59",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T39"
+  },
+  {
+    "kind": "task",
+    "id": "T60",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T61",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T62",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T63",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T64",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T65",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T66",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T67",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T68",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T69",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-61"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T70",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-60"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T71",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-60"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T72",
+    "spec": "001",
+    "state": "waiting",
+    "waits": {
+      "specs": [],
+      "claims": [
+        "ISC-62"
+      ],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T73",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T74",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T75",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T76",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T77",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T78",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T79",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T80",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T81",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T82",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "behind open seam T59"
+  },
+  {
+    "kind": "task",
+    "id": "T83",
+    "spec": "001",
+    "state": "open",
+    "command": "/spec-implement 001",
+    "reason": "operator lane — the principal's own action, never auto-dispatched"
+  }
+]

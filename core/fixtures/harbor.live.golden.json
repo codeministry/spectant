@@ -19,7 +19,18 @@
         "tries": 1,
         "reason": "seam — runs alone before its fan-out",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -33,7 +44,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -47,7 +69,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -61,7 +94,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -75,7 +119,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T6",
@@ -89,7 +144,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T7",
@@ -103,7 +169,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T8",
@@ -117,7 +194,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T9",
@@ -131,7 +219,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T10",
@@ -145,7 +244,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T11",
@@ -159,7 +269,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T12",
@@ -173,7 +294,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T13",
@@ -187,7 +319,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T14",
@@ -204,7 +347,18 @@
         "reason": "claim takeable, edges closed",
         "note": "retry with: probe exit 1 — wrap the digest column below 480 px",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T15",
@@ -218,7 +372,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T16",
@@ -232,7 +397,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T16 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T17",
@@ -249,7 +425,18 @@
         "reason": "claim takeable, edges closed",
         "note": "retry with: concerns — let the settings form stack its labels at 390 px",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T18",
@@ -263,7 +450,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T18",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T18 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T19",
@@ -277,7 +475,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T19",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T19 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T20",
@@ -291,7 +500,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T20",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T21",
@@ -305,7 +525,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T21",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T21 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T22",
@@ -319,7 +550,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T22",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T23",
@@ -333,7 +575,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T23",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T23 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T24",
@@ -349,7 +602,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T24",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T25",
@@ -363,7 +627,18 @@
         "tries": 1,
         "reason": "claim takeable, edges closed",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T25",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T25 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T26",
@@ -384,6 +659,13 @@
           "session": "a:claude:sess-2/T26",
           "worktree": "wt-8",
           "ts": "2026-03-08T16:12:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T26",
+          "spec": "002",
+          "state": "done",
+          "doneAt": "2026-03-08T16:12:00Z"
         }
       },
       {
@@ -409,7 +691,15 @@
           "id": "a:claude:sess-2",
           "legacy": false
         },
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T27",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "claim takeable, edges closed"
+        }
       },
       {
         "task": "T28",
@@ -429,6 +719,29 @@
           "session": "a:claude:sess-2/T28",
           "worktree": "wt-9",
           "ts": "2026-03-08T16:42:00Z"
+        },
+        "itemState": {
+          "kind": "task",
+          "id": "T28",
+          "spec": "002",
+          "state": "running",
+          "run": {
+            "run": "a:claude:sess-2/T28",
+            "command": "/spec-implement 002",
+            "session": "a:claude:sess-2/T28",
+            "actor": {
+              "raw": "a:claude:sess-2/T28",
+              "kind": "subagent",
+              "id": "a:claude:sess-2",
+              "task": "T28",
+              "legacy": false
+            },
+            "since": "2026-03-08T16:42:00Z",
+            "elapsedMs": -6120000,
+            "openRuns": 1,
+            "source": "task-run"
+          },
+          "detail": "applied-open"
         }
       },
       {
@@ -444,7 +757,15 @@
         "reason": "claim takeable, edges closed",
         "note": "question: should the empty state link to the sync docs or to the settings page?",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "claim takeable, edges closed"
+        }
       },
       {
         "task": "T30",
@@ -457,7 +778,18 @@
         "tries": 0,
         "reason": "operator lane — the principal's own action, never auto-dispatched",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T30",
+          "spec": "002",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T30 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T31",
@@ -470,7 +802,15 @@
         "tries": 0,
         "reason": "operator lane — the principal's own action, never auto-dispatched",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T31",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       },
       {
         "task": "T32",
@@ -483,7 +823,20 @@
         "tries": 0,
         "reason": "after T31 still open",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T32",
+          "spec": "002",
+          "state": "waiting",
+          "waits": {
+            "specs": [],
+            "claims": [
+              "ISC-77"
+            ],
+            "siblings": []
+          }
+        }
       },
       {
         "task": "T34",
@@ -496,7 +849,15 @@
         "tries": 0,
         "note": "struck 2026-03-08: covered by T32's keyboard probe",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T34",
+          "spec": "002",
+          "state": "done",
+          "doneAt": "2026-03-08",
+          "closedAs": "struck"
+        }
       }
     ],
     "progress": {
@@ -551,7 +912,15 @@
         "reason": "claim takeable, edges closed",
         "note": "question: should the empty state link to the sync docs or to the settings page?",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "claim takeable, edges closed"
+        }
       },
       {
         "task": "T31",
@@ -564,7 +933,15 @@
         "tries": 0,
         "reason": "operator lane — the principal's own action, never auto-dispatched",
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T31",
+          "spec": "002",
+          "state": "open",
+          "command": "/spec-implement 002",
+          "reason": "operator lane — the principal's own action, never auto-dispatched"
+        }
       }
     ],
     "staleAfterMs": 2700000,
@@ -589,6 +966,29 @@
             "session": "a:claude:sess-2/T28",
             "worktree": "wt-9",
             "ts": "2026-03-08T16:42:00Z"
+          },
+          "itemState": {
+            "kind": "task",
+            "id": "T28",
+            "spec": "002",
+            "state": "running",
+            "run": {
+              "run": "a:claude:sess-2/T28",
+              "command": "/spec-implement 002",
+              "session": "a:claude:sess-2/T28",
+              "actor": {
+                "raw": "a:claude:sess-2/T28",
+                "kind": "subagent",
+                "id": "a:claude:sess-2",
+                "task": "T28",
+                "legacy": false
+              },
+              "since": "2026-03-08T16:42:00Z",
+              "elapsedMs": -6120000,
+              "openRuns": 1,
+              "source": "task-run"
+            },
+            "detail": "applied-open"
           }
         }
       ],
@@ -651,7 +1051,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -663,7 +1074,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -675,7 +1097,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -687,7 +1120,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -699,7 +1143,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T6",
@@ -711,7 +1166,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T7",
@@ -723,7 +1189,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T8",
@@ -735,7 +1212,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T9",
@@ -747,7 +1235,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T10",
@@ -759,7 +1258,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T11",
@@ -771,7 +1281,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T12",
@@ -783,7 +1304,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T13",
@@ -795,7 +1327,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T14",
@@ -807,7 +1350,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T15",
@@ -819,7 +1373,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T16",
@@ -831,7 +1396,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T16 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T17",
@@ -843,7 +1419,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T18",
@@ -855,7 +1442,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T18",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T18 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T19",
@@ -867,7 +1465,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T19",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T19 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T20",
@@ -879,7 +1488,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T20",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T21",
@@ -891,7 +1511,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T21",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T21 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T22",
@@ -903,7 +1534,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T22",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T23",
@@ -915,7 +1557,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T23",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T23 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T24",
@@ -927,7 +1580,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T24",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T25",
@@ -939,7 +1603,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T25",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T25 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T26",
@@ -951,7 +1626,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T26",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T26 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T27",
@@ -963,7 +1649,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T27",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T27 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T28",
@@ -975,7 +1672,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T28",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T28 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T29",
@@ -987,7 +1695,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T29 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T30",
@@ -999,7 +1718,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T30",
+          "spec": "004",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T30 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "progress": {
@@ -1198,7 +1928,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T1",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T1 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T2",
@@ -1210,7 +1951,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T2",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T2 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T3",
@@ -1222,7 +1974,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T3",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T3 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T4",
@@ -1234,7 +1997,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T4",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T4 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T5",
@@ -1246,7 +2020,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T5",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T5 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T6",
@@ -1258,7 +2043,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T6",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T6 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T7",
@@ -1270,7 +2066,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T7",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T7 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T8",
@@ -1282,7 +2089,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T8",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T8 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T9",
@@ -1294,7 +2112,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T9",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T9 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T10",
@@ -1306,7 +2135,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T10",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T10 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T11",
@@ -1318,7 +2158,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T11",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T11 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T12",
@@ -1330,7 +2181,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T12",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T12 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T13",
@@ -1342,7 +2204,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T13",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T13 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T14",
@@ -1354,7 +2227,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T14",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T14 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T15",
@@ -1366,7 +2250,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T15",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T15 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T16",
@@ -1378,7 +2273,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T16",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T16 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T17",
@@ -1390,7 +2296,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T17",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T17 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T18",
@@ -1402,7 +2319,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T18",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T18 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T19",
@@ -1414,7 +2342,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T19",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T19 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T20",
@@ -1426,7 +2365,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T20",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T20 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T21",
@@ -1438,7 +2388,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T21",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T21 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T22",
@@ -1450,7 +2411,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T22",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T22 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T23",
@@ -1462,7 +2434,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T23",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T23 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T24",
@@ -1474,7 +2457,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T24",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T24 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T25",
@@ -1486,7 +2480,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T25",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T25 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T26",
@@ -1498,7 +2503,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T26",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T26 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T27",
@@ -1510,7 +2526,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T27",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T27 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T28",
@@ -1522,7 +2549,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T28",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T28 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T29",
@@ -1534,7 +2572,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T29",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T29 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T30",
@@ -1546,7 +2595,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T30",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T30 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T31",
@@ -1558,7 +2618,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T31",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T31 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T32",
@@ -1570,7 +2641,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T32",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T32 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T33",
@@ -1582,7 +2664,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T33",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T33 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T34",
@@ -1594,7 +2687,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T34",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T34 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T35",
@@ -1606,7 +2710,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T35",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T35 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T36",
@@ -1618,7 +2733,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T36",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T36 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T37",
@@ -1630,7 +2756,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T37",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T37 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T38",
@@ -1642,7 +2779,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T38",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T38 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T39",
@@ -1654,7 +2802,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T39",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T39 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T40",
@@ -1666,7 +2825,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T40",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T40 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T41",
@@ -1678,7 +2848,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T41",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T41 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T42",
@@ -1690,7 +2871,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T42",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T42 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T43",
@@ -1702,7 +2894,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T43",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T43 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T44",
@@ -1714,7 +2917,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T44",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T44 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T45",
@@ -1726,7 +2940,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T45",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T45 is done, but the files give no date for it."
+          }
+        }
       },
       {
         "task": "T46",
@@ -1738,7 +2963,18 @@
         "state": "closed",
         "tries": 0,
         "agent": null,
-        "subagent": null
+        "subagent": null,
+        "itemState": {
+          "kind": "task",
+          "id": "T46",
+          "spec": "001",
+          "state": "done",
+          "diagnostic": {
+            "severity": "warning",
+            "code": "item-state-no-date",
+            "message": "task T46 is done, but the files give no date for it."
+          }
+        }
       }
     ],
     "progress": {

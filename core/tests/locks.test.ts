@@ -10,7 +10,7 @@
 // Every tree here is a fresh temp dir with synthetic sessions; no real state directory or session enters the tree.
 import { afterAll, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -292,5 +292,219 @@ describe('run events without worktree (spec 035, ISC-189)', () => {
     ]);
     expect(r.diagnostics?.every((d) => d.message.includes('worktree'))).toBe(true);
     expect(await runStates(r, new Set())).toEqual([]);
+  });
+});
+
+// ── spec 040, T2 (ISC-222): the run lifecycle events ─────────────────────────────────────────────────────────────────
+// `run-start` when a command starts on a spec or an idea, `run-end` when it ends, both with `ts`, `run`, `command`,
+// `session` and exactly one of `spec` or `idea`; `run-end` may carry `outcome` (`ok`, `error`, `released`). Paired by
+// `run`: a start without an end is an open run, collected on the reading as `openRuns` in file order. A line that lacks a
+// field, names both or neither of spec and idea, or carries another outcome is one `locks-activity-malformed` warning
+// at its line and is skipped; a `run-end` for a run that is not open is one `locks-activity-run-unmatched` warning.
+type RunLifecycleLine = Record<string, string>;
+
+const runStart = (run: string, command: string, target: { spec: string } | { idea: string }, ts: string, session = 'a:claude:sess-4'): RunLifecycleLine => ({
+  ts,
+  event: 'run-start',
+  run,
+  command,
+  session,
+  ...target,
+});
+
+const runEnd = (start: RunLifecycleLine, ts: string, outcome?: string): RunLifecycleLine => ({
+  ...start,
+  ts,
+  event: 'run-end',
+  ...(outcome === undefined ? {} : { outcome }),
+});
+
+const omit = (line: RunLifecycleLine, key: string): RunLifecycleLine => Object.fromEntries(Object.entries(line).filter(([k]) => k !== key));
+
+const TASKS_037 = runStart('r-1', '/spec-tasks 037', { spec: '037-night-shift' }, '2026-03-08T15:10:00Z');
+const IDEA_NIGHT = runStart('r-2', '/spec-idea night-mode', { idea: 'night-mode' }, '2026-03-08T15:12:00Z', 'a:claude:sess-5');
+
+describe('run events: run-start and run-end paired by run (spec 040, ISC-222)', () => {
+  test('run events: a run-start on a spec without its run-end is one open run, with the session parsed as actor', async () => {
+    const r = await readLockSources({ repoRoot: tempRepo([TASKS_037]) });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.openRuns).toEqual([
+      { run: 'r-1', command: '/spec-tasks 037', session: 'a:claude:sess-4', actor: parseActor('a:claude:sess-4'), since: '2026-03-08T15:10:00Z', spec: '037-night-shift', line: 1 },
+    ]);
+    expect(r.locks).toEqual([]);
+    expect(r.runs).toEqual([]);
+  });
+
+  test('run events: a run-start on an idea is an open run naming the idea and no spec', async () => {
+    const r = await readLockSources({ repoRoot: tempRepo([IDEA_NIGHT]) });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.openRuns).toEqual([
+      { run: 'r-2', command: '/spec-idea night-mode', session: 'a:claude:sess-5', actor: parseActor('a:claude:sess-5'), since: '2026-03-08T15:12:00Z', idea: 'night-mode', line: 1 },
+    ]);
+    expect(r.openRuns?.map((run) => 'spec' in run)).toEqual([false]);
+  });
+
+  test('run events: a run-end with and without outcome ends its run; every ended run leaves openRuns empty', async () => {
+    for (const outcome of [undefined, 'ok', 'error', 'released']) {
+      const r = await readLockSources({ repoRoot: tempRepo([TASKS_037, runEnd(TASKS_037, '2026-03-08T15:20:00Z', outcome)]) });
+      expect(r.diagnostics).toEqual([]);
+      expect(r.openRuns).toEqual([]);
+    }
+    const idea = await readLockSources({ repoRoot: tempRepo([IDEA_NIGHT, runEnd(IDEA_NIGHT, '2026-03-08T15:13:00Z', 'ok')]) });
+    expect(idea.openRuns).toEqual([]);
+  });
+
+  test('run events: runs pair by run id, so interleaved runs end apart and the open ones stay in file order', async () => {
+    const second = runStart('r-3', '/spec-implement 037', { spec: '037' }, '2026-03-08T15:11:00Z', 'a:claude:sess-6');
+    const third = runStart('r-4', '/spec-review 038', { spec: '038' }, '2026-03-08T15:14:00Z');
+    const r = await readLockSources({
+      repoRoot: tempRepo([TASKS_037, second, IDEA_NIGHT, runEnd(TASKS_037, '2026-03-08T15:13:00Z', 'error'), third, runEnd(third, '2026-03-08T15:15:00Z')]),
+    });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.openRuns?.map((run) => [run.run, run.command, run.spec ?? run.idea, run.line])).toEqual([
+      ['r-3', '/spec-implement 037', '037', 2],
+      ['r-2', '/spec-idea night-mode', 'night-mode', 3],
+    ]);
+  });
+
+  test('run events: both events are known, so neither raises activity-event-unknown; claims and task runs read on beside them', async () => {
+    const r = await readLockSources({
+      repoRoot: tempRepo([claimLine('ISC-53', 'a:claude:sess-2', '2026-03-06T09:00:00Z'), TASKS_037, runLine('dispatch', 'T4', '2026-03-06T09:10:00Z'), runEnd(TASKS_037, '2026-03-08T15:20:00Z', 'ok')]),
+    });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.locks.map((l) => l.claim)).toEqual(['ISC-53']);
+    expect((await runStates(r, new Set())).map((run) => [run.task, run.state])).toEqual([['T4', 'dispatched']]);
+    expect(r.openRuns).toEqual([]);
+  });
+
+  test('run events: a line without ts, run, command or session is malformed at its line and skipped', async () => {
+    for (const key of ['ts', 'run', 'command', 'session']) {
+      for (const line of [TASKS_037, runEnd(TASKS_037, '2026-03-08T15:20:00Z', 'ok')]) {
+        const r = await readLockSources({ repoRoot: tempRepo([omit(line, key)]) });
+        expect(r.diagnostics?.map((d) => [d.severity, d.code, d.line])).toEqual([['warning', 'locks-activity-malformed', 1]]);
+        expect(r.diagnostics?.[0]?.message).toContain(String(line.event));
+        expect(r.openRuns).toEqual([]);
+      }
+    }
+  });
+
+  test('run events: a line naming both a spec and an idea, or neither, is malformed and skipped', async () => {
+    const both = { ...TASKS_037, idea: 'night-mode' };
+    const neither = omit(TASKS_037, 'spec');
+    const r = await readLockSources({ repoRoot: tempRepo([both, neither, IDEA_NIGHT, omit(runEnd(IDEA_NIGHT, '2026-03-08T15:13:00Z'), 'idea')]) });
+    expect(r.diagnostics?.map((d) => [d.code, d.line])).toEqual([
+      ['locks-activity-malformed', 1],
+      ['locks-activity-malformed', 2],
+      ['locks-activity-malformed', 4],
+    ]);
+    expect(r.openRuns?.map((run) => run.run)).toEqual(['r-2']);
+  });
+
+  test('run events: a run-end with an unknown outcome is malformed and skipped, so its run stays open', async () => {
+    const r = await readLockSources({ repoRoot: tempRepo([TASKS_037, runEnd(TASKS_037, '2026-03-08T15:20:00Z', 'aborted')]) });
+    expect(r.diagnostics?.map((d) => [d.code, d.line])).toEqual([['locks-activity-malformed', 2]]);
+    expect(r.diagnostics?.[0]?.message).toContain('"aborted"');
+    expect(r.openRuns?.map((run) => run.run)).toEqual(['r-1']);
+  });
+
+  test('run events: a run-end for an unknown or already ended run is one warning each and skipped', async () => {
+    const stray = runEnd(runStart('r-9', '/spec-plan 039', { spec: '039' }, '2026-03-08T15:00:00Z'), '2026-03-08T15:05:00Z');
+    const r = await readLockSources({
+      repoRoot: tempRepo([stray, TASKS_037, runEnd(TASKS_037, '2026-03-08T15:20:00Z', 'ok'), runEnd(TASKS_037, '2026-03-08T15:21:00Z', 'released')]),
+    });
+    expect(r.diagnostics?.map((d) => [d.severity, d.code, d.line])).toEqual([
+      ['warning', 'locks-activity-run-unmatched', 1],
+      ['warning', 'locks-activity-run-unmatched', 4],
+    ]);
+    expect(r.openRuns).toEqual([]);
+  });
+
+  test('run events: a second run-start with an open or ended run id is one warning and skipped; the first start stands', async () => {
+    const again = { ...TASKS_037, ts: '2026-03-08T15:30:00Z' };
+    const r = await readLockSources({ repoRoot: tempRepo([TASKS_037, again]) });
+    expect(r.diagnostics?.map((d) => [d.code, d.line])).toEqual([['locks-activity-run-duplicate', 2]]);
+    expect(r.openRuns?.map((run) => [run.run, run.since])).toEqual([['r-1', '2026-03-08T15:10:00Z']]);
+    const ended = await readLockSources({ repoRoot: tempRepo([TASKS_037, runEnd(TASKS_037, '2026-03-08T15:20:00Z'), again]) });
+    expect(ended.diagnostics?.map((d) => [d.code, d.line])).toEqual([['locks-activity-run-duplicate', 3]]);
+    expect(ended.openRuns).toEqual([]);
+  });
+
+  test('run events: a legacy session on a run line is read and flagged by the one actor-legacy warning of the file', async () => {
+    const legacy = runStart('r-5', '/spec-tasks 037', { spec: '037' }, '2026-03-08T15:10:00Z', 'principal');
+    const r = await readLockSources({ repoRoot: tempRepo([legacy]) });
+    expect(r.diagnostics?.map((d) => [d.code, d.line, d.subject])).toEqual([['actor-legacy', 1, 'principal']]);
+    expect(r.openRuns?.map((run) => [run.run, run.actor.legacy])).toEqual([['r-5', true]]);
+  });
+
+  // T4: the lines FORMAT.md § Activity and lock lines shows are beacon's own, and they read as the prose says.
+  test('run events: the FORMAT.md example lines are beacon lines and parse into its two open runs', async () => {
+    const format = readFileSync(join(FIXTURES, '..', '..', 'FORMAT.md'), 'utf8');
+    const block = /From `core\/fixtures\/beacon\/\.spectant\/activity\.jsonl`:[\s\S]*?```json\n([\s\S]*?)```/u.exec(format)?.[1] ?? '';
+    const lines = block.split('\n').filter((l) => l !== '');
+    const beacon = readFileSync(join(FIXTURES, 'beacon', '.spectant', 'activity.jsonl'), 'utf8').split('\n');
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(beacon).toContain(line);
+    const r = await readLockSources({ repoRoot: tempRepo(lines.map((l) => JSON.parse(l) as object)) });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.openRuns?.map((run) => [run.run, run.command, run.spec ?? null, run.idea ?? null, run.since])).toEqual([
+      ['r-0308-1445', '/spec new uptime-badges', null, 'uptime-badges', '2026-03-08T14:45:00Z'],
+      ['r-0308-1452', '/spec-tasks 003', '003-alert-rules', null, '2026-03-08T14:52:00Z'],
+    ]);
+  });
+});
+
+// ── spec 040, T5 (ISC-222.2): a log without run lines reads exactly as before ────────────────────────────────────────
+// The run lifecycle events are additive. Every fixture log without `run-start` and `run-end` yields the lock list, the
+// task runs and the diagnostics it yielded before spec 040, and its reading carries no `openRuns` key at all; run lines
+// added to a log change none of those either. HARBOR_READING is harbor's reading as the reader produced it before spec
+// 040, byte for byte.
+const HARBOR_READING =
+  '{"source":"activity","sources":["activity"],"locks":[{"source":"activity","claim":"ISC-74","session":"a:claude:sess-2","actor":{"raw":"a:claude:sess-2","kind":"agent","id":"a:claude:sess-2","legacy":false},"since":"2026-03-08T14:06:00Z"}],"diagnostics":[{"severity":"warning","code":"activity-event-unknown","message":"The event \\"ponder\\" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.","line":12,"claim":"ISC-75"}],"runs":[{"event":"dispatch","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8","ts":"2026-03-08T15:54:00Z","claim":"ISC-73"},{"event":"build","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8","ts":"2026-03-08T15:55:00Z","claim":"ISC-73"},{"event":"patch","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8","ts":"2026-03-08T16:10:00Z","claim":"ISC-73"},{"event":"apply","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8","ts":"2026-03-08T16:12:00Z","claim":"ISC-73"},{"event":"dispatch","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9","ts":"2026-03-08T16:32:00Z","claim":"ISC-75"},{"event":"build","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9","ts":"2026-03-08T16:33:00Z","claim":"ISC-75"},{"event":"patch","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9","ts":"2026-03-08T16:40:00Z","claim":"ISC-75"},{"event":"apply","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9","ts":"2026-03-08T16:42:00Z","claim":"ISC-75"}]}';
+
+/** Every directory under core/fixtures, to two levels, that holds a `.spectant/activity.jsonl`. */
+const activityTrees = (): string[] =>
+  readdirSync(FIXTURES, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .flatMap((e) => [
+      join(FIXTURES, e.name),
+      ...readdirSync(join(FIXTURES, e.name), { withFileTypes: true })
+        .filter((s) => s.isDirectory())
+        .map((s) => join(FIXTURES, e.name, s.name)),
+    ])
+    .filter((dir) => existsSync(join(dir, '.spectant', 'activity.jsonl')));
+
+const RUN_LINE = /"event":"run-(?:start|end)"/u;
+
+describe('run events legacy: a log without run lines reads as before (spec 040, ISC-222.2)', () => {
+  test('run events legacy: harbor reads byte-equal to its reading before spec 040, with no openRuns key', async () => {
+    const r = await readLockSources({ repoRoot: HARBOR });
+    expect(JSON.stringify(r)).toBe(HARBOR_READING);
+    expect('openRuns' in r).toBe(false);
+    expect(await runStates(r, ticked002())).toEqual(HARBOR_RUNS);
+  });
+
+  test('run events legacy: every fixture log without run lines carries no openRuns key', async () => {
+    const trees = activityTrees().filter((dir) => !RUN_LINE.test(readFileSync(join(dir, '.spectant', 'activity.jsonl'), 'utf8')));
+    expect(trees).toContain(HARBOR);
+    for (const dir of trees) expect('openRuns' in (await readLockSources({ repoRoot: dir }))).toBe(false);
+  });
+
+  test('run events legacy: run lines put before harbor change no lock, no task run and no diagnostic', async () => {
+    const harbor = readFileSync(HARBOR_LOG, 'utf8');
+    const lines = [TASKS_037, IDEA_NIGHT, runEnd(IDEA_NIGHT, '2026-03-08T15:13:00Z', 'ok')].map((l) => JSON.stringify(l));
+    // The same log with each run line blanked out keeps every other line's number, so the two readings compare as-is.
+    const withRuns = tempRepo();
+    const blanked = tempRepo();
+    mkdirSync(join(withRuns, '.spectant'));
+    mkdirSync(join(blanked, '.spectant'));
+    writeFileSync(join(withRuns, '.spectant', 'activity.jsonl'), `${lines.join('\n')}\n${harbor}`);
+    writeFileSync(join(blanked, '.spectant', 'activity.jsonl'), `${lines.map(() => '').join('\n')}\n${harbor}`);
+    const a = await readLockSources({ repoRoot: withRuns });
+    const b = await readLockSources({ repoRoot: blanked });
+    expect('openRuns' in b).toBe(false);
+    expect(a.openRuns?.map((run) => run.run)).toEqual(['r-1']);
+    const legacy = Object.fromEntries(Object.entries(a).filter(([key]) => key !== 'openRuns'));
+    expect(JSON.stringify(legacy)).toBe(JSON.stringify(b));
+    expect(await runStates(a, ticked002())).toEqual(HARBOR_RUNS);
   });
 });

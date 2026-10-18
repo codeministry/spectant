@@ -1,0 +1,90 @@
+{
+  "asOf": "2026-03-20",
+  "axis": null,
+  "groups": [
+    {
+      "ref": null,
+      "name": null,
+      "target": null,
+      "state": null,
+      "closed": 13,
+      "total": 29,
+      "window": "none",
+      "from": null,
+      "to": null,
+      "mark": null,
+      "lanes": [
+        {
+          "ref": "feature:F1",
+          "id": "F1",
+          "name": "Check scheduling",
+          "closed": 5,
+          "total": 5,
+          "priority": "P3",
+          "rank": 1,
+          "mark": null
+        },
+        {
+          "ref": "feature:F2",
+          "id": "F2",
+          "name": "Status page",
+          "closed": 1,
+          "total": 4,
+          "priority": "P3",
+          "rank": 2,
+          "mark": null
+        },
+        {
+          "ref": "feature:F3",
+          "id": "F3",
+          "name": "Alerting",
+          "closed": 0,
+          "total": 5,
+          "priority": "P3",
+          "rank": 3,
+          "mark": null
+        },
+        {
+          "ref": "feature:F4",
+          "id": "F4",
+          "name": "Incident notes",
+          "closed": 0,
+          "total": 3,
+          "priority": "P3",
+          "rank": 4,
+          "mark": null
+        },
+        {
+          "ref": "feature:F5",
+          "id": "F5",
+          "name": "Probe agents",
+          "closed": 2,
+          "total": 6,
+          "priority": "P3",
+          "rank": 5,
+          "mark": null
+        },
+        {
+          "ref": "feature:F6",
+          "id": "F6",
+          "name": "History export",
+          "closed": 3,
+          "total": 4,
+          "priority": "P3",
+          "rank": 6,
+          "mark": null
+        },
+        {
+          "ref": "feature:F7",
+          "id": "F7",
+          "name": "Maintenance",
+          "closed": 2,
+          "total": 2,
+          "priority": "P3",
+          "rank": 7,
+          "mark": null
+        }
+      ]
+    }
+  ]
+}

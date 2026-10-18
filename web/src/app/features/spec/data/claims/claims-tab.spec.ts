@@ -15,9 +15,9 @@ const HARBOR_002 = (golden as unknown as Record<string, ClaimViewModel>)['specs/
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 
-/** A claim cloned from the golden's first one, with `patch` over it. */
+/** A claim cloned from the golden's first one without its item state (a payload before spec 040), `patch` over it. */
 function claim(patch: Partial<ClaimView> & Pick<ClaimView, 'id'>): ClaimView {
-  const base = HARBOR_002.claims[0];
+  const base = { ...HARBOR_002.claims[0], itemState: undefined };
   return { ...base, probe: base.probe ? { ...base.probe, isc: patch.id } : null, ...patch };
 }
 
@@ -311,5 +311,86 @@ describe('ClaimsTab spec waits (spec 025, T26, ISC-163)', () => {
     expect(chip?.querySelector('ui-icon')).not.toBeNull();
     expect(card(root, 'ISC-131')?.querySelector('[data-chip="blocked"]')).not.toBeNull();
     expect(card(root, 'ISC-132')?.querySelector('ui-waits-chip')).toBeNull();
+  });
+});
+
+describe('ClaimsTab item state (spec 040, T51, ISC-224)', () => {
+  const agent = (session: string) => ({ raw: session, kind: 'agent' as const, id: session, legacy: false });
+  const run = (session: string, since: string, elapsedMs: number) => ({
+    run: session,
+    command: '/spec-implement 002',
+    session,
+    actor: agent(session),
+    since,
+    elapsedMs,
+    openRuns: 1,
+    source: 'lock' as const,
+  });
+  const STATED: ClaimViewModel = {
+    ...SYNTHETIC,
+    claims: [
+      claim({
+        id: 'ISC-1',
+        state: 'takeable',
+        feature: 'F1',
+        verification: null,
+        itemState: { kind: 'claim', id: 'ISC-1', spec: '002', state: 'open', command: '/spec-implement 002', reason: 'ISC-1 is takeable' },
+      }),
+      claim({
+        id: 'ISC-3',
+        state: 'taken',
+        feature: 'F1',
+        verification: null,
+        lock: { source: 'activity', session: 'a:claude:sess-3', since: '2026-09-01T09:50:00Z' },
+        itemState: { kind: 'claim', id: 'ISC-3', spec: '002', state: 'running', run: run('a:claude:sess-3', '2026-09-01T09:50:00Z', 720_000), detail: 'taken' },
+      }),
+      claim({
+        id: 'ISC-4',
+        state: 'blocked',
+        feature: 'F1',
+        edges: ['ISC-1'],
+        blockedBy: ['ISC-1'],
+        verification: null,
+        itemState: { kind: 'claim', id: 'ISC-4', spec: '002', state: 'waiting', waits: { specs: [], claims: ['ISC-1'], siblings: [] } },
+      }),
+      claim({
+        id: 'ISC-5',
+        state: 'taken',
+        feature: 'F1',
+        verification: null,
+        lock: { source: 'activity', session: 'a:claude:sess-5', since: '2026-09-01T09:00:00Z' },
+        itemState: { kind: 'claim', id: 'ISC-5', spec: '002', state: 'aborted', run: run('a:claude:sess-5', '2026-09-01T09:00:00Z', 2_820_000) },
+      }),
+      claim({ id: 'ISC-6', state: 'closed', feature: 'F1', itemState: { kind: 'claim', id: 'ISC-6', spec: '002', state: 'done', doneAt: '2026-09-02' } }),
+    ],
+  };
+
+  beforeEach(() => setUp(STATED));
+
+  it('shows each claim its state line from itemState and drops the red blocked chip and the lock chip', async () => {
+    const { root } = await open('/w/harbor/s/002/claims');
+    const stateOf = (id: string) => card(root, id)?.querySelector('ui-item-state')?.getAttribute('data-state');
+    expect(['ISC-1', 'ISC-3', 'ISC-4', 'ISC-5', 'ISC-6'].map(stateOf)).toEqual(['open', 'running', 'waiting', 'aborted', 'done']);
+    expect(root.querySelector('[data-chip="blocked"]')).toBeNull();
+    expect(root.querySelector('[data-chip="lock"]')).toBeNull();
+    expect(root.querySelector('[data-chip="state"]')).toBeNull();
+    expect(card(root, 'ISC-1')?.querySelector('.head ui-item-state ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+    expect(card(root, 'ISC-4')?.querySelector('ui-item-state [data-waits-text]')?.textContent).toContain('ISC-1');
+  });
+
+  it('turns the lock line into a band with the actor chip and the duration', async () => {
+    const { root } = await open('/w/harbor/s/002/claims');
+    const running = card(root, 'ISC-3')?.querySelector<HTMLElement>('[data-session]');
+    expect(running?.classList.contains('band')).toBe(true);
+    expect(running?.getAttribute('data-state')).toBe('running');
+    expect(running?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-3');
+    expect(running?.querySelector('[data-item-line]')?.textContent).toContain('since 12 min');
+    expect(running?.querySelector('ui-command-chip [data-locked]')).not.toBeNull();
+    expect(running?.textContent).not.toContain('taken');
+
+    const aborted = card(root, 'ISC-5')?.querySelector<HTMLElement>('[data-session]');
+    expect(aborted?.getAttribute('data-state')).toBe('aborted');
+    expect(aborted?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-5');
+    expect(aborted?.textContent).toContain('no release for 47 min');
   });
 });

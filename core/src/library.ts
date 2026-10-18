@@ -482,6 +482,7 @@ async function missingOf(root: string, spec: string, docs: readonly LibraryDoc[]
     partition: { takeable: 0, open: total, closed: 0, dropped: 0 },
     explicitStage: null,
     lastEventTo: null,
+    lastEventFrom: null,
     codeReview: 'spec',
     mainFeature: null,
     featureSiblingsOpen: [],

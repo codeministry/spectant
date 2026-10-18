@@ -18,6 +18,15 @@
 //                                            PLANNING_NOW.
 //   <tree>.tech.golden.json      tech        `readTech` (spec 023, ISC-134) over the tree's `specs/tech.md` and active
 //                                            spec folders; an image exists when its file under `specs/` does.
+//   <tree>.state.golden.json     state       `itemStates` (spec 040, T10, ISC-221) over the tree at the live clock with
+//                                            its activity reading and the default abort age of 120 minutes
+//                                            (helpers/state-model.ts); item-state.test.ts compares it too.
+//
+// Spec 040 adds the item state and nothing else (T17, T20, ISC-223, ISC-224): each `live` card carries `itemState`
+// (live.ts); each `claim-view` claim carries it at the live clock without locks, as the golden has always been built;
+// each `tasks` row carries its task's item and each `spec` page head its spec's item, both from the `state` family
+// (the tree's activity reading at the live clock), which is what the server's tasks and spec routes inject at that clock
+// (tests/routes.test.ts compares the two).
 //
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
@@ -34,7 +43,8 @@ import { homedir, tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 
 import { FILE_KINDS, specFilePath } from '../src/files.ts';
-import type { FileKind, LockReading, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
+import { specIdOf } from '../src/spec-ref.ts';
+import type { FileKind, ItemStateInfo, LockReading, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
 import { listSpecs, resolveSpec } from '../src/resolve.ts';
 import type { SpecRef } from '../src/resolve.ts';
 import { buildClaimViews } from '../src/claim-view.ts';
@@ -48,6 +58,8 @@ import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
 import { planningGantt } from '../src/gantt.ts';
 import { planningModel } from './helpers/planning-model.ts';
+import { planningGolden } from './helpers/planning-golden.ts';
+import { stateModel } from './helpers/state-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -110,6 +122,12 @@ function timelineModel(root: string): Record<string, TimelineEntry[]> {
   return out;
 }
 
+/** The `state` family's items of a tree, built once per tree: the spec page, tasks and dashboard goldens carry them. */
+const ITEMS = new Map<string, readonly ItemStateInfo[]>();
+const itemsAt = (root: string): readonly ItemStateInfo[] => ITEMS.get(root) ?? (ITEMS.set(root, stateModel(root)), ITEMS.get(root) ?? []);
+/** One spec's items: task ids repeat across specs, so the tasks family injects only the folder's own. */
+const itemsOfSpec = (root: string, folder: string): ItemStateInfo[] => itemsAt(root).filter((i) => i.spec === (specIdOf(folder) ?? folder));
+
 /**
  * The `spec` family (`<tree>.spec.golden.json`, T12): `buildSpecPage` per spec folder in `listSpecs` order, keyed by
  * `specs/…` path, with the tree's master, constitution and TL;DR and every other folder as siblings; no locks (lock
@@ -123,7 +141,8 @@ function specPageModel(root: string): Record<string, SpecPageModel> {
     const folder = rel(root, ref.dir);
     const files = texts.get(folder) as SpecFiles;
     const own = { ...files.texts, ...(tree.master === null ? {} : { master: tree.master }), ...(tree.constitution === null ? {} : { constitution: tree.constitution }) };
-    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr, ...(tree.workflow ? { workflow: tree.workflow } : {}) });
+    const state = itemsAt(root).find((i) => i.kind === 'spec' && i.id === (specIdOf(files.folder) ?? files.folder));
+    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr, ...(tree.workflow ? { workflow: tree.workflow } : {}), ...(state === undefined ? {} : { state }) });
   }
   return out;
 }
@@ -155,11 +174,23 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   spec: specPageModel,
   docs: docsModel,
   frames: (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildFrames(texts.get(rel(root, ref.dir)) as SpecFiles)])))(folderTexts(root)),
-  'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
-  tasks: (root) => ((texts, constitution) => Object.fromEntries(listSpecs(root).map((ref) => ((t) => [rel(root, ref.dir), t.tasks === undefined ? null : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }) })])((texts.get(rel(root, ref.dir)) as SpecFiles).texts))))(folderTexts(root), readTreeAt(root).constitution),
-  planning: planningModel,
+  'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles, now: LIVE_NOW })])))(folderTexts(root)),
+  tasks: (root) =>
+    ((texts, constitution) =>
+      Object.fromEntries(
+        listSpecs(root).map((ref) =>
+          ((t) => [
+            rel(root, ref.dir),
+            t.tasks === undefined
+              ? null
+              : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }), itemStates: itemsOfSpec(root, ref.slug) }),
+          ])((texts.get(rel(root, ref.dir)) as SpecFiles).texts),
+        ),
+      ))(folderTexts(root), readTreeAt(root).constitution),
+  planning: planningGolden,
   gantt: (root) => ((model) => planningGantt(model, model.asOf))(planningModel(root)),
   tech: techModel,
+  state: stateModel,
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 

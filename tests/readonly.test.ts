@@ -46,6 +46,7 @@ import { run } from "../server/src/cli.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { openRegistry } from "../server/src/registry.ts";
 import {
+  ACTIVITY_HASH_HEADER,
   ACTORS_PATH,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
@@ -889,6 +890,116 @@ describe("ISC-130.2 with the allocation: a refused one changes nothing, an accep
   });
 });
 
+// The run lock (spec 040, T32, ISC-225) under the same guard, on its own copy (`.git/` included): with a running run
+// on 003, on 004 and on the story console-audit-log (run lines written before the first snapshot, relative to now, as
+// the routes run on the real clock), the stage move, the reviewed mark, the checkbox and the allocation each answer
+// 423 `run-locked`, and the copy stays byte-identical with every mtime kept.
+describe("ISC-225 run-lock: every write a running run refuses leaves the repository byte-identical, .git/ included", () => {
+  test("readonly run-lock: 423 run-locked on the move, the mark, the tick and the allocation changes no byte or mtime", async () => {
+    const copy = join(mkdtempSync(join(root, "run-lock-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const since = new Date(Date.now() - 5 * 60_000).toISOString();
+    const runs = [
+      { run: "r-003", command: "/spec-tasks 003", spec: "003" },
+      { run: "r-004", command: "/spec-review 004", spec: MARKED_SPEC },
+      { run: "r-idea", command: "/spec-idea console-audit-log", idea: "console-audit-log" },
+    ].map((r) => `${JSON.stringify({ ts: since, event: "run-start", session: "a:claude:sess-9", ...r })}\n`);
+    appendFileSync(join(copy, ".spectant", "activity.jsonl"), runs.join(""));
+    const registry = openRegistry(mkdtempSync(join(root, "data-run-lock-")));
+    registry.add(copy);
+    const specs = specRoutesApi({ registry, lifeos: LIFEOS_ABSENT });
+    const workspace = dashboardApi({ registry, services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT });
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) };
+      const req = (): Request => new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init });
+      const res = (await specs(req(), url)) ?? (await workspace(req(), url));
+      if (res === null) throw new Error(`no route answered ${path}`);
+      return res;
+    };
+    const header = async (id: string, name: string): Promise<string> => (await call(specRoutes.spec(SLUG, id))).headers.get(name) ?? "";
+    const tasksHash = async (id: string): Promise<string> => (await call(specRoutes.tasks(SLUG, id))).headers.get(TASKS_HASH_HEADER) ?? "";
+    const storyHash = async (slug: string): Promise<string> => ((await (await call(workspaceRoutes.idea(SLUG, slug))).json()) as { hash: string }).hash;
+
+    try {
+      const before = snapshot(copy);
+      const locked: Array<[string, unknown]> = [
+        [specRoutes.transition(SLUG, "003"), { to: "review", hash: await header("003", SPEC_HASH_HEADER) }],
+        [specRoutes.gateReviewed(SLUG, "004"), { hashes: parseReviewedHashes(await header("004", REVIEWED_HASHES_HEADER)) }],
+        [specRoutes.taskCheck(SLUG, "004", "T1"), { checked: false, hash: await tasksHash("004") }],
+        [workspaceRoutes.allocate(SLUG, "console-audit-log"), { hash: await storyHash("console-audit-log") }],
+      ];
+      for (const [path, body] of locked) {
+        const res = await call(path, "POST", body);
+        expect({ path, status: res.status, error: ((await res.json()) as { error: string }).error }).toEqual({ path, status: 423, error: "run-locked" });
+      }
+      const after = snapshot(copy);
+      expect(changed(before, after, { mtime: true })).toEqual([]);
+      expect(after.checksum).toBe(before.checksum);
+      expect(underGit(after)).toEqual(underGit(before));
+    } finally {
+      registry.close();
+    }
+  });
+});
+
+// The eighth write path (spec 040, T38, ISC-226.1) under the same guard, on its own copy (`.git/` included): with a
+// running run on 003 written before the first snapshot, and the copy given a synthetic viewer address (the file's empty
+// global config holds none). Every refused release (400, 404, 409 with a wrong hash, 422 for an aborted run) leaves the
+// copy byte-identical with every mtime kept; the accepted one changes exactly the file of `WRITE_PATHS.runRelease`,
+// never `.git/`, and creates no directory.
+describe("ISC-226.1 run-release: a refused release changes nothing, an accepted one only .spectant/activity.jsonl", () => {
+  test("readonly run-release: a wrong hash changes no byte or mtime; the accepted release touches only WRITE_PATHS.runRelease", async () => {
+    const copy = join(mkdtempSync(join(root, "run-release-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    git(copy, "config", "user.email", "viewer@example.test");
+    const now = Date.now();
+    const runs = [
+      { ts: new Date(now - 5 * 60_000).toISOString(), run: "r-003", command: "/spec-tasks 003", spec: "003" },
+      { ts: new Date(now - 600 * 60_000).toISOString(), run: "r-old", command: "/spec-review 004", spec: MARKED_SPEC },
+    ].map((r) => `${JSON.stringify({ ...r, event: "run-start", session: "a:claude:sess-9" })}\n`);
+    appendFileSync(join(copy, WRITE_PATHS.runRelease.writes[0]), runs.join(""));
+    const registry = openRegistry(mkdtempSync(join(root, "data-run-release-")));
+    registry.add(copy);
+    const api = dashboardApi({ registry, services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT });
+    const call = async (path: string, method = "GET", hash: string | null = null): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const headers = { Host: "127.0.0.1:7717", ...(hash === null ? {} : { [ACTIVITY_HASH_HEADER]: hash }) };
+      const res = await api(new Request(url.href, { method, headers }), url);
+      if (res === null) throw new Error(`the workspace routes declined ${path}`);
+      return res;
+    };
+
+    try {
+      const before = snapshot(copy);
+      const hash = (await call(`/api/workspaces/${SLUG}/dashboard`)).headers.get(ACTIVITY_HASH_HEADER) ?? "";
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+      const refused: Array<[string, string | null, number]> = [
+        ["r-003", null, 400],
+        ["r-none", hash, 404],
+        ["r-003", "0".repeat(64), 409],
+        ["r-old", hash, 422],
+      ];
+      for (const [run, sent, status] of refused) {
+        expect({ run, sent, status: (await call(workspaceRoutes.runRelease(SLUG, run), "POST", sent)).status }).toEqual({ run, sent, status });
+      }
+      const afterRefused = snapshot(copy);
+      expect(changed(before, afterRefused, { mtime: true })).toEqual([]);
+      expect(afterRefused.checksum).toBe(before.checksum);
+
+      expect((await call(workspaceRoutes.runRelease(SLUG, "r-003"), "POST", hash)).status).toBe(200);
+      const after = snapshot(copy);
+      expect(changed(before, after)).toEqual([...WRITE_PATHS.runRelease.writes]);
+      expect(WRITE_TABLE.runRelease.root).toBe("main");
+      expect(WRITE_PATHS.runRelease.creates).toBeNull();
+      expect(underGit(after)).toEqual(underGit(before));
+      expect(changed(before, after, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"))).toEqual([]);
+    } finally {
+      registry.close();
+    }
+  });
+});
+
 // The sixth write path (spec 009, T21, ISC-137.1) under the same guard: `spectant tokens` runs on its own copy against
 // the harbor transcripts. Without `--yes` it only prints the plan, and the copy stays byte-identical with every mtime
 // kept; with `--yes` exactly the files of `WRITE_PATHS.tokens` differ, and `.git/` never changes. The transcript folder
@@ -1469,15 +1580,29 @@ describe("backlog-ui: reordering and prioritising in the tree and on the board c
 });
 
 // ISC-192.1: the seventh path is named with exactly its two files, creates no directory, and the root CLAUDE.md lists it.
+// Spec 040 (ISC-226.1) adds the eighth after it, the run release with its one file; the count follows.
 describe("write paths: the backlog is the seventh", () => {
   test("write paths: WRITE_PATHS.backlog names exactly specs/backlog.md and specs/backlog.events.jsonl, creates nothing; CLAUDE.md names the seventh path", () => {
     expect(WRITE_PATHS.backlog).toEqual({ writes: ["specs/backlog.md", "specs/backlog.events.jsonl"], removes: [], creates: null });
-    expect(Object.keys(WRITE_PATHS)).toHaveLength(7);
-    expect(Object.keys(WRITE_PATHS).at(-1)).toBe("backlog");
+    expect(Object.keys(WRITE_PATHS)).toHaveLength(8);
+    expect(Object.keys(WRITE_PATHS).slice(-2)).toEqual(["backlog", "runRelease"]);
     expect(WRITE_TABLE.backlog).toMatchObject({ root: "main", locked: null });
     const claude = readFileSync(join(import.meta.dir, "..", "CLAUDE.md"), "utf8");
-    expect(claude).toMatch(/exactly\s+seven\s+write\s+paths/);
+    expect(claude).toMatch(/exactly\s+eight\s+write\s+paths/);
     expect(claude).toMatch(/7\. the feature backlog: `specs\/backlog\.md`[^]*?`specs\/backlog\.events\.jsonl`/);
+  });
+});
+
+// ISC-226.1: the eighth path is the run release, named with exactly its one file at the main checkout, no directory,
+// and the root CLAUDE.md, the README and FORMAT.md name it.
+describe("write paths: the run release is the eighth", () => {
+  test("write paths run-release: WRITE_PATHS.runRelease names exactly .spectant/activity.jsonl; CLAUDE.md, README.md and FORMAT.md name the release", () => {
+    expect(WRITE_PATHS.runRelease).toEqual({ writes: [".spectant/activity.jsonl"], removes: [], creates: null });
+    expect(WRITE_TABLE.runRelease).toMatchObject({ root: "main", locked: null, runLocked: null });
+    const doc = (name: string): string => readFileSync(join(import.meta.dir, "..", name), "utf8");
+    expect(doc("CLAUDE.md")).toMatch(/8\. the run release: [^]*?`run-end`[^]*?`outcome: released`[^]*?`\.spectant\/activity\.jsonl`/);
+    expect(doc("README.md")).toMatch(/8\. the run release: [^]*?`run-end`[^]*?`\.spectant\/activity\.jsonl`/);
+    expect(doc("FORMAT.md")).toMatch(/never written by the app \(spec 002, T20, `locks\.ts`\), with one exception: the run release/);
   });
 });
 

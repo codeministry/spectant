@@ -25,7 +25,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "002",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 002",
+        "reason": "ISC-75, ISC-76 and 1 more are takeable"
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -202,7 +210,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "003",
+        "state": "open",
+        "stage": "tasks",
+        "command": "/spec-tasks 003",
+        "reason": "13 claims and no tasks.md"
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -323,7 +339,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "004",
+        "state": "open",
+        "stage": "code-review",
+        "command": "/spec-code-review 004",
+        "reason": "every claim is closed and the code-reviewed mark is stale"
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -480,7 +504,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "005",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 005",
+        "reason": "the reviewed mark is missing"
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -614,7 +646,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "006",
+        "state": "open",
+        "stage": "review",
+        "command": "/spec-review 006",
+        "reason": "the reviewed mark is stale"
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -741,7 +781,18 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "007",
+        "state": "done",
+        "stage": "done",
+        "diagnostic": {
+          "severity": "warning",
+          "code": "item-state-no-date",
+          "message": "spec 007 is done, but the files give no date for it."
+        }
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -862,7 +913,20 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "008",
+        "state": "waiting",
+        "stage": "close-pending",
+        "waits": {
+          "specs": [],
+          "claims": [],
+          "siblings": [
+            "009"
+          ]
+        }
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -983,7 +1047,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "009",
+        "state": "open",
+        "stage": "build",
+        "command": "/spec-implement 009",
+        "reason": "ISC-131 is takeable"
+      }
     },
     "keyNumbers": {
       "claims": {

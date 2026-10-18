@@ -16,7 +16,7 @@ import { featureCodeReviewTargets } from '../src/gates.ts';
 import { specIdOf } from '../src/spec-ref.ts';
 import type { DashboardInput, DashboardSpecRow } from '../src/dashboard.ts';
 import { diagnosticsOf, EXPECTED_WARNINGS } from './helpers/expected-warnings.ts';
-import { planningModel, planningOf } from './helpers/planning-model.ts';
+import { planningGolden as planningModel, planningGoldenOf as planningOf } from './helpers/planning-golden.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const UPDATE_COMMAND = 'bun test core/tests/golden.test.ts';
@@ -715,6 +715,8 @@ describe('planning: milestones', () => {
           milestone: 'Harbor 1.0',
           priority: 'P2',
           path: 'specs/ideas/registry-webhooks.md',
+          // Spec 040 (ISC-224): no run is open on the story, so it offers `/spec new` (the planning golden's state).
+          state: { kind: 'idea', id: 'registry-webhooks', stage: 'idea', state: 'open', command: '/spec new registry-webhooks', reason: 'the story is shaped but has no spec' },
         },
       ],
     },
@@ -1330,8 +1332,8 @@ describe('planning: legacy', () => {
   const NEW_CODES = new Set(['feature-milestone-unknown', 'milestone-mismatch']);
   const legacy = fixtureTrees().filter((tree) => tree !== 'milestone-lines' && tree !== 'backlog-ranks');
 
-  test('legacy: the five legacy fixtures are exactly those whose master carries no Milestone: line', () => {
-    expect(legacy).toEqual(['empty-master', 'harbor', 'lantern', 'leadgen', 'spectant-001']);
+  test('legacy: the six legacy fixtures are exactly those whose master carries no Milestone: line', () => {
+    expect(legacy).toEqual(['beacon', 'empty-master', 'harbor', 'lantern', 'leadgen', 'spectant-001']);
     for (const tree of fixtureTrees()) {
       const master = readTree(tree).master;
       const lines = master === null ? 0 : core.parseClaims(master).features.filter((f) => f.milestone !== null).length;

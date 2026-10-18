@@ -22,7 +22,8 @@ The words this contract uses, one row per term: the Spectant term, the term an i
 the German term and a one-sentence definition. Spectant keeps its own words; the common term is a pointer, never a
 rename. `core/src/glossary.ts` exports the same rows as `GLOSSARY` through the browser-safe barrel, and
 `core/tests/glossary.test.ts` compares each row with its line in this table verbatim, so neither side can change alone.
-The app's Help page will render them from that export (a later task of the web lane).
+The app's Help page will render them from that export (a later task of the web lane). The last five rows are the
+item states of § The state table (spec 040).
 
 | Spectant term | Common term | German | Definition |
 |---------------|-------------|--------|------------|
@@ -39,6 +40,11 @@ The app's Help page will render them from that export (a later task of the web l
 | Actor | Assignee | Akteur | The neutral id in a file, `u:<8 hex>` for a person or `a:<kind>:<id>` for an agent. |
 | Agent | Bot | Agent | A Claude Code session or sub-agent working a task, recorded as an `a:` actor. |
 | Chore | Chore | Chore | The seventh spec type: `spec.md` only, review then build then done, no code review. |
+| Open | To do | offen | The item state in which the next command lies with the user, given with its reason. |
+| Waiting | Blocked | wartet | The item state in which the item hangs on another item, given as what it waits on. |
+| Running | In progress | läuft | The item state while a run is open on the item and younger than the abort age; the run locks the item. |
+| Aborted | Stalled | abgebrochen | The item state of a run without end that is older than the abort age; it locks nothing. |
+| Done | Done | fertig | The item state of a finished item; a dropped claim or a struck task is done with that as its detail. |
 
 ## Where the files live
 
@@ -116,7 +122,7 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
 | `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; a name other than the `Milestone:` line of the spec's main feature (the first word of `isa_feature`) warns `milestone-mismatch` on the spec (`master`, below); without the key the spec belongs to no milestone |
 | `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); read from spec 008, T39 on (`SpecFrontmatter.priority`, `SpecHead.priority`), on the dashboard row from T67 (`DashboardSpecRow.priority`, the head's value) |
-| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`; a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; T48 adds the diagnostic (`stageMismatchOf` in `stage.ts`): a value outside the type's row, or one the last event's `to` contradicts (a file without any event included, since nothing enters the value), is exactly one `warning` `stage-mismatch` on `spec.md`, at the key's line, `subject` the value as written |
+| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`, except where the files have overtaken it, not a step back (spec 040, below); a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; T48 adds the diagnostic (`stageMismatchOf` in `stage.ts`): a value outside the type's row, or one the last event's `to` contradicts (a file without any event included, since nothing enters the value), is exactly one `warning` `stage-mismatch` on `spec.md`, at the key's line, `subject` the value as written; spec 040 (T68, ISC-221.2) adds the exception overtaken, not a step back: a value the last event confirms yields to the derived stage when that stage lies further along the type's row (`blocked` counts as `build`, `close-pending` just past it) and the last event is no step back, its `to` not before its `from` in the row; the allocation (`from: null`) is no step back; the derived stage then applies, `stageSource: derived`, without a `stage-mismatch`, so the allocation's `plan` and a forward move that `plan.md`, `tasks.md` or a mark has since overtaken show the stage the files give, while a deliberate step back on the board holds (`StageInput.lastEventFrom`, the last line's `from`) |
 
 Every other key is kept as written (`rest`) and read by nobody.
 
@@ -483,6 +489,8 @@ string, `ts` ISO 8601. When the file exists its transitions win in the timeline;
 stage derived from the files, marked as derived (ISC-36). `from` and `to` are the workflow's stage names (below, one
 vocabulary for timeline and stage: the stage table's, `close-pending` among them, and a story's `idea`, spec 008,
 T62; `EVENT_STAGES` in `events.ts`); `from` is null only on the creation, the file's first line.
+The last line's `from` and `to` decide whether an explicit `stage:` holds against files that have overtaken it: only a
+step back (`to` before `from` in the type's row) does (spec 040, ISC-221.2; § `spec`, the `stage` key).
 
 From `core/fixtures/harbor/specs/archive/001-manifest-sync/events.jsonl`, the whole chain of a complete spec:
 
@@ -1251,6 +1259,8 @@ dashboard row's `nextReason`, the spec head's `nextReason` and the first entry o
 that one phrase, unchanged. A step waiting in `review`, `blocked`, `close-pending`, `code-review` or `close` shows
 exactly one phrase, one template of its row filled, never two joined; the further entries of `next.reasons` are the
 spec page's own facts, after it.
+The stage says where a spec stands; what is happening to it now, `open`, `waiting`, `running`, `aborted` or `done`, is
+its state, which § The state table below derives from this table's row and the open runs (spec 040).
 
 | # | Stage | Condition | Next command | Reason |
 |---|-------|-----------|--------------|--------|
@@ -1346,6 +1356,66 @@ A row of `specs/workflow.md` replaces its type's default row, and the same rule 
 before its tasks, allows `plan → review`, `review → tasks` and `tasks → build` in place of `plan → tasks`,
 `tasks → review` and `review → build`; the detours follow the same rule. A type the file leaves out, or a row the
 reader rejects, keeps the pairs above.
+
+## The state table
+
+The stage says where a spec stands in its workflow; the state says what is happening to an item now (`item-state.ts`,
+`itemStates`, spec 040, ISC-221). One state model covers every item that carries one: a spec, an idea (a story under
+`specs/ideas/`), the reviewed mark, the code-reviewed mark, a claim and a task. Each stands in exactly one of five
+states:
+
+- `open`: a command lies with the user, given with its reason; for a spec, the command and reason of its stage table
+  row.
+- `waiting`: the item hangs on another item, given as what it waits on.
+- `running`: a run is open on the item, younger than the abort age. For a spec, an idea or a mark the run is a
+  `run-start` without its `run-end` (§ Activity and lock lines, run lifecycle events), and it holds a run lock on the
+  item for as long as it stays `running`; for a claim the run is a claim lock, for a task its last run event (ISC-179).
+- `aborted`: a run without end, older than the abort age: the server setting `runAbortMinutes` (default 120) for a
+  spec, an idea or a mark, the claim stale age (45 minutes, ISC-35) for a claim or a task. An aborted run locks
+  nothing and does not count as running; a running run on the same item wins over it.
+- `done`: the item is finished, dated where the files give a date. A dropped claim and a struck task are `done` too,
+  with `closedAs: dropped` or `closedAs: struck` as their detail.
+
+The state is derived from the files and the open runs on every read, like the stage, and never stored. A detail the
+files do not give is exactly one diagnostic, never an invented value (ISC-221.1). Without a run, a spec takes the state
+its stage table row names: `open` for a row with a command, `waiting` for `close-pending` and `blocked`, `done` for the
+two `done` rows. `STATE_TABLE` holds every item kind with each of the five states as data, with its meaning, how the
+item enters the state and how it leaves it; `core/tests/state-table.test.ts` renders it as this table, compares it
+verbatim, row for row, and prints the table it expects when they differ. A row whose Entered and Left read `—` names a
+state the item kind never takes.
+
+| Item | State | Meaning | Entered | Left |
+|------|-------|---------|---------|------|
+| `spec` | `open` | A command lies with the user: the command of the spec's stage table row, with the row's reason. | The spec stands in a row with a command and no run is open on it, or its run ended. | A run starts on the spec, or the files move it to another row. |
+| `spec` | `waiting` | The spec hangs on other items: `close-pending` on the open specs of its main feature, `blocked` on spec edges or claims. | The spec stands in row `close-pending` or `blocked` and no run is open on it. | What it waits on closes and the stage table moves the spec on, or a run starts on it. |
+| `spec` | `running` | A run is open on the spec: a `run-start` without `run-end`, younger than the abort age. It locks the spec. | A `run-start` names the spec. | Its `run-end` (also a release from the app), after which the files decide; or the abort age passes. |
+| `spec` | `aborted` | A run without end, older than the abort age; it no longer locks. | The abort age passes without a `run-end` for the run. | A `run-end` for it, after which the files decide; or a new `run-start`. |
+| `spec` | `done` | One of the two `done` rows: `phase: complete`, or a chore with every claim closed. | The files put the spec in a `done` row and no run is open on it. | Only when the files change, or a run starts on the spec. |
+| `idea` | `open` | A story waits for its spec: `/spec new <slug>` lies with the user. | A story file stands under `specs/ideas/` and no run is open on it. | A run starts on the idea, or its allocation turns it into a spec. |
+| `idea` | `waiting` | Never: a story carries no edges. | — | — |
+| `idea` | `running` | A run is open on the idea, younger than the abort age. It locks the allocation. | A `run-start` names the idea. | Its `run-end`, or the abort age passes. |
+| `idea` | `aborted` | A run on the idea without end, older than the abort age; it no longer locks. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `idea` | `done` | Never: an allocated story becomes a spec and leaves `specs/ideas/`. | — | — |
+| `review-mark` | `open` | `/spec-review NNN` lies with the user: the spec stands in the review row, or the mark is stale, or missing past review. | The spec reaches the review row, or a reviewed file changes after the review. | A `/spec-review` run starts, or a fresh mark is written. |
+| `review-mark` | `waiting` | The mark is missing and the spec stands before review (`plan`, `tasks`): it waits on the spec itself. | A spec without a reviewed mark stands in row `plan` or `tasks`. | The spec reaches the review row. |
+| `review-mark` | `running` | A `/spec-review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec-review NNN`. | Its `run-end`, or the abort age passes. |
+| `review-mark` | `aborted` | A `/spec-review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `review-mark` | `done` | The reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). | A reviewed mark matching spec.md, plan.md and tasks.md is written, or the spec reaches a `done` row. | A reviewed file changes (stale), or a `/spec-review` run starts. |
+| `code-review-mark` | `open` | `/spec-code-review NNN` lies with the user: the spec stands in the code-review row, or the mark is stale, or missing past it. | The spec reaches the code-review row, or the working tree changes after the code review. | A `/spec-code-review` run starts, or a fresh mark is written. |
+| `code-review-mark` | `waiting` | The mark is missing and the spec stands before the code-review row: on its feature siblings in `close-pending`, else on the spec itself. | A spec without a code-reviewed mark stands in a row before code review. | The spec reaches the code-review row. |
+| `code-review-mark` | `running` | A `/spec-code-review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec-code-review NNN`. | Its `run-end`, or the abort age passes. |
+| `code-review-mark` | `aborted` | A `/spec-code-review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `code-review-mark` | `done` | The code-reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). A type whose workflow has no code review has no such item. | A code-reviewed mark matching the working tree is written, or the spec reaches a `done` row. | The working tree changes (stale), or a `/spec-code-review` run starts. |
+| `claim` | `open` | `/spec-implement NNN` lies with the user: the claim is takeable, or held only by the review gate. | The claim is unchecked, no lock holds it and no edge is open. | A lock takes it, an edge holds it, or it is checked or dropped. |
+| `claim` | `waiting` | An unresolved `(after: …)` edge or an open spec edge holds the claim. | The claim names an open claim or spec in its `(after: …)`. | Every claim and spec it names closes. |
+| `claim` | `running` | A claim lock holds it (detail `taken`), younger than the claim stale age. | A `claim` line or a frontier lock takes the claim. | Its `release`, or the claim stale age passes. |
+| `claim` | `aborted` | A claim lock without release, older than the claim stale age. | The claim stale age passes without a `release`. | A `release`, or a new lock. |
+| `claim` | `done` | The claim is checked; a dropped claim (tombstone) is done with `closedAs: dropped`. | Its probe closes it and the box is checked, or it is dropped. | Only when spec.md changes. |
+| `task` | `open` | `/spec-implement NNN` lies with the user: the task has no run and its claim does not wait. | The task is unticked, without a run in flight and not held. | A `dispatch` sends it out, its claim starts waiting, or it is ticked or struck. |
+| `task` | `waiting` | Its claim waits, or an open spec edge holds the task or its claim. | Its claim waits, or the task names an open spec in its `(after: …)`. | What its claim and the task wait on closes. |
+| `task` | `running` | Its last run event leaves it dispatched, building, patched or applied-open (ISC-179); that state is the detail. | A `dispatch`, `build`, `patch` or `apply` line names the task. | Its box is ticked, or the claim stale age passes after its last run event. |
+| `task` | `aborted` | Its last run event is older than the claim stale age. | The claim stale age passes after its last run event. | A new run event, or its box is ticked. |
+| `task` | `done` | The task is ticked, dated by its `apply`; a struck task is done with `closedAs: struck`. | Its box is ticked, or it is struck. | Only when tasks.md changes. |
 
 ## The drift classes
 
@@ -1570,13 +1640,17 @@ fixture snapshot among them.
 
 ## Activity and lock lines
 
-Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sources can hold a claim:
+Read when present, never written by the app (spec 002, T20, `locks.ts`), with one exception: the run release (spec
+040, ISC-226) appends exactly one `run-end` line with `outcome: released` and the viewer's `u:` id to
+`.spectant/activity.jsonl`, under the sha256 check over the whole file, and never rewrites a line. Two sources can
+hold a claim:
 
 - **LifeOS frontier locks**, lock files under the LifeOS state directory, read only when LifeOS is present; without
   LifeOS no LifeOS path is read (ISC-37).
 - **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks: one JSON object per line,
   `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open. The
-  same file carries the four run events of an implement round (spec 027, ISC-179, below), which hold no claim.
+  same file carries the four run events of an implement round (spec 027, ISC-179, below) and the two run lifecycle
+  events of a command (spec 040, ISC-222, below), none of which holds a claim.
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
@@ -1632,9 +1706,38 @@ which names no claim. A line `{"event":"dispatch","task":"T3","session":"a:claud
 041, one with `"session":"a:claude:sess-9/T3","worktree":".worktrees/042-beta"` for spec 042, and one with
 `"worktree":"wt-3"` and a session of the same form for none.
 
-An event that is none of `claim`, `release` and the four run events is one `activity-event-unknown` warning per file,
-at the first such line, with the event quoted in its text and the line's claim when it names one; that line and every
-later line with an unknown event are skipped, and the lines after them are read as usual. A line with no event at all
+**Run lifecycle events** (spec 040, ISC-222, `locks.ts`). Each command that works on a spec or an idea reports its
+start and its end: `{ts, event: "run-start" | "run-end", run, command, session, spec | idea, outcome?}`. `run` is an
+id written once per invocation, `command` the command as typed (`/spec-tasks 037`), `session` its actor in the grammar
+above (legacy-checked like any other session), and the line names exactly one of `spec` (the spec's number or folder
+name) or `idea` (the story's slug). `outcome` is read on `run-end` only and, when present, is `ok`, `error` or
+`released` (a person ended the run by hand through the app). A line without its `ts`, `run`, `command` or `session`,
+one naming both a spec and an idea or neither, and a `run-end` with any other `outcome` is a malformed line and is
+skipped. Starts and ends pair by `run`: a `run-start` without a later `run-end` of the same `run` is an open run. The
+reading carries the open runs as `openRuns`, in the file order of their starts, each with its `run`, `command`,
+`session`, parsed `actor`, `since` (the start's `ts`), its `spec` or its `idea`, and the start's `line`. A `run-end`
+for a run that is not open, unknown or already ended, is one `locks-activity-run-unmatched` warning at its line, and a
+`run-start` reusing a run id is one `locks-activity-run-duplicate` warning; both lines are skipped. Neither event holds
+a claim, names a task or changes a lock or a task run. Both are additive (ISC-222.2): `openRuns` is set only when the
+log holds at least one `run-start` or `run-end` line, so a log without them reads byte for byte as before, harbor
+included, and `openRuns` is `[]` when every run in it has ended.
+
+From `core/fixtures/beacon/.spectant/activity.jsonl`: a run that ended with an error, one that ended `ok`, and two
+open runs, one on a spec and one on an idea:
+
+```json
+{"ts":"2026-03-08T12:30:00Z","event":"run-start","run":"r-0308-1230","command":"/spec-plan 002","session":"a:claude:sess-21","spec":"002-status-page"}
+{"ts":"2026-03-08T12:41:00Z","event":"run-end","run":"r-0308-1230","command":"/spec-plan 002","session":"a:claude:sess-21","spec":"002-status-page","outcome":"error"}
+{"ts":"2026-03-08T13:00:00Z","event":"run-start","run":"r-0308-1300","command":"/spec-plan 003","session":"a:claude:sess-31","spec":"003-alert-rules"}
+{"ts":"2026-03-08T13:25:00Z","event":"run-end","run":"r-0308-1300","command":"/spec-plan 003","session":"a:claude:sess-31","spec":"003-alert-rules","outcome":"ok"}
+{"ts":"2026-03-08T14:45:00Z","event":"run-start","run":"r-0308-1445","command":"/spec new uptime-badges","session":"a:claude:sess-71","idea":"uptime-badges"}
+{"ts":"2026-03-08T14:52:00Z","event":"run-start","run":"r-0308-1452","command":"/spec-tasks 003","session":"a:claude:sess-32","spec":"003-alert-rules"}
+```
+
+An event that is none of `claim`, `release`, the four run events and the two run lifecycle events is one
+`activity-event-unknown` warning per file, at the first such line, with the event quoted in its text and the line's
+claim when it names one; that line and every later line with an unknown event are skipped, and the lines after them
+are read as usual. The warning's text still lists only the six older events, so it reads as it did before spec 040. A line with no event at all
 is a malformed line. In harbor 002, T26 ran all four steps and `tasks.md` checks it, so it reads `applied`; T28 ran
 them too, with one unknown `ponder` line between `build` and `patch`, and is not checked, so it reads `applied-open`.
 That `ponder` line is harbor's one lock diagnostic.
@@ -1659,7 +1762,8 @@ repository's `ISA.md`; only that one directory is read. The file is a JSON objec
 `isa` (the ISA path the session used) optional; a lock whose `isa` resolves to another file, whose content is not that
 object, or whose `ts` is more than two hours old (LifeOS's stale TTL) is not counted and becomes a diagnostic, as do an
 activity line that is not a JSON object with an event, a claim or release line without its claim, session or ts, a run
-event without its task, session, worktree or ts, an unknown event (once per file, above), a claimless run event that
+event without its task, session, worktree or ts, a malformed run lifecycle line, a `run-end` that ends no open run
+and a `run-start` that reuses a run id (above), an unknown event (once per file, above), a claimless run event that
 names no spec (`locks-activity-unassigned`, above), a release of a claim nobody holds and a release by a session that
 does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
 

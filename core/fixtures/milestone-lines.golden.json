@@ -93,7 +93,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "002",
+        "state": "open",
+        "stage": "plan",
+        "command": "/spec-plan 002",
+        "reason": "a feature spec needs plan.md and it is missing"
+      }
     },
     {
       "id": "003",
@@ -155,7 +163,15 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "003",
+        "state": "open",
+        "stage": "plan",
+        "command": "/spec-plan 003",
+        "reason": "a feature spec needs plan.md and it is missing"
+      }
     },
     {
       "id": "001",
@@ -208,7 +224,14 @@
       "worktree": null,
       "source": "main",
       "main": null,
-      "waits": null
+      "waits": null,
+      "state": {
+        "kind": "spec",
+        "id": "001",
+        "state": "done",
+        "stage": "done",
+        "doneAt": "2026-03-05T15:00:00Z"
+      }
     }
   ],
   "nextUp": [

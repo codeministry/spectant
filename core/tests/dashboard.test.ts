@@ -14,12 +14,14 @@ import { buildDashboard, devServiceLabels, toLocalService } from '../src/dashboa
 import type { DashboardInput, DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
 import type { LockReading, SpecFiles, SpecRead, Worktree } from '../src/files.ts';
 import { readLockSources } from '../src/locks.ts';
+import { withItemStates } from '../src/item-state.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { STAGE_RULES, WAITING_STAGES, fillsTemplate } from '../src/stage.ts';
 import { assignWorktrees } from '../src/worktrees.ts';
 import type { WorktreeAssignment } from '../src/worktrees.ts';
 import { DASHBOARD_FAMILY, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
+import { stateModel } from './helpers/state-model.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
 
@@ -234,8 +236,8 @@ describe('services', () => {
     const m = buildDashboard({ ...readTree('lantern'), services: [inBuilder, inSpec] });
     expect(m.services.map((s) => s.spec)).toEqual(['027', undefined]);
     expect(m.services.map((s) => 'spec' in s)).toEqual([true, false]);
-    // No service names a spec in the fixtures, so the harbor golden stays byte-identical.
-    expect(goldenText(buildDashboard(readTree('harbor')))).toBe(readFileSync(goldenPath('harbor', DASHBOARD_FAMILY), 'utf8'));
+    // No service names a spec in the fixtures, so the harbor golden stays byte-identical (with its item states, spec 040).
+    expect(goldenText(withItemStates(buildDashboard(readTree('harbor')), stateModel(join(FIXTURES, 'harbor'))))).toBe(readFileSync(goldenPath('harbor', DASHBOARD_FAMILY), 'utf8'));
   });
 });
 
@@ -430,8 +432,10 @@ describe('ideas: the dashboard lists the stories (T70)', () => {
     return input;
   };
 
+  // beacon (spec 040) carries three stories (open, running, aborted) for the item-state model; its listing is pinned by its golden snapshot.
   test('every other fixture, and an input without ideas, has none', () => {
-    for (const name of fixtureTrees().filter((n) => n !== 'harbor')) expect(model(name).ideas).toEqual({ count: 0, list: [] });
+    for (const name of fixtureTrees().filter((n) => n !== 'harbor' && n !== 'beacon')) expect(model(name).ideas).toEqual({ count: 0, list: [] });
+    expect(model('beacon').ideas.list.map((i) => i.slug)).toEqual(['cert-expiry', 'digest-emails', 'uptime-badges']);
     const withoutIdeas = harborWithoutIdeas();
     expect(buildDashboard(withoutIdeas).ideas).toEqual({ count: 0, list: [] });
   });

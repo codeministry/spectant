@@ -383,6 +383,11 @@ export interface SpecHead {
   readonly waits?: SpecWait | null;
   /** The main checkout's stage and progress when `source` is `worktree`, the row's `main`; null otherwise. */
   readonly main?: MainCopy | null;
+  /**
+   * The spec's own item state (spec 040, ISC-224), the row's `state`: `SpecPageInput.state` as the caller derived it
+   * with `itemStates` (item-state.ts) at its clock and abort age. Absent when the caller passed none.
+   */
+  readonly state?: ItemStateInfo;
 }
 
 /** Where the idea quote came from: the first sentence of `## Goal`, or frontmatter `task:`. */
@@ -633,6 +638,8 @@ export interface SpecPageInput {
   readonly workflow?: Workflow;
   /** The merge state as the dashboard gets it (`DashboardInput.mergeState`, spec 025), for the row's `waits`. */
   readonly mergeState?: readonly MergeState[];
+  /** The spec's item (`itemStates`, spec 040, ISC-224), carried as `SpecHead.state`; absent, the head carries none. */
+  readonly state?: ItemStateInfo;
 }
 
 // ─── Worktrees (worktrees.ts) ────────────────────────────────────────────────────────────────────────────────────
@@ -922,6 +929,12 @@ export interface LockReading {
     readonly ts: string;
     readonly claim?: string;
   }>;
+  /**
+   * The open runs of `.spectant/activity.jsonl` (spec 040, ISC-222): every `run-start` without a `run-end` of the same
+   * `run`, in file order. Set only when the log holds at least one `run-start` or `run-end` line, so a log without
+   * them reads exactly as before (ISC-222.2).
+   */
+  readonly openRuns?: readonly OpenRun[];
 }
 
 /**
@@ -969,6 +982,103 @@ export interface TaskRun {
   readonly worktree?: string;
   /** ISO 8601: the last run event's `ts`. */
   readonly ts: string;
+}
+
+// ─── Item state (item-state.ts, spec 040) ────────────────────────────────────────────────────────────────────────
+
+/**
+ * The two run lifecycle events of `.spectant/activity.jsonl` (spec 040, ISC-222), additive beside the six of claims and
+ * task runs: `run-start` when a command starts on a spec or an idea, `run-end` when it ends. Each carries `ts`, `run`,
+ * `command`, `session` and exactly one of `spec` or `idea`; `run-end` may carry an `outcome`.
+ */
+export type RunLifecycleEvent = 'run-start' | 'run-end';
+
+/** How a run ended: `ok`, `error`, or `released` by a viewer through the app (ISC-226). */
+export type RunOutcome = 'ok' | 'error' | 'released';
+
+/** One open run: a `run-start` without a `run-end` of the same `run` id (spec 040, ISC-222). */
+export interface OpenRun {
+  /** The run id as written, unique per invocation. */
+  readonly run: string;
+  /** The command as written, e.g. `/spec-tasks 037`. */
+  readonly command: string;
+  /** The `run-start` line's session, as written. */
+  readonly session: string;
+  /** `session` through `parseActor`. */
+  readonly actor: ActorRef;
+  /** ISO 8601: the `run-start` line's `ts`. */
+  readonly since: string;
+  /** The spec the run works on, as written (`037` or `037-slug`); absent when the run names an idea. */
+  readonly spec?: string;
+  /** The idea (story slug) the run works on; absent when the run names a spec. */
+  readonly idea?: string;
+  /** 1-based line of the `run-start` in `.spectant/activity.jsonl`. */
+  readonly line: number;
+}
+
+/** Every item that carries a state (ISC-221). Features and milestones carry none; they group their specs. */
+export type ItemKind = 'spec' | 'idea' | 'review-mark' | 'code-review-mark' | 'claim' | 'task';
+
+/**
+ * The five states of the one state model (ISC-221): `open` a command lies with the user, `waiting` the item hangs on
+ * another item, `running` a run is open, `aborted` a run without end older than the configured age, `done`.
+ */
+export type ItemState = 'open' | 'waiting' | 'running' | 'aborted' | 'done';
+
+/** The run an item in `running` or `aborted` shows (ISC-221.1). */
+export interface ItemRun {
+  /** The run id; for a claim lock or a task run, which carry none, the holding session. */
+  readonly run: string;
+  /** The command the run executes; null when the source names none (the item then carries a diagnostic). */
+  readonly command: string | null;
+  readonly session: string;
+  readonly actor: ActorRef;
+  /** ISO 8601: when the run started. */
+  readonly since: string;
+  /** `now − since` in milliseconds, at the `now` the caller passed. */
+  readonly elapsedMs: number;
+  /** Open runs on the item; the newest decides what is shown, all of them lock. 1 for a single run. */
+  readonly openRuns: number;
+  /** Where the run was read: a run line, a claim lock, or a task's run events (ISC-179). */
+  readonly source: 'run' | 'lock' | 'task-run';
+}
+
+/** What an item in `waiting` waits on (ISC-221.1); each list in id order, empty when it waits on none of that kind. */
+export interface ItemWaits {
+  /** Specs (`NNN`) whose open spec edges hold the item. */
+  readonly specs: readonly string[];
+  /** Claims whose open `(after: …)` edges hold the item. */
+  readonly claims: readonly string[];
+  /** Open specs of the main feature a `close-pending` spec waits on. */
+  readonly siblings: readonly string[];
+}
+
+/** One item's state with its details (ISC-221, ISC-221.1): which fields are set follows from `state`. */
+export interface ItemStateInfo {
+  readonly kind: ItemKind;
+  /** The item's id: `NNN` for a spec and its marks, the slug for an idea, `ISC-N` for a claim, `T<n>` for a task. */
+  readonly id: string;
+  /** The spec (`NNN`) a claim, task or mark belongs to; absent on a spec and an idea. */
+  readonly spec?: string;
+  readonly state: ItemState;
+  /** The item's stage, where it has one: a spec's row of the stage table, `idea` for an idea. */
+  readonly stage?: WorkflowStage;
+  /** `open`: the command that lies with the user, e.g. `/spec-tasks 037`. */
+  readonly command?: string;
+  /** `open`: the stage table's reason (or the item's own, for a claim or task). */
+  readonly reason?: string;
+  /** `waiting`: what the item waits on. */
+  readonly waits?: ItemWaits;
+  /** `running` and `aborted`: the run. */
+  readonly run?: ItemRun;
+  /** `running`: the finer state kept as a detail — a task's ISC-179 run state, a claim's live card state. */
+  readonly detail?: string;
+  /** `done`: ISO 8601 date when the files give one. */
+  readonly doneAt?: string;
+  /** `done`: a dropped claim (tombstone) or a struck task, which count as closed but were not done (ISC-221.1). */
+  readonly closedAs?: 'dropped' | 'struck';
+  /** Exactly one, when a detail the state needs is missing; never an invented value (ISC-221.1). */
+  readonly diagnostic?: Diagnostic;
 }
 
 export interface FrameCard {
@@ -1110,6 +1220,13 @@ export interface LiveCard extends FrameCard {
    * task. `buildLiveFrame` leaves it absent then, and on an `absent` card. Set on the live frame's cards only.
    */
   readonly run?: TaskRun | null;
+  /**
+   * The task's state in the one model (spec 040, ISC-223): item-state.ts `taskStates` over this frame's lock reading,
+   * runs, spec edges, clock and stale age, equal to the task's `itemStates` item. Named `itemState` because `state` is
+   * the card's own word (`CardState`), which stays as it was; `running`, `stale` and `run.state` are its finer details.
+   * Absent on a card no tasks.md line names (the carried cards of a spec without tasks.md).
+   */
+  readonly itemState?: ItemStateInfo;
 }
 
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
@@ -1238,6 +1355,13 @@ export interface ClaimView {
   readonly noteCount: number;
   /** 1-based line in spec.md. */
   readonly line: number;
+  /**
+   * The claim's state in the one model (spec 040, ISC-223): item-state.ts `claimStates`, equal to the claim's
+   * `itemStates` item. `state` (`taken`, `blocked`, `takeable`) stays beside it until the web reads this one: taken is
+   * `running` (detail `taken`) or `aborted`, blocked `waiting`, takeable an `open` whose reason says so. Absent unless
+   * the caller passes `ClaimViewInput.now`, since running and aborted need the clock.
+   */
+  readonly itemState?: ItemStateInfo;
 }
 
 /** A feature heading the Claims tab groups cards under. */
@@ -1303,6 +1427,13 @@ export interface ClaimViewInput {
    * claim holds it `blocked` with `waitsOn`. Absent or empty, nothing waits on another spec.
    */
   readonly specEdges?: readonly SpecEdge[];
+  /**
+   * The clock a lock's age is measured against (spec 040, ISC-223), as a Date or in milliseconds since the epoch.
+   * Given, every claim carries `itemState`; absent, none does (core reads no clock).
+   */
+  readonly now?: Date | number;
+  /** A lock older than this reads `aborted`; defaults to item-state.ts `DEFAULT_CLAIM_STALE_MS` (ISC-35). */
+  readonly staleAfterMs?: number;
 }
 
 export type TaskState = 'open' | 'done' | 'struck';
@@ -1364,6 +1495,11 @@ export interface TaskRow extends TaskView {
   readonly note: string | null;
   /** A path column that names no file, e.g. `probe only, Interceptor` from `· (probe only, Interceptor)`. */
   readonly pathNote: string | null;
+  /**
+   * The task's state in the one model (spec 040, ISC-223), as `TaskParseInput.itemStates` hands it in; `status`,
+   * `question`, `concerns` and `fail` stay the row's own words. Absent when the caller passes no item for the task.
+   */
+  readonly itemState?: ItemStateInfo;
 }
 
 /** A filter chip: a lane or status and how many rows carry it. */
@@ -1399,6 +1535,12 @@ export interface TaskParseInput {
    * open task, or on its claim, holds the task `held` with the reason `waits on NNN`. Absent or empty, nothing waits.
    */
   readonly specEdges?: readonly SpecEdge[];
+  /**
+   * The spec's items from the one state model (spec 040, ISC-223): `itemStates` filtered to the spec, or the live
+   * frame's `LiveCard.itemState`s. Each row gets the `task` item of its id as `itemState`; tasks.ts derives no state
+   * itself (item-state.ts imports this module). Absent, no row carries one.
+   */
+  readonly itemStates?: readonly ItemStateInfo[];
 }
 
 // ─── Evidence (evidence.ts) ──────────────────────────────────────────────────────────────────────────────────────
@@ -1642,6 +1784,11 @@ export interface IdeaRef {
   readonly priority: Priority;
   /** Repository-relative, POSIX separators: `specs/ideas/<slug>.md`. */
   readonly path: string;
+  /**
+   * The story's item state (spec 040, ISC-224): its `idea` item from item-state.ts at the caller's clock and abort age,
+   * set by `withIdeaStates` on the planning payload and by the story route. `readIdeas` has no clock and sets none.
+   */
+  readonly state?: ItemStateInfo;
 }
 
 /**

@@ -357,6 +357,12 @@
                       <ui-icon name="eye" [size]="14" />
                     </button>
                     <span class="count" [attr.data-morph]="drag.morph().includes(stage) ? '' : null">{{ column.cards.length }}</span>
+                    @if (column.running > 0) {
+                      <span class="vnote running" data-stub-running>
+                        <ui-glyph state="running" family="item" [size]="14" />
+                        {{ 'itemState.runningCount.' + (column.running === 1 ? 'one' : 'other') | transloco: { count: column.running } }}
+                      </span>
+                    }
                     <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
                     <h2 class="vlabel" [id]="'col-' + stage">{{ label }}</h2>
                     <span class="vnote">

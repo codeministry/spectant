@@ -3,7 +3,7 @@ import { toneInk } from '../tone';
 import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec } from './states';
 
 /**
- * A state glyph (ISC-88): one inline SVG shape per state of the seventeen in `states.ts`, stroked and filled in the
+ * A state glyph (ISC-88): one inline SVG shape per (shape, tone) pair in `states.ts` (the card, claim and item families), stroked and filled in the
  * state tone's ink (4.5:1 on the card, so the mark clears the 3:1 a graphic needs; ISC-65). Without `size` it is the
  * prototype's `.glyph` (spec 024, ISC-148): an 18 × 20 px inline grid at 15 px, the icon
  * 14 px and centred; `size` 20 (board cards) or 14 (a matrix cell, the state chip) draws a bare icon of that size.
@@ -49,7 +49,6 @@ import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec } from './sta
         @case ('square-check') { <rect class="fill" x="2" y="2" width="12" height="12" rx="2.5" /><path class="ko" d="m5.3 8.2 1.9 1.9 3.5-4" /> }
         @case ('ring') { <circle cx="8" cy="8" r="5.5" /> }
         @case ('ring-plus') { <circle cx="8" cy="8" r="5.5" /><path d="M8 5.5v5M5.5 8h5" /> }
-        @case ('lock') { <rect class="fill" x="3" y="7" width="10" height="7.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /> }
         @case ('ring-slash') { <circle cx="8" cy="8" r="5.5" /><path d="m4.1 11.9 7.8-7.8" /> }
         @case ('disc') { <circle class="fill" cx="8" cy="8" r="6.5" /> }
         @case ('ring-minus') { <circle cx="8" cy="8" r="5.5" /><path d="M5.5 8h5" /> }
@@ -59,7 +58,7 @@ import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec } from './sta
 })
 export class UiGlyph {
   readonly state = input.required<GlyphState>();
-  /** Needed only for `closed`, the one word of both families; every other state infers it. */
+  /** Needed for a word of two families (`closed`; `open`, `waiting`, `running`, `done` of the item family). */
   readonly family = input<GlyphFamily>();
   /** Unset: the prototype glyph (18 px box, 14 px icon); 20 or 14: a bare icon of that size. */
   readonly size = input<14 | 20>();

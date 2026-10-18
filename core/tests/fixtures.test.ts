@@ -16,12 +16,14 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { buildDashboard } from "../src/dashboard.ts";
+import { withItemStates } from "../src/item-state.ts";
 import { parseFrontmatter } from "../src/frontmatter.ts";
 import { parseMilestones } from "../src/milestones.ts";
 import { readTech } from "../src/tech.ts";
 import { diagnosticsOf, EXPECTED_WARNINGS } from "./helpers/expected-warnings.ts";
 import { DASHBOARD_FAMILY, expectGolden, goldenPath, goldenText, goldenTrees } from "./helpers/golden.ts";
 import { FIXTURES, fixtureTrees, readTree } from "./helpers/read-tree.ts";
+import { stateModel } from "./helpers/state-model.ts";
 
 const SPECTANT_001 = join(FIXTURES, "spectant-001");
 const LEADGEN = join(FIXTURES, "leadgen");
@@ -201,7 +203,11 @@ describe("golden snapshots", () => {
     expect(diagnosticsOf(m, "error")).toEqual(["specs/009-no-spec/spec.md: spec-missing"]);
   });
 
+  // Spec 040 (T20, ISC-224): each spec row and story carries its item state, the `state` family's item (the tree's
+  // activity reading at the live clock), so the golden is what the server answers at that clock; the rest of the model
+  // stays built without lock sources, as before.
   test.each(trees)("%s.golden.json", (name) => {
-    expectGolden(goldenPath(name, DASHBOARD_FAMILY), goldenText(buildDashboard(readTree(name))), UPDATE_COMMAND);
+    const model = withItemStates(buildDashboard(readTree(name)), stateModel(join(FIXTURES, name)));
+    expectGolden(goldenPath(name, DASHBOARD_FAMILY), goldenText(model), UPDATE_COMMAND);
   });
 });

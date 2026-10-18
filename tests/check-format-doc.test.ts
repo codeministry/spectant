@@ -92,7 +92,8 @@ describe('the real FORMAT.md', () => {
 });
 
 // spec 008, T75 (ISC-124): the repository kinds `idea` and `workflow` are checked like every other kind, and
-// `## Glossary` is a required section of exactly thirteen rows. Every case runs the real script on a mutated copy.
+// `## Glossary` is a required section of exactly eighteen rows (thirteen terms and, since spec 040, the five item
+// states). Every case runs the real script on a mutated copy.
 describe('the repository kinds and the glossary (T75, ISC-124)', () => {
   const format = readFileSync(FORMAT, 'utf8');
 
@@ -113,10 +114,10 @@ describe('the repository kinds and the glossary (T75, ISC-124)', () => {
     expect(report.noFixture).not.toContain('workflow');
   });
 
-  test('the script reports the glossary with its thirteen rows', () => {
+  test('the script reports the glossary with its eighteen rows', () => {
     const { code, stdout } = run();
     expect(code).toBe(0);
-    expect(stdout).toContain('glossary: 13 rows');
+    expect(stdout).toContain('glossary: 18 rows');
   });
 
   for (const kind of ['idea', 'workflow'] as const) {
@@ -143,14 +144,14 @@ describe('the repository kinds and the glossary (T75, ISC-124)', () => {
     const { code, stderr } = runOn(withoutLines(format, (l) => l.startsWith('| Chore | Chore |')));
     expect(code).toBe(1);
     expect(stderr).toContain('format-doc: Glossary: no row for the term "Chore"');
-    expect(stderr).toContain('format-doc: Glossary: 12 rows, expected exactly 13');
+    expect(stderr).toContain('format-doc: Glossary: 17 rows, expected exactly 18');
   });
 
-  test('a copy with a fourteenth glossary row fails on the count', () => {
+  test('a copy with a nineteenth glossary row fails on the count', () => {
     const extra = format.replace('| Chore | Chore |', '| Board | Board | Board | The columns of the stages. |\n| Chore | Chore |');
     const { code, stderr } = runOn(extra);
     expect(code).toBe(1);
-    expect(stderr).toContain('format-doc: Glossary: 14 rows, expected exactly 13');
+    expect(stderr).toContain('format-doc: Glossary: 19 rows, expected exactly 18');
     expect(stderr).not.toContain('no row for');
   });
 

@@ -1,0 +1,786 @@
+[
+  {
+    "kind": "spec",
+    "id": "012",
+    "state": "open",
+    "stage": "build",
+    "command": "/spec-implement 012",
+    "reason": "ISC-334 is takeable"
+  },
+  {
+    "kind": "review-mark",
+    "id": "012",
+    "spec": "012",
+    "state": "done",
+    "doneAt": "2026-09-28T01:07:18.427Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "012",
+    "spec": "012",
+    "state": "waiting",
+    "waits": {
+      "specs": [
+        "012"
+      ],
+      "claims": [],
+      "siblings": []
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-327",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-327 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-328",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-328 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-329",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-329 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-330",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-330 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-331",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-331 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-332",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-332 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-333",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-333 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-334",
+    "spec": "012",
+    "state": "open",
+    "command": "/spec-implement 012",
+    "reason": "ISC-334 is takeable"
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-335",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-335 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-336",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-336 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T2 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T3 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T4",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T4 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T5",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T5 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T6",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T6 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T7",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T7 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T8",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T8 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T9",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T9 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T10",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T10 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T11",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T11 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T12",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T12 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T13",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T13 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T14",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T14 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T15",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T15 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T16",
+    "spec": "012",
+    "state": "open",
+    "command": "/spec-implement 012",
+    "reason": "operator lane — the principal's own action, never auto-dispatched"
+  },
+  {
+    "kind": "task",
+    "id": "T17",
+    "spec": "012",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T17 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "spec",
+    "id": "022",
+    "state": "done",
+    "stage": "done",
+    "doneAt": "2026-09-28T12:46:09Z"
+  },
+  {
+    "kind": "review-mark",
+    "id": "022",
+    "spec": "022",
+    "state": "done",
+    "doneAt": "2026-09-28T12:01:46.215Z"
+  },
+  {
+    "kind": "code-review-mark",
+    "id": "022",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "the code-reviewed mark of 022 is stale, although spec 022 is done; the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-473",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-473 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-474",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-474 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-475",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-475 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-476",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-476 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-477",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-477 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-478",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-478 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-479",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-479 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "claim",
+    "id": "ISC-480",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "claim ISC-480 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T1",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T1 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T2",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T2 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T3",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T3 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T4",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T4 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T5",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T5 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T6",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T6 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T7",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T7 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T8",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T8 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T9",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T9 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T10",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T10 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T11",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T11 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T12",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T12 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T13",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T13 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T14",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T14 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T15",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T15 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T16",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T16 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T17",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T17 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T18",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T18 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T19",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T19 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T20",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T20 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T21",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T21 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T22",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T22 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T23",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T23 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T24",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T24 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T25",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T25 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T26",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T26 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T27",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T27 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T28",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T28 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T29",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T29 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T30",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T30 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T31",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T31 is done, but the files give no date for it."
+    }
+  },
+  {
+    "kind": "task",
+    "id": "T32",
+    "spec": "022",
+    "state": "done",
+    "diagnostic": {
+      "severity": "warning",
+      "code": "item-state-no-date",
+      "message": "task T32 is done, but the files give no date for it."
+    }
+  }
+]

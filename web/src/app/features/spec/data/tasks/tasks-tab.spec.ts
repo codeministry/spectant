@@ -6,7 +6,8 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import liveGolden from '../../../../../../../core/fixtures/harbor.live.golden.json';
 import golden from '../../../../../../../core/fixtures/harbor.tasks.golden.json';
-import type { LiveFrame } from '../../../../../../../core/src/files';
+import specGolden from '../../../../../../../core/fixtures/harbor.spec.golden.json';
+import type { ItemStateInfo, LiveFrame, SpecPageModel } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type TaskCheckResult, type TasksResult } from '../../../../core/api.service';
 import { ToastService } from '../../../../shared/ui/toast/toast';
@@ -23,12 +24,12 @@ type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'tasks' | '
 /** What the fake write was sent, in order. */
 let sent: Array<{ tid: string; hash: string; checked: boolean }> = [];
 
-function setUp(tasks: TasksBody | null = GOLDEN, hash: string | null = 'ab12'): void {
+function setUp(tasks: TasksBody | null = GOLDEN, hash: string | null = 'ab12', spec: unknown = null): void {
   sent = [];
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([])),
     dashboard: () => Promise.resolve(ok(DASHBOARD)),
-    spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+    spec: () => Promise.resolve(spec === null ? { kind: 'not-found', served: false } : ok(spec as never)),
     live: () => Promise.resolve(ok(LIVE as never)),
     tasks: (): Promise<TasksResult> => Promise.resolve({ ...ok(tasks), hash: tasks === null ? null : hash }),
     taskCheck: (_ws, _id, tid, sentHash, checked): Promise<TaskCheckResult> => {
@@ -103,6 +104,17 @@ describe('TasksTab', () => {
     expect(t27?.querySelector('ui-actor-chip[data-task-agent]')?.hasAttribute('data-stale')).toBe(true);
     expect(t27?.querySelector('[data-task-subagent]')).toBeNull();
     expect(root.querySelector('#task-T2 app-task-actors')).toBeNull();
+  });
+
+  it('names a row\'s holder once: a row with live holders shows no second actor chip in its state details (spec 040)', async () => {
+    // T27 is held in the live frame; give its row the running item the server sends for such a task.
+    const actor = { raw: 'a:claude:sess-2', kind: 'agent', id: 'a:claude:sess-2', legacy: false } as const;
+    const held = { kind: 'task', id: 'T27', spec: '002', state: 'running', run: { run: 'a:claude:sess-2', command: '/spec-implement 002', session: 'a:claude:sess-2', actor, since: '2026-03-08T14:06:00Z', elapsedMs: 54 * 60_000, openRuns: 1, source: 'lock' } } as const;
+    setUp({ ...GOLDEN, tasks: GOLDEN.tasks.map((t) => (t.id === 'T27' ? { ...t, itemState: held } : t)) });
+    const { root } = await open();
+    const rows = [...root.querySelectorAll('[data-task-row]')].filter((row) => row.querySelector('app-task-actors') !== null);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.querySelector('ui-item-state[data-task-item] ui-actor-chip')).toBeNull();
   });
 
   it('renders every checkbox enabled, checked from the done state, described by the helper line', async () => {
@@ -258,6 +270,73 @@ describe('TasksTab spec waits (spec 025, T26, ISC-163)', () => {
     expect(row?.querySelector('[data-task-waits] a[data-blocker="002"]')?.getAttribute('href')).toBe('/w/harbor/s/002');
     expect(row?.querySelector<HTMLInputElement>('[data-task-check]')?.disabled).toBe(true);
     expect(row?.querySelector('[data-sub]')).toBeNull();
+  });
+});
+
+describe('TasksTab item state (spec 040, T52, ISC-224)', () => {
+  const HEAD = (specGolden['specs/002-web-console'] as unknown as SpecPageModel).head;
+  const session = 'a:claude:sess-9';
+  const RUNNING: ItemStateInfo = {
+    kind: 'spec',
+    id: '002',
+    state: 'running',
+    stage: 'build',
+    run: {
+      run: 'r-1',
+      command: '/spec-implement 002',
+      session,
+      actor: { raw: session, kind: 'agent', id: session, legacy: false },
+      since: '2026-03-08T16:40:00Z',
+      elapsedMs: 180_000,
+      openRuns: 1,
+      source: 'run',
+    },
+  };
+  const specWith = (state: ItemStateInfo | undefined) => ({ ...specGolden['specs/002-web-console'], head: { ...HEAD, state } });
+  const stateCell = (root: HTMLElement, id: string) => root.querySelector(`#task-${id} [data-item-state]`);
+
+  it('shows the state word in the status cell, the fine running state as its detail, question beside it', async () => {
+    setUp();
+    const { root } = await open();
+    expect(stateCell(root, 'T28')?.getAttribute('data-item-state')).toBe('running');
+    expect(stateCell(root, 'T28')?.textContent.replace(/\s+/g, ' ').trim()).toBe('running · applied, open');
+    expect(stateCell(root, 'T32')?.textContent.trim()).toBe('waiting');
+    expect(stateCell(root, 'T34')?.textContent.replace(/\s+/g, ' ').trim()).toBe('done · struck');
+    expect(stateCell(root, 'T29')?.textContent.trim()).toBe('open');
+    expect(root.querySelector('#task-T29 .status[data-tone="question"]')).not.toBeNull();
+  });
+
+  it('keeps the old status chip on a row without itemState (older payloads)', async () => {
+    setUp({ ...GOLDEN, tasks: GOLDEN.tasks.map((t) => ({ ...t, itemState: undefined })) });
+    const { root } = await open();
+    expect(root.querySelector('[data-item-state]')).toBeNull();
+    expect(root.querySelector('#task-T2 .status')?.getAttribute('data-tone')).toBe('closed');
+  });
+
+  it('locks every checkbox and shows the notice while a run stands on the spec; a click writes nothing', async () => {
+    setUp(GOLDEN, 'ab12', specWith(RUNNING));
+    const { root, harness } = await open();
+    await harness.fixture.whenStable();
+    const notice = root.querySelector('[data-run-notice]');
+    expect(notice?.textContent).toContain('/spec-implement 002');
+    expect(notice?.textContent).toContain('3 min');
+    const box = root.querySelector<HTMLInputElement>('#task-T31 [data-task-check]');
+    expect(box?.getAttribute('aria-disabled')).toBe('true');
+    expect(root.querySelector('#task-T31 .box-lock')).not.toBeNull();
+    const reason = root.querySelector('#task-T31 [data-check-run-locked]');
+    expect(reason?.textContent).toContain(`locked · ${session}`);
+    expect(box?.getAttribute('aria-describedby')).toContain(reason?.id ?? '-');
+    box?.click();
+    await harness.fixture.whenStable();
+    expect(sent).toEqual([]);
+    expect(box?.checked).toBe(false);
+  });
+
+  it('shows no notice and no lock without a run on the spec', async () => {
+    setUp(GOLDEN, 'ab12', specWith({ ...RUNNING, state: 'open', run: undefined, command: '/spec-implement 002' }));
+    const { root } = await open();
+    expect(root.querySelector('[data-run-notice]')).toBeNull();
+    expect(root.querySelector('#task-T31 [data-task-check]')?.getAttribute('aria-disabled')).toBeNull();
   });
 });
 

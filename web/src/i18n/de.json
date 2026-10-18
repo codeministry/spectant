@@ -244,8 +244,8 @@
     "claimStates": {
       "open": "offen",
       "takeable": "übernehmbar",
-      "taken": "vergeben",
-      "blocked": "blockiert",
+      "taken": "läuft",
+      "blocked": "wartet",
       "closed": "geschlossen",
       "dropped": "verworfen"
     },
@@ -450,12 +450,12 @@
     "card": {
       "waiting": "wartet",
       "dispatched": "zugeteilt",
-      "running": "in Arbeit",
+      "running": "läuft",
       "question": "Frage",
       "concerns": "Bedenken",
       "fail": "fehlgeschlagen",
-      "done": "erledigt",
-      "closed": "geschlossen",
+      "done": "gelandet",
+      "closed": "fertig",
       "absent": "fehlt",
       "operatorOpen": "Ihr Schritt",
       "operatorDone": "Schritt erledigt",
@@ -473,10 +473,17 @@
     "claim": {
       "open": "offen",
       "takeable": "übernehmbar",
-      "taken": "vergeben",
-      "blocked": "blockiert",
+      "taken": "läuft",
+      "blocked": "wartet",
       "closed": "geschlossen",
       "dropped": "verworfen"
+    },
+    "item": {
+      "open": "offen",
+      "waiting": "wartet",
+      "running": "läuft",
+      "aborted": "abgebrochen",
+      "done": "fertig"
     }
   },
   "scrubber": {
@@ -746,8 +753,8 @@
       "all": "Alle",
       "open": "offen",
       "takeable": "übernehmbar",
-      "taken": "vergeben",
-      "blocked": "blockiert",
+      "taken": "läuft",
+      "blocked": "wartet",
       "closed": "geschlossen",
       "dropped": "verworfen"
     },
@@ -851,12 +858,12 @@
     },
     "status": {
       "open": "offen",
-      "dispatched": "vergeben",
-      "held": "zurückgehalten",
+      "dispatched": "läuft",
+      "held": "wartet",
       "question": "Frage",
       "concerns": "Bedenken",
       "fail": "fehlgeschlagen",
-      "done": "erledigt",
+      "done": "fertig",
       "closed": "geschlossen",
       "struck": "gestrichen"
     },
@@ -1136,8 +1143,8 @@
       "error": "Die offenen Claims konnten nicht gelesen werden.",
       "groups": {
         "takeable": "übernehmbar",
-        "taken": "vergeben",
-        "blocked": "blockiert",
+        "taken": "läuft",
+        "blocked": "wartet",
         "open": "offen"
       },
       "waitsOn": "wartet auf {{ids}}",
@@ -1324,7 +1331,7 @@
     "section": {
       "needsYou": "Wartet auf Sie",
       "inFlight": "In Arbeit",
-      "waiting": "Wartend",
+      "waiting": "Wartet",
       "landed": "Gelandet",
       "noReason": "Kein Grund angegeben"
     },
@@ -1384,7 +1391,7 @@
     "flow": {
       "label": "Fluss-Spalte",
       "columns": {
-        "waiting": "Wartend",
+        "waiting": "Wartet",
         "inFlight": "In Arbeit",
         "needsYou": "Wartet auf Sie",
         "landed": "Gelandet"
@@ -1659,6 +1666,31 @@
       "term": "Chore",
       "common": "Chore",
       "definition": "Der siebte Spec-Typ: nur `spec.md`, Review, dann Build, dann Done, ohne Code-Review."
+    },
+    "open": {
+      "term": "offen",
+      "common": "Zu erledigen",
+      "definition": "Der Zustand eines Elements, in dem der nächste Befehl beim Nutzer liegt, mit seinem Grund."
+    },
+    "waiting": {
+      "term": "wartet",
+      "common": "Blockiert",
+      "definition": "Der Zustand eines Elements, das an einem anderen Element hängt, angegeben als das, worauf es wartet."
+    },
+    "running": {
+      "term": "läuft",
+      "common": "In Arbeit",
+      "definition": "Der Zustand, solange ein Lauf auf dem Element offen und jünger als das Abbruchalter ist; der Lauf sperrt das Element."
+    },
+    "aborted": {
+      "term": "abgebrochen",
+      "common": "Ins Stocken geraten",
+      "definition": "Der Zustand eines Laufs ohne Ende, der älter als das Abbruchalter ist; er sperrt nichts."
+    },
+    "done": {
+      "term": "fertig",
+      "common": "Erledigt",
+      "definition": "Der Zustand eines abgeschlossenen Elements; ein verworfener Claim oder ein gestrichener Task ist fertig, mit diesem Detail."
     }
   },
   "planning": {
@@ -1696,7 +1728,7 @@
       "past": "Vor heute",
       "overdue": "überfällig",
       "overdueSince": "überfällig seit {{date}}",
-      "done": "erledigt",
+      "done": "fertig",
       "noMilestone": "Ohne Meilenstein",
       "noWindow": "kein Zeitfenster",
       "noWindowLane": "kein Meilenstein-Fenster",
@@ -1950,7 +1982,7 @@
       "label": "Legende",
       "moving": "in Bewegung",
       "waits": "wartet auf Sie",
-      "done": "erledigt",
+      "done": "fertig",
       "detour": "Umweg",
       "gate": "festes Gate",
       "optional": "optionaler Schritt"
@@ -2160,7 +2192,53 @@
     "unmapped": "nicht zugeordnet"
   },
   "reason": {
-    "glyph": "wartet"
+    "glyph": "offen"
+  },
+  "itemState": {
+    "line": "{{stage}} · {{state}}",
+    "since": "seit {{duration}}",
+    "started": "gestartet {{time}}",
+    "waitsOn": "wartet auf {{items}}",
+    "doneOn": "fertig {{date}}",
+    "noRelease": "keine Freigabe",
+    "closedAs": {
+      "dropped": "verworfen",
+      "struck": "gestrichen"
+    },
+    "abortedFor": "ohne Freigabe seit {{duration}}",
+    "duration": {
+      "underMinute": "< 1 min",
+      "minutes": "{{minutes}} min",
+      "hours": "{{hours}} h {{minutes}} min"
+    },
+    "runs": {
+      "one": "{{count}} Lauf",
+      "other": "{{count}} Läufe"
+    },
+    "runningCount": {
+      "one": "{{count}} läuft",
+      "other": "{{count}} laufen"
+    },
+    "locked": {
+      "chip": "Gesperrt · {{command}} läuft · {{actor}}",
+      "hint": "Läuft seit {{duration}} · erst nach dem Ende kopierbar",
+      "checkbox": "gesperrt · {{session}}",
+      "notice": "{{spec}} läuft · {{command}} · seit {{duration}} — Häkchen gesperrt",
+      "move": "{{spec}} läuft · {{command}} · {{actor}} · seit {{duration}}"
+    },
+    "refusal": "Nicht verschoben — {{spec}} läuft: {{command}} · {{actor}} · seit {{duration}}",
+    "release": {
+      "button": "Lauf freigeben",
+      "question": "Der Agent schreibt womöglich noch. Lauf freigeben?",
+      "explain": "Der Lauf im Chat geht weiter; die App hebt nur die Sperre auf.",
+      "confirm": "Freigeben",
+      "keep": "Behalten",
+      "released": "Lauf freigegeben",
+      "changed": "Der Lauf hat sich geändert · neu geladen",
+      "aborted": "Der Lauf gilt inzwischen als abgebrochen · neu geladen",
+      "noViewer": "Für die Freigabe fehlt Ihre Personen-ID: Ordnen Sie Ihre Git-Identität unter Einstellungen · Akteure zu",
+      "failed": "Nicht freigegeben · Fehler {{status}}"
+    }
   },
   "live": {
     "taskActors": "Arbeitet an {{ task }}",
