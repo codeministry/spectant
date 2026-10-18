@@ -123,7 +123,8 @@ test.describe('guidance anti', () => {
       await page.context().setExtraHTTPHeaders(headers);
       for (const ws of await workspacesOf(request, headers)) {
         const { body, guidance } = await dashboardOf(request, ws, headers);
-        await page.goto(`/w/${ws}#waiting`);
+        // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
+        await page.goto(`/w/${ws}?open=specs#waiting`);
         const section = page.locator('#waiting');
         await expect(section, `${ws}: the #waiting section`).toBeVisible();
 

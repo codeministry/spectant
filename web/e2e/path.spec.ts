@@ -144,6 +144,14 @@ for (const width of [1440, 600, 390] as const) {
       // The spec table opens a row in two steps: the first click selects it for the detail sidebar (`?sel=spec:`, spec
       // 026), the second opens the spec: the row again, or below 1120 px the sidebar's "Open spec", which may cover the row.
       const row = page.locator(`[data-panel="specs"] [data-spec-row="${TARGET.spec}"]`);
+      // Spec 021: the spec list shows its first five rows and folds the rest behind "Show all N specs"; where the
+      // target row sits behind the fold, opening it is a step of the path and counts.
+      await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+      if ((await row.count()) === 0) {
+        const showAll = page.locator('[data-panel="specs"] [data-fold="specs"] button').first();
+        if (!(await wholly(showAll))) await steps.scrollTo(showAll);
+        await click(showAll, 'show all specs');
+      }
       await expect(row).toBeVisible();
       if (!(await wholly(row))) await steps.scrollTo(row);
       await click(row, `preview ${TARGET.spec}`);

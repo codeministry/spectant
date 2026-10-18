@@ -155,7 +155,8 @@ test.describe('guidance board', () => {
       const entries = specEntries(guidance);
       const waiting = waitingSpecs(guidance);
 
-      await page.goto(`/w/${ws}`);
+      // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
+      await page.goto(`/w/${ws}?open=specs`);
       await expect(page.locator('app-spec-table app-spec-row-guide').first()).toBeVisible();
 
       // Specs table: one guide row per spec with its own entry, the mark exactly on the waiting ones.

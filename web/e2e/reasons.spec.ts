@@ -78,7 +78,8 @@ test.describe('reasons', () => {
   });
 
   test('every waiting spec shows its phrase verbatim on the dashboard row', async ({ page }) => {
-    await page.goto('/w/harbor');
+    // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every waiting row renders.
+    await page.goto('/w/harbor?open=specs');
     await expect(page.locator('[data-spec-row]')).not.toHaveCount(0);
     let covered = 0;
     for (const { id, phrase, raw } of WAITING) {
