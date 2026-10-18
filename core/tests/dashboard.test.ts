@@ -143,6 +143,20 @@ describe('kpi-band: each workspace KPI tile carries its reference (spec 021, ISC
   const { kpis } = m;
   const count = (rows: readonly DashboardSpecRow[], of: (r: DashboardSpecRow) => boolean): number => rows.filter(of).length;
 
+  test('the master tile reads its open count and its ring percent from the model (ISC-255)', () => {
+    const master = kpis.master;
+    if (master === null) throw new Error('harbor has a master with claims');
+    expect(kpis.masterOpen).toBe(master.total - master.closed);
+    expect(kpis.masterPercent).toBe(Math.floor((master.closed / master.total) * 100));
+  });
+
+  test('the type chips read one count per type present from the model, in name order (ISC-255)', () => {
+    const present = [...new Set(m.specs.flatMap((r) => (r.type === null ? [] : [r.type])))].sort();
+    expect(present.length).toBeGreaterThan(1);
+    expect(Object.keys(kpis.byType)).toEqual(present);
+    for (const type of present) expect(kpis.byType[type], type).toBe(count(m.specs, (r) => r.type === type));
+  });
+
   test('Takeable stands against the open claims of the same active specs', () => {
     expect(kpis.takeable).toBe(5);
     expect(kpis.openClaims).toBe(24);
@@ -202,6 +216,12 @@ describe('kpi-band: each workspace KPI tile carries its reference (spec 021, ISC
       expect(k.specsWithWarnings, name).toBe(count(f.specs, (r) => r.warnings.length > 0));
       expect(k.specsWithFog, name).toBe(count(f.specs, (r) => r.fog > 0));
       expect(k.masterFog + f.specs.reduce((n, r) => n + r.fog, 0), name).toBe(k.fog);
+      // The master tile's open count and percent (ISC-255): null without a master, the percent also without claims.
+      expect(k.masterOpen, name).toBe(k.master === null ? null : k.master.total - k.master.closed);
+      expect(k.masterPercent, name).toBe(k.master === null || k.master.total === 0 ? null : Math.floor((k.master.closed / k.master.total) * 100));
+      // The type chips' counts: one entry per type present, together the rows that carry a type.
+      expect(Object.values(k.byType).reduce((n, c) => n + c, 0), name).toBe(count(f.specs, (r) => r.type !== null));
+      for (const [type, c] of Object.entries(k.byType)) expect(c, `${name} ${type}`).toBe(count(f.specs, (r) => r.type === type));
     }
   });
 });

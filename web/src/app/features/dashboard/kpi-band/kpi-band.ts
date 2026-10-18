@@ -29,6 +29,10 @@ export interface KpiBandModel {
     readonly specs: number;
     readonly stageGroups?: Readonly<Record<StageGroup, number>>;
     readonly master: Fraction | null;
+    /** The master's open claims, served (`masterOpen`); the band never subtracts. */
+    readonly masterOpen?: number | null;
+    /** The master's whole percent closed, served (`masterPercent`): the ring's value; the band never divides. */
+    readonly masterPercent?: number | null;
     readonly claims: Fraction;
     readonly takeable: number;
     readonly openClaims?: number;
@@ -88,7 +92,7 @@ export function kpiTileOf(path: string): KpiTile | null {
  * places them: wide one row with a wider master tile, medium three columns by two rows, compact the Pulse card (the
  * master row and the spec-claims meter over a 2 × 2 grid). Both forms live in the DOM and the tier shows one. Tiles
  * with a destination are links on `/w/:ws`: a fragment for a section, query state for a filter. Renders the model as
- * it is; derives nothing but display arithmetic (percent, open).
+ * it is; derives no number: the open count and the ring percent are served fields too (ISC-255).
  */
 @Component({
   selector: 'app-kpi-band',
@@ -139,16 +143,6 @@ export class KpiBand {
   protected readonly fogQuery = FOG_QUERY;
   protected readonly href = computed(() => `/w/${encodeURIComponent(this.ws())}`);
   protected readonly kpis = computed(() => this.model().kpis);
-
-  /** Whole percent closed, floored so 100 means every master claim is closed; null without a master or claims. */
-  protected readonly masterPercent = computed(() => {
-    const master = this.kpis().master;
-    return master === null || master.total === 0 ? null : Math.floor((master.closed / master.total) * 100);
-  });
-  protected readonly masterOpen = computed(() => {
-    const master = this.kpis().master;
-    return master === null ? 0 : Math.max(0, master.total - master.closed);
-  });
 
   /** Specs by stage group for the split meter and its legend, as the model counts them; an empty group is left out. */
   protected readonly phases = computed<readonly PhaseSegment[]>(() => {

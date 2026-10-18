@@ -7,9 +7,9 @@
  * - Numbers: every number the dashboard (KPI band, spec-list head, "Show all N", filter chips, TL;DR language chip),
  *   the Tasks tab (head line, `all` and per-lane / per-status chips) and the spec head (partial waits text) shows is
  *   compared with the body of the same route the page reads, fetched by the test (`page.request.get`). The test reads
- *   fields; the only arithmetic is the master tile's open count (`total - closed`) and its ring percent
- *   (`floor(closed / total · 100)`), which the model does not carry as fields, and grouping rows by `phase`/`type` for
- *   the filter chips (the model carries no per-phase count).
+ *   fields only, no arithmetic and no grouping of rows (T83): the master tile's open count and ring percent are
+ *   `kpis.masterOpen` and `kpis.masterPercent`, the phase chips `kpis.stageGroups` (the Specs tile's split) and
+ *   `kpis.specsWithFog`, the type chips `kpis.byType`, the `all` chips `kpis.specs`.
  * - Loopback: every request and web socket the page opens while it loads the dashboard, opens and closes every 021 fold
  *   (spec list, TL;DR, overlaps, the compact "Details of <id>", library sections) and sets the density on the settings
  *   page goes to 127.0.0.1, localhost or ::1.
@@ -35,6 +35,9 @@ interface DashboardModel {
     readonly specs: number;
     readonly stageGroups: Readonly<Record<'scoping' | 'building' | 'complete', number>>;
     readonly master: { readonly closed: number; readonly total: number } | null;
+    readonly masterOpen: number | null;
+    readonly masterPercent: number | null;
+    readonly byType: Readonly<Record<string, number>>;
     readonly claims: { readonly closed: number; readonly total: number };
     readonly takeable: number;
     readonly openClaims: number;
@@ -44,7 +47,7 @@ interface DashboardModel {
     readonly specsWithFog: number;
     readonly archived: number;
   };
-  readonly specs: ReadonlyArray<{ readonly phase: string | null; readonly type: string | null; readonly stageGroup: string; readonly fog: number }>;
+  readonly specs: readonly unknown[];
   readonly brief: { readonly lang?: string | null } | null;
 }
 
@@ -97,15 +100,8 @@ async function chipsOf(group: Locator): Promise<Map<string, { count: number; nam
   return out;
 }
 
-/** Counts rows by one field, in no order. */
-function countBy<T>(rows: readonly T[], key: (row: T) => string | null): Map<string, number> {
-  const out = new Map<string, number>();
-  for (const row of rows) {
-    const k = key(row);
-    if (k !== null) out.set(k, (out.get(k) ?? 0) + 1);
-  }
-  return out;
-}
+/** The stage groups in the order the phase chips list them (core's `StageGroup`). */
+const STAGE_GROUPS = ['scoping', 'building', 'complete'] as const;
 
 const tile = (page: Page, kpi: string): Locator => page.locator(`app-kpi-band .band [data-kpi="${kpi}"]`);
 const valueOf = (t: Locator): Locator => t.locator('.figure .value');
@@ -139,9 +135,8 @@ for (const stub of STUBS) {
       } else {
         expect(await numbersOf(valueOf(master))).toEqual([k.master.closed]);
         expect(await numbersOf(denOf(master))).toEqual([k.master.total]);
-        // Derived: the model carries closed and total, not open nor the percent.
-        expect(await numbersOf(metaOf(master))).toEqual([k.master.closed, k.master.total - k.master.closed]);
-        const percent = k.master.total === 0 ? [] : [Math.floor((k.master.closed / k.master.total) * 100)];
+        expect(await numbersOf(metaOf(master))).toEqual([k.master.closed, k.masterOpen]);
+        const percent = k.masterPercent === null ? [] : [k.masterPercent];
         expect(await numbersOf(master.locator('ui-ring .text'))).toEqual(percent);
         // The percent stands once in the tile (ISC-245.1): the ring alone.
         expect(((await master.textContent()) ?? '').match(/%/gu)?.length ?? 0).toBe(percent.length);
@@ -172,11 +167,6 @@ for (const stub of STUBS) {
         expect(await numbersOf(statement)).toEqual([]);
       }
 
-      // The model is consistent with itself where the tiles and the list read two fields for one count.
-      expect(model.specs).toHaveLength(k.specs);
-      const groups = countBy(model.specs, (row) => row.stageGroup);
-      for (const group of ['scoping', 'building', 'complete'] as const) expect(groups.get(group) ?? 0).toBe(k.stageGroups[group]);
-
       // Spec list head: the active and the archived count, "Show all N".
       const table = page.locator('app-spec-table');
       expect(await numbersOf(table.locator('[data-count="active"]'))).toEqual([model.specs.length]);
@@ -184,30 +174,27 @@ for (const stub of STUBS) {
       const showAll = table.locator('[data-fold="specs"] button.summary');
       if (model.specs.length > 5) expect(await numbersOf(showAll)).toEqual([model.specs.length]);
 
-      // Filter chips: `all` is every row, each phase / type chip the rows with that field, fog the rows with fog.
+      // Filter chips: `all` is `kpis.specs`, each stage-group chip its `kpis.stageGroups` entry (the Specs tile's split,
+      // one derivation), fog `kpis.specsWithFog`, each type chip its `kpis.byType` entry.
       const phases = await chipsOf(table.locator('ui-filter-chips[data-filter="phase"]'));
       const all = phases.get(SPECS_ALL);
-      expect(all?.count).toBe(model.specs.length);
-      expect(numbers(all?.name ?? null)).toEqual([model.specs.length]);
-      const byPhase = countBy(model.specs, (row) => row.phase);
-      const fogRows = model.specs.filter((row) => row.fog > 0).length;
-      expect(phases.size).toBe(1 + byPhase.size + (fogRows > 0 ? 1 : 0));
-      for (const [phase, count] of byPhase) expect(phases.get(phaseLabel(phase))?.count, `phase chip ${phase}`).toBe(count);
-      if (fogRows > 0) {
-        expect(phases.get(FOG_LABEL)?.count).toBe(fogRows);
-        expect(fogRows).toBe(k.specsWithFog);
-      }
+      expect(all?.count).toBe(k.specs);
+      expect(numbers(all?.name ?? null)).toEqual([k.specs]);
+      const groups = STAGE_GROUPS.filter((group) => k.stageGroups[group] > 0);
+      expect(phases.size).toBe(1 + groups.length + (k.specsWithFog > 0 ? 1 : 0));
+      for (const group of groups) expect(phases.get(phaseLabel(group))?.count, `phase chip ${group}`).toBe(k.stageGroups[group]);
+      if (k.specsWithFog > 0) expect(phases.get(FOG_LABEL)?.count).toBe(k.specsWithFog);
 
-      const byType = countBy(model.specs, (row) => row.type);
+      const byType = Object.entries(k.byType);
       const typeGroup = table.locator('ui-filter-chips[data-filter="type"]');
-      if (byType.size < 2) {
+      if (byType.length < 2) {
         await expect(typeGroup).toHaveCount(0);
       } else {
         const types = await chipsOf(typeGroup);
-        expect(types.size).toBe(1 + byType.size);
+        expect(types.size).toBe(1 + byType.length);
         const allTypes = types.get(SPECS_ALL);
-        expect(allTypes?.count).toBe(model.specs.length);
-        expect(numbers(allTypes?.name ?? null)).toEqual([model.specs.length]);
+        expect(allTypes?.count).toBe(k.specs);
+        expect(numbers(allTypes?.name ?? null)).toEqual([k.specs]);
         for (const [type, count] of byType) expect(types.get(type)?.count, `type chip ${type}`).toBe(count);
       }
 

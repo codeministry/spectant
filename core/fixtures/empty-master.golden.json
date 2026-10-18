@@ -12,6 +12,9 @@
       "closed": 0,
       "total": 3
     },
+    "masterOpen": 3,
+    "masterPercent": 0,
+    "byType": {},
     "claims": {
       "closed": 0,
       "total": 0

@@ -17,8 +17,8 @@ const HARBOR: KpiBandModel = { kpis: { ...harbor.kpis, ...REFS } };
 const K = { ...harbor.kpis, ...REFS };
 const MASTER = `${String(K.master.closed)}/${String(K.master.total)}`;
 const CLAIMS = `${String(K.claims.closed)}/${String(K.claims.total)}`;
-const PCT = String(Math.floor((K.master.closed / K.master.total) * 100));
-const OPEN = String(K.master.total - K.master.closed);
+const PCT = String(K.masterPercent);
+const OPEN = String(K.masterOpen);
 
 /** The six tiles in band order, each with the catalogue key of its statement line. */
 const TILES = [
@@ -182,7 +182,7 @@ describe('KpiBand', () => {
 
   describe('kpi-band master: the master tile names its percent once (spec 021, ISC-245.1)', () => {
     // 308 of 400 closed: 77 %, and neither the fraction nor the open count contains "77".
-    const AT_77: KpiBandModel = { kpis: { ...HARBOR.kpis, master: { closed: 308, total: 400 } } };
+    const AT_77: KpiBandModel = { kpis: { ...HARBOR.kpis, master: { closed: 308, total: 400 }, masterOpen: 92, masterPercent: 77 } };
     const percents = (node: Element | null | undefined) => node?.textContent.match(/\d+\s*%/g) ?? [];
 
     for (const lang of LANGS) {
@@ -205,6 +205,22 @@ describe('KpiBand', () => {
         }
       });
     }
+  });
+
+  it('kpi-band master: the open count and the ring percent are the served fields, never computed (ISC-255)', async () => {
+    // Served values that no arithmetic over closed and total gives: the band must show these, not 92 and 77.
+    const served: KpiBandModel = { kpis: { ...HARBOR.kpis, master: { closed: 308, total: 400 }, masterOpen: 5, masterPercent: 13 } };
+    const { text, pulse, squash } = await render(served);
+
+    expect(text('master', '.meta')).toBe(closedOpen('en', 308, 5));
+    expect(text('master', 'ui-ring .text')?.replace(/ /g, '')).toBe('13%');
+    expect(squash(pulse?.querySelector('.top ui-ring'))?.replace(/ /g, '')).toBe('13%');
+  });
+
+  it('kpi-band master: without the served percent the ring shows a dash', async () => {
+    const { text } = await render({ kpis: { ...HARBOR.kpis, masterOpen: undefined, masterPercent: undefined } });
+
+    expect(text('master', 'ui-ring .text')).toBe('—');
   });
 
   it('renders the master tile as it is: fraction, closed and open caption, and the ring with the percent', async () => {
@@ -316,7 +332,7 @@ describe('KpiBand', () => {
 
   it('shows a dash for a workspace without a master and keeps the tile calm', async () => {
     const empty: KpiBandModel = {
-      kpis: { ...HARBOR.kpis, master: null, specs: 0, stageGroups: { scoping: 0, building: 0, complete: 0 }, takeable: 0, warnings: 0, fog: 0 },
+      kpis: { ...HARBOR.kpis, master: null, masterOpen: null, masterPercent: null, specs: 0, stageGroups: { scoping: 0, building: 0, complete: 0 }, takeable: 0, warnings: 0, fog: 0 },
     };
     const { tile, text, pulse, squash } = await render(empty);
 

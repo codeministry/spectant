@@ -40,6 +40,7 @@
     [ws]="ws()"
     [rows]="held().shown"
     [archivedCount]="view()?.kpis.archived ?? null"
+    [counts]="listCounts()"
     [guidance]="view()?.guidance"
     [changed]="refresh.changedRows()"
     [pending]="held().pending"

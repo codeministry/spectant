@@ -10,7 +10,7 @@ import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { SpecTable } from './spec-table';
-import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readSpecRows } from './spec-table-model';
+import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
 /** A dashboard row as the server sends it (`DashboardSpecRow`), only the fields that matter overridden. */
 function wire(id: string, over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -20,6 +20,7 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
     title: `Spec ${id}`,
     type: 'feature',
     phase: 'scoping',
+    stageGroup: 'scoping',
     stage: 'review',
     progress: { closed: 0, total: 4 },
     nextCommand: `/spec-review ${id}`,
@@ -35,10 +36,11 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
 const LOCK = { id: 'ISC-1', session: 'spec-002-ISC-1', since: '2026-09-30T10:00:00Z', source: 'activity' };
 const BODY = {
   specs: [
-    wire('002', { phase: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.', taken: [LOCK] }),
+    wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.', taken: [LOCK] }),
     wire('003'),
   ],
   archive: [{ id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature' }],
+  kpis: { specs: 2, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 2 } },
 };
 
 const text = (el: Element | null | undefined): string => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
@@ -57,11 +59,12 @@ describe('SpecTable (prototype port, T89)', () => {
     });
   });
 
-  async function render(query: ListQuery = DEFAULT_QUERY, live: { changed?: ReadonlySet<string>; pending?: readonly string[] } = {}) {
+  async function render(query: ListQuery = DEFAULT_QUERY, live: { changed?: ReadonlySet<string>; pending?: readonly string[] } = {}, counts: SpecListCounts | null = readListCounts(BODY)) {
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(BODY));
     fixture.componentRef.setInput('archive', readArchiveRows(BODY));
+    fixture.componentRef.setInput('counts', counts);
     fixture.componentRef.setInput('query', query);
     if (live.changed) fixture.componentRef.setInput('changed', live.changed);
     if (live.pending) fixture.componentRef.setInput('pending', live.pending);
@@ -81,6 +84,21 @@ describe('SpecTable (prototype port, T89)', () => {
     // Spec 021 (T25): the counters are chips now, the archived count among them (was the meta text "2 · 1 archived").
     expect([...host.querySelectorAll('.t-head [data-counts] ui-chip')].map(text)).toEqual(['2 specs', '1 archived spec']);
     expect(host.querySelectorAll('.t-head [data-filter="phase"] button')).toHaveLength(3);
+  });
+
+  // Spec 021 · T83 (ISC-255): the chips carry the model's counts, the stage-group split the Specs tile shows, and the
+  // type counts `kpis.byType`; the panel counts no rows itself, so served numbers no grouping of the rows gives stand.
+  it('shows the served chip counts, never a count of its rows (ISC-255)', async () => {
+    const served = { specs: 9, stageGroups: { scoping: 7, building: 0, complete: 2 }, specsWithFog: 3, byType: { bug: 5, feature: 4 } };
+    const { host } = await render(DEFAULT_QUERY, {}, served);
+    const chips = (filter: string) => [...host.querySelectorAll(`.t-head [data-filter="${filter}"] button`)].map(text);
+    expect(chips('phase')).toEqual(['All 9', 'scoping 7', 'complete 2', 'fog 3']);
+    expect(chips('type')).toEqual(['All 9', 'bug 5', 'feature 4']);
+  });
+
+  it('shows no filter chips without the model counts', async () => {
+    const { host } = await render(DEFAULT_QUERY, {}, null);
+    expect(host.querySelectorAll('.t-head [data-filter] button')).toHaveLength(0);
   });
 
   it('sorts through a popover menu (Stage / ID / Progress), not a native select', async () => {
@@ -466,7 +484,7 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
 // stand behind "show all N", whose open state is `?open=specs`, so a reload keeps it.
 describe('SpecTable fold (spec 021, T25)', () => {
   const MANY = {
-    specs: Array.from({ length: 22 }, (_, i) => wire(String(i + 2).padStart(3, '0'), i % 2 === 0 ? { phase: 'building', stage: 'build' } : {})),
+    specs: Array.from({ length: 22 }, (_, i) => wire(String(i + 2).padStart(3, '0'), i % 2 === 0 ? { phase: 'building', stageGroup: 'building', stage: 'build' } : {})),
     archive: Array.from({ length: 17 }, (_, i) => ({ id: `1${String(i).padStart(2, '0')}`, slug: `1${String(i).padStart(2, '0')}-old`, title: 'Old', type: 'feature' })),
   };
 
@@ -586,6 +604,7 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
   const TYPED = {
     specs: [wire('002', { goal: 'Serves the dashboard.' }), wire('003', { type: 'bug' }), wire('004')],
     archive: [],
+    kpis: { specs: 3, stageGroups: { scoping: 3, building: 0, complete: 0 }, specsWithFog: 0, byType: { bug: 1, feature: 2 } },
   };
 
   beforeEach(() => {
@@ -606,6 +625,7 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(TYPED));
     fixture.componentRef.setInput('archive', readArchiveRows(TYPED));
+    fixture.componentRef.setInput('counts', readListCounts(TYPED));
     fixture.componentRef.setInput('query', DEFAULT_QUERY);
     await fixture.whenStable();
     return { fixture, host: fixture.nativeElement as HTMLElement };
@@ -670,6 +690,7 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(BODY));
     fixture.componentRef.setInput('archive', readArchiveRows(BODY));
+    fixture.componentRef.setInput('counts', readListCounts(BODY));
     fixture.componentRef.setInput('query', DEFAULT_QUERY);
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;

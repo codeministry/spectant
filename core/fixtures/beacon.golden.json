@@ -12,6 +12,15 @@
       "closed": 13,
       "total": 29
     },
+    "masterOpen": 16,
+    "masterPercent": 44,
+    "byType": {
+      "bug": 2,
+      "chore": 1,
+      "feature": 5,
+      "refactor": 1,
+      "spike": 2
+    },
     "claims": {
       "closed": 8,
       "total": 24

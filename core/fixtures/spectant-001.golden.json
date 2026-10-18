@@ -12,6 +12,11 @@
       "closed": 14,
       "total": 47
     },
+    "masterOpen": 33,
+    "masterPercent": 29,
+    "byType": {
+      "feature": 1
+    },
     "claims": {
       "closed": 14,
       "total": 47

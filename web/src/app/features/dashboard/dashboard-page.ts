@@ -22,7 +22,7 @@ import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
 import { SpecTable } from './spec-table/spec-table';
 import { WAITING_FRAGMENT, WaitingSection } from './context-rail/waiting-section';
 import { WarningsPanel } from './warnings-panel/warnings-panel';
-import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readSpecRows } from './spec-table/spec-table-model';
+import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readListCounts, readSpecRows } from './spec-table/spec-table-model';
 
 /**
  * The workspace dashboard `/w/:ws` (spec 001, design.md § Desktop / Tablet / Mobile Soll): KPI band, Brief, Next up,
@@ -107,6 +107,7 @@ export class DashboardPage {
     this.seen.set(new Set(this.rows().map((row) => row.id)));
   }
   protected readonly archive = computed(() => readArchiveRows(this.body()));
+  protected readonly listCounts = computed(() => readListCounts(this.body()));
   /** The backlog's stories (`DashboardModel.ideas`), none while the body lacks the block. */
   protected readonly ideas = computed(() => readIdeas(this.body()));
   /** The rail holds Next up and the warnings at wide; below it Next up follows the Brief and the warnings follow the Specs panel. */

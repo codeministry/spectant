@@ -5,7 +5,7 @@
 @let warningsRef = inSpecsKey(k.specs) | transloco: { count: k.specsWithWarnings ?? noValue, total: k.specs };
 @let fogRef = inSpecsKey(k.specs) | transloco: { count: k.specsWithFog ?? noValue, total: k.specs };
 <!-- The ring alone carries the master percent; the line below it names closed and open only (ISC-245.1). -->
-@let masterMeta = master === null ? undefined : ('kpi.closedOpen' | transloco: { closed: master.closed, open: masterOpen() });
+@let masterMeta = master === null ? undefined : ('kpi.closedOpen' | transloco: { closed: master.closed, open: k.masterOpen ?? noValue });
 <!--
   The prototype's kpi-band (app.js pageWorkspace): six tiles, each a ui-card with explicit edge and glow. Each shows its
   number with a reference (a fraction, or "in n of N specs" in the meta line) and a statement line (spec 021, ISC-245).
@@ -22,7 +22,7 @@
     [denominator]="master?.total"
     [meta]="masterMeta"
   >
-    <ui-ring visual [value]="masterPercent()" [size]="wide() ? 88 : 112" [stroke]="wide() ? 8 : 10" />
+    <ui-ring visual [value]="k.masterPercent ?? null" [size]="wide() ? 88 : 112" [stroke]="wide() ? 8 : 10" />
     <span class="statement">{{ 'kpi.statement.master' | transloco }}</span>
   </ui-kpi-tile>
 
@@ -129,7 +129,7 @@
   <ui-card [glow]="true" [padding]="16">
     <div class="pulse-in">
       <div class="top">
-        <ui-ring [value]="masterPercent()" [size]="72" [stroke]="8" />
+        <ui-ring [value]="k.masterPercent ?? null" [size]="72" [stroke]="8" />
         <div class="lead">
           <div class="head">
             <div class="type-eyebrow">{{ 'kpi.masterClaims' | transloco }}</div>

@@ -19,6 +19,8 @@ export interface SpecTableRow {
   readonly phase: string | null;
   /** The derived stage (`plan` … `done`). */
   readonly stage: string;
+  /** The row's stage group as core derives it (`stageGroup`): what the phase chips filter by; null when absent. */
+  readonly stageGroup: StageGroup | null;
   readonly closed: number;
   readonly total: number;
   readonly nextCommand: string | null;
@@ -53,7 +55,10 @@ export type SortKey = (typeof SORT_KEYS)[number];
 /** The sorts the panel's sort menu offers (prototype: Stage / ID / Progress); `?sort=next` still parses. */
 export const SORT_MENU: readonly SortKey[] = ['stage', 'id', 'progress'];
 
-/** The panel's query state. `phase` is a frontmatter phase or `fog`; null means all. */
+/**
+ * The panel's query state. `phase` is a stage group or `fog`; null means all. A `?phase=` value that is neither (an
+ * old frontmatter phase such as `climbing`) parses as all.
+ */
 export interface ListQuery {
   readonly phase: string | null;
   readonly type: string | null;
@@ -67,8 +72,10 @@ export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage'
 export const ALL = 'all';
 export const FOG = 'fog';
 
-/** Phases in lifecycle order; a phase outside this list follows them alphabetically. */
-const PHASE_ORDER = ['scoping', 'building', 'climbing', 'complete'];
+/** The stage groups core derives (`StageGroup` in `core/src/dashboard.ts`), in lifecycle order: the phase chips' keys. */
+export const STAGE_GROUPS = ['scoping', 'building', 'complete'] as const;
+export type StageGroup = (typeof STAGE_GROUPS)[number];
+const stageGroupOf = (value: unknown): StageGroup | null => STAGE_GROUPS.find((group) => group === value) ?? null;
 
 export const PHASE_TONES: Readonly<Partial<Record<string, Tone>>> = {
   scoping: 'secondary',
@@ -81,6 +88,20 @@ export const PHASE_TONES: Readonly<Partial<Record<string, Tone>>> = {
 export interface ListOption {
   readonly key: string;
   readonly count: number;
+}
+
+/**
+ * The counts the filter chips show, every one a field of the model's `kpis` (spec 021, ISC-255): the panel counts no
+ * rows itself, so a chip and the Specs tile read the same number (`stageGroups`).
+ */
+export interface SpecListCounts {
+  /** Every active spec: the `all` chips. */
+  readonly specs: number;
+  readonly stageGroups: Readonly<Record<StageGroup, number>>;
+  /** The active specs with open fog: the fog chip. */
+  readonly specsWithFog: number;
+  /** The active specs per type present: the type chips. */
+  readonly byType: Readonly<Record<string, number>>;
 }
 
 type Loose = Readonly<Record<string, unknown>>;
@@ -129,6 +150,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         priority: priorityOf(row['priority']),
         phase: text(row['phase']),
         stage: text(row['stage']) ?? 'plan',
+        stageGroup: stageGroupOf(row['stageGroup']),
         closed: count(progress['closed']),
         total: count(progress['total']),
         nextCommand: text(row['nextCommand']),
@@ -151,13 +173,27 @@ export function readArchiveRows(body: unknown): ArchiveRow[] {
   });
 }
 
+/** The chip counts from the model's `kpis`, passed through; null when the body carries none. */
+export function readListCounts(body: unknown): SpecListCounts | null {
+  const kpis = isLoose(body) ? body['kpis'] : null;
+  if (!isLoose(kpis)) return null;
+  const groups = isLoose(kpis['stageGroups']) ? kpis['stageGroups'] : {};
+  const types = isLoose(kpis['byType']) ? kpis['byType'] : {};
+  return {
+    specs: count(kpis['specs']),
+    stageGroups: { scoping: count(groups['scoping']), building: count(groups['building']), complete: count(groups['complete']) },
+    specsWithFog: count(kpis['specsWithFog']),
+    byType: Object.fromEntries(Object.entries(types).flatMap(([type, n]) => (typeof n === 'number' && Number.isFinite(n) ? [[type, n]] : []))),
+  };
+}
+
 /** Reads the query state from anything with `get` (the router's `ParamMap`); unknown values fall back to defaults. */
 export function parseListQuery(params: { get(name: string): string | null }): ListQuery {
   const phase = params.get('phase');
   const type = params.get('type');
   const sort = params.get('sort');
   return {
-    phase: phase === null || phase === '' || phase === ALL ? null : phase,
+    phase: phase === FOG ? FOG : stageGroupOf(phase),
     type: type === null || type === '' || type === ALL ? null : type,
     sort: SORT_KEYS.find((key) => key === sort) ?? DEFAULT_QUERY.sort,
     takeable: params.get('takeable') === '1',
@@ -180,7 +216,7 @@ const byId = (a: SpecTableRow, b: SpecTableRow): number => a.id.localeCompare(b.
 
 function matchesPhase(row: SpecTableRow, phase: string | null): boolean {
   if (phase === null) return true;
-  return phase === FOG ? row.fog > 0 : row.phase === phase;
+  return phase === FOG ? row.fog > 0 : row.stageGroup === phase;
 }
 
 /** The rows the panel shows for `query`: filtered, then ordered; `Array.prototype.sort` is stable on the model order. */
@@ -219,29 +255,26 @@ export function holdNewRows(rows: readonly SpecTableRow[], seen: ReadonlySet<str
   return { shown, pending };
 }
 
-function phaseRank(phase: string): number {
-  const index = PHASE_ORDER.indexOf(phase);
-  return index === -1 ? PHASE_ORDER.length : index;
-}
-
-/** The phase chips: All, each phase present in lifecycle order, then fog when a spec has open fog. */
-export function phaseOptions(rows: readonly SpecTableRow[]): ListOption[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) if (row.phase !== null) counts.set(row.phase, (counts.get(row.phase) ?? 0) + 1);
-  const phases = [...counts.keys()].sort((a, b) => phaseRank(a) - phaseRank(b) || a.localeCompare(b));
-  const fog = rows.filter((row) => row.fog > 0).length;
+/**
+ * The phase chips: All, each stage group with a spec in lifecycle order, then fog when a spec has open fog; every count
+ * is the model's (`kpis.specs`, `kpis.stageGroups`, `kpis.specsWithFog`), none without the model.
+ */
+export function phaseOptions(counts: SpecListCounts | null): ListOption[] {
+  if (counts === null) return [];
   return [
-    { key: ALL, count: rows.length },
-    ...phases.map((key) => ({ key, count: counts.get(key) ?? 0 })),
-    ...(fog > 0 ? [{ key: FOG, count: fog }] : []),
+    { key: ALL, count: counts.specs },
+    ...STAGE_GROUPS.filter((group) => counts.stageGroups[group] > 0).map((key) => ({ key, count: counts.stageGroups[key] })),
+    ...(counts.specsWithFog > 0 ? [{ key: FOG, count: counts.specsWithFog }] : []),
   ];
 }
 
-/** The type chips, alphabetical; none when the workspace holds fewer than two types (design.md § Tablet). */
-export function typeOptions(rows: readonly SpecTableRow[]): ListOption[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) if (row.type !== null) counts.set(row.type, (counts.get(row.type) ?? 0) + 1);
-  if (counts.size < 2) return [];
-  const types = [...counts.keys()].sort((a, b) => a.localeCompare(b));
-  return [{ key: ALL, count: rows.length }, ...types.map((key) => ({ key, count: counts.get(key) ?? 0 }))];
+/**
+ * The type chips, alphabetical, with the model's counts (`kpis.byType`, `kpis.specs` for All); none when the workspace
+ * holds fewer than two types (design.md § Tablet) or without the model.
+ */
+export function typeOptions(counts: SpecListCounts | null): ListOption[] {
+  if (counts === null) return [];
+  const types = Object.keys(counts.byType).sort((a, b) => a.localeCompare(b));
+  if (types.length < 2) return [];
+  return [{ key: ALL, count: counts.specs }, ...types.map((key) => ({ key, count: counts.byType[key] ?? 0 }))];
 }

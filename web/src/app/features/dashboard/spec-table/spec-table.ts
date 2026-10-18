@@ -47,6 +47,7 @@ import {
   phaseOptions,
   SORT_MENU,
   type SortKey,
+  type SpecListCounts,
   type SpecTableRow,
   typeOptions,
 } from './spec-table-model';
@@ -203,6 +204,11 @@ export class SpecTable {
    * archive rows it lists, the same folders.
    */
   readonly archivedCount = input<number | null>(null);
+  /**
+   * The filter chips' counts, the model's `kpis` (`readListCounts`): the phase chips count by stage group as the Specs
+   * tile does, the type chips by `byType` (spec 021, ISC-255). Without them the panel shows no chips.
+   */
+  readonly counts = input<SpecListCounts | null>(null);
   protected readonly archivedTotal = computed(() => this.archivedCount() ?? this.archive().length);
   /** "Show all N" is open: `?open=specs` in the address. */
   protected readonly allOpen = computed(() => this.openState.isOpen('specs'));
@@ -275,15 +281,15 @@ export class SpecTable {
 
   protected readonly phaseChips = computed<FilterOption[]>(() => {
     this.lang();
-    return phaseOptions(this.rows()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true), 'specs.filter.allStages'));
+    return phaseOptions(this.counts()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true), 'specs.filter.allStages'));
   });
   protected readonly typeChips = computed<FilterOption[]>(() => {
     this.lang();
-    return typeOptions(this.rows()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false), 'specs.filter.allTypes'));
+    return typeOptions(this.counts()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false), 'specs.filter.allTypes'));
   });
-  /** The strip under the head (prototype `.phase-strip`): one equal segment per active spec, in its phase's tone. */
+  /** The strip under the head (prototype `.phase-strip`): one equal segment per active spec, in its stage group's tone. */
   protected readonly strip = computed(() =>
-    this.rows().map((row) => ({ id: row.id, color: toneMark(PHASE_TONES[row.phase ?? ''] ?? 'neutral') })),
+    this.rows().map((row) => ({ id: row.id, color: toneMark(PHASE_TONES[row.stageGroup ?? ''] ?? 'neutral') })),
   );
   protected readonly phaseStripLabel = computed(() => {
     this.lang();

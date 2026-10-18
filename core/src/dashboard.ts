@@ -101,6 +101,18 @@ export interface DashboardKpis {
   readonly stageGroups: Readonly<Record<StageGroup, number>>;
   /** The master's recounted progress, e.g. 101/124; null without a master or without a claim section in it. */
   readonly master: Progress | null;
+  /** The master's claims not yet closed, `master.total − master.closed`: the master tile's open count; null without `master`. */
+  readonly masterOpen: number | null;
+  /**
+   * The master's whole percent closed, floored so 100 means every master claim is closed: the master tile's ring; null
+   * without `master` or without a claim in it.
+   */
+  readonly masterPercent: number | null;
+  /**
+   * The active specs per frontmatter `type:`, one entry per type present, keys in name order: the spec list's type chips.
+   * A spec without a type counts in no entry.
+   */
+  readonly byType: Readonly<Partial<Record<SpecType, number>>>;
   /** Live claims over the open (active, not done) specs. */
   readonly claims: Progress;
   /** Tasks over the open specs. */
@@ -1051,12 +1063,18 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   const warnings = sum(rows, (r) => r.warnings.length);
   const fog = masterFog + sum(rows, (r) => r.fog);
   const stageGroups = Object.fromEntries(STAGE_GROUPS.map((g) => [g, rows.filter((r) => r.stageGroup === g).length])) as Record<StageGroup, number>;
+  const masterCount = master !== null && master.section !== null ? master.counted : null;
+  const types = [...new Set(rows.flatMap((r) => (r.type === null ? [] : [r.type])))].sort();
+  const byType = Object.fromEntries(types.map((t) => [t, rows.filter((r) => r.type === t).length])) as Partial<Record<SpecType, number>>;
   const kpis: DashboardKpis = {
     specs: rows.length,
     building: stageGroups.building,
     scoping: stageGroups.scoping,
     stageGroups,
-    master: master !== null && master.section !== null ? master.counted : null,
+    master: masterCount,
+    masterOpen: masterCount === null ? null : Math.max(0, masterCount.total - masterCount.closed),
+    masterPercent: masterCount === null || masterCount.total === 0 ? null : Math.floor((masterCount.closed / masterCount.total) * 100),
+    byType,
     claims: { closed: sum(open, (r) => r.progress.closed), total: sum(open, (r) => r.progress.total) },
     tasks: { landed: sum(open, (r) => r.tasks?.landed ?? 0), total: sum(open, (r) => r.tasks?.total ?? 0) },
     takeable: sum(rows, (r) => r.takeable.length),
