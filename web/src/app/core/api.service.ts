@@ -36,7 +36,7 @@ import {
   type WorkspaceRouteResponses,
   type LibraryDocPage,
 } from '../../../../server/src/spec-routes.contract';
-import { type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
+import { type RunLocked, type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
 import type { Priority, WorkflowStage } from '../../../../core/src/files';
 import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
 
@@ -52,7 +52,33 @@ export type BacklogOp =
 
 export type WriteResult<R extends WriteOperation> =
   | { readonly kind: 'answer'; readonly answer: WriteAnswer<R> }
+  | (R extends RunLockedWrite ? { readonly kind: 'run-locked'; readonly body: RunLocked } : never)
   | { readonly kind: 'error'; readonly status: number };
+
+/**
+ * The writes a running run on their item refuses with 423 `run-locked` (spec 040, T56, ISC-225.1): the stage move and
+ * the allocation. The backlog write belongs to no item and never answers it. `WriteAnswer` keeps its 423 arm for the
+ * claim lock (`Locked`, read as `body.lock`); the run's 423 is its own result kind, so no caller takes one for the
+ * other.
+ */
+export type RunLockedWrite = Exclude<WriteOperation, 'backlog'>;
+
+/** The 423 body of a running run (`RunLocked`, `runLockedOf` in the writes contract): the run, its command, actor and start. */
+export const isRunLocked = (body: unknown): body is RunLocked => {
+  if (typeof body !== 'object' || body === null) return false;
+  const b = body as Partial<Record<keyof RunLocked, unknown>>;
+  const actor = b.actor as { readonly id?: unknown; readonly raw?: unknown } | null | undefined;
+  return (
+    b.error === 'run-locked' &&
+    typeof b.run === 'string' &&
+    (b.command === null || typeof b.command === 'string') &&
+    typeof b.since === 'string' &&
+    typeof actor === 'object' &&
+    actor !== null &&
+    typeof actor.id === 'string' &&
+    typeof actor.raw === 'string'
+  );
+};
 
 /**
  * What a `PUT` of a stored setting answers (the actor names, the board query): the body as stored when it fits the
@@ -475,7 +501,11 @@ export class ApiClient {
     }
   }
 
-  /** A write's answer through the contract's `writeAnswerOf`: the status and body of a 2xx or an error alike. */
+  /**
+   * A write's answer through the contract's `writeAnswerOf`: the status and body of a 2xx or an error alike. A 423
+   * `run-locked` of the stage move or the allocation, which `writeAnswerOf` does not fit, is `run-locked` with the run
+   * (spec 040, T56, ISC-225.1).
+   */
   private async write<R extends WriteOperation>(route: R, url: string, body: unknown): Promise<WriteResult<R>> {
     let status: number;
     let answer: unknown;
@@ -489,7 +519,9 @@ export class ApiClient {
       answer = failure.error;
     }
     const typed = writeAnswerOf(route, status, answer);
-    return typed === null ? { kind: 'error', status } : { kind: 'answer', answer: typed };
+    if (typed !== null) return { kind: 'answer', answer: typed };
+    if (status === 423 && route !== 'backlog' && isRunLocked(answer)) return { kind: 'run-locked', body: answer } as WriteResult<R>;
+    return { kind: 'error', status };
   }
 
   /** A `PUT` whose 200 body must pass the contract's validator `fits`; anything else is an `error`. */

@@ -20,6 +20,11 @@
   line-height: 16px;
 }
 
+/* Spec 040 (T58): the run's refusal above the disabled entries of a running card. */
+.run-notice {
+  margin-block: 0 8px;
+}
+
 .entries {
   display: grid;
   gap: 4px;

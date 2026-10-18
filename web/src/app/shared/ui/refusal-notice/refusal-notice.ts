@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIconButton } from '../button/icon-button';
 import { type NoticeTone, UiNotice } from '../notice/notice';
+import { elapsedText } from '../item-state/duration';
 import { UiReason } from '../reason/reason';
 import { type BacklogRefusal, type BoardRefusal, isBacklogRefusal, type Refusal } from './refusal';
 
@@ -18,6 +19,10 @@ import { type BacklogRefusal, type BoardRefusal, isBacklogRefusal, type Refusal 
  * - anything else (`failed`): the head and the status.
  * - T128, an allocation's 422 (`unallocated`): "Not allocated — slug stays an idea", then the reason from the catalog
  *   (`not-in-index`, or `folder-exists` naming the folder).
+ * - Spec 040 (T59, ISC-225.1), a running run on the item (`run-locked`): the one line "Not moved — 003 is running:
+ *   /spec-tasks 003 · a:claude:sess-32 · since 8 min" (`itemState.refusal`), whether the card's state refused the move
+ *   before anything was sent (drag, keys, "Move to…") or the write answered 423 `run-locked`. "Move to…" shows the
+ *   same notice above its disabled entries, without the ✕ (`dismissible` false).
  *
  * A backlog write (spec 037, ISC-198; design 037 § Ablehnung): the head "F8 not moved" or "Priority of F8 not changed",
  * then `ui-reason` with core's phrase verbatim (422, `refused`), "changed on disk · re-read" (409, `stale`) or the
@@ -60,6 +65,11 @@ import { type BacklogRefusal, type BoardRefusal, isBacklogRefusal, type Refusal 
           @let stage = 'stages.' + r.to | transloco;
           @if (r.kind === 'unallocated') {
             <p class="head" data-head>{{ 'board.workspace.allocate.notAllocated' | transloco: { slug: r.id } }}</p>
+          } @else if (r.kind === 'run-locked') {
+            @let d = duration();
+            <p class="head" data-head data-run-refusal>
+              {{ 'itemState.refusal' | transloco: { spec: r.id, command: r.command ?? none, actor: r.actor ?? none, duration: d ? (d.key | transloco: d.params) : none } }}
+            </p>
           } @else if (r.kind !== 'stale') {
             <p class="head" data-head>{{ 'board.workspace.refusal.notMoved' | transloco: { id: r.id, stage } }}</p>
           }
@@ -85,19 +95,23 @@ import { type BacklogRefusal, type BoardRefusal, isBacklogRefusal, type Refusal 
           }
         }
       </div>
-      <button
-        action
-        ui-icon-button
-        icon="x"
-        data-dismiss
-        [label]="'board.workspace.refusal.dismiss' | transloco"
-        (click)="closed.emit()"
-      ></button>
+      @if (dismissible()) {
+        <button
+          action
+          ui-icon-button
+          icon="x"
+          data-dismiss
+          [label]="'board.workspace.refusal.dismiss' | transloco"
+          (click)="closed.emit()"
+        ></button>
+      }
     </ui-notice>
   `,
 })
 export class RefusalNotice {
   readonly refusal = input.required<Refusal>();
+  /** False where the notice lasts as long as its cause and has no ✕: "Move to…" of a running card (spec 040, T58). */
+  readonly dismissible = input(true);
   /** The ✕: the board or the backlog writer forgets the refusal. */
   readonly closed = output();
 
@@ -109,6 +123,15 @@ export class RefusalNotice {
   protected readonly board = computed<BoardRefusal | null>(() => {
     const r = this.refusal();
     return isBacklogRefusal(r) ? null : r;
+  });
+
+  /** The placeholder for a detail the run's source does not name. */
+  protected readonly none = '—';
+
+  /** How long the refusing run has run (`elapsedText`); null when the refusal carries no duration. */
+  protected readonly duration = computed(() => {
+    const r = this.board();
+    return r?.kind === 'run-locked' && r.elapsedMs !== null ? elapsedText(r.elapsedMs) : null;
   });
 
   protected readonly tone = computed<NoticeTone>(() => (this.refusal().kind === 'stale' ? 'warning' : 'error'));

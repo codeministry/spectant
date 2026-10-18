@@ -7,6 +7,7 @@ import type { PlanningHolder, PlanningModel } from '../../../../../core/src/plan
 import { isWorkflowStage } from '../../../../../core/src/stage';
 import { FIXED_GATES } from '../../../../../core/src/workflow';
 import type { IdeaAllocated } from '../../../../../server/src/spec-routes.contract';
+import type { RunLocked } from '../../../../../server/src/writes.contract';
 import { ApiClient } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import type { BoardRefusal } from '../../shared/ui/refusal-notice/refusal';
@@ -101,6 +102,33 @@ export type BoardDropEvent = Pick<CdkDragDrop<unknown>, 'isPointerOverContainer'
   readonly item: { readonly data: BoardCard };
 };
 
+/** What a run-locked refusal names of the run (spec 040, T59): its command, its actor's id and how long it has run. */
+export type RunHold = Pick<Extract<BoardRefusal, { kind: 'run-locked' }>, 'command' | 'actor' | 'elapsedMs'>;
+
+/**
+ * The run that holds `card` (spec 040, T57, ISC-225.1): while the card's state, as the API served it, is `running`,
+ * the run's command, actor and duration; null on every other card. Read only, never decided here: core's state says
+ * running, and a running state without its run (a diagnostic) still holds the card, with nothing to name.
+ */
+export function runHoldOf(card: Pick<BoardCard, 'state'>): RunHold | null {
+  const state = card.state;
+  if (state?.state !== 'running') return null;
+  const run = state.run;
+  return { command: run?.command ?? state.command ?? null, actor: run?.actor.id ?? null, elapsedMs: run?.elapsedMs ?? null };
+}
+
+/**
+ * The run of a 423 `run-locked` (a run started after the board rendered the card): its duration from the card's own
+ * run when the reload has brought the same one, else from its start to the clock the page runs on (the refusal is a
+ * snapshot, not a live count).
+ */
+function runHoldOfLocked(card: Pick<BoardCard, 'state'>, body: RunLocked): RunHold {
+  const own = card.state?.run;
+  const started = Date.parse(body.since);
+  const elapsedMs = own?.run === body.run ? own.elapsedMs : Number.isFinite(started) ? Math.max(0, Date.now() - started) : null;
+  return { command: body.command, actor: body.actor.id, elapsedMs };
+}
+
 /** A duration token of `motion.css` in ms, read from the root so reduced motion (0ms) is honoured. */
 function tokenMs(doc: Document, name: string): number {
   if (typeof getComputedStyle !== 'function') return 0;
@@ -120,6 +148,10 @@ function tokenMs(doc: Document, name: string): number {
  * - **422, 409, 423, anything else:** nothing moves (the CDK puts the element back; the model never changed), a
  *   refusal is kept for the card and `app-refusal-notice` shows it under the card; never a toast. A 409 also reloads
  *   the planning tree, whose new hash the next drag sends.
+ * - **A running run (spec 040, T57, T59, ISC-225.1):** a card whose state is `running` does not lift
+ *   (`draggable`), and a move of it from any path is refused with `run-locked` before anything is sent (`holdRun`).
+ *   A 423 `run-locked` (a run that started after the render) leaves the same refusal and reloads the dashboard and
+ *   the planning tree, so the card shows its run and locks.
  *
  * Provided per board page (`provideBoardDrag`), with the CDK configuration above.
  */
@@ -167,6 +199,7 @@ export class BoardDrag {
    * drop asks for the allocation (T128) instead of sending a transition.
    */
   draggable(card: BoardCard): boolean {
+    if (runHoldOf(card) !== null) return false;
     if (card.kind === 'idea') return card.targets.length > 0;
     return card.id !== null && card.hash !== null;
   }
@@ -177,6 +210,7 @@ export class BoardDrag {
    * story anywhere else is not moved.
    */
   async move(ws: string, card: BoardCard, to: WorkflowStage | null): Promise<MoveOutcome> {
+    if (this.holdRun(card, to ?? card.stage)) return 'refused';
     if (card.kind === 'spec') return this.drop(ws, card, to);
     if (to === null || !card.targets.includes(to) || this.saving() !== null) return 'none';
     this.dismiss(card.key);
@@ -200,6 +234,10 @@ export class BoardDrag {
       this.refuse({ ...base, kind: 'failed', status: result.status });
       return null;
     }
+    if (result.kind === 'run-locked') {
+      this.refuseRunLocked(base, card, result.body);
+      return null;
+    }
     const answer = result.answer;
     switch (answer.status) {
       case 200:
@@ -221,6 +259,17 @@ export class BoardDrag {
         this.refuse({ ...base, kind: 'failed', status: 400 });
         return null;
     }
+  }
+
+  /**
+   * Spec 040 (T57, T59, ISC-225.1): when a run holds `card`, keeps the `run-locked` refusal under it and answers true;
+   * nothing is sent. The keys, "Move to…" and a press on the locked grip at medium and wide all come here.
+   */
+  holdRun(card: BoardCard, to: WorkflowStage): boolean {
+    const hold = runHoldOf(card);
+    if (hold === null) return false;
+    this.refuse({ key: card.key, id: card.id ?? card.slug, stage: card.stage, to, kind: 'run-locked', ...hold });
+    return true;
   }
 
   start(card: BoardCard): void {
@@ -271,6 +320,10 @@ export class BoardDrag {
       this.refuse({ ...base, kind: 'failed', status: result.status });
       return 'refused';
     }
+    if (result.kind === 'run-locked') {
+      this.refuseRunLocked(base, card, result.body);
+      return 'refused';
+    }
     const answer = result.answer;
     switch (answer.status) {
       case 200:
@@ -310,6 +363,13 @@ export class BoardDrag {
     );
     this.data.planning.reload();
     this.data.dashboard.reload();
+  }
+
+  /** The 423 `run-locked`: the run's refusal, and a reload so the card shows the run that holds it. */
+  private refuseRunLocked(base: Pick<BoardRefusal, 'key' | 'id' | 'stage' | 'to'>, card: BoardCard, body: RunLocked): void {
+    this.refuse({ ...base, kind: 'run-locked', ...runHoldOfLocked(card, body) });
+    this.data.dashboard.reload();
+    this.data.planning.reload();
   }
 
   private refuse(refusal: BoardRefusal): void {

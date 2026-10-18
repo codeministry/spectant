@@ -18,6 +18,12 @@ export type BoardRefusal = {
   | { readonly kind: 'failed'; readonly status: number }
   /** T128: the allocation's 422 (`AllocateRefused`); `id` is the story's slug. */
   | { readonly kind: 'unallocated'; readonly reason: AllocateRefused['reason']; readonly folder: string | null }
+  /**
+   * Spec 040 (T59, ISC-225.1): a run on the item is `running`, so nothing was sent (the card's state said so) or the
+   * write answered 423 `run-locked` (a run started after the board rendered). The run's command, its actor's id and
+   * how long it has run; null where the source names none.
+   */
+  | { readonly kind: 'run-locked'; readonly command: string | null; readonly actor: string | null; readonly elapsedMs: number | null }
 );
 
 /**

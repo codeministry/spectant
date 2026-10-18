@@ -111,6 +111,23 @@ describe('ApiClient spec 008 routes', () => {
       expect(await locked).toEqual({ kind: 'answer', answer: { status: 423, body: lockedBody } });
     });
 
+    // Spec 040 (T56, ISC-225.1): the run's 423 is its own kind with the run; the claim lock's 423 stays an answer.
+    it('answers a 423 run-locked as run-locked with the run, and an unfit one as error', async () => {
+      const actor = { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false };
+      const runBody = { error: 'run-locked', run: 'r-0308-1452', command: '/spec-tasks 003', actor, since: '2026-03-08T14:52:00Z' };
+      const running = api.transition('harbor', '003', 'review', HEX_A);
+      http.expectOne(URL).flush(runBody, { status: 423, statusText: 'Locked' });
+      expect(await running).toEqual({ kind: 'run-locked', body: runBody });
+
+      const unfit = api.transition('harbor', '003', 'review', HEX_A);
+      http.expectOne(URL).flush({ ...runBody, actor: 'a:claude:sess-32' }, { status: 423, statusText: 'Locked' });
+      expect(await unfit).toEqual({ kind: 'error', status: 423 });
+
+      const allocating = api.allocate('harbor', 'uptime-badges', HEX_A);
+      http.expectOne('/api/workspaces/harbor/ideas/uptime-badges/allocate').flush(runBody, { status: 423, statusText: 'Locked' });
+      expect(await allocating).toEqual({ kind: 'run-locked', body: runBody });
+    });
+
     it('answers a body that does not fit its status, a 404 and a network failure as error', async () => {
       const unfit = api.transition('harbor', '003', 'review', HEX_A);
       http.expectOne(URL).flush({ ...written, to: 'build' });

@@ -68,6 +68,10 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   on it, the single-pointer and keyboard path to the move (WCAG 2.5.7).
  * - Shift+← / Shift+→ anywhere on the card (the title link or the grip focused) emit `step` with -1 or 1; the board
  *   moves the card to the previous or next allowed stage (T127).
+ * - Spec 040 (T57, ISC-225.1): while the card's state is `running` the grip carries `data-locked`, shows `lock` in
+ *   place of `grip-vertical`, always visible, with the `not-allowed` cursor; the board disables the drag
+ *   (`BoardDrag.draggable`), so the card does not lift, and a press or the keys show the run's refusal. At compact the
+ *   ellipsis stays and opens "Move to…" with every entry disabled.
  *
  * Variants come only from `ui-card`: `side` (the edge, `--edge` per stage) on every card, `dashed` on a story's.
  */
@@ -125,6 +129,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
       :host(:hover) .grip, :host(:focus-within) .grip, :host(.cdk-drag-preview) .grip { opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) { .grip { transition: none; } }
+    .grip[data-locked] { opacity: 1; cursor: not-allowed; }
     /* Below 640 the prototype hides the drag grip and shows the card menu "Move to" (quiet-icon wb-move, ellipsis). */
     .i-move { display: none; }
     :host-context([data-tier='compact']) .grip { align-self: start; margin-block-start: -8px; opacity: 1; cursor: pointer; }
@@ -214,11 +219,12 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
           cdkDragHandle
           data-grip
           aria-haspopup="dialog"
+          [attr.data-locked]="locked() ? '' : null"
           [attr.aria-label]="'board.workspace.card.move' | transloco: { id: c.id ?? c.slug }"
           (click)="moveMenu.emit(grip)"
           #grip
         >
-          <ui-icon class="i-grip" name="grip-vertical" [size]="16" />
+          <ui-icon class="i-grip" [name]="locked() ? 'lock' : 'grip-vertical'" [size]="16" />
           <ui-icon class="i-move" name="ellipsis" [size]="16" />
         </button>
       </article>
@@ -242,6 +248,8 @@ export class BoardCard {
   }
 
   protected readonly edge = computed(() => CARD_EDGE[this.card().stage]);
+  /** A run on the card's item is running (spec 040, T57): the grip locks. The state as served decides. */
+  protected readonly locked = computed(() => this.card().state?.state === 'running');
   protected readonly ink = computed(() => reasonInk(this.card()));
   protected readonly glyph = computed<TypeGlyphKind>(() => this.card().type ?? 'idea');
   /** The phrase of a waiting card; null on every other card, which shows no reason line. */

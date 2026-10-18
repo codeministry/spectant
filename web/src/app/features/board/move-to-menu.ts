@@ -7,7 +7,7 @@ import type { Tier } from '../../layout/shell/tier';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
-import { BoardDrag, type DropHint, dropHint } from './board-drag';
+import { BoardDrag, type BoardRefusal, type DropHint, dropHint, runHoldOf } from './board-drag';
 import type { BoardCard, BoardModel } from './board-model';
 import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
 
@@ -45,6 +45,10 @@ interface MoveEntry {
  * the refusal notice, are the drop's. On a 200 the menu closes and emits `moved`; a story's entry opens the allocation
  * dialog (T128) and closes the menu; a refusal keeps the menu open with the notice under its entry.
  *
+ * Spec 040 (T58, ISC-225.1): for a card a running run holds, every entry is disabled (`BoardDrag.draggable`) and the
+ * run's refusal, the notice the drag and the keys show (`itemState.refusal`), stands above them without its ✕
+ * (`data-move-run`), for as long as the card's state is `running`.
+ *
  * At compact the menu is a `ui-sheet` bottom sheet (a modal `<dialog>`, 56 px rows); at medium and wide a `ui-popover`
  * anchored to the grip (CSS anchor positioning, else the trigger's `getBoundingClientRect()`). Esc closes either one
  * and focus returns to the grip. One instance serves the whole board.
@@ -68,6 +72,9 @@ interface MoveEntry {
 
     <ng-template #list let-surface>
       @if (open() && card(); as c) {
+        @if (runRefusal(); as rr) {
+          <app-refusal-notice class="run-notice" data-move-run [refusal]="rr" [dismissible]="false" />
+        }
         <ul class="entries" role="list" data-move-menu [attr.data-surface]="surface" [attr.data-tier]="tier()">
           @for (e of entries(); track e.stage) {
             <li>
@@ -96,7 +103,7 @@ interface MoveEntry {
                 }
               </button>
               @if (refusal(); as r) {
-                @if (r.to === e.stage) {
+                @if (r.to === e.stage && r.kind !== 'run-locked') {
                   <app-refusal-notice [refusal]="r" (closed)="drag.dismiss(c.key)" />
                 }
               }
@@ -146,6 +153,14 @@ export class MoveToMenu {
   protected readonly refusal = computed(() => {
     const card = this.card();
     return card === null ? null : this.drag.refusalOf(card);
+  });
+
+  /** The run's refusal above the entries while a run holds the card (T58); null otherwise. */
+  protected readonly runRefusal = computed<BoardRefusal | null>(() => {
+    const card = this.card();
+    const hold = card === null ? null : runHoldOf(card);
+    if (card === null || hold === null) return null;
+    return { key: card.key, id: card.id ?? card.slug, stage: card.stage, to: card.stage, kind: 'run-locked', ...hold };
   });
 
   protected readonly heading = computed(() => {
