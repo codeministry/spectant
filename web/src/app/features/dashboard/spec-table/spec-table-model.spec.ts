@@ -163,3 +163,23 @@ describe('holdNewRows (design.md § Live update: new specs never reflow under th
     expect(holdNewRows(rows.slice(0, 1), new Set(['002', '009']))).toEqual({ shown: rows.slice(0, 1), pending: [] });
   });
 });
+
+describe('spec-table-model description beside the title (ISC-249)', () => {
+  const described = (title: string, goal: string): SpecTableRow | undefined => readSpecRows({ specs: [wire('021', { title, goal })] })[0];
+
+  it('spec-table-model drops the description when it equals the title', () => {
+    expect(described('Keeps the manifest in step', 'Keeps the manifest in step')?.description).toBeNull();
+  });
+
+  it('spec-table-model drops the description when it differs from the title only by the trailing full stop or whitespace', () => {
+    expect(described('Keeps the manifest in step', 'Keeps the manifest in step.')?.description).toBeNull();
+    expect(described('Keeps the manifest  in step.', '  Keeps the manifest in\tstep ')?.description).toBeNull();
+    expect(described('Keeps the manifest in step!', 'Keeps the manifest in step …')?.description).toBeNull();
+  });
+
+  it('spec-table-model keeps title and description when they differ, and shows the description as the model gives it', () => {
+    const row = described('Keeps the manifest in step', 'The manifest never drifts from the folder.');
+    expect(row).toMatchObject({ title: 'Keeps the manifest in step', description: 'The manifest never drifts from the folder.' });
+    expect(described('Keeps the manifest', 'Keeps the manifest in step.')?.description).toBe('Keeps the manifest in step.');
+  });
+});

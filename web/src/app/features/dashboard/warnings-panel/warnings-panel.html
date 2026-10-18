@@ -123,7 +123,7 @@
       <span class="path" data-overlap-path [title]="path" [attr.data-full]="path">{{ shown[$index] }}</span>
     }
     @if (count > 3) {
-      <button type="button" class="more-paths" data-overlap-more [uiPopoverTrigger]="allPaths">{{ 'warnings.overlap.more' | transloco: { count: count - 3 } }}</button>
+      <button type="button" class="more-paths" data-overlap-more [uiPopoverTrigger]="allPaths">{{ (count - 3 === 1 ? 'warnings.overlap.more.one' : 'warnings.overlap.more.other') | transloco: { count: count - 3 } }}</button>
       <ui-popover #allPaths [label]="'warnings.overlap.paths' | transloco">
         <ul class="all-paths" data-overlap-all>
           @for (path of overlap.paths; track $index) {

@@ -25,7 +25,7 @@ interface BlockerView {
  * - Violet (scoping), not filled: 1 px dashed `--color-secondary` (the prototype's `--violet`), ink `--ques-ink`, `clock`
  *   12 px, mono 500 11, 22 px high; hover `--ques-t`, the number dotted-underlined, focus the app's ring.
  * - A known blocker links to its spec page; an unknown one (`042`) is a plain span with the same look and no link.
- * - `meta`: the partial scope ("4 of 5 open tasks") as a separate muted `.meta` behind the chips, never inside the chip
+ * - `meta`: the partial scope ("4 of 5 open tasks held") as a separate muted `.meta` behind the chips, never inside the chip
  *   text; without it (narrow surfaces) the scope lives in the first chip's accessible name and tooltip. A full hold
  *   carries no scope: the stage chip already reads `blocked`.
  * - Under `pointer: coarse` each chip gets a 44 × 44 hit area through `::before`, as `ui-button` does.
@@ -101,7 +101,7 @@ export class UiWaitsChip {
 
   protected readonly prefix = computed(() => this.t('on'));
 
-  /** "4 of 5 open tasks" for a partial hold; null for a full one. */
+  /** "4 of 5 open tasks held" for a partial hold; null for a full one. */
   private readonly scope = computed(() => {
     const { full, heldTasks, openTasks } = this.wait();
     return full ? null : this.t('partial', { held: heldTasks, open: openTasks });

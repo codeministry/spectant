@@ -266,7 +266,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
           <a class="notes-pill" data-notes-pill [routerLink]="link">
             <ui-icon name="sticky-note" [size]="14" />
             @if (notes(); as count) {
-              {{ 'specHead.notesCount' | transloco: { count } }}
+              {{ (count === 1 ? 'specHead.notesCount.one' : 'specHead.notesCount.other') | transloco: { count } }}
             } @else {
               {{ 'specHead.notes' | transloco }}
             }
@@ -434,7 +434,7 @@ export class SpecHead {
     const updated = relativeTime(head.updated, Date.now(), lang);
     if (updated !== null) parts.push(this.transloco.translate('specHead.updated', { time: updated }));
     if (head.round !== null) parts.push(this.transloco.translate('specHead.round', { round: head.round }));
-    if (head.uncommittedFiles !== null) parts.push(this.transloco.translate('specHead.uncommitted', { count: head.uncommittedFiles }));
+    if (head.uncommittedFiles !== null) parts.push(this.transloco.translate(head.uncommittedFiles === 1 ? 'specHead.uncommitted.one' : 'specHead.uncommitted.other', { count: head.uncommittedFiles }));
     return parts;
   });
 

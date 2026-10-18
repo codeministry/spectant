@@ -71,13 +71,13 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
   switch (id) {
     case 'status':
       return [
-        ['specDashboard.tiles.status.entries', { count: areas.status.timelineEntries }],
-        ['specDashboard.tiles.status.warnings', { count: areas.status.warnings }],
+        [areas.status.timelineEntries === 1 ? 'specDashboard.tiles.status.entries.one' : 'specDashboard.tiles.status.entries.other', { count: areas.status.timelineEntries }],
+        [areas.status.warnings === 1 ? 'specDashboard.tiles.status.warnings.one' : 'specDashboard.tiles.status.warnings.other', { count: areas.status.warnings }],
       ];
     case 'live':
       return [
         areas.live.agentsWorking > 0
-          ? ['specDashboard.tiles.live.working', { count: areas.live.agentsWorking }]
+          ? [areas.live.agentsWorking === 1 ? 'specDashboard.tiles.live.working.one' : 'specDashboard.tiles.live.working.other', { count: areas.live.agentsWorking }]
           : ['specDashboard.tiles.live.idle', {}],
         ['specDashboard.tiles.live.source', { source: areas.live.lockSource }],
       ];
@@ -91,12 +91,12 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
         DOC_KEYS.some((doc) => areas.docs[doc])
           ? ['specDashboard.tiles.library.present', { names: DOC_KEYS.filter((doc) => areas.docs[doc]).map((doc) => t(`specDashboard.docNames.${doc}`)).join(' · ') }]
           : ['specDashboard.tiles.library.none', {}],
-        ['specDashboard.tiles.library.decisions', { count: areas.docs.decisions }],
+        [areas.docs.decisions === 1 ? 'specDashboard.tiles.library.decisions.one' : 'specDashboard.tiles.library.decisions.other', { count: areas.docs.decisions }],
       ];
     case 'notes':
       return [
-        areas.notes.count === null ? ['specDashboard.tiles.notes.later', {}] : ['specDashboard.tiles.notes.count', { count: areas.notes.count }],
-        ['specDashboard.tiles.notes.board', { count: areas.board.rounds }],
+        areas.notes.count === null ? ['specDashboard.tiles.notes.later', {}] : [areas.notes.count === 1 ? 'specDashboard.tiles.notes.count.one' : 'specDashboard.tiles.notes.count.other', { count: areas.notes.count }],
+        [areas.board.rounds === 1 ? 'specDashboard.tiles.notes.board.one' : 'specDashboard.tiles.notes.board.other', { count: areas.board.rounds }],
       ];
   }
 }

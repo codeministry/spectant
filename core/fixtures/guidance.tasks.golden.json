@@ -98,6 +98,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 3,
+      "done": 0,
       "boxes": {
         "landed": 0,
         "total": 3
@@ -112,6 +113,10 @@
         {
           "name": "open",
           "count": 3
+        },
+        {
+          "name": "done",
+          "count": 0
         }
       ]
     },
@@ -216,6 +221,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 3,
+      "done": 0,
       "boxes": {
         "landed": 0,
         "total": 3
@@ -230,6 +236,10 @@
         {
           "name": "open",
           "count": 3
+        },
+        {
+          "name": "done",
+          "count": 0
         }
       ]
     },
@@ -334,6 +344,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 3,
+      "done": 0,
       "boxes": {
         "landed": 0,
         "total": 3
@@ -348,6 +359,10 @@
         {
           "name": "open",
           "count": 3
+        },
+        {
+          "name": "done",
+          "count": 0
         }
       ]
     },
@@ -487,6 +502,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 4,
+      "done": 1,
       "boxes": {
         "landed": 1,
         "total": 4
@@ -517,6 +533,10 @@
         {
           "name": "question",
           "count": 1
+        },
+        {
+          "name": "done",
+          "count": 0
         },
         {
           "name": "closed",

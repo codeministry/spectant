@@ -4,7 +4,7 @@
   <ui-notice>{{ 'shell.unavailable' | transloco }}</ui-notice>
 } @else {
   <!-- Prototype eyebrow `WS · DASHBOARD · 6 SPECS` (spec 024): the page segment, then the count of active specs. -->
-  <ui-page-head [segments]="[ws(), ('shell.pages.specs' | transloco), ('specs.countSegment' | transloco: { count: rows().length })]">
+  <ui-page-head [segments]="[ws(), ('shell.pages.specs' | transloco), ((rows().length === 1 ? 'specs.countSegment.one' : 'specs.countSegment.other') | transloco: { count: rows().length })]">
     <!-- Prototype `page-head` h1: the workspace badge (`ws-badge page-mark`), "Specs" and the muted "· <ws>". -->
     <div class="h1-row" ngProjectAs="h1">
       <ui-ws-badge class="page-mark" size="page" [name]="ws()" aria-hidden="true" />

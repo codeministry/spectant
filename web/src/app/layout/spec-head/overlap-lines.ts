@@ -102,7 +102,7 @@ const OPEN_PATHS = 3;
           </ul>
           @if (line.paths.length > openPaths && !expanded().has(line.other)) {
             <button type="button" class="more" data-overlap-more [attr.aria-expanded]="false" (click)="expand(line.other)">
-              {{ 'warnings.overlap.more' | transloco: { count: line.paths.length - openPaths } }}
+              {{ (line.paths.length - openPaths === 1 ? 'warnings.overlap.more.one' : 'warnings.overlap.more.other') | transloco: { count: line.paths.length - openPaths } }}
               <ui-icon name="chevron-down" [size]="12" />
             </button>
           }

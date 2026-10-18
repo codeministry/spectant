@@ -287,6 +287,9 @@ The Tasks tab's state per task is the newest `rounds.jsonl` result card of the s
 dispatched, held, question, concerns, fail, done or closed; without one the checkbox decides, and a checked box
 outranks a round that left the task unfinished. An open spec edge on an open task, or on its claim, makes that task
 `held` with the reason `waits on NNN` over an open, dispatched or held state; fail, question and concerns keep theirs.
+The Tasks tab counts one unit, the task row (spec 021): `rows` is every row, struck ones included; `done` is the rows
+whose state is done or closed; `byStatus` holds one count per row's state, so its counts sum to `rows`, and carries
+`done` even at 0. The box fraction (`boxes`) stays for the views that show it.
 
 The frontmatter is not read; the reviewed hash ignores checkbox states and `~~`.
 

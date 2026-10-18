@@ -1571,14 +1571,23 @@ export interface TaskCount {
 
 export interface TasksTab extends TasksModel {
   readonly tasks: readonly TaskRow[];
+  /**
+   * The Tasks tab counts one unit, the task row (spec 021, ISC-252): its head line reads `done` of `rows`, its `all`
+   * filter is `rows`, and the counts of `byStatus` sum to `rows`. `boxes` stays for the fraction other views show.
+   */
   readonly counts: {
-    /** Every row, struck ones included. */
+    /** Every row, struck ones included: the head line's whole and the `all` filter. */
     readonly rows: number;
+    /** The rows whose status has landed (`done` or `closed`), struck ones never: the head line's done part. */
+    readonly done: number;
     /** The checkbox lines only (struck bullets are none): the fraction archive.ts and the dashboard count. */
     readonly boxes: { readonly landed: number; readonly total: number };
     /** Constitution lanes in table order, then lanes only tasks.md names (first seen), `operator` last; only lanes with rows. */
     readonly byLane: readonly TaskCount[];
-    /** `TaskStatus` order, only statuses with rows. */
+    /**
+     * `TaskStatus` order, one entry per row's status, so the counts sum to `rows`; only statuses with rows, except
+     * `done`, which is always present (its chip shows at 0).
+     */
     readonly byStatus: readonly TaskCount[];
   };
   /** Malformed lines, unknown lanes, dangling edges and probe-mapping gaps; the parser never throws. */

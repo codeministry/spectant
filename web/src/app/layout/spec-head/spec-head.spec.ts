@@ -482,7 +482,7 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
     expect(text(link)).toBe('waits on 006');
     expect(link?.getAttribute('href')).toBe('/w/harbor/s/006');
     expect(link?.getAttribute('aria-label')).toBe('Waits on spec 006, Search index');
-    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 of 7 open tasks');
+    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 of 7 open tasks held');
   });
 
   it('stands on blocked with the chip and no meta (full)', async () => {

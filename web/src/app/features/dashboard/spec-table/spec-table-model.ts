@@ -28,7 +28,10 @@ export interface SpecTableRow {
   /** How many warnings the spec carries. */
   readonly warnings: number;
   readonly fog: number;
-  /** The one-line description under the title: the `## Goal` line the model carries; null when it is empty. */
+  /**
+   * The one-line description under the title: the `## Goal` line the model carries; null when it is empty or does not
+   * differ from the title after normalizing whitespace and trailing punctuation (ISC-249), so the sentence stands once.
+   */
   readonly description: string | null;
   /** The session holding a lock on one of the spec's claims (the first in claim order); null without locks. */
   readonly agent: string | null;
@@ -91,6 +94,20 @@ const listOf = (body: unknown, key: string): Loose[] => {
   return Array.isArray(list) ? list.filter(isLoose) : [];
 };
 
+/** A line as the title comparison sees it: whitespace runs collapsed, the ends trimmed, trailing punctuation dropped. */
+const compared = (line: string): string =>
+  line
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .replace(/[\s\p{P}]+$/u, '');
+
+/**
+ * The description the row shows (ISC-249): the goal line as core gives it, or null when it is empty or says nothing
+ * the title does not, compared after normalizing whitespace and trailing punctuation; the shown text is never changed.
+ */
+const descriptionOf = (goal: string, title: string): string | null =>
+  goal === '' || compared(goal) === compared(title) ? null : goal;
+
 /** The row's `waits` as core sends it (`SpecWait`), passed through; null unless it names at least one blocker. */
 const waitsOf = (value: unknown): SpecWait | null =>
   isLoose(value) && Array.isArray(value['blockers']) && value['blockers'].length > 0 ? (value as unknown as SpecWait) : null;
@@ -103,10 +120,11 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
     const takeable = Array.isArray(row['takeable']) ? row['takeable'].flatMap((claim) => text(claim) ?? []) : [];
     const goal = text(row['goal'])?.trim() ?? '';
     const holder = Array.isArray(row['taken']) ? row['taken'].find(isLoose) : undefined;
+    const title = text(row['title']) ?? id;
     return [
       {
         id,
-        title: text(row['title']) ?? id,
+        title,
         type: text(row['type']),
         priority: priorityOf(row['priority']),
         phase: text(row['phase']),
@@ -118,7 +136,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         takeable,
         warnings: Array.isArray(row['warnings']) ? row['warnings'].length : 0,
         fog: count(row['fog']),
-        description: goal === '' ? null : goal,
+        description: descriptionOf(goal, title),
         agent: holder === undefined ? null : text(holder['session']),
         waits: waitsOf(row['waits']),
       },

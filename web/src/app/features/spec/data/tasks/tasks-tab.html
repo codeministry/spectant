@@ -236,7 +236,7 @@
     @if (hidden(); as hidden) {
       <!-- Prototype `details.fold-row`: "+ 16 more done · T1–T11, T20–T26" closes the card; Show brings the rows back. -->
       <details class="fold-row" data-done-hidden>
-        <summary>{{ 'tasks.doneHidden' | transloco: hidden }}</summary>
+        <summary>{{ (hidden.count === 1 ? 'tasks.doneHidden.one' : 'tasks.doneHidden.other') | transloco: hidden }}</summary>
         <p class="fold-body">
           {{ 'tasks.doneHiddenBody' | transloco }}
           <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>

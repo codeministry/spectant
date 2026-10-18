@@ -379,12 +379,21 @@ export function parseTaskLines(input: TaskParseInput): TasksTab {
     probeMapping,
     counts: {
       rows: tasks.length,
+      done: tasks.filter((t) => LANDED.has(t.status)).length,
       boxes: { landed: boxes.filter((t) => t.state === 'done').length, total: boxes.length },
       byLane: laneCounts(tasks, tableLanes),
-      byStatus: STATUS_ORDER.map((name) => ({ name, count: tasks.filter((t) => t.status === name).length })).filter((c) => c.count > 0),
+      byStatus: statusCounts(tasks),
     },
     diagnostics,
   };
+}
+
+/**
+ * One count per row's status in `TaskStatus` order, so they sum to the rows (ISC-252); statuses with rows only, except
+ * `done`, which stays at 0 so its chip shows.
+ */
+function statusCounts(tasks: readonly TaskRow[]): TaskCount[] {
+  return STATUS_ORDER.map((name) => ({ name, count: tasks.filter((t) => t.status === name).length })).filter((c) => c.count > 0 || c.name === 'done');
 }
 
 /** Constitution lanes in table order, then lanes only tasks.md names (first seen), `operator` last; rows only. */

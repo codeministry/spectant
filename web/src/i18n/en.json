@@ -80,18 +80,33 @@
   "kpi": {
     "masterClaims": "Master claims",
     "specClaims": "Spec claims",
-    "open": "{{count}} open",
+    "open": {
+      "one": "{{count}} open",
+      "other": "{{count}} open"
+    },
     "closedCaption": "{{percent}} % closed · {{open}} open",
+    "closedOpen": "{{closed}} closed · {{open}} open",
     "specs": "Specs",
     "takeable": "Takeable",
     "takeableNow": "Takeable now",
     "attention": "Attention",
     "attentionDetail": "{{warnings}} warnings · {{fog}} open fog",
     "attentionCompact": "{{warnings}} · {{fog}} fog",
+    "warnings": "Warnings",
+    "fog": "Open fog",
+    "of": "of {{total}}",
     "archive": "Archive",
     "takeableCaption": "claims ready to build",
     "archiveCaption": "archived spec",
-    "master": "Master"
+    "master": "Master",
+    "statement": {
+      "master": "Master claims closed; more is better",
+      "specClaims": "Spec claims closed; more is better",
+      "specs": "Specs complete; more is better",
+      "takeable": "Claims ready to build; more is better",
+      "warnings": "Warnings to resolve; fewer is better",
+      "fog": "Questions still open; fewer is better"
+    }
   },
   "brief": {
     "title": "Brief",
@@ -99,7 +114,10 @@
     "asOf": "as of {{date}}",
     "stale": "stale",
     "more": "More…",
-    "less": "Less"
+    "less": "Less",
+    "showWhole": "Show whole TL;DR",
+    "showWholeName": "Show whole TL;DR, all sections of the brief",
+    "lang": "Language of the text: {{lang}}"
   },
   "specs": {
     "title": "Specs",
@@ -110,12 +128,24 @@
     },
     "meta": "{{active}} active · {{archived}} archived",
     "metaShort": "{{active}} · {{archived}} archived",
-    "countSegment": "{{count}} specs",
-    "typeMeta": "{{count}} {{type}} · {{archived}} archived",
+    "countSegment": {
+      "one": "{{count}} spec",
+      "other": "{{count}} specs"
+    },
+    "typeMeta": {
+      "one": "{{count}} {{type}} · {{archived}} archived",
+      "other": "{{count}} {{type}} · {{archived}} archived"
+    },
+    "showAll": {
+      "one": "Show the {{count}} spec",
+      "other": "Show all {{count}} specs"
+    },
     "filter": {
       "label": "Filter by phase",
       "typeLabel": "Filter by type",
       "all": "All",
+      "allStages": "All stages, {{count}}",
+      "allTypes": "All types, {{count}}",
       "fog": "fog"
     },
     "sort": {
@@ -158,6 +188,7 @@
   "nextUp": {
     "title": "Next up",
     "showAll": "Show all {{count}}",
+    "moreName": "More… {{entry}}",
     "badge": "Next up: {{count}}",
     "empty": "Nothing ready to build",
     "emptyHint": "Every active spec is waiting on scoping. Run /spec-plan on a specified spec to get one moving.",
@@ -189,13 +220,20 @@
         "other": "Shares {{count}} files with"
       },
       "noEdge": "no edge",
-      "more": "+{{count}} more",
+      "more": {
+        "one": "+{{count}} more",
+        "other": "+{{count}} more"
+      },
       "paths": "Shared files",
       "target": "in {{id}}",
       "copyTitle": "Copy the edge for this spec’s tasks.md",
       "moreOverlaps": {
         "one": "+1 more overlap",
         "other": "+{{count}} more overlaps"
+      },
+      "disclosure": {
+        "one": "{{count}} overlap",
+        "other": "{{count}} overlaps"
       },
       "toHead": "Show in the head",
       "region": "Overlaps with other specs"
@@ -842,10 +880,16 @@
       "lane": "Filter by lane",
       "status": "Filter by state",
       "all": "all",
+      "allLanes": "All lanes, {{count}}",
+      "allStatuses": "All statuses, {{count}}",
       "hideDone": "hide done"
     },
     "landed": "{{landed}}/{{total}} boxes ticked",
     "result": "{{shown}} of {{total}} tasks",
+    "doneOfTotal": {
+      "one": "{{done}} of {{count}} task done",
+      "other": "{{done}} of {{count}} tasks done"
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -884,7 +928,10 @@
       "operator": "your step · tick it when done",
       "struck": "{{text}}"
     },
-    "doneHidden": "+ {{count}} more done · {{ids}}",
+    "doneHidden": {
+      "one": "+ {{count}} more done · {{ids}}",
+      "other": "+ {{count}} more done · {{ids}}"
+    },
     "doneHiddenBody": "Hidden to keep the open work in view.",
     "show": "Show",
     "helper": "Ticking a task only writes the box in tasks.md — it never closes a claim. Writes pause while an agent holds a claim on this spec.",
@@ -926,7 +973,10 @@
       "claimsMeta": "{{open}} open · {{takeable}} takeable",
       "tasks": "Tasks landed",
       "round": "Round",
-      "agentsWorking": "{{count}} agents working",
+      "agentsWorking": {
+        "one": "{{count}} agent working",
+        "other": "{{count}} agents working"
+      },
       "noAgent": "No agent working",
       "gates": "Gates",
       "waiting": "Waits on you",
@@ -968,11 +1018,20 @@
     "tiles": {
       "label": "Inside this spec",
       "status": {
-        "entries": "{{count}} timeline entries",
-        "warnings": "{{count}} warnings"
+        "entries": {
+          "one": "{{count}} timeline entry",
+          "other": "{{count}} timeline entries"
+        },
+        "warnings": {
+          "one": "{{count}} warning",
+          "other": "{{count}} warnings"
+        }
       },
       "live": {
-        "working": "{{count}} agents working",
+        "working": {
+          "one": "{{count}} agent working",
+          "other": "{{count}} agents working"
+        },
         "idle": "No agent working",
         "source": "Lock source: {{source}}"
       },
@@ -984,12 +1043,21 @@
       "library": {
         "present": "{{names}}",
         "none": "No plan, design or constitution yet",
-        "decisions": "{{count}} decisions"
+        "decisions": {
+          "one": "{{count}} decision",
+          "other": "{{count}} decisions"
+        }
       },
       "notes": {
         "later": "Notes arrive with a later task",
-        "count": "{{count}} notes",
-        "board": "{{count}} rounds on the board"
+        "count": {
+          "one": "{{count}} note",
+          "other": "{{count}} notes"
+        },
+        "board": {
+          "one": "{{count}} round on the board",
+          "other": "{{count}} rounds on the board"
+        }
       }
     },
     "docNames": {
@@ -1061,7 +1129,10 @@
       "copy": "Copy command",
       "copied": "Copied",
       "manual": "Select and press ⌘C",
-      "takeable": "{{count}} takeable",
+      "takeable": {
+        "one": "{{count}} takeable",
+        "other": "{{count}} takeable"
+      },
       "locked": "locked by {{session}}",
       "free": "no lock held"
     },
@@ -1184,11 +1255,18 @@
     "specCrumb": "Spec {{id}}",
     "more": "More…",
     "less": "Less",
+    "goalMore": "More… goal of {{id}}",
     "notes": "Notes",
-    "notesCount": "{{count}} notes",
+    "notesCount": {
+      "one": "{{count}} note",
+      "other": "{{count}} notes"
+    },
     "updated": "updated {{time}}",
     "round": "round {{round}}",
-    "uncommitted": "{{count}} files uncommitted",
+    "uncommitted": {
+      "one": "{{count}} file uncommitted",
+      "other": "{{count}} files uncommitted"
+    },
     "agent": {
       "on": "on {{claim}} · {{time}}",
       "paused": "writes paused"
@@ -2416,7 +2494,7 @@
     "nameBare": "Waits on spec {{id}}",
     "unknown": "Waits on spec {{id}}, no such spec",
     "more": "Also waits on {{ids}}",
-    "partial": "{{held}} of {{open}} open tasks",
+    "partial": "{{held}} of {{open}} open tasks held",
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },

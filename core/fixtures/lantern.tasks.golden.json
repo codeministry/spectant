@@ -348,6 +348,7 @@
     ],
     "counts": {
       "rows": 8,
+      "done": 4,
       "boxes": {
         "landed": 4,
         "total": 8

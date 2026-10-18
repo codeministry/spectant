@@ -54,7 +54,7 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
     expect(text(chip)).toBe('waits on 002');
     expect(chip.getAttribute('href')).toBe('/w/harbor/s/002');
     expect(chip.querySelector('ui-icon[name="clock"]')).not.toBeNull();
-    expect(chip.getAttribute('aria-label')).toBe('Waits on spec 002, Web console, 4 of 5 open tasks');
+    expect(chip.getAttribute('aria-label')).toBe('Waits on spec 002, Web console, 4 of 5 open tasks held');
     expect(chip.getAttribute('title')).toBe(chip.getAttribute('aria-label'));
     expect(root.querySelector('[data-waits-more]')).toBeNull();
   });
@@ -89,7 +89,7 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
   it('puts the partial scope as separate meta behind the chip, never inside the chip text', async () => {
     const root = await render(wait(['006']), { meta: true });
     const meta = root.querySelector('[data-waits-meta]');
-    expect(text(meta)).toBe('· 4 of 5 open tasks');
+    expect(text(meta)).toBe('· 4 of 5 open tasks held');
     expect(chips(root)[0].contains(meta)).toBe(false);
     expect(text(chips(root)[0])).toBe('waits on 006');
     expect(chips(root)[0].getAttribute('aria-label')).toBe('Waits on spec 006');
@@ -106,7 +106,7 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
     const root = await render(wait(['002']), { meta: true });
     expect(text(chips(root)[0])).toBe(`${de.waits.on} 002`);
-    expect(text(root.querySelector('[data-waits-meta]'))).toBe('· 4 von 5 offenen Tasks');
+    expect(text(root.querySelector('[data-waits-meta]'))).toBe('· 4 von 5 offenen Tasks gehalten');
     expect(en.waits.on).toBe('waits on');
   });
 });

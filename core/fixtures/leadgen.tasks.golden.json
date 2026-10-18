@@ -719,6 +719,7 @@
     ],
     "counts": {
       "rows": 17,
+      "done": 16,
       "boxes": {
         "landed": 16,
         "total": 17
@@ -2028,6 +2029,7 @@
     ],
     "counts": {
       "rows": 32,
+      "done": 32,
       "boxes": {
         "landed": 32,
         "total": 32
@@ -2043,6 +2045,10 @@
         }
       ],
       "byStatus": [
+        {
+          "name": "done",
+          "count": 0
+        },
         {
           "name": "closed",
           "count": 32
@@ -2588,6 +2594,7 @@
     ],
     "counts": {
       "rows": 16,
+      "done": 16,
       "boxes": {
         "landed": 16,
         "total": 16
@@ -2611,6 +2618,10 @@
         }
       ],
       "byStatus": [
+        {
+          "name": "done",
+          "count": 0
+        },
         {
           "name": "closed",
           "count": 16

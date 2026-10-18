@@ -80,18 +80,33 @@
   "kpi": {
     "masterClaims": "Master-Claims",
     "specClaims": "Spec-Claims",
-    "open": "{{count}} offen",
+    "open": {
+      "one": "{{count}} offen",
+      "other": "{{count}} offen"
+    },
     "closedCaption": "{{percent}} % geschlossen · {{open}} offen",
+    "closedOpen": "{{closed}} geschlossen · {{open}} offen",
     "specs": "Specs",
     "takeable": "Nehmbar",
     "takeableNow": "Jetzt nehmbar",
     "attention": "Handlungsbedarf",
     "attentionDetail": "{{warnings}} Warnungen · {{fog}} offener Fog",
     "attentionCompact": "{{warnings}} · {{fog}} Fog",
+    "warnings": "Warnungen",
+    "fog": "Offener Fog",
+    "of": "von {{total}}",
     "archive": "Archiv",
     "takeableCaption": "Claims bereit zum Bauen",
     "archiveCaption": "archivierte Spec",
-    "master": "Master"
+    "master": "Master",
+    "statement": {
+      "master": "Geschlossene Master-Claims; mehr ist besser",
+      "specClaims": "Geschlossene Spec-Claims; mehr ist besser",
+      "specs": "Abgeschlossene Specs; mehr ist besser",
+      "takeable": "Claims bereit zum Bauen; mehr ist besser",
+      "warnings": "Zu lösende Warnungen; weniger ist besser",
+      "fog": "Noch offene Fragen; weniger ist besser"
+    }
   },
   "brief": {
     "title": "Kurzfassung",
@@ -99,7 +114,10 @@
     "asOf": "Stand {{date}}",
     "stale": "veraltet",
     "more": "Mehr…",
-    "less": "Weniger"
+    "less": "Weniger",
+    "showWhole": "Ganzes TL;DR zeigen",
+    "showWholeName": "Ganzes TL;DR zeigen, alle Abschnitte der Kurzfassung",
+    "lang": "Sprache des Textes: {{lang}}"
   },
   "specs": {
     "title": "Specs",
@@ -110,12 +128,24 @@
     },
     "meta": "{{active}} aktiv · {{archived}} archiviert",
     "metaShort": "{{active}} · {{archived}} archiviert",
-    "countSegment": "{{count}} Specs",
-    "typeMeta": "{{count}} {{type}} · {{archived}} archiviert",
+    "countSegment": {
+      "one": "{{count}} Spec",
+      "other": "{{count}} Specs"
+    },
+    "typeMeta": {
+      "one": "{{count}} {{type}} · {{archived}} archiviert",
+      "other": "{{count}} {{type}} · {{archived}} archiviert"
+    },
+    "showAll": {
+      "one": "Die {{count}} Spec zeigen",
+      "other": "Alle {{count}} Specs zeigen"
+    },
     "filter": {
       "label": "Nach Phase filtern",
       "typeLabel": "Nach Typ filtern",
       "all": "Alle",
+      "allStages": "Alle Stages, {{count}}",
+      "allTypes": "Alle Typen, {{count}}",
       "fog": "fog"
     },
     "sort": {
@@ -158,6 +188,7 @@
   "nextUp": {
     "title": "Als Nächstes",
     "showAll": "Alle {{count}} anzeigen",
+    "moreName": "Mehr… {{entry}}",
     "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec-plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
@@ -189,13 +220,20 @@
         "other": "Teilt {{count}} Dateien mit"
       },
       "noEdge": "keine Kante",
-      "more": "+{{count}} weitere",
+      "more": {
+        "one": "+{{count}} weitere",
+        "other": "+{{count}} weitere"
+      },
       "paths": "Gemeinsame Dateien",
       "target": "in {{id}}",
       "copyTitle": "Kante für die tasks.md dieser Spec kopieren",
       "moreOverlaps": {
         "one": "+1 weitere Überschneidung",
         "other": "+{{count}} weitere Überschneidungen"
+      },
+      "disclosure": {
+        "one": "{{count}} Überschneidung",
+        "other": "{{count}} Überschneidungen"
       },
       "toHead": "Im Kopf zeigen",
       "region": "Überschneidungen mit anderen Specs"
@@ -842,10 +880,16 @@
       "lane": "Nach Lane filtern",
       "status": "Nach Status filtern",
       "all": "alle",
+      "allLanes": "Alle Lanes, {{count}}",
+      "allStatuses": "Alle Status, {{count}}",
       "hideDone": "Erledigte ausblenden"
     },
     "landed": "{{landed}}/{{total}} Kästchen abgehakt",
     "result": "{{shown}} von {{total}} Tasks",
+    "doneOfTotal": {
+      "one": "{{done}} von {{count}} Task erledigt",
+      "other": "{{done}} von {{count}} Tasks erledigt"
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -884,7 +928,10 @@
       "operator": "Ihr Schritt · haken Sie ihn ab, wenn er erledigt ist",
       "struck": "{{text}}"
     },
-    "doneHidden": "+ {{count}} weitere erledigt · {{ids}}",
+    "doneHidden": {
+      "one": "+ {{count}} weiterer erledigt · {{ids}}",
+      "other": "+ {{count}} weitere erledigt · {{ids}}"
+    },
     "doneHiddenBody": "Ausgeblendet, damit die offene Arbeit im Blick bleibt.",
     "show": "Anzeigen",
     "helper": "Ein Häkchen schreibt nur das Kästchen in tasks.md — es schließt nie einen Claim. Schreibvorgänge pausieren, solange ein Agent einen Claim dieser Spec hält.",
@@ -926,7 +973,10 @@
       "claimsMeta": "{{open}} offen · {{takeable}} übernehmbar",
       "tasks": "Tasks erledigt",
       "round": "Runde",
-      "agentsWorking": "{{count}} Agenten arbeiten",
+      "agentsWorking": {
+        "one": "{{count}} Agent arbeitet",
+        "other": "{{count}} Agenten arbeiten"
+      },
       "noAgent": "Kein Agent arbeitet",
       "gates": "Gates",
       "waiting": "Liegt bei Ihnen",
@@ -968,11 +1018,20 @@
     "tiles": {
       "label": "In dieser Spec",
       "status": {
-        "entries": "{{count}} Timeline-Einträge",
-        "warnings": "{{count}} Warnungen"
+        "entries": {
+          "one": "{{count}} Timeline-Eintrag",
+          "other": "{{count}} Timeline-Einträge"
+        },
+        "warnings": {
+          "one": "{{count}} Warnung",
+          "other": "{{count}} Warnungen"
+        }
       },
       "live": {
-        "working": "{{count}} Agenten arbeiten",
+        "working": {
+          "one": "{{count}} Agent arbeitet",
+          "other": "{{count}} Agenten arbeiten"
+        },
         "idle": "Kein Agent arbeitet",
         "source": "Lock-Quelle: {{source}}"
       },
@@ -984,12 +1043,21 @@
       "library": {
         "present": "{{names}}",
         "none": "Noch kein Plan, Design oder Constitution",
-        "decisions": "{{count}} Entscheidungen"
+        "decisions": {
+          "one": "{{count}} Entscheidung",
+          "other": "{{count}} Entscheidungen"
+        }
       },
       "notes": {
         "later": "Notizen kommen mit einem späteren Task",
-        "count": "{{count}} Notizen",
-        "board": "{{count}} Runden auf dem Board"
+        "count": {
+          "one": "{{count}} Notiz",
+          "other": "{{count}} Notizen"
+        },
+        "board": {
+          "one": "{{count}} Runde auf dem Board",
+          "other": "{{count}} Runden auf dem Board"
+        }
       }
     },
     "docNames": {
@@ -1061,7 +1129,10 @@
       "copy": "Befehl kopieren",
       "copied": "Kopiert",
       "manual": "Markieren und ⌘C drücken",
-      "takeable": "{{count}} übernehmbar",
+      "takeable": {
+        "one": "{{count}} übernehmbar",
+        "other": "{{count}} übernehmbar"
+      },
       "locked": "gesperrt durch {{session}}",
       "free": "keine Sperre aktiv"
     },
@@ -1184,11 +1255,18 @@
     "specCrumb": "Spec {{id}}",
     "more": "Mehr…",
     "less": "Weniger",
+    "goalMore": "Mehr… Goal von {{id}}",
     "notes": "Notizen",
-    "notesCount": "{{count}} Notizen",
+    "notesCount": {
+      "one": "{{count}} Notiz",
+      "other": "{{count}} Notizen"
+    },
     "updated": "aktualisiert {{time}}",
     "round": "Runde {{round}}",
-    "uncommitted": "{{count}} Dateien nicht committet",
+    "uncommitted": {
+      "one": "{{count}} Datei nicht committet",
+      "other": "{{count}} Dateien nicht committet"
+    },
     "agent": {
       "on": "an {{claim}} · {{time}}",
       "paused": "Schreiben pausiert"
@@ -2416,7 +2494,7 @@
     "nameBare": "Wartet auf Spec {{id}}",
     "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
     "more": "Wartet auch auf {{ids}}",
-    "partial": "{{held}} von {{open}} offenen Tasks",
+    "partial": "{{held}} von {{open}} offenen Tasks gehalten",
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },

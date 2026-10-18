@@ -679,7 +679,7 @@ describe('stub API: the library (spec 017, T3)', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 };
+  const DEFAULTS = { theme: 'system', language: 'en', density: 'comfortable', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 
@@ -715,6 +715,7 @@ describe('stub API: /api/settings', () => {
       [{ colour: 'red' }, { error: 'unknown-key', key: 'colour' }],
       [{ theme: 'sepia' }, { error: 'invalid-value', key: 'theme' }],
       [{ language: 'fr' }, { error: 'invalid-value', key: 'language' }],
+      [{ density: 'cozy' }, { error: 'invalid-value', key: 'density' }],
       [{ refreshSeconds: 4 }, { error: 'invalid-value', key: 'refreshSeconds' }],
       [{ refreshSeconds: 3601 }, { error: 'invalid-value', key: 'refreshSeconds' }],
       [{ refreshSeconds: 30.5 }, { error: 'invalid-value', key: 'refreshSeconds' }],

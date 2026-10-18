@@ -274,7 +274,7 @@ describe('BoardCard waits chip in the state line (T23, ISC-163; spec 040 T48)', 
     expect(text(chip)).toBe('waits on 002');
     expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
     expect(chip?.closest('a.title')).toBeNull();
-    expect(chip?.getAttribute('aria-label')).toBe(`Waits on spec 002, ${heldCard('002').title}, 2 of 3 open tasks`);
+    expect(chip?.getAttribute('aria-label')).toBe(`Waits on spec 002, ${heldCard('002').title}, 2 of 3 open tasks held`);
     expect(line?.querySelector('[data-waits-meta]')).toBeNull();
     expect(title?.getAttribute('aria-describedby')?.split(' ')).toContain(line?.id);
   });

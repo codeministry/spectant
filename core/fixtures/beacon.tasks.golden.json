@@ -107,6 +107,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 3,
+      "done": 3,
       "boxes": {
         "landed": 3,
         "total": 3
@@ -227,6 +228,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 3,
+      "done": 0,
       "boxes": {
         "landed": 0,
         "total": 3
@@ -241,6 +243,10 @@
         {
           "name": "open",
           "count": 3
+        },
+        {
+          "name": "done",
+          "count": 0
         }
       ]
     },
@@ -568,6 +574,7 @@
     "probeMapping": [],
     "counts": {
       "rows": 8,
+      "done": 2,
       "boxes": {
         "landed": 2,
         "total": 7

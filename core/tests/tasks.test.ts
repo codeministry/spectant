@@ -418,3 +418,53 @@ describe('the probe mapping table', () => {
     expect(none.diagnostics).toEqual([]);
   });
 });
+
+describe('the counts count the task row (spec 021, ISC-252)', () => {
+  const sum = (model: TasksTab): number => model.counts.byStatus.reduce((n, c) => n + c.count, 0);
+  const text = [
+    '- [ ] T1 · ISC-1 · core — open',
+    '- [x] T2 · ISC-1 · core — done',
+    '- [x] T3 · ISC-2 · core — done too',
+    '- [ ] T4 · ISC-2 · core — held by its own spec edge',
+    "- [ ] T5 · ISC-3 · core — held by its claim's spec edge",
+    '- ~~T6 · ISC-3 · core — dropped~~ — struck 2026-10-18: not needed',
+    '',
+  ].join('\n');
+  const specEdges = [
+    { fromSpec: '021', fromKind: 'task', fromId: 'T4', toSpec: '020', state: 'open' },
+    { fromSpec: '021', fromKind: 'claim', fromId: 'ISC-3', toSpec: '020', state: 'open' },
+  ] as const;
+  const model = parseTaskLines({ tasks: text, specEdges });
+
+  test('open, done and held tasks: the head line reads done of rows, and the status chips sum to rows', () => {
+    expect(model.tasks.map((t) => t.status)).toEqual(['open', 'done', 'done', 'held', 'held', 'struck']);
+    expect(model.counts.rows).toBe(6);
+    expect(model.counts.done).toBe(2);
+    expect(model.counts.byStatus).toEqual([
+      { name: 'open', count: 1 },
+      { name: 'held', count: 2 },
+      { name: 'done', count: 2 },
+      { name: 'struck', count: 1 },
+    ]);
+    expect(sum(model)).toBe(model.counts.rows);
+  });
+
+  test('without a done task the done chip is still there, at 0, and the sum still equals rows', () => {
+    const none = parseTaskLines({ tasks: '- [ ] T1 · ISC-1 · core — a\n- [ ] T2 · ISC-1 · core — b\n', specEdges: [{ ...specEdges[0], fromId: 'T2' }] });
+    expect(none.counts.done).toBe(0);
+    expect(none.counts.byStatus).toEqual([
+      { name: 'open', count: 1 },
+      { name: 'held', count: 1 },
+      { name: 'done', count: 0 },
+    ]);
+    expect(sum(none)).toBe(none.counts.rows);
+  });
+
+  test('harbor 002: a closed row is done in the head line, and the chips sum to rows', () => {
+    const dir = 'harbor/specs/002-web-console';
+    const harbor = parseTaskLines({ tasks: read(`${dir}/tasks.md`), constitution: read('harbor/specs/constitution.md'), rounds: read(`${dir}/rounds.jsonl`) });
+    expect(harbor.counts.done).toBe(27);
+    expect(harbor.counts.done).toBe(harbor.tasks.filter((t) => t.status === 'done' || t.status === 'closed').length);
+    expect(sum(harbor)).toBe(harbor.counts.rows);
+  });
+});

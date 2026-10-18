@@ -70,11 +70,11 @@ function put(server: RunningServer, body: unknown, headers: Record<string, strin
 
 describe("SettingsSchema", () => {
   test("holds exactly the plan's four keys, each default passing its own validator", () => {
-    expect(Object.keys(SettingsSchema).sort()).toEqual(["language", "notesImportDismissed", "railCollapsed", "refreshSeconds", "runAbortMinutes", "singleKeyShortcuts", "theme"]);
+    expect(Object.keys(SettingsSchema).sort()).toEqual(["density", "language", "notesImportDismissed", "railCollapsed", "refreshSeconds", "runAbortMinutes", "singleKeyShortcuts", "theme"]);
     for (const [key, spec] of Object.entries(SettingsSchema)) {
       expect({ key, valid: spec.validate(spec.default) }).toEqual({ key, valid: true });
     }
-    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", density: "comfortable", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 });
   });
 
   test("the validators accept the plan's values and refuse everything else", () => {
@@ -296,5 +296,51 @@ describe("ISC-18.3 at the server level: a chosen mode survives a restart on anot
     expect(second.port).not.toBe(firstPort);
     const res = await fetch(`${second.url}api/settings`);
     expect(await res.json()).toEqual({ ...DEFAULT_SETTINGS, theme: "light" });
+  });
+});
+
+describe("density (spec 021, ISC-254): a stored setting beside theme and language", () => {
+  test("density defaults to comfortable and accepts only comfortable and compact", () => {
+    expect(SettingsSchema.density.default).toBe("comfortable");
+    expect(DEFAULT_SETTINGS.density).toBe("comfortable");
+    for (const density of ["comfortable", "compact"]) expect(SettingsSchema.density.validate(density)).toBe(true);
+    for (const density of ["", "Compact", "dense", "cozy", 0, true, null, undefined]) {
+      expect(SettingsSchema.density.validate(density)).toBe(false);
+    }
+  });
+
+  test("density: set compact, then a new store on the same SQLite file reads it", () => {
+    expect(openSettings(openDb()).set({ density: "compact" })).toEqual({ ...DEFAULT_SETTINGS, density: "compact" });
+    expect(openSettings(openDb()).get()).toEqual({ ...DEFAULT_SETTINGS, density: "compact" });
+  });
+
+  test("density: a value set through PUT survives a server restart on another port", async () => {
+    const first = start(openDb());
+    const firstPort = first.port;
+    const res = await put(first, { density: "compact" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ...DEFAULT_SETTINGS, density: "compact" });
+    running.splice(running.indexOf(first), 1);
+    first.stop();
+    db?.close();
+    db = undefined;
+
+    let second = start(openDb());
+    for (let attempt = 0; second.port === firstPort && attempt < 5; attempt++) second = start(openDb());
+    expect(second.port).not.toBe(firstPort);
+    expect(await (await fetch(`${second.url}api/settings`)).json()).toEqual({ ...DEFAULT_SETTINGS, density: "compact" });
+  });
+
+  test("density: an invalid value is refused with invalid-value and the stored density stays", async () => {
+    const settings = openSettings(openDb());
+    settings.set({ density: "compact" });
+    expect(() => settings.set({ density: "dense" })).toThrow(SettingsError);
+    expect(settings.get().density).toBe("compact");
+
+    const server = start(db as Database);
+    const bad = await put(server, { theme: "dark", density: "cozy" });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: "invalid-value", key: "density" });
+    expect(await (await fetch(`${server.url}api/settings`)).json()).toEqual({ ...DEFAULT_SETTINGS, density: "compact" });
   });
 });

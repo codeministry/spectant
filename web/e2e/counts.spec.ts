@@ -75,6 +75,8 @@ interface Row {
 }
 
 const n = (value: number) => String(value);
+/** A count text with its plural form, as the catalogue picks it (`one` for 1, `other` otherwise). */
+const pl = (value: number, one: string, other: string) => `${n(value)} ${value === 1 ? one : other}`;
 const pair = (a: number, b: number) => `${n(a)}/${n(b)}`;
 const CLAIM_STATES = ['takeable', 'taken', 'blocked', 'closed', 'dropped'] as const;
 const STATE_CHIPS = ['all', 'open', 'takeable', 'taken', 'blocked', 'closed', 'dropped'] as const;
@@ -94,7 +96,7 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '', what: 'kpi claims open and takeable', golden: 'spec.keyNumbers.claims.open, .takeable', selector: `${kpi} [data-kpi="claims"] .meta`, kind: 'text', want: `${n(k.claims.open)} open · ${n(k.claims.takeable)} takeable` },
     { tab: '', what: 'kpi tasks landed/total', golden: 'spec.keyNumbers.tasks.landed/total', selector: `${kpi} [data-kpi="tasks"] .figure`, kind: 'text', want: pair(k.tasks.landed, k.tasks.total) },
     { tab: '', what: 'kpi rounds', golden: 'spec.keyNumbers.rounds.count', selector: `${kpi} [data-kpi="round"] .figure`, kind: 'text', want: n(k.rounds.count) },
-    { tab: '', what: 'kpi agents working', golden: 'spec.keyNumbers.rounds.agentsWorking', selector: `${kpi} [data-kpi="round"] .meta`, kind: 'text', want: k.rounds.agentsWorking > 0 ? `${n(k.rounds.agentsWorking)} agents working` : 'No agent working' },
+    { tab: '', what: 'kpi agents working', golden: 'spec.keyNumbers.rounds.agentsWorking', selector: `${kpi} [data-kpi="round"] .meta`, kind: 'text', want: k.rounds.agentsWorking > 0 ? pl(k.rounds.agentsWorking, 'agent working', 'agents working') : 'No agent working' },
     { tab: '', what: 'kpi gates ok/total', golden: 'spec.keyNumbers.gates.ok/total', selector: `${kpi} [data-kpi="gates"] .figure`, kind: 'text', want: pair(k.gates.ok, k.gates.total) },
     { tab: '', what: 'kpi waiting', golden: 'spec.keyNumbers.waiting', selector: `${kpi} [data-kpi="waiting"] .figure`, kind: 'text', want: n(k.waiting) },
     // Spec dashboard: lanes, and the Spec context (main column below 1120 px, the rail from 1120: one copy per width).
@@ -111,13 +113,13 @@ function rowsFor(g: Goldens): readonly Row[] {
     // core counts a gate ok when its state is `fresh` or `ok` (`keyNumbers.gates.ok` in core/src/spec.ts).
     { tab: '', what: 'gates rows ok', golden: 'spec.keyNumbers.gates.ok', selector: '[data-spec-context] [data-context-block="gates"] [data-gate-row]:is([data-state="fresh"], [data-state="ok"])', kind: 'count', want: k.gates.ok },
     // Spec dashboard: the area tiles' numbers.
-    { tab: '', what: 'status tile timeline entries', golden: 'spec.areas.status.timelineEntries', selector: tile('status', 0), kind: 'text', want: `${n(areas.status.timelineEntries)} timeline entries` },
-    { tab: '', what: 'status tile warnings', golden: 'spec.areas.status.warnings', selector: tile('status', 1), kind: 'text', want: `${n(areas.status.warnings)} warnings` },
-    { tab: '', what: 'live tile agents working', golden: 'spec.areas.live.agentsWorking', selector: tile('live', 0), kind: 'text', want: areas.live.agentsWorking > 0 ? `${n(areas.live.agentsWorking)} agents working` : 'No agent working' },
+    { tab: '', what: 'status tile timeline entries', golden: 'spec.areas.status.timelineEntries', selector: tile('status', 0), kind: 'text', want: pl(areas.status.timelineEntries, 'timeline entry', 'timeline entries') },
+    { tab: '', what: 'status tile warnings', golden: 'spec.areas.status.warnings', selector: tile('status', 1), kind: 'text', want: pl(areas.status.warnings, 'warning', 'warnings') },
+    { tab: '', what: 'live tile agents working', golden: 'spec.areas.live.agentsWorking', selector: tile('live', 0), kind: 'text', want: areas.live.agentsWorking > 0 ? pl(areas.live.agentsWorking, 'agent working', 'agents working') : 'No agent working' },
     { tab: '', what: 'data tile claims', golden: 'spec.areas.data.claims.closed/total', selector: tile('data', 0), kind: 'text', want: `${pair(areas.data.claims.closed, areas.data.claims.total)} claims closed` },
     { tab: '', what: 'data tile tasks', golden: 'spec.areas.data.tasks.landed/total', selector: tile('data', 1), kind: 'text', want: areas.data.tasks ? `${pair(areas.data.tasks.landed, areas.data.tasks.total)} tasks landed` : 'No tasks.md yet' },
-    { tab: '', what: 'library tile decisions', golden: 'spec.areas.docs.decisions', selector: tile('library', 1), kind: 'text', want: `${n(areas.docs.decisions)} decisions` },
-    { tab: '', what: 'notes tile board rounds', golden: 'spec.areas.board.rounds', selector: tile('notes', 1), kind: 'text', want: `${n(areas.board.rounds)} rounds on the board` },
+    { tab: '', what: 'library tile decisions', golden: 'spec.areas.docs.decisions', selector: tile('library', 1), kind: 'text', want: pl(areas.docs.decisions, 'decision', 'decisions') },
+    { tab: '', what: 'notes tile board rounds', golden: 'spec.areas.board.rounds', selector: tile('notes', 1), kind: 'text', want: pl(areas.board.rounds, 'round on the board', 'rounds on the board') },
     // The tab bar of the Data area.
     { tab: '/claims', what: 'tab bar claims closed/total', golden: 'spec.areas.data.claims.closed/total', selector: 'app-tab-bar [data-count="claims"]', kind: 'text', want: pair(areas.data.claims.closed, areas.data.claims.total) },
     areas.data.tasks

@@ -50,7 +50,7 @@
             [value]="m.keyNumbers.rounds.count"
             [meta]="
               m.keyNumbers.rounds.agentsWorking > 0
-                ? ('specDashboard.kpi.agentsWorking' | transloco: { count: m.keyNumbers.rounds.agentsWorking })
+                ? ((m.keyNumbers.rounds.agentsWorking === 1 ? 'specDashboard.kpi.agentsWorking.one' : 'specDashboard.kpi.agentsWorking.other') | transloco: { count: m.keyNumbers.rounds.agentsWorking })
                 : ('specDashboard.kpi.noAgent' | transloco)
             "
             [href]="href('board')"

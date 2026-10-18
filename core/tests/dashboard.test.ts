@@ -136,6 +136,76 @@ describe('harbor: the README Expected column', () => {
   });
 });
 
+describe('kpi-band: each workspace KPI tile carries its reference (spec 021, ISC-245)', () => {
+  // harbor has warnings, fog in the master and in a spec, an archived spec, and 007 whose frontmatter `phase:` says
+  // building while its derived stage is done: the case where a split by `phase:` and one by stage disagree.
+  const m = model('harbor');
+  const { kpis } = m;
+  const count = (rows: readonly DashboardSpecRow[], of: (r: DashboardSpecRow) => boolean): number => rows.filter(of).length;
+
+  test('Takeable stands against the open claims of the same active specs', () => {
+    expect(kpis.takeable).toBe(5);
+    expect(kpis.openClaims).toBe(24);
+    expect(kpis.openClaims).toBe(m.specs.reduce((n, r) => n + r.progress.total - r.progress.closed, 0));
+  });
+
+  test('Specs splits into stage groups from one derivation, the field the spec list filters by', () => {
+    expect(Object.fromEntries(m.specs.map((r) => [r.id, r.stageGroup]))).toEqual({
+      '004': 'building',
+      '005': 'scoping',
+      '006': 'scoping',
+      '002': 'building',
+      '009': 'building',
+      '003': 'scoping',
+      '008': 'building',
+      '007': 'complete',
+    });
+    // The filter counts rows by `stageGroup`; the tile reads `stageGroups`: the same numbers, summing to `specs`.
+    expect(kpis.stageGroups).toEqual({
+      scoping: count(m.specs, (r) => r.stageGroup === 'scoping'),
+      building: count(m.specs, (r) => r.stageGroup === 'building'),
+      complete: count(m.specs, (r) => r.stageGroup === 'complete'),
+    });
+    expect(kpis.stageGroups).toEqual({ scoping: 3, building: 4, complete: 1 });
+    expect(kpis.stageGroups?.building).toBe(kpis.building);
+    expect(kpis.stageGroups?.scoping).toBe(kpis.scoping);
+    // The group follows the derived stage, not the frontmatter: 007 is written `building` and counts as complete.
+    expect(row(m, '007').phase).toBe('building');
+    expect(row(m, '007').stageGroup).toBe('complete');
+  });
+
+  test('Warnings and open fog are two numbers, each with its own reference; attention stays for existing readers', () => {
+    expect(kpis.warnings).toBe(8);
+    expect(kpis.specsWithWarnings).toBe(5);
+    expect(kpis.specsWithWarnings).toBe(count(m.specs, (r) => r.warnings.length > 0));
+    expect(kpis.fog).toBe(4);
+    expect(kpis.masterFog).toBe(2);
+    expect(kpis.specsWithFog).toBe(1);
+    expect(kpis.specsWithFog).toBe(count(m.specs, (r) => r.fog > 0));
+    expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
+  });
+
+  test('the archived count stays in the model for the spec list head', () => {
+    expect(kpis.archived).toBe(1);
+    expect(kpis.archived).toBe(m.archive.length);
+  });
+
+  test('every dashboard fixture: the references hold their invariants', () => {
+    for (const name of fixtureTrees()) {
+      const f = model(name);
+      const k = f.kpis;
+      const groups = k.stageGroups;
+      expect(groups, name).toBeDefined();
+      expect((groups?.scoping ?? 0) + (groups?.building ?? 0) + (groups?.complete ?? 0), name).toBe(k.specs);
+      expect(f.specs.every((r) => r.stageGroup !== undefined), name).toBe(true);
+      expect(k.openClaims, name).toBeGreaterThanOrEqual(k.takeable);
+      expect(k.specsWithWarnings, name).toBe(count(f.specs, (r) => r.warnings.length > 0));
+      expect(k.specsWithFog, name).toBe(count(f.specs, (r) => r.fog > 0));
+      expect((k.masterFog ?? Number.NaN) + f.specs.reduce((n, r) => n + r.fog, 0), name).toBe(k.fog);
+    }
+  });
+});
+
 describe('lantern, empty-master and the frozen corpora', () => {
   test('lantern: two specs, both reviewed, no warning, no archive, no TL;DR', () => {
     const m = model('lantern');
