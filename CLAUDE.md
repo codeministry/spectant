@@ -71,6 +71,7 @@ Each lane has its own working notes with its lane probe. Load the one for the la
 - `core/CLAUDE.md` — lane probe `bun test core/`
 - `server/CLAUDE.md` — lane probe `bun test tests/`
 - `web/CLAUDE.md` — lane probe `bun run --cwd web test`
+- `plugin/CLAUDE.md` — lane probe `bun test plugin/` (the shipped plugin is `plugin/spectant/`)
 - root files (`package.json`, `README.md`, `LICENSE`, this file, `.github/`) — lane probe `bun run check:static`
 
 Which paths belong to which lane is defined in `specs/constitution.md` § Lanes.
