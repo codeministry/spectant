@@ -2,8 +2,8 @@
 // @bun
 
 // plugin/src/spec-check.ts
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync as readdirSync2, readlinkSync, renameSync, statSync, writeFileSync } from "fs";
-import { basename, dirname, join as join3, relative, resolve as resolve3, sep as sep2 } from "path";
+import { appendFileSync as appendFileSync2, existsSync, lstatSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync as readdirSync2, readlinkSync, renameSync, statSync, writeFileSync } from "fs";
+import { basename, dirname as dirname2, join as join4, relative, resolve as resolve4, sep as sep2 } from "path";
 
 // core/src/actor.ts
 var PERSON = /^u:[0-9a-f]{8}$/;
@@ -184,6 +184,34 @@ function newRunId(input) {
   const stamp = new Date(input.ts).toISOString().replace(/[-:.]/gu, "");
   return `r-${stamp}-${fnv1a([input.ts, input.session, input.command, input.target].join(`
 `))}`;
+}
+
+// plugin/src/activity-log.ts
+import { appendFileSync, mkdirSync, readFileSync } from "fs";
+import { dirname, join, resolve } from "path";
+function repoRoot(dir) {
+  const r = Bun.spawnSync(["git", "rev-parse", "--git-common-dir"], { cwd: dir, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
+  const common = r.exitCode === 0 ? r.stdout.toString().trim() : "";
+  return common === "" ? dir : dirname(resolve(dir, common));
+}
+var activityPath = (root) => join(root, ".spectant", "activity.jsonl");
+function readIfExists(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT")
+      return null;
+    throw error;
+  }
+}
+function appendActivity(root, line) {
+  const path = activityPath(root);
+  mkdirSync(dirname(path), { recursive: true });
+  const existing = readIfExists(path);
+  const lead = existing !== null && existing !== "" && !existing.endsWith(`
+`) ? `
+` : "";
+  appendFileSync(path, `${lead}${line}`);
 }
 
 // core/src/claims.ts
@@ -3407,7 +3435,7 @@ function nextSpecNumber(taken) {
 // core/src/locks.ts
 import { createHash as createHash2 } from "crypto";
 import { readdir, readFile, realpath, stat } from "fs/promises";
-import { join, resolve } from "path";
+import { join as join2, resolve as resolve2 } from "path";
 var FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
 var LOCK_SUFFIX = ".lock";
 var RUN_STATE = { dispatch: "dispatched", build: "building", patch: "patched", apply: "applied" };
@@ -3442,12 +3470,12 @@ async function isDirectory(path) {
     return false;
   }
 }
-async function readFrontier(repoRoot, stateDir, now) {
+async function readFrontier(repoRoot2, stateDir, now) {
   if (!await isDirectory(stateDir))
     return ABSENT;
-  const isa = resolve(repoRoot, "ISA.md");
+  const isa = resolve2(repoRoot2, "ISA.md");
   const real = await realpath(isa).catch(() => isa);
-  const dir = join(stateDir, "isa-locks", createHash2("sha1").update(real).digest("hex").slice(0, 16));
+  const dir = join2(stateDir, "isa-locks", createHash2("sha1").update(real).digest("hex").slice(0, 16));
   const locks = [];
   const diagnostics = [];
   let names3;
@@ -3464,7 +3492,7 @@ async function readFrontier(repoRoot, stateDir, now) {
     const malformed = (why) => diagnostics.push(warning2("locks-frontier-malformed", `The frontier lock for ${claim} ${why}; it is not counted.`, { claim }));
     let data;
     try {
-      data = JSON.parse(await readFile(join(dir, `${claim}${LOCK_SUFFIX}`), "utf8"));
+      data = JSON.parse(await readFile(join2(dir, `${claim}${LOCK_SUFFIX}`), "utf8"));
     } catch {
       malformed("is not readable JSON");
       continue;
@@ -3550,10 +3578,10 @@ function readStep(entry, event, line, diagnostics) {
     return malformed(`of ${task} carries no text`);
   return { event, task, ...claimOf(entry), text: kept, session, ...place, ts };
 }
-async function readActivity(repoRoot) {
+async function readActivity(repoRoot2) {
   let text2;
   try {
-    text2 = await readFile(join(repoRoot, ".spectant", "activity.jsonl"), "utf8");
+    text2 = await readFile(join2(repoRoot2, ".spectant", "activity.jsonl"), "utf8");
   } catch (error) {
     if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR")
       return ABSENT;
@@ -3706,7 +3734,7 @@ function readingOf(frontier, activity) {
 
 // core/src/resolve.ts
 import { readdirSync } from "fs";
-import { join as join2, resolve as resolve2, sep } from "path";
+import { join as join3, resolve as resolve3, sep } from "path";
 function listSpecs(workspaceRoot) {
   return scan(workspaceRoot) ?? [];
 }
@@ -3734,11 +3762,11 @@ function notFound(ref, reason) {
   return { kind: "not_found", ref, reason };
 }
 function scan(workspaceRoot) {
-  const specsDir = resolve2(workspaceRoot, "specs");
+  const specsDir = resolve3(workspaceRoot, "specs");
   const active = folders(specsDir);
   if (active === null)
     return null;
-  const archiveDir = join2(specsDir, "archive");
+  const archiveDir = join3(specsDir, "archive");
   return [...refs(specsDir, active, false), ...refs(archiveDir, folders(archiveDir) ?? [], true)];
 }
 function refs(parent, names3, archived) {
@@ -3747,7 +3775,7 @@ function refs(parent, names3, archived) {
     const match = SPEC_FOLDER.exec(name);
     if (match?.[1] === undefined)
       continue;
-    out.push({ kind: "spec", id: match[1], slug: name, dir: join2(parent, name), archived });
+    out.push({ kind: "spec", id: match[1], slug: name, dir: join3(parent, name), archived });
   }
   return out.sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
 }
@@ -4483,13 +4511,9 @@ function git(cwd, args) {
   const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
 }
-function repoRoot(cwd) {
-  const common = git(cwd, ["rev-parse", "--git-common-dir"])?.trim();
-  return common === undefined || common === "" ? cwd : dirname(resolve3(cwd, common));
-}
-function readIfExists(path) {
+function readIfExists2(path) {
   try {
-    return readFileSync(path, "utf8");
+    return readFileSync2(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
@@ -4500,7 +4524,7 @@ var FOLDER_KINDS = Object.keys(FILE_KINDS).filter((kind) => !FILE_KINDS[kind].di
 function specFiles(ref) {
   const texts = {};
   for (const kind of FOLDER_KINDS) {
-    const text2 = readIfExists(join3(ref.dir, FILE_KINDS[kind].path));
+    const text2 = readIfExists2(join4(ref.dir, FILE_KINDS[kind].path));
     if (text2 !== null)
       texts[kind] = text2;
   }
@@ -4515,12 +4539,12 @@ function specRef(root, arg) {
 }
 var rel = (ctx, path) => relative(ctx.root, path).split(sep2).join("/");
 function specText(ctx, ref) {
-  const text2 = readIfExists(join3(ref.dir, "spec.md"));
+  const text2 = readIfExists2(join4(ref.dir, "spec.md"));
   if (text2 === null)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
   return text2;
 }
-var masterPath = (ctx) => join3(ctx.root, "ISA.md");
+var masterPath = (ctx) => join4(ctx.root, "ISA.md");
 async function locksOf(ctx) {
   return readLockSources({ repoRoot: ctx.root });
 }
@@ -4560,13 +4584,13 @@ function allocate(ctx, args) {
     now: ctx.now,
     actor: args.values.get("actor") ?? "a:claude:spec-check"
   });
-  const dir = join3(ctx.root, ...plan.dir.split("/"));
+  const dir = join4(ctx.root, ...plan.dir.split("/"));
   if (existsSync(dir))
     throw bad(`${plan.dir} exists already`);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync2(dir, { recursive: true });
   const files = Object.keys(plan.files);
   for (const name of files)
-    writeFileSync(join3(dir, name), plan.files[name]);
+    writeFileSync(join4(dir, name), plan.files[name]);
   emit(ctx, args, { dir: plan.dir, number, files }, [
     `allocated ${plan.dir} (${files.join(", ")})`,
     ...goal === undefined ? ["no --goal given: the goal reads as the title; confirm it in spec.md and context.md"] : []
@@ -4576,7 +4600,7 @@ function allocate(ctx, args) {
 var isRecord5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var isString = (v) => typeof v === "string";
 function claimInputs(path) {
-  const text2 = readIfExists(path);
+  const text2 = readIfExists2(path);
   if (text2 === null)
     throw bad(`the claims file ${basename(path)} does not exist`);
   let data;
@@ -4619,7 +4643,7 @@ var ISC_NUMBER2 = /^ISC-(\d+)/u;
 function nextIdAcrossSpecs(root) {
   let highest = 0;
   for (const ref of listSpecs(root)) {
-    const text2 = readIfExists(join3(ref.dir, "spec.md"));
+    const text2 = readIfExists2(join4(ref.dir, "spec.md"));
     if (text2 === null)
       continue;
     for (const c of parseClaims(text2).claims)
@@ -4635,14 +4659,14 @@ function mint(ctx, args) {
   const claimsFile = args.values.get("claims");
   if (claimsFile === undefined)
     throw bad("--claims <json-file> is required");
-  const inputs = claimInputs(resolve3(ctx.cwd, claimsFile));
+  const inputs = claimInputs(resolve4(ctx.cwd, claimsFile));
   const claims = inputs.map((i) => i.claim);
   const rows = inputs.map((i) => i.row);
   const featureName = args.values.get("feature-name");
   const why = args.values.get("why");
-  const specPath = join3(ref.dir, "spec.md");
+  const specPath = join4(ref.dir, "spec.md");
   const spec = specText(ctx, ref);
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   if (master === null) {
     let next = nextIdAcrossSpecs(ctx.root);
     const numbered = claims.map((c) => c.id === undefined ? { ...c, id: `ISC-${next++}` } : c);
@@ -4671,9 +4695,9 @@ function verify(ctx, args) {
   const id = required(args, 1, "the claim ID");
   const type = required(args, 2, "the verification type");
   const stub = required(args, 3, "the one-line stub");
-  const specPath = join3(ref.dir, "spec.md");
+  const specPath = join4(ref.dir, "spec.md");
   const nextSpec = appendVerificationText(specText(ctx, ref), id, type, stub, ctx.now);
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   let nextMaster = null;
   if (master !== null) {
     if (!parseClaims(master).claims.some((c) => c.id === id)) {
@@ -4689,20 +4713,20 @@ function verify(ctx, args) {
   return EXIT.ok;
 }
 function decisionFile(ctx, arg) {
-  for (const candidate of [resolve3(ctx.cwd, arg), resolve3(ctx.root, arg)]) {
+  for (const candidate of [resolve4(ctx.cwd, arg), resolve4(ctx.root, arg)]) {
     if (!existsSync(candidate) || !statSync(candidate).isFile())
       continue;
     const inside = relative(ctx.root, candidate);
-    if (inside.startsWith("..") || resolve3(ctx.root, inside) !== candidate)
+    if (inside.startsWith("..") || resolve4(ctx.root, inside) !== candidate)
       throw bad(`${arg} lies outside the repository`);
     return candidate;
   }
-  return join3(specRef(ctx.root, arg).dir, "spec.md");
+  return join4(specRef(ctx.root, arg).dir, "spec.md");
 }
 function decide(ctx, args) {
   const path = decisionFile(ctx, required(args, 0, "the file"));
   const line = required(args, 1, "the decision line");
-  const text2 = readIfExists(path);
+  const text2 = readIfExists2(path);
   if (text2 === null)
     throw bad(`${rel(ctx, path)} does not exist`);
   writeFileSync(path, appendDecisionText(text2, line, ctx.now));
@@ -4728,12 +4752,12 @@ function drift(ctx, args) {
   const listed2 = listSpecs(ctx.root);
   const one = args.positional[0];
   const targets = one === undefined ? listed2.filter((s) => !s.archived) : [specRef(ctx.root, one)];
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   const masterDoc = master === null ? null : parseClaims(master);
-  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists(join3(s.dir, "spec.md")))]));
+  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists2(join4(s.dir, "spec.md")))]));
   const specs = [];
   for (const ref of targets) {
-    const text2 = readIfExists(join3(ref.dir, "spec.md"));
+    const text2 = readIfExists2(join4(ref.dir, "spec.md"));
     if (text2 === null)
       continue;
     const heldElsewhere2 = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
@@ -4756,14 +4780,14 @@ function partitionView(p) {
 function dashboardInput(ctx, locks) {
   const listed2 = listSpecs(ctx.root);
   return {
-    master: readIfExists(masterPath(ctx)),
-    constitution: readIfExists(join3(ctx.root, "specs", "constitution.md")),
-    tldr: readIfExists(join3(ctx.root, "specs", "tldr.md")),
+    master: readIfExists2(masterPath(ctx)),
+    constitution: readIfExists2(join4(ctx.root, "specs", "constitution.md")),
+    tldr: readIfExists2(join4(ctx.root, "specs", "tldr.md")),
     specs: listed2.filter((s) => !s.archived).map(specFiles),
     archived: listed2.filter((s) => s.archived).map(specFiles),
     worktreeTree: null,
     locks,
-    workflow: parseWorkflow(readIfExists(join3(ctx.root, "specs", "workflow.md")))
+    workflow: parseWorkflow(readIfExists2(join4(ctx.root, "specs", "workflow.md")))
   };
 }
 async function status(ctx, args) {
@@ -4807,7 +4831,7 @@ async function frontier(ctx, args) {
   const claims = [...parseClaims(text2).claims];
   const reviewed = reviewedGate(files.texts).check.state;
   const locks = (await locksOf(ctx)).locks;
-  const constitution = readIfExists(join3(ctx.root, "specs", "constitution.md"));
+  const constitution = readIfExists2(join4(ctx.root, "specs", "constitution.md"));
   const tasks = files.texts.tasks === undefined ? null : parseTaskLines({
     tasks: files.texts.tasks,
     ...constitution === null ? {} : { constitution },
@@ -4866,14 +4890,14 @@ function transitionInput(ctx, ref, to, actor, locks) {
   const reviewed = reviewedGate(files.texts).check.state;
   const partition = partitionClaims(parseClaims(spec).claims, locks.locks, reviewed);
   const codeMark = files.texts.gateCodeReviewed === undefined ? null : readGateMark("code-reviewed", files.texts.gateCodeReviewed).mark;
-  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists(join3(ctx.root, "specs", "constitution.md")) }, []);
+  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists2(join4(ctx.root, "specs", "constitution.md")) }, []);
   const edgeHeld = specEdgeHolds(partition.takeable, edges.edges.filter((e) => e.fromSpec === id));
   const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
   const feature = mainFeatureOf(parseFrontmatter(spec).data.isaFeature);
   const siblings = feature === null ? [] : active.filter((f) => f.texts.spec !== undefined && mainFeatureOf(parseFrontmatter(f.texts.spec).data.isaFeature) === feature && holdsFeatureOpen2(f)).map((f) => specIdOf(f.folder) ?? f.folder).filter((sibling) => sibling !== id).sort();
   return {
     files,
-    workflow: parseWorkflow(readIfExists(join3(ctx.root, "specs", "workflow.md"))),
+    workflow: parseWorkflow(readIfExists2(join4(ctx.root, "specs", "workflow.md"))),
     to,
     actor,
     now: ctx.now,
@@ -4920,23 +4944,13 @@ async function transition(ctx, args) {
   }
   const event = { ...plan.event, command: args.values.get("command") ?? pluginCommand(plan.event.command) };
   const line = checkedEvent(event);
-  writeFileSync(join3(ref.dir, "spec.md"), plan.specText);
+  writeFileSync(join4(ref.dir, "spec.md"), plan.specText);
   appendEventLine(ref.dir, line);
   emit(ctx, args, { spec: ref.slug, from: plan.from, to: plan.to, event }, [`${ref.slug}: ${plan.from} \u2192 ${plan.to} (${event.command})`]);
   return EXIT.ok;
 }
 var CLI_SESSION = "a:claude:spec-check";
-var activityPath = (ctx) => join3(ctx.root, ".spectant", "activity.jsonl");
-var activityText = (ctx) => readIfExists(activityPath(ctx)) ?? "";
-function appendActivity(ctx, line) {
-  const path = activityPath(ctx);
-  mkdirSync(dirname(path), { recursive: true });
-  const existing = readIfExists(path);
-  const lead = existing !== null && existing !== "" && !existing.endsWith(`
-`) ? `
-` : "";
-  appendFileSync(path, `${lead}${line}`);
-}
+var activityText = (ctx) => readIfExists2(activityPath(ctx.root)) ?? "";
 function requiredValue(args, name, what) {
   const value = args.values.get(name);
   if (value === undefined || value === "")
@@ -4966,7 +4980,7 @@ function runStart(ctx, args) {
   const line = runStartLine({ run, target, command, session, ts });
   if (startedRunIds(activityText(ctx)).has(run))
     throw bad(`the run ${run} was started already; nothing written`);
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command, session }, [run]);
   return EXIT.ok;
 }
@@ -4982,7 +4996,7 @@ function runEnd(ctx, args) {
   const target = open.spec ?? open.idea ?? "";
   const ended = outcome;
   const line = runEndLine({ run, target, command: open.command, session, ts: ctx.now.toISOString(), outcome: ended });
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command: open.command, session, outcome }, [`${run} ended (${outcome})`]);
   return EXIT.ok;
 }
@@ -5014,7 +5028,7 @@ function lockClaim(ctx, args) {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
   }
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { claim: input.claim, session: input.session, already: false }, [`${input.claim}: claimed by ${input.session}`]);
   return EXIT.ok;
 }
@@ -5028,7 +5042,7 @@ function lockRelease(ctx, args) {
   }
   if (holder !== input.session)
     throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${holder}, not ${input.session}; nothing written`);
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
@@ -5054,7 +5068,7 @@ function activity(ctx, args) {
   } else {
     throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
   }
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, JSON.parse(line), [`${event} ${task}${claim === undefined ? "" : ` (${claim})`} appended to .spectant/activity.jsonl`]);
   return EXIT.ok;
 }
@@ -5064,7 +5078,7 @@ var OPEN_ATTENTION = new Set(["question", "concerns", "fail"]);
 var ROUND_MODES = ["agent", "workflow", "cockpit"];
 var records = (value) => Array.isArray(value) ? value.filter(isRecord5) : [];
 function readJsonFile(ctx, file, flag) {
-  const text2 = readIfExists(resolve3(ctx.cwd, file));
+  const text2 = readIfExists2(resolve4(ctx.cwd, file));
   if (text2 === null)
     throw bad(`${flag} ${basename(file)} does not exist`);
   try {
@@ -5150,7 +5164,7 @@ function pairs(args, name) {
   });
 }
 function roundUnits(ref, claims) {
-  const tasks = readIfExists(join3(ref.dir, "tasks.md"));
+  const tasks = readIfExists2(join4(ref.dir, "tasks.md"));
   if (tasks === null) {
     const units2 = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
     return { units: units2, hasTasks: false };
@@ -5196,8 +5210,8 @@ function roundsRecord(ctx, args) {
     if (!outcomes.reader.has(task))
       outcomes.reader.set(task, r);
   const { units, hasTasks } = roundUnits(ref, doc.claims);
-  const logPath = join3(ref.dir, "rounds.jsonl");
-  const existing = readIfExists(logPath);
+  const logPath = join4(ref.dir, "rounds.jsonl");
+  const existing = readIfExists2(logPath);
   const prev = roundLines(existing ?? undefined).at(-1);
   const prevById = new Map;
   for (const t of records(prev?.tasks))
@@ -5299,7 +5313,7 @@ function roundsRecord(ctx, args) {
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
 ` : "";
-  appendFileSync(logPath, `${lead}${JSON.stringify(line)}
+  appendFileSync2(logPath, `${lead}${JSON.stringify(line)}
 `);
   const landed = tasks.filter((t) => line.dispatched.includes(t.id)).map((t) => `${t.id} ${t.state}`);
   emit(ctx, args, { file: rel(ctx, logPath), line }, [
@@ -5313,7 +5327,7 @@ function rounds(ctx, args) {
     throw bad(`"${sub}" is no rounds command (record)`);
   return roundsRecord(ctx, args);
 }
-var gatePath = (ref, gate) => join3(ref.dir, ".gates", `${gate}.json`);
+var gatePath = (ref, gate) => join4(ref.dir, ".gates", `${gate}.json`);
 var numberOf = (ref) => specIdOf(ref.slug) ?? ref.slug;
 var nextFor = (ref, gate) => gate === "reviewed" ? `/spec review ${numberOf(ref)}` : `/spec review ${numberOf(ref)} code`;
 function checkedEvent(event) {
@@ -5323,12 +5337,12 @@ function checkedEvent(event) {
   return line;
 }
 function appendEventLine(dir, line) {
-  const path = join3(dir, "events.jsonl");
-  const existing = readIfExists(path);
+  const path = join4(dir, "events.jsonl");
+  const existing = readIfExists2(path);
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
 ` : "";
-  appendFileSync(path, `${lead}${line}
+  appendFileSync2(path, `${lead}${line}
 `);
 }
 function ensureGatesIgnored(ref) {
@@ -5338,18 +5352,18 @@ function ensureGatesIgnored(ref) {
   const probe = relative(top, gatePath(ref, "reviewed")).split(sep2).join("/");
   if (git(top, ["-c", "core.fsmonitor=false", "check-ignore", "-q", "--", probe]) !== null)
     return "ignored";
-  const path = join3(top, ".gitignore");
-  const have = readIfExists(path) ?? "";
+  const path = join4(top, ".gitignore");
+  const have = readIfExists2(path) ?? "";
   const lead = have === "" || have.endsWith(`
 `) ? "" : `
 `;
-  appendFileSync(path, `${lead}# Spec: gate marks stay on this machine
+  appendFileSync2(path, `${lead}# Spec: gate marks stay on this machine
 .gates/
 `);
   return "added";
 }
 function treeEntry(root, path) {
-  const absolute = join3(root, path);
+  const absolute = join4(root, path);
   let stat2;
   try {
     stat2 = lstatSync(absolute);
@@ -5363,7 +5377,7 @@ function treeEntry(root, path) {
   if (!stat2.isFile())
     return null;
   const mode = (stat2.mode & 64) === 0 ? "100644" : "100755";
-  return { path, mode, bytes: readFileSync(absolute) };
+  return { path, mode, bytes: readFileSync2(absolute) };
 }
 var listedPaths = (out) => [...new Set((out ?? "").split("\x00"))].filter((p) => p !== "" && !p.endsWith("/"));
 function checkoutOf(cwd) {
@@ -5387,7 +5401,7 @@ function changedSince(checkout, head) {
   return [...new Set([...listedPaths(tracked), ...listedPaths(untracked)])].sort();
 }
 function gateCheckOf(ctx, ref, gate) {
-  const text2 = readIfExists(gatePath(ref, gate));
+  const text2 = readIfExists2(gatePath(ref, gate));
   const reading = text2 === null ? null : readGateMark(gate, text2);
   const problems = reading !== null && reading.mark === null ? reading.diagnostics.map((d) => d.message) : [];
   if (gate === "reviewed")
@@ -5439,7 +5453,7 @@ function gateReviewed(ctx, args, ref) {
   const line = checkedEvent(event);
   const mark = reviewedMarkText(at, files);
   const gitignore = ensureGatesIgnored(ref);
-  mkdirSync(join3(ref.dir, ".gates"), { recursive: true });
+  mkdirSync2(join4(ref.dir, ".gates"), { recursive: true });
   writeFileSync(gatePath(ref, "reviewed"), mark);
   appendEventLine(ref.dir, line);
   const ignored = gitignore === "added" ? "; .gitignore: added .gates/" : "";
@@ -5475,7 +5489,7 @@ async function gateCodeReviewed(ctx, args, ref) {
     throw bad(`the tree id of the working tree could not be computed${line === null ? "" : " after the event line was appended"}; no mark written`);
   const note = args.values.get("note");
   const mark = codeReviewedMarkText({ at, actor, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, ...note === undefined ? {} : { note } });
-  mkdirSync(join3(ref.dir, ".gates"), { recursive: true });
+  mkdirSync2(join4(ref.dir, ".gates"), { recursive: true });
   writeFileSync(gatePath(ref, "code-reviewed"), mark);
   const on = checkout.branch === null ? "" : ` on ${checkout.branch}`;
   const moved = event === null ? "" : "; code-review \u2192 close";
@@ -5536,7 +5550,7 @@ function stampedText(spec, date, reason) {
 function plannedTexts(ctx, ref, down, date, reason) {
   const texts = new Map;
   for (const name of readdirSync2(ref.dir).filter((n) => n.endsWith(".md"))) {
-    const before = readFileSync(join3(ref.dir, name), "utf8");
+    const before = readFileSync2(join4(ref.dir, name), "utf8");
     let after = shiftedText(before, down);
     if (name === "spec.md")
       after = stampedText(after, date, reason);
@@ -5551,7 +5565,7 @@ function archiveBlockers(text2, ref, listed2, master, locks) {
   const blockers = [];
   const fm = parseFrontmatter(text2);
   const spec = parseClaims(text2);
-  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists(join3(s.dir, "spec.md")))]));
+  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join4(s.dir, "spec.md")))]));
   const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere: heldElsewhere2 });
   if (hasDrift(report))
     blockers.push({ kind: "drift", hard: true, detail: `drift against the master: run spec-check drift ${ref.id} and repair it first` });
@@ -5573,7 +5587,7 @@ function archiveReferences(ctx, slug) {
     if (needle.test(text2))
       out.push({ file, line, text: text2.trim().slice(0, 160) });
   };
-  (readIfExists(masterPath(ctx)) ?? "").split(`
+  (readIfExists2(masterPath(ctx)) ?? "").split(`
 `).forEach((text2, i) => add("ISA.md", i + 1, text2));
   const grep = git(ctx.root, ["grep", "-n", "-I", "-F", "-e", `specs/${slug}`, "--", ".", ":!specs", ":!ISA.md"]) ?? "";
   for (const hit of grep.split(`
@@ -5585,16 +5599,16 @@ function archiveReferences(ctx, slug) {
   return out;
 }
 function performMove(ctx, move) {
-  mkdirSync(dirname(join3(ctx.root, move.to)), { recursive: true });
+  mkdirSync2(dirname2(join4(ctx.root, move.to)), { recursive: true });
   const tracked = (git(ctx.root, ["ls-files", "--", move.from]) ?? "").trim() !== "";
   if (tracked) {
     if (git(ctx.root, ["mv", move.from, move.to]) === null)
       throw bad(`git mv ${move.from} ${move.to} failed`);
   } else {
-    renameSync(join3(ctx.root, move.from), join3(ctx.root, move.to));
+    renameSync(join4(ctx.root, move.from), join4(ctx.root, move.to));
   }
   for (const [name, text2] of move.texts)
-    writeFileSync(join3(ctx.root, move.to, name), text2);
+    writeFileSync(join4(ctx.root, move.to, name), text2);
 }
 async function archive(ctx, args) {
   const restore = args.positional[0] === "restore";
@@ -5625,7 +5639,7 @@ async function archive(ctx, args) {
   }
   if (restore)
     return archiveRestore(ctx, args, refs2, dry);
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   const locks = await locksOf(ctx);
   const verdicts = refs2.map((ref) => {
     const blockers = archiveBlockers(specText(ctx, ref), ref, listed2, master, locks);

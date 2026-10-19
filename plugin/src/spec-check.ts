@@ -25,6 +25,7 @@ import {
   runEventLine,
   runStartLine,
 } from '../../core/src/activity-text.ts';
+import { activityPath, appendActivity, repoRoot } from './activity-log.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
@@ -136,12 +137,6 @@ interface Context {
 function git(cwd: string, args: readonly string[]): string | null {
   const r = Bun.spawnSync(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
-}
-
-/** The main checkout's root: the parent of the common git directory; the current directory outside git. */
-function repoRoot(cwd: string): string {
-  const common = git(cwd, ['rev-parse', '--git-common-dir'])?.trim();
-  return common === undefined || common === '' ? cwd : dirname(resolve(cwd, common));
 }
 
 function readIfExists(path: string): string | null {
@@ -659,21 +654,7 @@ async function transition(ctx: Context, args: Args): Promise<number> {
 /** The session a line names when the caller passes none: the CLI itself, in the actor grammar. */
 const CLI_SESSION = 'a:claude:spec-check';
 
-const activityPath = (ctx: Context): string => join(ctx.root, '.spectant', 'activity.jsonl');
-
-const activityText = (ctx: Context): string => readIfExists(activityPath(ctx)) ?? '';
-
-/**
- * Appends one line core planned to `.spectant/activity.jsonl` at the root (the folder created when absent), a newline
- * first when the file does not end in one. The root is the main checkout's, so a builder's worktree writes there too.
- */
-function appendActivity(ctx: Context, line: string): void {
-  const path = activityPath(ctx);
-  mkdirSync(dirname(path), { recursive: true });
-  const existing = readIfExists(path);
-  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
-  appendFileSync(path, `${lead}${line}`);
-}
+const activityText = (ctx: Context): string => readIfExists(activityPath(ctx.root)) ?? '';
 
 function requiredValue(args: Args, name: string, what: string): string {
   const value = args.values.get(name);
@@ -708,7 +689,7 @@ function runStart(ctx: Context, args: Args): number {
   const run = newRunId({ ts, session, command, target });
   const line = runStartLine({ run, target, command, session, ts });
   if (startedRunIds(activityText(ctx)).has(run)) throw bad(`the run ${run} was started already; nothing written`);
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command, session }, [run]);
   return EXIT.ok;
 }
@@ -727,7 +708,7 @@ function runEnd(ctx: Context, args: Args): number {
   const target = open.spec ?? open.idea ?? '';
   const ended: RunOutcome = outcome;
   const line = runEndLine({ run, target, command: open.command, session, ts: ctx.now.toISOString(), outcome: ended });
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command: open.command, session, outcome }, [`${run} ended (${outcome})`]);
   return EXIT.ok;
 }
@@ -762,7 +743,7 @@ function lockClaim(ctx: Context, args: Args): number {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
   }
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { claim: input.claim, session: input.session, already: false }, [`${input.claim}: claimed by ${input.session}`]);
   return EXIT.ok;
 }
@@ -777,7 +758,7 @@ function lockRelease(ctx: Context, args: Args): number {
     return EXIT.ok;
   }
   if (holder !== input.session) throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${holder}, not ${input.session}; nothing written`);
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
@@ -805,7 +786,7 @@ function activity(ctx: Context, args: Args): number {
   } else {
     throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
   }
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, JSON.parse(line) as unknown, [`${event} ${task}${claim === undefined ? '' : ` (${claim})`} appended to .spectant/activity.jsonl`]);
   return EXIT.ok;
 }

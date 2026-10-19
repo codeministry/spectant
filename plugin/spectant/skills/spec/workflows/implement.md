@@ -110,6 +110,7 @@ round plan and saves it as `<scratch>/round-N.plan.json`:
 *(output format — every builder gets this shape, nothing less)*
 
 ```
+spectant: spec=<NNN> task=T<k> claim=ISC-N
 SPEC:      <absolute path>/specs/NNN-slug/spec.md   (read it; you are closing one claim of it)
 GOAL:      "<the spec's goal, byte for byte>"
 CLAIM:     ISC-N — <claim text verbatim>
@@ -129,6 +130,10 @@ RETURN:    result | question — the shapes under "What a builder returns". A qu
            changes the claim set, the seam, or makes the probe unmeetable; everything else is a mark.
 DONE:      the probe named above ran red before your change and green after, in your worktree.
 ```
+
+The first line is the marker, exactly this shape and always first, before `SPEC:`: the plugin's hooks read it from
+the Agent tool's prompt to write the task's `claim`, `dispatch`, `build` and `release` lines, and a brief without it
+is no task to them. `<NNN>` is the spec's three-digit number, `T<k>` and `ISC-N` the task and claim of this brief.
 
 `STEPS` is how Spectant sees what a builder does inside its run: the builder writes `probe` and `question` itself, from
 inside its worktree, and the CLI puts the line into the repository root's `.spectant/activity.jsonl`. The parent never
