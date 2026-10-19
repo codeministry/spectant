@@ -1,0 +1,27 @@
+{
+  "description": "Spectant activity hooks: claim and release a builder's claim in .spectant/activity.jsonl from the marker line of its brief",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{ "type": "command", "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/spec-check\" hook" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{ "type": "command", "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/spec-check\" hook" }]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [{ "type": "command", "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/spec-check\" hook" }]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [{ "type": "command", "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/spec-check\" hook" }]
+      }
+    ]
+  }
+}

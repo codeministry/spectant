@@ -16,16 +16,15 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdir
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import {
   ActivityTextError,
-  claimLine,
   newRunId,
   probeLine,
   questionLine,
-  releaseLine,
   runEndLine,
   runEventLine,
   runStartLine,
 } from '../../core/src/activity-text.ts';
-import { activityPath, appendActivity, repoRoot } from './activity-log.ts';
+import { appendActivity, appendClaim, appendRelease, readActivity, repoRoot } from './activity-log.ts';
+import { runHook } from './hook.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
@@ -654,7 +653,7 @@ async function transition(ctx: Context, args: Args): Promise<number> {
 /** The session a line names when the caller passes none: the CLI itself, in the actor grammar. */
 const CLI_SESSION = 'a:claude:spec-check';
 
-const activityText = (ctx: Context): string => readIfExists(activityPath(ctx.root)) ?? '';
+const activityText = (ctx: Context): string => readActivity(ctx.root);
 
 function requiredValue(args: Args, name: string, what: string): string {
   const value = args.values.get(name);
@@ -720,11 +719,6 @@ function runCommand(ctx: Context, args: Args): number {
   throw bad(`"${sub}" is neither start nor end`);
 }
 
-/** The session holding `claim` per core's lock reader, or null. */
-function holderOf(ctx: Context, claim: string): string | null {
-  return activityReading(activityText(ctx)).locks.findLast((l) => l.claim === claim)?.session ?? null;
-}
-
 function lockInput(ctx: Context, args: Args): { claim: string; session: string; ts: string; task?: string; worktree?: string } {
   const claim = required(args, 0, 'the claim ID');
   const session = requiredValue(args, 'session', '<actor>');
@@ -736,14 +730,12 @@ function lockInput(ctx: Context, args: Args): { claim: string; session: string; 
 /** `claim <ISC-N> --session <actor>`: one `claim` line; exit 4 when another session holds it, nothing written. */
 function lockClaim(ctx: Context, args: Args): number {
   const input = lockInput(ctx, args);
-  const line = claimLine(input);
-  const holder = holderOf(ctx, input.claim);
-  if (holder !== null && holder !== input.session) throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${holder}; nothing written`);
-  if (holder === input.session) {
+  const outcome = appendClaim(ctx.root, input);
+  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`);
+  if (outcome.done === 'held') {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
   }
-  appendActivity(ctx.root, line);
   emit(ctx, args, { claim: input.claim, session: input.session, already: false }, [`${input.claim}: claimed by ${input.session}`]);
   return EXIT.ok;
 }
@@ -751,14 +743,12 @@ function lockClaim(ctx: Context, args: Args): number {
 /** `release <ISC-N> --session <actor>`: one `release` line by the holder; exit 4 when another session holds it. */
 function lockRelease(ctx: Context, args: Args): number {
   const input = lockInput(ctx, args);
-  const line = releaseLine(input);
-  const holder = holderOf(ctx, input.claim);
-  if (holder === null) {
+  const outcome = appendRelease(ctx.root, input);
+  if (outcome.done === 'held') {
     emit(ctx, args, { claim: input.claim, session: input.session, released: false }, [`${input.claim}: not held; nothing written`]);
     return EXIT.ok;
   }
-  if (holder !== input.session) throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${holder}, not ${input.session}; nothing written`);
-  appendActivity(ctx.root, line);
+  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`);
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
@@ -788,6 +778,21 @@ function activity(ctx: Context, args: Args): number {
   }
   appendActivity(ctx.root, line);
   emit(ctx, args, JSON.parse(line) as unknown, [`${event} ${task}${claim === undefined ? '' : ` (${claim})`} appended to .spectant/activity.jsonl`]);
+  return EXIT.ok;
+}
+
+/**
+ * `hook`: the plugin's activity hook (`hook.ts`), one payload on stdin. It never fails the tool call it watches: exit 0
+ * whatever happened, nothing on stdout, diagnostics on stderr only.
+ */
+async function hook(ctx: Context): Promise<number> {
+  let stdin = '';
+  try {
+    stdin = await Bun.stdin.text();
+  } catch {
+    return EXIT.ok;
+  }
+  runHook(stdin, process.env, ctx.now);
   return EXIT.ok;
 }
 
@@ -1612,6 +1617,12 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     summary: 'append one step line to .spectant/activity.jsonl (patch and apply need --worktree, probe --claim and --result, question --text)',
     values: ['task', 'claim', 'session', 'result', 'text', 'worktree'],
     run: activity,
+  },
+  hook: {
+    usage: 'hook',
+    summary:
+      'the plugin\'s activity hook: one Claude Code hook payload on stdin; claim at PreToolUse(Agent) with a marker line, release at SubagentStop of the last builder of the claim (or PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0',
+    run: hook,
   },
 };
 

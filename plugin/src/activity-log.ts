@@ -9,8 +9,9 @@
 // core's planner and reader stay tolerant of old lines without one (ISC-213).
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { runEventLine } from '../../core/src/activity-text.ts';
-import type { RunEventLineInput } from '../../core/src/activity-text.ts';
+import { claimLine, releaseLine, runEventLine } from '../../core/src/activity-text.ts';
+import type { ClaimLineInput, RunEventLineInput } from '../../core/src/activity-text.ts';
+import { activityReading } from '../../core/src/locks.ts';
 
 export type ActivityLogErrorCode = 'claim-required';
 
@@ -54,6 +55,39 @@ export function appendActivity(root: string, line: string): void {
   const existing = readIfExists(path);
   const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
   appendFileSync(path, `${lead}${line}`);
+}
+
+/** The activity log's text at a root, empty when it does not exist yet. */
+export const readActivity = (root: string): string => readIfExists(activityPath(root)) ?? '';
+
+/** The session holding `claim` per core's lock reader, or null. */
+export function holderOf(root: string, claim: string): string | null {
+  return activityReading(readActivity(root)).locks.findLast((l) => l.claim === claim)?.session ?? null;
+}
+
+/**
+ * What a lock write did: `written`; `held` when the session holds the claim already (claim) or nobody holds it
+ * (release), so nothing was needed; `other` when another session holds it, so nothing was written.
+ */
+export type LockOutcome = { readonly done: 'written'; readonly line: string } | { readonly done: 'held' | 'other'; readonly holder: string | null };
+
+/** Appends one `claim` line unless a session holds the claim already. Core refuses a malformed input first. */
+export function appendClaim(root: string, input: ClaimLineInput): LockOutcome {
+  const line = claimLine(input);
+  const holder = holderOf(root, input.claim);
+  if (holder !== null) return { done: holder === input.session ? 'held' : 'other', holder };
+  appendActivity(root, line);
+  return { done: 'written', line };
+}
+
+/** Appends one `release` line when the session holds the claim. Core refuses a malformed input first. */
+export function appendRelease(root: string, input: ClaimLineInput): LockOutcome {
+  const line = releaseLine(input);
+  const holder = holderOf(root, input.claim);
+  if (holder === null) return { done: 'held', holder };
+  if (holder !== input.session) return { done: 'other', holder };
+  appendActivity(root, line);
+  return { done: 'written', line };
 }
 
 /**
