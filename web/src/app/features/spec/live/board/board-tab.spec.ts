@@ -63,7 +63,7 @@ async function render(url: string, stored: Density): Promise<Harness> {
       },
       { provide: ShellState, useValue: { ws: signal('harbor'), specId: signal('002'), tier: signal('wide'), zen: signal(false) } },
       { provide: ShellData, useValue: { spec: { value: () => undefined }, specRows: () => [], archiveRows: () => [], planningModel: () => null } },
-      { provide: RefreshService, useValue: { lastRefresh: signal(0) } },
+      { provide: RefreshService, useValue: { lastRefresh: signal(0), refreshes: signal(0) } },
     ],
   });
   const http = TestBed.inject(HttpTestingController);

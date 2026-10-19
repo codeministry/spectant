@@ -63,6 +63,7 @@ import {
 } from '../../server/src/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
+  STEP_PATH,
   DENSE_HEADER,
   DENSE_STATES,
   STUB_DENSE,
@@ -1649,6 +1650,84 @@ describe('GET /api/events (spec 030, T17)', () => {
     expect(await sse.update(300)).toBe('timeout');
     expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
     expect(await sse.update()).toBe('end');
+  });
+});
+
+describe('POST /api/__stub/step (spec 015, T28)', () => {
+  type Step = { kind: string; ts: string; actor: string; result?: string; text?: string };
+  type Steps = Record<string, Step[]>;
+  const SPEC_KEY = 'specs/002-web-console';
+  const goldenSteps = (golden('harbor.steps') as Record<string, Steps>)[SPEC_KEY] ?? {};
+  const liveOf = async (session: string): Promise<{ etag: string | null; steps: Steps }> => {
+    const res = await ask(specRoutes.live(WS, '002'), { session });
+    return { etag: res.headers.get('ETag'), steps: ((await res.json()) as { steps: Steps }).steps };
+  };
+  const tasksOf = async (session: string): Promise<{ etag: string | null; steps: Steps }> => {
+    const res = await ask(specRoutes.tasks(WS, '002'), { session });
+    return { etag: res.headers.get('ETag'), steps: ((await res.json()) as { steps: Steps }).steps };
+  };
+  const step = (query: string, session: string, method = 'POST'): Promise<Response> => ask(`${STEP_PATH}?${query}`, { method, session });
+
+  test('appends the step to the session live and tasks answers (body and ETag), pushes one update frame first; reset drops it', async () => {
+    const session = 'stub-step';
+    const other = 'stub-step-bystander';
+    const t26 = goldenSteps['T26'] ?? [];
+    expect(t26.at(-1)?.ts).toBe('2026-03-08T16:12:00Z');
+    const before = { live: await liveOf(session), tasks: await tasksOf(session) };
+    expect(before.live.steps['T26']).toEqual(t26);
+    const mine = sseReader(await ask(EVENTS_PATH, { session }));
+    const bystander = sseReader(await ask(EVENTS_PATH, { session: other }));
+    for (const sse of [mine, bystander]) expect(await sse.next()).toEqual({ comment: 'ping' });
+
+    expect((await step(`ws=${WS}&spec=002&task=T26&kind=probe&result=red`, session)).status).toBe(204);
+    // The frame was on the stream before the 204: the workspace's views, as a bump sends them.
+    const frame = await mine.update(300);
+    if (typeof frame === 'string' || 'comment' in frame) throw new Error(`no update frame: ${JSON.stringify(frame)}`);
+    expect(frame.event).toBe(LIVE_EVENT);
+    expect((JSON.parse(frame.data) as LiveUpdate).ws).toBe(WS);
+    expect(await bystander.update(300)).toBe('timeout');
+
+    const added: Step = { kind: 'probe', ts: '2026-03-08T16:13:00Z', actor: 'a:claude:sess-2/T26', result: 'red' };
+    const after = { live: await liveOf(session), tasks: await tasksOf(session) };
+    expect(after.live.steps['T26']).toEqual([...t26, added]);
+    expect(after.tasks.steps['T26']).toEqual([...t26, added]);
+    expect(after.live.etag).not.toBe(before.live.etag);
+    expect(after.tasks.etag).not.toBe(before.tasks.etag);
+    // Every other task, and every other session, stays as the golden has it.
+    expect(before.live.steps).toEqual({ ...after.live.steps, T26: t26 });
+    expect((await liveOf(other)).steps['T26']).toEqual(t26);
+
+    // A second step follows a minute later; a task without steps starts its own timeline.
+    expect((await step(`ws=${WS}&spec=002&task=T26&kind=question&text=Which%20outline%3F`, session)).status).toBe(204);
+    expect((await step(`ws=${WS}&spec=002&task=T29&kind=build`, session)).status).toBe(204);
+    const twice = (await liveOf(session)).steps;
+    expect(twice['T26']?.slice(-2)).toEqual([added, { kind: 'question', ts: '2026-03-08T16:14:00Z', actor: 'a:claude:sess-2/T26', text: 'Which outline?' }]);
+    expect(twice['T29']).toEqual([{ kind: 'build', ts: '2026-03-08T15:01:00Z', actor: 'a:claude:stub-step' }]);
+    // One frame per step, no more.
+    for (let i = 0; i < 2; i++) expect(await mine.update(300)).toMatchObject({ event: LIVE_EVENT });
+    expect(await mine.update(300)).toBe('timeout');
+
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    expect(await mine.update()).toBe('end');
+    expect(await liveOf(session)).toEqual(before.live);
+    expect(await tasksOf(session)).toEqual(before.tasks);
+    expect((await ask(RESET_PATH, { method: 'POST', session: other })).status).toBe(204);
+    expect(await bystander.update()).toBe('end');
+  });
+
+  test('refuses an unknown workspace, spec or task (404), a malformed step (400) and another method (405)', async () => {
+    const session = 'stub-step-refused';
+    for (const query of [`ws=nowhere&spec=002&task=T26&kind=build`, `ws=${WS}&spec=999&task=T26&kind=build`, `ws=${WS}&spec=002&task=T99&kind=build`, `ws=${WS}&spec=002&kind=build`]) {
+      expect({ query, status: (await step(query, session)).status }).toEqual({ query, status: 404 });
+    }
+    const malformed = ['kind=sleep', '', 'kind=probe&result=amber', 'kind=build&result=red', 'kind=build&text=why', 'kind=question'];
+    for (const rest of malformed) {
+      const query = `ws=${WS}&spec=002&task=T26&${rest}`;
+      expect({ query, status: (await step(query, session)).status }).toEqual({ query, status: 400 });
+    }
+    const wrong = await step(`ws=${WS}&spec=002&task=T26&kind=build`, session, 'GET');
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'POST']);
+    expect((await liveOf(session)).steps).toEqual(goldenSteps);
   });
 });
 

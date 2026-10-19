@@ -9,12 +9,17 @@
  *
  * The browser runs in UTC, so a step's clock is the golden's own `HH:MM:SS`. Each test takes a fresh stub session, so
  * no remembered board query (a past frame, the `step` density, both of which hide the card's step line) leaks in.
+ *
+ * T30 · ISC-233: a new step reaches an open page over the live stream within 2 s, without a reload. The stub's
+ * `POST /api/__stub/step` stands in for a `probe` line appended to `.spectant/activity.jsonl`: it adds the step to the
+ * session's live and tasks answers and pushes one `update` frame to the session's open streams before its 204.
+ * `bun run e2e -- steps -g live` is the probe.
  */
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import type { TaskStep } from '../../core/src/files.ts';
 import { atWidth, expect, test } from './fixtures';
-import { RESET_PATH, SESSION_HEADER, STUB_NOW } from './stub-api';
+import { RESET_PATH, SESSION_HEADER, STEP_PATH, STUB_NOW } from './stub-api';
 
 const SPEC = 'specs/002-web-console';
 const BOARD = '/w/harbor/s/002/board';
@@ -213,3 +218,90 @@ for (const width of [1440, 390] as const) {
     });
   });
 }
+
+/** ISC-233: the claim's bound from the moment the line is appended (the stub's POST) to the step on screen. */
+const LIVE_BOUND_MS = 2000;
+/** The task the live tests append to: on the board at 1440, its latest golden step an `apply`, not a red probe. */
+const LIVE_TASK = 'T26';
+const RED_PROBE: TaskStep = { kind: 'probe', result: 'red', ts: '', actor: '' };
+
+/**
+ * Opens `path` with the live stream connected and a marker on `window` that a reload would wipe, and counts every
+ * document request after the first load; the returned check proves the page was neither reloaded nor navigated away.
+ */
+async function openLive(page: Page, path: string): Promise<() => Promise<void>> {
+  const stream = page.waitForResponse((res) => new URL(res.url()).pathname === '/api/events' && res.status() === 200);
+  await page.goto(path);
+  await stream;
+  await page.evaluate(() => Object.assign(window, { spectantNoReload: true }));
+  const documents: string[] = [];
+  page.on('request', (req) => {
+    if (req.resourceType() === 'document') documents.push(req.url());
+  });
+  return async () => {
+    expect(documents).toEqual([]);
+    expect(await page.evaluate(() => (window as unknown as { spectantNoReload?: boolean }).spectantNoReload)).toBe(true);
+  };
+}
+
+/** Appends a red probe on `LIVE_TASK` through the stub, as an agent's activity line would; returns when it was sent. */
+async function appendRedProbe(page: Page): Promise<number> {
+  const session = `agent-steps-${test.info().testId}`;
+  const sent = Date.now();
+  const res = await page.request.post(`${STEP_PATH}?ws=harbor&spec=002&task=${LIVE_TASK}&kind=probe&result=red`, { headers: { [SESSION_HEADER]: session } });
+  expect(res.status()).toBe(204);
+  return sent;
+}
+
+test.describe('agent steps live at 1440', () => {
+  test.use({ ...atWidth(1440), timezoneId: 'UTC', clockAt: STUB_NOW });
+
+  test(`live: a new probe step appears in the tasks tab within ${LIVE_BOUND_MS} ms without reload`, async ({ page }) => {
+    const before = TIMELINES[LIVE_TASK] ?? [];
+    expect(before.at(-1)?.kind).not.toBe('probe');
+    const noReload = await openLive(page, `${TASKS}?steps=${LIVE_TASK}`);
+    const toggle = page.locator(`#task-${LIVE_TASK}[data-task-row] [data-steps-toggle]`);
+    const rows = page.locator(`[data-steps]#task-${LIVE_TASK}-steps [data-step-timeline] > li[data-step-kind]`);
+    await expect(rows).toHaveCount(before.length);
+    await expect(toggle.locator('[data-step-latest]')).toHaveAttribute('data-step-kind', before.at(-1)?.kind ?? '');
+
+    const sent = await appendRedProbe(page);
+    const latest = toggle.locator('[data-step-latest][data-step-kind="probe"][data-step-result="red"]');
+    await expect(latest).toBeVisible({ timeout: LIVE_BOUND_MS });
+    const elapsed = Date.now() - sent;
+    await expect(latest).toHaveText(wordOf(RED_PROBE));
+    await expect(toggle.locator('[data-steps-count]')).toHaveText(`${before.length + 1} steps`);
+    await expect(rows).toHaveCount(before.length + 1);
+    await expect(rows.last()).toHaveAttribute('data-step-kind', 'probe');
+    await expect(rows.last()).toHaveAttribute('data-step-result', 'red');
+    await expect(rows.last()).toHaveAttribute('data-step-latest', '');
+    await expect(rows.last().locator('[data-step-word]')).toHaveText(wordOf(RED_PROBE));
+    expect(elapsed).toBeLessThanOrEqual(LIVE_BOUND_MS);
+    test.info().annotations.push({ type: 'elapsed-ms', description: String(elapsed) });
+    await noReload();
+  });
+
+  test(`live: a new probe step appears on the live board card within ${LIVE_BOUND_MS} ms without reload`, async ({ page }) => {
+    const before = TIMELINES[LIVE_TASK] ?? [];
+    const noReload = await openLive(page, BOARD);
+    const line = page.locator(`app-board-tab article[data-card="${LIVE_TASK}"] [data-card-latest-step]`);
+    await expect(line).toBeAttached();
+    if (!(await line.isVisible())) {
+      // The card sits below its lane's cut; "show all" brings it on screen, as the timeline test does.
+      const lane = await page.locator(`app-board-tab [data-lane]:has(article[data-card="${LIVE_TASK}"])`).first().getAttribute('data-lane');
+      await page.locator(`app-board-tab [data-lane="${lane ?? ''}"] [data-show-all]`).click();
+    }
+    await expect(line).toBeVisible();
+    await expect(line).toHaveAttribute('data-step-kind', before.at(-1)?.kind ?? '');
+
+    const sent = await appendRedProbe(page);
+    const latest = page.locator(`app-board-tab article[data-card="${LIVE_TASK}"] [data-card-latest-step][data-step-kind="probe"][data-step-result="red"]`);
+    await expect(latest).toBeVisible({ timeout: LIVE_BOUND_MS });
+    const elapsed = Date.now() - sent;
+    await expect(latest.locator('[data-step-word]')).toHaveText(wordOf(RED_PROBE));
+    await expect(line).toHaveCount(1);
+    expect(elapsed).toBeLessThanOrEqual(LIVE_BOUND_MS);
+    test.info().annotations.push({ type: 'elapsed-ms', description: String(elapsed) });
+    await noReload();
+  });
+});

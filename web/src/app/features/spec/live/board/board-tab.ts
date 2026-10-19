@@ -319,9 +319,11 @@ export class BoardTab {
     // n s ago" names when this board was last read.
     const clock = setInterval(() => this.now.set(Date.now()), 10_000);
     inject(DestroyRef).onDestroy(() => clearInterval(clock));
+    // The refresh count, not its clock (spec 015, ISC-233): two refreshes in one millisecond, or under a pinned clock,
+    // leave `lastRefresh` unchanged and would skip the read of a streamed step.
     let firstRefresh = true;
     effect(() => {
-      this.refresher.lastRefresh();
+      this.refresher.refreshes();
       if (firstRefresh) firstRefresh = false;
       else untracked(() => this.liveResult.reload());
     });

@@ -135,6 +135,14 @@
  *   (T33): none → dispatched → building → patched → applied-open (`applied` once tasks.md ticked it); the last stays.
  *   The live frame's body and ETag change as an activity log line would change them. 204; 404 for an unknown
  *   workspace, spec or task, or an `absent` card; 405 with `Allow: POST` for another method. A reset drops it.
+ * - `POST /api/__stub/step?ws=<slug>&spec=<id>&task=<tid>&kind=<kind>[&result=red|green][&text=<question>]` stands in
+ *   for one step line appended to `.spectant/activity.jsonl` (spec 015, T28, ISC-233): that session's live and tasks
+ *   answers carry the step after the task's own (`steps[<tid>]`; body and ETag change as the log line would change
+ *   them), stamped a minute after the task's latest step or `STUB_NOW`, whichever is later, by that step's actor
+ *   (`STUB_STEP_ACTOR` on a task without steps). `kind` is one of `STUB_STEP_KINDS`; `result` only on a `probe`,
+ *   `text` on a `question` and only there. Before its 204 it pushes one `update` frame to every open `/api/events`
+ *   stream of that session, exactly as `POST /api/__stub/bump` does. 400 `{error: "invalid-step"}` for a malformed
+ *   step; 404 for an unknown workspace, spec or task; 405 with `Allow: POST` for another method. A reset drops it.
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
@@ -171,7 +179,9 @@ import type {
   SpecWait,
   TaskRow,
   TaskRun,
+  ProbeResult,
   TaskStatus,
+  TaskStep,
   TaskSteps,
   TasksTab,
   TechModel,
@@ -298,6 +308,12 @@ export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
 export const WORKFLOW_PATH = '/api/__stub/workflow';
 export const BUMP_RUN_PATH = '/api/__stub/bump-run';
+export const STEP_PATH = '/api/__stub/step';
+/** The step kinds `POST /api/__stub/step` takes: core's `TaskStepKind`, the run events, the two step events and the release. */
+export const STUB_STEP_KINDS = ['dispatch', 'build', 'patch', 'apply', 'probe', 'question', 'release'] as const satisfies ReadonlyArray<TaskStep['kind']>;
+const PROBE_RESULTS = ['red', 'green'] as const satisfies readonly ProbeResult[];
+/** Who takes a stub step on a task without steps of its own (else the task's latest step's actor). */
+export const STUB_STEP_ACTOR = 'a:claude:stub-step';
 /** The stub stream's heartbeat, the real route's `: ping` interval (plan 030), under Bun's `idleTimeout` of 10 s. */
 export const LIVE_HEARTBEAT_MS = 5_000;
 
@@ -2367,6 +2383,46 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     runBumps.set(id, own);
     return new Response(null, { status: 204 });
   };
+  /** Steps appended through `POST /api/__stub/step` (spec 015, T28) per session, then per `<slug>\0<spec key>`, then per task. */
+  const addedSteps = new Map<string, Map<string, Map<string, TaskStep[]>>>();
+  /** `steps` with the session's appended steps after each task's own, as new activity lines would add them. */
+  const withAddedSteps = (req: Request, ws: string, spec: SpecGoldens, steps: TaskSteps): TaskSteps => {
+    const own = addedSteps.get(sessionOf(req))?.get(`${ws}\0${spec.key}`);
+    if (!own) return steps;
+    const out: Record<string, readonly TaskStep[]> = { ...steps };
+    for (const [task, added] of own) out[task] = [...(steps[task] ?? []), ...added];
+    return out;
+  };
+  const stepRoute = async (req: Request, url: URL): Promise<Response> => {
+    if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
+    const slug = url.searchParams.get('ws') ?? '';
+    const ref = url.searchParams.get('spec');
+    const tree = trees.get(slug);
+    const spec = tree && ref !== null ? resolveSpec(tree.specs, ref) : null;
+    const task = spec?.locked.activity.live.cards.find((c) => c.task === url.searchParams.get('task'))?.task;
+    if (!spec || task === undefined) return settingsError(404, { error: 'not-found' });
+    const kind = url.searchParams.get('kind') ?? '';
+    const result = url.searchParams.get('result');
+    const text = url.searchParams.get('text') ?? '';
+    const resultOk = result === null || (kind === 'probe' && isOneOf(PROBE_RESULTS, result));
+    if (!isOneOf(STUB_STEP_KINDS, kind) || !resultOk || (kind === 'question') !== (text !== '')) return settingsError(400, { error: 'invalid-step' });
+    const id = sessionOf(req);
+    const own = addedSteps.get(id) ?? new Map<string, Map<string, TaskStep[]>>();
+    const key = `${slug}\0${spec.key}`;
+    const tasks = own.get(key) ?? new Map<string, TaskStep[]>();
+    const added = tasks.get(task) ?? [];
+    const last = [...(spec.steps[task] ?? []), ...added].at(-1);
+    const at = Math.max(last === undefined ? 0 : Date.parse(last.ts), Date.parse(STUB_NOW)) + 60_000;
+    const ts = new Date(at).toISOString().replace('.000Z', 'Z');
+    const actor = last?.actor ?? STUB_STEP_ACTOR;
+    const step: TaskStep = { kind, ts, actor, ...(result === null ? {} : { result }), ...(text === '' ? {} : { text }) };
+    tasks.set(task, [...added, step]);
+    own.set(key, tasks);
+    addedSteps.set(id, own);
+    // Pushed before the 204, as a bump does, so a caller that awaited the step finds the frame on every open stream.
+    await pushUpdate(id, slug);
+    return new Response(null, { status: 204 });
+  };
   /** The live frame this session sees: the fixture's, each bumped task's run moved on by its bumps (T33). */
   const liveOf = (req: Request, ws: string, spec: SpecGoldens, locks: LockState): LiveFrame => {
     const live = spec.locked[locks].live;
@@ -2985,7 +3041,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
         return workspaceJson(req, 200, spec.claims);
       case 'tasks': {
         const { tab, hash } = tasksTab(req, tree, spec);
-        const body = tab === null ? null : { ...tab, steps: questionOf(req, tree, spec, liveOf(req, match.params.ws, spec, locks)).steps };
+        const steps = withAddedSteps(req, match.params.ws, spec, questionOf(req, tree, spec, liveOf(req, match.params.ws, spec, locks)).steps);
+        const body = tab === null ? null : { ...tab, steps };
         return workspaceJson(req, 200, body, hash === null ? {} : { [TASKS_HASH_HEADER]: hash });
       }
       case 'evidenceFile':
@@ -2994,7 +3051,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
         return workspaceJson(req, 200, spec.frames);
       case 'live': {
         const { live, steps } = questionOf(req, tree, spec, liveOf(req, match.params.ws, spec, locks));
-        return workspaceJson(req, 200, { ...live, steps });
+        return workspaceJson(req, 200, { ...live, steps: withAddedSteps(req, match.params.ws, spec, steps) });
       }
       default:
         return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowFor(match.route) });
@@ -3195,6 +3252,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       notebooks.delete(sessionOf(req));
       bumps.delete(sessionOf(req));
       runBumps.delete(sessionOf(req));
+      addedSteps.delete(sessionOf(req));
       boards.delete(sessionOf(req));
       actorLists.delete(sessionOf(req));
       boardQueries.delete(sessionOf(req));
@@ -3206,6 +3264,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
     if (pathname === BUMP_RUN_PATH) return bumpRunRoute(req, url);
+    if (pathname === STEP_PATH) return stepRoute(req, url);
     if (pathname === WORKFLOW_PATH) return workflowRoute(req, url);
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
     if (pathname === ACTORS_PATH) return actorsRoute(req);

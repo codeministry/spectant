@@ -355,10 +355,12 @@ export class TasksTab {
   private scrolledTo: string | null = null;
 
   constructor() {
-    // The live frame again on every refresh (ETag: a 304 costs no body), so a run chip moves within one tick (ISC-62).
+    // The live frame again on every refresh (ETag: a 304 costs no body), so a run chip moves within one tick (ISC-62)
+    // and a streamed step shows within 2 s (spec 015, ISC-233). The refresh count, not its clock: two refreshes in
+    // one millisecond, or under a pinned clock, leave `lastRefresh` unchanged and would skip the read.
     let firstRefresh = true;
     effect(() => {
-      this.refresher.lastRefresh();
+      this.refresher.refreshes();
       if (firstRefresh) firstRefresh = false;
       else untracked(() => this.live.reload());
     });
