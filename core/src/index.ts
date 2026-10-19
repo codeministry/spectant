@@ -21,6 +21,9 @@
 // Spec 040's item-state.ts (`itemStates`, `STATE_TABLE`, the default ages) takes the parsed workspace, the dashboard
 // model and the task runs from the caller, imports dashboard.ts for types only and neither gates.ts nor locks.ts, so it
 // rides it whole; its types `ItemStateInfo`, `ItemState`, `ItemRun`, `ItemWaits` and `OpenRun` ride with files.ts.
+// Spec 031's spec-text.ts (`specFolderText`, `mintClaimsText`, `projectClaimsText`, `appendVerificationText`,
+// `appendDecisionText`) takes the file texts from the caller, imports only claims.ts and frontmatter.ts, writes nothing and
+// rides it whole; the plugin CLI writes what it returns.
 // Spec 020's guidance.ts (`guidanceOf`, `withGuidance`, `guidanceOfSpec`) takes the workspace, the dashboard model and
 // the item states from the caller and reads no file, so it is browser-safe and rides it whole; its types ride with files.ts.
 // Spec 015's steps.ts (`taskSteps`) takes the lock reading and the spec folder's texts from the caller and reads no
@@ -48,6 +51,7 @@ export * from './actor.ts';
 export * from './assignee.ts';
 export * from './transition.ts';
 export * from './allocate.ts';
+export * from './spec-text.ts';
 export * from './glossary.ts';
 export * from './tokens.ts';
 export * from './backlog.ts';
