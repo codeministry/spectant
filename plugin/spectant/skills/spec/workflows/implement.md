@@ -18,7 +18,7 @@ in its `## Conformance baseline`. Nothing is committed unless the repository's o
 ## Run lines
 
 Resolve the folder under `./specs/` (`NNN` given → `specs/NNN-*`; nothing given → the number in the branch or worktree
-name, else ask), then `spec-check run start specs/NNN-slug --command "/spec implement NNN"` and keep the run ID. Every
+name, else ask), then `spec-check run start specs/NNN-slug --session <actor> --command "/spec implement NNN"` and keep the run ID. Every
 path out of this workflow ends with `spec-check run end <run-id> --outcome ok`, or `--outcome error` on a failure or an
 abort: the review gate answered "not yet" is `ok`, a stopping condition is `ok`, a write that did not land is `error`.
 One pair per invocation, around the whole subcommand and all its rounds; end it before the reply that ends the turn.

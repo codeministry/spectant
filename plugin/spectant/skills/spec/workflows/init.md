@@ -24,7 +24,7 @@ ok, 1 bad arguments, 3 drift or gate open, 4 lock lost. `init` works on no spec 
 literal subject `init`:
 
 ```bash
-spec-check run start init --command "/spec init" --json
+spec-check run start init --session <actor> --command "/spec init" --json
 ```
 
 Keep the returned run ID and close the run on every way out, an open question at the end of a turn included:

@@ -19,7 +19,7 @@ written.
 arguments, 3 drift or gate open, 4 lock lost. Before anything else, open the run:
 
 ```bash
-spec-check run start NNN --command "/spec plan NNN" --json
+spec-check run start NNN --session <actor> --command "/spec plan NNN" --json
 ```
 
 Keep the returned run ID. Close the run on every way out of this workflow, a refusal included:

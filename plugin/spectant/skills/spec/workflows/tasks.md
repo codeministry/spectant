@@ -18,7 +18,7 @@ to `/spec review <NNN>` without a `tasks.md`.
 Resolve the folder `specs/NNN-slug/` (`NNN` given, else ask). Then:
 
 ```bash
-CLI run start specs/NNN-slug --command "/spec tasks NNN"
+CLI run start specs/NNN-slug --session <actor> --command "/spec tasks NNN"
 ```
 
 Keep the run ID it prints. Every exit from this workflow, a stop or an error included, ends with
