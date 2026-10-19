@@ -115,6 +115,12 @@ export type SpecRoutesOptions = {
    * `runAbortMinutes` setting × 60 000, read per write so a changed setting applies at once. Absent, core's default.
    */
   abortAfterMs?: () => number;
+  /**
+   * The age after which a claim lock without a release shows `stale` and reads `aborted` (spec 032, ISC-35; ISC-223):
+   * the `staleMinutes` setting × 60 000, read per request. The live frame's `staleAfterMs`, the claims' and the item
+   * states' claim stale age. Absent, core's default (45 minutes).
+   */
+  staleAfterMs?: () => number;
 };
 
 /** Any path under `/api/workspaces/:ws/specs`: the spec routes own it, so an unknown tab is their 404, not the server's. */
@@ -152,6 +158,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
   const cache = options.commitCache ?? new CommitCache();
   /** The run lock's abort age for one write, as an optional input field. */
   const age = (): { abortAfterMs?: number } => (options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() });
+  /** The claim stale age for one read (spec 032, ISC-35), as an optional input field: the live frame, claims, item states. */
+  const staleAge = (): { staleAfterMs?: number } => (options.staleAfterMs === undefined ? {} : { staleAfterMs: options.staleAfterMs() });
 
   const locksOf = (root: string, now: Date): Promise<LockReading> => readLockSources({ repoRoot: root, lifeosStateDir: stateDir, now });
 
@@ -183,7 +191,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     const { input } = reading;
     const specEdges = resolveEdges({ specs: input.specs, archived: input.archived, constitution: input.constitution }, reading.mergeState).edges.filter((e) => e.fromSpec === ref.id);
     if (now === null) return { specEdges, items: [] };
-    const items = workspaceItemStates(input, buildDashboard(input), { now, ...age() }).filter((i) => i.spec === ref.id || (i.kind === "spec" && i.id === ref.id));
+    const items = workspaceItemStates(input, buildDashboard(input), { now, ...age(), ...staleAge() }).filter((i) => i.spec === ref.id || (i.kind === "spec" && i.id === ref.id));
     return { specEdges, items };
   }
 
@@ -200,7 +208,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     };
     // One item-state reading for the head's state and the workspace guidance (spec 020), as the dashboard composes it.
     const dashboard = buildDashboard(input);
-    const items = workspaceItemStates(input, dashboard, { now: clock(), ...age() });
+    const items = workspaceItemStates(input, dashboard, { now: clock(), ...age(), ...staleAge() });
     const state = ref.archived ? undefined : items.find((i) => i.kind === "spec" && i.id === ref.id);
     const page = buildSpecPage({
       files: { folder: files.folder, texts },
@@ -271,9 +279,10 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, timeline, head === null ? {} : { ETag: timelineEtag(timeline, head) });
       }
       case "claims": {
-        // The clock gives each claim its `itemState` (spec 040, ISC-224), at the claim stale age of the live frame.
+        // The clock gives each claim its `itemState` (spec 040, ISC-224), at the claim stale age of the live frame (the
+        // `staleMinutes` setting, spec 032 ISC-35).
         const now = clock();
-        return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, now), specEdges: await specEdgesOf(root, ref), now }));
+        return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, now), specEdges: await specEdgesOf(root, ref), now, ...staleAge() }));
       }
       case "tasks": {
         // One read of the raw bytes: the hash covers exactly the text that was parsed.
@@ -303,7 +312,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       case "live": {
         const now = clock();
         const locks = await locksOf(root, now);
-        const frame = buildLiveFrame({ files: withConstitution(files, await constitution()), locks, now, specEdges: await specEdgesOf(root, ref) });
+        // The stale age is the `staleMinutes` setting (spec 032, ISC-35): cards, agents and item states age by it.
+        const frame = buildLiveFrame({ files: withConstitution(files, await constitution()), locks, now, specEdges: await specEdgesOf(root, ref), ...staleAge() });
         // Each task's step timeline beside the frame (spec 015, ISC-232): core's model over the same reading.
         return json(req, 200, { ...frame, steps: taskSteps(locks, files) } satisfies SpecRouteResponses["live"]);
       }

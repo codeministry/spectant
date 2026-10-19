@@ -232,12 +232,14 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const settings = openSettings(db);
     // The run lock's abort age (spec 040, ISC-225), read per write so a changed `runAbortMinutes` applies at once.
     const abortAfterMs = (): number => settings.get().runAbortMinutes * 60_000;
-    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache(), notes, abortAfterMs });
+    // The claim stale age (spec 032, ISC-35), read per request so a changed `staleMinutes` shows on the next frame.
+    const staleAfterMs = (): number => settings.get().staleMinutes * 60_000;
+    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache(), notes, abortAfterMs, staleAfterMs });
     const reads = composeApi(
       settingsApi(settings),
       actorsApi(db),
       lifeosApi(lifeos),
-      dashboardApi({ registry, lifeos, db, abortAfterMs }),
+      dashboardApi({ registry, lifeos, db, abortAfterMs, staleAfterMs }),
       notesApi({ store: notes, registry }),
       specs,
       prototypeApi({ registry }),

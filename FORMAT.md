@@ -1703,11 +1703,26 @@ hold a claim:
   same file carries the four run events of an implement round (spec 027, ISC-179, below) and the two run lifecycle
   events of a command (spec 040, ISC-222, below), none of which holds a claim.
 
-**Who writes the lines** (spec 031, ISC-227). The plugin CLI `spec-check` writes every line of this file except the
-app's run release: `claim` and `release`, `run-start` and `run-end` (`spec-check run start` and `spec-check run end`),
-and the run and step events (`spec-check activity <event>`), beside the plugin's hooks. It plans each line through
-core's `activity-text.ts` (`claimLine`, `releaseLine`, `runStartLine`, `runEndLine`, `runEventLine`, `probeLine`,
-`questionLine`), which writes nothing and returns one JSON object and its newline with its keys in the order the
+**Who writes the lines** (spec 031, ISC-227; spec 032, ISC-33.1). The plugin writes every line of this file except the
+app's run release (spec 040, above), the one line the app writes; the app reads everything else. Three writers share
+the work:
+
+- **The hooks** (`spec-check hook`, wired in `plugin/spectant/hooks/hooks.json`) write `claim`, `dispatch`, `build`
+  and `release` for a builder whose brief opens with the marker line `spectant: spec=<NNN> task=<Tn> claim=<ISC-N>`
+  (`plugin/src/marker.ts`), which the plugin's implement command writes as the first line of every builder brief: no
+  hook field names a task or a claim. `claim` and `dispatch` at `PreToolUse(Agent)` (`dispatch` alone when the session
+  holds the claim already), `build` at `PostToolUse(Agent)` when the builder launched in the background or completed in
+  the foreground, `release` at `SubagentStop` of the last running builder of that claim (or at that foreground
+  completion). Each line's `session` is the parent session, `a:claude:<first 8 characters of its session id>`. A brief
+  without the marker line gets no line: a foreign subagent is no task.
+- **The activity tool** (`spec-check activity <event>`): the parent of an implement round writes `patch` and `apply`,
+  and a builder its step events `probe` and `question` (below). The parent writes no `claim`, `release`, `dispatch` or
+  `build` of its own.
+- **The CLI's other commands**: `run-start` and `run-end` (`spec-check run start` and `spec-check run end`), and a
+  claim held by hand (`spec-check claim` and `spec-check release`).
+
+Each of them plans each line through core's `activity-text.ts` (`claimLine`, `releaseLine`, `runStartLine`,
+`runEndLine`, `runEventLine`, `probeLine`, `questionLine`), which writes nothing and returns one JSON object and its newline with its keys in the order the
 skill's activity writer and the app use (the reader ignores key order): `ts`, `event`, then `claim`, `task`, `session` for the claim, release, run and step events
 (`result` or `text` after `session`, `worktree` last), and `run`, `command`, `session`, the target and `outcome` for
 the run lifecycle events. A planner refuses input the reader would skip or read as legacy (a session outside the actor
@@ -1743,9 +1758,11 @@ the round's plan sends the task out, `build` when its builder starts in its work
 any other session) and `ts` are required on every run event; a run event that lacks one is a malformed line and is
 skipped. `worktree` is required on `patch` and `apply` only, and a `patch` or `apply` without it is malformed too. On
 `dispatch` and `build` it is optional (spec 035, ISC-189): the builder's worktree does not exist yet when its task is
-dispatched, so the round may write both lines without it, and they are read as usual. `claim` is optional and only
-names the claim; a run event never holds or releases it. The round writes them, and its builders their step events
-(below), through the plugin CLI (`spec-check activity <event>`, above).
+dispatched, so the round may write both lines without it, and they are read as usual. `claim` is optional for the
+reader, which still reads an older line without it, and only names the claim; a run event never holds or releases it.
+Every run event the plugin writes carries `claim` (spec 032, ISC-33.1): its run-event writer refuses one without
+(`claim-required`) and writes nothing. The hooks write `dispatch` and `build`, the round's parent `patch` and `apply`,
+and its builders their step events (below), as Who writes the lines (above) sets out.
 
 A `dispatch` and a `build` line without `worktree`, both read:
 

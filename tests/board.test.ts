@@ -6,6 +6,10 @@
 // frame, which must show the claimed task in flight under the hook's session. The latency runs from the append to the
 // arrival of that frame state, never through a poll.
 //
+// The stale age (ISC-35): a claim without a release older than the `staleMinutes` setting shows `stale` on its card
+// (and its item state reads `aborted`, spec 040); a younger one does not, and with no setting stored the 45-minute
+// default applies. The setting goes through `PUT /api/settings`, as the settings page sets it, never into the database.
+//
 // The repository is a plain copy of `core/fixtures/harbor` in a temp directory; nothing else is written. Every git
 // command the server runs here sees an empty global config and no system config, as in `tests/live.test.ts`.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -14,6 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CardState, LiveCard } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary } from "../server/src/api.ts";
+import { SETTINGS_PATH } from "../server/src/settings.ts";
 import { type SpecRouteResponses, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { LIVE_MS, changeAndWait, serve } from "./fixtures/live-stream.ts";
 
@@ -112,6 +117,88 @@ describe("ISC-34 live: a new claim line reaches the agent board within 2 s", () 
       console.info(`ISC-34 live: claim on the board ${latency} ms after the append`);
     } finally {
       await stream.close();
+      // Released again, as the hook's release would, so the stale probe below finds the claim free.
+      appendFileSync(join(repo, ".spectant", "activity.jsonl"), `${JSON.stringify({ ts: new Date().toISOString(), event: "release", claim, task, session })}\n`);
+    }
+  });
+});
+
+describe("ISC-35 stale: a claim without release older than the set age shows stale on the agent board", () => {
+  const MINUTE = 60_000;
+
+  async function putSettings(body: Record<string, unknown>): Promise<{ status: number; body: unknown }> {
+    const res = await fetch(`${url}${SETTINGS_PATH}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
+  }
+
+  /**
+   * The card of `card.task` as the board reads it (in flight, stale or not), and its claim's item state in the one state
+   * model of spec 040 (`claims` route, `ClaimView.itemState`), where a lock past the same age reads `aborted` (ISC-223).
+   */
+  async function cardOf(card: LiveCard): Promise<Record<string, unknown>> {
+    const live = (await readLive()).cards.find((c) => c.task === card.task);
+    const res = await fetch(`${url}${specRoutes.claims(slug, SPEC_ID)}`);
+    expect(res.status).toBe(200);
+    const claims = (await res.json()) as SpecRouteResponses["claims"];
+    const claim = claims.claims.find((c) => c.id === card.claim);
+    return { task: card.task, state: live?.state, stale: live?.stale, claimState: claim?.itemState?.state };
+  }
+
+  /** The expected card: running, `stale` as given, and its claim `aborted` when stale, else `running`. */
+  const expected = (card: LiveCard, stale: boolean): Record<string, unknown> => ({
+    task: card.task,
+    state: "running",
+    stale,
+    claimState: stale ? "aborted" : "running",
+  });
+
+  test("stale claim: older than staleMinutes is stale, younger is not, and without a setting 45 minutes apply", async () => {
+    // Two free cards on two open claims nobody holds (no lock, no unmet edge: a claim that waits stays `waiting` under a
+    // lock), each claimed from outside as the hook would, at a back-dated `ts`.
+    const before = await readLive();
+    const held = new Set(before.locks.map((lock) => lock.claim));
+    const views = (await (await fetch(`${url}${specRoutes.claims(slug, SPEC_ID)}`)).json()) as SpecRouteResponses["claims"];
+    const open = new Set(views.claims.filter((c) => c.itemState?.state === "open").map((c) => c.id));
+    const free: LiveCard[] = [];
+    for (const card of before.cards) {
+      if (NOT_TAKEABLE.has(card.state) || card.lane === "operator" || held.has(card.claim) || !open.has(card.claim)) continue;
+      if (free.some((f) => f.claim === card.claim)) continue;
+      free.push(card);
+    }
+    expect(free.length).toBeGreaterThanOrEqual(2);
+    const [old, young] = free as [LiveCard, LiveCard];
+    const now = Date.now();
+    const lines = [
+      { card: old, ageMinutes: 50 },
+      { card: young, ageMinutes: 30 },
+    ].map(({ card, ageMinutes }) => ({
+      ts: new Date(now - ageMinutes * MINUTE).toISOString(),
+      event: "claim",
+      claim: card.claim,
+      task: card.task,
+      session: `a:claude:board-stale/${card.task}`,
+    }));
+    appendFileSync(join(repo, ".spectant", "activity.jsonl"), lines.map((l) => `${JSON.stringify(l)}\n`).join(""));
+
+    try {
+      // No setting stored: the 45-minute default. 50 minutes is stale, 30 is not.
+      expect((await readLive()).staleAfterMs).toBe(45 * MINUTE);
+      expect(await cardOf(old)).toEqual(expected(old, true));
+      expect(await cardOf(young)).toEqual(expected(young, false));
+
+      // 20 minutes: the 30-minute claim is now older than the set age, so it is stale too.
+      expect(await putSettings({ staleMinutes: 20 })).toMatchObject({ status: 200, body: { staleMinutes: 20 } });
+      expect((await readLive()).staleAfterMs).toBe(20 * MINUTE);
+      expect(await cardOf(old)).toEqual(expected(old, true));
+      expect(await cardOf(young)).toEqual(expected(young, true));
+
+      // 60 minutes: both claims are younger than the set age, so neither is stale.
+      expect(await putSettings({ staleMinutes: 60 })).toMatchObject({ status: 200, body: { staleMinutes: 60 } });
+      expect((await readLive()).staleAfterMs).toBe(60 * MINUTE);
+      expect(await cardOf(old)).toEqual(expected(old, false));
+      expect(await cardOf(young)).toEqual(expected(young, false));
+    } finally {
+      await putSettings({ staleMinutes: 45 });
     }
   });
 });

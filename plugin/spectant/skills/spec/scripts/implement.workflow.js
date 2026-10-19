@@ -11,7 +11,8 @@ export const meta = {
 // args = {
 //   plan:  { dispatch: [{ id, claim, lane?, text, path?, after? }], held?: [...], exhausted?: boolean }
 //          (the round plan the parent built from `spec-check frontier <spec> --json`, workflows/implement.md Step 3),
-//   brief: { spec,               absolute path of specs/NNN-slug/spec.md in the parent's checkout
+//   brief: { spec,               absolute path of specs/NNN-slug/spec.md in the parent's checkout; its folder's NNN
+//                                is the spec number of the marker line
 //            goal,               the spec's goal, byte for byte
 //            cli?,               'bun "<absolute path>/bin/spec-check"', resolved by the parent; default below
 //            actor?,             the parent actor 'a:<kind>:<id>'; builders log as '<actor>/T<k>'
@@ -19,9 +20,10 @@ export const meta = {
 //   builder?: agent type of the builders, reader?: agent type of the optional reviewer, secondLook?: false,
 //   ts: '<ISO-8601 from the parent>' }
 // The script has no filesystem: everything a builder needs is in the brief, and every builder reads the spec itself
-// from the path the brief names. It writes no bookkeeping: the parent claims, writes the run pair and the
-// dispatch/build/patch/apply lines, applies the patches, runs the write order and records the round. Start it from
-// the spec's own checkout: worktree isolation branches from the session's HEAD.
+// from the path the brief names. It writes no bookkeeping: every builder's prompt opens with the marker line
+// `spectant: spec=<NNN> task=<Tn> claim=<ISC-N>`, from which the plugin's hooks write the claim, dispatch, build and
+// release lines; the parent writes the run pair and the patch/apply lines, applies the patches, runs the write order
+// and records the round. Start it from the spec's own checkout: worktree isolation branches from the session's HEAD.
 
 const RESULT_SCHEMA = {
   type: 'object',
@@ -71,6 +73,18 @@ if (!brief || !brief.spec || !brief.goal) throw new Error('args.brief needs spec
 const cli = brief.cli || 'bun "${CLAUDE_PLUGIN_ROOT}/bin/spec-check"'
 const actor = brief.actor || 'a:claude:spec'
 
+// The marker line, the same format as markerLine in the plugin's src/marker.ts (the Workflow sandbox cannot import it;
+// plugin/tests/implement-workflow.test.ts pins the two against each other). A field the hooks' parser would reject
+// fails the round before any builder starts, rather than dispatch a brief the hooks cannot see.
+const specNumber = (/(?:^|\/)(\d{3})-[^/]+\/spec\.md$/.exec(brief.spec) || [])[1]
+if (!specNumber) throw new Error('args.brief.spec must be the path of specs/NNN-slug/spec.md (its NNN goes into the marker line)')
+const markerLine = (t) => {
+  if (!/^T\d+$/.test(t.id)) throw new Error(`task id must be T<n>, got "${t.id}"`)
+  if (!/^ISC-\d+(?:\.\d+)*$/.test(t.claim)) throw new Error(`claim must be ISC-<n>[.<n>], got "${t.claim}"`)
+  return `spectant: spec=${specNumber} task=${t.id} claim=${t.claim}`
+}
+for (const t of plan.dispatch) markerLine(t)
+
 if (plan.dispatch.length === 0) {
   log(plan.exhausted ? 'frontier exhausted: nothing to dispatch' : 'nothing dispatchable this round')
   return { dispatched: 0, results: [], questions: [], failed: [], verdicts: [] }
@@ -96,6 +110,7 @@ const seamOf = (t) => {
 }
 
 const buildPrompt = (t) => [
+  markerLine(t),
   `SPEC:      ${brief.spec}   (read it first; you are closing one claim of it)`,
   `GOAL:      "${brief.goal}"`,
   `CLAIM:     ${t.claim} — read its text and its Test Strategy row in the spec verbatim; that row is your PROBE`,

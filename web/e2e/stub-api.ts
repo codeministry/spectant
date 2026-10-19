@@ -44,7 +44,7 @@
  *   `{error: "method-not-allowed"}` with `Allow`, 403 `{error: "forbidden"}` for a foreign `Host` or a cross-site
  *   `Origin`.
  * - `GET|HEAD /api/lifeos` → `{present}`, true only under the `frontier` lock fixture.
- * - `GET|HEAD|PUT /api/settings` → `{theme, language, density, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes}`, held in memory from the
+ * - `GET|HEAD|PUT /api/settings` → `{theme, language, density, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes, staleMinutes}`, held in memory from the
  *   `SettingsSchema` defaults, validated as the server does (400 `{error, key}` / `{error: "invalid-body"}`), weak
  *   ETag `W/"<Bun.hash base36>"`, 405 with `Allow: GET, HEAD, PUT`.
  * - The notes routes of `NOTE_ROUTE_TABLE` (`server/src/notes.contract.ts`, T94; `server/src/notes.ts`, T95): list with
@@ -697,7 +697,7 @@ function settingsError(status: number, value: unknown, extra: Record<string, str
 
 // ---- settings: SettingsSchema of server/src/settings.ts, in memory ------------------------------------------------
 
-type Settings = { theme: string; language: string; density: string; refreshSeconds: number; singleKeyShortcuts: boolean; railCollapsed: boolean; notesImportDismissed: boolean; runAbortMinutes: number };
+type Settings = { theme: string; language: string; density: string; refreshSeconds: number; singleKeyShortcuts: boolean; railCollapsed: boolean; notesImportDismissed: boolean; runAbortMinutes: number; staleMinutes: number };
 type SettingKey = keyof Settings;
 
 const SCHEMA: { readonly [K in SettingKey]: { default: Settings[K]; validate: (value: unknown) => boolean } } = {
@@ -709,6 +709,7 @@ const SCHEMA: { readonly [K in SettingKey]: { default: Settings[K]; validate: (v
   railCollapsed: { default: false, validate: (v) => typeof v === 'boolean' },
   notesImportDismissed: { default: false, validate: (v) => typeof v === 'boolean' },
   runAbortMinutes: { default: 120, validate: (v) => Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 1440 },
+  staleMinutes: { default: 45, validate: (v) => Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 1440 },
 };
 
 const defaults = (): Settings => ({
@@ -720,6 +721,7 @@ const defaults = (): Settings => ({
   railCollapsed: SCHEMA.railCollapsed.default,
   notesImportDismissed: SCHEMA.notesImportDismissed.default,
   runAbortMinutes: SCHEMA.runAbortMinutes.default,
+  staleMinutes: SCHEMA.staleMinutes.default,
 });
 
 const isKey = (key: string): key is SettingKey => Object.hasOwn(SCHEMA, key);

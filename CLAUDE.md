@@ -45,8 +45,10 @@ administration. The skill targets Claude Code first and is meant to work with ot
      rewrite (spec 040).
 
   `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create, and nothing else in the
-  tree changes. How each write is performed and guarded (`server/src/writes.ts`, `tests/readonly.test.ts`) lives in
-  `server/CLAUDE.md` § The write path.
+  tree changes. The plugin writes every other line of `.spectant/activity.jsonl` (its hooks the `claim`, `dispatch`,
+  `build` and `release` of a builder whose brief carries the marker line, `spec-check` the rest; spec 032); the app
+  only reads it, apart from the release of path 8. How each write is performed and guarded (`server/src/writes.ts`,
+  `tests/readonly.test.ts`) lives in `server/CLAUDE.md` § The write path.
 - **One parser for the spec format, in `core/`.** Every other lane imports it; a second implementation is a defect.
 - **Pin every dependency and tool version.** Reproducible builds and baselines depend on it.
 

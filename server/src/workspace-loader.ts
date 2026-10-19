@@ -788,9 +788,10 @@ export async function readCopies(root: string): Promise<Record<string, string>> 
 
 /**
  * The clock every item state is derived at (spec 040, ISC-224): `now`, and the age after which an open run reads
- * `aborted` (the `runAbortMinutes` setting × 60 000, read per request by the caller; core's default when absent).
+ * `aborted` (the `runAbortMinutes` setting × 60 000, read per request by the caller; core's default when absent), and
+ * the age after which a claim lock or task run reads `aborted` (spec 032, ISC-35: the `staleMinutes` setting × 60 000).
  */
-export type StateClock = { readonly now: Date; readonly abortAfterMs?: number };
+export type StateClock = { readonly now: Date; readonly abortAfterMs?: number; readonly staleAfterMs?: number };
 
 /**
  * Every item's state of a workspace reading (spec 040, T26, ISC-224): core's `itemStates` over the reading's input and
@@ -804,6 +805,7 @@ export function workspaceItemStates(input: DashboardInput, model: DashboardModel
     taskRuns: input.locks === undefined ? {} : taskRunsOf(input.specs, input.locks, clock.now),
     now: clock.now,
     ...(clock.abortAfterMs === undefined ? {} : { abortAfterMs: clock.abortAfterMs }),
+    ...(clock.staleAfterMs === undefined ? {} : { staleAfterMs: clock.staleAfterMs }),
   });
 }
 

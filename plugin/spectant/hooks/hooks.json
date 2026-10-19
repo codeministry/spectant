@@ -1,5 +1,5 @@
 {
-  "description": "Spectant activity hooks: claim and release a builder's claim in .spectant/activity.jsonl from the marker line of its brief",
+  "description": "Spectant activity hooks: write a builder's claim, dispatch, build and release lines to .spectant/activity.jsonl from the marker line of its brief",
   "hooks": {
     "PreToolUse": [
       {
