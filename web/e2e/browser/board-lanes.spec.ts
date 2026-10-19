@@ -53,6 +53,21 @@ async function centre(locator: Locator): Promise<{ x: number; y: number }> {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
+/** The card heights the lanes bounds case runs at: the fixture's, and every card 300 px taller (spec 042). */
+const CARD_HEIGHTS = [
+  { name: 'fixture cards', css: '' },
+  { name: 'cards 300 px taller', css: 'app-board-page app-board-card { display: block; padding-bottom: 300px; }' },
+];
+
+/** A viewport height that shows the heads of `top` down to `bottom` at once, measured from the top of the page with
+ *  240 px clear of the bottom autoscroll edge; never below the 1800 px the case was written for. */
+async function heightForHeads(page: Page, top: string, bottom: string): Promise<number> {
+  const first = await head(page, top).boundingBox();
+  const last = await head(page, bottom).boundingBox();
+  if (first === null || last === null) throw new Error('a band head is not rendered');
+  return Math.max(1800, Math.ceil(last.y + last.height - Math.min(first.y, 0) + 240));
+}
+
 let session = '';
 test.beforeEach(async ({ page, request }, info) => {
   session = `board-bounds-${info.testId}`;
@@ -69,43 +84,50 @@ test.afterEach(async ({ request }) => {
 });
 test.use(atWidth(1440));
 
-test('lanes bounds: dragging band F0 over band F2 of Harbor 1.0 locks F2, shows no drop line there, and a release sends nothing', async ({ page }) => {
-  const sent = countWrites(page);
-  const group = (await head(page, 'F0').getAttribute('data-move-group')) ?? '';
-  expect(await head(page, 'F2').getAttribute('data-move-group')).not.toBe(group);
-  // Tall enough that the heads of F3, F2 and F0 stand in view at once, clear of the autoscroll edges.
-  await page.setViewportSize({ width: 1440, height: 1800 });
-  await scrollToHead(page, 'F3');
-  const from = await centre(gripOf(page, 'F0'));
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.mouse.move(from.x, from.y - 8, { steps: 4 });
-  // Lifted: F0 stays as the dashed placeholder.
-  await expect(page.locator(`${HEADS}.cdk-drag-placeholder[data-band="F0"]`)).toHaveCount(1);
-  for (const band of ['F2', 'F3']) {
-    const over = await centre(head(page, band));
+// Spec 042: the case runs at the fixture's card height and with every card 300 px taller, so the height of what a card
+// shows (spec 020 added its next-step text) never decides whether the drag starts.
+for (const cards of CARD_HEIGHTS) {
+  test(`lanes bounds: dragging band F0 over band F2 of Harbor 1.0 locks F2, shows no drop line there, and a release sends nothing (${cards.name})`, async ({ page }) => {
+    if (cards.css !== '') await page.addStyleTag({ content: cards.css });
+    const sent = countWrites(page);
+    const group = (await head(page, 'F0').getAttribute('data-move-group')) ?? '';
+    expect(await head(page, 'F2').getAttribute('data-move-group')).not.toBe(group);
+    // Tall enough that the heads of F3, F2 and F0 stand in view at once, clear of the autoscroll edges.
+    await page.setViewportSize({ width: 1440, height: await heightForHeads(page, 'F3', 'F0') });
+    await scrollToHead(page, 'F3');
+    // A press outside the viewport starts no drag; fail here, by name, rather than at the placeholder.
+    await expect(gripOf(page, 'F0'), 'the grip of F0 before the press').toBeInViewport();
+    const from = await centre(gripOf(page, 'F0'));
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x, from.y - 8, { steps: 4 });
+    // Lifted: F0 stays as the dashed placeholder.
+    await expect(page.locator(`${HEADS}.cdk-drag-placeholder[data-band="F0"]`)).toHaveCount(1);
+    for (const band of ['F2', 'F3']) {
+      const over = await centre(head(page, band));
+      await page.mouse.move(from.x, over.y, { steps: 16 });
+      await page.mouse.move(from.x, over.y + 2, { steps: 2 });
+      await expect(head(page, band), `over ${band}`).toHaveAttribute('data-band-lock', '');
+      await expect(head(page, band).locator('[data-band-lock-hint]'), `over ${band}`).toHaveCount(1);
+      await expect(head(page, band), `over ${band}`).not.toHaveAttribute('data-drop-line');
+      // No head outside F0's group carries the line; every one of them is locked, none of F0's own group is.
+      await expect(page.locator(`${HEADS}[data-drop-line]:not([data-move-group="${group}"])`), `over ${band}`).toHaveCount(0);
+      await expect(page.locator(`${HEADS}:not([data-move-group="${group}"]):not([data-band-lock])`), `over ${band}`).toHaveCount(0);
+      await expect(page.locator(`${HEADS}[data-move-group="${group}"][data-band-lock]`), `over ${band}`).toHaveCount(0);
+    }
+    // The release lands over F2's head, a band of Harbor 1.0.
+    const over = await centre(head(page, 'F2'));
     await page.mouse.move(from.x, over.y, { steps: 16 });
     await page.mouse.move(from.x, over.y + 2, { steps: 2 });
-    await expect(head(page, band), `over ${band}`).toHaveAttribute('data-band-lock', '');
-    await expect(head(page, band).locator('[data-band-lock-hint]'), `over ${band}`).toHaveCount(1);
-    await expect(head(page, band), `over ${band}`).not.toHaveAttribute('data-drop-line');
-    // No head outside F0's group carries the line; every one of them is locked, none of F0's own group is.
-    await expect(page.locator(`${HEADS}[data-drop-line]:not([data-move-group="${group}"])`), `over ${band}`).toHaveCount(0);
-    await expect(page.locator(`${HEADS}:not([data-move-group="${group}"]):not([data-band-lock])`), `over ${band}`).toHaveCount(0);
-    await expect(page.locator(`${HEADS}[data-move-group="${group}"][data-band-lock]`), `over ${band}`).toHaveCount(0);
-  }
-  // The release lands over F2's head, a band of Harbor 1.0.
-  const over = await centre(head(page, 'F2'));
-  await page.mouse.move(from.x, over.y, { steps: 16 });
-  await page.mouse.move(from.x, over.y + 2, { steps: 2 });
-  await expect(page.locator(`${HEADS}[data-drop-line]:not([data-move-group="${group}"])`)).toHaveCount(0);
-  await page.mouse.up();
-  await expect(page.locator(`${HEADS}[data-band-lock]`)).toHaveCount(0);
-  // A write the page would send goes out at once; give it a beat to show up, then none must have.
-  await page.waitForTimeout(300);
-  expect(sent).toHaveLength(0);
-  expect(await shownBands(page)).toEqual(BANDS);
-});
+    await expect(page.locator(`${HEADS}[data-drop-line]:not([data-move-group="${group}"])`)).toHaveCount(0);
+    await page.mouse.up();
+    await expect(page.locator(`${HEADS}[data-band-lock]`)).toHaveCount(0);
+    // A write the page would send goes out at once; give it a beat to show up, then none must have.
+    await page.waitForTimeout(300);
+    expect(sent).toHaveLength(0);
+    expect(await shownBands(page)).toEqual(BANDS);
+  });
+}
 
 test('lanes bounds: Alt+↑ on the first and Alt+↓ on the last band of a milestone or the group send nothing', async ({ page }) => {
   const sent = countWrites(page);
