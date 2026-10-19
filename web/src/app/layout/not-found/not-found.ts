@@ -48,8 +48,8 @@ export function nearestSpecs(rows: readonly SpecRowView[], id: string, count = 3
     .mono { font-family: var(--font-mono); }
     .nf-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: center; margin-block-start: 8px; }
     .nf-actions ui-kbd { margin-inline-start: 4px; }
-    .link { display: inline-flex; gap: 4px; align-items: center; color: var(--disp-text); font-size: 13px; text-decoration: none; }
-    .link:hover { text-decoration: underline; }
+    .text-link { display: inline-flex; gap: 4px; align-items: center; color: var(--disp-text); font-size: 13px; text-decoration: none; }
+    .text-link:hover { text-decoration: underline; }
     .c-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; justify-content: space-between; padding: 12px var(--space-3); border-block-end: 1px solid var(--line); }
     .c-head h2 { font-size: 15px; line-height: 24px; }
     .card-pad { display: grid; gap: 8px; padding: var(--space-3); }
@@ -70,7 +70,7 @@ export function nearestSpecs(rows: readonly SpecRowView[], id: string, count = 3
           <ui-card [padding]="0">
             <div class="c-head">
               <h2>{{ 'notFound.specTitle' | transloco: { id: missing.id, workspace: missing.name } }}</h2>
-              <a class="link" [routerLink]="['/w', missing.slug]" data-nf-back
+              <a class="text-link" [routerLink]="['/w', missing.slug]" data-nf-back
                 ><ui-icon name="arrow-left" [size]="14" />{{ 'notFound.dashboard' | transloco: { workspace: missing.name } }}</a
               >
             </div>
@@ -119,7 +119,7 @@ export function nearestSpecs(rows: readonly SpecRowView[], id: string, count = 3
                   <ui-icon name="search" [size]="14" />{{ 'notFound.search' | transloco }}<ui-kbd>⌘K</ui-kbd>
                 </button>
                 @if (workspace(); as workspace) {
-                  <a class="link" [routerLink]="['/w', workspace.slug]">{{
+                  <a class="text-link" [routerLink]="['/w', workspace.slug]">{{
                     'notFound.backWorkspace' | transloco: { workspace: workspace.name }
                   }}</a>
                 }

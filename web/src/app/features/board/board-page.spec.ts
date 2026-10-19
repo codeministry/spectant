@@ -230,7 +230,7 @@ describe('BoardPage (T121, ISC-129)', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     harness.fixture.detectChanges();
     const loading = (harness.fixture.nativeElement as HTMLElement).querySelector('app-board-page');
-    expect(loading?.querySelector('.loading ui-skeleton')).not.toBeNull();
+    expect(loading?.querySelector('.board-loading ui-skeleton')).not.toBeNull();
     expect(loading?.querySelector('.scroller')).toBeNull();
     release(ok(PLANNING));
     await opened;
@@ -391,7 +391,7 @@ describe('BoardPage toolbar (T123, T163, ISC-129.1, ISC-133.1)', () => {
     expect(checked(page, 'feature')).toEqual([]);
     const lanes = page.querySelector('app-board-filters [data-group] ui-segmented');
     expect(text(lanes?.querySelector('[aria-checked="true"]'))).toBe('Milestone');
-    expect(text(page.querySelector('app-board-filters [data-group] .label'))).toBe('Swimlanes');
+    expect(text(page.querySelector('app-board-filters [data-group] .filter-label'))).toBe('Swimlanes');
     expect(text(page.querySelector('app-board-filters [data-shown] [data-count]'))).toBe('3 of 10 cards');
     expect(text(page.querySelector('app-board-filters [data-shown] [data-clear]'))).toBe('Clear');
   });

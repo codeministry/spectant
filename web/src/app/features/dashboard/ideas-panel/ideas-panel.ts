@@ -49,7 +49,7 @@ export interface DashboardIdeas {
       <ui-card [padding]="0" class="panel">
         <ui-disclosure class="fold">
           <span uiDisclosureSummary class="title" data-ideas-title>{{ 'specs.ideas.title' | transloco: { count: ideas().count } }}</span>
-          <ul class="list" [attr.aria-label]="'specs.ideas.label' | transloco">
+          <ul class="ideas-list" [attr.aria-label]="'specs.ideas.label' | transloco">
             @for (idea of ideas().list; track idea.slug) {
               @let where = whereOf(idea);
               <li [attr.data-idea]="idea.slug" [attr.data-selected]="look(idea.slug)">

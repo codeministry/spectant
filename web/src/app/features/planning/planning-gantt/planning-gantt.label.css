@@ -1,0 +1,8 @@
+/*
+ * The feature label's ink (spec 049): under its old class name `.label` the row took daisyUI's label colour, 60 % of the
+ * current colour; the row keeps that look under its own name. Its own file because `planning-gantt.css` sits at the
+ * 8 kB component style budget.
+ */
+.bar-label {
+  color: color-mix(in oklab, currentcolor 60%, transparent);
+}

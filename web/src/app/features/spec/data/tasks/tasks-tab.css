@@ -227,39 +227,39 @@ h2 {
 }
 
 
-.status[data-tone='closed'], .status[data-tone='done'] {
+.tstate[data-tone='closed'], .tstate[data-tone='done'] {
   background: var(--clos-t);
   color: var(--clos-ink);
 }
 
 
-.status[data-tone='dispatched'] {
+.tstate[data-tone='dispatched'] {
   background: var(--disp-t);
   color: var(--disp-ink);
 }
 
-.status[data-tone='held'], .status[data-tone='struck'] {
+.tstate[data-tone='held'], .tstate[data-tone='struck'] {
   background: var(--color-base-300);
   color: var(--held-ink);
 }
 
-.status[data-tone='fail'] {
+.tstate[data-tone='fail'] {
   background: var(--fail-t);
   color: var(--fail-ink);
 }
 
-.status[data-tone='concerns'] {
+.tstate[data-tone='concerns'] {
   background: var(--conc-t);
   color: var(--conc-ink);
 }
 
-.status[data-tone='question'] {
+.tstate[data-tone='question'] {
   background: var(--ques-t);
   color: var(--ques-ink);
 }
 
 /* Spec 040 (T52): an aborted run in the warning tint. */
-.status[data-tone='aborted'] {
+.tstate[data-tone='aborted'] {
   background: var(--hover-t);
   color: var(--hover-ink);
 }
@@ -421,7 +421,7 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
 }
 
 @media (forced-colors: active) {
-  .status { border: 1px solid CanvasText; }
+  .tstate { border: 1px solid CanvasText; }
 }
 
 
@@ -449,7 +449,7 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
 }
 
 /* Prototype `[data-ui="chip"].st-*`: 22 px, radius-sm, 11 px versal on a tint. */
-.status {
+.tstate {
   display: inline-flex;
   gap: 6px;
   align-items: center;

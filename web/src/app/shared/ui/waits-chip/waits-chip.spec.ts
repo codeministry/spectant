@@ -83,7 +83,7 @@ describe('UiWaitsChip (T21, ISC-163)', () => {
     expect(unknown.tagName).toBe('SPAN');
     expect(unknown.hasAttribute('data-unknown')).toBe(true);
     expect(unknown.querySelector('a, [href]')).toBeNull();
-    expect(text(unknown.querySelector('.label'))).toBe('waits on 042');
+    expect(text(unknown.querySelector('.chip-label'))).toBe('waits on 042');
     expect(text(unknown.querySelector('.visually-hidden'))).toBe('Waits on spec 042, no such spec');
   });
 

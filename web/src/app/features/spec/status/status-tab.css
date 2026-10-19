@@ -15,7 +15,7 @@
   align-items: start;
 }
 
-.card {
+.section-card {
   display: grid;
   gap: 16px;
   align-content: start;

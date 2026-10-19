@@ -114,7 +114,7 @@
           <span class="state">
             @if (itemOf(row); as item) {
               <!-- spec 040 (T52): the state word from the model, the fine running state or the strike as its detail. -->
-              <span class="status" [attr.data-item-state]="item.state" [attr.data-tone]="itemTone[item.state]"
+              <span class="tstate" [attr.data-item-state]="item.state" [attr.data-tone]="itemTone[item.state]"
                 ><ui-glyph [state]="item.state" family="item" [size]="14" />{{ 'states.item.' + item.state | transloco }}
                 @if (item.state === 'running' && item.detail) {
                   · {{ 'states.run.' + item.detail | transloco }}
@@ -123,10 +123,10 @@
                 }</span
               >
               @if (ownWords.has(row.status)) {
-                <span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span>
+                <span class="tstate" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span>
               }
             } @else {
-              <span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span>
+              <span class="tstate" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span>
             }
           </span>
           <span class="meta">
@@ -181,7 +181,7 @@
                 <span class="sub waits" data-task-waits>
                   <ui-icon name="clock" [size]="13" /><span>{{ 'waits.on' | transloco }}&nbsp;@for (id of specs; track id; let last = $last) {
                     @if (specLinkOf(id); as link) {
-                      <a class="mono link" [routerLink]="link" [attr.data-blocker]="id" [attr.aria-label]="'waits.nameBare' | transloco: { id }">{{ id }}</a>
+                      <a class="mono tlink" [routerLink]="link" [attr.data-blocker]="id" [attr.aria-label]="'waits.nameBare' | transloco: { id }">{{ id }}</a>
                     } @else {
                       <span class="mono" [attr.data-blocker]="id">{{ id }}</span>
                     }{{ last ? '' : ', ' }}

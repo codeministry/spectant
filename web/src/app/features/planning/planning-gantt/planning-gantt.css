@@ -301,7 +301,7 @@
   outline-offset: -2px;
 }
 
-.label {
+.bar-label {
   position: sticky;
   inset-inline-start: 0;
   z-index: 2;
@@ -367,7 +367,7 @@
 }
 
 /* The label column casts its shadow once the axis is scrolled under it (design.md § Tablet, § Desktop). */
-[data-scrolled] .label,
+[data-scrolled] .bar-label,
 [data-scrolled] .corner,
 [data-scrolled] .glabel {
   box-shadow: var(--shadow-hair);
@@ -391,7 +391,7 @@
   min-block-size: 56px;
 }
 
-[data-tier="medium"] .label {
+[data-tier="medium"] .bar-label {
   grid-template-columns: 40px minmax(0, 1fr);
   grid-template-rows: auto auto;
   row-gap: 2px;
@@ -512,7 +512,7 @@
   border-radius: var(--radius-field);
 }
 
-[data-tier="compact"] .label {
+[data-tier="compact"] .bar-label {
   position: static;
   grid-template-columns: 36px minmax(0, 1fr) auto;
   padding: 0;
@@ -534,7 +534,7 @@
 }
 
 /* The selected lane's inset edge on its sticky label, which covers the lane's own (selection.css). */
-.lane[data-selected] > .label {
+.lane[data-selected] > .bar-label {
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 

@@ -8,8 +8,8 @@
  * the bar carries the drop tray, one placeholder per stage, laid out here and opened by the drag (T125). One column
  * shows below; the page scrolls, the column never scrolls itself.
  */
-.no-match .link,
-.empty-col .link {
+.no-match .text-link,
+.empty-col .text-link {
   min-block-size: 0;
   block-size: auto;
   padding-inline: 4px;

@@ -6,7 +6,7 @@
   min-inline-size: 0;
 }
 
-.steps {
+.step-list {
   display: grid;
   gap: 4px;
   margin: 0;
@@ -14,7 +14,7 @@
   list-style: none;
 }
 
-.step {
+.step-item {
   display: grid;
   grid-template-areas:
     "mark word time"
@@ -46,19 +46,19 @@
   content: "";
 }
 
-.step:last-child .mark::after {
+.step-item:last-child .mark::after {
   display: none;
 }
 
-.step[data-tone="disp"] .mark { color: var(--disp-text); }
-.step[data-tone="fail"] .mark { color: var(--fail-text); }
-.step[data-tone="lime"] .mark { color: var(--lime-text); }
-.step[data-tone="ques"] .mark { color: var(--ques-text); }
-.step[data-tone="cyan"] .mark { color: var(--cyan-text); }
-.step[data-tone="done"] .mark { color: var(--done-text); }
+.step-item[data-tone="disp"] .mark { color: var(--disp-text); }
+.step-item[data-tone="fail"] .mark { color: var(--fail-text); }
+.step-item[data-tone="lime"] .mark { color: var(--lime-text); }
+.step-item[data-tone="ques"] .mark { color: var(--ques-text); }
+.step-item[data-tone="cyan"] .mark { color: var(--cyan-text); }
+.step-item[data-tone="done"] .mark { color: var(--done-text); }
 
 /* The newest step: a ring around its icon marks it without colour. */
-.step[data-step-latest] .mark ui-icon {
+.step-item[data-step-latest] .mark ui-icon {
   border-radius: 50%;
   outline: 2px solid currentcolor;
   outline-offset: 2px;
@@ -121,7 +121,7 @@
 }
 
 @container shell (inline-size >= 1120px) {
-  .step {
+  .step-item {
     grid-template-areas:
       "time mark word meta"
       ". mark question question";

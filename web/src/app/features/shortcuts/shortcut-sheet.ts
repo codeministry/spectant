@@ -65,9 +65,9 @@ const CONTEXTS: readonly SheetContext[] = SHORTCUT_CONTEXTS.map((context) => {
     .row { display: flex; gap: 16px; align-items: center; justify-content: space-between; min-block-size: 37px; padding-block: 8px; border-block-end: 1px solid var(--line); font-size: 13px; line-height: 20px; }
     .action { min-inline-size: 0; }
     .k { display: inline-flex; flex: none; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
-    .footer { margin: 16px 0 0; }
-    .footer a { display: inline-flex; gap: 4px; align-items: center; min-block-size: 24px; color: var(--disp-text); font-size: 13px; font-weight: 500; }
-    .footer a:hover { text-decoration: underline; }
+    .sheet-footer { margin: 16px 0 0; }
+    .sheet-footer a { display: inline-flex; gap: 4px; align-items: center; min-block-size: 24px; color: var(--disp-text); font-size: 13px; font-weight: 500; }
+    .sheet-footer a:hover { text-decoration: underline; }
   `,
   template: `
     <ui-dialog [label]="'shortcuts.title' | transloco" [(open)]="keyboard.sheetOpen">
@@ -104,7 +104,7 @@ const CONTEXTS: readonly SheetContext[] = SHORTCUT_CONTEXTS.map((context) => {
               }
             </section>
           }
-          <p class="footer">
+          <p class="sheet-footer">
             <a routerLink="/help" data-sheet-help (click)="keyboard.sheetOpen.set(false)"
               >{{ 'settings.keyboard.guide' | transloco }}<ui-icon name="arrow-right" [size]="14"
             /></a>

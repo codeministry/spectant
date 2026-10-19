@@ -4,7 +4,7 @@
       ui-button
       variant="ghost"
       size="sm"
-      class="filter"
+      class="kind-filter"
       [attr.data-filter]="kind"
       [attr.aria-pressed]="isPressed(kind)"
       (click)="toggleKind(kind)"
@@ -18,7 +18,7 @@
 
 @switch (view()) {
   @case ('loading') {
-    <div class="skeleton" [attr.aria-label]="'timeline.loading' | transloco" role="status">
+    <div class="timeline-skeleton" [attr.aria-label]="'timeline.loading' | transloco" role="status">
       @for (row of [0, 1, 2, 3]; track row) {
         <div class="skeleton-row">
           <ui-skeleton width="48px" height="16px" />

@@ -398,7 +398,8 @@ for (const theme of ['light', 'dark'] as const) {
         for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         expect((await reviewed).status()).toBe(200);
-        await expect(page.locator('app-spec-head [data-gate-written]')).toBeVisible();
+        // Spec 045: the head confirms the write with the app's toast, not with a line under its gate pill.
+        await expect(page.locator('ui-toast .alert')).toContainText('Reviewed mark written');
       });
 
       await test.step('write: task tick and untick', async () => {

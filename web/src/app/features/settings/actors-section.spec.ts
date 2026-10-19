@@ -69,13 +69,13 @@ describe('ActorsSection', () => {
     expect(ids).toEqual(['u:0a1b2c3d', 'u:9e8d7c6b']);
     expect(field(root, 'u:0a1b2c3d', 'name')?.value).toBe('Ada Example');
     expect(field(root, 'u:0a1b2c3d', 'git')?.value).toBe('ada@example.test');
-    expect(row(root, 'u:0a1b2c3d')?.querySelector('ui-actor-chip .label')?.textContent.trim()).toBe('Ada Example');
+    expect(row(root, 'u:0a1b2c3d')?.querySelector('ui-actor-chip .chip-label')?.textContent.trim()).toBe('Ada Example');
   });
 
   it('shows an unmapped id raw, in mono, with empty fields', async () => {
     setUp();
     const { root } = await render();
-    const chip = row(root, 'u:9e8d7c6b')?.querySelector('ui-actor-chip .label');
+    const chip = row(root, 'u:9e8d7c6b')?.querySelector('ui-actor-chip .chip-label');
     expect(chip?.textContent.trim()).toBe('u:9e8d7c6b');
     expect(chip?.classList.contains('mono')).toBe(true);
     expect(field(root, 'u:9e8d7c6b', 'name')?.value).toBe('');

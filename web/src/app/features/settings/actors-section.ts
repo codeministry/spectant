@@ -58,8 +58,8 @@ type Field = 'displayName' | 'gitIdentities';
     .glyph-ok { color: var(--clos-text); }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .set-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px var(--space-3); border-block-start: 1px solid var(--line); }
-    .status { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--muted); font-size: 12px; line-height: 16px; }
-    .status[data-state='saved'] { color: var(--done-text); }
+    .actors-status { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--muted); font-size: 12px; line-height: 16px; }
+    .actors-status[data-state='saved'] { color: var(--done-text); }
     ui-notice { margin: 0 var(--space-3) var(--space-3); }
     .n-title { display: block; font-weight: 600; }
     .skel-row { display: grid; grid-template-columns: 40px 1fr 64px; gap: 12px; align-items: center; block-size: 48px; border-block-start: 1px solid var(--line); }
@@ -160,7 +160,7 @@ type Field = 'displayName' | 'gitIdentities';
             <ui-icon [name]="state().kind === 'saving' ? 'loader-circle' : 'check'" [size]="14" />
             {{ (state().kind === 'saving' ? 'settings.actors.saving' : 'settings.actors.save') | transloco }}
           </button>
-          <p class="status" role="status" data-actors-status [attr.data-state]="state().kind">
+          <p class="actors-status" role="status" data-actors-status [attr.data-state]="state().kind">
             @if (state().kind === 'saved') {
               <ui-icon name="check" [size]="14" />{{ 'settings.actors.saved' | transloco }}
             }

@@ -61,10 +61,10 @@ interface StepRow extends StepLook {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './step-timeline.css',
   template: `
-    <ol class="steps" data-step-timeline [attr.aria-label]="'steps.timeline.label' | transloco: { task: task() }">
+    <ol class="step-list" data-step-timeline [attr.aria-label]="'steps.timeline.label' | transloco: { task: task() }">
       @for (row of rows(); track $index) {
         <li
-          class="step"
+          class="step-item"
           [attr.data-step-kind]="row.step.kind"
           [attr.data-step-result]="row.step.result ?? null"
           [attr.data-step-latest]="row.latest ? '' : null"

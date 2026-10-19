@@ -33,12 +33,12 @@ type TaskRow = NonNullable<TasksBody>['tasks'][number];
     .op-name { margin: 0; font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; }
     .op-count { margin-inline-start: auto; color: var(--color-base-content); font-family: var(--font-mono); font-size: 12px; line-height: 16px; white-space: nowrap; }
     .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
-    .step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; min-block-size: 40px; }
+    .your-step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; min-block-size: 40px; }
     .checkbox { justify-self: center; }
     .note { grid-column: 2; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; }
     .note[data-tone='fail'] { color: var(--fail-ink); }
     .empty { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
-    @media (pointer: coarse) { .step { min-block-size: 44px; } }
+    @media (pointer: coarse) { .your-step { min-block-size: 44px; } }
   `,
   template: `
     <section class="op" data-steps-lane aria-labelledby="your-steps-heading">
@@ -52,7 +52,7 @@ type TaskRow = NonNullable<TasksBody>['tasks'][number];
         @for (c of cards(); track c.task) {
           @let state = checkOf(c.task);
           @let row = rowOf(c.task);
-          <li class="step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
+          <li class="your-step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
             <input
               type="checkbox"
               class="checkbox checkbox-sm checkbox-success"

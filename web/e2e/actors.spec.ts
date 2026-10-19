@@ -49,7 +49,7 @@ const boardChip = (page: Page): Locator => page.locator(`app-board-card[data-key
 async function expectChip(chip: Locator, shown: { name: string } | 'raw'): Promise<void> {
   await expect(chip).toHaveAttribute('data-kind', 'person');
   await expect(chip).toHaveAttribute('title', ID);
-  const label = chip.locator('.label');
+  const label = chip.locator('.chip-label');
   if (shown === 'raw') {
     await expect(label).toHaveText(ID);
     await expect(label).toHaveClass(/\bmono\b/u);

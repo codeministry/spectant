@@ -61,7 +61,7 @@
       </ng-template>
 
       <div class="page status-grid">
-        <section class="card where" data-section="where">
+        <section class="section-card where" data-section="where">
           <ui-section-header [heading]="(tier() === 'wide' ? 'status.why.heading' : 'status.where.heading') | transloco" />
           <div class="where-body">
             @if (tier() !== 'wide') {
@@ -111,7 +111,7 @@
         </section>
 
         @if (tier() !== 'wide') {
-          <section class="card waiting" data-section="waiting">
+          <section class="section-card waiting" data-section="waiting">
             <ui-section-header headingId="waiting" [heading]="'status.waiting.heading' | transloco">
               <span meta>{{ m.keyNumbers.waiting }}</span>
             </ui-section-header>
@@ -141,7 +141,7 @@
         }
 
         @if (tier() !== 'medium') {
-          <section class="card gates" data-section="gates">
+          <section class="section-card gates" data-section="gates">
             <ui-section-header headingId="gates" [heading]="'status.gates.heading' | transloco">
               <span meta>{{ m.keyNumbers.gates.ok }}/{{ m.keyNumbers.gates.total }}</span>
             </ui-section-header>
@@ -150,7 +150,7 @@
         }
 
         @if (tier() === 'compact') {
-          <section class="card warnings" data-section="warnings">
+          <section class="section-card warnings" data-section="warnings">
             <ui-section-header [heading]="'status.warnings.heading' | transloco">
               <span meta>{{ m.areas.status.warnings }}</span>
             </ui-section-header>
@@ -159,7 +159,7 @@
         }
 
         @if (tier() === 'wide') {
-          <section class="card lanes" data-section="lanes">
+          <section class="section-card lanes" data-section="lanes">
             <ui-section-header [heading]="'status.lanes.heading' | transloco" />
             <div class="tasks-meter">
               <span>{{ 'status.lanes.tasks' | transloco }}</span>
@@ -182,7 +182,7 @@
           </section>
         }
 
-        <section class="card open" data-section="open">
+        <section class="section-card open" data-section="open">
           <ui-section-header [heading]="'status.open.heading' | transloco">
             <span meta>{{ m.keyNumbers.claims.open }}</span>
           </ui-section-header>
@@ -252,7 +252,7 @@
           }
         </section>
 
-        <section class="card activity" data-section="activity">
+        <section class="section-card activity" data-section="activity">
           <ui-section-header [heading]="'status.activity.heading' | transloco">
             <span actions class="act-links" data-activity-links>
               <a class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>

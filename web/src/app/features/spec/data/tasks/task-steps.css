@@ -19,7 +19,7 @@
   :host { grid-column: 2 / -1; }
 }
 
-.toggle {
+.steps-toggle {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
@@ -37,9 +37,9 @@
   cursor: pointer;
 }
 
-.toggle:hover { background: var(--color-base-200); }
+.steps-toggle:hover { background: var(--color-base-200); }
 .chevron { transition: rotate var(--motion-duration-instant) var(--motion-ease-standard); }
-.toggle[aria-expanded='true'] .chevron { rotate: 90deg; }
+.steps-toggle[aria-expanded='true'] .chevron { rotate: 90deg; }
 
 .latest {
   display: inline-flex;
@@ -73,9 +73,9 @@
 
 /* A 44 px hit area at compact and under a coarse pointer. */
 @container shell (width < 640px) {
-  .toggle { min-block-size: 44px; }
+  .steps-toggle { min-block-size: 44px; }
 }
 
 @media (pointer: coarse) {
-  .toggle { min-block-size: 44px; }
+  .steps-toggle { min-block-size: 44px; }
 }

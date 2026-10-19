@@ -240,12 +240,12 @@
   text-transform: uppercase;
 }
 
-.link {
+.text-link {
   margin-inline-start: 8px;
   color: var(--disp-ink);
 }
 
-.verification .link {
+.verification .text-link {
   margin-inline-start: 0;
   color: inherit;
 }

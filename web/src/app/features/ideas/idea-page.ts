@@ -76,7 +76,7 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
     .toc-list a[aria-current='true'] { border-inline-start-color: var(--color-primary); color: var(--disp-ink); font-weight: 600; }
     .toc-list li[data-level='3'] a { padding-inline-start: 24px; }
     .shape-rec { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; color: var(--muted-ink); font-size: 12px; line-height: 18px; }
-    .loading { display: grid; gap: 8px; max-inline-size: 72ch; }
+    .idea-loading { display: grid; gap: 8px; max-inline-size: 72ch; }
     .visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   `,
   template: `
@@ -210,7 +210,7 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
     } @else if (failed()) {
       <ui-notice tone="error" data-idea-error>{{ 'ideas.error' | transloco }}</ui-notice>
     } @else {
-      <div class="loading" role="status" [attr.aria-label]="'ideas.loading' | transloco">
+      <div class="idea-loading" role="status" [attr.aria-label]="'ideas.loading' | transloco">
         <ui-skeleton width="40%" height="28px" />
         <ui-skeleton height="16px" />
         <ui-skeleton height="16px" />

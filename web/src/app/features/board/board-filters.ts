@@ -161,7 +161,7 @@ interface ActiveChip {
           <ui-icon class="caret" name="chevron-down" [size]="14" />
         </button>
         <ui-popover #pop class="filter-popover" [attr.data-filter]="f.key" [label]="f.name">
-          <div class="list">
+          <div class="filter-list">
             @for (s of f.sections; track $index) {
               @if (s.heading; as heading) {
                 <p class="section">{{ heading }}</p>
@@ -218,7 +218,7 @@ interface ActiveChip {
 
     <div class="end">
       <div class="lanes" data-group>
-        <span class="label">{{ 'board.workspace.swimlanes.label' | transloco }}</span>
+        <span class="filter-label">{{ 'board.workspace.swimlanes.label' | transloco }}</span>
         <ui-segmented [options]="groupOptions()" [value]="board().query.group" [label]="'board.workspace.swimlanes.label' | transloco" (valueChange)="group($event)" />
       </div>
       @if (board().activeFilters > 0) {

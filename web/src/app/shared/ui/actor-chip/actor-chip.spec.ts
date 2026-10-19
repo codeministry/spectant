@@ -25,14 +25,14 @@ describe('UiActorChip', () => {
     return { fixture, host: fixture.nativeElement as HTMLElement };
   }
 
-  const label = (host: HTMLElement) => host.querySelector('.label')?.textContent.trim();
+  const label = (host: HTMLElement) => host.querySelector('.chip-label')?.textContent.trim();
 
   it('shows a person by the mapped name, with no avatar, initials or glyph', async () => {
     const { host } = await render('u:3fa2c91b', { name: 'Ada' });
 
     expect(host.getAttribute('data-kind')).toBe('person');
     expect(label(host)).toBe('Ada');
-    expect(host.querySelector('.label')?.classList.contains('mono')).toBe(false);
+    expect(host.querySelector('.chip-label')?.classList.contains('mono')).toBe(false);
     expect(host.querySelector('ui-icon, img')).toBeNull();
     expect(host.getAttribute('title')).toBe('u:3fa2c91b');
   });
@@ -41,7 +41,7 @@ describe('UiActorChip', () => {
     const { host } = await render('u:3fa2c91b', { name: null });
 
     expect(label(host)).toBe('u:3fa2c91b');
-    expect(host.querySelector('.label')?.classList.contains('mono')).toBe(true);
+    expect(host.querySelector('.chip-label')?.classList.contains('mono')).toBe(true);
     expect(host.getAttribute('data-tone')).toBe('neutral');
   });
 

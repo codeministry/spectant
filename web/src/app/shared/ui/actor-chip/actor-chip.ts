@@ -37,7 +37,8 @@ const COLORS: Record<ActorTone, { readonly tint: string; readonly ink: string; r
   },
   styles: `
     :host { display: inline-flex; gap: 6px; align-items: center; min-inline-size: 0; max-inline-size: 100%; block-size: 24px; padding-inline: 8px; border-radius: 999px; background: var(--actor-tint); color: var(--actor-ink); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 16px; white-space: nowrap; }
-    .label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
+    /* The display, gap, nowrap and 60 % ink came from daisyUI's \`.label\` under the old class name (spec 049); kept. */
+    .chip-label { display: inline-flex; gap: 0.375rem; align-items: center; min-inline-size: 0; overflow: hidden; color: color-mix(in oklab, currentcolor 60%, transparent); white-space: nowrap; text-overflow: ellipsis; }
     .mono, .task { font-family: var(--font-mono); font-weight: 500; }
     .suffix, .stale { font-weight: 500; }
     .dot { flex: none; inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--actor-mark); }
@@ -52,7 +53,7 @@ const COLORS: Record<ActorTone, { readonly tint: string; readonly ink: string; r
       <ui-icon name="bot" [size]="14" />
       <span class="vh">{{ 'actors.agent' | transloco }}</span>
     }
-    <span class="label" [class.mono]="mono()">{{ text() }}</span>
+    <span class="chip-label" [class.mono]="mono()">{{ text() }}</span>
     @if (actor().task; as task) {
       <span class="task">{{ task }}</span>
     }

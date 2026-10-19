@@ -204,7 +204,18 @@ export class TasksTab {
   protected itemOf(row: { readonly id: string; readonly itemState?: ItemStateInfo }): ItemStateInfo | undefined {
     if (row.itemState === undefined) return undefined;
     const live = this.liveItems().get(row.id);
-    return live?.run === undefined ? row.itemState : live;
+    return this.undated(row.id, live?.run === undefined ? row.itemState : live);
+  }
+  /**
+   * Spec 049 (ISC-285): a done task the files give no date for carries core's `item-state-no-date` diagnostic; the row
+   * shows no sentence for it, and with agent steps the date of the last step stands in its place.
+   */
+  private undated(id: string, item: ItemStateInfo): ItemStateInfo {
+    if (item.state !== 'done' || item.doneAt !== undefined || item.diagnostic?.code !== 'item-state-no-date') return item;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the diagnostic is left out on purpose
+    const { diagnostic, ...rest } = item;
+    const last = this.stepsOf(id).at(-1)?.ts;
+    return last === undefined ? rest : { ...rest, doneAt: last };
   }
   /**
    * The run chip per task (spec 027, ISC-179.1): the live frame's run while tasks.md has not ticked the task, joined
