@@ -2098,7 +2098,7 @@
       "noMilestones": "The master names no milestones.",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
-      "hideEmpty": "Hide empty features"
+      "hideEmpty": "Hide done and empty"
     }
   },
   "sidebar": {

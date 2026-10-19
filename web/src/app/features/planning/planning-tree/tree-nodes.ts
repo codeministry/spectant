@@ -123,22 +123,32 @@ export function buildTree(model: PlanningModel, archived = true): readonly TreeN
   return roots;
 }
 
-/** A feature holds a spec row: one spec at least, and not only archived ones while the archive toggle hides them. */
-const holdsSpec = (node: TreeNode): boolean => node.kind !== 'feature' || node.children.some((child) => child.kind === 'spec');
+/** A spec row on done (spec 046): what the done-and-empty toggle hides. */
+const isDone = (node: TreeNode): boolean => node.kind === 'spec' && node.stage === 'done';
 
-/** True when the cascade shows a feature without a spec row, the case the empty-feature toggle is offered for. */
-export function hasEmptyFeatures(roots: readonly TreeNode[]): boolean {
-  return roots.some((root) => !holdsSpec(root) || (root.kind !== 'feature' && !root.children.every(holdsSpec)));
+/** A feature holds an open spec row: one spec at least not on done (and not archived while the archive toggle hides those). */
+const holdsOpenSpec = (node: TreeNode): boolean => node.kind !== 'feature' || node.children.some((child) => child.kind === 'spec' && !isDone(child));
+
+/**
+ * True when the cascade shows what the done-and-empty toggle hides (spec 046): a spec on done, or a feature without an
+ * open spec row (no spec at all, or only specs on done).
+ */
+export function hasDoneOrEmpty(roots: readonly TreeNode[]): boolean {
+  const features = roots.flatMap((root) => (root.kind === 'feature' ? [root] : root.children));
+  return features.some((feature) => !holdsOpenSpec(feature) || feature.children.some(isDone));
 }
 
 /**
- * The cascade without its empty features (the toggle on): every feature without a spec row leaves, and the "No
- * milestone" group leaves with its last feature. Milestones stay, even emptied, and every number stays the index's.
+ * The cascade with the toggle on (spec 046, ISC-275, ISC-277): every spec on done leaves, then every feature without an
+ * open spec row, and the "No milestone" group leaves with its last feature. Milestones stay, even emptied, and every
+ * number stays the index's.
  */
-export function withoutEmptyFeatures(roots: readonly TreeNode[]): readonly TreeNode[] {
+export function withoutDoneAndEmpty(roots: readonly TreeNode[]): readonly TreeNode[] {
+  const feature = (node: TreeNode): readonly TreeNode[] =>
+    holdsOpenSpec(node) ? [node.kind === 'feature' ? { ...node, children: node.children.filter((child) => !isDone(child)) } : node] : [];
   return roots.flatMap((root) => {
-    if (root.kind === 'feature') return holdsSpec(root) ? [root] : [];
-    const children = root.children.filter(holdsSpec);
+    if (root.kind === 'feature') return feature(root);
+    const children = root.children.flatMap(feature);
     return root.kind === 'group' && children.length === 0 ? [] : [{ ...root, children }];
   });
 }

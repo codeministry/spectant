@@ -2098,7 +2098,7 @@
       "noMilestones": "Der Master nennt keine Meilensteine.",
       "expandAll": "Alle aufklappen",
       "collapseAll": "Alle zuklappen",
-      "hideEmpty": "Leere Features ausblenden"
+      "hideEmpty": "Erledigte und leere ausblenden"
     }
   },
   "sidebar": {

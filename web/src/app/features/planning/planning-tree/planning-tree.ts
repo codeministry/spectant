@@ -35,7 +35,7 @@ import { PriorityMenu } from '../../backlog/priority-menu';
 import { ReorderMenu, type ReorderStep } from '../../backlog/reorder-menu';
 import { BOARD_DRAG_CONFIG } from '../../board/board-drag';
 import { hasArchivedSpecs, planningCounts } from '../planning-counts';
-import { buildTree, hasEmptyFeatures, pathTo, withoutEmptyFeatures, type TreeKind, type TreeNode } from './tree-nodes';
+import { buildTree, hasDoneOrEmpty, pathTo, withoutDoneAndEmpty, type TreeKind, type TreeNode } from './tree-nodes';
 
 /** The tree's levels in cascade order, each with its glossary term (ISC-107's `terms.*` hints). */
 const LEVELS = [
@@ -76,8 +76,8 @@ interface DropMark {
  * 1 px guide line per ancestor; one row holds the roving tab stop, the arrow keys move along the visible rows, Right
  * and Left open, close or step to the child or parent, Enter and Space select. The level headings above keep their
  * glossary hints (ISC-167). Archived specs stay hidden until the archive toggle shows them; the page shares that
- * toggle across its lenses (`archived`, two-way). A second toggle, the tree's own, hides the features without a spec
- * row, so the features with specs stand together (`hideEmpty`). The tree is the lens with a rail: it docks the detail sidebar there at wide for its
+ * toggle across its lenses (`archived`, two-way). A second toggle, the tree's own, hides the specs on done and the
+ * features without an open spec row, so the open work stands together (`hideEmpty`, spec 046). The tree is the lens with a rail: it docks the detail sidebar there at wide for its
  * lifetime, so switching to the Gantt or the graph undocks it.
  */
 @Component({
@@ -139,12 +139,12 @@ export class PlanningTree {
     };
   });
 
-  /** Features without a spec row hidden (the empty-feature toggle), off by default; the tree's own, not the page's. */
+  /** Specs on done and features without an open spec hidden (the done-and-empty toggle, spec 046), off by default; the tree's own. */
   protected readonly hideEmpty = signal(false);
   private readonly fullRoots = computed(() => buildTree(this.shown(), this.archived()));
-  /** Offered while the tree shows an empty feature, and kept while it hides them so the toggle can turn back. */
-  protected readonly hasEmpty = computed(() => this.hideEmpty() || hasEmptyFeatures(this.fullRoots()));
-  private readonly roots = computed(() => (this.hideEmpty() ? withoutEmptyFeatures(this.fullRoots()) : this.fullRoots()));
+  /** Offered while the tree shows a done spec or an empty feature, and kept while it hides them so the toggle can turn back. */
+  protected readonly hasEmpty = computed(() => this.hideEmpty() || hasDoneOrEmpty(this.fullRoots()));
+  private readonly roots = computed(() => (this.hideEmpty() ? withoutDoneAndEmpty(this.fullRoots()) : this.fullRoots()));
   /**
    * The rows the selection opens: the path to the selected object, kept when the selection closes, so the row Escape
    * returns focus to is still rendered (ISC-171).
