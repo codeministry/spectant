@@ -6,7 +6,7 @@
       "title": "Installable as a PWA",
       "type": "feature",
       "stage": "build",
-      "nextCommand": "/spec-implement 012",
+      "nextCommand": "/spec implement 012",
       "nextReason": "ISC-334 is takeable",
       "phase": "building",
       "started": "2026-09-24T16:40:00Z",
@@ -26,7 +26,7 @@
         "id": "012",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 012",
+        "command": "/spec implement 012",
         "reason": "ISC-334 is takeable"
       }
     },
@@ -54,7 +54,7 @@
     "ideaQuote": "The app can be installed on a desktop, a tablet or a phone and opens in its own window with the lead-ring icon and the app's own colours; a service worker keeps the app shell available without a network, a toast offers to reload when a deploy has landed, and data still comes from the API only.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 012",
+      "command": "/spec implement 012",
       "reasons": [
         "ISC-334 is takeable",
         "the reviewed mark is fresh",
@@ -166,7 +166,7 @@
           "item": "claim",
           "ref": "ISC-334",
           "title": "Under `security.auth: oidc` the sign-in redirect completes inside the installed window and returns to the app; the window is never left on the identity provider's page.",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "since": "2026-09-24T15:56:51Z",
           "reason": {
             "key": "waiting.manual",
@@ -182,7 +182,7 @@
           "item": "task",
           "ref": "T16",
           "title": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "since": "2026-09-24T15:56:51Z",
           "reason": {
             "key": "waiting.operator",
@@ -200,7 +200,7 @@
           "item": "spec",
           "ref": null,
           "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "since": "2026-09-24T15:56:51Z",
           "reason": {
             "key": "stage.build.0",

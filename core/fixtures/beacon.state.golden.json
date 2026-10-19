@@ -95,7 +95,7 @@
     "id": "002",
     "state": "open",
     "stage": "plan",
-    "command": "/spec-plan 002",
+    "command": "/spec plan 002",
     "reason": "a feature spec needs plan.md and it is missing"
   },
   {
@@ -129,7 +129,7 @@
     "id": "ISC-4",
     "spec": "002",
     "state": "open",
-    "command": "/spec-implement 002",
+    "command": "/spec implement 002",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -137,7 +137,7 @@
     "id": "ISC-5",
     "spec": "002",
     "state": "open",
-    "command": "/spec-implement 002",
+    "command": "/spec implement 002",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -145,7 +145,7 @@
     "id": "ISC-6",
     "spec": "002",
     "state": "open",
-    "command": "/spec-implement 002",
+    "command": "/spec implement 002",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -155,7 +155,7 @@
     "stage": "tasks",
     "run": {
       "run": "r-0308-1452",
-      "command": "/spec-tasks 003",
+      "command": "/spec tasks 003",
       "session": "a:claude:sess-32",
       "actor": {
         "raw": "a:claude:sess-32",
@@ -200,7 +200,7 @@
     "id": "ISC-7",
     "spec": "003",
     "state": "open",
-    "command": "/spec-implement 003",
+    "command": "/spec implement 003",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -208,7 +208,7 @@
     "id": "ISC-8",
     "spec": "003",
     "state": "open",
-    "command": "/spec-implement 003",
+    "command": "/spec implement 003",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -216,7 +216,7 @@
     "id": "ISC-9",
     "spec": "003",
     "state": "open",
-    "command": "/spec-implement 003",
+    "command": "/spec implement 003",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -224,7 +224,7 @@
     "id": "004",
     "state": "open",
     "stage": "review",
-    "command": "/spec-review 004",
+    "command": "/spec review 004",
     "reason": "the reviewed mark is stale"
   },
   {
@@ -232,7 +232,7 @@
     "id": "004",
     "spec": "004",
     "state": "open",
-    "command": "/spec-review 004",
+    "command": "/spec review 004",
     "reason": "the reviewed mark is stale"
   },
   {
@@ -253,7 +253,7 @@
     "id": "ISC-10",
     "spec": "004",
     "state": "open",
-    "command": "/spec-implement 004",
+    "command": "/spec implement 004",
     "reason": "the reviewed mark is stale"
   },
   {
@@ -261,7 +261,7 @@
     "id": "ISC-11",
     "spec": "004",
     "state": "open",
-    "command": "/spec-implement 004",
+    "command": "/spec implement 004",
     "reason": "the reviewed mark is stale"
   },
   {
@@ -269,7 +269,7 @@
     "id": "ISC-12",
     "spec": "004",
     "state": "open",
-    "command": "/spec-implement 004",
+    "command": "/spec implement 004",
     "reason": "the reviewed mark is stale"
   },
   {
@@ -277,7 +277,7 @@
     "id": "T1",
     "spec": "004",
     "state": "open",
-    "command": "/spec-implement 004",
+    "command": "/spec implement 004",
     "reason": "task of ISC-10, not dispatched"
   },
   {
@@ -285,7 +285,7 @@
     "id": "T2",
     "spec": "004",
     "state": "open",
-    "command": "/spec-implement 004",
+    "command": "/spec implement 004",
     "reason": "task of ISC-11, not dispatched"
   },
   {
@@ -293,7 +293,7 @@
     "id": "T3",
     "spec": "004",
     "state": "open",
-    "command": "/spec-implement 004",
+    "command": "/spec implement 004",
     "reason": "task of ISC-12, not dispatched"
   },
   {
@@ -303,7 +303,7 @@
     "stage": "build",
     "run": {
       "run": "r-0308-1440",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-52",
       "actor": {
         "raw": "a:claude:sess-52",
@@ -366,7 +366,7 @@
     "state": "running",
     "run": {
       "run": "a:claude:sess-51/T3",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-51/T3",
       "actor": {
         "raw": "a:claude:sess-51/T3",
@@ -389,7 +389,7 @@
     "state": "aborted",
     "run": {
       "run": "a:claude:sess-50/T4",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-50/T4",
       "actor": {
         "raw": "a:claude:sess-50/T4",
@@ -422,7 +422,7 @@
     "id": "ISC-18",
     "spec": "005",
     "state": "open",
-    "command": "/spec-implement 005",
+    "command": "/spec implement 005",
     "reason": "ISC-18 is takeable"
   },
   {
@@ -458,7 +458,7 @@
     "state": "running",
     "run": {
       "run": "a:claude:sess-51/T3",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-51/T3",
       "actor": {
         "raw": "a:claude:sess-51/T3",
@@ -481,7 +481,7 @@
     "state": "aborted",
     "run": {
       "run": "a:claude:sess-50/T4",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-50/T4",
       "actor": {
         "raw": "a:claude:sess-50/T4",
@@ -503,7 +503,7 @@
     "state": "running",
     "run": {
       "run": "a:claude:sess-51/T5",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-51/T5",
       "actor": {
         "raw": "a:claude:sess-51/T5",
@@ -526,7 +526,7 @@
     "state": "running",
     "run": {
       "run": "a:claude:sess-51/T6",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "session": "a:claude:sess-51/T6",
       "actor": {
         "raw": "a:claude:sess-51/T6",
@@ -570,7 +570,7 @@
     "stage": "code-review",
     "run": {
       "run": "r-0308-1140",
-      "command": "/spec-code-review 006",
+      "command": "/spec review 006 code",
       "session": "a:claude:sess-61",
       "actor": {
         "raw": "a:claude:sess-61",
@@ -598,7 +598,7 @@
     "state": "aborted",
     "run": {
       "run": "r-0308-1140",
-      "command": "/spec-code-review 006",
+      "command": "/spec review 006 code",
       "session": "a:claude:sess-61",
       "actor": {
         "raw": "a:claude:sess-61",
@@ -694,7 +694,7 @@
     "id": "008",
     "state": "open",
     "stage": "build",
-    "command": "/spec-implement 008",
+    "command": "/spec implement 008",
     "reason": "ISC-25 is takeable"
   },
   {
@@ -733,7 +733,7 @@
     "id": "ISC-25",
     "spec": "008",
     "state": "open",
-    "command": "/spec-implement 008",
+    "command": "/spec implement 008",
     "reason": "ISC-25 is takeable"
   },
   {
@@ -741,7 +741,7 @@
     "id": "009",
     "state": "open",
     "stage": "close",
-    "command": "/spec-complete 009",
+    "command": "/spec done 009",
     "reason": "every claim is closed and the workflow has no code review"
   },
   {

@@ -66,7 +66,7 @@
         "landed": 4,
         "total": 8
       },
-      "nextCommand": "/spec-implement 001",
+      "nextCommand": "/spec implement 001",
       "nextReason": "ISC-7 and ISC-9 are takeable",
       "takeable": [
         "ISC-7",
@@ -112,7 +112,7 @@
         "id": "001",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "reason": "ISC-7 and ISC-9 are takeable"
       }
     },
@@ -131,7 +131,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-implement 002",
+      "nextCommand": "/spec implement 002",
       "nextReason": "ISC-11 and ISC-12 are takeable",
       "takeable": [
         "ISC-11",
@@ -180,7 +180,7 @@
         "id": "002",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 002",
+        "command": "/spec implement 002",
         "reason": "ISC-11 and ISC-12 are takeable"
       }
     }
@@ -218,7 +218,7 @@
         "item": "spec",
         "ref": null,
         "title": "Stop duplicate links and duplicate tags from entering the list",
-        "command": "/spec-implement 002",
+        "command": "/spec implement 002",
         "since": "2026-03-06T10:30:00Z",
         "reason": {
           "key": "stage.build.0",
@@ -235,7 +235,7 @@
         "item": "spec",
         "ref": null,
         "title": "Save a link once and find it again, online or offline",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "since": "2026-03-06T15:00:00Z",
         "reason": {
           "key": "stage.build.0",

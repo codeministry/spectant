@@ -65,7 +65,7 @@
         "total": 1
       },
       "tasks": null,
-      "nextCommand": "/spec-complete 010",
+      "nextCommand": "/spec done 010",
       "nextReason": "every claim is closed and the workflow has no code review",
       "takeable": [],
       "taken": [],
@@ -111,7 +111,7 @@
         "id": "010",
         "state": "open",
         "stage": "close",
-        "command": "/spec-complete 010",
+        "command": "/spec done 010",
         "reason": "every claim is closed and the workflow has no code review"
       }
     },
@@ -130,7 +130,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-code-review 004",
+      "nextCommand": "/spec review 004 code",
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "takeable": [],
       "taken": [],
@@ -180,7 +180,7 @@
         "id": "004",
         "state": "open",
         "stage": "code-review",
-        "command": "/spec-code-review 004",
+        "command": "/spec review 004 code",
         "reason": "every claim is closed and the code-reviewed mark is stale"
       }
     },
@@ -202,7 +202,7 @@
         "landed": 0,
         "total": 3
       },
-      "nextCommand": "/spec-review 001",
+      "nextCommand": "/spec review 001",
       "nextReason": "the reviewed mark is stale",
       "takeable": [],
       "taken": [],
@@ -216,7 +216,7 @@
         {
           "kind": "review",
           "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-          "command": "/spec-review 001"
+          "command": "/spec review 001"
         }
       ],
       "gates": {
@@ -256,7 +256,7 @@
         "id": "001",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 001",
+        "command": "/spec review 001",
         "reason": "the reviewed mark is stale"
       }
     },
@@ -278,7 +278,7 @@
         "landed": 0,
         "total": 3
       },
-      "nextCommand": "/spec-review 002",
+      "nextCommand": "/spec review 002",
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
@@ -292,7 +292,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 002"
+          "command": "/spec review 002"
         }
       ],
       "gates": {
@@ -326,7 +326,7 @@
         "id": "002",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 002",
+        "command": "/spec review 002",
         "reason": "the reviewed mark is missing"
       }
     },
@@ -348,7 +348,7 @@
         "landed": 0,
         "total": 3
       },
-      "nextCommand": "/spec-review 003",
+      "nextCommand": "/spec review 003",
       "nextReason": "the reviewed mark is stale",
       "takeable": [],
       "taken": [],
@@ -362,7 +362,7 @@
         {
           "kind": "review",
           "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-          "command": "/spec-review 003"
+          "command": "/spec review 003"
         }
       ],
       "gates": {
@@ -402,7 +402,7 @@
         "id": "003",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 003",
+        "command": "/spec review 003",
         "reason": "the reviewed mark is stale"
       }
     },
@@ -421,7 +421,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-review 009",
+      "nextCommand": "/spec review 009",
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
@@ -430,7 +430,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 009"
+          "command": "/spec review 009"
         }
       ],
       "gates": {
@@ -466,7 +466,7 @@
         "stage": "review",
         "run": {
           "run": "r-0308-1430",
-          "command": "/spec-review 009",
+          "command": "/spec review 009",
           "session": "a:claude:sess-91",
           "actor": {
             "raw": "a:claude:sess-91",
@@ -499,7 +499,7 @@
         "landed": 1,
         "total": 4
       },
-      "nextCommand": "/spec-implement 005",
+      "nextCommand": "/spec implement 005",
       "nextReason": "ISC-13 and ISC-14 are takeable",
       "takeable": [
         "ISC-13",
@@ -550,7 +550,7 @@
         "id": "005",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 005",
+        "command": "/spec implement 005",
         "reason": "ISC-13 and ISC-14 are takeable"
       }
     },
@@ -569,7 +569,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-status 012",
+      "nextCommand": "/spec 012",
       "nextReason": "waits on 007",
       "takeable": [],
       "taken": [],
@@ -643,7 +643,7 @@
         "total": 3
       },
       "tasks": null,
-      "nextCommand": "/spec-tasks 008",
+      "nextCommand": "/spec tasks 008",
       "nextReason": "3 claims and no tasks.md",
       "takeable": [],
       "taken": [],
@@ -652,7 +652,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 008"
+          "command": "/spec review 008"
         }
       ],
       "gates": {
@@ -686,7 +686,7 @@
         "id": "008",
         "state": "open",
         "stage": "tasks",
-        "command": "/spec-tasks 008",
+        "command": "/spec tasks 008",
         "reason": "3 claims and no tasks.md"
       }
     },
@@ -705,7 +705,7 @@
         "total": 3
       },
       "tasks": null,
-      "nextCommand": "/spec-plan 007",
+      "nextCommand": "/spec plan 007",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "takeable": [],
       "taken": [],
@@ -714,7 +714,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 007"
+          "command": "/spec review 007"
         }
       ],
       "gates": {
@@ -751,7 +751,7 @@
         "id": "007",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 007",
+        "command": "/spec plan 007",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -890,7 +890,7 @@
           "warning": {
             "kind": "review",
             "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-            "command": "/spec-review 001"
+            "command": "/spec review 001"
           }
         },
         {
@@ -898,7 +898,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 002"
+            "command": "/spec review 002"
           }
         },
         {
@@ -906,7 +906,7 @@
           "warning": {
             "kind": "review",
             "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-            "command": "/spec-review 003"
+            "command": "/spec review 003"
           }
         },
         {
@@ -914,7 +914,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 009"
+            "command": "/spec review 009"
           }
         },
         {
@@ -922,7 +922,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 008"
+            "command": "/spec review 008"
           }
         },
         {
@@ -930,7 +930,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 007"
+            "command": "/spec review 007"
           }
         }
       ]
@@ -987,7 +987,7 @@
         "item": "spec",
         "ref": null,
         "title": "Target a flag at users by attribute",
-        "command": "/spec-review 001",
+        "command": "/spec review 001",
         "since": "2026-03-05T10:00:00Z",
         "reason": {
           "key": "stage.review.0",
@@ -1003,7 +1003,7 @@
         "item": "spec",
         "ref": null,
         "title": "Let a flag expire and list it for clean-up",
-        "command": "/spec-review 003",
+        "command": "/spec review 003",
         "since": "2026-03-03T09:00:00Z",
         "reason": {
           "key": "stage.review.0",
@@ -1019,7 +1019,7 @@
         "item": "claim",
         "ref": "ISC-14",
         "title": "A rollout to the staging tenant is confirmed by hand on the staging console.",
-        "command": "/spec-implement 005",
+        "command": "/spec implement 005",
         "since": "2026-03-04T12:00:00Z",
         "reason": {
           "key": "waiting.manual",
@@ -1035,7 +1035,7 @@
         "item": "task",
         "ref": "T3",
         "title": "add the staging sdk key to the ci secrets",
-        "command": "/spec-implement 005",
+        "command": "/spec implement 005",
         "since": "2026-03-04T12:00:00Z",
         "reason": {
           "key": "waiting.operator",
@@ -1051,7 +1051,7 @@
         "item": "spec",
         "ref": null,
         "title": "Record who changed which flag",
-        "command": "/spec-review 002",
+        "command": "/spec review 002",
         "since": "2026-03-06T09:00:00Z",
         "reason": {
           "key": "stage.review.0",
@@ -1067,7 +1067,7 @@
         "item": "question",
         "ref": "T4",
         "title": "roll out to every staging tenant or to the first one only?",
-        "command": "/spec-implement 005",
+        "command": "/spec implement 005",
         "since": "2026-03-07T10:00:00Z",
         "reason": {
           "key": "waiting.question",
@@ -1083,7 +1083,7 @@
         "item": "spec",
         "ref": null,
         "title": "Read flags through a cache without serving stale values",
-        "command": "/spec-code-review 004",
+        "command": "/spec review 004 code",
         "since": "2026-03-05T16:00:00Z",
         "reason": {
           "key": "stage.code-review.0",
@@ -1099,7 +1099,7 @@
         "item": "spec",
         "ref": null,
         "title": "Name the flag and its owner in the stale-flag banner",
-        "command": "/spec-complete 010",
+        "command": "/spec done 010",
         "since": null,
         "reason": {
           "key": "stage.close.1",
@@ -1115,7 +1115,7 @@
         "item": "spec",
         "ref": null,
         "title": "Build reusable user segments in the console",
-        "command": "/spec-plan 007",
+        "command": "/spec plan 007",
         "since": "2026-03-06T09:00:00Z",
         "reason": {
           "key": "stage.plan.0",
@@ -1131,7 +1131,7 @@
         "item": "spec",
         "ref": null,
         "title": "Evaluate flags locally in the server and browser SDKs",
-        "command": "/spec-implement 005",
+        "command": "/spec implement 005",
         "since": "2026-03-04T12:00:00Z",
         "reason": {
           "key": "stage.build.0",
@@ -1148,7 +1148,7 @@
         "item": "spec",
         "ref": null,
         "title": "Send a signed webhook on every flag change",
-        "command": "/spec-tasks 008",
+        "command": "/spec tasks 008",
         "since": "2026-03-04T14:00:00Z",
         "reason": {
           "key": "stage.tasks.0",

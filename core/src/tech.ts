@@ -109,7 +109,7 @@ function techSections(body: string, diagnostics: FileDiagnostic[]): TechSections
   return { overview: text('overview'), stack: text('stack'), architecture: text('architecture'), risks: text('risks') };
 }
 
-/** tech.md's four section keys in contract order, the order `/spec-doc` writes them and the library shows them. */
+/** tech.md's four section keys in contract order, the order tech.md holds them and the library shows them. */
 export const TECH_SECTION_KEYS: readonly TechKey[] = ['overview', 'stack', 'architecture', 'risks'];
 
 /** One section of tech.md as its marker names it: the key and the text of the first `##` heading inside it, or null. */

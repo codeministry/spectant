@@ -7,7 +7,7 @@
       "item": "spec",
       "ref": null,
       "title": "Escalate unacknowledged signals along a chain",
-      "command": "/spec-plan 003",
+      "command": "/spec plan 003",
       "since": "2026-03-08T11:00:00Z",
       "reason": {
         "key": "stage.plan.0",
@@ -23,7 +23,7 @@
       "item": "spec",
       "ref": null,
       "title": "Route each signal to the person on call",
-      "command": "/spec-plan 002",
+      "command": "/spec plan 002",
       "since": "2026-03-08T15:00:00Z",
       "reason": {
         "key": "stage.plan.0",

@@ -6,7 +6,7 @@
       "title": "App skeleton and dashboard",
       "type": "feature",
       "stage": "review",
-      "nextCommand": "/spec-review 001",
+      "nextCommand": "/spec review 001",
       "nextReason": "the reviewed mark is missing",
       "phase": "scoping",
       "started": "2026-09-28T09:40:00Z",
@@ -26,7 +26,7 @@
         "id": "001",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 001",
+        "command": "/spec review 001",
         "reason": "the reviewed mark is missing"
       }
     },
@@ -54,7 +54,7 @@
     "ideaQuote": "A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that inherits the old Spec dashboard's look in its light and its dark theme and works like a current developer tool (command palette, keyboard navigation, in-place refresh), with nothing leaving the machine and nothing written into either repository.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-review 001",
+      "command": "/spec review 001",
       "reasons": [
         "the reviewed mark is missing",
         "4 items wait on you"
@@ -116,7 +116,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 001"
+        "command": "/spec review 001"
       }
     ],
     "waitingOnYou": [
@@ -186,7 +186,7 @@
           "item": "spec",
           "ref": null,
           "title": "Install spectant with one line and see two workspaces on the dashboard",
-          "command": "/spec-review 001",
+          "command": "/spec review 001",
           "since": "2026-09-28T13:02:35Z",
           "reason": {
             "key": "stage.review.0",
@@ -202,7 +202,7 @@
           "item": "claim",
           "ref": "ISC-11",
           "title": "For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0.",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "since": "2026-09-28T13:02:35Z",
           "reason": {
             "key": "waiting.manual",
@@ -218,7 +218,7 @@
           "item": "claim",
           "ref": "ISC-19",
           "title": "The dashboard renders and navigates inside the cmux web view.",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "since": "2026-09-28T13:02:35Z",
           "reason": {
             "key": "waiting.manual",
@@ -234,7 +234,7 @@
           "item": "task",
           "ref": "T16",
           "title": "macOS arm64 install on a throwaway user account, transcript into `.evidence/`",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "since": "2026-09-28T13:02:35Z",
           "reason": {
             "key": "waiting.operator",
@@ -250,7 +250,7 @@
           "item": "task",
           "ref": "T83",
           "title": "cmux web view check with Interceptor, WebKit version recorded",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "since": "2026-09-28T13:02:35Z",
           "reason": {
             "key": "waiting.operator",

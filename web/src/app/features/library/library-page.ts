@@ -105,7 +105,7 @@ export function controlViews(catalog: Pick<LibraryCatalog, 'missing' | 'stale'>,
 /**
  * The row an absent `specs/tech.md` stands as (design.md 017 § 8, § Across viewports): in the workspace-wide group,
  * dimmed, without the "missing" flag and outside every count (ISC-155.2 names spec documents only); its reader is the
- * empty state with `/spec-doc`. Core never marks a tech document missing, so `tech` with `missing` names this row alone.
+ * empty state, which names no command. Core never marks a tech document missing, so `tech` with `missing` names this row alone.
  */
 export const TECH_PLACEHOLDER: LibraryDoc = {
   path: 'tech.md',
@@ -246,7 +246,7 @@ interface GroupView {
  * workspace-wide first, then each spec once in ascending number, every row with its type tag (12 px icon, family
  * colour), title, the spec it belongs to and a meta line, a spec's evidence as one collapsed subgroup with its count
  * that reveals blocks of 50 and opens under a search or the type filter Evidence. A workspace without one document is
- * the empty state with `/spec-bootstrap`. No demo chip and no demo data.
+ * the empty state with `/spec init`. No demo chip and no demo data.
  *
  * The filter and the chosen document live in the address (T32, ISC-156.2): `?q=`, `?type=`, `?spec=`, `?state=` and
  * the document's path as the fragment `#path`. The page reads them from the route as signals and writes every change

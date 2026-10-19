@@ -384,7 +384,7 @@
           "id": "T16",
           "spec": "012",
           "state": "open",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "reason": "operator lane — the principal's own action, never auto-dispatched"
         }
       },
@@ -445,7 +445,7 @@
           "id": "T16",
           "spec": "012",
           "state": "open",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "reason": "operator lane — the principal's own action, never auto-dispatched"
         }
       }

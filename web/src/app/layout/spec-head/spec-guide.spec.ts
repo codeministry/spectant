@@ -78,16 +78,16 @@ describe('specGuide (T20, T21, ISC-239)', () => {
     expect(guide.entry?.item).toBe('spec');
     expect(guide.waiting).toBe(false);
     expect(guide.others.map((e) => e.ref)).toEqual(['ISC-77', 'T31', 'T29']);
-    expect(guide.command).toBe('/spec-implement 002');
+    expect(guide.command).toBe('/spec implement 002');
   });
 
   it('marks a spec that itself waits on you and never lists it twice', () => {
-    const own = { ...GUIDANCE.next[0], command: '/spec-review 002' };
+    const own = { ...GUIDANCE.next[0], command: '/spec review 002' };
     const guide = specGuide({ waits: [own, ...GUIDANCE.waits], next: [] }, SPEC002);
     expect(guide.entry).toBe(own);
     expect(guide.waiting).toBe(true);
     expect(guide.others).toHaveLength(3);
-    expect(guide.command).toBe('/spec-review 002');
+    expect(guide.command).toBe('/spec review 002');
   });
 
   it("falls back to the model's next command and first reason without guidance", () => {
@@ -128,7 +128,7 @@ describe('app-spec-guide (T21, ISC-239)', () => {
     const card = root.querySelector('[data-spec-guide]');
     expect(card).not.toBeNull();
     expect(text(card?.querySelector('[data-guide-reason]'))).toBe(BUILD_SENTENCE);
-    expect(text(card?.querySelector('[data-guide-command] code') ?? card?.querySelector('[data-guide-command]'))).toContain('/spec-implement 002');
+    expect(text(card?.querySelector('[data-guide-command] code') ?? card?.querySelector('[data-guide-command]'))).toContain('/spec implement 002');
     expect(card?.querySelectorAll('ui-command-chip')).toHaveLength(1);
     expect(card?.querySelector('[data-guide-marker]')).toBeNull();
     const waiting = card?.querySelector('a[data-guide-waiting]');
@@ -157,7 +157,7 @@ describe('app-spec-guide (T21, ISC-239)', () => {
   });
 
   it('carries the marker when the spec itself waits, and no "+n waiting" without other entries', async () => {
-    const own = { ...GUIDANCE.next[0], command: '/spec-review 002', reason: { key: 'stage.review.0', values: { state: 'stale' }, phrase: 'the reviewed mark is stale' } };
+    const own = { ...GUIDANCE.next[0], command: '/spec review 002', reason: { key: 'stage.review.0', values: { state: 'stale' }, phrase: 'the reviewed mark is stale' } };
     setUp({ ...SPEC002, guidance: { waits: [own], next: [] } });
     const root = await open('/w/harbor/s/002/tasks', 'compact');
     expect(text(root.querySelector('[data-guide-marker]'))).toBe(en.guidance.marker);

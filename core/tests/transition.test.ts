@@ -92,7 +92,7 @@ describe('planTransition: an accepted move (T71, ISC-121)', () => {
     const p = accepted(plan(files, 'blocked'));
     expect([p.from, p.to]).toEqual(['build', 'blocked']);
     expect(changedLines(spec, p.specText)).toEqual([[spec.split('\n').indexOf('stage: build'), 'stage: build', 'stage: blocked']]);
-    expect(p.event).toEqual({ ts: '2026-03-10T08:00:00.000Z', from: 'build', to: 'blocked', command: '/spec-implement 002', actor: ACTOR });
+    expect(p.event).toEqual({ ts: '2026-03-10T08:00:00.000Z', from: 'build', to: 'blocked', command: '/spec implement 002', actor: ACTOR });
     const line = JSON.stringify(p.event);
     expect(Object.keys(JSON.parse(line) as object)).toEqual(['ts', 'from', 'to', 'command', 'actor']);
     const checked = validateEventLine(line);
@@ -109,7 +109,7 @@ describe('planTransition: an accepted move (T71, ISC-121)', () => {
     const lines = spec.split('\n');
     const close = lines.indexOf('---', 1);
     expect(p.specText.split('\n')).toEqual([...lines.slice(0, close), 'stage: close', ...lines.slice(close)]);
-    expect(p.event).toMatchObject({ from: 'code-review', to: 'close', command: '/spec-code-review 008' });
+    expect(p.event).toMatchObject({ from: 'code-review', to: 'close', command: '/spec review 008 code' });
     expect(validateEventLine(JSON.stringify(p.event)).ok).toBe(true);
   });
 
@@ -144,7 +144,7 @@ describe('planTransition: the fixed gates (T71, ISC-121)', () => {
     const p = refused(plan(harbor('006-partial-push'), 'build', { reviewed: 'stale' }));
     expect(p.from).toBe('review');
     expect(p.reason).toContain('the reviewed mark is stale');
-    expect(p.command).toBe('/spec-review 006');
+    expect(p.command).toBe('/spec review 006');
   });
 
   test('every stage past review needs the fresh mark, the detour blocked included', () => {
@@ -159,7 +159,7 @@ describe('planTransition: the fixed gates (T71, ISC-121)', () => {
     const p = refused(plan(harbor('007-rotate-mirror-token'), 'done', { partition: { takeable: 1, open: 0, closed: 1, dropped: 0 } }));
     expect([p.from, p.to]).toEqual(['build', 'done']);
     expect(p.reason).toContain('1 claim is takeable');
-    expect(p.command).toBe('/spec-implement 007');
+    expect(p.command).toBe('/spec implement 007');
   });
 
   test("close with an open claim that is not takeable is refused with the blocked row's reason", () => {
@@ -180,7 +180,7 @@ describe('planTransition: the fixed gates (T71, ISC-121)', () => {
     const events = '{"ts":"2026-03-09T09:00:00Z","from":"done","to":"build","command":"/spec-review 007","actor":"u:3f9c0a7d"}\n';
     const p = accepted(plan({ ...base, texts: { ...base.texts, spec, events } }, 'done', { workflow: DEFAULT_WF }));
     expect([p.from, p.to]).toEqual(['build', 'done']);
-    expect(p.event.command).toBe('/spec-implement 007');
+    expect(p.event.command).toBe('/spec implement 007');
   });
 
   test('close-pending without an open sibling is refused (code_review: feature)', () => {
@@ -240,7 +240,7 @@ describe('planTransition: a refused move (T71, T72, ISC-31)', () => {
       const p = refused(plan(files, to));
       expect([p.from, p.to]).toEqual(['build', to]);
       expect(p.reason.length).toBeGreaterThan(0);
-      expect(p.command).toBe('/spec-implement 002');
+      expect(p.command).toBe('/spec implement 002');
     }
     expect(refused(plan(files, 'review')).reason).toContain('lists no move build → review');
   });

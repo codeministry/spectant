@@ -51,7 +51,7 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       title: 'Web console',
       type: 'feature',
       stage: 'build',
-      nextCommand: '/spec-implement 002',
+      nextCommand: '/spec implement 002',
       nextReason: 'ISC-74, ISC-75 and 2 more are takeable',
       phase: 'building',
       started: '2026-03-03T10:00:00Z',
@@ -93,7 +93,7 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
 
   test('next step: the rule reason first, then what the stage table implies, then the waiting count', () => {
     expect(p.next).toEqual({
-      command: '/spec-implement 002',
+      command: '/spec implement 002',
       reasons: ['ISC-74, ISC-75 and 2 more are takeable', 'the reviewed mark is fresh', '3 items wait on you'],
       // since spec 008 (T27) 002 records its transitions: the last one into build
       since: '2026-03-04T09:00:00Z',
@@ -242,7 +242,7 @@ describe('harbor: the other active specs', () => {
 
   test('003: thirteen claims and no tasks.md', () => {
     const p = page('harbor', '003-config-loader');
-    expect(p.head).toMatchObject({ stage: 'tasks', nextCommand: '/spec-tasks 003', title: 'Config loader rewrite' });
+    expect(p.head).toMatchObject({ stage: 'tasks', nextCommand: '/spec tasks 003', title: 'Config loader rewrite' });
     expect(p.keyNumbers).toEqual({
       claims: { closed: 0, total: 13, open: 13, takeable: 0 },
       tasks: { landed: 0, total: 0 },

@@ -187,7 +187,7 @@
           "id": "T1",
           "spec": "004",
           "state": "open",
-          "command": "/spec-implement 004",
+          "command": "/spec implement 004",
           "reason": "task of ISC-10, not dispatched"
         }
       },
@@ -208,7 +208,7 @@
           "id": "T2",
           "spec": "004",
           "state": "open",
-          "command": "/spec-implement 004",
+          "command": "/spec implement 004",
           "reason": "task of ISC-11, not dispatched"
         }
       },
@@ -229,7 +229,7 @@
           "id": "T3",
           "spec": "004",
           "state": "open",
-          "command": "/spec-implement 004",
+          "command": "/spec implement 004",
           "reason": "task of ISC-12, not dispatched"
         }
       }
@@ -357,7 +357,7 @@
           "state": "running",
           "run": {
             "run": "a:claude:sess-51/T3",
-            "command": "/spec-implement 005",
+            "command": "/spec implement 005",
             "session": "a:claude:sess-51/T3",
             "actor": {
               "raw": "a:claude:sess-51/T3",
@@ -417,7 +417,7 @@
           "state": "aborted",
           "run": {
             "run": "a:claude:sess-50/T4",
-            "command": "/spec-implement 005",
+            "command": "/spec implement 005",
             "session": "a:claude:sess-50/T4",
             "actor": {
               "raw": "a:claude:sess-50/T4",
@@ -459,7 +459,7 @@
           "state": "running",
           "run": {
             "run": "a:claude:sess-51/T5",
-            "command": "/spec-implement 005",
+            "command": "/spec implement 005",
             "session": "a:claude:sess-51/T5",
             "actor": {
               "raw": "a:claude:sess-51/T5",
@@ -502,7 +502,7 @@
           "state": "running",
           "run": {
             "run": "a:claude:sess-51/T6",
-            "command": "/spec-implement 005",
+            "command": "/spec implement 005",
             "session": "a:claude:sess-51/T6",
             "actor": {
               "raw": "a:claude:sess-51/T6",
@@ -639,7 +639,7 @@
             "state": "running",
             "run": {
               "run": "a:claude:sess-51/T6",
-              "command": "/spec-implement 005",
+              "command": "/spec implement 005",
               "session": "a:claude:sess-51/T6",
               "actor": {
                 "raw": "a:claude:sess-51/T6",
@@ -682,7 +682,7 @@
             "state": "running",
             "run": {
               "run": "a:claude:sess-51/T5",
-              "command": "/spec-implement 005",
+              "command": "/spec implement 005",
               "session": "a:claude:sess-51/T5",
               "actor": {
                 "raw": "a:claude:sess-51/T5",
@@ -742,7 +742,7 @@
             "state": "running",
             "run": {
               "run": "a:claude:sess-51/T3",
-              "command": "/spec-implement 005",
+              "command": "/spec implement 005",
               "session": "a:claude:sess-51/T3",
               "actor": {
                 "raw": "a:claude:sess-51/T3",
@@ -802,7 +802,7 @@
             "state": "aborted",
             "run": {
               "run": "a:claude:sess-50/T4",
-              "command": "/spec-implement 005",
+              "command": "/spec implement 005",
               "session": "a:claude:sess-50/T4",
               "actor": {
                 "raw": "a:claude:sess-50/T4",

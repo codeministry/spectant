@@ -168,7 +168,7 @@
           "id": "T5",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "task of ISC-7, not dispatched"
         }
       },
@@ -237,7 +237,7 @@
           "id": "T7",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "task of ISC-9, not dispatched"
         }
       },

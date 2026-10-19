@@ -19,7 +19,7 @@ import { formatInstant } from '../../shared/time';
 // T27 · ISC-156: the library page on the server's catalog: one row per document with its type icon, title, spec and
 // meta line, groups workspace-wide first and each spec once, a spec's evidence as one collapsed subgroup with its
 // count that reveals blocks of 50 and opens under a search or the type filter Evidence, the type pills of the
-// present types only, no demo chip, and the empty state with `/spec-bootstrap` for a workspace without documents.
+// present types only, no demo chip, and the empty state with `/spec init` for a workspace without documents.
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 
@@ -211,12 +211,12 @@ describe('LibraryPage (T27, ISC-156)', () => {
     expect(evidenceEntries(root)).toBe(50);
   });
 
-  it('shows the empty state with /spec-bootstrap for a workspace without documents', async () => {
+  it('shows the empty state with /spec init for a workspace without documents', async () => {
     const root = await open('/w/harbor/library', EMPTY);
     const none = page(root).querySelector('[data-library-none]');
     expect(none).not.toBeNull();
     expect(text(none?.querySelector('.title'))).toBe('No documents in harbor yet');
-    expect(none?.querySelector('ui-command-chip')?.textContent).toContain('/spec-bootstrap');
+    expect(none?.querySelector('ui-command-chip')?.textContent).toContain('/spec init');
     expect(page(root).querySelector('[data-library-search], [data-library-list]')).toBeNull();
   });
 
@@ -366,9 +366,9 @@ describe('LibraryPage control counts (T30, ISC-156.1)', () => {
     const empty = reader?.querySelector('[data-library-missing]');
     expect(empty).not.toBeNull();
     expect(text(empty?.querySelector('.title'))).toBe('plan.md is missing');
-    expect(empty?.querySelector('ui-command-chip')?.textContent).toContain('/spec-plan 003');
+    expect(empty?.querySelector('ui-command-chip')?.textContent).toContain('/spec plan 003');
     expect(reader?.querySelector('[data-library-prose]')).toBeNull();
-    expect(missingCommand({ type: 'tasks', spec: '002-web-console' })).toBe('/spec-tasks 002');
+    expect(missingCommand({ type: 'tasks', spec: '002-web-console' })).toBe('/spec tasks 002');
     expect(missingCommand({ type: 'design', spec: '002-web-console' })).toBeNull();
   });
 });
@@ -621,7 +621,7 @@ describe('LibraryPage address, state select and search (T32, ISC-156.2)', () => 
     await settle();
     const withCommand = page(root).querySelector('[data-library-missing]');
     expect(text(withCommand)).toContain('the command below writes it');
-    expect(withCommand?.querySelector('ui-command-chip')?.textContent).toContain('/spec-plan 003');
+    expect(withCommand?.querySelector('ui-command-chip')?.textContent).toContain('/spec plan 003');
   });
 
   it('writes a default as null, so the router removes its param', () => {
@@ -633,7 +633,7 @@ describe('LibraryPage address, state select and search (T32, ISC-156.2)', () => 
 
 // T36 · ISC-157: a compact head per spec group (type, stage, claims with meter, tasks, fog count, Goal clamped, Approach
 // in a closed disclosure), the filter "open" with every fog line under its spec, and an absent tech.md as a dimmed row
-// outside every count whose reader is the empty state with /spec-doc.
+// outside every count whose reader is the empty state, which names no command (spec 031).
 const HEADS: LibraryCatalog = {
   ...CATALOG,
   docs: [...CATALOG.docs, doc('003-board/spec.md', 'spec', 'Board'), doc('tech.md', 'tech', 'Harbor tech')],
@@ -718,7 +718,7 @@ describe('LibraryPage group heads, filter "open" and tech.md (T36, ISC-157)', ()
     expect(text(page(none).querySelector('[data-library-fog-none] .title'))).toBe('Nothing open');
   });
 
-  it('stands an absent tech.md dimmed in the workspace group, uncounted, its reader the empty state with /spec-doc', async () => {
+  it('stands an absent tech.md dimmed in the workspace group, uncounted, its reader the empty state without a command', async () => {
     const root = await open('/w/harbor/library', CONTROL);
     const row = page(root).querySelector('[data-library-group="workspace"] [data-library-placeholder="tech.md"]');
     expect(row).not.toBeNull();
@@ -737,7 +737,7 @@ describe('LibraryPage group heads, filter "open" and tech.md (T36, ISC-157)', ()
     await settle();
     const empty = page(root).querySelector('[data-library-reader] [data-library-tech-empty]');
     expect(text(empty?.querySelector('.title'))).toBe('No tech documentation yet');
-    expect(empty?.querySelector('ui-command-chip')?.textContent).toContain('/spec-doc');
+    expect(empty?.querySelector('ui-command-chip')).toBeNull();
   });
 
   it('hides the tech placeholder under a filter a tech document would not pass', async () => {

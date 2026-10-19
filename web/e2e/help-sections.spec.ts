@@ -44,19 +44,19 @@ const CHAIN: ReadonlyArray<readonly [string, boolean]> = [
 ];
 const chainText = ([step, optional]: readonly [string, boolean]): string =>
   `${en.stages[step] ?? en.help.lifecycle.steps[step] ?? ''}${optional ? ' (optional)' : ''}`;
-/** The lifecycle's commands: `/spec-idea`, every node's, then the stage table's `/spec-status`. */
+/** The lifecycle's commands in the plugin form: `/spec idea`, every node's, then the stage table's bare `/spec NNN`. */
 const COMMANDS = [
-  '/spec-idea',
-  '/spec new',
-  '/spec-design',
-  '/spec-plan',
-  '/spec-tasks',
-  '/spec-review',
-  '/spec-implement',
-  '/spec-code-review',
-  '/spec-complete',
-  '/spec-archive',
-  '/spec-status',
+  '/spec idea',
+  '/spec new <slug>',
+  '/spec plan',
+  '/spec plan NNN',
+  '/spec tasks NNN',
+  '/spec review NNN',
+  '/spec implement NNN',
+  '/spec review NNN code',
+  '/spec done NNN',
+  '/spec done NNN archive',
+  '/spec NNN',
 ];
 // Every command the stage table names stands in the list.
 for (const rule of STAGE_RULES) if (rule.next !== null && !COMMANDS.includes(rule.next)) throw new Error(`${rule.next} missing`);

@@ -213,7 +213,7 @@ async function visibleTargets(page: Page): Promise<Target[]> {
 /**
  * Targets outside ISC-248, left out of the duplicate check (never a toggle, which ISC-248 names). Each entry is a
  * repeated name another spec owns:
- * - copy chips: the same command (`Copy /spec-implement 002`) offered in each place it applies (Next up, the spec row's
+ * - copy chips: the same command (`Copy /spec implement 002`) offered in each place it applies (Next up, the spec row's
  *   guide, Waits on you, the warnings panel, the spec head, the rail guide); one action with one result wherever it is
  *   pressed (specs 020 and 025).
  * - the warnings panel's spec-id links (`004`): each warning and overlap names the spec it concerns by its id and leads

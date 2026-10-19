@@ -19,6 +19,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["core/**/*.ts", "server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "web/tests/**/*.ts"],
+  "include": ["core/**/*.ts", "plugin/**/*.ts", "server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts", "web/tests/**/*.ts"],
   "exclude": ["**/node_modules/**", "**/dist/**"]
 }

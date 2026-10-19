@@ -31,8 +31,6 @@ function briefOf(golden: string): DashboardBrief | null {
 const HARBOR = briefOf('harbor');
 const LANTERN = briefOf('lantern');
 
-/** The skill command the card offers; the golden holds the TL;DR, not the command that writes it. */
-const TLDR_COMMAND = '/spec-tldr';
 /**
  * The KPI tiles above the Brief (`kpi-band.html`): the band's tiles from 560 px of band width, the Pulse card (its compact
  * form, `data-kpi="pulse"`) below; the container query hides the other, so only visible ones count.
@@ -97,9 +95,8 @@ for (const width of [1440, 390] as const) {
       // Spec 021 (T26, ISC-246): the card stands on its first section, whole; the file's title before it is not shown.
       await expect(card.locator('[data-brief-first]')).toContainText(firstSentence(brief.sections));
 
-      const command = card.locator('[data-brief-command]');
-      await expect(command).toBeVisible();
-      await expect(command).toContainText(TLDR_COMMAND);
+      // Spec 031 (ISC-265): the Spec plugin has no command that writes specs/tldr.md, so the card offers no command chip.
+      await expect(card.locator('[data-brief-command]')).toHaveCount(0);
     });
 
     test(`no tldr card on a workspace without specs/tldr.md at ${width}`, async ({ page }) => {

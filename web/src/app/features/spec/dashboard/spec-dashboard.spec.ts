@@ -93,7 +93,7 @@ describe('SpecDashboard guidance below 1120 (T19, ISC-239)', () => {
     const spot = host.querySelector('[data-guidance-spot]');
     expect(spot?.hasAttribute('data-waits')).toBe(true);
     expect(spot?.querySelector('[data-waits-mark]')?.textContent.trim()).toBe('Waits on you');
-    expect(spot?.querySelector('[data-guidance-command] code')?.textContent).toBe('/spec-review 005');
+    expect(spot?.querySelector('[data-guidance-command] code')?.textContent).toBe('/spec review 005');
     const block = spot?.querySelector('ui-waits-block[data-guidance-waits]');
     expect(block?.getAttribute('data-count')).toBe(String((m.guidance?.waits.length ?? 0) - 1));
     expect(block?.textContent).toContain('ISC-94');

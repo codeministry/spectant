@@ -76,7 +76,7 @@ const written = (from: WorkflowStage, to: WorkflowStage): WriteResult<'transitio
   },
 });
 
-/** Harbor with 003 held by a running `/spec-tasks 003` (spec 040, T58): the dashboard row's state as core serves it. */
+/** Harbor with 003 held by a running `/spec tasks 003` (spec 040, T58): the dashboard row's state as core serves it. */
 const RUNNING = {
   ...dashboard,
   specs: dashboard.specs.map((row) =>
@@ -90,7 +90,7 @@ const RUNNING = {
             stage: 'tasks',
             run: {
               run: 'r-0308-1452',
-              command: '/spec-tasks 003',
+              command: '/spec tasks 003',
               session: 'a:claude:sess-32',
               actor: { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false },
               since: '2026-03-08T14:52:00Z',
@@ -260,7 +260,7 @@ describe('the Move to… menu (T127, ISC-130)', () => {
   });
 
   it('a refused entry keeps the menu open with the refusal notice under that entry', async () => {
-    const refused: Answer = { status: 422, body: { error: 'transition-refused', reason: 'waits for its tasks', command: '/spec-tasks 003' } };
+    const refused: Answer = { status: 422, body: { error: 'transition-refused', reason: 'waits for its tasks', command: '/spec tasks 003' } };
     const page = await open({ kind: 'answer', answer: refused });
     gripOf(page, C003.key).click();
     await settle();
@@ -356,7 +356,7 @@ describe('Move to… for a card a running run holds (T58, ISC-225.1)', () => {
     const notice = list?.parentElement?.querySelector<HTMLElement>('app-refusal-notice[data-move-run]');
     expect(notice?.getAttribute('data-refusal')).toBe('run-locked');
     expect(notice?.compareDocumentPosition(list as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(text(notice?.querySelector('[data-head]'))).toBe('Not moved — 003 is running: /spec-tasks 003 · a:claude:sess-32 · since 8 min');
+    expect(text(notice?.querySelector('[data-head]'))).toBe('Not moved — 003 is running: /spec tasks 003 · a:claude:sess-32 · since 8 min');
     expect(notice?.querySelector('[data-dismiss]')).toBeNull();
     entry(page, 'review')?.click();
     await settle();

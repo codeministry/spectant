@@ -232,7 +232,7 @@ describe('NextUpList reads guidance.next (spec 020, T25, ISC-240)', () => {
   it('folds the entries of guidance.next past the third behind "Show all n", in guidance order', async () => {
     const extra = GUIDED.specs.filter((r) => !GUIDED.guidance.next.some((e) => e.spec === r.id)).slice(0, 2);
     const template = GUIDED.guidance.next[0];
-    const next = [...GUIDED.guidance.next, ...extra.map((r) => ({ ...template, spec: r.id, command: `/spec-plan ${r.id}` }))];
+    const next = [...GUIDED.guidance.next, ...extra.map((r) => ({ ...template, spec: r.id, command: `/spec plan ${r.id}` }))];
     const root = await renderGuided({ ...GUIDED, guidance: { ...GUIDED.guidance, next } }, 'card');
     expect(entries(root.querySelector('[data-next-primary]') as HTMLElement)).toEqual(next.slice(0, NEXT_UP_SHOWN).map((e) => e.spec));
     expect(root.querySelector('[data-next-count]')?.textContent.trim()).toBe(String(next.length));

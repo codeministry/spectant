@@ -235,7 +235,7 @@ export class IdeaPage {
   /** The board the back link leads to (ISC-142). */
   protected readonly boardPath = computed(() => `/w/${this.state.ws() ?? ''}/board`);
   /** The shaping command the Next step card names (prototype `next-step`). */
-  protected readonly command = computed(() => `/spec-idea ${this.slug()}`);
+  protected readonly command = computed(() => `/spec idea ${this.slug()}`);
 
   protected readonly result = resource<ApiResult<IdeaPageBody>, { ws: string; slug: string } | undefined>({
     params: () => {

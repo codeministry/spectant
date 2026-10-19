@@ -24,17 +24,17 @@ describe('UiCommandChip', () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const fixture = TestBed.createComponent(UiCommandChip);
-    fixture.componentRef.setInput('command', '/spec-implement 012');
+    fixture.componentRef.setInput('command', '/spec implement 012');
     const emitted: string[] = [];
     fixture.componentInstance.copied.subscribe((c) => emitted.push(c));
     await fixture.whenStable();
 
     const button = (fixture.nativeElement as HTMLElement).querySelector('button');
-    expect(button?.getAttribute('aria-label')).toBe('Copy /spec-implement 012');
+    expect(button?.getAttribute('aria-label')).toBe('Copy /spec implement 012');
     button?.click();
     await fixture.whenStable();
-    expect(writeText).toHaveBeenCalledWith('/spec-implement 012');
-    expect(emitted).toEqual(['/spec-implement 012']);
+    expect(writeText).toHaveBeenCalledWith('/spec implement 012');
+    expect(emitted).toEqual(['/spec implement 012']);
     expect(button?.getAttribute('aria-label')).toBe('Copied');
   });
 
@@ -60,10 +60,10 @@ describe('UiCommandChip', () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const fixture = TestBed.createComponent(UiCommandChip);
-    fixture.componentRef.setInput('command', '/spec-tasks 037');
+    fixture.componentRef.setInput('command', '/spec tasks 037');
     fixture.componentRef.setInput('lockedBy', {
       run: 'run-1',
-      command: '/spec-tasks 037',
+      command: '/spec tasks 037',
       session: 'a:claude:sess-7',
       actor: { raw: 'a:claude:sess-7', kind: 'agent', id: 'a:claude:sess-7', legacy: false },
       since: '2026-10-17T14:02:00Z',
@@ -77,7 +77,7 @@ describe('UiCommandChip', () => {
     expect(button?.getAttribute('aria-disabled')).toBe('true');
     expect(button?.disabled).toBe(false);
     expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock');
-    expect(button?.getAttribute('aria-label')).toBe('Locked · /spec-tasks 037 is running · a:claude:sess-7 · since 3 min');
+    expect(button?.getAttribute('aria-label')).toBe('Locked · /spec tasks 037 is running · a:claude:sess-7 · since 3 min');
     expect(root.querySelector('[data-locked-hint]')).toBeNull();
     expect(root.querySelector('ui-live-region'), 'a locked chip carries no live region').toBeNull();
     button?.click();
@@ -92,12 +92,12 @@ describe('UiCommandChip', () => {
   });
 
   // Spec 020, T28 · ISC-241: the clipboard gets exactly the command, without whitespace before or after, and the
-  // chip's own polite live region announces it ("Copied /spec-implement 012"); a repeat is announced again.
+  // chip's own polite live region announces it ("Copied /spec implement 012"); a repeat is announced again.
   it('copies the trimmed command and announces it in its live region', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const fixture = TestBed.createComponent(UiCommandChip);
-    fixture.componentRef.setInput('command', '  /spec-implement 012\n');
+    fixture.componentRef.setInput('command', '  /spec implement 012\n');
     const emitted: string[] = [];
     fixture.componentInstance.copied.subscribe((c) => emitted.push(c));
     await fixture.whenStable();
@@ -108,12 +108,12 @@ describe('UiCommandChip', () => {
 
     root.querySelector('button')?.click();
     await fixture.whenStable();
-    expect(writeText).toHaveBeenCalledWith('/spec-implement 012');
-    expect(emitted).toEqual(['/spec-implement 012']);
-    expect(region?.textContent).toBe('Copied /spec-implement 012');
+    expect(writeText).toHaveBeenCalledWith('/spec implement 012');
+    expect(emitted).toEqual(['/spec implement 012']);
+    expect(region?.textContent).toBe('Copied /spec implement 012');
 
     root.querySelector('button')?.click();
     await fixture.whenStable();
-    expect(region?.textContent).toBe(`Copied /spec-implement 012${String.fromCharCode(0xa0)}`);
+    expect(region?.textContent).toBe(`Copied /spec implement 012${String.fromCharCode(0xa0)}`);
   });
 });

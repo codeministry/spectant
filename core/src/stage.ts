@@ -184,7 +184,10 @@ interface StageRuleColumns {
   readonly subject: StageSubject;
   /** The row's condition in words, as FORMAT.md's Condition cell. The rows before it are known not to match. */
   readonly condition: string;
-  /** The command without its argument (the spec number, or the story's slug); null where the row names none. */
+  /**
+   * The command through `commandFor`, with `NNN` (the story row: `<slug>`) where its argument goes, which `commandWith`
+   * fills; null where the row names none.
+   */
   readonly next: string | null;
   /** The reasons this row can give, `{placeholder}` templates as FORMAT.md's Reason cell lists them. */
   readonly reasons: readonly string[];
@@ -231,13 +234,93 @@ export function fillReason(template: string, values: Readonly<Record<string, str
   });
 }
 
+// ─── Commands in the plugin's form (spec 031, ISC-265) ──────────────────────────────────────────────────────────────
+
+/** The plugin's eight subcommands of `/spec`, in its help order; the bare `/spec` is help, status, drift and sync. */
+export type SpecSubcommand = 'init' | 'idea' | 'new' | 'plan' | 'tasks' | 'implement' | 'review' | 'done';
+
+export const SPEC_SUBCOMMANDS: readonly SpecSubcommand[] = ['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done'];
+
+const isSubcommand = (word: string | undefined): word is SpecSubcommand => SPEC_SUBCOMMANDS.includes(word as SpecSubcommand);
+
+/**
+ * The one source of every command text the app shows: `/spec <sub> NNN` (`/spec tasks 003`), `/spec <sub>` without an
+ * id, the bare `/spec` (`/spec 003` with an id), and a trailing word where the plugin takes one (`/spec review 003
+ * code`, the code review).
+ */
+export function commandFor(sub: SpecSubcommand | null, id?: string, tail?: string): string {
+  return ['/spec', sub, id, tail].filter((part): part is string => typeof part === 'string' && part !== '').join(' ');
+}
+
+/** The argument a row's command names in the stage table: a spec row's number, the story row's slug. */
+const SPEC_ARG = 'NNN';
+const STORY_ARG = '<slug>';
+
+/** A row's command (`/spec review NNN code`) with its argument filled in: the spec number or the story's slug. */
+export function commandWith(next: string, arg: string): string {
+  return next
+    .split(' ')
+    .map((word) => (word === SPEC_ARG || word === STORY_ARG ? arg : word))
+    .join(' ');
+}
+
+/** An old run's command name after its `spec-` prefix, mapped to what the plugin calls it; anything else is no key. */
+const OLD_KEYS: Readonly<Record<string, string>> = {
+  bootstrap: 'init',
+  idea: 'idea',
+  bug: 'new',
+  spike: 'new',
+  refactor: 'new',
+  feature: 'new',
+  infra: 'new',
+  project: 'new',
+  plan: 'plan',
+  design: 'plan',
+  tasks: 'tasks',
+  implement: 'implement',
+  review: 'review',
+  'code-review': 'review code',
+  complete: 'done',
+  archive: 'done',
+};
+
+/**
+ * What a run's or an invocation's command asks for, in the plugin's terms: its subcommand, `review code` for the code
+ * review, null for the bare `/spec` and for anything else. It reads the plugin's form (`/spec review 005 code`, also
+ * namespaced `/<plugin>:spec`) and the old skill's names, which `.spectant/activity.jsonl` and transcripts still hold.
+ */
+export function commandKey(command: string): string | null {
+  const [head = '', ...rest] = command.trim().split(/\s+/);
+  const old = /^\/spec-([a-z-]+)$/.exec(head);
+  if (old) return OLD_KEYS[old[1] ?? ''] ?? null;
+  if (head !== '/spec' && !head.endsWith(':spec')) return null;
+  const sub = rest[0];
+  if (!isSubcommand(sub)) return null;
+  return sub === 'review' && rest.includes('code') ? 'review code' : sub;
+}
+
+/**
+ * A recorded command as the app shows it (ISC-265): an old skill name (the old dashed form of `tasks 003`), which logs
+ * written before the plugin still hold, in the plugin's form (`/spec tasks 003`, `/spec review 004 code`); a command
+ * already in the plugin's form, or one the plugin has no subcommand for, unchanged.
+ */
+export function pluginCommand(command: string): string {
+  const [head = '', ...args] = command.trim().split(/\s+/);
+  if (!/^\/spec-[a-z-]+$/.test(head)) return command;
+  const key = commandKey(command);
+  if (key === null) return command;
+  const [id, ...tail] = args;
+  if (key === 'review code') return commandFor('review', id, 'code');
+  return commandFor(key as SpecSubcommand, id, tail.length > 0 ? tail.join(' ') : undefined);
+}
+
 /** Row 1 of the stage table: a story, the stage before its spec folder exists (FORMAT.md § idea). */
 export const STORY_RULE: StoryStageRule = {
   subject: 'story',
   stage: 'idea',
   state: 'open',
   condition: 'a story file under `specs/ideas/`, no folder yet',
-  next: '/spec new',
+  next: commandFor('new', STORY_ARG),
   reasons: ['the story is shaped but has no spec'],
 };
 
@@ -259,7 +342,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'open',
     condition: 'the type needs `plan.md` and it is missing',
     when: (input) => needs(input, 'plan') && !input.hasPlan,
-    next: '/spec-plan',
+    next: commandFor('plan', SPEC_ARG),
     reasons: ['a {type} spec needs plan.md and it is missing'],
     explain: (input) => ({ values: { type: input.type ?? 'typed' } }),
   },
@@ -269,7 +352,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'open',
     condition: 'the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing',
     when: (input) => needs(input, 'tasks') && countsOf(input).total >= TASKS_THRESHOLD && !input.hasTasks,
-    next: '/spec-tasks',
+    next: commandFor('tasks', SPEC_ARG),
     reasons: ['{claims} and no tasks.md'],
     explain: (input) => ({ values: { claims: plural(countsOf(input).total, 'claim') } }),
   },
@@ -279,7 +362,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'open',
     condition: 'the reviewed mark is not fresh',
     when: (input) => input.reviewed !== 'fresh',
-    next: '/spec-review',
+    next: commandFor('review', SPEC_ARG),
     reasons: ['the reviewed mark is {state}'],
     explain: (input) => ({ values: { state: input.reviewed } }),
   },
@@ -289,7 +372,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'open',
     condition: 'at least one claim is takeable and not all open work waits on an open spec edge',
     when: (input) => countsOf(input).takeable > 0 && fullHoldOf(input).length === 0,
-    next: '/spec-implement',
+    next: commandFor('implement', SPEC_ARG),
     reasons: ['{ids} {is} takeable'],
     explain: (input) => {
       const count = countsOf(input).takeable;
@@ -324,7 +407,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'open',
     condition: "every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh",
     when: (input) => countsOf(input).allClosed && input.codeReview !== 'none' && input.codeReviewed !== 'fresh',
-    next: '/spec-code-review',
+    next: commandFor('review', SPEC_ARG, 'code'),
     reasons: ['every claim is closed and the code-reviewed mark is {state}'],
     explain: (input) => ({ values: { state: input.codeReviewed } }),
   },
@@ -334,7 +417,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'open',
     condition: "every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none`",
     when: (input) => countsOf(input).allClosed && (input.codeReviewed === 'fresh' || input.codeReview === 'none'),
-    next: '/spec-complete',
+    next: commandFor('done', SPEC_ARG),
     reasons: ['every claim is closed and code-reviewed', 'every claim is closed and the workflow has no code review'],
     // Spec 028 (ISC-183.1): under `none` the mode picks the phrase, so a voluntary mark changes nothing.
     explain: (input) => ({ form: input.codeReview === 'none' ? 1 : 0 }),
@@ -345,7 +428,7 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     state: 'waiting',
     condition: 'anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet',
     when: () => true,
-    next: '/spec-status',
+    next: commandFor(null, SPEC_ARG),
     reasons: ['{open}, none takeable', 'no claims yet', 'waits on {specs}'],
     explain: (input): ReasonFill => {
       const held = fullHoldOf(input);
@@ -373,7 +456,7 @@ export interface NextStep {
   readonly stage: Stage;
   /** `explicit` when the frontmatter `stage:` decided `stage`, `derived` when the stage table did (T47). */
   readonly stageSource: StageSource;
-  /** E.g. `/spec-implement 002`; null where the row names none (`done`, `close-pending`). */
+  /** E.g. `/spec implement 002`; null where the row names none (`done`, `close-pending`). */
   readonly command: string | null;
   /** One of the row's reasons, filled, e.g. `ISC-334 is takeable`. Surfaces read it through `reasonOf`. */
   readonly reason: string;
@@ -405,7 +488,7 @@ export function nextCommandWithReason(input: StageInput): NextStep {
   return {
     stage: explicit ?? rule.stage,
     stageSource: explicit === null ? 'derived' : 'explicit',
-    command: rule.next === null ? null : `${rule.next} ${input.number}`,
+    command: rule.next === null ? null : commandWith(rule.next, input.number),
     reason: fillReason(template, values),
     row: rowNumberOf(rule),
   };
@@ -413,7 +496,7 @@ export function nextCommandWithReason(input: StageInput): NextStep {
 
 /** The step of a story file, `<slug>.md` under `specs/ideas/`: row 1 with the slug where a spec row has its number. */
 export function storyStep(slug: string): StoryStep {
-  return { stage: 'idea', command: `${STORY_RULE.next} ${slug}`, reason: STORY_RULE.reasons[0] ?? '', row: rowNumberOf(STORY_RULE) };
+  return { stage: 'idea', command: commandWith(STORY_RULE.next, slug), reason: STORY_RULE.reasons[0] ?? '', row: rowNumberOf(STORY_RULE) };
 }
 
 // ─── The one reason phrase (spec 008, T58, ISC-122.3) ───────────────────────────────────────────────────────────────
@@ -504,7 +587,7 @@ export function reasonOf(step: NextStep | StoryStep): string {
   return step.reason;
 }
 
-/** The one command a spec needs next, e.g. `/spec-implement 002`; null for a complete spec. */
+/** The one command a spec needs next, e.g. `/spec implement 002`; null for a complete spec. */
 export function nextCommand(input: StageInput): string | null {
   return nextCommandWithReason(input).command;
 }

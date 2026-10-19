@@ -1821,7 +1821,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       from: 'review',
       to: 'build',
       hash: answer.hash,
-      event: { ts: '2026-03-08T15:00:00.000Z', from: 'review', to: 'build', command: '/spec-review 006', actor: 'a:spectant:app' },
+      event: { ts: '2026-03-08T15:00:00.000Z', from: 'review', to: 'build', command: '/spec review 006', actor: 'a:spectant:app' },
       lockSource: 'none',
     });
     expect(HEX64.test(answer.hash) && answer.hash !== from?.hash).toBe(true);
@@ -1878,9 +1878,9 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
     const hash = holderIn(await boardTree(session), '006-partial-push')?.hash ?? '';
     const res = await move('006', { to: 'done', hash }, { session, headers: NO_LOCKS });
     expect(res.status).toBe(422);
-    expect(await res.json()).toEqual({ error: 'transition-refused', reason: 'the bug workflow lists no move review → done', command: '/spec-review 006' });
+    expect(await res.json()).toEqual({ error: 'transition-refused', reason: 'the bug workflow lists no move review → done', command: '/spec review 006' });
     const same = await move('006', { to: 'review', hash }, { session, headers: NO_LOCKS });
-    expect(await same.json()).toEqual({ error: 'transition-refused', reason: 'the spec already stands in review', command: '/spec-review 006' });
+    expect(await same.json()).toEqual({ error: 'transition-refused', reason: 'the spec already stands in review', command: '/spec review 006' });
     expect(holderIn(await boardTree(session), '006-partial-push')?.stage).toBe('review');
   });
 
@@ -2055,7 +2055,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
           [workspaceRoutes.backlog(WS), { method: 'POST', body: priority(empty, 'F99') }],
         ] satisfies Case[];
       })(),
-      // Spec 040 (ISC-226): beacon under the runs locks; its /spec-tasks 003 run is open, r-0308-1140 is aborted at STUB_NOW.
+      // Spec 040 (ISC-226): beacon under the runs locks; its /spec tasks 003 run is open, r-0308-1140 is aborted at STUB_NOW.
       runRelease: await (async () => {
         const runs = { [LOCKS_HEADER]: 'runs' };
         const hash = (await ask('/api/workspaces/beacon/dashboard', { headers: runs })).headers.get(ACTIVITY_HASH_HEADER) ?? '';
@@ -2720,7 +2720,7 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
     const tasks = await read<unknown>(specRoutes.tasks(WS, STUB_RUN.spec), headers);
     return { row: row?.state, head: page.head.state as Item | undefined, stage: holderOf(await planning(headers), STUB_RUN.folder)?.stage, tasks };
   };
-  const OPEN = { kind: 'spec', id: STUB_RUN.spec, state: 'open', command: STUB_RUN.command };
+  const OPEN = { kind: 'spec', id: STUB_RUN.spec, state: 'open', command: STUB_RUN.shown };
 
   test('runs: beacon is listed after the default workspaces; without runs it is no workspace', async () => {
     const list = await read<Json[]>('/api/workspaces', as());
@@ -2752,9 +2752,9 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
     const ended = await answersOf(as('ended'));
     expect(none.row).toMatchObject(OPEN);
     expect(none.row?.run).toBeUndefined();
-    expect(running.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'running', run: { run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, since: STUB_RUN.since } });
+    expect(running.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'running', run: { run: STUB_RUN.run, command: STUB_RUN.shown, session: STUB_RUN.session, since: STUB_RUN.since } });
     // The run wrote tasks.md, so after its end 003 reads the stage and state its files then give: review, open.
-    expect(ended.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'open', stage: 'review', command: '/spec-review 003' });
+    expect(ended.row).toMatchObject({ kind: 'spec', id: STUB_RUN.spec, state: 'open', stage: 'review', command: '/spec review 003' });
     expect(ended.row?.run).toBeUndefined();
     expect(ended.stage).toBe('review');
     expect(ended.tasks).not.toBeNull();
@@ -2889,12 +2889,12 @@ describe('stub API: waiting entries via X-Spectant-Stub-Waits (spec 020, T15, IS
     const served = (await dashboard(STUB_RUN.workspace.slug, as('1'))).guidance;
     const dropped = STUB_WAITS.dropped.slice(0, 3);
     expect(served?.waits).toEqual(beacon.waits.filter((e) => e.spec !== dropped));
-    expect(served?.waits.map((e) => e.command)).toEqual(['/spec-review 004']);
+    expect(served?.waits.map((e) => e.command)).toEqual(['/spec review 004']);
     expect(served?.next).toEqual(beacon.next.filter((e) => e.spec !== dropped));
     expect((await ask(specRoutes.spec(STUB_RUN.workspace.slug, dropped), { headers: as('1') })).status).toBe(404);
     const page = await ask(specRoutes.spec(STUB_RUN.workspace.slug, '004'), { headers: as('1') });
     expect(page.status).toBe(200);
-    expect(((await page.json()) as { guidance?: { waits: Entry[] } }).guidance?.waits.map((e) => e.command)).toEqual(['/spec-review 004']);
+    expect(((await page.json()) as { guidance?: { waits: Entry[] } }).guidance?.waits.map((e) => e.command)).toEqual(['/spec review 004']);
   });
 
   test('an unknown value, or the header beside an overlay, is a 400', async () => {

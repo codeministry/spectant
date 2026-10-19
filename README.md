@@ -39,6 +39,21 @@ curl -fsSL https://github.com/<org>/spectant/releases/latest/download/install.sh
 The script picks the binary for your OS and architecture. Set `INSTALL_DIR` to choose where it goes; it never edits
 your shell configuration.
 
+## The Spec plugin for Claude Code
+
+Spec work starts in the chat: the plugin `spectant` adds one skill, `/spec`, with eight subcommands along a spec's
+life — `init`, `idea`, `new`, `plan`, `tasks`, `review`, `implement`, `done` — and the bare `/spec` for help,
+status and drift. It needs [bun](https://bun.sh) and runs without the app; the app shows what the plugin writes.
+
+```sh
+claude plugin marketplace add <org>/spectant      # or a local checkout: claude plugin marketplace add ./spectant
+claude plugin install spectant@spectant
+```
+
+What ships is `plugin/spectant/`: the skill and a bundled CLI, `spec-check`, that writes claims, verification lines,
+events, marks and run lines through the same parser the app reads with. If another command already uses `/spec`,
+the skill answers as `/spectant:spec`.
+
 ## Usage
 
 ```sh

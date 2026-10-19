@@ -212,7 +212,7 @@
     "lessName": "Weniger {{entry}}, Next up",
     "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
-    "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec-plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
+    "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
     "waitOnFog": {
       "one": "{{count}} Spec wartet auf Fog",
       "other": "{{count}} Specs warten auf Fog"
@@ -1013,7 +1013,7 @@
     "empty": {
       "typed": "Kein tasks.md für den Spec-Typ {{type}}",
       "untyped": "Kein tasks.md für diese Spec",
-      "body": "Diese Spec hat noch keine Taskliste; /spec-tasks schreibt eine."
+      "body": "Diese Spec hat noch keine Taskliste; /spec tasks schreibt eine."
     },
     "loading": "Tasks werden geladen …",
     "error": "Die Tasks konnten nicht geladen werden.",
@@ -1243,7 +1243,7 @@
       "written": "Prüfmarke geschrieben {{time}}.",
       "remark": "Neu markieren",
       "hint": {
-        "ready": "keine Prüfmarke · Freigabe für /spec-implement",
+        "ready": "keine Prüfmarke · Freigabe für /spec implement",
         "stale": "geprüft {{time}} · seitdem geändert",
         "paused": "gesperrt · {{session}} hält einen Claim · Schreiben pausiert"
       }
@@ -2029,7 +2029,7 @@
       "empty": {
         "heading": "Keine Feature-Blöcke in ISA.md",
         "body": "Features stammen aus den ## Features-Blöcken des Masters.",
-        "copy": "/spec-feature kopieren"
+        "copy": "/spec new feature kopieren"
       }
     },
     "milestones": {
@@ -2158,7 +2158,7 @@
         }
       },
       "what": {
-        "idea": "Eine Story unter specs/ideas/ (/spec-idea) wird zum Spec-Ordner.",
+        "idea": "Eine Story unter specs/ideas/ (/spec idea) wird zum Spec-Ordner.",
         "plan": "Claims und Nebel werden festgehalten; der Ansatz folgt.",
         "tasks": "Atomare Tasks, je ein Claim.",
         "review": "Sie geben die Spec zum Bauen frei.",
@@ -2175,7 +2175,7 @@
         "close": "Gate · jeder Claim geschlossen"
       },
       "loopBlocked": "blocked → zurück zu Build, sobald Sie die Frage beantworten",
-      "loopStale": "veraltete Code-reviewed-Marke → /spec-code-review erneut ausführen, wo der Workflow eines verlangt",
+      "loopStale": "veraltete Code-reviewed-Marke → /spec review NNN code erneut ausführen, wo der Workflow eines verlangt",
       "tones": {
         "start": "Start",
         "files": "Dateien geschrieben",
@@ -2231,15 +2231,17 @@
       "list": {
         "spec-idea": "Formt eine grobe Idee zu einer Story unter specs/ideas/.",
         "spec-new": "Macht aus einer ausgearbeiteten Story unter specs/ideas/ einen Spec-Ordner.",
-        "spec-design": "Design-Pass für eine UI-Spec: Ist- und Soll-Zustand je Viewport in design.md.",
-        "spec-plan": "Schreibt plan.md: das Wie, mit einer Frage festgelegt.",
+        "spec-plan": "Schreibt plan.md: das Wie, mit einer Frage festgelegt; bei einer UI-Spec zuerst der Design-Pass: Ist- und Soll-Zustand je Viewport in design.md.",
         "spec-tasks": "Zerlegt die Spec in tasks.md, ein Claim pro Task.",
         "spec-review": "Prüft die Spec und setzt die Review-Marke, das Gate zu Build.",
         "spec-implement": "Arbeitet die Tasks ab, bis jeder Claim auf seine Probe hin schliesst.",
         "spec-code-review": "Führt das Code- und Security-Review auf dem Arbeitsbaum aus; Pflicht oder optional, wie specs/workflow.md es festlegt.",
+        "spec-review-code": "Führt das Code- und Security-Review auf dem Arbeitsbaum aus; Pflicht oder optional, wie specs/workflow.md es festlegt.",
         "spec-complete": "Schliesst die Spec, sobald jede Abschlussbedingung erfüllt ist.",
-        "spec-archive": "Verschiebt eine fertige Spec nach specs/archive/; restore holt sie zurück.",
-        "spec-status": "Phase, Fortschritt und Claims jeder Spec im Repository."
+        "spec-done": "Schliesst die Spec, sobald jede Abschlussbedingung erfüllt ist.",
+        "spec-done-archive": "Verschiebt eine fertige Spec nach specs/archive/; restore holt sie zurück.",
+        "spec-status": "Phase, Fortschritt und Claims jeder Spec im Repository.",
+        "spec": "Hilfe, dann Phase, Fortschritt und Claims jeder Spec im Repository und ihr Drift gegenüber dem Master."
       }
     },
     "start": {
@@ -2299,8 +2301,8 @@
         "optional": "optional"
       },
       "optionalNode": "{{step}} (optional)",
-      "optionalDesign": "optional: Design → {{to}} (/spec-design, nur UI-Specs; ändert keine Stage)",
-      "optionalReview": "optional: {{from}} → Code-Review → {{to}} (/spec-code-review; ändert keine Stage)",
+      "optionalDesign": "optional: Design → {{to}} (/spec plan, nur UI-Specs; ändert keine Stage)",
+      "optionalReview": "optional: {{from}} → Code-Review → {{to}} (/spec review NNN code; ändert keine Stage)",
       "diagramOptional": "Optionale Schritte: {{steps}}."
     }
   },
@@ -2588,7 +2590,7 @@
     "tech": {
       "notCreated": "{{path}} · noch nicht angelegt",
       "emptyHeading": "Noch keine Tech-Dokumentation",
-      "emptyBody": "Überblick, Stack, Architektur und Risiken des Repositories stehen in einer Datei, specs/tech.md, die /spec-doc anlegt.",
+      "emptyBody": "Überblick, Stack, Architektur und Risiken des Repositories stehen in einer Datei, specs/tech.md.",
       "missing": "{{section}}: Abschnitt fehlt in tech.md",
       "missingLabel": "In tech.md fehlende Abschnitte",
       "sections": {

@@ -32,23 +32,23 @@ type Shape = ReturnType<typeof shape>;
 
 const WAITS: Shape[] = [
   // P1: the only principal-stage P1 (009 is P1 in review too, but running).
-  { spec: '001', item: 'spec', ref: null, command: '/spec-review 001', priority: 'P1', since: '2026-03-05T10:00:00Z', key: 'stage.review.0', values: { state: 'stale' } },
+  { spec: '001', item: 'spec', ref: null, command: '/spec review 001', priority: 'P1', since: '2026-03-05T10:00:00Z', key: 'stage.review.0', values: { state: 'stale' } },
   // P2 by since: 003 into review 03-03, 005's manual claim and operator task at 005's since (into build 03-04), claim
   // before task; 002 into review 03-06; 005's question at its round's time 03-07.
-  { spec: '003', item: 'spec', ref: null, command: '/spec-review 003', priority: 'P2', since: '2026-03-03T09:00:00Z', key: 'stage.review.0', values: { state: 'stale' } },
-  { spec: '005', item: 'claim', ref: 'ISC-14', command: '/spec-implement 005', priority: 'P2', since: '2026-03-04T12:00:00Z', key: 'waiting.manual', values: { ref: 'ISC-14' } },
-  { spec: '005', item: 'task', ref: 'T3', command: '/spec-implement 005', priority: 'P2', since: '2026-03-04T12:00:00Z', key: 'waiting.operator', values: { ref: 'T3' } },
-  { spec: '002', item: 'spec', ref: null, command: '/spec-review 002', priority: 'P2', since: '2026-03-06T09:00:00Z', key: 'stage.review.0', values: { state: 'missing' } },
-  { spec: '005', item: 'question', ref: 'T4', command: '/spec-implement 005', priority: 'P2', since: '2026-03-07T10:00:00Z', key: 'waiting.question', values: { ref: 'T4' } },
+  { spec: '003', item: 'spec', ref: null, command: '/spec review 003', priority: 'P2', since: '2026-03-03T09:00:00Z', key: 'stage.review.0', values: { state: 'stale' } },
+  { spec: '005', item: 'claim', ref: 'ISC-14', command: '/spec implement 005', priority: 'P2', since: '2026-03-04T12:00:00Z', key: 'waiting.manual', values: { ref: 'ISC-14' } },
+  { spec: '005', item: 'task', ref: 'T3', command: '/spec implement 005', priority: 'P2', since: '2026-03-04T12:00:00Z', key: 'waiting.operator', values: { ref: 'T3' } },
+  { spec: '002', item: 'spec', ref: null, command: '/spec review 002', priority: 'P2', since: '2026-03-06T09:00:00Z', key: 'stage.review.0', values: { state: 'missing' } },
+  { spec: '005', item: 'question', ref: 'T4', command: '/spec implement 005', priority: 'P2', since: '2026-03-07T10:00:00Z', key: 'waiting.question', values: { ref: 'T4' } },
   // P3 (no key): 004 since its `updated:` (no events.jsonl), 010 with neither, so null and last.
-  { spec: '004', item: 'spec', ref: null, command: '/spec-code-review 004', priority: 'P3', since: '2026-03-05T16:00:00Z', key: 'stage.code-review.0', values: { state: 'stale' } },
-  { spec: '010', item: 'spec', ref: null, command: '/spec-complete 010', priority: 'P3', since: null, key: 'stage.close.1', values: {} },
+  { spec: '004', item: 'spec', ref: null, command: '/spec review 004 code', priority: 'P3', since: '2026-03-05T16:00:00Z', key: 'stage.code-review.0', values: { state: 'stale' } },
+  { spec: '010', item: 'spec', ref: null, command: '/spec done 010', priority: 'P3', since: null, key: 'stage.close.1', values: {} },
 ];
 
 const NEXT: Shape[] = [
-  { spec: '007', item: 'spec', ref: null, command: '/spec-plan 007', priority: 'P1', since: '2026-03-06T09:00:00Z', key: 'stage.plan.0', values: { type: 'feature' } },
-  { spec: '005', item: 'spec', ref: null, command: '/spec-implement 005', priority: 'P2', since: '2026-03-04T12:00:00Z', key: 'stage.build.0', values: { ids: 'ISC-13 and ISC-14', is: 'are' } },
-  { spec: '008', item: 'spec', ref: null, command: '/spec-tasks 008', priority: 'P3', since: '2026-03-04T14:00:00Z', key: 'stage.tasks.0', values: { claims: '3 claims' } },
+  { spec: '007', item: 'spec', ref: null, command: '/spec plan 007', priority: 'P1', since: '2026-03-06T09:00:00Z', key: 'stage.plan.0', values: { type: 'feature' } },
+  { spec: '005', item: 'spec', ref: null, command: '/spec implement 005', priority: 'P2', since: '2026-03-04T12:00:00Z', key: 'stage.build.0', values: { ids: 'ISC-13 and ISC-14', is: 'are' } },
+  { spec: '008', item: 'spec', ref: null, command: '/spec tasks 008', priority: 'P3', since: '2026-03-04T14:00:00Z', key: 'stage.tasks.0', values: { claims: '3 claims' } },
 ];
 
 /** `[spec, item, ref]` per entry, in order. */

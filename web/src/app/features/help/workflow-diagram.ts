@@ -37,8 +37,8 @@ export interface DiagramTransition {
 export type FigureStep = WorkflowStage | 'design';
 
 /**
- * An optional step: it moves no stage, so core's moves do not list it. `design` is the design pass (`/spec-design`,
- * design.md) before the row's first stage; `code-review` a voluntary `/spec-code-review` between build and the stage
+ * An optional step: it moves no stage, so core's moves do not list it. `design` is the design pass (`/spec plan`,
+ * design.md) before the row's first stage; `code-review` a voluntary `/spec review NNN code` between build and the stage
  * after it, where the row has no code-review stage (`code_review: none`, or a hand-built row without it).
  */
 export interface OptionalStep {

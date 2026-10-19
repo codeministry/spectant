@@ -4,7 +4,7 @@ const NBSP = String.fromCharCode(0xa0);
 
 /**
  * A visually hidden polite live region (design.md § States, ISC-62): the page owns one and calls `announce()` once
- * per refresh, only when something changed, and after a copy ("Copied /spec-implement 012"). Repeating the same
+ * per refresh, only when something changed, and after a copy ("Copied /spec implement 012"). Repeating the same
  * text toggles a trailing no-break space, so screen readers announce it again without a timer.
  */
 @Component({

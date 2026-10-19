@@ -20,7 +20,7 @@ import { type BacklogRefusal, type BoardRefusal, isBacklogRefusal, type Refusal 
  * - T128, an allocation's 422 (`unallocated`): "Not allocated — slug stays an idea", then the reason from the catalog
  *   (`not-in-index`, or `folder-exists` naming the folder).
  * - Spec 040 (T59, ISC-225.1), a running run on the item (`run-locked`): the one line "Not moved — 003 is running:
- *   /spec-tasks 003 · a:claude:sess-32 · since 8 min" (`itemState.refusal`), whether the card's state refused the move
+ *   /spec tasks 003 · a:claude:sess-32 · since 8 min" (`itemState.refusal`), whether the card's state refused the move
  *   before anything was sent (drag, keys, "Move to…") or the write answered 423 `run-locked`. "Move to…" shows the
  *   same notice above its disabled entries, without the ✕ (`dismissible` false).
  *

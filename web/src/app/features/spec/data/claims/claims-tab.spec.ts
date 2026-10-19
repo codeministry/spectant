@@ -318,7 +318,7 @@ describe('ClaimsTab item state (spec 040, T51, ISC-224)', () => {
   const agent = (session: string) => ({ raw: session, kind: 'agent' as const, id: session, legacy: false });
   const run = (session: string, since: string, elapsedMs: number) => ({
     run: session,
-    command: '/spec-implement 002',
+    command: '/spec implement 002',
     session,
     actor: agent(session),
     since,
@@ -334,7 +334,7 @@ describe('ClaimsTab item state (spec 040, T51, ISC-224)', () => {
         state: 'takeable',
         feature: 'F1',
         verification: null,
-        itemState: { kind: 'claim', id: 'ISC-1', spec: '002', state: 'open', command: '/spec-implement 002', reason: 'ISC-1 is takeable' },
+        itemState: { kind: 'claim', id: 'ISC-1', spec: '002', state: 'open', command: '/spec implement 002', reason: 'ISC-1 is takeable' },
       }),
       claim({
         id: 'ISC-3',
@@ -374,7 +374,7 @@ describe('ClaimsTab item state (spec 040, T51, ISC-224)', () => {
     expect(root.querySelector('[data-chip="blocked"]')).toBeNull();
     expect(root.querySelector('[data-chip="lock"]')).toBeNull();
     expect(root.querySelector('[data-chip="state"]')).toBeNull();
-    expect(card(root, 'ISC-1')?.querySelector('.head ui-item-state ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+    expect(card(root, 'ISC-1')?.querySelector('.head ui-item-state ui-command-chip code')?.textContent).toBe('/spec implement 002');
     expect(card(root, 'ISC-4')?.querySelector('ui-item-state [data-waits-text]')?.textContent).toContain('ISC-1');
   });
 

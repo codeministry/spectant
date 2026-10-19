@@ -101,29 +101,29 @@ describe('item state', () => {
   test('beacon: an open run makes its spec or idea running, the newest of two decides, past the age it is aborted', () => {
     const items = stateModel(BEACON);
     const tasks = itemOf(items, 'spec', '003');
-    expect(tasks).toMatchObject({ state: 'running', stage: 'tasks', run: { run: 'r-0308-1452', command: '/spec-tasks 003', since: '2026-03-08T14:52:00Z', elapsedMs: 8 * MIN, openRuns: 1, source: 'run' } });
+    expect(tasks).toMatchObject({ state: 'running', stage: 'tasks', run: { run: 'r-0308-1452', command: '/spec tasks 003', since: '2026-03-08T14:52:00Z', elapsedMs: 8 * MIN, openRuns: 1, source: 'run' } });
     expect(tasks.run?.actor.raw).toBe('a:claude:sess-32');
-    expect(itemOf(items, 'spec', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec-code-review 006', elapsedMs: 200 * MIN, openRuns: 1 } });
-    expect(itemOf(items, 'spec', '005')).toMatchObject({ state: 'running', stage: 'build', run: { run: 'r-0308-1440', command: '/spec-implement 005', openRuns: 2 } });
+    expect(itemOf(items, 'spec', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec review 006 code', elapsedMs: 200 * MIN, openRuns: 1 } });
+    expect(itemOf(items, 'spec', '005')).toMatchObject({ state: 'running', stage: 'build', run: { run: 'r-0308-1440', command: '/spec implement 005', openRuns: 2 } });
     expect(itemOf(items, 'idea', 'uptime-badges')).toMatchObject({ state: 'running', stage: 'idea', run: { command: '/spec new uptime-badges', elapsedMs: 15 * MIN } });
     expect(itemOf(items, 'idea', 'digest-emails')).toMatchObject({ state: 'open', stage: 'idea', command: '/spec new digest-emails' });
     // A run that ended (error, ok, released) leaves the stage table's state.
-    expect(itemOf(items, 'spec', '002')).toMatchObject({ state: 'open', stage: 'plan', command: '/spec-plan 002' });
-    expect(itemOf(items, 'spec', '004')).toMatchObject({ state: 'open', stage: 'review', command: '/spec-review 004', reason: 'the reviewed mark is stale' });
+    expect(itemOf(items, 'spec', '002')).toMatchObject({ state: 'open', stage: 'plan', command: '/spec plan 002' });
+    expect(itemOf(items, 'spec', '004')).toMatchObject({ state: 'open', stage: 'review', command: '/spec review 004', reason: 'the reviewed mark is stale' });
     expect(itemOf(items, 'spec', '001')).toMatchObject({ state: 'done', stage: 'done' });
     expect(itemOf(items, 'spec', '010')).toMatchObject({ state: 'done', stage: 'done' });
-    expect(itemOf(items, 'spec', '009')).toMatchObject({ state: 'open', stage: 'close', command: '/spec-complete 009' });
+    expect(itemOf(items, 'spec', '009')).toMatchObject({ state: 'open', stage: 'close', command: '/spec done 009' });
     expect(itemOf(items, 'spec', '007')).toMatchObject({ state: 'waiting', stage: 'close-pending', waits: { specs: [], claims: [], siblings: ['008'] } });
     expect(itemOf(items, 'spec', '011')).toMatchObject({ state: 'waiting', stage: 'blocked', waits: { specs: ['002'], siblings: [] } });
   });
 
   test('beacon: the review and code-review marks', () => {
     const items = stateModel(BEACON);
-    expect(itemOf(items, 'review-mark', '004', '004')).toMatchObject({ state: 'open', command: '/spec-review 004' });
+    expect(itemOf(items, 'review-mark', '004', '004')).toMatchObject({ state: 'open', command: '/spec review 004' });
     expect(itemOf(items, 'review-mark', '002', '002')).toMatchObject({ state: 'waiting', waits: { specs: ['002'] } });
     expect(itemOf(items, 'review-mark', '005', '005').state).toBe('done');
     expect(itemOf(items, 'review-mark', '005', '005').doneAt).toBeString();
-    expect(itemOf(items, 'code-review-mark', '006', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec-code-review 006' } });
+    expect(itemOf(items, 'code-review-mark', '006', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec review 006 code' } });
     expect(itemOf(items, 'code-review-mark', '007', '007')).toMatchObject({ state: 'waiting', waits: { siblings: ['008'] } });
     expect(itemOf(items, 'code-review-mark', '005', '005')).toMatchObject({ state: 'waiting', waits: { specs: ['005'] } });
     // `bug` has `code_review: none` in beacon's workflow: no code-review mark item.
@@ -135,10 +135,10 @@ describe('item state', () => {
     const claim = (id: string) => itemOf(items, 'claim', id, '005');
     const task = (id: string) => itemOf(items, 'task', id, '005');
     expect(claim('ISC-13').state).toBe('done');
-    expect(claim('ISC-15')).toMatchObject({ state: 'running', detail: 'taken', run: { command: '/spec-implement 005', source: 'lock', elapsedMs: 30 * MIN } });
+    expect(claim('ISC-15')).toMatchObject({ state: 'running', detail: 'taken', run: { command: '/spec implement 005', source: 'lock', elapsedMs: 30 * MIN } });
     expect(claim('ISC-16')).toMatchObject({ state: 'aborted', run: { source: 'lock', elapsedMs: 80 * MIN } });
     expect(claim('ISC-17')).toMatchObject({ state: 'waiting', waits: { claims: ['ISC-18'] } });
-    expect(claim('ISC-18')).toMatchObject({ state: 'open', command: '/spec-implement 005' });
+    expect(claim('ISC-18')).toMatchObject({ state: 'open', command: '/spec implement 005' });
     expect(claim('ISC-19')).toMatchObject({ state: 'done', closedAs: 'dropped' });
     expect(task('T1')).toMatchObject({ state: 'done', doneAt: '2026-03-08T14:14:00Z' });
     expect(task('T3')).toMatchObject({ state: 'running', detail: 'building', run: { source: 'task-run' } });
@@ -305,19 +305,19 @@ describe('run aborted', () => {
     const locks = { ...(input.workspace.locks as LockReading), openRuns };
     return itemStates({ ...input, workspace: { ...input.workspace, locks }, now, ...(abortAfterMs === undefined ? {} : { abortAfterMs }) });
   };
-  const tasksRun = runOn({ spec: '003-alert-rules' }, '/spec-tasks 003', SINCE, 'r-tasks', 1);
+  const tasksRun = runOn({ spec: '003-alert-rules' }, '/spec tasks 003', SINCE, 'r-tasks', 1);
 
   test('an open run reads running before the default age of 120 minutes and aborted after it', () => {
     const before = itemOf(withRuns([tasksRun], at(119)), 'spec', '003');
-    expect(before).toMatchObject({ state: 'running', stage: 'tasks', run: { run: 'r-tasks', command: '/spec-tasks 003', since: SINCE, elapsedMs: 119 * MIN, openRuns: 1, source: 'run' } });
+    expect(before).toMatchObject({ state: 'running', stage: 'tasks', run: { run: 'r-tasks', command: '/spec tasks 003', since: SINCE, elapsedMs: 119 * MIN, openRuns: 1, source: 'run' } });
     const after = itemOf(withRuns([tasksRun], at(121)), 'spec', '003');
-    expect(after).toMatchObject({ state: 'aborted', stage: 'tasks', run: { run: 'r-tasks', command: '/spec-tasks 003', since: SINCE, elapsedMs: 121 * MIN, openRuns: 1 } });
+    expect(after).toMatchObject({ state: 'aborted', stage: 'tasks', run: { run: 'r-tasks', command: '/spec tasks 003', since: SINCE, elapsedMs: 121 * MIN, openRuns: 1 } });
     expect(after.run?.actor.raw).toBe('a:claude:r-tasks');
     expect(after.command).toBeUndefined();
   });
 
   test('an open run against an explicit age of 30 minutes, on a spec, an idea and a review mark', () => {
-    const runs = [tasksRun, runOn({ idea: 'digest-emails' }, '/spec new digest-emails', SINCE, 'r-idea', 2), runOn({ spec: '004' }, '/spec-review 004', SINCE, 'r-review', 3)];
+    const runs = [tasksRun, runOn({ idea: 'digest-emails' }, '/spec new digest-emails', SINCE, 'r-idea', 2), runOn({ spec: '004' }, '/spec review 004', SINCE, 'r-review', 3)];
     const states = (items: readonly ItemStateInfo[]) => [itemOf(items, 'spec', '003').state, itemOf(items, 'idea', 'digest-emails').state, itemOf(items, 'review-mark', '004', '004').state];
     expect(states(withRuns(runs, at(29), 30 * MIN))).toEqual(['running', 'running', 'running']);
     expect(states(withRuns(runs, at(31), 30 * MIN))).toEqual(['aborted', 'aborted', 'aborted']);
@@ -328,12 +328,12 @@ describe('run aborted', () => {
   test('a run-end after the abort ends the run: the spec reads the state its files give', () => {
     // Once its run-end is read the run is no longer open, so the reading carries no run for it.
     const ended = itemOf(withRuns([], at(180)), 'spec', '003');
-    expect(ended).toMatchObject({ state: 'open', stage: 'tasks', command: '/spec-tasks 003' });
+    expect(ended).toMatchObject({ state: 'open', stage: 'tasks', command: '/spec tasks 003' });
     expect(ended.run).toBeUndefined();
   });
 
   test('a newer run-start after an aborted run makes the item running again, shown and counted alone', () => {
-    const newer = runOn({ spec: '003' }, '/spec-tasks 003', '2026-03-08T14:50:00Z', 'r-tasks-2', 2);
+    const newer = runOn({ spec: '003' }, '/spec tasks 003', '2026-03-08T14:50:00Z', 'r-tasks-2', 2);
     const item = itemOf(withRuns([tasksRun, newer], at(180)), 'spec', '003');
     expect(item).toMatchObject({ state: 'running', run: { run: 'r-tasks-2', elapsedMs: 10 * MIN, openRuns: 1 } });
   });

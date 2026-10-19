@@ -114,7 +114,7 @@ function strings(value: unknown, out: string[] = []): string[] {
 
 /**
  * An absolute path in a string: a leading `/segment/`, or the home, temp or fixture directory anywhere in it. A slash
- * command (`/spec-review 005`) starts with `/` too, but has no second segment, and is what the model must carry.
+ * command (`/spec review 005`) starts with `/` too, but has no second segment, and is what the model must carry.
  */
 const hasAbsolutePath = (s: string): boolean =>
   /^\/[^\s/]+\//.test(s) || [homedir(), tmpdir(), root, FIXTURES].some((dir) => s.includes(dir));

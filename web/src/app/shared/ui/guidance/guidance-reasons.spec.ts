@@ -8,7 +8,7 @@
 //     `{state}`, which the pipe fills with the catalogue word `guidance.value.state.<missing|stale>`, never the raw
 //     machine word. `{type}`, `{claims}`, `{ids}` and `{is}` carry core's English prose ("13 claims", "ISC-7 and
 //     ISC-9", "are"), so no sentence uses them: the sentence says what to do without them;
-//   - no tool word (takeable, fresh, stale, tasks.md, plan.md, "mark is", ISC-, /spec-), no ellipsis, no claim ID as
+//   - no tool word (takeable, fresh, stale, tasks.md, plan.md, "mark is", ISC-, a `/spec` command), no ellipsis, no claim ID as
 //     the subject (the sentence never starts with `{{ids}}` or `{{ref}}`), ends with a sentence mark, and stays at or
 //     under 100 characters once filled with sample values.
 // Beside the reasons: the labels of the waits block exist in both languages, the German label never says "wartet"
@@ -59,7 +59,7 @@ const params = (value: string): string[] => [...new Set([...value.matchAll(/\{\{
 const fill = (value: string, values: Readonly<Record<string, string>>): string =>
   value.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (whole, name: string) => values[name] ?? whole);
 
-const TOOL_WORDS = /takeable|\bfresh\b|\bstale\b|tasks\.md|plan\.md|mark is|ISC-|\/spec-/i;
+const TOOL_WORDS = /takeable|\bfresh\b|\bstale\b|tasks\.md|plan\.md|mark is|ISC-|\/spec[ -]/i;
 const ELLIPSIS = /…|\.\.\./;
 const SENTENCE_END = /[.!?]$/;
 const ID_SUBJECT = /^\s*\{\{\s*(ids|ref)\s*\}\}/;
@@ -96,7 +96,7 @@ describe('guidance-reasons: the checkers catch what they claim to (synthetic inp
     expect(problems('Confirm it by hand.', ['ref'], [])[0]).toContain('params');
     expect(problems('Build {{ids}}, {{is}} ready.', ['ids', 'is'], [])[0]).toContain('params');
     expect(problems('Build them: they are takeable.', ['ids', 'is'], [])).toEqual(['tool word: takeable']);
-    expect(problems('Run /spec-review and confirm.', [], [])).toEqual(['tool word: /spec-']);
+    expect(problems('Run /spec review and confirm.', [], [])).toEqual(['tool word: /spec ']);
     expect(problems('Write the plan…', [], [])).toEqual(['ellipsis', 'no sentence mark at the end']);
     expect(problems('{{ref}} needs your confirmation.', ['ref'], [])).toEqual(['a claim ID is the subject']);
     expect(problems(`Confirm ${'x'.repeat(100)}.`, [], [])[0]).toContain('characters filled');

@@ -130,7 +130,7 @@ describe("run lock: an open run refuses the writes on its item with 423 run-lock
     const s = setup([{ run: "r-1", command: "/spec-tasks 003", target: { spec: "003" }, ago: 5 }]);
     const before = tree(s.repo);
     const res = await writes.transition(s, "003");
-    expect([res.status, await res.json()]).toEqual([423, runLocked(s, "r-1", "/spec-tasks 003")]);
+    expect([res.status, await res.json()]).toEqual([423, runLocked(s, "r-1", "/spec tasks 003")]);
     expect(changed(before, tree(s.repo))).toEqual([]);
   });
 
@@ -138,9 +138,9 @@ describe("run lock: an open run refuses the writes on its item with 423 run-lock
     const s = setup([{ run: "r-2", command: "/spec-review 004", target: { spec: "004-retention-policies" }, ago: 10 }]);
     const before = tree(s.repo);
     const gate = await writes.gate(s, "004");
-    expect([gate.status, await gate.json()]).toEqual([423, runLocked(s, "r-2", "/spec-review 004")]);
+    expect([gate.status, await gate.json()]).toEqual([423, runLocked(s, "r-2", "/spec review 004")]);
     const tick = await writes.tick(s, "004", "T2");
-    expect([tick.status, await tick.json()]).toEqual([423, runLocked(s, "r-2", "/spec-review 004")]);
+    expect([tick.status, await tick.json()]).toEqual([423, runLocked(s, "r-2", "/spec review 004")]);
     expect(changed(before, tree(s.repo))).toEqual([]);
   });
 
@@ -148,7 +148,7 @@ describe("run lock: an open run refuses the writes on its item with 423 run-lock
     const s = setup([{ run: "r-3", command: "/spec-idea console-audit-log", target: { idea: "console-audit-log" }, ago: 2 }]);
     const before = tree(s.repo);
     const res = await writes.allocate(s, "console-audit-log");
-    expect([res.status, await res.json()]).toEqual([423, runLocked(s, "r-3", "/spec-idea console-audit-log")]);
+    expect([res.status, await res.json()]).toEqual([423, runLocked(s, "r-3", "/spec idea console-audit-log")]);
     expect(changed(before, tree(s.repo))).toEqual([]);
   });
 
@@ -158,7 +158,7 @@ describe("run lock: an open run refuses the writes on its item with 423 run-lock
       { run: "r-new", command: "/spec-tasks 003", target: { spec: "003-config-loader" }, ago: 3 },
     ]);
     const res = await writes.transition(s, "003");
-    expect([res.status, await res.json()]).toEqual([423, runLocked(s, "r-new", "/spec-tasks 003")]);
+    expect([res.status, await res.json()]).toEqual([423, runLocked(s, "r-new", "/spec tasks 003")]);
   });
 
   test("run lock: an aborted run (older than the default 120 minutes) locks nothing: move, mark, tick and allocation are accepted", async () => {
@@ -211,7 +211,7 @@ describe("run lock: an open run refuses the writes on its item with 423 run-lock
     expect([claim.status, ((await claim.json()) as { error: string }).error]).toEqual([423, "locked"]);
     // 423 run-locked before 422: a move the workflow refuses is still the run's 423 while the run is open.
     const refusable = await writes.transition(s, "003", "done");
-    expect([refusable.status, await refusable.json()]).toEqual([423, runLocked(s, "r-3", "/spec-tasks 003")]);
+    expect([refusable.status, await refusable.json()]).toEqual([423, runLocked(s, "r-3", "/spec tasks 003")]);
     expect(changed(before, tree(s.repo))).toEqual([]);
     // Without the run the same move is the workflow's 422.
     expect((await writes.transition(setup([]), "003", "done")).status).toBe(422);

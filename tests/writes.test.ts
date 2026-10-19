@@ -496,7 +496,7 @@ describe("ISC-121 transition: the workflow decides, spec.md and one event line a
     if (res.status !== 422) return;
     expect(res.body.error).toBe("transition-refused");
     expect(res.body.reason).toStartWith("build needs a fresh reviewed mark");
-    expect(res.body.command).toBe("/spec-review 005");
+    expect(res.body.command).toBe("/spec review 005");
     expect(changed(before, tree(repo))).toEqual([]);
   });
 
@@ -517,7 +517,7 @@ describe("ISC-121 transition: the workflow decides, spec.md and one event line a
     const res = await move(repo, folder, "build");
     expect(res.status).toBe(422);
     if (res.status !== 422) return;
-    expect(res.body).toMatchObject({ error: "transition-refused", command: "/spec-review 005" });
+    expect(res.body).toMatchObject({ error: "transition-refused", command: "/spec review 005" });
     expect(res.body.reason).toStartWith("build needs a fresh reviewed mark");
     expect(changed(before, tree(dir))).toEqual([]);
     expect(eventCount(dir)).toBe(events);

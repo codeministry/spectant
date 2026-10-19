@@ -83,7 +83,7 @@
       {
         "kind": "drift",
         "text": "drift to the master: closed_without_evidence",
-        "command": "/spec-sync 001"
+        "command": "/spec 001"
       }
     ],
     "waitingOnYou": [],
@@ -131,7 +131,7 @@
       "title": "Alert routing",
       "type": "feature",
       "stage": "plan",
-      "nextCommand": "/spec-plan 002",
+      "nextCommand": "/spec plan 002",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "phase": "building",
       "started": "2026-03-06T09:00:00Z",
@@ -151,7 +151,7 @@
         "id": "002",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 002",
+        "command": "/spec plan 002",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -179,7 +179,7 @@
     "ideaQuote": "Route each signal to the person on call",
     "ideaSource": "task",
     "next": {
-      "command": "/spec-plan 002",
+      "command": "/spec plan 002",
       "reasons": [
         "a feature spec needs plan.md and it is missing"
       ],
@@ -213,7 +213,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 002"
+        "command": "/spec review 002"
       },
       {
         "kind": "diagrams",
@@ -263,7 +263,7 @@
           "item": "spec",
           "ref": null,
           "title": "Route each signal to the person on call",
-          "command": "/spec-plan 002",
+          "command": "/spec plan 002",
           "since": "2026-03-08T15:00:00Z",
           "reason": {
             "key": "stage.plan.0",
@@ -283,7 +283,7 @@
       "title": "Escalation chains",
       "type": "feature",
       "stage": "plan",
-      "nextCommand": "/spec-plan 003",
+      "nextCommand": "/spec plan 003",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "phase": "scoping",
       "started": "2026-03-08T09:00:00Z",
@@ -303,7 +303,7 @@
         "id": "003",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 003",
+        "command": "/spec plan 003",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -331,7 +331,7 @@
     "ideaQuote": "Escalate unacknowledged signals along a chain",
     "ideaSource": "task",
     "next": {
-      "command": "/spec-plan 003",
+      "command": "/spec plan 003",
       "reasons": [
         "a feature spec needs plan.md and it is missing"
       ],
@@ -365,7 +365,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 003"
+        "command": "/spec review 003"
       },
       {
         "kind": "diagrams",
@@ -415,7 +415,7 @@
           "item": "spec",
           "ref": null,
           "title": "Escalate unacknowledged signals along a chain",
-          "command": "/spec-plan 003",
+          "command": "/spec plan 003",
           "since": "2026-03-08T11:00:00Z",
           "reason": {
             "key": "stage.plan.0",

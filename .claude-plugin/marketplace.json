@@ -1,0 +1,26 @@
+{
+  "name": "spectant",
+  "owner": {
+    "name": "codeministry",
+    "url": "https://github.com/codeministry"
+  },
+  "metadata": {
+    "description": "Spec-driven development for Claude Code: the Spec plugin that ships with Spectant.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "spectant",
+      "source": "./plugin/spectant",
+      "description": "Spec-driven feature folders from the chat: shape an idea, write the spec, plan and tasks, implement against each claim's probe, review and close. One /spec command with eight subcommands.",
+      "version": "0.1.0",
+      "author": {
+        "name": "codeministry",
+        "url": "https://github.com/codeministry"
+      },
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/codeministry/spectant",
+      "repository": "https://github.com/codeministry/spectant"
+    }
+  ]
+}

@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "bun scripts/build.ts",
+    "build:plugin": "bun scripts/build-plugin.ts",
     "dev": "bun scripts/dev.ts",
     "lint": "eslint . --max-warnings 0",
     "lint:css": "stylelint \"web/src/**/*.css\" --max-warnings 0",

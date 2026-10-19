@@ -7,7 +7,7 @@
       "item": "spec",
       "ref": null,
       "title": "Stop duplicate links and duplicate tags from entering the list",
-      "command": "/spec-implement 002",
+      "command": "/spec implement 002",
       "since": "2026-03-06T10:30:00Z",
       "reason": {
         "key": "stage.build.0",
@@ -24,7 +24,7 @@
       "item": "spec",
       "ref": null,
       "title": "Save a link once and find it again, online or offline",
-      "command": "/spec-implement 001",
+      "command": "/spec implement 001",
       "since": "2026-03-06T15:00:00Z",
       "reason": {
         "key": "stage.build.0",

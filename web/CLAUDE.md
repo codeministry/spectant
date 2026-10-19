@@ -173,14 +173,14 @@ The agent and sub-agent chips (T135, ISC-131.1; `web/e2e/live.spec.ts`, `-g suba
 The item states (spec 040, ISC-224, ISC-224.1) come from core's `itemStates` over the activity log's `run-start` and
 `run-end` lines. `X-Spectant-Stub-Locks: runs` adds the fixture tree `beacon` to the workspace list, rebuilt by core
 from its files and its log (`runVariant` in `stub-api.ts`); every other workspace stays its golden. Pin the clock to
-`STUB_NOW`, which the goldens' durations count from, and pick the run of `STUB_RUN` (beacon 003, `/spec-tasks 003`)
+`STUB_NOW`, which the goldens' durations count from, and pick the run of `STUB_RUN` (beacon 003; its log records the old command name, the app shows `STUB_RUN.shown`, `/spec tasks 003`)
 with `X-Spectant-Stub-Run`:
 
-- **none**: the run's `run-start` line is dropped; 003 reads `open` with the chip `/spec-tasks 003`.
+- **none**: the run's `run-start` line is dropped; 003 reads `open` with the chip `/spec tasks 003`.
 - **running** (absent): the log as it is, every body beacon's golden; 003 reads `running` since 14:52 by
   `a:claude:sess-32`, and the story `uptime-badges` runs `/spec new uptime-badges`.
 - **ended**: the run's `run-end` with outcome `ok` is appended and 003 gets the `tasks.md` the run wrote (in memory);
-  003 reads the stage its files then give, `review`, open with `/spec-review 003`.
+  003 reads the stage its files then give, `review`, open with `/spec review 003`.
 
 Switch the header between two polls to step a card through a run within one refresh tick. The header is a 400 under
 any other lock fixture, and `runs` is a 400 beside the worktree, edge or midnight overlays. Reason: the state is core's
@@ -208,7 +208,7 @@ The block "Waits on you" (spec 020, ISC-238) reads `guidance.waits` from each wo
 entries the first workspace column of the start holds with `X-Spectant-Stub-Waits` (`STUB_WAITS` in `stub-api.ts`):
 
 - **0**: lantern alone, its golden as it is (no waiting entry; Next up still has two).
-- **1**: beacon, rebuilt by core without its folder `009-timezone-labels`, then lantern; only `/spec-review 004` waits.
+- **1**: beacon, rebuilt by core without its folder `009-timezone-labels`, then lantern; only `/spec review 004` waits.
 - **7**: harbor, then lantern, the goldens as they are; the first column shows the top entry, four more and "+2 more".
 
 Absent, the workspaces are the default list. The header is a 400 for any other value and beside `X-Spectant-Stub-Locks:

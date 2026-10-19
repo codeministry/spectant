@@ -75,7 +75,7 @@ export class UiReason {
    * the phrase, so the same item reads the same sentence on every surface; null keeps the phrase (no guidance entry).
    */
   readonly guidance = input<GuidanceReason | null>(null);
-  /** The next command (`/spec-review 008`); null for no chip (close-pending, a refusal without a command). */
+  /** The next command (`/spec review 008`); null for no chip (close-pending, a refusal without a command). */
   readonly command = input<string | null>(null);
   /** One line: the row and card variant; otherwise two. */
   /** The glyph before the phrase: the hourglass, or `circle-pause` on the Specs table's waiting row (spec 024). */

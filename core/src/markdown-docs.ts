@@ -9,7 +9,7 @@ import type { DESIGN_ASSETS, DocAvailability, DocName, DocsPage, SpecType } from
 import { parseConstitutionView, parseDecisionLog } from './context-log.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { renderMarkdown } from './markdown.ts';
-import { TYPE_NEEDS } from './stage.ts';
+import { TYPE_NEEDS, commandFor } from './stage.ts';
 
 export interface DocsOptions {
   /** Prefix for every heading id, so two documents on one page never collide. */
@@ -73,9 +73,9 @@ const DESIGN_TYPES: ReadonlySet<SpecType> = new Set(['feature', 'project']);
  */
 export function docsFor(type: SpecType | null): Readonly<Record<DocName, DocAvailability>> {
   return {
-    plan: { applies: type === null ? false : TYPE_NEEDS[type].plan, command: '/spec-plan' },
-    design: { applies: type !== null && DESIGN_TYPES.has(type), command: '/spec-design' },
+    plan: { applies: type === null ? false : TYPE_NEEDS[type].plan, command: commandFor('plan') },
+    design: { applies: type !== null && DESIGN_TYPES.has(type), command: commandFor('plan') },
     decisions: { applies: true, command: null },
-    constitution: { applies: true, command: '/spec-bootstrap' },
+    constitution: { applies: true, command: commandFor('init') },
   };
 }

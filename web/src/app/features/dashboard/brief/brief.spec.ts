@@ -3,7 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { formatDate } from '../../../shared/time';
-import { Brief, type BriefModel, TLDR_COMMAND } from './brief';
+import { Brief, type BriefModel } from './brief';
 
 // The model's `brief` as core builds it (sections included); noon UTC: the same calendar day in every time zone a
 // developer or the CI container runs in.
@@ -110,14 +110,10 @@ describe('Brief', () => {
     expect(fromMain.head()?.querySelector('[data-brief-source]')?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('carries the /spec-tldr command chip in the header, apart from the expander', async () => {
-    const { host, head, more } = await render(BRIEF);
-    const chip = host.querySelector('ui-command-chip[data-brief-command]');
-    expect(TLDR_COMMAND).toBe('/spec-tldr');
-    expect(chip?.querySelector('code')?.textContent.trim()).toBe('/spec-tldr');
-    expect(head()?.contains(chip)).toBe(true);
-    expect(more()?.contains(chip ?? null)).toBe(false);
-    expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec-tldr');
+  it('names no command: the Spec plugin has none that writes specs/tldr.md (spec 031, ISC-265)', async () => {
+    const { host } = await render(BRIEF);
+    expect(host.querySelector('ui-command-chip')).toBeNull();
+    expect(host.textContent).not.toMatch(/\/spec[ -]/);
   });
 
   it('expands on "More" and clips again on "Less"', async () => {
@@ -167,20 +163,10 @@ describe('Brief', () => {
     expect(host.querySelector('[data-brief-more]')?.textContent.trim()).toBe('Mehr…');
   });
 
-  it('passes a copy on as `copied`, for the page’s live region', async () => {
-    const { fixture, host } = await render(BRIEF);
-    const copied: string[] = [];
-    fixture.componentInstance.copied.subscribe((command) => copied.push(command));
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.resolve() } });
-
-    host.querySelector<HTMLButtonElement>('ui-command-chip button')?.click();
-    await fixture.whenStable();
-    expect(copied).toEqual(['/spec-tldr']);
-  });
 });
 
 // Spec 021 (T26, ISC-246): the workspace TL;DR (core's `sections`) stands on its first section, whole; one toggle in
-// the footer opens the others, its state `?open=tldr`, so a reload keeps it; `/spec-tldr` sits at the footer's end.
+// the footer opens the others, its state `?open=tldr`, so a reload keeps it; no command chip (spec 031).
 describe('Brief folded to its first section (spec 021, T26)', () => {
   const OVERVIEW = 'Sync is **done** and archived (001). '.repeat(12).trim();
   const SECTIONED: BriefModel = {
@@ -240,15 +226,10 @@ describe('Brief folded to its first section (spec 021, T26)', () => {
     expect(toggle()?.querySelector('.visually-hidden')?.textContent.trim()).toBe('Show whole TL;DR, all sections of the brief');
   });
 
-  it('puts the toggle and the /spec-tldr chip in the footer, the chip at the end and outside the toggle', async () => {
+  it('puts the toggle in the footer, after the first section, and no command chip anywhere', async () => {
     const { host, fold, toggle } = await render(SECTIONED);
-    const chip = host.querySelector<HTMLElement>('ui-command-chip[data-brief-command]');
-    expect(host.querySelectorAll('ui-command-chip')).toHaveLength(1);
-    expect(host.querySelector('[data-brief-head]')?.contains(chip)).toBe(false);
-    expect(toggle()?.contains(chip)).toBe(false);
-    const head = toggle()?.parentElement;
-    expect(head?.contains(chip)).toBe(true);
-    expect(head?.lastElementChild?.contains(chip)).toBe(true);
+    expect(host.querySelectorAll('ui-command-chip')).toHaveLength(0);
+    expect(toggle()).not.toBeNull();
     expect(fold()?.compareDocumentPosition(host.querySelector('[data-brief-first]') as Node)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
   });
 
@@ -275,11 +256,11 @@ describe('Brief folded to its first section (spec 021, T26)', () => {
     expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('a single section stands alone with the chip in the footer and no toggle', async () => {
+  it('a single section stands alone, with no toggle and no footer', async () => {
     const { host } = await render({ ...SECTIONED, sections: { overview: OVERVIEW } });
     expect(host.querySelector('ui-disclosure')).toBeNull();
     expect(host.querySelector('button[aria-expanded]')).toBeNull();
-    expect(host.querySelector('[data-brief-foot] ui-command-chip')).not.toBeNull();
+    expect(host.querySelector('[data-brief-foot]')).toBeNull();
   });
 
   it('reads the toggle in German', async () => {

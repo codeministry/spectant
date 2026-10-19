@@ -1,0 +1,12 @@
+{
+  "name": "spectant",
+  "version": "0.1.0",
+  "description": "Spec-driven feature folders from the chat: shape an idea, write the spec, plan and tasks, implement against each claim's probe, review and close. One /spec command with eight subcommands.",
+  "author": {
+    "name": "codeministry",
+    "url": "https://github.com/codeministry"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/codeministry/spectant",
+  "repository": "https://github.com/codeministry/spectant"
+}

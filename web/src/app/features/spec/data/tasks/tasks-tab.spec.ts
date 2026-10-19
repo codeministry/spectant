@@ -115,7 +115,7 @@ describe('TasksTab', () => {
   it('names a row\'s holder once: a row with live holders shows no second actor chip in its state details (spec 040)', async () => {
     // T27 is held in the live frame; give its row the running item the server sends for such a task.
     const actor = { raw: 'a:claude:sess-2', kind: 'agent', id: 'a:claude:sess-2', legacy: false } as const;
-    const held = { kind: 'task', id: 'T27', spec: '002', state: 'running', run: { run: 'a:claude:sess-2', command: '/spec-implement 002', session: 'a:claude:sess-2', actor, since: '2026-03-08T14:06:00Z', elapsedMs: 54 * 60_000, openRuns: 1, source: 'lock' } } as const;
+    const held = { kind: 'task', id: 'T27', spec: '002', state: 'running', run: { run: 'a:claude:sess-2', command: '/spec implement 002', session: 'a:claude:sess-2', actor, since: '2026-03-08T14:06:00Z', elapsedMs: 54 * 60_000, openRuns: 1, source: 'lock' } } as const;
     setUp({ ...GOLDEN, tasks: GOLDEN.tasks.map((t) => (t.id === 'T27' ? { ...t, itemState: held } : t)) });
     const { root } = await open();
     const rows = [...root.querySelectorAll('[data-task-row]')].filter((row) => row.querySelector('app-task-actors') !== null);
@@ -358,7 +358,7 @@ describe('TasksTab item state (spec 040, T52, ISC-224)', () => {
     stage: 'build',
     run: {
       run: 'r-1',
-      command: '/spec-implement 002',
+      command: '/spec implement 002',
       session,
       actor: { raw: session, kind: 'agent', id: session, legacy: false },
       since: '2026-03-08T16:40:00Z',
@@ -393,7 +393,7 @@ describe('TasksTab item state (spec 040, T52, ISC-224)', () => {
     const { root, harness } = await open();
     await harness.fixture.whenStable();
     const notice = root.querySelector('[data-run-notice]');
-    expect(notice?.textContent).toContain('/spec-implement 002');
+    expect(notice?.textContent).toContain('/spec implement 002');
     expect(notice?.textContent).toContain('3 min');
     const box = root.querySelector<HTMLInputElement>('#task-T31 [data-task-check]');
     expect(box?.getAttribute('aria-disabled')).toBe('true');
@@ -408,7 +408,7 @@ describe('TasksTab item state (spec 040, T52, ISC-224)', () => {
   });
 
   it('shows no notice and no lock without a run on the spec', async () => {
-    setUp(GOLDEN, 'ab12', specWith({ ...RUNNING, state: 'open', run: undefined, command: '/spec-implement 002' }));
+    setUp(GOLDEN, 'ab12', specWith({ ...RUNNING, state: 'open', run: undefined, command: '/spec implement 002' }));
     const { root } = await open();
     expect(root.querySelector('[data-run-notice]')).toBeNull();
     expect(root.querySelector('#task-T31 [data-task-check]')?.getAttribute('aria-disabled')).toBeNull();

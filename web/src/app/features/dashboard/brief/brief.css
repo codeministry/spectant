@@ -39,10 +39,6 @@ app-brief .brief-as-of {
   font-variant-numeric: tabular-nums;
 }
 
-app-brief .brief-command {
-  margin-inline-start: auto;
-}
-
 app-brief .brief-prose {
   padding: 0 16px 8px;
   font-size: 15px;
@@ -107,17 +103,6 @@ app-brief .brief-toggle {
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
-}
-
-app-brief .brief-actions {
-  display: inline-flex;
-  flex: none;
-}
-
-app-brief .brief-foot {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 16px 8px;
 }
 
 app-brief .visually-hidden {

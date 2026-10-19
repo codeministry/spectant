@@ -27,7 +27,7 @@
         [heading]="'board.workspace.empty.noSpecs' | transloco: { ws: name() }"
         [body]="'board.workspace.empty.body' | transloco"
       >
-        <ui-command-chip command="/spec-idea" data-empty-command />
+        <ui-command-chip command="/spec idea" data-empty-command />
         <a class="link" routerLink="/help" fragment="getting-started">{{ 'board.workspace.empty.gettingStarted' | transloco }}</a>
       </ui-empty-state>
     } @else {

@@ -14,7 +14,7 @@ const agent: ActorRef = { raw: 'a:claude:sess-7', kind: 'agent', id: 'a:claude:s
 
 const run = (extra: Partial<ItemRun> = {}): ItemRun => ({
   run: 'run-1',
-  command: '/spec-tasks 037',
+  command: '/spec tasks 037',
   session: 'a:claude:sess-7',
   actor: agent,
   since: '2026-10-17T14:02:00Z',
@@ -55,14 +55,14 @@ describe('UiItemState (T45, ISC-224)', () => {
   });
 
   it('open: ring glyph, "Tasks · open" and the command as a copyable chip, the reason in the accessible text', async () => {
-    const { root } = await render(item({ state: 'open', command: '/spec-tasks 037', reason: 'Plan approved; tasks missing' }));
+    const { root } = await render(item({ state: 'open', command: '/spec tasks 037', reason: 'Plan approved; tasks missing' }));
     expect(root.getAttribute('data-state')).toBe('open');
     expect(root.querySelector('ui-glyph')?.getAttribute('data-shape')).toBe('ring');
     expect(line(root)).toBe('Tasks · open');
     const chip = root.querySelector('ui-command-chip');
-    expect(text(chip?.querySelector('code') ?? null)).toBe('/spec-tasks 037');
+    expect(text(chip?.querySelector('code') ?? null)).toBe('/spec tasks 037');
     expect(chip?.querySelector('[data-locked]')).toBeNull();
-    expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec-tasks 037');
+    expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec tasks 037');
     expect(text(root)).toContain('Plan approved; tasks missing');
   });
 
@@ -85,7 +85,7 @@ describe('UiItemState (T45, ISC-224)', () => {
     expect(button?.getAttribute('aria-disabled')).toBe('true');
     expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock');
     const name = button?.getAttribute('aria-label') ?? '';
-    expect(name).toContain('/spec-tasks 037');
+    expect(name).toContain('/spec tasks 037');
     expect(name).toContain('a:claude:sess-7');
     expect(name).toContain('3 min');
     expect(root.querySelector('ui-actor-chip')?.getAttribute('data-kind')).toBe('agent');
@@ -111,7 +111,7 @@ describe('UiItemState (T45, ISC-224)', () => {
     const sentence = 'Read the spec and confirm it: your review is still missing, and building needs it.';
     TestBed.inject(TranslocoService).setActiveLang('en');
     const fixture = TestBed.createComponent(UiItemState);
-    fixture.componentRef.setInput('info', item({ state: 'open', stage: 'review', command: '/spec-review 037', reason: sentence }));
+    fixture.componentRef.setInput('info', item({ state: 'open', stage: 'review', command: '/spec review 037', reason: sentence }));
     fixture.componentRef.setInput('reasoned', true);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;

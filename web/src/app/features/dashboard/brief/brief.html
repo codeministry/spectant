@@ -16,9 +16,6 @@
       @if (brief.stale) {
         <ui-chip class="brief-stale" data-brief-stale tone="warning" icon="clock">{{ 'brief.stale' | transloco }}</ui-chip>
       }
-      @if (!sectioned()) {
-        <ng-container [ngTemplateOutlet]="commandChip" />
-      }
     </div>
     @if (sectioned()) {
       <!-- Spec 021 (T26, ISC-246): the first section stands whole; one toggle in the footer opens the others. -->
@@ -29,11 +26,8 @@
             <span aria-hidden="true">{{ 'brief.showWhole' | transloco }}</span>
             <span class="visually-hidden">{{ 'brief.showWholeName' | transloco }}</span>
           </span>
-          <span uiDisclosureActions class="brief-actions"><ng-container [ngTemplateOutlet]="commandChip" /></span>
           <div class="brief-prose" data-brief-rest [attr.lang]="textLang()" [innerHTML]="rest"></div>
         </ui-disclosure>
-      } @else {
-        <div class="brief-foot" data-brief-foot><ng-container [ngTemplateOutlet]="commandChip" /></div>
       }
     } @else {
       <div
@@ -58,15 +52,3 @@
     }
   </ui-card>
 }
-
-<ng-template #commandChip>
-  <ui-command-chip
-    class="brief-command"
-    data-brief-command
-    [command]="command"
-    [copyLabel]="'common.copyCommand' | transloco"
-    [copiedLabel]="'common.copied' | transloco: { command }"
-    [manualHint]="'common.copyFallback' | transloco"
-    (copied)="copied.emit($event)"
-  />
-</ng-template>

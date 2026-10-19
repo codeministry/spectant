@@ -1,5 +1,4 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, model, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -7,7 +6,7 @@ import type { RepoFileSource } from '../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
 import { OpenState } from '../../../shared/open-state';
 import { UiTimeLabel } from '../../../shared/time';
-import { UiCard, UiChip, UiCommandChip, UiDisclosure, UiSourceChip } from '../../../shared/ui';
+import { UiCard, UiChip, UiDisclosure, UiSourceChip } from '../../../shared/ui';
 import { nextId } from '../../../shared/ui/overlay/ids';
 
 /**
@@ -36,13 +35,11 @@ export interface BriefModel {
   readonly lang?: string | null;
 }
 
-/** The skill command that writes (or refreshes) `specs/tldr.md`. */
-export const TLDR_COMMAND = '/spec-tldr';
-
 /**
  * The Brief (T62, ported in T88 from the prototype's `[data-ui="brief"]`, `styles.css:342-349`): the workspace's TL;DR
  * under the KPI band, a card with a violet 3 px left edge. The header reads "TL;DR" (mono), "as of <date>" from
- * `generated:` and, when the model says so, a "stale" chip, with the `/spec-tldr` command chip pushed to the end. The
+ * `generated:` and, when the model says so, a "stale" chip. No command chip: the Spec plugin has no command that writes
+ * `specs/tldr.md` (spec 031, ISC-265), so the card names none. The
  * body holds the whole TL;DR, clipped to a few lines until the "More" button (`aria-expanded`, `aria-controls`)
  * expands it; the clip is visual only, so a screen reader reads the full text either way.
  *
@@ -50,13 +47,12 @@ export const TLDR_COMMAND = '/spec-tldr';
  *   here. A workspace without `specs/tldr.md` (`brief: null`) renders nothing and the host is `hidden`.
  * - The markdown goes through core's one renderer (`core/src/markdown.ts`), which escapes every string and never
  *   passes raw HTML through; that is why its output may be trusted here, as the Notes and Docs views do.
- * - `open` (expanded) is a two-way model, so the page can bind it to a query param; `copied` passes a copy on for the
- *   page's live region.
+ * - `open` (expanded) is a two-way model, so the page can bind it to a query param.
  *
  * Spec 021 (T26, ISC-246): a brief with core's `sections` (the workspace TL;DR) stands on its first section
  * (`sections[0]`), whole and unclipped; the other sections sit in a `ui-disclosure` whose one toggle ("Show whole
  * TL;DR", named for the TL;DR) opens them, its state `?open=tldr` (`OpenState`), so a reload keeps it. The toggle
- * and the `/spec-tldr` chip share the footer, the toggle at the start, the chip at the end. The text before the first
+ * stands alone in the footer. The text before the first
  * marker (the file's own title) is not shown: the card's label names it. A brief without sections keeps the clip.
  *
  * Spec 021 (T29, ISC-247): when the brief's `lang:` differs from the interface language by its primary subtag, a
@@ -67,7 +63,7 @@ export const TLDR_COMMAND = '/spec-tldr';
  */
 @Component({
   selector: 'app-brief',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDisclosure, UiSourceChip, UiTimeLabel],
+  imports: [TranslocoPipe, UiCard, UiChip, UiDisclosure, UiSourceChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -80,9 +76,7 @@ export const TLDR_COMMAND = '/spec-tldr';
 export class Brief {
   readonly brief = input.required<BriefModel | null>();
   readonly open = model(false);
-  readonly copied = output<string>();
 
-  protected readonly command = TLDR_COMMAND;
   protected readonly bodyId = nextId('brief-body');
 
   private readonly sanitizer = inject(DomSanitizer);

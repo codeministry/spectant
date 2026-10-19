@@ -28,6 +28,7 @@ import { mainFeatureOf } from './status.ts';
 import {
   SPEC_RULES,
   codeReviewOf,
+  commandWith,
   defaultWorkflowRow,
   fillReason,
   isWorkflowStage,
@@ -103,7 +104,7 @@ function phrase(stage: Stage, input: StageInput): string {
 /** The stage table's command for a stage, with the spec number; null where the row names none. */
 function commandOf(stage: WorkflowStage, number: string): string | null {
   const next = SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
-  return next === undefined || next === null ? null : `${next} ${number}`;
+  return next === undefined || next === null ? null : commandWith(next, number);
 }
 
 const list = (ids: readonly string[]): string => ids.join(', ');
@@ -206,4 +207,77 @@ export function planTransition(input: TransitionInput): TransitionPlan {
   const checked = validateEventLine(JSON.stringify(event));
   if (!checked.ok) return refuse(`the event line would be rejected: ${checked.diagnostic.message}`);
   return { ok: true, from, to, specText, event };
+}
+
+// ─── The catch-up (spec 031, T18, ISC-44) ───────────────────────────────────────────────────────────────────────────
+//
+// A subcommand writes the file that carries the spec on first (plan.md, tasks.md, the last claim's verification) and
+// records the move after it. By then the files derive the spec in the next stage, an explicit `stage:` the last event
+// confirmed is overtaken (ISC-221.2), and `planTransition` refuses the move ("already stands"). The catch-up records it
+// late: when the spec stands in `to` (`stageOf`) and the last event entered an earlier stage `P` from which the lane
+// lists `P → to` and the fixed gates pass, it plans `spec.md` with `stage: <to>` and the one event `P → to`, its
+// command the stage table's for `P` as `planTransition` names it. A derived stage the last event already enters is
+// nothing to do (`recorded`). Anything else, a target the files do not derive, no event to start from, a gap of more
+// than one listed move, a move out of `review` (the reviewed mark's write appends that event itself), is refused with a
+// reason and writes nothing. Pure, as `planTransition`.
+
+/** What a late stage move amounts to: the one event to append, nothing to do, or the reason it is refused. */
+export type CatchUpPlan =
+  | {
+      readonly kind: 'catch-up';
+      readonly from: WorkflowStage;
+      readonly to: WorkflowStage;
+      readonly specText: string;
+      readonly event: EventLine;
+    }
+  | { readonly kind: 'recorded'; readonly stage: WorkflowStage }
+  | {
+      readonly kind: 'refused';
+      readonly from: WorkflowStage;
+      readonly to: WorkflowStage;
+      readonly reason: string;
+      readonly command: string | null;
+    };
+
+/** Plans the late record of a move the files already made: the one event from the last recorded stage to `to`. Pure. */
+export function planCatchUp(input: TransitionInput): CatchUpPlan {
+  const { to, files } = input;
+  const spec = files.texts.spec;
+  if (spec === undefined) return { kind: 'refused', from: 'idea', to, reason: `${files.folder} has no spec.md`, command: null };
+  const number = specIdOf(files.folder) ?? files.folder;
+  const fm = parseFrontmatter(spec);
+  const stageInput = stageInputOf(input, fm, number);
+  const stands: WorkflowStage = stageOf(stageInput);
+  const last = stageInput.lastEventTo;
+  const refuse = (from: WorkflowStage, reason: string): CatchUpPlan => ({
+    kind: 'refused',
+    from,
+    to,
+    reason,
+    command: nextCommandWithReason(stageInput).command,
+  });
+
+  if (stands !== to) return refuse(stands, `the files carry the spec to ${stands}, not ${to}`);
+  if (last === to) return { kind: 'recorded', stage: to };
+  if (last === null) return refuse(stands, `no events.jsonl line records a stage to catch up from to ${to}`);
+  if (!fm.present) return refuse(last, 'spec.md has no frontmatter block to hold stage:');
+  // The move out of review is the reviewed mark's own event, appended by the write that sets the mark (FORMAT.md §
+  // events, "Mark reviewed"); a catch-up beside it would record the move twice.
+  if (last === 'review') return refuse(last, `the move review → ${to} is recorded by the reviewed mark's write, not caught up`);
+  const lane = laneOf(fm.data.specType, input.workflow);
+  if (!moveAllowed(lane, last, to)) {
+    return refuse(last, `the files carry the spec to ${to}, but the ${lane.type ?? 'untyped'} workflow lists no move ${last} → ${to} from the last recorded stage`);
+  }
+  const gate = gateRefusal(input, lane, last, stageInput, fm.data.isaFeature ?? 'its main feature');
+  if (gate !== null) return refuse(last, gate);
+
+  const specText = withStage(spec, to, fm);
+  if (specText === null) return refuse(last, 'spec.md does not read back with the new stage: line; its frontmatter is left as it is');
+  const command = commandOf(last, number) ?? commandOf(to, number);
+  if (command === null) return refuse(last, `no stage table command makes the move ${last} → ${to}`);
+  if (Number.isNaN(input.now.getTime())) return refuse(last, 'the event time is not a valid date');
+  const event: EventLine = { ts: input.now.toISOString(), from: last, to, command, actor: input.actor };
+  const checked = validateEventLine(JSON.stringify(event));
+  if (!checked.ok) return refuse(last, `the event line would be rejected: ${checked.diagnostic.message}`);
+  return { kind: 'catch-up', from: last, to, specText, event };
 }

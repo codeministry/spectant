@@ -255,10 +255,10 @@ describe('the fixtures', () => {
 describe('docsFor', () => {
   test('which docs a spec type has, from TYPE_NEEDS, with the command that writes each', () => {
     expect(docsFor('feature')).toEqual({
-      plan: { applies: true, command: '/spec-plan' },
-      design: { applies: true, command: '/spec-design' },
+      plan: { applies: true, command: '/spec plan' },
+      design: { applies: true, command: '/spec plan' },
       decisions: { applies: true, command: null },
-      constitution: { applies: true, command: '/spec-bootstrap' },
+      constitution: { applies: true, command: '/spec init' },
     });
     expect(docsFor('refactor').plan.applies).toBe(false);
     expect(docsFor('bug').design.applies).toBe(false);

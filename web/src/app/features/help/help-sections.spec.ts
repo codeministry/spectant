@@ -16,6 +16,9 @@ import { CARD_EDGE } from '../board/board-card';
 import { HelpPage } from './help-page';
 import { HELP_COMMAND_ROWS, HELP_COMMANDS, HELP_SECTIONS, LEGEND, LIFECYCLE, STAGE_CHAIN } from './help-sections';
 
+/** The command core's stage table names for a stage (`STAGE_RULES[].next`); the help shows it as it is. */
+const nextOf = (stage: string): string => STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null)?.next ?? `no command for ${stage}`;
+
 @Component({ selector: 'app-stub', template: '' })
 class Stub {}
 
@@ -138,7 +141,8 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     expect(bands.map((b) => b.querySelectorAll('.wf-node').length)).toEqual([5, 5]);
     const optional = [...root.querySelectorAll('[data-lifecycle] .wf-node[data-optional]')];
     expect(optional.map((n) => n.getAttribute('data-lifecycle-stage'))).toEqual(['design', 'code-review', 'archive']);
-    expect(optional.map((n) => text(n.querySelector('code')))).toEqual(['/spec-design', '/spec-code-review', '/spec-archive']);
+    // The design pass and the archive are the plugin's own steps; the code review's command is core's stage table's.
+    expect(optional.map((n) => text(n.querySelector('code')))).toEqual(['/spec plan', nextOf('code-review'), '/spec done NNN archive']);
     expect(text(optional[1]?.querySelector('[data-optional-pill]'))).toBe('optional · as specs/workflow.md says');
     // The code review is no gate of its own any more: whether it is required is the workflow's call.
     expect(optional[1]?.querySelector('.wf-gate')).toBeNull();
@@ -192,28 +196,33 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
   it('lists every command of the lifecycle once, in its order, the stage table’s included, as a command chip with its line', async () => {
     setUp();
     const { root } = await open();
+    // The plugin's own steps literal (story, design pass, archive), every stage's command from core's stage table
+    // (`commandFor` since spec 031); a command two nodes share is listed once.
     const expected = [
-      '/spec-idea',
-      '/spec new',
-      '/spec-design',
-      '/spec-plan',
-      '/spec-tasks',
-      '/spec-review',
-      '/spec-implement',
-      '/spec-code-review',
-      '/spec-complete',
-      '/spec-archive',
-      '/spec-status',
+      ...new Set([
+        '/spec idea',
+        nextOf('idea'),
+        '/spec plan',
+        nextOf('plan'),
+        nextOf('tasks'),
+        nextOf('review'),
+        nextOf('build'),
+        nextOf('code-review'),
+        nextOf('close'),
+        '/spec done NNN archive',
+        nextOf('blocked'),
+      ]),
     ];
     expect(HELP_COMMANDS.map((c) => c.command)).toEqual(expected);
     for (const rule of STAGE_RULES) if (rule.next !== null) expect(expected).toContain(rule.next);
     // An optional step is skipped as a neighbour: the required path reads straight through.
     const row = (command: string) => HELP_COMMAND_ROWS.find((r) => r.command === command);
-    expect(row('/spec-idea')).toMatchObject({ needs: null, writes: 'specs/ideas/<slug>.md', then: '/spec new' });
-    expect(row('/spec new')).toMatchObject({ needs: 'specs/ideas/<slug>.md', writes: 'spec.md, context.md', then: '/spec-plan' });
-    expect(row('/spec-design')).toMatchObject({ needs: 'spec.md, context.md', writes: 'design.md', then: '/spec-plan' });
-    expect(row('/spec-implement')).toMatchObject({ then: '/spec-complete' });
-    expect(row('/spec-archive')).toMatchObject({ needs: 'spec.md phase', then: null });
+    expect(row('/spec idea')).toMatchObject({ needs: null, writes: 'specs/ideas/<slug>.md', then: nextOf('idea') });
+    expect(row(nextOf('idea'))).toMatchObject({ needs: 'specs/ideas/<slug>.md', writes: 'spec.md, context.md', then: nextOf('plan') });
+    // The plan's row is the plan's, even where the design pass shares its command.
+    expect(row(nextOf('plan'))).toMatchObject({ writes: 'plan.md', then: nextOf('tasks') });
+    expect(row(nextOf('build'))).toMatchObject({ then: nextOf('close') });
+    expect(row('/spec done NNN archive')).toMatchObject({ needs: 'spec.md phase', then: null });
     const rows = [...root.querySelectorAll('#commands table[data-commands] tbody tr')];
     expect(rows.map((row) => row.getAttribute('data-command'))).toEqual(expected);
     expect(rows.map((row) => text(row.querySelector('ui-command-chip code')))).toEqual(expected);

@@ -29,7 +29,7 @@
           "id": "ISC-1",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -61,7 +61,7 @@
           "id": "ISC-2",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -93,7 +93,7 @@
           "id": "ISC-3",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "the reviewed mark is stale"
         }
       }
@@ -143,7 +143,7 @@
           "id": "ISC-4",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -175,7 +175,7 @@
           "id": "ISC-5",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -207,7 +207,7 @@
           "id": "ISC-6",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -257,7 +257,7 @@
           "id": "ISC-7",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -289,7 +289,7 @@
           "id": "ISC-8",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -321,7 +321,7 @@
           "id": "ISC-9",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is stale"
         }
       }
@@ -494,7 +494,7 @@
           "id": "ISC-13",
           "spec": "005",
           "state": "open",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "reason": "ISC-13 is takeable"
         }
       },
@@ -526,7 +526,7 @@
           "id": "ISC-14",
           "spec": "005",
           "state": "open",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "reason": "ISC-14 is takeable"
         }
       }
@@ -664,7 +664,7 @@
           "id": "ISC-17",
           "spec": "007",
           "state": "open",
-          "command": "/spec-implement 007",
+          "command": "/spec implement 007",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -696,7 +696,7 @@
           "id": "ISC-18",
           "spec": "007",
           "state": "open",
-          "command": "/spec-implement 007",
+          "command": "/spec implement 007",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -728,7 +728,7 @@
           "id": "ISC-19",
           "spec": "007",
           "state": "open",
-          "command": "/spec-implement 007",
+          "command": "/spec implement 007",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -778,7 +778,7 @@
           "id": "ISC-20",
           "spec": "008",
           "state": "open",
-          "command": "/spec-implement 008",
+          "command": "/spec implement 008",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -810,7 +810,7 @@
           "id": "ISC-21",
           "spec": "008",
           "state": "open",
-          "command": "/spec-implement 008",
+          "command": "/spec implement 008",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -842,7 +842,7 @@
           "id": "ISC-22",
           "spec": "008",
           "state": "open",
-          "command": "/spec-implement 008",
+          "command": "/spec implement 008",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -892,7 +892,7 @@
           "id": "ISC-23",
           "spec": "009",
           "state": "open",
-          "command": "/spec-implement 009",
+          "command": "/spec implement 009",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -924,7 +924,7 @@
           "id": "ISC-24",
           "spec": "009",
           "state": "open",
-          "command": "/spec-implement 009",
+          "command": "/spec implement 009",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -1117,7 +1117,7 @@
           "id": "ISC-28",
           "spec": "012",
           "state": "open",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "reason": "ISC-28 is takeable"
         }
       },
@@ -1151,7 +1151,7 @@
           "id": "ISC-29",
           "spec": "012",
           "state": "open",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "reason": "ISC-29 is takeable"
         }
       }
