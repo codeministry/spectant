@@ -406,9 +406,15 @@
     "nav": {
       "appearance": "Appearance",
       "actors": "Actors",
+      "board": "Board",
       "workspaces": "Workspaces",
       "keyboard": "Keyboard",
       "about": "About"
+    },
+    "board": {
+      "staleLabel": "Stale after (minutes)",
+      "staleHint": "A claim without a release older than this shows as stale on the board, and its item as aborted.",
+      "staleRange": "Enter whole minutes from 5 to 1440; nothing was saved."
     },
     "appearance": {
       "intro": "How Spectant looks on this machine. Nothing here touches a repository.",

@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting, type TestRequest } fro
 import { TestBed } from '@angular/core/testing';
 import { DEFAULT_SETTINGS, type Settings, SETTINGS_URL, SettingsService } from './settings.service';
 
-const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90, density: 'compact' };
+const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90, staleMinutes: 30, density: 'compact' };
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -28,7 +28,7 @@ describe('SettingsService', () => {
   });
 
   it('exposes the schema defaults until the server answers', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, density: 'comfortable' });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45, density: 'comfortable' });
     expect(service.settings()).toEqual(DEFAULT_SETTINGS);
   });
 
@@ -59,6 +59,21 @@ describe('SettingsService', () => {
     await loading;
 
     expect(service.settings()).toEqual({ ...DEFAULT_SETTINGS, language: 'de' });
+  });
+
+  it.each([
+    [5, 5],
+    [1440, 1440],
+    [4, 45],
+    [1441, 45],
+    [30.5, 45],
+    ['60', 45],
+  ])('reads the claim stale age %j as %j: whole minutes from 5 to 1440, anything else the default (spec 032, ISC-35)', async (answer, read) => {
+    const loading = service.load();
+    http.expectOne(SETTINGS_URL).flush({ ...stored, staleMinutes: answer });
+    await loading;
+
+    expect(service.settings()).toEqual({ ...stored, staleMinutes: read });
   });
 
   it('applies an update at once, PUTs only the patch and reconciles with the full server answer', async () => {

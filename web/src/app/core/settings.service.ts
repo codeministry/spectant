@@ -24,6 +24,8 @@ export interface Settings {
   notesImportDismissed: boolean;
   /** Minutes after which an open run reads aborted and no longer locks its item (spec 040, ISC-222.1). */
   runAbortMinutes: number;
+  /** Minutes after which a claim without a release reads stale on the board and its item aborted (spec 032, ISC-35). */
+  staleMinutes: number;
   /** The default density of board, flow view and spec row (spec 021, ISC-254). */
   density: Density;
 }
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   railCollapsed: false,
   notesImportDismissed: false,
   runAbortMinutes: 120,
+  staleMinutes: 45,
   density: 'comfortable',
 });
 
@@ -46,12 +49,13 @@ export const SETTINGS_URL = '/api/settings';
 const isThemeMode = (value: unknown): value is ThemeMode => value === 'system' || value === 'light' || value === 'dark';
 export const isDensity = (value: unknown): value is Density => value === 'comfortable' || value === 'compact';
 const isRefresh = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 3600;
-const isAbortMinutes = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 1440;
+/** Whole minutes from 5 to 1440: the range `SettingsSchema` checks for both ages, `runAbortMinutes` and `staleMinutes`. */
+export const isAgeMinutes = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 1440;
 
 /** A server answer read field by field; a field that fails its check reads as its default, as the server does. */
 function sanitize(raw: unknown): Settings {
   const value = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes, density } = value;
+  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes, staleMinutes, density } = value;
   return {
     theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme,
     language: typeof language === 'string' && isLang(language) ? language : DEFAULT_SETTINGS.language,
@@ -59,13 +63,14 @@ function sanitize(raw: unknown): Settings {
     singleKeyShortcuts: typeof singleKeyShortcuts === 'boolean' ? singleKeyShortcuts : DEFAULT_SETTINGS.singleKeyShortcuts,
     railCollapsed: typeof railCollapsed === 'boolean' ? railCollapsed : DEFAULT_SETTINGS.railCollapsed,
     notesImportDismissed: typeof notesImportDismissed === 'boolean' ? notesImportDismissed : DEFAULT_SETTINGS.notesImportDismissed,
-    runAbortMinutes: isAbortMinutes(runAbortMinutes) ? runAbortMinutes : DEFAULT_SETTINGS.runAbortMinutes,
+    runAbortMinutes: isAgeMinutes(runAbortMinutes) ? runAbortMinutes : DEFAULT_SETTINGS.runAbortMinutes,
+    staleMinutes: isAgeMinutes(staleMinutes) ? staleMinutes : DEFAULT_SETTINGS.staleMinutes,
     density: isDensity(density) ? density : DEFAULT_SETTINGS.density,
   };
 }
 
 /**
- * The user's settings (theme mode, language, refresh interval, single-key shortcuts, the collapsed rail, the Notes import notice, the density), stored server-side through
+ * The user's settings (theme mode, language, refresh interval, single-key shortcuts, the collapsed rail, the Notes import notice, the density, the run and claim ages), stored server-side through
  * `GET` / `PUT /api/settings` so they survive a reload on a different port (ISC-18.3). Never in `localStorage`:
  * per-origin storage is lost when the port changes (web/CLAUDE.md § State).
  *
