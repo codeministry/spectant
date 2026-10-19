@@ -188,8 +188,8 @@ describe('HelpPage workflows (ISC-116, ISC-123)', () => {
     // Chore runs without a code review: it shows as the voluntary step between build and done.
     expect(optionalOf(root, 'chore').map((g) => g.getAttribute('data-stage'))).toEqual(['design', 'code-review']);
     expect([...(figure(root, 'chore')?.querySelectorAll('.as-text [data-optional-move]') ?? [])].map(text)).toEqual([
-      'optional: Design → Review (/spec-design, UI specs only; moves no stage)',
-      'optional: Build → Code review → Done (/spec-code-review; moves no stage)',
+      'optional: Design → Review (/spec plan, UI specs only; moves no stage)',
+      'optional: Build → Code review → Done (/spec review NNN code; moves no stage)',
     ]);
   });
 

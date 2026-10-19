@@ -63,7 +63,7 @@ import { TABLE_SEP, tableCells } from './markdown.ts';
 import { resolveEdges } from './spec-edges.ts';
 import type { ResolvedSpecEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
-import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
+import { codeReviewOf, commandFor, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims, specEdgeHolds } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
@@ -180,7 +180,7 @@ export interface DashboardSpecRow {
   readonly progress: Progress;
   /** Null when the spec has no tasks.md. */
   readonly tasks: { readonly landed: number; readonly total: number } | null;
-  /** E.g. `/spec-implement 002`; null for a complete spec. */
+  /** E.g. `/spec implement 002`; null for a complete spec. */
   readonly nextCommand: string | null;
   /** Why that command is next, one phrase (e.g. `ISC-334 is takeable`). */
   readonly nextReason: string;
@@ -701,12 +701,12 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   // As the old collect(): drift always; the rest only while the spec is open, since completing it closed them.
   const warnings: SpecWarning[] = [];
   if (drift !== null && hasDrift(drift)) {
-    warnings.push({ kind: 'drift', text: `drift to the master: ${driftClasses(drift).join(', ')}`, command: `/spec-sync ${id}` });
+    warnings.push({ kind: 'drift', text: `drift to the master: ${driftClasses(drift).join(', ')}`, command: commandFor(null, id) });
   }
   if (phase !== 'complete') {
     if (reviewed.state !== 'fresh') {
       const text = reviewed.state === 'stale' ? `reviewed mark is stale (${reviewed.changed.join(', ') || 'unreadable'})` : 'no reviewed mark yet';
-      warnings.push({ kind: 'review', text, command: `/spec-review ${id}` });
+      warnings.push({ kind: 'review', text, command: commandFor('review', id) });
     }
     // Only the files that exist: a missing plan is the next command's business, not a diagram warning.
     const missing = diagrams.missing.filter((file) => file === 'spec.md' || plan !== null);

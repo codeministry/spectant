@@ -100,7 +100,7 @@ describe('refusal-notice for a running run (T59, ISC-225.1)', () => {
     stage: 'tasks',
     to: 'review',
     kind: 'run-locked',
-    command: '/spec-tasks 003',
+    command: '/spec tasks 003',
     actor: 'a:claude:sess-32',
     elapsedMs: 480_000,
   };
@@ -108,7 +108,7 @@ describe('refusal-notice for a running run (T59, ISC-225.1)', () => {
   it('names the item, the command, the actor and the duration in one line, fail tone as an alert', async () => {
     const n = await mount(RUN);
     expect(n.getAttribute('data-refusal')).toBe('run-locked');
-    expect(text(n.querySelector('[data-head][data-run-refusal]'))).toBe('Not moved — 003 is running: /spec-tasks 003 · a:claude:sess-32 · since 8 min');
+    expect(text(n.querySelector('[data-head][data-run-refusal]'))).toBe('Not moved — 003 is running: /spec tasks 003 · a:claude:sess-32 · since 8 min');
     expect(n.querySelector('ui-reason')).toBeNull();
     expect(n.querySelector('ui-notice')?.getAttribute('role')).toBe('alert');
     expect(n.querySelector('[data-dismiss]')).not.toBeNull();
@@ -116,7 +116,7 @@ describe('refusal-notice for a running run (T59, ISC-225.1)', () => {
 
   it('German from the de catalogue, "—" for what the source does not name, and no ✕ where it is not dismissible', async () => {
     const n = await mount({ ...RUN, actor: null, elapsedMs: null }, 'de');
-    expect(text(n.querySelector('[data-head]'))).toBe('Nicht verschoben — 003 läuft: /spec-tasks 003 · — · seit —');
+    expect(text(n.querySelector('[data-head]'))).toBe('Nicht verschoben — 003 läuft: /spec tasks 003 · — · seit —');
     fixture.componentInstance.dismissible.set(false);
     fixture.detectChanges();
     expect(n.querySelector('[data-dismiss]')).toBeNull();

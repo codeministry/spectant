@@ -910,7 +910,7 @@
           "id": "ISC-74",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "ISC-74 is takeable"
         }
       },
@@ -942,7 +942,7 @@
           "id": "ISC-75",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "ISC-75 is takeable"
         }
       },
@@ -974,7 +974,7 @@
           "id": "ISC-76",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "ISC-76 is takeable"
         }
       },
@@ -1006,7 +1006,7 @@
           "id": "ISC-77",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "ISC-77 is takeable"
         }
       },
@@ -1135,7 +1135,7 @@
           "id": "ISC-81",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -1208,7 +1208,7 @@
           "id": "ISC-83",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -1281,7 +1281,7 @@
           "id": "ISC-85",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -1354,7 +1354,7 @@
           "id": "ISC-87",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -1427,7 +1427,7 @@
           "id": "ISC-89",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -1500,7 +1500,7 @@
           "id": "ISC-91",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -1573,7 +1573,7 @@
           "id": "ISC-93",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -2749,7 +2749,7 @@
           "id": "ISC-94",
           "spec": "005",
           "state": "open",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -2814,7 +2814,7 @@
           "id": "ISC-1",
           "spec": "006",
           "state": "open",
-          "command": "/spec-implement 006",
+          "command": "/spec implement 006",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -2846,7 +2846,7 @@
           "id": "ISC-2",
           "spec": "006",
           "state": "open",
-          "command": "/spec-implement 006",
+          "command": "/spec implement 006",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -2878,7 +2878,7 @@
           "id": "ISC-3",
           "spec": "006",
           "state": "open",
-          "command": "/spec-implement 006",
+          "command": "/spec implement 006",
           "reason": "the reviewed mark is stale"
         }
       },
@@ -2910,7 +2910,7 @@
           "id": "ISC-125",
           "spec": "006",
           "state": "open",
-          "command": "/spec-implement 006",
+          "command": "/spec implement 006",
           "reason": "the reviewed mark is stale"
         }
       }
@@ -3173,7 +3173,7 @@
           "id": "ISC-131",
           "spec": "009",
           "state": "open",
-          "command": "/spec-implement 009",
+          "command": "/spec implement 009",
           "reason": "ISC-131 is takeable"
         }
       }

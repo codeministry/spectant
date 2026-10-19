@@ -29,16 +29,14 @@
   }
 
   @if (techAbsent()) {
-    <!-- design.md 017 § 8: no specs/tech.md yet, the empty state with the command that writes it. -->
+    <!-- design.md 017 § 8: no specs/tech.md yet, the empty state; it names no command (the Spec plugin has none that writes it, spec 031). -->
     <ui-empty-state
       class="lib-missing-reader"
       data-library-tech-empty
       icon="book-open"
       [heading]="'library.tech.emptyHeading' | transloco"
       [body]="'library.tech.emptyBody' | transloco"
-    >
-      <ui-command-chip command="/spec-doc" [copyLabel]="'common.copyCommand' | transloco" />
-    </ui-empty-state>
+    />
   } @else if (doc.state === 'missing') {
     <!-- Prototype `mutedTab` (pages.js): the empty state with the command that writes the file. -->
     <ui-empty-state

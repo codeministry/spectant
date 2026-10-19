@@ -135,7 +135,7 @@ type WriteState =
 
       <ui-dialog [(open)]="dialogOpen" [label]="'status.dialog.heading' | transloco">
         <div class="dialog-body" data-gate-dialog>
-          <h2 class="title">{{ 'status.dialog.title' | transloco: { id: specId() ?? '' } }} <code>/spec-implement</code>?</h2>
+          <h2 class="title">{{ 'status.dialog.title' | transloco: { id: specId() ?? '' } }} <code>/spec implement</code>?</h2>
           <p class="intro">{{ 'status.dialog.intro' | transloco }}</p>
           @switch (write().kind) {
             @case ('conflict') {

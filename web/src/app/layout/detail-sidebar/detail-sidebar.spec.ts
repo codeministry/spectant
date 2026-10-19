@@ -263,7 +263,7 @@ describe('DetailSidebar', () => {
       id: '025',
       state: 'running',
       stage: 'build',
-      run: { run: 'r-1', command: '/spec-implement 025', session: 'a:claude:s1', actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false }, since: '2026-10-17T14:02:00Z', elapsedMs: 180_000, openRuns: 1, source: 'run' },
+      run: { run: 'r-1', command: '/spec implement 025', session: 'a:claude:s1', actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false }, since: '2026-10-17T14:02:00Z', elapsedMs: 180_000, openRuns: 1, source: 'run' },
     };
     dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', state: running }] } });
     await go('/w/harbor?sel=spec:025');

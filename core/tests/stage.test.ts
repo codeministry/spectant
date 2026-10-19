@@ -9,7 +9,7 @@
 // - the claim partition (T34, status.ts): the old IsaFrontier rule with no locks (resolved = checked or dropped; an
 //   open claim is takeable when every `after` claim is resolved, else blocked).
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { parseClaims } from '../src/claims.ts';
@@ -37,6 +37,9 @@ import {
   nextCommandWithReason,
   reasonOf,
   stageMismatchOf,
+  SPEC_SUBCOMMANDS,
+  commandFor,
+  commandWith,
   stageOf,
   storyStep,
   transitionsOf,
@@ -44,6 +47,7 @@ import {
   type Stage,
   type StageInput,
   type StageRule,
+  pluginCommand,
 } from '../src/stage.ts';
 import { planTransition } from '../src/transition.ts';
 import { parseWorkflow } from '../src/workflow.ts';
@@ -123,22 +127,22 @@ const missing: MarkState = 'missing';
 // Stage and next command as the old skill derives them (see the header); harbor rows as the README states them.
 const CASES: readonly FixtureCase[] = [
   { rel: 'harbor/specs/archive/001-manifest-sync', gates: { reviewed: fresh, codeReviewed: stale }, total: 46, resolved: 46, takeable: 0, stage: 'done', next: null },
-  { rel: 'harbor/specs/002-web-console', gates: { reviewed: fresh, codeReviewed: missing }, total: 30, resolved: 25, takeable: 4, stage: 'build', next: '/spec-implement 002' },
-  { rel: 'harbor/specs/003-config-loader', gates: { reviewed: missing, codeReviewed: missing }, total: 13, resolved: 0, takeable: 7, stage: 'tasks', next: '/spec-tasks 003' },
-  { rel: 'harbor/specs/004-retention-policies', gates: { reviewed: fresh, codeReviewed: stale }, total: 30, resolved: 30, takeable: 0, stage: 'code-review', next: '/spec-code-review 004' },
-  { rel: 'harbor/specs/005-config-format-choice', gates: { reviewed: missing, codeReviewed: missing }, total: 1, resolved: 0, takeable: 1, stage: 'review', next: '/spec-review 005' },
-  { rel: 'harbor/specs/006-partial-push', gates: { reviewed: stale, codeReviewed: missing }, total: 4, resolved: 0, takeable: 4, stage: 'review', next: '/spec-review 006' },
+  { rel: 'harbor/specs/002-web-console', gates: { reviewed: fresh, codeReviewed: missing }, total: 30, resolved: 25, takeable: 4, stage: 'build', next: '/spec implement 002' },
+  { rel: 'harbor/specs/003-config-loader', gates: { reviewed: missing, codeReviewed: missing }, total: 13, resolved: 0, takeable: 7, stage: 'tasks', next: '/spec tasks 003' },
+  { rel: 'harbor/specs/004-retention-policies', gates: { reviewed: fresh, codeReviewed: stale }, total: 30, resolved: 30, takeable: 0, stage: 'code-review', next: '/spec review 004 code' },
+  { rel: 'harbor/specs/005-config-format-choice', gates: { reviewed: missing, codeReviewed: missing }, total: 1, resolved: 0, takeable: 1, stage: 'review', next: '/spec review 005' },
+  { rel: 'harbor/specs/006-partial-push', gates: { reviewed: stale, codeReviewed: missing }, total: 4, resolved: 0, takeable: 4, stage: 'review', next: '/spec review 006' },
   // The chore (spec 008): reviewed, every claim closed, so the chore row makes it done (T50); the old skill knew no chore.
   { rel: 'harbor/specs/007-rotate-mirror-token', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 2, takeable: 0, stage: 'done', next: null },
   // The spike pair of F6: 008 closed, 009 open. Under the default code review, as here, 008 waits for its code review;
   // harbor's `code_review: feature` makes it close-pending (the close-pending tests below, T49).
-  { rel: 'harbor/specs/008-referrers-support', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 2, takeable: 0, stage: 'code-review', next: '/spec-code-review 008' },
-  { rel: 'harbor/specs/009-chunked-upload-limits', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 1, takeable: 1, stage: 'build', next: '/spec-implement 009' },
-  { rel: 'lantern/specs/001-reading-list', gates: { reviewed: fresh, codeReviewed: missing }, total: 8, resolved: 4, takeable: 2, stage: 'build', next: '/spec-implement 001' },
-  { rel: 'lantern/specs/002-duplicate-links', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 0, takeable: 2, stage: 'build', next: '/spec-implement 002' },
+  { rel: 'harbor/specs/008-referrers-support', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 2, takeable: 0, stage: 'code-review', next: '/spec review 008 code' },
+  { rel: 'harbor/specs/009-chunked-upload-limits', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 1, takeable: 1, stage: 'build', next: '/spec implement 009' },
+  { rel: 'lantern/specs/001-reading-list', gates: { reviewed: fresh, codeReviewed: missing }, total: 8, resolved: 4, takeable: 2, stage: 'build', next: '/spec implement 001' },
+  { rel: 'lantern/specs/002-duplicate-links', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 0, takeable: 2, stage: 'build', next: '/spec implement 002' },
   // The frozen copy carries no `.gates/`, so the old skill derives review here, not build.
-  { rel: 'spectant-001/specs/001-app-skeleton', gates: { reviewed: missing, codeReviewed: missing }, total: 47, resolved: 14, takeable: 29, stage: 'review', next: '/spec-review 001' },
-  { rel: 'leadgen/specs/012-pwa-install', gates: { reviewed: fresh, codeReviewed: missing }, total: 10, resolved: 9, takeable: 1, stage: 'build', next: '/spec-implement 012' },
+  { rel: 'spectant-001/specs/001-app-skeleton', gates: { reviewed: missing, codeReviewed: missing }, total: 47, resolved: 14, takeable: 29, stage: 'review', next: '/spec review 001' },
+  { rel: 'leadgen/specs/012-pwa-install', gates: { reviewed: fresh, codeReviewed: missing }, total: 10, resolved: 9, takeable: 1, stage: 'build', next: '/spec implement 012' },
   { rel: 'leadgen/specs/022-chat-turn-status-and-bulk-delete', gates: { reviewed: fresh, codeReviewed: stale }, total: 8, resolved: 8, takeable: 0, stage: 'done', next: null },
   { rel: 'leadgen/specs/archive/013-tech-debt', gates: { reviewed: missing, codeReviewed: missing }, total: 15, resolved: 15, takeable: 0, stage: 'done', next: null },
 ];
@@ -168,7 +172,7 @@ describe('stage per fixture spec equals the old derivation', () => {
     expect(nextCommandWithReason(input)).toEqual({
       stage: 'build',
       stageSource: 'derived',
-      command: '/spec-implement 012',
+      command: '/spec implement 012',
       reason: 'ISC-334 is takeable',
       row: 6,
     });
@@ -214,17 +218,17 @@ const ALL_CLOSED: Partial<StageInput> = {
 describe('STAGE_RULES is the status contract as data', () => {
   test('eleven rows in table order, each with its command', () => {
     expect(STAGE_RULES.map((r) => [r.stage, r.next])).toEqual([
-      ['idea', '/spec new'],
+      ['idea', '/spec new <slug>'],
       ['done', null],
-      ['plan', '/spec-plan'],
-      ['tasks', '/spec-tasks'],
-      ['review', '/spec-review'],
-      ['build', '/spec-implement'],
+      ['plan', '/spec plan NNN'],
+      ['tasks', '/spec tasks NNN'],
+      ['review', '/spec review NNN'],
+      ['build', '/spec implement NNN'],
       ['done', null],
       ['close-pending', null],
-      ['code-review', '/spec-code-review'],
-      ['close', '/spec-complete'],
-      ['blocked', '/spec-status'],
+      ['code-review', '/spec review NNN code'],
+      ['close', '/spec done NNN'],
+      ['blocked', '/spec NNN'],
     ]);
   });
 
@@ -244,7 +248,7 @@ describe('STAGE_RULES is the status contract as data', () => {
     const input = at({});
     const first = SPEC_RULES.find((r) => r.when(input));
     expect(first?.stage).toBe(stageOf(input));
-    expect(nextCommand(input)).toBe(`${first?.next ?? ''} 007`);
+    expect(nextCommand(input)).toBe(commandWith(first?.next ?? '', '007'));
   });
 });
 
@@ -252,19 +256,19 @@ describe('one synthetic case per row', () => {
   const rows: ReadonlyArray<[string, StageInput, Stage, string | null]> = [
     ['done: phase complete', at({ phase: 'complete' }), 'done', null],
     ['chore done: every claim closed, no code-reviewed mark, no phase edit', at({ type: 'chore', hasPlan: false, hasTasks: false, ...ALL_CLOSED }), 'done', null],
-    ['plan: a feature without plan.md', at({ hasPlan: false }), 'plan', '/spec-plan 007'],
-    ['plan: an infra spec without plan.md', at({ type: 'infra', hasPlan: false, hasTasks: false }), 'plan', '/spec-plan 007'],
-    ['plan: a project without plan.md', at({ type: 'project', hasPlan: false }), 'plan', '/spec-plan 007'],
-    ['tasks: a feature with four claims and no tasks.md', at({ hasTasks: false }), 'tasks', '/spec-tasks 007'],
-    ['tasks: a refactor with three claims and no tasks.md', at({ type: 'refactor', hasPlan: false, hasTasks: false, partition: { takeable: 1, open: 1, closed: 1, dropped: 0 } }), 'tasks', '/spec-tasks 007'],
-    ['review: the reviewed mark is missing', at({ reviewed: 'missing' }), 'review', '/spec-review 007'],
-    ['review: the reviewed mark is stale', at({ reviewed: 'stale' }), 'review', '/spec-review 007'],
-    ['build: a claim is takeable', at({}), 'build', '/spec-implement 007'],
-    ['code-review: all closed, code-reviewed mark missing', at({ ...ALL_CLOSED }), 'code-review', '/spec-code-review 007'],
-    ['code-review: all closed, code-reviewed mark stale', at({ ...ALL_CLOSED, codeReviewed: 'stale' }), 'code-review', '/spec-code-review 007'],
-    ['close: all closed and code-reviewed', at({ ...ALL_CLOSED, codeReviewed: 'fresh' }), 'close', '/spec-complete 007'],
-    ['blocked: open claims, none takeable', at({ takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } }), 'blocked', '/spec-status 007'],
-    ['blocked: no claims at all falls through to status', at({ claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } }), 'blocked', '/spec-status 007'],
+    ['plan: a feature without plan.md', at({ hasPlan: false }), 'plan', '/spec plan 007'],
+    ['plan: an infra spec without plan.md', at({ type: 'infra', hasPlan: false, hasTasks: false }), 'plan', '/spec plan 007'],
+    ['plan: a project without plan.md', at({ type: 'project', hasPlan: false }), 'plan', '/spec plan 007'],
+    ['tasks: a feature with four claims and no tasks.md', at({ hasTasks: false }), 'tasks', '/spec tasks 007'],
+    ['tasks: a refactor with three claims and no tasks.md', at({ type: 'refactor', hasPlan: false, hasTasks: false, partition: { takeable: 1, open: 1, closed: 1, dropped: 0 } }), 'tasks', '/spec tasks 007'],
+    ['review: the reviewed mark is missing', at({ reviewed: 'missing' }), 'review', '/spec review 007'],
+    ['review: the reviewed mark is stale', at({ reviewed: 'stale' }), 'review', '/spec review 007'],
+    ['build: a claim is takeable', at({}), 'build', '/spec implement 007'],
+    ['code-review: all closed, code-reviewed mark missing', at({ ...ALL_CLOSED }), 'code-review', '/spec review 007 code'],
+    ['code-review: all closed, code-reviewed mark stale', at({ ...ALL_CLOSED, codeReviewed: 'stale' }), 'code-review', '/spec review 007 code'],
+    ['close: all closed and code-reviewed', at({ ...ALL_CLOSED, codeReviewed: 'fresh' }), 'close', '/spec done 007'],
+    ['blocked: open claims, none takeable', at({ takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } }), 'blocked', '/spec 007'],
+    ['blocked: no claims at all falls through to status', at({ claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } }), 'blocked', '/spec 007'],
   ];
   for (const [name, input, stage, next] of rows) {
     test(name, () => {
@@ -317,7 +321,7 @@ describe('code_review none', () => {
       expect(nextCommandWithReason(at({ type, codeReview: 'none', ...ALL_CLOSED, codeReviewed: 'missing' }))).toEqual({
         stage: 'close',
         stageSource: 'derived',
-        command: '/spec-complete 007',
+        command: '/spec done 007',
         reason: 'every claim is closed and the workflow has no code review',
         row: 10,
       });
@@ -340,7 +344,7 @@ describe('code_review none', () => {
     expect(stageOf(at({ codeReview: 'feature', ...ALL_CLOSED }))).toBe('code-review');
   });
 
-  // ISC-183.1: `/spec-code-review` stays callable; the mark it writes changes nothing under `none`.
+  // ISC-183.1: `/spec review NNN code` stays callable; the mark it writes changes nothing under `none`.
   test('voluntary mark: a fresh or stale code-reviewed mark under none gives the same stage, reason and command', () => {
     for (const type of NO_REVIEW_TYPES) {
       const without = nextCommandWithReason(at({ type, codeReview: 'none', ...ALL_CLOSED, codeReviewed: 'missing' }));
@@ -482,7 +486,7 @@ const TABLE_HEAD = ['| # | Stage | Condition | Next command | Reason |', '|---|-
 
 /** A rule as the markdown row FORMAT.md must hold for it: a spec row's command takes `NNN`, the story row's `<slug>`. */
 function renderRow(rule: StageRule, index: number): string {
-  const next = rule.next === null ? '—' : code(`${rule.next} ${rule.subject === 'story' ? '<slug>' : 'NNN'}`);
+  const next = rule.next === null ? '—' : code(rule.next);
   return `| ${index + 1} | ${code(rule.stage)} | ${rule.condition} | ${next} | ${rule.reasons.map(code).join(' or ')} |`;
 }
 
@@ -638,64 +642,64 @@ type Walked = readonly [folder: string, stage: Stage, command: string | null, re
 const WALK: Readonly<Record<string, readonly Walked[]>> = {
   'empty-master': [],
   harbor: [
-    ['specs/002-web-console', 'build', '/spec-implement 002', 'ISC-74, ISC-75 and 2 more are takeable'],
-    ['specs/003-config-loader', 'tasks', '/spec-tasks 003', '13 claims and no tasks.md'],
-    ['specs/004-retention-policies', 'code-review', '/spec-code-review 004', 'every claim is closed and the code-reviewed mark is stale'],
-    ['specs/005-config-format-choice', 'review', '/spec-review 005', 'the reviewed mark is missing'],
-    ['specs/006-partial-push', 'review', '/spec-review 006', 'the reviewed mark is stale'],
+    ['specs/002-web-console', 'build', '/spec implement 002', 'ISC-74, ISC-75 and 2 more are takeable'],
+    ['specs/003-config-loader', 'tasks', '/spec tasks 003', '13 claims and no tasks.md'],
+    ['specs/004-retention-policies', 'code-review', '/spec review 004 code', 'every claim is closed and the code-reviewed mark is stale'],
+    ['specs/005-config-format-choice', 'review', '/spec review 005', 'the reviewed mark is missing'],
+    ['specs/006-partial-push', 'review', '/spec review 006', 'the reviewed mark is stale'],
     // The chore, reviewed with every claim closed: done by the chore row (spec 008, T50).
     ['specs/007-rotate-mirror-token', 'done', null, 'every claim of the chore is closed'],
     // The spike pair of F6 under `code_review: feature`: 008 waits on its open sibling 009 (spec 008, T49).
     ['specs/008-referrers-support', 'close-pending', null, 'every claim is closed and F6 waits on spec 009'],
-    ['specs/009-chunked-upload-limits', 'build', '/spec-implement 009', 'ISC-131 is takeable'],
+    ['specs/009-chunked-upload-limits', 'build', '/spec implement 009', 'ISC-131 is takeable'],
     ['specs/archive/001-manifest-sync', 'done', null, 'phase: complete'],
   ],
   lantern: [
-    ['specs/001-reading-list', 'build', '/spec-implement 001', 'ISC-7 and ISC-9 are takeable'],
-    ['specs/002-duplicate-links', 'build', '/spec-implement 002', 'ISC-11 and ISC-12 are takeable'],
+    ['specs/001-reading-list', 'build', '/spec implement 001', 'ISC-7 and ISC-9 are takeable'],
+    ['specs/002-duplicate-links', 'build', '/spec implement 002', 'ISC-11 and ISC-12 are takeable'],
   ],
   leadgen: [
-    ['specs/012-pwa-install', 'build', '/spec-implement 012', 'ISC-334 is takeable'],
+    ['specs/012-pwa-install', 'build', '/spec implement 012', 'ISC-334 is takeable'],
     ['specs/022-chat-turn-status-and-bulk-delete', 'done', null, 'phase: complete'],
     ['specs/archive/013-tech-debt', 'done', null, 'phase: complete'],
   ],
   // Spec 026: the feature specs carry no plan.md and no gates; the completed 001 is done by its phase.
   'milestone-lines': [
     ['specs/001-signal-intake', 'done', null, 'phase: complete'],
-    ['specs/002-alert-routing', 'plan', '/spec-plan 002', 'a feature spec needs plan.md and it is missing'],
-    ['specs/003-escalation-chains', 'plan', '/spec-plan 003', 'a feature spec needs plan.md and it is missing'],
+    ['specs/002-alert-routing', 'plan', '/spec plan 002', 'a feature spec needs plan.md and it is missing'],
+    ['specs/003-escalation-chains', 'plan', '/spec plan 003', 'a feature spec needs plan.md and it is missing'],
   ],
-  'spectant-001': [['specs/001-app-skeleton', 'review', '/spec-review 001', 'the reviewed mark is missing']],
+  'spectant-001': [['specs/001-app-skeleton', 'review', '/spec review 001', 'the reviewed mark is missing']],
   // Spec 036: the backlog tree holds a master and specs/backlog.md, no spec folder.
   'backlog-ranks': [],
   // Spec 040: the item-state tree, every spec row of the stage table at least once (beacon/generate.ts).
   beacon: [
     ['specs/001-check-scheduler', 'done', null, 'phase: complete'],
-    ['specs/002-status-page', 'plan', '/spec-plan 002', 'a feature spec needs plan.md and it is missing'],
-    ['specs/003-alert-rules', 'tasks', '/spec-tasks 003', '3 claims and no tasks.md'],
-    ['specs/004-incident-notes', 'review', '/spec-review 004', 'the reviewed mark is stale'],
-    ['specs/005-probe-agents', 'build', '/spec-implement 005', 'ISC-15, ISC-16 and 1 more are takeable'],
-    ['specs/006-retry-backoff', 'code-review', '/spec-code-review 006', 'every claim is closed and the code-reviewed mark is stale'],
+    ['specs/002-status-page', 'plan', '/spec plan 002', 'a feature spec needs plan.md and it is missing'],
+    ['specs/003-alert-rules', 'tasks', '/spec tasks 003', '3 claims and no tasks.md'],
+    ['specs/004-incident-notes', 'review', '/spec review 004', 'the reviewed mark is stale'],
+    ['specs/005-probe-agents', 'build', '/spec implement 005', 'ISC-15, ISC-16 and 1 more are takeable'],
+    ['specs/006-retry-backoff', 'code-review', '/spec review 006 code', 'every claim is closed and the code-reviewed mark is stale'],
     ['specs/007-history-export', 'close-pending', null, 'every claim is closed and F6 waits on spec 008'],
-    ['specs/008-export-formats', 'build', '/spec-implement 008', 'ISC-25 is takeable'],
-    ['specs/009-timezone-labels', 'close', '/spec-complete 009', 'every claim is closed and the workflow has no code review'],
+    ['specs/008-export-formats', 'build', '/spec implement 008', 'ISC-25 is takeable'],
+    ['specs/009-timezone-labels', 'close', '/spec done 009', 'every claim is closed and the workflow has no code review'],
     ['specs/010-renew-api-key', 'done', null, 'every claim of the chore is closed'],
-    ['specs/011-maintenance-windows', 'blocked', '/spec-status 011', 'waits on 002'],
+    ['specs/011-maintenance-windows', 'blocked', '/spec 011', 'waits on 002'],
   ],
   // Spec 020: the guidance tree, each spec standing where its waits or next case needs it (guidance/generate.ts).
   guidance: [
-    ['specs/001-flag-targeting', 'review', '/spec-review 001', 'the reviewed mark is stale'],
-    ['specs/002-audit-trail', 'review', '/spec-review 002', 'the reviewed mark is missing'],
-    ['specs/003-flag-expiry', 'review', '/spec-review 003', 'the reviewed mark is stale'],
-    ['specs/004-cache-layer', 'code-review', '/spec-code-review 004', 'every claim is closed and the code-reviewed mark is stale'],
-    ['specs/005-sdk-rollout', 'build', '/spec-implement 005', 'ISC-13 and ISC-14 are takeable'],
+    ['specs/001-flag-targeting', 'review', '/spec review 001', 'the reviewed mark is stale'],
+    ['specs/002-audit-trail', 'review', '/spec review 002', 'the reviewed mark is missing'],
+    ['specs/003-flag-expiry', 'review', '/spec review 003', 'the reviewed mark is stale'],
+    ['specs/004-cache-layer', 'code-review', '/spec review 004 code', 'every claim is closed and the code-reviewed mark is stale'],
+    ['specs/005-sdk-rollout', 'build', '/spec implement 005', 'ISC-13 and ISC-14 are takeable'],
     ['specs/006-sdk-benchmarks', 'close-pending', null, 'every claim is closed and F5 waits on spec 005'],
-    ['specs/007-segment-builder', 'plan', '/spec-plan 007', 'a feature spec needs plan.md and it is missing'],
-    ['specs/008-change-webhooks', 'tasks', '/spec-tasks 008', '3 claims and no tasks.md'],
-    ['specs/009-percent-rounding', 'review', '/spec-review 009', 'the reviewed mark is missing'],
-    ['specs/010-banner-copy', 'close', '/spec-complete 010', 'every claim is closed and the workflow has no code review'],
+    ['specs/007-segment-builder', 'plan', '/spec plan 007', 'a feature spec needs plan.md and it is missing'],
+    ['specs/008-change-webhooks', 'tasks', '/spec tasks 008', '3 claims and no tasks.md'],
+    ['specs/009-percent-rounding', 'review', '/spec review 009', 'the reviewed mark is missing'],
+    ['specs/010-banner-copy', 'close', '/spec done 010', 'every claim is closed and the workflow has no code review'],
     ['specs/011-flag-store', 'done', null, 'phase: complete'],
-    ['specs/012-segment-export', 'blocked', '/spec-status 012', 'waits on 007'],
+    ['specs/012-segment-export', 'blocked', '/spec 012', 'waits on 007'],
   ],
 };
 
@@ -714,7 +718,7 @@ function expectTableRow(folder: string, stage: Stage, command: string | null, re
   expect(rule).toBeDefined();
   const number = (folder.split('/').pop() ?? '').slice(0, 3);
   const next = rule?.next ?? null;
-  expect(command).toBe(next === null ? null : `${next} ${number}`);
+  expect(command).toBe(next === null ? null : commandWith(next, number));
 }
 
 describe('every fixture spec derives the stage table row it names (ISC-79)', () => {
@@ -972,7 +976,7 @@ describe('explicit stage (T47, ISC-120)', () => {
     expect(nextCommandWithReason(input)).toEqual({
       stage: 'build',
       stageSource: 'explicit',
-      command: '/spec-review 007',
+      command: '/spec review 007',
       reason: 'the reviewed mark is stale',
       row: 5,
     });
@@ -1101,7 +1105,7 @@ describe('illegal transitions (T72, ISC-31)', () => {
       partition: { takeable: 1, open: 0, closed: 0, dropped: 0 },
       featureSiblingsOpen: [],
     });
-    expect(plan).toEqual({ ok: false, from: 'build', to: 'review', reason: 'the bug workflow lists no move build → review', command: '/spec-implement 010' });
+    expect(plan).toEqual({ ok: false, from: 'build', to: 'review', reason: 'the bug workflow lists no move build → review', command: '/spec implement 010' });
   });
 });
 
@@ -1310,7 +1314,7 @@ describe('close-pending (T49, ISC-122.2)', () => {
   test('close-pending on harbor: under the default workflow 008 is an ordinary closed spike', () => {
     const tree = readTree('harbor');
     const row = buildDashboard({ ...tree, workflow: parseWorkflow(null) }).specs.find((s) => s.slug === '008-referrers-support');
-    expect([row?.stage, row?.nextCommand]).toEqual(['code-review', '/spec-code-review 008']);
+    expect([row?.stage, row?.nextCommand]).toEqual(['code-review', '/spec review 008 code']);
   });
 });
 
@@ -1478,4 +1482,87 @@ describe('guidance: matchReason', () => {
     expect(matchReason('close', 'every claim is closed and code-reviewed.')).toBeNull();
   });
 
+});
+
+// Spec 031 (ISC-265): the app names every next command in the plugin's form, `/spec <subcommand> NNN`, built by one
+// function, `commandFor`; no text in core/src names an old `/spec-<name>` command any more. The bare `/spec NNN` is
+// the plugin's status row (status, drift and sync of one spec); the code review is `/spec review NNN code`.
+describe('plugin commands (spec 031, ISC-265)', () => {
+  /** A command in plugin form: `/spec`, an optional subcommand, the argument, and `code` for the code review only. */
+  const PLUGIN_FORM = /^\/spec(?: (?:plan|tasks|implement|review|done))? (?:\d{3}|NNN)$|^\/spec review (?:\d{3}|NNN) code$/;
+
+  test('plugin commands: commandFor names /spec <sub> NNN, /spec <sub> without an id, and the bare /spec', () => {
+    expect(SPEC_SUBCOMMANDS).toEqual(['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done']);
+    expect(commandFor('tasks', '003')).toBe('/spec tasks 003');
+    expect(commandFor('review', '003', 'code')).toBe('/spec review 003 code');
+    expect(commandFor('init')).toBe('/spec init');
+    expect(commandFor(null)).toBe('/spec');
+    expect(commandFor(null, '003')).toBe('/spec 003');
+  });
+
+  test('plugin commands: every stage row names its command in plugin form', () => {
+    expect(STAGE_RULES.map((r) => [r.stage, r.next])).toEqual([
+      ['idea', '/spec new <slug>'],
+      ['done', null],
+      ['plan', '/spec plan NNN'],
+      ['tasks', '/spec tasks NNN'],
+      ['review', '/spec review NNN'],
+      ['build', '/spec implement NNN'],
+      ['done', null],
+      ['close-pending', null],
+      ['code-review', '/spec review NNN code'],
+      ['close', '/spec done NNN'],
+      ['blocked', '/spec NNN'],
+    ]);
+    for (const rule of SPEC_RULES) if (rule.next !== null) expect(rule.next).toMatch(PLUGIN_FORM);
+    expect(storyStep('console-audit-log').command).toBe('/spec new console-audit-log');
+  });
+
+  test('plugin commands: every nextCommand result reads /spec <sub> NNN', () => {
+    const inputs: StageInput[] = [
+      at({ hasPlan: false }),
+      at({ hasTasks: false }),
+      at({ reviewed: 'missing' }),
+      at({}),
+      at({ ...ALL_CLOSED }),
+      at({ ...ALL_CLOSED, codeReviewed: 'fresh' }),
+      at({ takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } }),
+    ];
+    expect(inputs.map((input) => nextCommand(input))).toEqual([
+      '/spec plan 007',
+      '/spec tasks 007',
+      '/spec review 007',
+      '/spec implement 007',
+      '/spec review 007 code',
+      '/spec done 007',
+      '/spec 007',
+    ]);
+    for (const c of CASES) {
+      const command = nextCommand(specInput(c.rel, c.gates).input);
+      if (command !== null) expect(command).toMatch(PLUGIN_FORM);
+    }
+  });
+
+  test('plugin commands: no text in core/src names an old /spec-<name> command', () => {
+    const src = join(import.meta.dir, '..', 'src');
+    // A module path (`./spec-ref.ts`) is no command: a slash after a dot or a word character separates a path.
+    const OLD = /(?:^|[^.\w])\/spec-[a-z]+/;
+    const hits = readdirSync(src)
+      .filter((name) => name.endsWith('.ts'))
+      .flatMap((name) =>
+        readFileSync(join(src, name), 'utf8')
+          .split('\n')
+          .flatMap((line, i) => (OLD.test(line) ? [`${name}:${i + 1}: ${line.trim()}`] : [])),
+      );
+    expect(hits).toEqual([]);
+  });
+});
+
+describe('plugin commands: recorded commands as the app shows them (spec 031, ISC-265)', () => {
+  test('plugin commands: an old skill name from a log reads in the plugin form', () => {
+    expect(pluginCommand('/spec-tasks 003')).toBe('/spec tasks 003');
+    expect(pluginCommand('/spec-code-review 004')).toBe('/spec review 004 code');
+    expect(pluginCommand('/spec tasks 003')).toBe('/spec tasks 003');
+    expect(pluginCommand('/spec-tldr')).toBe('/spec-tldr');
+  });
 });

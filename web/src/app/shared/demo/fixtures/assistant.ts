@@ -6,7 +6,7 @@ export interface DemoAssistantReply {
 }
 
 export const DEMO_ASSISTANT_REPLIES: readonly DemoAssistantReply[] = Object.freeze([
-  { prompt: 'What is next?', reply: 'Spec 002 is in building: T13 is takeable. Run `/spec-implement 002` to continue.' },
+  { prompt: 'What is next?', reply: 'Spec 002 is in building: T13 is takeable. Run `/spec implement 002` to continue.' },
   { prompt: 'Why is 004 stale?', reply: 'The code tree changed after the code-reviewed mark: 3 files. Review again before you close it.' },
   { prompt: 'Summarise the open claims', reply: '5 of 12 claims are open across 2 specs; none is blocked.' },
 ] satisfies DemoAssistantReply[]);

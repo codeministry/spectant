@@ -24,7 +24,7 @@
         <div class="sg-col">
           <ui-scrubber [frames]="idleFrames" [(value)]="idleValue" ariaLabel="Frames, no rounds yet" />
           <ui-disclosure [open]="true">
-            <span uiDisclosureSummary>plan not run yet · <code class="sg-mono">/spec-implement 002</code> starts round 1 · {{ waiting.length }}</span>
+            <span uiDisclosureSummary>plan not run yet · <code class="sg-mono">/spec implement 002</code> starts round 1 · {{ waiting.length }}</span>
             <div class="sg-col">
               @for (card of waiting; track card.task) {
                 <app-board-card [card]="card" density="compact" />
@@ -42,7 +42,7 @@
       <ui-card>
         <div class="sg-col">
           <header class="sg-lane-head"><span class="sg-lane-dot" aria-hidden="true"></span><h3>core</h3></header>
-          <p class="sg-note sg-mono">nothing in flight · next /spec-implement 002</p>
+          <p class="sg-note sg-mono">nothing in flight · next /spec implement 002</p>
           <p class="sg-eyebrow">Landed {{ landed.length }}</p>
           @for (card of landed; track card.task) {
             <app-board-card [card]="card" density="compact" />

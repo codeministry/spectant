@@ -6,7 +6,7 @@
       "title": "Web console",
       "type": "feature",
       "stage": "build",
-      "nextCommand": "/spec-implement 002",
+      "nextCommand": "/spec implement 002",
       "nextReason": "ISC-74, ISC-75 and 2 more are takeable",
       "phase": "building",
       "started": "2026-03-03T10:00:00Z",
@@ -31,7 +31,7 @@
         "id": "002",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 002",
+        "command": "/spec implement 002",
         "reason": "ISC-75, ISC-76 and 1 more are takeable"
       }
     },
@@ -59,7 +59,7 @@
     "ideaQuote": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 002",
+      "command": "/spec implement 002",
       "reasons": [
         "ISC-74, ISC-75 and 2 more are takeable",
         "the reviewed mark is fresh",
@@ -196,7 +196,7 @@
           "item": "claim",
           "ref": "ISC-77",
           "title": "Every interactive element in the error banner is reachable by keyboard and shows a focus ring.",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "since": "2026-03-04T09:00:00Z",
           "reason": {
             "key": "waiting.manual",
@@ -212,7 +212,7 @@
           "item": "task",
           "ref": "T31",
           "title": "screen-reader pass over the sync history (ISC-77)",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "since": "2026-03-04T09:00:00Z",
           "reason": {
             "key": "waiting.operator",
@@ -228,7 +228,7 @@
           "item": "question",
           "ref": "T29",
           "title": "should the empty state link to the sync docs or to the settings page?",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "since": "2026-03-08T16:30:00Z",
           "reason": {
             "key": "waiting.question",
@@ -246,7 +246,7 @@
           "item": "spec",
           "ref": null,
           "title": "Show every sync run and its failures in a small web console",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "since": "2026-03-04T09:00:00Z",
           "reason": {
             "key": "stage.build.0",
@@ -267,7 +267,7 @@
       "title": "Config loader rewrite",
       "type": "refactor",
       "stage": "tasks",
-      "nextCommand": "/spec-tasks 003",
+      "nextCommand": "/spec tasks 003",
       "nextReason": "13 claims and no tasks.md",
       "phase": "scoping",
       "started": "2026-03-06T09:00:00Z",
@@ -287,7 +287,7 @@
         "id": "003",
         "state": "open",
         "stage": "tasks",
-        "command": "/spec-tasks 003",
+        "command": "/spec tasks 003",
         "reason": "13 claims and no tasks.md"
       }
     },
@@ -315,7 +315,7 @@
     "ideaQuote": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-tasks 003",
+      "command": "/spec tasks 003",
       "reasons": [
         "13 claims and no tasks.md"
       ],
@@ -348,7 +348,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 003"
+        "command": "/spec review 003"
       }
     ],
     "waitingOnYou": [],
@@ -397,7 +397,7 @@
           "item": "spec",
           "ref": null,
           "title": "Read the config through one loader in the CLI, the API and the console",
-          "command": "/spec-tasks 003",
+          "command": "/spec tasks 003",
           "since": "2026-03-09T17:30:00Z",
           "reason": {
             "key": "stage.tasks.0",
@@ -417,7 +417,7 @@
       "title": "Retention policies",
       "type": "feature",
       "stage": "code-review",
-      "nextCommand": "/spec-code-review 004",
+      "nextCommand": "/spec review 004 code",
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "phase": "building",
       "started": "2026-03-04T08:30:00Z",
@@ -437,7 +437,7 @@
         "id": "004",
         "state": "open",
         "stage": "code-review",
-        "command": "/spec-code-review 004",
+        "command": "/spec review 004 code",
         "reason": "every claim is closed and the code-reviewed mark is stale"
       }
     },
@@ -465,7 +465,7 @@
     "ideaQuote": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-code-review 004",
+      "command": "/spec review 004 code",
       "reasons": [
         "every claim is closed and the code-reviewed mark is stale",
         "the reviewed mark is fresh"
@@ -582,7 +582,7 @@
           "item": "spec",
           "ref": null,
           "title": "Delete old manifests on a written schedule without touching referenced ones",
-          "command": "/spec-code-review 004",
+          "command": "/spec review 004 code",
           "since": "2026-03-08T12:00:00Z",
           "reason": {
             "key": "stage.code-review.0",
@@ -603,7 +603,7 @@
       "title": "Config format choice",
       "type": "spike",
       "stage": "review",
-      "nextCommand": "/spec-review 005",
+      "nextCommand": "/spec review 005",
       "nextReason": "the reviewed mark is missing",
       "phase": "scoping",
       "started": "2026-03-07T13:00:00Z",
@@ -623,7 +623,7 @@
         "id": "005",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 005",
+        "command": "/spec review 005",
         "reason": "the reviewed mark is missing"
       }
     },
@@ -651,7 +651,7 @@
     "ideaQuote": "A recorded decision names the config format for version 2 and the one trade-off that decided it.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-review 005",
+      "command": "/spec review 005",
       "reasons": [
         "the reviewed mark is missing",
         "1 item waits on you"
@@ -682,7 +682,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 005"
+        "command": "/spec review 005"
       },
       {
         "kind": "fog",
@@ -740,7 +740,7 @@
           "item": "spec",
           "ref": null,
           "title": "Decide which config format version 2 uses",
-          "command": "/spec-review 005",
+          "command": "/spec review 005",
           "since": "2026-03-07T14:00:00Z",
           "reason": {
             "key": "stage.review.0",
@@ -756,7 +756,7 @@
           "item": "claim",
           "ref": "ISC-94",
           "title": "the config format for version 2 is chosen and recorded as a decision.",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "since": "2026-03-07T14:00:00Z",
           "reason": {
             "key": "waiting.manual",
@@ -777,7 +777,7 @@
       "title": "Partial push after a timeout",
       "type": "bug",
       "stage": "review",
-      "nextCommand": "/spec-review 006",
+      "nextCommand": "/spec review 006",
       "nextReason": "the reviewed mark is stale",
       "phase": "scoping",
       "started": "2026-03-08T09:00:00Z",
@@ -802,7 +802,7 @@
         "id": "006",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 006",
+        "command": "/spec review 006",
         "reason": "the reviewed mark is stale"
       }
     },
@@ -830,7 +830,7 @@
     "ideaQuote": "A push interrupted at any point leaves the target registry exactly as it was before the push started.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-review 006",
+      "command": "/spec review 006",
       "reasons": [
         "the reviewed mark is stale"
       ],
@@ -864,12 +864,12 @@
       {
         "kind": "drift",
         "text": "drift to the master: unknown_to_master, missing_in_spec",
-        "command": "/spec-sync 006"
+        "command": "/spec 006"
       },
       {
         "kind": "review",
         "text": "reviewed mark is stale (spec.md)",
-        "command": "/spec-review 006"
+        "command": "/spec review 006"
       }
     ],
     "waitingOnYou": [],
@@ -917,7 +917,7 @@
           "item": "spec",
           "ref": null,
           "title": "Stop a timed-out push from leaving a half-written manifest behind",
-          "command": "/spec-review 006",
+          "command": "/spec review 006",
           "since": "2026-03-08T09:00:00Z",
           "reason": {
             "key": "stage.review.0",
@@ -1207,7 +1207,7 @@
       "title": "Chunked upload limits",
       "type": "spike",
       "stage": "build",
-      "nextCommand": "/spec-implement 009",
+      "nextCommand": "/spec implement 009",
       "nextReason": "ISC-131 is takeable",
       "phase": "building",
       "started": "2026-03-08T13:30:00Z",
@@ -1232,7 +1232,7 @@
         "id": "009",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 009",
+        "command": "/spec implement 009",
         "reason": "ISC-131 is takeable"
       }
     },
@@ -1260,7 +1260,7 @@
     "ideaQuote": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 009",
+      "command": "/spec implement 009",
       "reasons": [
         "ISC-131 is takeable",
         "the reviewed mark is fresh"
@@ -1338,7 +1338,7 @@
           "item": "spec",
           "ref": null,
           "title": "Find the largest blob chunk each target registry accepts",
-          "command": "/spec-implement 009",
+          "command": "/spec implement 009",
           "since": "2026-03-08T14:10:00Z",
           "reason": {
             "key": "stage.build.0",

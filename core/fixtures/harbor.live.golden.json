@@ -697,7 +697,7 @@
           "id": "T27",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "claim takeable, edges closed"
         }
       },
@@ -727,7 +727,7 @@
           "state": "running",
           "run": {
             "run": "a:claude:sess-2/T28",
-            "command": "/spec-implement 002",
+            "command": "/spec implement 002",
             "session": "a:claude:sess-2/T28",
             "actor": {
               "raw": "a:claude:sess-2/T28",
@@ -763,7 +763,7 @@
           "id": "T29",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "claim takeable, edges closed"
         }
       },
@@ -808,7 +808,7 @@
           "id": "T31",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "operator lane — the principal's own action, never auto-dispatched"
         }
       },
@@ -918,7 +918,7 @@
           "id": "T29",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "claim takeable, edges closed"
         }
       },
@@ -939,7 +939,7 @@
           "id": "T31",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "operator lane — the principal's own action, never auto-dispatched"
         }
       }
@@ -974,7 +974,7 @@
             "state": "running",
             "run": {
               "run": "a:claude:sess-2/T28",
-              "command": "/spec-implement 002",
+              "command": "/spec implement 002",
               "session": "a:claude:sess-2/T28",
               "actor": {
                 "raw": "a:claude:sess-2/T28",

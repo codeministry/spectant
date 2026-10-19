@@ -303,7 +303,7 @@ describe('BoardCard state line (spec 040, T48, ISC-224)', () => {
     const line = host.querySelector<HTMLElement>('[data-card-state]');
     expect(line?.dataset['run']).toBe('running');
     expect(text(line?.querySelector('[data-item-line]'))).toBe('Tasks · running · since 8 min');
-    expect(line?.querySelector('ui-command-chip')?.textContent).toContain('/spec-tasks 003');
+    expect(line?.querySelector('ui-command-chip')?.textContent).toContain('/spec tasks 003');
     expect(line?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-32');
     expect(host.querySelector<HTMLElement>('ui-card')?.style.getPropertyValue('--edge')).toBe('var(--track)');
   });

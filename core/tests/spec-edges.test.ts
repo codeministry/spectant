@@ -479,17 +479,17 @@ function reviewedTree(): DashboardInput {
 
 describe('spec edges: stage (ISC-162.3)', () => {
   test('full hold: every open piece of work waits on 002, so the stage is blocked with that reason', () => {
-    expect(stepOf('004', BASE)).toEqual({ stage: 'blocked', command: '/spec-status 004', reason: 'waits on 002' });
+    expect(stepOf('004', BASE)).toEqual({ stage: 'blocked', command: '/spec 004', reason: 'waits on 002' });
   });
 
   test('partial hold: 003 has takeable work beside the held, so it stays on build', () => {
-    expect(stepOf('003', BASE)).toEqual({ stage: 'build', command: '/spec-implement 003', reason: 'ISC-5 and ISC-7 are takeable' });
+    expect(stepOf('003', BASE)).toEqual({ stage: 'build', command: '/spec implement 003', reason: 'ISC-5 and ISC-7 are takeable' });
     expect(stepOf('007', BASE).stage).toBe('build');
   });
 
   test('the edge met, or no wait passed: the stage is the one before', () => {
-    expect(stepOf('004', MERGED_002)).toEqual({ stage: 'build', command: '/spec-implement 004', reason: 'ISC-9 is takeable' });
-    expect(stepOf('004', null)).toEqual({ stage: 'build', command: '/spec-implement 004', reason: 'ISC-9 is takeable' });
+    expect(stepOf('004', MERGED_002)).toEqual({ stage: 'build', command: '/spec implement 004', reason: 'ISC-9 is takeable' });
+    expect(stepOf('004', null)).toEqual({ stage: 'build', command: '/spec implement 004', reason: 'ISC-9 is takeable' });
   });
 
   test('an unknown number holds like any open edge, and several blockers are named in order', () => {
@@ -498,7 +498,7 @@ describe('spec edges: stage (ISC-162.3)', () => {
     expect(stepFor(stageInputOf('050', lone.texts.spec ?? '', one)).reason).toBe('waits on 042');
     const two = edgeSpec('051-two', '043, 042');
     const both = waitOf(resolveEdges({ specs: [two], archived: [] }, []).waits, '051');
-    expect(stepFor(stageInputOf('051', two.texts.spec ?? '', both))).toEqual({ stage: 'blocked', command: '/spec-status 051', reason: 'waits on 042, 043' });
+    expect(stepFor(stageInputOf('051', two.texts.spec ?? '', both))).toEqual({ stage: 'blocked', command: '/spec 051', reason: 'waits on 042, 043' });
   });
 
   test('the dashboard reads the merge state beside its input: 004 blocked, 003 on build; merged, 004 on build', () => {

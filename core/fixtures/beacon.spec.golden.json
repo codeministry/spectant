@@ -155,7 +155,7 @@
       "title": "Status page",
       "type": "feature",
       "stage": "plan",
-      "nextCommand": "/spec-plan 002",
+      "nextCommand": "/spec plan 002",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "phase": "building",
       "started": "2026-03-05T09:00:00Z",
@@ -175,7 +175,7 @@
         "id": "002",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 002",
+        "command": "/spec plan 002",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -203,7 +203,7 @@
     "ideaQuote": "A public page lists every public check with its state and works without script.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-plan 002",
+      "command": "/spec plan 002",
       "reasons": [
         "a feature spec needs plan.md and it is missing"
       ],
@@ -236,7 +236,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 002"
+        "command": "/spec review 002"
       }
     ],
     "waitingOnYou": [],
@@ -281,7 +281,7 @@
           "item": "spec",
           "ref": null,
           "title": "Publish the state of every public check",
-          "command": "/spec-plan 002",
+          "command": "/spec plan 002",
           "since": "2026-03-05T09:00:00Z",
           "reason": {
             "key": "stage.plan.0",
@@ -301,7 +301,7 @@
       "title": "Alert rules",
       "type": "feature",
       "stage": "tasks",
-      "nextCommand": "/spec-tasks 003",
+      "nextCommand": "/spec tasks 003",
       "nextReason": "3 claims and no tasks.md",
       "phase": "building",
       "started": "2026-03-05T10:00:00Z",
@@ -323,7 +323,7 @@
         "stage": "tasks",
         "run": {
           "run": "r-0308-1452",
-          "command": "/spec-tasks 003",
+          "command": "/spec tasks 003",
           "session": "a:claude:sess-32",
           "actor": {
             "raw": "a:claude:sess-32",
@@ -362,7 +362,7 @@
     "ideaQuote": "An alert rule fires once per outage on the channel it names.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-tasks 003",
+      "command": "/spec tasks 003",
       "reasons": [
         "3 claims and no tasks.md"
       ],
@@ -392,7 +392,7 @@
       {
         "kind": "review",
         "text": "no reviewed mark yet",
-        "command": "/spec-review 003"
+        "command": "/spec review 003"
       }
     ],
     "waitingOnYou": [],
@@ -440,7 +440,7 @@
       "title": "Incident notes",
       "type": "feature",
       "stage": "review",
-      "nextCommand": "/spec-review 004",
+      "nextCommand": "/spec review 004",
       "nextReason": "the reviewed mark is stale",
       "phase": "building",
       "started": "2026-03-06T09:00:00Z",
@@ -460,7 +460,7 @@
         "id": "004",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 004",
+        "command": "/spec review 004",
         "reason": "the reviewed mark is stale"
       }
     },
@@ -488,7 +488,7 @@
     "ideaQuote": "Each outage can carry a note that shows on the status page, newest first.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-review 004",
+      "command": "/spec review 004",
       "reasons": [
         "the reviewed mark is stale"
       ],
@@ -540,7 +540,7 @@
       {
         "kind": "review",
         "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-        "command": "/spec-review 004"
+        "command": "/spec review 004"
       }
     ],
     "waitingOnYou": [],
@@ -587,7 +587,7 @@
           "item": "spec",
           "ref": null,
           "title": "Explain an outage in words on the status page",
-          "command": "/spec-review 004",
+          "command": "/spec review 004",
           "since": "2026-03-07T15:00:00Z",
           "reason": {
             "key": "stage.review.0",
@@ -608,7 +608,7 @@
       "title": "Probe agents",
       "type": "feature",
       "stage": "build",
-      "nextCommand": "/spec-implement 005",
+      "nextCommand": "/spec implement 005",
       "nextReason": "ISC-15, ISC-16 and 1 more are takeable",
       "phase": "building",
       "started": "2026-03-06T10:00:00Z",
@@ -630,7 +630,7 @@
         "stage": "build",
         "run": {
           "run": "r-0308-1440",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "session": "a:claude:sess-52",
           "actor": {
             "raw": "a:claude:sess-52",
@@ -669,7 +669,7 @@
     "ideaQuote": "Agents in several regions run checks and report signed results over one connection.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "reasons": [
         "ISC-15, ISC-16 and 1 more are takeable",
         "the reviewed mark is fresh"
@@ -767,7 +767,7 @@
       "title": "Retry backoff",
       "type": "refactor",
       "stage": "code-review",
-      "nextCommand": "/spec-code-review 006",
+      "nextCommand": "/spec review 006 code",
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "phase": "building",
       "started": "2026-03-06T11:00:00Z",
@@ -789,7 +789,7 @@
         "stage": "code-review",
         "run": {
           "run": "r-0308-1140",
-          "command": "/spec-code-review 006",
+          "command": "/spec review 006 code",
           "session": "a:claude:sess-61",
           "actor": {
             "raw": "a:claude:sess-61",
@@ -828,7 +828,7 @@
     "ideaQuote": "Retries back off exponentially and belong to the outage that caused them.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-code-review 006",
+      "command": "/spec review 006 code",
       "reasons": [
         "every claim is closed and the code-reviewed mark is stale",
         "the reviewed mark is fresh"
@@ -1043,7 +1043,7 @@
       "title": "Export size limits",
       "type": "spike",
       "stage": "build",
-      "nextCommand": "/spec-implement 008",
+      "nextCommand": "/spec implement 008",
       "nextReason": "ISC-25 is takeable",
       "phase": "building",
       "started": "2026-03-07T09:30:00Z",
@@ -1063,7 +1063,7 @@
         "id": "008",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 008",
+        "command": "/spec implement 008",
         "reason": "ISC-25 is takeable"
       }
     },
@@ -1091,7 +1091,7 @@
     "ideaQuote": "A recorded table names each format's limit, and no export exceeds it.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 008",
+      "command": "/spec implement 008",
       "reasons": [
         "ISC-25 is takeable",
         "the reviewed mark is fresh"
@@ -1165,7 +1165,7 @@
           "item": "spec",
           "ref": null,
           "title": "Find the largest history each format exports quickly",
-          "command": "/spec-implement 008",
+          "command": "/spec implement 008",
           "since": "2026-03-08T09:30:00Z",
           "reason": {
             "key": "stage.build.0",
@@ -1186,7 +1186,7 @@
       "title": "Time-zone labels",
       "type": "bug",
       "stage": "close",
-      "nextCommand": "/spec-complete 009",
+      "nextCommand": "/spec done 009",
       "nextReason": "every claim is closed and the workflow has no code review",
       "phase": "building",
       "started": "2026-03-07T11:00:00Z",
@@ -1206,7 +1206,7 @@
         "id": "009",
         "state": "open",
         "stage": "close",
-        "command": "/spec-complete 009",
+        "command": "/spec done 009",
         "reason": "every claim is closed and the workflow has no code review"
       }
     },
@@ -1234,7 +1234,7 @@
     "ideaQuote": "Every time on the status page carries the viewer's time-zone label.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-complete 009",
+      "command": "/spec done 009",
       "reasons": [
         "every claim is closed and the workflow has no code review",
         "the reviewed mark is fresh"
@@ -1312,7 +1312,7 @@
           "item": "spec",
           "ref": null,
           "title": "Label every time on the status page with a time zone",
-          "command": "/spec-complete 009",
+          "command": "/spec done 009",
           "since": "2026-03-08T11:00:00Z",
           "reason": {
             "key": "stage.close.1",
@@ -1458,7 +1458,7 @@
       "title": "Maintenance windows",
       "type": "bug",
       "stage": "blocked",
-      "nextCommand": "/spec-status 011",
+      "nextCommand": "/spec 011",
       "nextReason": "waits on 002",
       "phase": "building",
       "started": "2026-03-07T14:00:00Z",
@@ -1520,7 +1520,7 @@
     "ideaQuote": "A maintenance window hides its outages and is announced a day ahead, once the status page exists.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-status 011",
+      "command": "/spec 011",
       "reasons": [
         "waits on 002",
         "the reviewed mark is fresh"

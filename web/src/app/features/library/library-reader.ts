@@ -62,11 +62,11 @@ const TYPE_ICON: Readonly<Record<LibraryDocType, IconName>> = {
 export const typeIcon = (doc: Pick<LibraryDoc, 'type' | 'media'>): IconName => (doc.media === 'image' ? 'image' : TYPE_ICON[doc.type]);
 
 /**
- * The command that writes a missing document (design.md 017 § 2.2): `/spec-plan 017` for plan.md, `/spec-tasks 017`
+ * The command that writes a missing document (design.md 017 § 2.2): `/spec plan 017` for plan.md, `/spec tasks 017`
  * for tasks.md; core marks no other type missing, so every other answers null.
  */
 export function missingCommand(doc: Pick<LibraryDoc, 'type' | 'spec'>): string | null {
-  return doc.type === 'plan' || doc.type === 'tasks' ? `/spec-${doc.type} ${specKey(doc.spec)}` : null;
+  return doc.type === 'plan' || doc.type === 'tasks' ? `/spec ${doc.type} ${specKey(doc.spec)}` : null;
 }
 
 /** The file name of a document path (`017-x/plan.md` → `plan.md`). */
@@ -459,7 +459,7 @@ export class LibraryReader {
   private readonly pending = signal<{ readonly section: string; readonly anchor: string } | null>(null);
   /** tech.md only: the sections the file has none for, named under the prose. */
   protected readonly techMissing = computed<readonly TechSection[]>(() => this.reading()?.missing ?? []);
-  /** The placeholder of an absent `specs/tech.md` (the page lists it dimmed): the empty state with `/spec-doc`. */
+  /** The placeholder of an absent `specs/tech.md` (the page lists it dimmed): the empty state, with no command: the Spec plugin has none that writes it. */
   protected readonly techAbsent = computed(() => {
     const doc = this.doc();
     return doc?.type === 'tech' && doc.state === 'missing';

@@ -65,7 +65,7 @@
         "landed": 27,
         "total": 83
       },
-      "nextCommand": "/spec-review 001",
+      "nextCommand": "/spec review 001",
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
@@ -74,7 +74,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 001"
+          "command": "/spec review 001"
         }
       ],
       "gates": {
@@ -108,7 +108,7 @@
         "id": "001",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 001",
+        "command": "/spec review 001",
         "reason": "the reviewed mark is missing"
       }
     }
@@ -125,7 +125,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 001"
+            "command": "/spec review 001"
           }
         }
       ]
@@ -147,7 +147,7 @@
         "item": "spec",
         "ref": null,
         "title": "Install spectant with one line and see two workspaces on the dashboard",
-        "command": "/spec-review 001",
+        "command": "/spec review 001",
         "since": "2026-09-28T13:02:35Z",
         "reason": {
           "key": "stage.review.0",
@@ -163,7 +163,7 @@
         "item": "claim",
         "ref": "ISC-11",
         "title": "For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0.",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "since": "2026-09-28T13:02:35Z",
         "reason": {
           "key": "waiting.manual",
@@ -179,7 +179,7 @@
         "item": "claim",
         "ref": "ISC-19",
         "title": "The dashboard renders and navigates inside the cmux web view.",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "since": "2026-09-28T13:02:35Z",
         "reason": {
           "key": "waiting.manual",
@@ -195,7 +195,7 @@
         "item": "task",
         "ref": "T16",
         "title": "macOS arm64 install on a throwaway user account, transcript into `.evidence/`",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "since": "2026-09-28T13:02:35Z",
         "reason": {
           "key": "waiting.operator",
@@ -211,7 +211,7 @@
         "item": "task",
         "ref": "T83",
         "title": "cmux web view check with Interceptor, WebKit version recorded",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "since": "2026-09-28T13:02:35Z",
         "reason": {
           "key": "waiting.operator",

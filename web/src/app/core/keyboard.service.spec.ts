@@ -55,7 +55,7 @@ function setup(options: Setup = {}) {
   const settings = { settings: signal({ ...DEFAULT_SETTINGS, singleKeyShortcuts: options.singleKeys ?? true }) };
   const toast = { show: vi.fn() };
   const refresher = { refresh: vi.fn() };
-  const index = { refresh: vi.fn(), current: signal({ specs: [{ id: '002', nextCommand: '/spec-implement 002' }] }) };
+  const index = { refresh: vi.fn(), current: signal({ specs: [{ id: '002', nextCommand: '/spec implement 002' }] }) };
   TestBed.configureTestingModule({
     providers: [
       { provide: Router, useValue: router },
@@ -425,7 +425,7 @@ describe('KeyboardService', () => {
       expect(press('c').defaultPrevented).toBe(true);
       await Promise.resolve();
       await Promise.resolve();
-      expect(writeText).toHaveBeenCalledWith('/spec-implement 002');
+      expect(writeText).toHaveBeenCalledWith('/spec implement 002');
       expect(toast.show).toHaveBeenCalledWith('t:common.copied');
       expect(press('r').defaultPrevented).toBe(true);
       expect(refresher.refresh).toHaveBeenCalledTimes(1);

@@ -6,7 +6,7 @@
 // With events (the validated lines of events.jsonl, T16) the events are the stage entries, one each, in file order,
 // `derived: false`, with their `actor` and `command`; nothing is derived. Without events (absent or empty) and with
 // spec.md, the transitions are replayed from the files in the stage table's vocabulary (stage.ts, FORMAT.md § The
-// stage table): a stage names what the spec waits for, so `/spec-review` moves it `review → build`. The stages
+// stage table): a stage names what the spec waits for, so `/spec review` moves it `review → build`. The stages
 // before review come from `stageOf` itself, fed one file at a time, so a type that needs no plan never passes
 // through `plan` and the three-claim threshold for `tasks` holds. Every derived entry carries `derived: true` and
 // `actor: null`; the first one has `from: null` (the spec did not exist before).

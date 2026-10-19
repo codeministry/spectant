@@ -66,7 +66,7 @@
         "total": 1
       },
       "tasks": null,
-      "nextCommand": "/spec-complete 009",
+      "nextCommand": "/spec done 009",
       "nextReason": "every claim is closed and the workflow has no code review",
       "takeable": [],
       "taken": [],
@@ -112,7 +112,7 @@
         "id": "009",
         "state": "open",
         "stage": "close",
-        "command": "/spec-complete 009",
+        "command": "/spec done 009",
         "reason": "every claim is closed and the workflow has no code review"
       }
     },
@@ -131,7 +131,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-code-review 006",
+      "nextCommand": "/spec review 006 code",
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "takeable": [],
       "taken": [],
@@ -183,7 +183,7 @@
         "stage": "code-review",
         "run": {
           "run": "r-0308-1140",
-          "command": "/spec-code-review 006",
+          "command": "/spec review 006 code",
           "session": "a:claude:sess-61",
           "actor": {
             "raw": "a:claude:sess-61",
@@ -216,7 +216,7 @@
         "landed": 0,
         "total": 3
       },
-      "nextCommand": "/spec-review 004",
+      "nextCommand": "/spec review 004",
       "nextReason": "the reviewed mark is stale",
       "takeable": [],
       "taken": [],
@@ -225,7 +225,7 @@
         {
           "kind": "review",
           "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-          "command": "/spec-review 004"
+          "command": "/spec review 004"
         }
       ],
       "gates": {
@@ -265,7 +265,7 @@
         "id": "004",
         "state": "open",
         "stage": "review",
-        "command": "/spec-review 004",
+        "command": "/spec review 004",
         "reason": "the reviewed mark is stale"
       }
     },
@@ -287,7 +287,7 @@
         "landed": 2,
         "total": 7
       },
-      "nextCommand": "/spec-implement 005",
+      "nextCommand": "/spec implement 005",
       "nextReason": "ISC-15, ISC-16 and 1 more are takeable",
       "takeable": [
         "ISC-15",
@@ -336,7 +336,7 @@
         "stage": "build",
         "run": {
           "run": "r-0308-1440",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "session": "a:claude:sess-52",
           "actor": {
             "raw": "a:claude:sess-52",
@@ -366,7 +366,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-implement 008",
+      "nextCommand": "/spec implement 008",
       "nextReason": "ISC-25 is takeable",
       "takeable": [
         "ISC-25"
@@ -409,7 +409,7 @@
         "id": "008",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 008",
+        "command": "/spec implement 008",
         "reason": "ISC-25 is takeable"
       }
     },
@@ -428,7 +428,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-status 011",
+      "nextCommand": "/spec 011",
       "nextReason": "waits on 002",
       "takeable": [],
       "taken": [],
@@ -502,7 +502,7 @@
         "total": 3
       },
       "tasks": null,
-      "nextCommand": "/spec-tasks 003",
+      "nextCommand": "/spec tasks 003",
       "nextReason": "3 claims and no tasks.md",
       "takeable": [],
       "taken": [],
@@ -511,7 +511,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 003"
+          "command": "/spec review 003"
         }
       ],
       "gates": {
@@ -547,7 +547,7 @@
         "stage": "tasks",
         "run": {
           "run": "r-0308-1452",
-          "command": "/spec-tasks 003",
+          "command": "/spec tasks 003",
           "session": "a:claude:sess-32",
           "actor": {
             "raw": "a:claude:sess-32",
@@ -577,7 +577,7 @@
         "total": 3
       },
       "tasks": null,
-      "nextCommand": "/spec-plan 002",
+      "nextCommand": "/spec plan 002",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "takeable": [],
       "taken": [],
@@ -586,7 +586,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 002"
+          "command": "/spec review 002"
         }
       ],
       "gates": {
@@ -623,7 +623,7 @@
         "id": "002",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 002",
+        "command": "/spec plan 002",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -839,7 +839,7 @@
           "warning": {
             "kind": "review",
             "text": "reviewed mark is stale (spec.md, plan.md, tasks.md)",
-            "command": "/spec-review 004"
+            "command": "/spec review 004"
           }
         },
         {
@@ -847,7 +847,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 003"
+            "command": "/spec review 003"
           }
         },
         {
@@ -855,7 +855,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 002"
+            "command": "/spec review 002"
           }
         }
       ]
@@ -968,7 +968,7 @@
         "item": "spec",
         "ref": null,
         "title": "Explain an outage in words on the status page",
-        "command": "/spec-review 004",
+        "command": "/spec review 004",
         "since": "2026-03-07T15:00:00Z",
         "reason": {
           "key": "stage.review.0",
@@ -984,7 +984,7 @@
         "item": "spec",
         "ref": null,
         "title": "Label every time on the status page with a time zone",
-        "command": "/spec-complete 009",
+        "command": "/spec done 009",
         "since": "2026-03-08T11:00:00Z",
         "reason": {
           "key": "stage.close.1",
@@ -1000,7 +1000,7 @@
         "item": "spec",
         "ref": null,
         "title": "Publish the state of every public check",
-        "command": "/spec-plan 002",
+        "command": "/spec plan 002",
         "since": "2026-03-05T09:00:00Z",
         "reason": {
           "key": "stage.plan.0",
@@ -1016,7 +1016,7 @@
         "item": "spec",
         "ref": null,
         "title": "Find the largest history each format exports quickly",
-        "command": "/spec-implement 008",
+        "command": "/spec implement 008",
         "since": "2026-03-08T09:30:00Z",
         "reason": {
           "key": "stage.build.0",

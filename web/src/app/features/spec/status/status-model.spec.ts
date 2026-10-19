@@ -63,7 +63,7 @@ describe('statusReason (T132, ISC-122.3)', () => {
   it('is the first reason, equal to the head and the dashboard row, with the next command (002)', () => {
     const m = spec('002-web-console');
     const reason = statusReason(m.head, m.next);
-    expect(reason).toEqual({ phrase: 'ISC-74, ISC-75 and 2 more are takeable', command: '/spec-implement 002' });
+    expect(reason).toEqual({ phrase: 'ISC-74, ISC-75 and 2 more are takeable', command: '/spec implement 002' });
     expect(reason?.phrase).toBe(m.head.nextReason);
     expect(reason?.phrase).toBe(ROWS.find((row) => row.slug === m.head.slug)?.nextReason);
   });
@@ -71,7 +71,7 @@ describe('statusReason (T132, ISC-122.3)', () => {
   it('carries no command on close-pending (008)', () => {
     const m = spec('008-referrers-support');
     expect(statusReason(m.head, m.next)).toEqual({ phrase: 'every claim is closed and F6 waits on spec 009', command: null });
-    expect(statusReason(m.head, { ...m.next, command: '/spec-status 008' })?.command).toBeNull();
+    expect(statusReason(m.head, { ...m.next, command: '/spec 008' })?.command).toBeNull();
   });
 
   it('is absent on a done spec, which has nothing to wait for (007)', () => {

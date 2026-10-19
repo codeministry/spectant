@@ -27,7 +27,7 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
     stage: 'review',
     progress: { closed: 0, total: 4 },
     tasks: null,
-    nextCommand: `/spec-review ${id}`,
+    nextCommand: `/spec review ${id}`,
     nextReason: '',
     takeable: [],
     taken: [],

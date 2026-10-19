@@ -131,10 +131,10 @@ export class BoardTab {
   readonly liveResult = resource({ params: () => this.params(), loader: ({ params }) => this.api.live(params.ws, params.id) });
 
   private readonly query = toSignal(this.route.queryParamMap, { requireSync: true });
-  /** The prototype lane-quiet hint names the next command for this spec (spec 024: `next /spec-implement 002`). */
+  /** The prototype lane-quiet hint names the next command for this spec (spec 024: `next /spec implement 002`, the plugin's form since spec 031). */
   protected readonly nextCommand = computed(() => {
     const id = this.state.specId();
-    return id === null ? null : `/spec-implement ${id}`;
+    return id === null ? null : `/spec implement ${id}`;
   });
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 

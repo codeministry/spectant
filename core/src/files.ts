@@ -345,7 +345,7 @@ export interface SpecHead {
   /** Null when `spec_type:` is absent or unknown (the dashboard row's type). */
   readonly type: SpecType | null;
   readonly stage: StageName;
-  /** The next command, e.g. `/spec-implement 002`; null when the spec is done. */
+  /** The next command, e.g. `/spec implement 002`; null when the spec is done. */
   readonly nextCommand: string | null;
   /** Why that command is next, one sentence. */
   readonly nextReason: string;
@@ -855,7 +855,7 @@ export interface EventLine {
   readonly ts: string;
   readonly from: StageName | null;
   readonly to: StageName;
-  /** The command that made the transition, e.g. `/spec-review 002`; never empty. */
+  /** The command that made the transition, e.g. `/spec review 002`; never empty. */
   readonly command: string;
   /** Who ran it, as written: an id of the actor grammar (`u:3f9c0a7d`, `a:claude:sess-7`) or a legacy value; never empty. */
   readonly actor: string;
@@ -1101,7 +1101,7 @@ export type RunOutcome = 'ok' | 'error' | 'released';
 export interface OpenRun {
   /** The run id as written, unique per invocation. */
   readonly run: string;
-  /** The command as written, e.g. `/spec-tasks 037`. */
+  /** The command as written, e.g. `/spec tasks 037`. */
   readonly command: string;
   /** The `run-start` line's session, as written. */
   readonly session: string;
@@ -1164,7 +1164,7 @@ export interface ItemStateInfo {
   readonly state: ItemState;
   /** The item's stage, where it has one: a spec's row of the stage table, `idea` for an idea. */
   readonly stage?: WorkflowStage;
-  /** `open`: the command that lies with the user, e.g. `/spec-tasks 037`. */
+  /** `open`: the command that lies with the user, e.g. `/spec tasks 037`. */
   readonly command?: string;
   /** `open`: the stage table's reason (or the item's own, for a claim or task). */
   readonly reason?: string;
@@ -1214,7 +1214,7 @@ export interface GuidanceEntry {
   readonly ref: string | null;
   /** The spec's title for a spec, the claim's or task's text or the question for the others. */
   readonly title: string;
-  /** The item's command, e.g. `/spec-review 020`; null when the model names none. */
+  /** The item's command, e.g. `/spec review 020`; null when the model names none. */
   readonly command: string | null;
   /** The spec's priority; a missing key reads `P3` as everywhere in core. */
   readonly priority: Priority;

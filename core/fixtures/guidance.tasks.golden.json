@@ -28,7 +28,7 @@
           "id": "T1",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "task of ISC-1, not dispatched"
         }
       },
@@ -59,7 +59,7 @@
           "id": "T2",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "task of ISC-2, not dispatched"
         }
       },
@@ -90,7 +90,7 @@
           "id": "T3",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "task of ISC-3, not dispatched"
         }
       }
@@ -151,7 +151,7 @@
           "id": "T1",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "task of ISC-4, not dispatched"
         }
       },
@@ -182,7 +182,7 @@
           "id": "T2",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "task of ISC-5, not dispatched"
         }
       },
@@ -213,7 +213,7 @@
           "id": "T3",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "task of ISC-6, not dispatched"
         }
       }
@@ -274,7 +274,7 @@
           "id": "T1",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "task of ISC-7, not dispatched"
         }
       },
@@ -305,7 +305,7 @@
           "id": "T2",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "task of ISC-8, not dispatched"
         }
       },
@@ -336,7 +336,7 @@
           "id": "T3",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "task of ISC-9, not dispatched"
         }
       }
@@ -432,7 +432,7 @@
           "id": "T2",
           "spec": "005",
           "state": "open",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "reason": "state \"open\" · claim takeable, edges closed"
         }
       },
@@ -463,7 +463,7 @@
           "id": "T3",
           "spec": "005",
           "state": "open",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "reason": "task of ISC-13, not dispatched"
         }
       },
@@ -494,7 +494,7 @@
           "id": "T4",
           "spec": "005",
           "state": "open",
-          "command": "/spec-implement 005",
+          "command": "/spec implement 005",
           "reason": "claim takeable, edges closed"
         }
       }

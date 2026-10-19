@@ -122,7 +122,7 @@
           "id": "ISC-6",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -179,7 +179,7 @@
           "id": "ISC-8",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "the reviewed mark is missing"
         }
       },
@@ -203,7 +203,7 @@
           "id": "ISC-1",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "the reviewed mark is missing"
         }
       }
@@ -245,7 +245,7 @@
           "id": "ISC-9",
           "spec": "003",
           "state": "open",
-          "command": "/spec-implement 003",
+          "command": "/spec implement 003",
           "reason": "the reviewed mark is missing"
         }
       },

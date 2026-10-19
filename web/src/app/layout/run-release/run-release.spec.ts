@@ -19,7 +19,7 @@ const HASH = 'a'.repeat(64);
 const agent: ActorRef = { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false };
 const run = (extra: Partial<ItemRun> = {}): ItemRun => ({
   run: 'r-0308-1452',
-  command: '/spec-tasks 003',
+  command: '/spec tasks 003',
   session: 'a:claude:sess-32',
   actor: agent,
   since: '2026-03-08T14:52:00Z',
@@ -90,7 +90,7 @@ describe('RunRelease (T62, ISC-226)', () => {
   it('shows only for a running item of a run line: not for open, aborted, a claim lock or a task run', () => {
     expect(releasableRun(running())).not.toBeNull();
     expect(releasableRun(running({ kind: 'idea', id: 'uptime-badges', stage: 'idea' }))).not.toBeNull();
-    expect(releasableRun(running({ state: 'open', run: undefined, command: '/spec-tasks 003' }))).toBeNull();
+    expect(releasableRun(running({ state: 'open', run: undefined, command: '/spec tasks 003' }))).toBeNull();
     expect(releasableRun(running({ state: 'aborted' }))).toBeNull();
     expect(releasableRun(running({ run: run({ source: 'lock' }) }))).toBeNull();
     expect(releasableRun(running({ kind: 'task', id: 'T3', run: run({ source: 'task-run' }) }))).toBeNull();
@@ -103,7 +103,7 @@ describe('RunRelease (T62, ISC-226)', () => {
     expect(button?.dataset['variant']).toBe('outline');
     expect(button?.dataset['tone']).toBe('warning');
     expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock-open');
-    const open = await render({ kind: 'spec', id: '003', state: 'open', stage: 'tasks', command: '/spec-tasks 003' });
+    const open = await render({ kind: 'spec', id: '003', state: 'open', stage: 'tasks', command: '/spec tasks 003' });
     expect(open.q('[data-release]')).toBeNull();
   });
 

@@ -1425,12 +1425,20 @@ function fillReason(template, values) {
     return value;
   });
 }
+function commandFor(sub, id, tail) {
+  return ["/spec", sub, id, tail].filter((part) => typeof part === "string" && part !== "").join(" ");
+}
+var SPEC_ARG = "NNN";
+var STORY_ARG = "<slug>";
+function commandWith(next, arg) {
+  return next.split(" ").map((word) => word === SPEC_ARG || word === STORY_ARG ? arg : word).join(" ");
+}
 var STORY_RULE = {
   subject: "story",
   stage: "idea",
   state: "open",
   condition: "a story file under `specs/ideas/`, no folder yet",
-  next: "/spec new",
+  next: commandFor("new", STORY_ARG),
   reasons: ["the story is shaped but has no spec"]
 };
 var SPEC_RULES = [
@@ -1450,7 +1458,7 @@ var SPEC_RULES = [
     state: "open",
     condition: "the type needs `plan.md` and it is missing",
     when: (input) => needs(input, "plan") && !input.hasPlan,
-    next: "/spec-plan",
+    next: commandFor("plan", SPEC_ARG),
     reasons: ["a {type} spec needs plan.md and it is missing"],
     explain: (input) => ({ values: { type: input.type ?? "typed" } })
   },
@@ -1460,7 +1468,7 @@ var SPEC_RULES = [
     state: "open",
     condition: "the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing",
     when: (input) => needs(input, "tasks") && countsOf(input).total >= TASKS_THRESHOLD && !input.hasTasks,
-    next: "/spec-tasks",
+    next: commandFor("tasks", SPEC_ARG),
     reasons: ["{claims} and no tasks.md"],
     explain: (input) => ({ values: { claims: plural(countsOf(input).total, "claim") } })
   },
@@ -1470,7 +1478,7 @@ var SPEC_RULES = [
     state: "open",
     condition: "the reviewed mark is not fresh",
     when: (input) => input.reviewed !== "fresh",
-    next: "/spec-review",
+    next: commandFor("review", SPEC_ARG),
     reasons: ["the reviewed mark is {state}"],
     explain: (input) => ({ values: { state: input.reviewed } })
   },
@@ -1480,7 +1488,7 @@ var SPEC_RULES = [
     state: "open",
     condition: "at least one claim is takeable and not all open work waits on an open spec edge",
     when: (input) => countsOf(input).takeable > 0 && fullHoldOf(input).length === 0,
-    next: "/spec-implement",
+    next: commandFor("implement", SPEC_ARG),
     reasons: ["{ids} {is} takeable"],
     explain: (input) => {
       const count2 = countsOf(input).takeable;
@@ -1514,7 +1522,7 @@ var SPEC_RULES = [
     state: "open",
     condition: "every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh",
     when: (input) => countsOf(input).allClosed && input.codeReview !== "none" && input.codeReviewed !== "fresh",
-    next: "/spec-code-review",
+    next: commandFor("review", SPEC_ARG, "code"),
     reasons: ["every claim is closed and the code-reviewed mark is {state}"],
     explain: (input) => ({ values: { state: input.codeReviewed } })
   },
@@ -1524,7 +1532,7 @@ var SPEC_RULES = [
     state: "open",
     condition: "every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none`",
     when: (input) => countsOf(input).allClosed && (input.codeReviewed === "fresh" || input.codeReview === "none"),
-    next: "/spec-complete",
+    next: commandFor("done", SPEC_ARG),
     reasons: ["every claim is closed and code-reviewed", "every claim is closed and the workflow has no code review"],
     explain: (input) => ({ form: input.codeReview === "none" ? 1 : 0 })
   },
@@ -1534,7 +1542,7 @@ var SPEC_RULES = [
     state: "waiting",
     condition: "anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet",
     when: () => true,
-    next: "/spec-status",
+    next: commandFor(null, SPEC_ARG),
     reasons: ["{open}, none takeable", "no claims yet", "waits on {specs}"],
     explain: (input) => {
       const held = fullHoldOf(input);
@@ -1563,7 +1571,7 @@ function nextCommandWithReason(input) {
   return {
     stage: explicit ?? rule.stage,
     stageSource: explicit === null ? "derived" : "explicit",
-    command: rule.next === null ? null : `${rule.next} ${input.number}`,
+    command: rule.next === null ? null : commandWith(rule.next, input.number),
     reason: fillReason(template, values),
     row: rowNumberOf(rule)
   };
@@ -1968,7 +1976,7 @@ function partitionClaims(claims, locks, reviewed) {
     diagnostics.push({
       severity: "warning",
       code: "status-review-gate",
-      message: `The reviewed mark is ${reviewed}: ${gated.length} ${gated.length === 1 ? "claim stays" : "claims stay"} open, not takeable, until /spec-review records a fresh mark.`
+      message: `The reviewed mark is ${reviewed}: ${gated.length} ${gated.length === 1 ? "claim stays" : "claims stay"} open, not takeable, until /spec review records a fresh mark.`
     });
   }
   return { closed, takeable, blocked, taken, open, dropped, gated, reviewed, diagnostics };
@@ -3036,12 +3044,12 @@ function specRow(f, ctx, diagnostics) {
     note("events", parseEvents(f.texts.events).diagnostics);
   const warnings = [];
   if (drift !== null && hasDrift(drift)) {
-    warnings.push({ kind: "drift", text: `drift to the master: ${driftClasses(drift).join(", ")}`, command: `/spec-sync ${id}` });
+    warnings.push({ kind: "drift", text: `drift to the master: ${driftClasses(drift).join(", ")}`, command: commandFor(null, id) });
   }
   if (phase !== "complete") {
     if (reviewed.state !== "fresh") {
       const text2 = reviewed.state === "stale" ? `reviewed mark is stale (${reviewed.changed.join(", ") || "unreadable"})` : "no reviewed mark yet";
-      warnings.push({ kind: "review", text: text2, command: `/spec-review ${id}` });
+      warnings.push({ kind: "review", text: text2, command: commandFor("review", id) });
     }
     const missing = diagrams.missing.filter((file) => file === "spec.md" || plan !== null);
     if (diagrams.level === "fail" && missing.length > 0) {
@@ -4161,7 +4169,7 @@ function phrase(stage, input) {
 }
 function commandOf(stage, number) {
   const next = SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
-  return next === undefined || next === null ? null : `${next} ${number}`;
+  return next === undefined || next === null ? null : commandWith(next, number);
 }
 var list = (ids) => ids.join(", ");
 function gateRefusal(input, lane, from, stageInput, feature) {

@@ -173,7 +173,7 @@
           "id": "ISC-7",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "ISC-7 is takeable"
         }
       },
@@ -246,7 +246,7 @@
           "id": "ISC-9",
           "spec": "001",
           "state": "open",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "reason": "ISC-9 is takeable"
         }
       },
@@ -353,7 +353,7 @@
           "id": "ISC-11",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "ISC-11 is takeable"
         }
       },
@@ -385,7 +385,7 @@
           "id": "ISC-12",
           "spec": "002",
           "state": "open",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "reason": "ISC-12 is takeable"
         }
       }

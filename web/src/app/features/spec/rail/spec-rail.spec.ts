@@ -67,7 +67,7 @@ describe('app-spec-rail as the guidance spot (T20, ISC-239)', () => {
     const next = root.querySelector('[data-rail-block="next"]');
     expect(text(next?.querySelector('h2'))).toBe(en.guidance.next.step);
     expect(text(next?.querySelector('[data-rail-reason]'))).toBe(en.guidance.reason.stage.build['0']);
-    expect(chipCommands(next)).toEqual(['/spec-implement 002']);
+    expect(chipCommands(next)).toEqual(['/spec implement 002']);
     expect(next?.querySelector('[data-rail-marker]')).toBeNull();
     // Where it stands no longer repeats the chip: one command, one chip in the rail's lead.
     expect(root.querySelector('[data-rail-block="where"] ui-command-chip')).toBeNull();
@@ -109,11 +109,11 @@ describe('app-spec-rail as the guidance spot (T20, ISC-239)', () => {
   });
 
   it('marks a spec that waits on you itself and keeps its chip once', async () => {
-    const own: GuidanceEntry = { ...GUIDANCE.next[0], command: '/spec-review 002' };
+    const own: GuidanceEntry = { ...GUIDANCE.next[0], command: '/spec review 002' };
     const root = await render({ ...SPEC002, guidance: { waits: [own], next: [] } });
     expect(text(root.querySelector('[data-rail-marker]'))).toBe(en.guidance.marker);
     expect(root.querySelector('ui-waits-block')).toBeNull();
-    expect(chipCommands(root.querySelector('[data-spec-rail]'))).toEqual(['/spec-review 002']);
+    expect(chipCommands(root.querySelector('[data-spec-rail]'))).toEqual(['/spec review 002']);
   });
 
   it("without guidance reads the model's next command and first reason", async () => {

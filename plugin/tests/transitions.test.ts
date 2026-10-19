@@ -207,7 +207,7 @@ describe('spec-check transition: the full chain (ISC-44)', () => {
     expect(eventLines(root)).toHaveLength(5);
 
     // `/spec review` as the code review, then `/spec done`.
-    move(root, 'code-review', 'close', '/spec review 001');
+    move(root, 'code-review', 'close', '/spec review 001 code');
     move(root, 'close', 'done', '/spec done 001');
 
     expect(events(root).map((e) => `${e.from ?? 'null'}→${e.to}`)).toEqual([
@@ -248,7 +248,7 @@ describe('spec-check transition: the full chain (ISC-44)', () => {
     for (const id of ['ISC-1', 'ISC-2', 'ISC-3']) expect(run(root, 'verify', '001', id, 'test', `bun test digest.test.ts — ${id} pass`).code).toBe(0);
     expect(eventLines(root)).toHaveLength(4);
     move(root, 'build', 'code-review', '/spec implement 001');
-    move(root, 'code-review', 'close', '/spec review 001');
+    move(root, 'code-review', 'close', '/spec review 001 code');
     move(root, 'close', 'done', '/spec done 001');
 
     expect(events(root).map((e) => `${e.from ?? 'null'}→${e.to}`)).toEqual([

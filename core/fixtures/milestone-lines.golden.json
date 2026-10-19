@@ -62,7 +62,7 @@
         "total": 4
       },
       "tasks": null,
-      "nextCommand": "/spec-plan 002",
+      "nextCommand": "/spec plan 002",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "takeable": [],
       "taken": [],
@@ -71,7 +71,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 002"
+          "command": "/spec review 002"
         },
         {
           "kind": "diagrams",
@@ -114,7 +114,7 @@
         "id": "002",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 002",
+        "command": "/spec plan 002",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -133,7 +133,7 @@
         "total": 2
       },
       "tasks": null,
-      "nextCommand": "/spec-plan 003",
+      "nextCommand": "/spec plan 003",
       "nextReason": "a feature spec needs plan.md and it is missing",
       "takeable": [],
       "taken": [],
@@ -142,7 +142,7 @@
         {
           "kind": "review",
           "text": "no reviewed mark yet",
-          "command": "/spec-review 003"
+          "command": "/spec review 003"
         },
         {
           "kind": "diagrams",
@@ -185,7 +185,7 @@
         "id": "003",
         "state": "open",
         "stage": "plan",
-        "command": "/spec-plan 003",
+        "command": "/spec plan 003",
         "reason": "a feature spec needs plan.md and it is missing"
       }
     },
@@ -213,7 +213,7 @@
         {
           "kind": "drift",
           "text": "drift to the master: closed_without_evidence",
-          "command": "/spec-sync 001"
+          "command": "/spec 001"
         }
       ],
       "gates": {
@@ -264,7 +264,7 @@
           "warning": {
             "kind": "drift",
             "text": "drift to the master: closed_without_evidence",
-            "command": "/spec-sync 001"
+            "command": "/spec 001"
           }
         }
       ]
@@ -277,7 +277,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 002"
+            "command": "/spec review 002"
           }
         },
         {
@@ -285,7 +285,7 @@
           "warning": {
             "kind": "review",
             "text": "no reviewed mark yet",
-            "command": "/spec-review 003"
+            "command": "/spec review 003"
           }
         }
       ]
@@ -329,7 +329,7 @@
         "item": "spec",
         "ref": null,
         "title": "Escalate unacknowledged signals along a chain",
-        "command": "/spec-plan 003",
+        "command": "/spec plan 003",
         "since": "2026-03-08T11:00:00Z",
         "reason": {
           "key": "stage.plan.0",
@@ -345,7 +345,7 @@
         "item": "spec",
         "ref": null,
         "title": "Route each signal to the person on call",
-        "command": "/spec-plan 002",
+        "command": "/spec plan 002",
         "since": "2026-03-08T15:00:00Z",
         "reason": {
           "key": "stage.plan.0",

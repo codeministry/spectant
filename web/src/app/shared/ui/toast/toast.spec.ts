@@ -24,14 +24,14 @@ describe('UiToast', () => {
   it('shows the text and announces it through the one polite live region', async () => {
     const { host, settle, toasts } = await render();
 
-    toasts.show('Copied /spec-implement 012');
+    toasts.show('Copied /spec implement 012');
     await settle();
 
     const regions = host.querySelectorAll('[aria-live]');
     expect(regions).toHaveLength(1);
     expect(host.querySelector('ui-live-region')?.getAttribute('aria-live')).toBe('polite');
-    expect(host.querySelector('ui-live-region')?.textContent).toBe('Copied /spec-implement 012');
-    expect(host.querySelector('.toast')?.textContent.trim()).toBe('Copied /spec-implement 012');
+    expect(host.querySelector('ui-live-region')?.textContent).toBe('Copied /spec implement 012');
+    expect(host.querySelector('.toast')?.textContent.trim()).toBe('Copied /spec implement 012');
   });
 
   it('dismisses itself after 4 s, and a new toast restarts the clock', async () => {

@@ -40,7 +40,7 @@ const chips = (el: Element): string[] => [...el.querySelectorAll('ui-command-chi
 describe('ui-waits-block (T14, ISC-238)', () => {
   it('reads harbor golden: seven waiting entries, the top one a review', () => {
     expect(WAITS).toHaveLength(7);
-    expect(WAITS[0]?.command).toBe('/spec-review 006');
+    expect(WAITS[0]?.command).toBe('/spec review 006');
   });
 
   it('highlights the top entry: ID link, title, priority, sentence, chip and "waiting n d"', async () => {
@@ -56,7 +56,7 @@ describe('ui-waits-block (T14, ISC-238)', () => {
     expect(sentence).not.toBe(top0.reason.phrase);
     expect(sentence.length).toBeGreaterThan(0);
     expect(chips(top as Element)).toHaveLength(1);
-    expect(text(top?.querySelector('ui-command-chip'))).toContain('/spec-review 006');
+    expect(text(top?.querySelector('ui-command-chip'))).toContain('/spec review 006');
     expect(top?.querySelector('ui-relative-time time')?.getAttribute('datetime')).toBe(new Date(top0.since as string).toISOString());
     expect(text(top?.querySelector('ui-relative-time'))).toMatch(/^waiting \d+ (s|min|h|d)$/);
     expect(text(host.querySelector('ui-chip[variant="count"]'))).toBe('7');

@@ -489,7 +489,7 @@ describe("the transition route (T83, ISC-130)", () => {
     const body = (await res.json()) as TransitionRefused;
     expect(body.error).toBe("transition-refused");
     expect(body.reason).toStartWith("build needs a fresh reviewed mark");
-    expect(body.command).toBe("/spec-review 005");
+    expect(body.command).toBe("/spec review 005");
   });
 
   test("locked: a session holding a claim of 002 is 423 with its lock", async () => {

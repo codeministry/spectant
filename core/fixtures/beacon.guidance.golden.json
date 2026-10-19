@@ -6,7 +6,7 @@
       "item": "spec",
       "ref": null,
       "title": "Explain an outage in words on the status page",
-      "command": "/spec-review 004",
+      "command": "/spec review 004",
       "since": "2026-03-07T15:00:00Z",
       "reason": {
         "key": "stage.review.0",
@@ -22,7 +22,7 @@
       "item": "spec",
       "ref": null,
       "title": "Label every time on the status page with a time zone",
-      "command": "/spec-complete 009",
+      "command": "/spec done 009",
       "since": "2026-03-08T11:00:00Z",
       "reason": {
         "key": "stage.close.1",
@@ -38,7 +38,7 @@
       "item": "spec",
       "ref": null,
       "title": "Publish the state of every public check",
-      "command": "/spec-plan 002",
+      "command": "/spec plan 002",
       "since": "2026-03-05T09:00:00Z",
       "reason": {
         "key": "stage.plan.0",
@@ -54,7 +54,7 @@
       "item": "spec",
       "ref": null,
       "title": "Find the largest history each format exports quickly",
-      "command": "/spec-implement 008",
+      "command": "/spec implement 008",
       "since": "2026-03-08T09:30:00Z",
       "reason": {
         "key": "stage.build.0",

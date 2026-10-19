@@ -106,7 +106,7 @@ describe('ApiClient spec 008 routes', () => {
       http.expectOne(URL).flush(stale, { status: 409, statusText: 'Conflict' });
       expect(await conflict).toEqual({ kind: 'answer', answer: { status: 409, body: stale } });
 
-      const refusal = { error: 'transition-refused', reason: 'build needs a fresh reviewed mark', command: '/spec-review 003' };
+      const refusal = { error: 'transition-refused', reason: 'build needs a fresh reviewed mark', command: '/spec review 003' };
       const refused = api.transition('harbor', '003', 'build', HEX_A);
       http.expectOne(URL).flush(refusal, { status: 422, statusText: 'Unprocessable Entity' });
       expect(await refused).toEqual({ kind: 'answer', answer: { status: 422, body: refusal } });
@@ -120,7 +120,7 @@ describe('ApiClient spec 008 routes', () => {
     // Spec 040 (T56, ISC-225.1): the run's 423 is its own kind with the run; the claim lock's 423 stays an answer.
     it('answers a 423 run-locked as run-locked with the run, and an unfit one as error', async () => {
       const actor = { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false };
-      const runBody = { error: 'run-locked', run: 'r-0308-1452', command: '/spec-tasks 003', actor, since: '2026-03-08T14:52:00Z' };
+      const runBody = { error: 'run-locked', run: 'r-0308-1452', command: '/spec tasks 003', actor, since: '2026-03-08T14:52:00Z' };
       const running = api.transition('harbor', '003', 'review', HEX_A);
       http.expectOne(URL).flush(runBody, { status: 423, statusText: 'Locked' });
       expect(await running).toEqual({ kind: 'run-locked', body: runBody });
@@ -275,7 +275,7 @@ describe('ApiClient spec 008 routes', () => {
     });
 
     it('posts the hash in X-Spectant-Activity-Hash and types 200, 409 and 422', async () => {
-      const event = { ts: '2026-03-08T15:00:00.000Z', event: 'run-end', run: 'r-1', command: '/spec-tasks 003', session: 'u:3f9c0a7d', spec: '003', outcome: 'released' };
+      const event = { ts: '2026-03-08T15:00:00.000Z', event: 'run-end', run: 'r-1', command: '/spec tasks 003', session: 'u:3f9c0a7d', spec: '003', outcome: 'released' };
       const ok = api.releaseRun('beacon', 'r-1', HEX_A);
       const req = http.expectOne('/api/workspaces/beacon/runs/r-1/release');
       expect(req.request.method).toBe('POST');

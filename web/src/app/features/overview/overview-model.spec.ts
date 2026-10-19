@@ -18,9 +18,9 @@ describe('readColumn (T65)', () => {
     const column = readColumn(entry('harbor'), harbor, 0);
     expect(NEXT_UP_LIMIT).toBe(3);
     expect(column.next.map((row) => [row.id, row.nextCommand])).toEqual([
-      ['004', '/spec-code-review 004'],
-      ['005', '/spec-review 005'],
-      ['006', '/spec-review 006'],
+      ['004', '/spec review 004 code'],
+      ['005', '/spec review 005'],
+      ['006', '/spec review 006'],
     ]);
   });
 

@@ -8,7 +8,7 @@ const entry = (spec: string, item: GuidanceEntry['item'], key: string, ref: stri
   item,
   ref,
   title: `spec ${spec}`,
-  command: `/spec-implement ${spec}`,
+  command: `/spec implement ${spec}`,
   priority: 'P2',
   since: null,
   reason: { key, values: {}, phrase: `${key} of ${spec}` },
@@ -47,7 +47,7 @@ describe('guidanceOfBody', () => {
 });
 
 describe('withReason', () => {
-  const info: ItemStateInfo = { kind: 'spec', id: '006', state: 'open', stage: 'review', command: '/spec-review 006', reason: 'the reviewed mark is stale' };
+  const info: ItemStateInfo = { kind: 'spec', id: '006', state: 'open', stage: 'review', command: '/spec review 006', reason: 'the reviewed mark is stale' };
 
   it('replaces the reason with the sentence', () => {
     expect(withReason(info, 'Read the spec and confirm it.')).toEqual({ ...info, reason: 'Read the spec and confirm it.' });

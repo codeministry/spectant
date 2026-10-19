@@ -16,6 +16,7 @@
 
 import type { Diagnostic } from './diagnostics.ts';
 import { EVENT_STAGES, parseEvents } from './events.ts';
+import { commandKey } from './stage.ts';
 import { roundLines } from './timeline.ts';
 
 // ─── The file ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ export interface BaselineRow {
   readonly measured_through: string;
   /** The Claude Code versions the measured transcripts name, sorted, each once. */
   readonly claude_code: readonly string[];
-  /** Keyed by command name (`/spec-plan`), in key order. */
+  /** Keyed by command name (`/spec plan`), in key order. */
   readonly commands: Readonly<Record<string, BaselineCommand>>;
 }
 
@@ -64,7 +65,7 @@ export interface InvocationRow extends TokenCounters {
   readonly kind: 'invocation';
   /** `a:claude:<session>#<n>`: the neutral actor ID of the session and the invocation's 1-based position in it. */
   readonly id: string;
-  /** The command name only, `/spec-plan`; its arguments are never stored. */
+  /** The command name only, `/spec plan`; its arguments are never stored. */
   readonly command: string;
   /** The spec slug `NNN-slug` read from the arguments' number; null when they name none or an unknown one. */
   readonly spec: string | null;
@@ -94,7 +95,7 @@ export interface StageTotalRow extends TokenCounters {
   readonly requests: number;
 }
 
-/** Every request of a `/spec-implement` invocation that falls into one round of `rounds.jsonl`. */
+/** Every request of a `/spec implement` invocation that falls into one round of `rounds.jsonl`. */
 export interface RoundTotalRow extends TokenCounters {
   readonly v: typeof TOKENS_VERSION;
   readonly kind: 'round';
@@ -255,6 +256,15 @@ const COMMAND_NAME = /<command-name>\s*([^<\s]+)\s*<\/command-name>/;
 
 const COMMAND_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
 
+/**
+ * The command name an invocation stores: the transcript's name, and for the plugin's `/spec` its subcommand word too
+ * (`/spec implement`), so its rounds and its baseline entry stand apart; never any other argument.
+ */
+function commandNameOf(name: string, args: string): string {
+  const word = args.trim().split(/\s+/)[0] ?? '';
+  return commandKey(name) === null && commandKey(`${name} ${word}`) !== null ? `${name} ${word}` : name;
+}
+
 /** The first three-digit number standing alone in a command's arguments. */
 const SPEC_NUMBER = /(?<!\d)(\d{3})(?!\d)/;
 
@@ -341,7 +351,7 @@ export function parseTranscript(file: TranscriptFile): ParsedTranscript {
     if (command === null) return;
     if (SPEC_COMMAND.test(command)) {
       const args = COMMAND_ARGS.exec(text)?.[1] ?? '';
-      entries.push({ type: 'command', ts, command, specNumber: SPEC_NUMBER.exec(args)?.[1] ?? null });
+      entries.push({ type: 'command', ts, command: commandNameOf(command, args), specNumber: SPEC_NUMBER.exec(args)?.[1] ?? null });
     } else {
       entries.push({ type: 'input', ts });
     }
@@ -355,7 +365,6 @@ export function parseTranscript(file: TranscriptFile): ParsedTranscript {
 
 const ROLE_RANK: Readonly<Record<TranscriptRole, number>> = { main: 0, worktree: 1, subagent: 2 };
 
-const IMPLEMENT = '/spec-implement';
 
 /** Byte-independent, locale-free string order. */
 const plainOrder = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -549,7 +558,7 @@ export function tokenRows(input: TokenInput): TokenRun {
       stageKeys.set(key, { spec, stage });
       addTo(perStage, key, request);
     }
-    const round = invocation.command === IMPLEMENT ? roundAt(timeline, at) : null;
+    const round = commandKey(invocation.command) === 'implement' ? roundAt(timeline, at) : null;
     if (round !== null) {
       const key = JSON.stringify([spec, round]);
       roundKeys.set(key, { spec, round });

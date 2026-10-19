@@ -12,21 +12,21 @@
 //     table row names (`StageRule.state`, T8): `open` with the row's command and reason, `waiting` (rows
 //     `close-pending`, `blocked`) with what it waits on, `done`. An aborted run that later gets its `run-end` is no
 //     longer open, so the item reads its row's state again; a newer `run-start` makes it `running` (T15, ISC-222.1).
-//   review mark: an open `/spec-review` run on the spec is `running`/`aborted`; a fresh mark `done`, dated by the mark;
+//   review mark: an open `/spec review` run on the spec is `running`/`aborted`; a fresh mark `done`, dated by the mark;
 //     on a spec in a `done` row a missing or stale mark is `done` too, undated with its one diagnostic, never `open`
 //     (reviews are optional per spec since spec 028); a missing mark while the spec stands before review (rows `plan`,
-//     `tasks`) `waiting` on the spec itself; else `open` with `/spec-review NNN`.
-//   code-review mark: the same with `/spec-code-review`; `waiting` while missing and the spec stands before the
+//     `tasks`) `waiting` on the spec itself; else `open` with `/spec review NNN`.
+//   code-review mark: the same with `/spec review NNN code`; `waiting` while missing and the spec stands before the
 //     code-review row (on the feature siblings in `close-pending`, on the spec itself before that). A spec type whose
 //     workflow has no code review has no code-review mark item.
 //   claim: dropped (`closedAs: 'dropped'`) and checked are `done`; a held lock is `running` (detail `taken`), `aborted`
 //     past the claim stale age (ISC-35); an unresolved `(after: …)` edge or an open spec edge is `waiting`; anything
-//     else is `open` with `/spec-implement NNN`.
+//     else is `open` with `/spec implement NNN`.
 //   task: struck (`closedAs: 'struck'`) and ticked are `done`; a last ISC-179 run state of dispatched, building,
 //     patched or applied-open is `running` with that state as detail, `aborted` past the claim stale age; a task whose
-//     claim waits, or which an open spec edge holds, is `waiting`; anything else is `open` with `/spec-implement NNN`.
+//     claim waits, or which an open spec edge holds, is `waiting`; anything else is `open` with `/spec implement NNN`.
 // A claim lock and a task run name no command and no run id: both come from implement rounds, so their run shows
-// `/spec-implement NNN` and the holding session as its id.
+// `/spec implement NNN` and the holding session as its id.
 //
 // One model for claims and tasks (ISC-223): `claimStates` and `taskStates` derive them from already parsed inputs of
 // one spec. `itemStates` calls them per spec; the live frame (live.ts `LiveCard.itemState`) and the claim view
@@ -55,7 +55,7 @@ import { parseFrontmatter } from './frontmatter.ts';
 import type { PlanningModel } from './planning.ts';
 import { resolveEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
-import { codeReviewOf, fillReason, fillsTemplate, SPEC_RULES, storyStep } from './stage.ts';
+import { codeReviewOf, commandFor, commandKey, commandWith, fillReason, fillsTemplate, pluginCommand, SPEC_RULES, storyStep } from './stage.ts';
 import type { SpecStageRule, Stage } from './stage.ts';
 import { heldLocks, mainFeatureOf, partitionClaims } from './status.ts';
 import { parseTaskLines } from './tasks.ts';
@@ -163,9 +163,9 @@ export const STATE_TABLE: readonly StateTableRow[] = [
   {
     kind: 'review-mark',
     state: 'open',
-    meaning: '`/spec-review NNN` lies with the user: the spec stands in the review row, or the mark is stale, or missing past review.',
+    meaning: '`/spec review NNN` lies with the user: the spec stands in the review row, or the mark is stale, or missing past review.',
     entered: 'The spec reaches the review row, or a reviewed file changes after the review.',
-    left: 'A `/spec-review` run starts, or a fresh mark is written.',
+    left: 'A `/spec review` run starts, or a fresh mark is written.',
   },
   {
     kind: 'review-mark',
@@ -177,14 +177,14 @@ export const STATE_TABLE: readonly StateTableRow[] = [
   {
     kind: 'review-mark',
     state: 'running',
-    meaning: 'A `/spec-review` run is open on the spec, younger than the abort age.',
-    entered: 'A `run-start` of `/spec-review NNN`.',
+    meaning: 'A `/spec review` run is open on the spec, younger than the abort age.',
+    entered: 'A `run-start` of `/spec review NNN`.',
     left: 'Its `run-end`, or the abort age passes.',
   },
   {
     kind: 'review-mark',
     state: 'aborted',
-    meaning: 'A `/spec-review` run without end, older than the abort age.',
+    meaning: 'A `/spec review` run without end, older than the abort age.',
     entered: 'The abort age passes without a `run-end` for the run.',
     left: 'A `run-end` for it, or a new `run-start`.',
   },
@@ -193,14 +193,14 @@ export const STATE_TABLE: readonly StateTableRow[] = [
     state: 'done',
     meaning: "The reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec).",
     entered: 'A reviewed mark matching spec.md, plan.md and tasks.md is written, or the spec reaches a `done` row.',
-    left: 'A reviewed file changes (stale), or a `/spec-review` run starts.',
+    left: 'A reviewed file changes (stale), or a `/spec review` run starts.',
   },
   {
     kind: 'code-review-mark',
     state: 'open',
-    meaning: '`/spec-code-review NNN` lies with the user: the spec stands in the code-review row, or the mark is stale, or missing past it.',
+    meaning: '`/spec review NNN code` lies with the user: the spec stands in the code-review row, or the mark is stale, or missing past it.',
     entered: 'The spec reaches the code-review row, or the working tree changes after the code review.',
-    left: 'A `/spec-code-review` run starts, or a fresh mark is written.',
+    left: 'A `/spec review NNN code` run starts, or a fresh mark is written.',
   },
   {
     kind: 'code-review-mark',
@@ -212,14 +212,14 @@ export const STATE_TABLE: readonly StateTableRow[] = [
   {
     kind: 'code-review-mark',
     state: 'running',
-    meaning: 'A `/spec-code-review` run is open on the spec, younger than the abort age.',
-    entered: 'A `run-start` of `/spec-code-review NNN`.',
+    meaning: 'A `/spec review NNN code` run is open on the spec, younger than the abort age.',
+    entered: 'A `run-start` of `/spec review NNN code`.',
     left: 'Its `run-end`, or the abort age passes.',
   },
   {
     kind: 'code-review-mark',
     state: 'aborted',
-    meaning: 'A `/spec-code-review` run without end, older than the abort age.',
+    meaning: 'A `/spec review NNN code` run without end, older than the abort age.',
     entered: 'The abort age passes without a `run-end` for the run.',
     left: 'A `run-end` for it, or a new `run-start`.',
   },
@@ -229,12 +229,12 @@ export const STATE_TABLE: readonly StateTableRow[] = [
     meaning:
       "The code-reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). A type whose workflow has no code review has no such item.",
     entered: 'A code-reviewed mark matching the working tree is written, or the spec reaches a `done` row.',
-    left: 'The working tree changes (stale), or a `/spec-code-review` run starts.',
+    left: 'The working tree changes (stale), or a `/spec review NNN code` run starts.',
   },
   {
     kind: 'claim',
     state: 'open',
-    meaning: '`/spec-implement NNN` lies with the user: the claim is takeable, or held only by the review gate.',
+    meaning: '`/spec implement NNN` lies with the user: the claim is takeable, or held only by the review gate.',
     entered: 'The claim is unchecked, no lock holds it and no edge is open.',
     left: 'A lock takes it, an edge holds it, or it is checked or dropped.',
   },
@@ -269,7 +269,7 @@ export const STATE_TABLE: readonly StateTableRow[] = [
   {
     kind: 'task',
     state: 'open',
-    meaning: '`/spec-implement NNN` lies with the user: the task has no run and its claim does not wait.',
+    meaning: '`/spec implement NNN` lies with the user: the task has no run and its claim does not wait.',
     entered: 'The task is unticked, without a run in flight and not held.',
     left: 'A `dispatch` sends it out, its claim starts waiting, or it is ticked or struck.',
   },
@@ -321,8 +321,6 @@ const KEYS = ['kind', 'id', 'spec', 'state', 'stage', 'command', 'reason', 'wait
 const byId = (a: string, b: string): number => a.localeCompare(b, 'en', { numeric: true });
 const sortedSet = (ids: Iterable<string>): string[] => [...new Set(ids)].sort(byId);
 const markOf = (state: GateState): MarkState => (state === 'fresh' || state === 'stale' ? state : 'missing');
-/** The command's first word: `/spec-review 005` → `/spec-review`. */
-const headOf = (command: string): string => command.trim().split(/\s+/)[0] ?? '';
 
 /** The item with its fields in `KEYS` order and every absent one left out, so the golden reads the same everywhere. */
 function ordered(item: ItemStateInfo): ItemStateInfo {
@@ -359,7 +357,7 @@ interface Context {
  */
 export function stageRuleOf(row: Pick<DashboardSpecRow, 'id' | 'nextCommand' | 'nextReason'>): SpecStageRule {
   const rule = SPEC_RULES.find(
-    (r) => (r.next === null ? row.nextCommand === null : row.nextCommand === `${r.next} ${row.id}`) && r.reasons.some((template) => fillsTemplate(template, row.nextReason)),
+    (r) => (r.next === null ? row.nextCommand === null : row.nextCommand === commandWith(r.next, row.id)) && r.reasons.some((template) => fillsTemplate(template, row.nextReason)),
   );
   if (rule === undefined) throw new Error(`spec ${row.id}: no stage table row gives ${row.nextCommand ?? '—'} with "${row.nextReason}"`);
   return rule;
@@ -375,7 +373,7 @@ function runOf(runs: readonly OpenRun[], ctx: Context): { run: ItemRun; diagnost
   const elapsed = ctx.now - Date.parse(newest.since);
   const run: ItemRun = {
     run: newest.run,
-    command: newest.command,
+    command: pluginCommand(newest.command),
     session: newest.session,
     actor: newest.actor,
     since: newest.since,
@@ -410,7 +408,7 @@ function implementRun(spec: string, session: string, since: string, source: 'loc
   const elapsed = ctx.now - Date.parse(since);
   const run: ItemRun = {
     run: session,
-    command: `/spec-implement ${spec}`,
+    command: commandFor('implement', spec),
     session,
     actor: parseActor(session),
     since,
@@ -480,7 +478,7 @@ export interface ClaimStateInput extends ImplementClock {
 
 /**
  * The claims of one spec (ISC-223): done (checked, or dropped with `closedAs`), running on a held lock (detail `taken`)
- * or aborted past the claim stale age, waiting on an open claim or spec edge, else open with `/spec-implement NNN`; a
+ * or aborted past the claim stale age, waiting on an open claim or spec edge, else open with `/spec implement NNN`; a
  * takeable claim says so in its reason. Each item in `ItemStateInfo` key order.
  */
 export function claimStates(input: ClaimStateInput): ItemStateInfo[] {
@@ -509,7 +507,7 @@ export function claimStates(input: ClaimStateInput): ItemStateInfo[] {
       return ordered({ ...base, state: 'waiting', waits: waitsOf({ specs: specHolds.get(c.id), claims: blockers.get(c.id) }) });
     }
     const reason = takeable.has(c.id) ? `${c.id} is takeable` : `the reviewed mark is ${reviewed}`;
-    return ordered({ ...base, state: 'open', command: `/spec-implement ${spec}`, reason });
+    return ordered({ ...base, state: 'open', command: commandFor('implement', spec), reason });
   });
 }
 
@@ -535,7 +533,7 @@ export interface TaskStateInput extends ImplementClock {
 /**
  * The tasks of one spec (ISC-223): done (ticked, dated by its `apply`; or struck with `closedAs`), running on a run in
  * flight with its ISC-179 state as the detail or aborted past the claim stale age, waiting with its claim or on an open
- * spec edge, else open with `/spec-implement NNN`. Each item in `ItemStateInfo` key order.
+ * spec edge, else open with `/spec implement NNN`. Each item in `ItemStateInfo` key order.
  */
 export function taskStates(input: TaskStateInput): ItemStateInfo[] {
   const { spec } = input;
@@ -557,7 +555,7 @@ export function taskStates(input: TaskStateInput): ItemStateInfo[] {
     if (claim?.state === 'waiting' || held.length > 0) {
       return ordered({ ...base, state: 'waiting', waits: waitsOf({ specs: [...(claim?.waits?.specs ?? []), ...held], claims: claim?.waits?.claims }) });
     }
-    return ordered({ ...base, state: 'open', command: `/spec-implement ${spec}`, reason: t.reason ?? `task of ${t.claim}, not dispatched` });
+    return ordered({ ...base, state: 'open', command: commandFor('implement', spec), reason: t.reason ?? `task of ${t.claim}, not dispatched` });
   });
 }
 
@@ -611,10 +609,10 @@ function markItem(
   ctx: Context,
 ): ItemStateInfo {
   const review = kind === 'review-mark';
-  const command = review ? '/spec-review' : '/spec-code-review';
+  const key = review ? 'review' : 'review code';
   const base = { kind, id: row.id, spec: row.id };
   const live = fromRuns(
-    runs.filter((r) => headOf(r.command) === command),
+    runs.filter((r) => commandKey(r.command) === key),
     ctx,
   );
   if (live !== null) return { ...base, ...live };
@@ -630,7 +628,7 @@ function markItem(
   // In its own row the stage table's reason; elsewhere the mark's state says why.
   const ownRow = rule.stage === (review ? 'review' : 'code-review');
   const reason = ownRow ? row.nextReason : fillReason(`the ${review ? 'reviewed' : 'code-reviewed'} mark is {state}`, { state });
-  return { ...base, state: 'open', command: `${command} ${row.id}`, reason };
+  return { ...base, state: 'open', command: review ? commandFor('review', row.id) : commandFor('review', row.id, 'code'), reason };
 }
 
 /** Every item of one spec: the spec, its marks (code review only where its workflow has one), its claims and tasks. */

@@ -43,14 +43,14 @@ let calls: Array<{ ws: string; id: string; to: WorkflowStage; hash: string }>;
 let planningLoads: number;
 let dashboardLoads: number;
 
-/** Harbor with 003 held by a running `/spec-tasks 003` (spec 040, T57): the dashboard row's state as core serves it. */
+/** Harbor with 003 held by a running `/spec tasks 003` (spec 040, T57): the dashboard row's state as core serves it. */
 const RUN_ACTOR = { raw: 'a:claude:sess-32', kind: 'agent', id: 'a:claude:sess-32', legacy: false } as const;
 const RUNNING_003 = {
   kind: 'spec',
   id: '003',
   state: 'running',
   stage: 'tasks',
-  run: { run: 'r-0308-1452', command: '/spec-tasks 003', session: 'a:claude:sess-32', actor: RUN_ACTOR, since: '2026-03-08T14:52:00Z', elapsedMs: 480_000, openRuns: 1, source: 'run' },
+  run: { run: 'r-0308-1452', command: '/spec tasks 003', session: 'a:claude:sess-32', actor: RUN_ACTOR, since: '2026-03-08T14:52:00Z', elapsedMs: 480_000, openRuns: 1, source: 'run' },
 };
 const RUNNING = { ...dashboard, specs: dashboard.specs.map((row) => (row.id === '003' ? { ...row, state: RUNNING_003 } : row)) } as typeof dashboard;
 
@@ -215,7 +215,7 @@ describe('the refusal notice (T126, ISC-130)', () => {
   const notice = (page: HTMLElement): HTMLElement | null => page.querySelector<HTMLElement>('[data-key="spec:003-config-loader"] + app-refusal-notice');
 
   it('422: the card stays, the notice under it carries core\'s phrase and the command chip, and no toast shows', async () => {
-    const refused: Answer = { status: 422, body: { error: 'transition-refused', reason: 'waits for its tasks', command: '/spec-tasks 003' } };
+    const refused: Answer = { status: 422, body: { error: 'transition-refused', reason: 'waits for its tasks', command: '/spec tasks 003' } };
     const { page, drag } = await open(answer(refused));
     await drag.drop('harbor', C003, 'build');
     await settle();
@@ -224,7 +224,7 @@ describe('the refusal notice (T126, ISC-130)', () => {
     expect(n?.getAttribute('data-refusal')).toBe('refused');
     expect(text(n?.querySelector('[data-head]'))).toBe('Not moved — 003 cannot enter Build');
     expect(text(n?.querySelector('ui-reason .phrase'))).toBe('waits for its tasks');
-    expect(text(n?.querySelector('ui-command-chip code'))).toBe('/spec-tasks 003');
+    expect(text(n?.querySelector('ui-command-chip code'))).toBe('/spec tasks 003');
     expect(n?.querySelector('ui-notice')?.getAttribute('role')).toBe('alert');
     expect(TestBed.inject(ToastService).message()).toBeNull();
   });
@@ -280,7 +280,7 @@ describe('the refusal notice (T126, ISC-130)', () => {
 describe('a card a running run holds (T57, T59, ISC-225.1)', () => {
   const card = (page: HTMLElement): HTMLElement | null => page.querySelector<HTMLElement>('app-board-card[data-key="spec:003-config-loader"]');
   const notice = (page: HTMLElement): HTMLElement | null => page.querySelector<HTMLElement>('[data-key="spec:003-config-loader"] + app-refusal-notice');
-  const RUN_TEXT = 'Not moved — 003 is running: /spec-tasks 003 · a:claude:sess-32 · since 8 min';
+  const RUN_TEXT = 'Not moved — 003 is running: /spec tasks 003 · a:claude:sess-32 · since 8 min';
 
   it('is not draggable; its grip is locked, shows the lock icon and its item is cdk-drag-disabled', async () => {
     const { page, drag } = await open(answer(written('tasks', 'review')), 'wide', '/w/harbor/board', RUNNING);
@@ -315,7 +315,7 @@ describe('a card a running run holds (T57, T59, ISC-225.1)', () => {
   });
 
   it('a 423 run-locked on a drop shows the same notice and reloads the dashboard and the planning tree', async () => {
-    const body = { error: 'run-locked', run: 'r-0308-1452', command: '/spec-tasks 003', actor: RUN_ACTOR, since: '2026-03-08T14:52:00Z' } as const;
+    const body = { error: 'run-locked', run: 'r-0308-1452', command: '/spec tasks 003', actor: RUN_ACTOR, since: '2026-03-08T14:52:00Z' } as const;
     const { page, drag } = await open({ kind: 'run-locked', body });
     const before = { dashboard: dashboardLoads, planning: planningLoads };
     vi.useFakeTimers({ now: Date.parse('2026-03-08T15:00:30Z'), toFake: ['Date'] });

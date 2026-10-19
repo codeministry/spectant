@@ -48,7 +48,7 @@
       <ui-kbd data-gallery="kbd">⌘K</ui-kbd>
       <ui-kbd data-gallery="kbd-esc">Esc</ui-kbd>
       <ui-relative-time [date]="updatedAt" data-gallery="relative-time" />
-      <ui-command-chip command="/spec-implement 012" data-gallery="command-chip" />
+      <ui-command-chip command="/spec implement 012" data-gallery="command-chip" />
     </div>
     <div class="gallery-row">
       <ui-filter-chips [options]="filters" [(value)]="filter" label="Filter by phase" data-gallery="filter-chips" />
@@ -143,7 +143,7 @@
     </ul>
     <ui-disclosure [open]="true" data-gallery="disclosure-open">
       <span uiDisclosureSummary>TL;DR (open)</span>
-      <ui-command-chip uiDisclosureActions command="/spec-status" data-gallery="disclosure-open-action" />
+      <ui-command-chip uiDisclosureActions command="/spec" data-gallery="disclosure-open-action" />
       <p class="gallery-copy">The brief reads as of today. <button ui-button size="sm" variant="outline" data-gallery="disclosure-open-content">Details</button></p>
     </ui-disclosure>
     <ui-disclosure data-gallery="disclosure-closed">

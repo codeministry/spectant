@@ -64,8 +64,8 @@ describe('StatusBlock without an item state (T132, ISC-122.3; payloads before sp
     const reason = host.querySelector('ui-reason');
     expect(reason?.getAttribute('data-block')).toBe('');
     expect(reason?.querySelector('.phrase')?.textContent).toBe(m.next.reasons[0]);
-    expect(reason?.querySelector('ui-command-chip code')?.textContent).toBe('/spec-implement 002');
-    expect(host.querySelector('[data-next-command]')?.textContent).toContain('/spec-implement 002');
+    expect(reason?.querySelector('ui-command-chip code')?.textContent).toBe('/spec implement 002');
+    expect(host.querySelector('[data-next-command]')?.textContent).toContain('/spec implement 002');
 
     const source = host.querySelector('[data-stage-source]');
     expect(source?.getAttribute('data-value')).toBe('explicit');
@@ -133,12 +133,12 @@ describe('StatusBlock since (T11, ISC-114.1)', () => {
   const AT = '2026-10-01T12:05:00.000Z';
 
   it('renders "since … via …" with the instant as a <time> through the shared formatter', async () => {
-    const { host } = await render('002-web-console', { since: { at: AT, via: '/spec-review' } });
+    const { host } = await render('002-web-console', { since: { at: AT, via: '/spec review' } });
     const caption = host.querySelector('[data-since]');
     const time = caption?.querySelector('ui-time time');
     expect(time?.getAttribute('datetime')).toBe(AT);
     expect(time?.textContent).toBe(formatInstant(AT, 'en'));
-    expect(caption?.textContent.replace(/\s+/g, ' ').trim()).toBe(`since ${formatInstant(AT, 'en')} via /spec-review`);
+    expect(caption?.textContent.replace(/\s+/g, ' ').trim()).toBe(`since ${formatInstant(AT, 'en')} via /spec review`);
   });
 
   it('shows no caption without an event into the current stage', async () => {
@@ -169,9 +169,9 @@ describe('StatusBlock item state (spec 040, T49, ISC-224)', () => {
     const line = host.querySelector('ui-item-state');
     expect(line?.getAttribute('data-block')).toBe('');
     expect(line?.getAttribute('data-state')).toBe('open');
-    expect(line?.querySelector('ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+    expect(line?.querySelector('ui-command-chip code')?.textContent).toBe('/spec implement 002');
     expect(line?.textContent).toContain(m.head.state?.reason ?? '-');
-    expect(host.querySelector('[data-next-command]')?.textContent).toContain('/spec-implement 002');
+    expect(host.querySelector('[data-next-command]')?.textContent).toContain('/spec implement 002');
     expect(host.querySelector('ui-reason')).toBeNull();
   });
 
@@ -187,7 +187,7 @@ describe('StatusBlock item state (spec 040, T49, ISC-224)', () => {
     const line = host.querySelector('ui-item-state');
     expect(line?.getAttribute('data-state')).toBe('running');
     expect(line?.querySelector('ui-command-chip [data-locked]')).not.toBeNull();
-    expect(line?.querySelector('ui-command-chip code')?.textContent).toBe('/spec-tasks 003');
+    expect(line?.querySelector('ui-command-chip code')?.textContent).toBe('/spec tasks 003');
     expect(line?.querySelector('ui-actor-chip')?.textContent).toContain('a:claude:sess-32');
     expect(line?.querySelector('[data-item-line]')?.textContent).toContain('since 8 min');
     const since = m.head.state?.run?.since ?? '';
@@ -222,6 +222,6 @@ describe('StatusBlock item state (spec 040, T49, ISC-224)', () => {
     const { host } = await render('002-web-console', { head });
     expect(host.querySelector('ui-item-state')).toBeNull();
     expect(host.querySelector('[data-state-chip]')).toBeNull();
-    expect(host.querySelector('ui-reason ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+    expect(host.querySelector('ui-reason ui-command-chip code')?.textContent).toBe('/spec implement 002');
   });
 });

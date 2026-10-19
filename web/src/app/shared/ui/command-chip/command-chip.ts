@@ -58,19 +58,19 @@ function highlightMs(doc: Document): number {
 }
 
 /**
- * A mono command with a copy button (`/spec-implement 012`, `spectant add <path-to-repo>`). On success the icon
+ * A mono command with a copy button (`/spec implement 012`, `spectant add <path-to-repo>`). On success the icon
  * swaps copy → check for `--motion-duration-highlight` (under reduced motion, where that token is 0ms, the check
  * holds until the button loses focus) and `copied` emits the command. The clipboard gets the command trimmed, never a
- * space before or after it, and the chip's own polite `ui-live-region` announces it ("Copied /spec-implement 012",
+ * space before or after it, and the chip's own polite `ui-live-region` announces it ("Copied /spec implement 012",
  * `common.copied`; spec 020, ISC-241), so every surface confirms a copy the same way, without a toast. When every
  * copy path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
  *
- * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec-implement 012"; ISC-142),
+ * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec implement 012"; ISC-142),
  * so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
  *
  * `lockedBy` (spec 040, T47, ISC-225.1): while a run on the item is running the chip is locked. `lock` replaces
  * `copy`, the chip goes `--muted-ink` on `--color-base-300`, the button is `aria-disabled` but stays focusable, and its
- * accessible name names the run's command, actor and duration ("Locked · /spec-tasks 037 is running · a:claude:sess-7
+ * accessible name names the run's command, actor and duration ("Locked · /spec tasks 037 is running · a:claude:sess-7
  * · since 3 min"). Copying is refused; a press (a tap on touch, which has no tooltip) toggles the hint line "Running
  * for 3 min · copyable once it ends", which is also the tooltip. The duration comes from the run's `elapsedMs`.
  *

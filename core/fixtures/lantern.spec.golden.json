@@ -6,7 +6,7 @@
       "title": "Reading list",
       "type": "feature",
       "stage": "build",
-      "nextCommand": "/spec-implement 001",
+      "nextCommand": "/spec implement 001",
       "nextReason": "ISC-7 and ISC-9 are takeable",
       "phase": "building",
       "started": "2026-03-03T09:00:00Z",
@@ -26,7 +26,7 @@
         "id": "001",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 001",
+        "command": "/spec implement 001",
         "reason": "ISC-7 and ISC-9 are takeable"
       }
     },
@@ -54,7 +54,7 @@
     "ideaQuote": "A reader saves a link in one step, finds it again by title or tag, and reads it offline.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 001",
+      "command": "/spec implement 001",
       "reasons": [
         "ISC-7 and ISC-9 are takeable",
         "the reviewed mark is fresh"
@@ -144,7 +144,7 @@
           "item": "spec",
           "ref": null,
           "title": "Save a link once and find it again, online or offline",
-          "command": "/spec-implement 001",
+          "command": "/spec implement 001",
           "since": "2026-03-06T15:00:00Z",
           "reason": {
             "key": "stage.build.0",
@@ -165,7 +165,7 @@
       "title": "Duplicate links and tags",
       "type": "bug",
       "stage": "build",
-      "nextCommand": "/spec-implement 002",
+      "nextCommand": "/spec implement 002",
       "nextReason": "ISC-11 and ISC-12 are takeable",
       "phase": "scoping",
       "started": "2026-03-06T10:00:00Z",
@@ -190,7 +190,7 @@
         "id": "002",
         "state": "open",
         "stage": "build",
-        "command": "/spec-implement 002",
+        "command": "/spec implement 002",
         "reason": "ISC-11 and ISC-12 are takeable"
       }
     },
@@ -218,7 +218,7 @@
     "ideaQuote": "Saving a known link or a known tag again changes nothing in the list.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-implement 002",
+      "command": "/spec implement 002",
       "reasons": [
         "ISC-11 and ISC-12 are takeable",
         "the reviewed mark is fresh"
@@ -292,7 +292,7 @@
           "item": "spec",
           "ref": null,
           "title": "Stop duplicate links and duplicate tags from entering the list",
-          "command": "/spec-implement 002",
+          "command": "/spec implement 002",
           "since": "2026-03-06T10:30:00Z",
           "reason": {
             "key": "stage.build.0",

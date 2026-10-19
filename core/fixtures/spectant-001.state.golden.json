@@ -4,7 +4,7 @@
     "id": "001",
     "state": "open",
     "stage": "review",
-    "command": "/spec-review 001",
+    "command": "/spec review 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -12,7 +12,7 @@
     "id": "001",
     "spec": "001",
     "state": "open",
-    "command": "/spec-review 001",
+    "command": "/spec review 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -33,7 +33,7 @@
     "id": "ISC-1",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -41,7 +41,7 @@
     "id": "ISC-2",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -49,7 +49,7 @@
     "id": "ISC-3",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -57,7 +57,7 @@
     "id": "ISC-4",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -76,7 +76,7 @@
     "id": "ISC-6",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -84,7 +84,7 @@
     "id": "ISC-7",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -158,7 +158,7 @@
     "id": "ISC-11",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -177,7 +177,7 @@
     "id": "ISC-13",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -185,7 +185,7 @@
     "id": "ISC-14",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -193,7 +193,7 @@
     "id": "ISC-15",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -201,7 +201,7 @@
     "id": "ISC-16",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -209,7 +209,7 @@
     "id": "ISC-16.1",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -217,7 +217,7 @@
     "id": "ISC-16.2",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -225,7 +225,7 @@
     "id": "ISC-17",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -233,7 +233,7 @@
     "id": "ISC-17.1",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -252,7 +252,7 @@
     "id": "ISC-18.1",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -260,7 +260,7 @@
     "id": "ISC-18.3",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -279,7 +279,7 @@
     "id": "ISC-19",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -287,7 +287,7 @@
     "id": "ISC-19.1",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -295,7 +295,7 @@
     "id": "ISC-20",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -325,7 +325,7 @@
     "id": "ISC-60",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -359,7 +359,7 @@
     "id": "ISC-61",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -380,7 +380,7 @@
     "id": "ISC-61.2",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -388,7 +388,7 @@
     "id": "ISC-62",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -409,7 +409,7 @@
     "id": "ISC-63",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -417,7 +417,7 @@
     "id": "ISC-63.1",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -425,7 +425,7 @@
     "id": "ISC-64",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -433,7 +433,7 @@
     "id": "ISC-65",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -441,7 +441,7 @@
     "id": "ISC-66",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "the reviewed mark is missing"
   },
   {
@@ -636,7 +636,7 @@
     "id": "T16",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "operator lane — the principal's own action, never auto-dispatched"
   },
   {
@@ -743,7 +743,7 @@
     "id": "T26",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -751,7 +751,7 @@
     "id": "T27",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -759,7 +759,7 @@
     "id": "T28",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "after T24, T25, T26, T27 still open"
   },
   {
@@ -767,7 +767,7 @@
     "id": "T29",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T28"
   },
   {
@@ -775,7 +775,7 @@
     "id": "T30",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T28"
   },
   {
@@ -783,7 +783,7 @@
     "id": "T31",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T28"
   },
   {
@@ -802,7 +802,7 @@
     "id": "T32",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -810,7 +810,7 @@
     "id": "T33",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "after T32 still open"
   },
   {
@@ -818,7 +818,7 @@
     "id": "T34",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T33"
   },
   {
@@ -826,7 +826,7 @@
     "id": "T36",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T33"
   },
   {
@@ -834,7 +834,7 @@
     "id": "T37",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T33"
   },
   {
@@ -842,7 +842,7 @@
     "id": "T38",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T33"
   },
   {
@@ -850,7 +850,7 @@
     "id": "T39",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "after T34, T36, T37, T38 still open"
   },
   {
@@ -858,7 +858,7 @@
     "id": "T40",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T39"
   },
   {
@@ -866,7 +866,7 @@
     "id": "T41",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T39"
   },
   {
@@ -896,7 +896,7 @@
     "id": "T42",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -904,7 +904,7 @@
     "id": "T43",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -912,7 +912,7 @@
     "id": "T44",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "after T42 still open"
   },
   {
@@ -920,7 +920,7 @@
     "id": "T47",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T39"
   },
   {
@@ -928,7 +928,7 @@
     "id": "T48",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -936,7 +936,7 @@
     "id": "T49",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -944,7 +944,7 @@
     "id": "T50",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -952,7 +952,7 @@
     "id": "T51",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T39"
   },
   {
@@ -960,7 +960,7 @@
     "id": "T52",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T39"
   },
   {
@@ -968,7 +968,7 @@
     "id": "T53",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -976,7 +976,7 @@
     "id": "T54",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -984,7 +984,7 @@
     "id": "T55",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -992,7 +992,7 @@
     "id": "T56",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "claim already closed — task should be [x]; strike or check it"
   },
   {
@@ -1000,7 +1000,7 @@
     "id": "T57",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T28, T39"
   },
   {
@@ -1008,7 +1008,7 @@
     "id": "T58",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "width 4 reached"
   },
   {
@@ -1016,7 +1016,7 @@
     "id": "T59",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T39"
   },
   {
@@ -1024,7 +1024,7 @@
     "id": "T60",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1032,7 +1032,7 @@
     "id": "T61",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1040,7 +1040,7 @@
     "id": "T62",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1048,7 +1048,7 @@
     "id": "T63",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1056,7 +1056,7 @@
     "id": "T64",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1064,7 +1064,7 @@
     "id": "T65",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1072,7 +1072,7 @@
     "id": "T66",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1080,7 +1080,7 @@
     "id": "T67",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1088,7 +1088,7 @@
     "id": "T68",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1148,7 +1148,7 @@
     "id": "T73",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1156,7 +1156,7 @@
     "id": "T74",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1164,7 +1164,7 @@
     "id": "T75",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1172,7 +1172,7 @@
     "id": "T76",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1180,7 +1180,7 @@
     "id": "T77",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1188,7 +1188,7 @@
     "id": "T78",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1196,7 +1196,7 @@
     "id": "T79",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1204,7 +1204,7 @@
     "id": "T80",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1212,7 +1212,7 @@
     "id": "T81",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1220,7 +1220,7 @@
     "id": "T82",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "behind open seam T59"
   },
   {
@@ -1228,7 +1228,7 @@
     "id": "T83",
     "spec": "001",
     "state": "open",
-    "command": "/spec-implement 001",
+    "command": "/spec implement 001",
     "reason": "operator lane — the principal's own action, never auto-dispatched"
   }
 ]

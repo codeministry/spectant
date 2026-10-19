@@ -94,7 +94,7 @@ export type LifecycleTone = 'start' | 'files' | 'gate' | 'agents' | 'done';
 
 /**
  * The steps of the lifecycle: the stages of a feature, and the two optional steps that move no stage: the design pass
- * (`/spec-design`, design.md) and the archive (`/spec-archive`) after done.
+ * (`/spec plan`, design.md) and the archive (`/spec done NNN archive`) after done.
  */
 export type LifecycleStep = WorkflowStage | 'design' | 'archive';
 
@@ -137,7 +137,11 @@ const node = (stage: WorkflowStage, file: string, tone: LifecycleTone, gate = fa
   optional,
 });
 
-/** A step that is no stage: always optional, with the Spec skill's command for it. */
+/** The plugin's commands for the two steps that are no stage: the design pass runs in `plan`, the archive in `done`. */
+const DESIGN_COMMAND = '/spec plan';
+const ARCHIVE_COMMAND = '/spec done NNN archive';
+
+/** A step that is no stage: always optional, with the Spec plugin's command for it. */
 const step = (stage: 'design' | 'archive', command: string, file: string, tone: LifecycleTone): LifecycleNode => ({
   stage,
   labelKey: `help.lifecycle.steps.${stage}`,
@@ -160,7 +164,7 @@ export const LIFECYCLE: readonly LifecycleBand[] = [
     offset: 0,
     nodes: [
       node('idea', 'spec.md, context.md', 'start'),
-      step('design', '/spec-design', 'design.md', 'files'),
+      step('design', DESIGN_COMMAND, 'design.md', 'files'),
       node('plan', 'plan.md', 'files'),
       node('tasks', 'tasks.md', 'files'),
       node('review', '.gates/reviewed.json', 'gate', true),
@@ -174,7 +178,7 @@ export const LIFECYCLE: readonly LifecycleBand[] = [
       node('code-review', '.gates/code-reviewed.json', 'gate', false, true),
       node('close', 'spec.md', 'files', true),
       node('done', 'spec.md phase', 'done'),
-      step('archive', '/spec-archive', 'specs/archive/<NNN-slug>/', 'done'),
+      step('archive', ARCHIVE_COMMAND, 'specs/archive/<NNN-slug>/', 'done'),
     ],
   },
 ];
@@ -210,15 +214,25 @@ export interface HelpCommandRow extends HelpCommand {
 const LIFECYCLE_NODES: readonly LifecycleNode[] = STAGE_CHAIN;
 
 /** The command that shapes a story before `/spec new` turns it into a spec: the start of the lifecycle. */
-const STORY_COMMAND = '/spec-idea';
+const STORY_COMMAND = '/spec idea';
 const STORY_FILE = 'specs/ideas/<slug>.md';
 
-const keyOf = (command: string): string => command.replace(/^\//, '').replace(/[^a-z0-9]+/gi, '-');
+/**
+ * The catalogue key of a command (`help.commands.list.<key>`): the command without its slash and its `NNN` placeholder,
+ * the words joined by `-` (`/spec done NNN archive` → `spec-done-archive`, bare `/spec` → `spec`).
+ */
+const keyOf = (command: string): string =>
+  command
+    .replace(/^\//, '')
+    .replace(/\bNNN\b/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .trim()
+    .replace(/[^a-z0-9]+/gi, '-');
 
 /**
- * Every command of the lifecycle, each once, in lifecycle order: `/spec-idea` first, then each node's command (the
+ * Every command of the lifecycle, each once, in lifecycle order: `/spec idea` first, then each node's command (the
  * stage table's `STAGE_RULES[].next` and the optional steps' own), then the stage-table commands no node names
- * (`/spec-status`, the blocked row's).
+ * (bare `/spec`, the blocked row's). A command two nodes share (`/spec plan`: the design pass and the plan) is listed once.
  */
 export const HELP_COMMANDS: readonly HelpCommand[] = [
   ...new Set([
@@ -234,7 +248,9 @@ export const HELP_COMMANDS: readonly HelpCommand[] = [
  */
 export const HELP_COMMAND_ROWS: readonly HelpCommandRow[] = HELP_COMMANDS.map((row) => {
   if (row.command === STORY_COMMAND) return { ...row, needs: null, writes: STORY_FILE, then: LIFECYCLE_NODES[0]?.command ?? null };
-  const at = LIFECYCLE_NODES.findIndex((n) => n.command === row.command);
+  // A command a required node shares with an optional step describes the required node (the plan, not the design pass).
+  const required = LIFECYCLE_NODES.findIndex((n) => n.command === row.command && !n.optional);
+  const at = required >= 0 ? required : LIFECYCLE_NODES.findIndex((n) => n.command === row.command);
   const here = at < 0 ? undefined : LIFECYCLE_NODES[at];
   const before = LIFECYCLE_NODES.slice(0, Math.max(at, 0)).filter((n) => !n.optional).at(-1);
   return {

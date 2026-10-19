@@ -70,7 +70,7 @@ describe('planCatchUp: the files moved on first (T18, ISC-44)', () => {
     const direct = planTransition(input(f, 'tasks', 'missing'));
     expect(direct.ok).toBe(false);
     const p = caughtUp(planCatchUp(input(f, 'tasks', 'missing')));
-    expect(p.event).toMatchObject({ ts: NOW.toISOString(), from: 'plan', to: 'tasks', command: '/spec-plan 001', actor: ACTOR });
+    expect(p.event).toMatchObject({ ts: NOW.toISOString(), from: 'plan', to: 'tasks', command: '/spec plan 001', actor: ACTOR });
     expect(validateEventLine(JSON.stringify(p.event)).ok).toBe(true);
     expect(parseFrontmatter(p.specText).data.stage).toBe('tasks');
     expect(parseFrontmatter(p.specText).body).toBe(parseFrontmatter(f.texts.spec ?? '').body);
@@ -79,14 +79,14 @@ describe('planCatchUp: the files moved on first (T18, ISC-44)', () => {
   test('tasks.md written after plan → tasks: the catch-up plans tasks → review', () => {
     const f = files('tasks', [ALLOCATED, PLANNED], { plan: '# Plan\n', tasks: '# Tasks\n' });
     const p = caughtUp(planCatchUp(input(f, 'review', 'missing')));
-    expect(p.event).toMatchObject({ from: 'tasks', to: 'review', command: '/spec-tasks 001' });
+    expect(p.event).toMatchObject({ from: 'tasks', to: 'review', command: '/spec tasks 001' });
     expect(parseFrontmatter(p.specText).data.stage).toBe('review');
   });
 
   test('the last claim verified in build: the catch-up plans build → code-review', () => {
     const f = files('build', [ALLOCATED, PLANNED, TASKED, REVIEWED], { plan: '# Plan\n', tasks: '# Tasks\n' }, 3);
     const p = caughtUp(planCatchUp(input(f, 'code-review', 'fresh', 3)));
-    expect(p.event).toMatchObject({ from: 'build', to: 'code-review', command: '/spec-implement 001' });
+    expect(p.event).toMatchObject({ from: 'build', to: 'code-review', command: '/spec implement 001' });
   });
 
   test('code_review none: the last claim verified in build catches up build → close', () => {

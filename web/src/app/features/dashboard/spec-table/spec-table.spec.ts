@@ -23,7 +23,7 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
     stageGroup: 'scoping',
     stage: 'review',
     progress: { closed: 0, total: 4 },
-    nextCommand: `/spec-review ${id}`,
+    nextCommand: `/spec review ${id}`,
     takeable: [],
     taken: [],
     warnings: [],

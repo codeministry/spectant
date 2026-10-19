@@ -148,7 +148,7 @@ export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimL
     diagnostics.push({
       severity: 'warning',
       code: 'status-review-gate',
-      message: `The reviewed mark is ${reviewed}: ${gated.length} ${gated.length === 1 ? 'claim stays' : 'claims stay'} open, not takeable, until /spec-review records a fresh mark.`,
+      message: `The reviewed mark is ${reviewed}: ${gated.length} ${gated.length === 1 ? 'claim stays' : 'claims stay'} open, not takeable, until /spec review records a fresh mark.`,
     });
   }
   return { closed, takeable, blocked, taken, open, dropped, gated, reviewed, diagnostics };

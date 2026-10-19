@@ -6,7 +6,7 @@
       "item": "spec",
       "ref": null,
       "title": "Target a flag at users by attribute",
-      "command": "/spec-review 001",
+      "command": "/spec review 001",
       "since": "2026-03-05T10:00:00Z",
       "reason": {
         "key": "stage.review.0",
@@ -22,7 +22,7 @@
       "item": "spec",
       "ref": null,
       "title": "Let a flag expire and list it for clean-up",
-      "command": "/spec-review 003",
+      "command": "/spec review 003",
       "since": "2026-03-03T09:00:00Z",
       "reason": {
         "key": "stage.review.0",
@@ -38,7 +38,7 @@
       "item": "claim",
       "ref": "ISC-14",
       "title": "A rollout to the staging tenant is confirmed by hand on the staging console.",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "since": "2026-03-04T12:00:00Z",
       "reason": {
         "key": "waiting.manual",
@@ -54,7 +54,7 @@
       "item": "task",
       "ref": "T3",
       "title": "add the staging sdk key to the ci secrets",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "since": "2026-03-04T12:00:00Z",
       "reason": {
         "key": "waiting.operator",
@@ -70,7 +70,7 @@
       "item": "spec",
       "ref": null,
       "title": "Record who changed which flag",
-      "command": "/spec-review 002",
+      "command": "/spec review 002",
       "since": "2026-03-06T09:00:00Z",
       "reason": {
         "key": "stage.review.0",
@@ -86,7 +86,7 @@
       "item": "question",
       "ref": "T4",
       "title": "roll out to every staging tenant or to the first one only?",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "since": "2026-03-07T10:00:00Z",
       "reason": {
         "key": "waiting.question",
@@ -102,7 +102,7 @@
       "item": "spec",
       "ref": null,
       "title": "Read flags through a cache without serving stale values",
-      "command": "/spec-code-review 004",
+      "command": "/spec review 004 code",
       "since": "2026-03-05T16:00:00Z",
       "reason": {
         "key": "stage.code-review.0",
@@ -118,7 +118,7 @@
       "item": "spec",
       "ref": null,
       "title": "Name the flag and its owner in the stale-flag banner",
-      "command": "/spec-complete 010",
+      "command": "/spec done 010",
       "since": null,
       "reason": {
         "key": "stage.close.1",
@@ -134,7 +134,7 @@
       "item": "spec",
       "ref": null,
       "title": "Build reusable user segments in the console",
-      "command": "/spec-plan 007",
+      "command": "/spec plan 007",
       "since": "2026-03-06T09:00:00Z",
       "reason": {
         "key": "stage.plan.0",
@@ -150,7 +150,7 @@
       "item": "spec",
       "ref": null,
       "title": "Evaluate flags locally in the server and browser SDKs",
-      "command": "/spec-implement 005",
+      "command": "/spec implement 005",
       "since": "2026-03-04T12:00:00Z",
       "reason": {
         "key": "stage.build.0",
@@ -167,7 +167,7 @@
       "item": "spec",
       "ref": null,
       "title": "Send a signed webhook on every flag change",
-      "command": "/spec-tasks 008",
+      "command": "/spec tasks 008",
       "since": "2026-03-04T14:00:00Z",
       "reason": {
         "key": "stage.tasks.0",

@@ -79,7 +79,7 @@ describe('harbor: the README Expected column', () => {
     const drift = row(m, '006').warnings[0];
     expect(drift?.text).toContain('unknown_to_master');
     expect(drift?.text).toContain('missing_in_spec');
-    expect(drift?.command).toBe('/spec-sync 006');
+    expect(drift?.command).toBe('/spec 006');
     expect(row(m, '006').warnings[1]?.text).toContain('stale');
   });
 
@@ -99,7 +99,7 @@ describe('harbor: the README Expected column', () => {
     // close-pending names no command and sits with done, just before it (spec 008, T49).
     expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '002', '009', '003', '008', '007']);
     expect(m.nextUp).toEqual(['004', '005', '006']);
-    expect(row(m, '002').nextCommand).toBe('/spec-implement 002');
+    expect(row(m, '002').nextCommand).toBe('/spec implement 002');
     expect(row(m, '002').takeable.length).toBeGreaterThan(0);
   });
 

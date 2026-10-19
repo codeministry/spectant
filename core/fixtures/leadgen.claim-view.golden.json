@@ -288,7 +288,7 @@
           "id": "ISC-334",
           "spec": "012",
           "state": "open",
-          "command": "/spec-implement 012",
+          "command": "/spec implement 012",
           "reason": "ISC-334 is takeable"
         }
       },

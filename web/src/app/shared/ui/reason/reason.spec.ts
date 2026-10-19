@@ -26,14 +26,14 @@ describe('UiReason (ISC-122.3)', () => {
   const phrase = 'ISC-334 is takeable, and the reviewed mark is fresh for the current spec and plan';
 
   it('shows the hourglass, the phrase exactly as given and the command chip', async () => {
-    const { host } = await render({ phrase, command: '/spec-review 008' });
+    const { host } = await render({ phrase, command: '/spec review 008' });
     const icon = host.querySelector('ui-icon svg');
     expect(icon?.getAttribute('role')).toBe('img');
     expect(icon?.getAttribute('aria-label')).toBe('open');
     expect(host.querySelector('.phrase')?.textContent).toBe(phrase);
     expect(host.querySelector('.visually-hidden')?.textContent).toBe(phrase);
-    expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec-review 008');
-    expect(host.querySelector('ui-command-chip button')?.getAttribute('aria-label')).toBe('Copy /spec-review 008');
+    expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec review 008');
+    expect(host.querySelector('ui-command-chip button')?.getAttribute('aria-label')).toBe('Copy /spec review 008');
   });
 
   it('renders no chip without a command, and clamps to two lines by default', async () => {
@@ -53,25 +53,25 @@ describe('UiReason (ISC-122.3)', () => {
   });
 
   it('wraps the whole phrase unclamped in the block variant, read once', async () => {
-    const { host } = await render({ phrase, command: '/spec-implement 002', block: true });
+    const { host } = await render({ phrase, command: '/spec implement 002', block: true });
     expect(host.getAttribute('data-block')).toBe('');
     const shown = host.querySelector('.phrase');
     expect(shown?.textContent).toBe(phrase);
     expect(shown?.getAttribute('data-clamp')).toBeNull();
     expect(shown?.getAttribute('aria-hidden')).toBeNull();
     expect(host.querySelector('.visually-hidden')).toBeNull();
-    expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+    expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec implement 002');
   });
 
   it('re-emits the copied command for the live region', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    const { fixture, host } = await render({ phrase, command: '/spec-complete 007' });
+    const { fixture, host } = await render({ phrase, command: '/spec done 007' });
     const emitted: string[] = [];
     fixture.componentInstance.copied.subscribe((c) => emitted.push(c));
     host.querySelector<HTMLButtonElement>('ui-command-chip button')?.click();
     await fixture.whenStable();
-    expect(emitted).toEqual(['/spec-complete 007']);
+    expect(emitted).toEqual(['/spec done 007']);
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 });

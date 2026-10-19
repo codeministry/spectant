@@ -47,7 +47,7 @@ export interface CodeReviewedMark {
   readonly note: string | null;
   /**
    * The feature the mark was recorded for (spec 008, T74): `F<n>` when one feature-level code review
-   * (`/spec-code-review F<n>` under `code_review: feature`) wrote the same mark into every target folder of that
+   * (`/spec review F<n> code` under `code_review: feature`) wrote the same mark into every target folder of that
    * feature (`featureCodeReviewTargets`); null on a per-spec mark, which carries no `scope` key. Informational only:
    * freshness is the tree id alone.
    */
@@ -216,7 +216,7 @@ export function reviewedGate(texts: Readonly<Partial<Record<TextFileKind, string
 
 /**
  * The spec folders (`NNN-slug`, folder order) that receive the code-reviewed mark when the one code review of feature
- * `F<n>` is done (`/spec-code-review F<n>`, `code_review: feature`, FORMAT.md row 8): every active spec whose main
+ * `F<n>` is done (`/spec review F<n> code`, `code_review: feature`, FORMAT.md row 8): every active spec whose main
  * feature is the block (`PlanningHolder.main`) and whose live claims are all closed, across every block it holds
  * claims of. Archived specs are excluded, a spec holding no live claim is no target, and an unknown feature gives an
  * empty list. Read from the planning tree (the master's checkboxes, as `buildPlanning` resolves them); pure, writes

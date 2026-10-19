@@ -208,7 +208,7 @@ export interface BoardCard {
    * null or absent for an idea, or when the guidance names no entry for the spec.
    */
   readonly guidance?: GuidanceReason | null;
-  /** The row's command, e.g. `/spec-review 005`; null where the row names none. */
+  /** The row's command, e.g. `/spec review 005`; null where the row names none. */
   readonly command: string | null;
   /** The stage is one core's `WAITING_STAGES` holds: the card shows its reason line. */
   readonly waiting: boolean;

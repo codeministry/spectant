@@ -139,7 +139,7 @@ need no open claim; `close-pending` needs an open sibling of the spec's main fea
 `code_review: feature` (or out of `close-pending`) needs none. An accepted plan carries the new text, the last `stage:`
 line of the block replaced or, without one, a `stage:` line inserted as the block's last key, each with its
 neighbour's line ending, and one event `{ts, from, to, command, actor}` that passes `validateEventLine`, its `command`
-the stage table's command for `from` (`/spec-review NNN` for `review → build`). A refused plan carries
+the stage table's command for `from` (`/spec review NNN` for `review → build`). A refused plan carries
 `{from, to, reason, command}` and neither text nor event: the reason names what the move needs and, where one fits,
 ends in the stage table's phrase (`build needs a fresh reviewed mark: the reviewed mark is stale`); the command is the
 stage table's next command for the spec as it stands. Until spec 008, T49 brings `close-pending` into the stage
@@ -675,7 +675,7 @@ From `core/fixtures/leadgen/specs/022-chat-turn-status-and-bulk-delete/.gates/co
 mark carries it since spec 008, T28 (the examples above), and its value is read in the actor grammar by `parseActor`
 (T59); `readGateMark` does not carry the key into the mark, and it plays no part in freshness.
 
-**The feature-level mark.** Under `code_review: feature` (§ workflow) one code review, `/spec-code-review F<n>`, covers
+**The feature-level mark.** Under `code_review: feature` (§ workflow) one code review, `/spec review F<n> code`, covers
 every spec of the main feature `F<n>`, and the same code-reviewed mark goes into each target folder with one key more,
 `scope: "F<n>"`, beside the fields above (spec 008, T74): `{gate, at, actor?, scope, tree, head?, branch?, code,
 security, note?}`, the order `codeReviewedMarkText` in `gates.ts` writes it in. The targets are
@@ -1014,7 +1014,7 @@ The file holds one Markdown table `| type | stages | code_review |`, one row per
 - `code_review` is `spec` (one code-reviewed mark per spec, as today), `feature` (one code review for every spec of the
   spec's main feature: a spec whose claims are all closed waits in the intermediate stage `close-pending` while a sibling
   of that feature is still open, row 8 of the stage table) or `none` (no code-reviewed mark at all: the row lists no
-  `code-review`, and a spec whose claims are all closed stands on `close` with `/spec-complete`, row 10 of the stage
+  `code-review`, and a spec whose claims are all closed stands on `close` with `/spec done`, row 10 of the stage
   table; a mark set anyway changes neither its stage nor its reason);
 - a type the file has no row for runs its default row; without the file every type runs the default table.
 
@@ -1119,10 +1119,11 @@ tokenisation of our own. Every API request counts once, however many transcript 
   or the end of its session; prose prompts, task notifications, local-command output and tool results in between
   belong to it, and so do the sub-agents started from a tool call in that window. A slash command that is no `/spec`
   command ends the window and opens none. `id` is
-  `a:claude:<session>#<n>`, `command` the command name only (its arguments are never stored), `spec` the slug the
+  `a:claude:<session>#<n>`, `command` the command name only (its arguments are never stored; for the plugin's bare
+  `/spec` its subcommand word counts as part of the name, `/spec implement`), `spec` the slug the
   number in its arguments names, or `null`; `ts` its first turn; `subagents` the sub-agent transcripts attributed to it.
 - `spec`, `stage` and `round`: the sums per spec, per spec and stage (the stage the spec stood in at the turn), and per
-  spec and implement round (`/spec-implement` only).
+  spec and implement round (`/spec implement` only).
 - `unassigned`: every request outside a `/spec` invocation, in exactly one line.
 
 Line order: `baseline` by `measured_through`, `invocation` by `ts` then `id`, `spec` by slug, `stage` by slug then the
@@ -1269,18 +1270,22 @@ its state, which § The state table below derives from this table's row and the 
 |---|-------|-----------|--------------|--------|
 | 1 | `idea` | a story file under `specs/ideas/`, no folder yet | `/spec new <slug>` | `the story is shaped but has no spec` |
 | 2 | `done` | `phase: complete` | — | `phase: complete` |
-| 3 | `plan` | the type needs `plan.md` and it is missing | `/spec-plan NNN` | `a {type} spec needs plan.md and it is missing` |
-| 4 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec-tasks NNN` | `{claims} and no tasks.md` |
-| 5 | `review` | the reviewed mark is not fresh | `/spec-review NNN` | `the reviewed mark is {state}` |
-| 6 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec-implement NNN` | `{ids} {is} takeable` |
+| 3 | `plan` | the type needs `plan.md` and it is missing | `/spec plan NNN` | `a {type} spec needs plan.md and it is missing` |
+| 4 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec tasks NNN` | `{claims} and no tasks.md` |
+| 5 | `review` | the reviewed mark is not fresh | `/spec review NNN` | `the reviewed mark is {state}` |
+| 6 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec implement NNN` | `{ids} {is} takeable` |
 | 7 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
 | 8 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
-| 9 | `code-review` | every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
-| 10 | `close` | every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none` | `/spec-complete NNN` | `every claim is closed and code-reviewed` or `every claim is closed and the workflow has no code review` |
-| 11 | `blocked` | anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` or `waits on {specs}` |
+| 9 | `code-review` | every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh | `/spec review NNN code` | `every claim is closed and the code-reviewed mark is {state}` |
+| 10 | `close` | every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none` | `/spec done NNN` | `every claim is closed and code-reviewed` or `every claim is closed and the workflow has no code review` |
+| 11 | `blocked` | anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet | `/spec NNN` | `{open}, none takeable` or `no claims yet` or `waits on {specs}` |
 
 The Next command column writes `NNN` for the spec's number. A story has no number yet, so row 1 writes `<slug>`, the
-story's file name without `.md`; the command allocates the number (§ `idea`, Allocation).
+story's file name without `.md`; the command allocates the number (§ `idea`, Allocation). Every command is in the Spec
+plugin's form, `/spec <subcommand> NNN`, built by one function (`commandFor`, `stage.ts`): the bare `/spec NNN` is the
+plugin's status row (status, drift and sync of one spec), and the code review is `/spec review NNN code`. A recorded
+command (a run's `command` in `.spectant/activity.jsonl`, an event's in `events.jsonl`) may still carry an old
+`spec-<name>` command of the skill the plugin replaced; `commandKey` reads both forms as the same subcommand.
 
 The placeholders of the Reason column:
 
@@ -1313,7 +1318,7 @@ archive decide.
 In row 8 a sibling is **open** while it is active (not archived, not `phase: complete`) and holds at least one open
 claim; a sibling whose claims are all closed waits in row 8 itself and does not hold the others back, so the last
 sibling to close its claims moves every spec of the feature past row 8 at once. Row 8 has no next command: nothing is
-to be done on the spec itself while a sibling is open. The one code review of the feature, `/spec-code-review F<n>`,
+to be done on the spec itself while a sibling is open. The one code review of the feature, `/spec review F<n> code`,
 belongs to the feature-level mark (`scope: "F<n>"`, § `gateCodeReviewed`, spec 008, T74), written into every folder
 `featureCodeReviewTargets` names, and appears only when the last sibling closes. The dashboard finds
 the open siblings among its active spec folders (`featureSiblingsOpen` of `StageInput`, the ids in folder order) and
@@ -1399,22 +1404,22 @@ state the item kind never takes.
 | `idea` | `running` | A run is open on the idea, younger than the abort age. It locks the allocation. | A `run-start` names the idea. | Its `run-end`, or the abort age passes. |
 | `idea` | `aborted` | A run on the idea without end, older than the abort age; it no longer locks. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
 | `idea` | `done` | Never: an allocated story becomes a spec and leaves `specs/ideas/`. | — | — |
-| `review-mark` | `open` | `/spec-review NNN` lies with the user: the spec stands in the review row, or the mark is stale, or missing past review. | The spec reaches the review row, or a reviewed file changes after the review. | A `/spec-review` run starts, or a fresh mark is written. |
+| `review-mark` | `open` | `/spec review NNN` lies with the user: the spec stands in the review row, or the mark is stale, or missing past review. | The spec reaches the review row, or a reviewed file changes after the review. | A `/spec review` run starts, or a fresh mark is written. |
 | `review-mark` | `waiting` | The mark is missing and the spec stands before review (`plan`, `tasks`): it waits on the spec itself. | A spec without a reviewed mark stands in row `plan` or `tasks`. | The spec reaches the review row. |
-| `review-mark` | `running` | A `/spec-review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec-review NNN`. | Its `run-end`, or the abort age passes. |
-| `review-mark` | `aborted` | A `/spec-review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
-| `review-mark` | `done` | The reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). | A reviewed mark matching spec.md, plan.md and tasks.md is written, or the spec reaches a `done` row. | A reviewed file changes (stale), or a `/spec-review` run starts. |
-| `code-review-mark` | `open` | `/spec-code-review NNN` lies with the user: the spec stands in the code-review row, or the mark is stale, or missing past it. | The spec reaches the code-review row, or the working tree changes after the code review. | A `/spec-code-review` run starts, or a fresh mark is written. |
+| `review-mark` | `running` | A `/spec review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec review NNN`. | Its `run-end`, or the abort age passes. |
+| `review-mark` | `aborted` | A `/spec review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `review-mark` | `done` | The reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). | A reviewed mark matching spec.md, plan.md and tasks.md is written, or the spec reaches a `done` row. | A reviewed file changes (stale), or a `/spec review` run starts. |
+| `code-review-mark` | `open` | `/spec review NNN code` lies with the user: the spec stands in the code-review row, or the mark is stale, or missing past it. | The spec reaches the code-review row, or the working tree changes after the code review. | A `/spec review NNN code` run starts, or a fresh mark is written. |
 | `code-review-mark` | `waiting` | The mark is missing and the spec stands before the code-review row: on its feature siblings in `close-pending`, else on the spec itself. | A spec without a code-reviewed mark stands in a row before code review. | The spec reaches the code-review row. |
-| `code-review-mark` | `running` | A `/spec-code-review` run is open on the spec, younger than the abort age. | A `run-start` of `/spec-code-review NNN`. | Its `run-end`, or the abort age passes. |
-| `code-review-mark` | `aborted` | A `/spec-code-review` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
-| `code-review-mark` | `done` | The code-reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). A type whose workflow has no code review has no such item. | A code-reviewed mark matching the working tree is written, or the spec reaches a `done` row. | The working tree changes (stale), or a `/spec-code-review` run starts. |
-| `claim` | `open` | `/spec-implement NNN` lies with the user: the claim is takeable, or held only by the review gate. | The claim is unchecked, no lock holds it and no edge is open. | A lock takes it, an edge holds it, or it is checked or dropped. |
+| `code-review-mark` | `running` | A `/spec review NNN code` run is open on the spec, younger than the abort age. | A `run-start` of `/spec review NNN code`. | Its `run-end`, or the abort age passes. |
+| `code-review-mark` | `aborted` | A `/spec review NNN code` run without end, older than the abort age. | The abort age passes without a `run-end` for the run. | A `run-end` for it, or a new `run-start`. |
+| `code-review-mark` | `done` | The code-reviewed mark is fresh; its date is the mark's. On a spec in a `done` row a missing or stale mark is done too, undated (reviews are optional per spec). A type whose workflow has no code review has no such item. | A code-reviewed mark matching the working tree is written, or the spec reaches a `done` row. | The working tree changes (stale), or a `/spec review NNN code` run starts. |
+| `claim` | `open` | `/spec implement NNN` lies with the user: the claim is takeable, or held only by the review gate. | The claim is unchecked, no lock holds it and no edge is open. | A lock takes it, an edge holds it, or it is checked or dropped. |
 | `claim` | `waiting` | An unresolved `(after: …)` edge or an open spec edge holds the claim. | The claim names an open claim or spec in its `(after: …)`. | Every claim and spec it names closes. |
 | `claim` | `running` | A claim lock holds it (detail `taken`), younger than the claim stale age. | A `claim` line or a frontier lock takes the claim. | Its `release`, or the claim stale age passes. |
 | `claim` | `aborted` | A claim lock without release, older than the claim stale age. | The claim stale age passes without a `release`. | A `release`, or a new lock. |
 | `claim` | `done` | The claim is checked; a dropped claim (tombstone) is done with `closedAs: dropped`. | Its probe closes it and the box is checked, or it is dropped. | Only when spec.md changes. |
-| `task` | `open` | `/spec-implement NNN` lies with the user: the task has no run and its claim does not wait. | The task is unticked, without a run in flight and not held. | A `dispatch` sends it out, its claim starts waiting, or it is ticked or struck. |
+| `task` | `open` | `/spec implement NNN` lies with the user: the task has no run and its claim does not wait. | The task is unticked, without a run in flight and not held. | A `dispatch` sends it out, its claim starts waiting, or it is ticked or struck. |
 | `task` | `waiting` | Its claim waits, or an open spec edge holds the task or its claim. | Its claim waits, or the task names an open spec in its `(after: …)`. | What its claim and the task wait on closes. |
 | `task` | `running` | Its last run event leaves it dispatched, building, patched or applied-open (ISC-179); that state is the detail. | A `dispatch`, `build`, `patch` or `apply` line names the task. | Its box is ticked, or the claim stale age passes after its last run event. |
 | `task` | `aborted` | Its last run event is older than the claim stale age. | The claim stale age passes after its last run event. | A new run event, or its box is ticked. |
@@ -1433,7 +1438,7 @@ one entry with one sentence. Only items in state `open` appear, split into two l
   highest `round`), while its spec is not done and its task, where the state model knows it, is open. The last three
   are `waitingOnYouOf`, the one derivation the spec page's waiting-on-you list reads too.
 - **Next** (`next`): every other spec item in state `open`, one entry per spec; its open claims and tasks share its
-  command (`/spec-implement NNN`) and are not listed apart.
+  command (`/spec implement NNN`) and are not listed apart.
 
 Ideas, the reviewed and code-reviewed marks, and every item in `waiting`, `running`, `aborted` or `done` are in
 neither list.
@@ -1465,7 +1470,7 @@ key, generated from the stage table's rows in state `open` and the three waiting
 ## The drift classes
 
 The audit of one spec against its master (`status.ts`, `driftReport`). A class is clean when empty, null or 0; any
-unclean class raises the `drift` warning with `/spec-sync NNN`. Without a master the drift gate reads "not
+unclean class raises the `drift` warning with `/spec NNN`. Without a master the drift gate reads "not
 applicable".
 
 | Class | Unclean when |
@@ -1810,7 +1815,7 @@ open and harbor's Needs you list reads as before.
 
 **Run lifecycle events** (spec 040, ISC-222, `locks.ts`). Each command that works on a spec or an idea reports its
 start and its end: `{ts, event: "run-start" | "run-end", run, command, session, spec | idea, outcome?}`. `run` is an
-id written once per invocation, `command` the command as typed (`/spec-tasks 037`), `session` its actor in the grammar
+id written once per invocation, `command` the command as typed (`/spec tasks 037`), `session` its actor in the grammar
 above (legacy-checked like any other session), and the line names exactly one of `spec` (the spec's number or folder
 name) or `idea` (the story's slug). `outcome` is read on `run-end` only and, when present, is `ok`, `error` or
 `released` (a person ended the run by hand through the app). A line without its `ts`, `run`, `command` or `session`,
@@ -1978,8 +1983,8 @@ lang: de
 
 ## The tech page
 
-`specs/tech.md` (`tech.ts`, spec 023): the repository's technical documentation, written by hand or by the skill's
-`/spec-doc` and read by `readTech`. It is optional and belongs to no spec folder; without it the page model has
+`specs/tech.md` (`tech.ts`, spec 023): the repository's technical documentation, written by hand or by a documentation
+pass and read by `readTech`. It is optional and belongs to no spec folder; without it the page model has
 `pages: null` and no diagnostic. Frontmatter `title:` and `lang:` (`frontmatter.ts`; a malformed block is its usual
 `frontmatter-…` diagnostic on `specs/tech.md`), then sections opened by `<!-- section: <key> -->` markers, read by the
 same marker reader as the TL;DR. The keys are `overview`, `stack`, `architecture` and `risks`, in that order; a

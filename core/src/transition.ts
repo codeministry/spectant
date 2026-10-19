@@ -28,6 +28,7 @@ import { mainFeatureOf } from './status.ts';
 import {
   SPEC_RULES,
   codeReviewOf,
+  commandWith,
   defaultWorkflowRow,
   fillReason,
   isWorkflowStage,
@@ -103,7 +104,7 @@ function phrase(stage: Stage, input: StageInput): string {
 /** The stage table's command for a stage, with the spec number; null where the row names none. */
 function commandOf(stage: WorkflowStage, number: string): string | null {
   const next = SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
-  return next === undefined || next === null ? null : `${next} ${number}`;
+  return next === undefined || next === null ? null : commandWith(next, number);
 }
 
 const list = (ids: readonly string[]): string => ids.join(', ');
