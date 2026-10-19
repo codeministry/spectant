@@ -37,7 +37,9 @@
 //                     carried card without a tasks.md line has none.
 //
 // The frame adds the agents rail (one entry per session holding a lock here, oldest lock first), the Needs you list
-// (question, concerns, open operator steps) and the round group `inRound`: the cards with a run whose task tasks.md has
+// (open questions, then question, concerns, open operator steps; spec 015, ISC-232.1: a task whose latest step is a
+// `question` with no later step and no round ended since stands there with the question's text and time, its card's
+// state unchanged) and the round group `inRound`: the cards with a run whose task tasks.md has
 // not ticked, furthest along first, with their counts per lane and in total. A ticked card keeps its run (`applied`),
 // but its landed state wins and it has left the group. Only this frame carries runs; frames.ts's frames never do.
 // Claims progress comes from spec.md's boxes, tasks progress from the cards.
@@ -48,7 +50,7 @@
 import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, ItemStateInfo, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, ItemStateInfo, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, NeedsYouCard, OpenQuestion, RunCounts, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun, TaskSteps } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
@@ -57,6 +59,7 @@ import { claimStates, taskStates } from './item-state.ts';
 import { runSpecOf, runStates } from './locks.ts';
 import { specIdOf } from './spec-ref.ts';
 import { heldLocks } from './status.ts';
+import { taskSteps } from './steps.ts';
 import { specEdgeHold, takeableSet } from './takeable.ts';
 import { parseTaskLines } from './tasks.ts';
 
@@ -126,7 +129,7 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
     lockSource: reading.source,
     locks,
     agents: agentsOf(locks, now, staleAfterMs),
-    needsYou: NEEDS_YOU.flatMap((state) => cards.filter((c) => c.state === state)),
+    needsYou: needsYouOf(cards, openQuestions(taskSteps(reading, files), last?.ts ?? null)),
     staleAfterMs,
     inRound: roundOf(cards.filter((c) => c.run && !ticked.has(c.task)), last?.round ?? null),
   };
@@ -304,6 +307,38 @@ const CARD_KEYS: ReadonlyArray<keyof LiveCard> = [
 function elapsed(now: number, since: string): number {
   const at = Date.parse(since);
   return Number.isFinite(at) ? Math.max(0, now - at) : 0;
+}
+
+/**
+ * The open questions by task (spec 015, ISC-232.1): a task whose latest step (steps.ts `taskSteps`, no second
+ * derivation) is a `question` asked after the last recorded round ended. A later step of the task closes it, and so
+ * does a round that ended since: from then on the round's own record in rounds.jsonl speaks for the task.
+ */
+function openQuestions(steps: TaskSteps, roundEnd: string | null): ReadonlyMap<string, OpenQuestion> {
+  const end = roundEnd === null ? Number.NaN : Date.parse(roundEnd);
+  const open = new Map<string, OpenQuestion>();
+  for (const [task, timeline] of Object.entries(steps)) {
+    const latest = timeline.at(-1);
+    if (latest?.kind !== 'question') continue;
+    if (Number.isNaN(end) || Date.parse(latest.ts) > end) open.set(task, { text: latest.text ?? '', ts: latest.ts });
+  }
+  return open;
+}
+
+/**
+ * Needs you: first every card with an open question, not landed and not absent, carrying it, oldest question first
+ * (board order on a tie); then the cards in the NEEDS_YOU states, board order within each, each card listed once. The
+ * cards themselves stay as the layers made them: the question rides only on the Needs you entry.
+ */
+function needsYouOf(cards: readonly LiveCard[], open: ReadonlyMap<string, OpenQuestion>): NeedsYouCard[] {
+  const asked = cards
+    .flatMap((card) => {
+      const question = open.get(card.task);
+      return question === undefined || LANDED.has(card.state) || card.state === 'absent' ? [] : [{ ...card, question }];
+    })
+    .sort((a, b) => Date.parse(a.question.ts) - Date.parse(b.question.ts));
+  const listed = new Set(asked.map((c) => c.task));
+  return [...asked, ...NEEDS_YOU.flatMap((state) => cards.filter((c) => c.state === state && !listed.has(c.task)))];
 }
 
 /** One rail entry per session and source, holding its claims here; oldest lock first, then by session. */

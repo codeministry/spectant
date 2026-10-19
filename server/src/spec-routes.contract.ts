@@ -67,6 +67,7 @@ import type {
   LockSource,
   RepoFileSource,
   SpecPageModel,
+  TaskSteps,
   TasksTab,
   TimelineEntry,
   WorkflowStage,
@@ -177,10 +178,10 @@ export const SPEC_ROUTE_TABLE: readonly SpecRouteEntry[] = [
   { route: 'spec', method: 'GET', pattern: P, statuses: READ, response: 'SpecPageModel' },
   { route: 'timeline', method: 'GET', pattern: `${P}/timeline`, statuses: READ, response: 'TimelineEntry[]' },
   { route: 'claims', method: 'GET', pattern: `${P}/claims`, statuses: READ, response: 'ClaimViewModel' },
-  { route: 'tasks', method: 'GET', pattern: `${P}/tasks`, statuses: READ, response: 'TasksTab | null' },
+  { route: 'tasks', method: 'GET', pattern: `${P}/tasks`, statuses: READ, response: '(TasksTab & { steps: TaskSteps }) | null' },
   { route: 'evidenceFile', method: 'GET', pattern: `${P}/evidence/file`, statuses: READ, response: 'file bytes' },
   { route: 'frames', method: 'GET', pattern: `${P}/frames`, statuses: READ, response: 'Frame[]' },
-  { route: 'live', method: 'GET', pattern: `${P}/live`, statuses: READ, response: 'LiveFrame' },
+  { route: 'live', method: 'GET', pattern: `${P}/live`, statuses: READ, response: 'LiveFrame & { steps: TaskSteps }' },
   { route: 'gateReviewed', method: 'POST', pattern: `${P}/gate/reviewed`, statuses: WRITE, response: 'GateReviewedResponse' },
   { route: 'taskCheck', method: 'POST', pattern: `${P}/tasks/:tid/check`, statuses: WRITE, response: 'TaskCheckResponse' },
   { route: 'transition', method: 'POST', pattern: `${P}/transition`, statuses: REFUSABLE_WRITE, response: 'TransitionWritten' },
@@ -508,12 +509,16 @@ export interface SpecRouteResponses {
   spec: SpecPageModel;
   timeline: readonly TimelineEntry[];
   claims: ClaimViewModel;
-  /** Null when the spec has no tasks.md (200, not 404: a spec before its tasks stage is still a spec). */
-  tasks: TasksTab | null;
+  /**
+   * Null when the spec has no tasks.md (200, not 404: a spec before its tasks stage is still a spec). Beside the tab,
+   * `steps`: core's `taskSteps` for this spec's tasks (spec 015, ISC-232), the golden family `steps` at this spec's key.
+   */
+  tasks: (TasksTab & { readonly steps: TaskSteps }) | null;
   /** The file's bytes with `evidenceFileHeaders(mediaTypeOf(name))`. */
   evidenceFile: Blob;
   frames: readonly Frame[];
-  live: LiveFrame;
+  /** The live frame with `steps` beside it, as the tasks route sends them (spec 015, ISC-232). */
+  live: LiveFrame & { readonly steps: TaskSteps };
   gateReviewed: GateReviewedResponse;
   taskCheck: TaskCheckResponse;
   transition: TransitionWritten;

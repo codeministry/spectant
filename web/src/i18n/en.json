@@ -2721,5 +2721,33 @@
       "step": "Next step"
     },
     "marker": "Waits on you"
+  },
+  "steps": {
+    "kind": {
+      "dispatch": "Dispatched",
+      "build": "Started",
+      "probe": "Probe run",
+      "probeRed": "Probe red",
+      "probeGreen": "Probe green",
+      "question": "Question asked",
+      "patch": "Patch ready",
+      "apply": "Applied",
+      "release": "Claim released"
+    },
+    "timeline": {
+      "label": "Agent steps {{task}}",
+      "latest": "latest step"
+    },
+    "delta": {
+      "first": "first step",
+      "after": "{{duration}} after the previous step"
+    },
+    "needsYou": {
+      "heading": "Needs you",
+      "question": "{{task}} asks",
+      "askedAt": "Asked at {{time}}",
+      "answerIn": "Answer in the session {{session}}",
+      "announce": "New question from {{task}}: {{text}}"
+    }
   }
 }

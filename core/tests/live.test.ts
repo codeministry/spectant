@@ -494,6 +494,71 @@ describe('claimless run lines (spec 041, ISC-213)', () => {
   });
 });
 
+describe('open question on the live frame (spec 015, ISC-232.1)', () => {
+  const files = harbor002();
+  const now = at(180);
+  type Step = NonNullable<LockReading['steps']>[number];
+  /** The last result frame's time: the end of the last recorded round. */
+  const roundEnd = Date.parse(buildFrames(files).filter((f) => f.kind === 'result').at(-1)?.ts ?? '');
+  /** ISO time `minutes` after the last round ended. */
+  const after = (minutes: number): string => new Date(roundEnd + minutes * MIN).toISOString();
+  const question = (task: string, claim: string, ts: string, text = `What should ${task} do?`): Step => ({ event: 'question', task, claim, text, session: `a:claude:sess-9/${task}`, ts });
+  const probe = (task: string, claim: string, ts: string): Step => ({ event: 'probe', task, claim, result: 'green', session: `a:claude:sess-9/${task}`, ts });
+  const frameOf = (steps: readonly Step[]): LiveFrame => buildLiveFrame({ files, locks: { ...HARBOR_LOCKS, steps }, now });
+  const plain = buildLiveFrame({ files, locks: { ...HARBOR_LOCKS, steps: [] }, now });
+
+  test('an open question without a following step puts its task under needs you with the text, before the rounds.jsonl entries', () => {
+    const live = frameOf([question('T27', 'ISC-74', after(10), 'Does the settings page keep its own focus order?')]);
+    expect(live.needsYou.map((c) => [c.task, c.state, c.question ?? null])).toEqual([
+      ['T27', 'running', { text: 'Does the settings page keep its own focus order?', ts: after(10) }],
+      ['T29', 'question', null],
+      ['T31', 'operatorOpen', null],
+    ]);
+  });
+
+  test('the open question leaves the card itself as it was: same state, same item state, no question on the board', () => {
+    const live = frameOf([question('T27', 'ISC-74', after(10))]);
+    expect(live.cards).toEqual(plain.cards);
+    expect(card(live, 'T27')).not.toHaveProperty('question');
+  });
+
+  test('a following step closes the open question: the task leaves needs you, the rounds.jsonl question stands as before', () => {
+    const live = frameOf([question('T27', 'ISC-74', after(10)), probe('T27', 'ISC-74', after(12))]);
+    expect(live.needsYou).toEqual(plain.needsYou);
+    expect(live.needsYou.map((c) => c.task)).toEqual(['T29', 'T31']);
+    expect(live.needsYou.every((c) => !('question' in c))).toBe(true);
+  });
+
+  test('a task already under needs you from rounds.jsonl is listed once, carrying the open question', () => {
+    const claim = card(plain, 'T29').claim;
+    const live = frameOf([question('T29', claim, after(5), 'Is the empty state a link or a button?')]);
+    expect(live.needsYou.map((c) => [c.task, c.question?.text ?? null])).toEqual([
+      ['T29', 'Is the empty state a link or a button?'],
+      ['T31', null],
+    ]);
+  });
+
+  test('several open questions: oldest first; the round end, a landed task and a foreign claim close or skip one', () => {
+    const live = frameOf([
+      question('T28', 'ISC-75', after(20), 'later'),
+      question('T27', 'ISC-74', after(10), 'earlier'),
+      question('T32', 'ISC-78', after(-5), 'asked before the round ended'),
+      question('T26', 'ISC-73', after(15), 'on a ticked task'),
+      question('T27', 'ISC-99', after(30), 'another spec'),
+    ]);
+    expect(live.needsYou.map((c) => [c.task, c.question?.text ?? null])).toEqual([
+      ['T27', 'earlier'],
+      ['T28', 'later'],
+      ['T29', null],
+      ['T31', null],
+    ]);
+  });
+
+  test("harbor's own log: every question there has a following probe, so needs you is as before", () => {
+    expect(buildLiveFrame({ files, locks: HARBOR_LOCKS, now }).needsYou).toEqual(plain.needsYou);
+  });
+});
+
 describe('purity', () => {
   test('the same input twice gives deep-equal frames and leaves the input untouched', async () => {
     const files = harbor002();

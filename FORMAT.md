@@ -1783,6 +1783,18 @@ Only a release that freed a held claim is a step: the reading keeps those as `re
 at least one. Each timeline is in time order; the model keys the tasks with at least one step in tasks.md order. For
 harbor's T28 above the timeline reads dispatch, build, probe red, the question, probe green, patch, apply.
 
+**Needs you on an open question** (spec 015, ISC-232.1, `live.ts`). A task's question is open when the latest step on
+its timeline is that `question`, no later step follows it, and it was asked after the last round in `rounds.jsonl`
+ended (the last result frame's `ts`; without a round any question qualifies). While it is open, the live frame lists the
+task under Needs you, before the round's own entries, carrying `question: {text, ts}` with the step's text and time;
+several open questions stand oldest first. A task already under Needs you through its round state is listed once,
+carrying the question. A landed or absent card is never listed for a question. The card itself does not change: its
+`state` and `itemState` (spec 040) stay what the round and the locks made them, and the board's cards never carry
+`question`. A Needs you entry without an open question has no `question` field. A later step of the task (a probe, a
+patch, the release of its claim) or the end of a round closes the question; from then on the round's record in
+`rounds.jsonl` speaks for the task as before. Harbor's two questions above are each followed by a probe, so neither is
+open and harbor's Needs you list reads as before.
+
 **Run lifecycle events** (spec 040, ISC-222, `locks.ts`). Each command that works on a spec or an idea reports its
 start and its end: `{ts, event: "run-start" | "run-end", run, command, session, spec | idea, outcome?}`. `run` is an
 id written once per invocation, `command` the command as typed (`/spec-tasks 037`), `session` its actor in the grammar
@@ -1870,8 +1882,8 @@ names its task itself; an agent session's task is the card its claim puts in fli
 (`{raw, kind, id, task?, legacy}`) or `null`: `null` on every card that is not `running`, and on a running card whose
 lock a person (`u:`) or a legacy session holds, since neither is an agent; a sub-agent on another task of the claim
 leaves `subagent` `null`. In harbor 002, T27 is worked by `a:claude:sess-2` with no sub-agent. The frame names the reading's source (`frontier`,
-`activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
-operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
+`activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (open questions of the
+step timeline, above, then question, concerns, open operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
 
 Last, the run events (spec 027, ISC-179.1): every card but an `absent` one whose task a run event of this spec names
 carries `run`, the task's `TaskRun` (`{task, state, session, worktree, ts}`, above); a card without one has no `run`

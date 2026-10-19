@@ -1384,6 +1384,23 @@ export interface LiveCard extends FrameCard {
   readonly itemState?: ItemStateInfo;
 }
 
+/**
+ * A task's open question (spec 015, ISC-232.1): its latest step is a `question` that no later step follows and the last
+ * recorded round has not ended since. `text` is the step's text as the reader kept it, `ts` its time as written.
+ */
+export interface OpenQuestion {
+  readonly text: string;
+  readonly ts: string;
+}
+
+/**
+ * A card under Needs you (spec 015, ISC-232.1): the board's card, plus `question` when its task has an open question.
+ * Without one the field is absent, so the entry is the board's card itself. The board's cards never carry it.
+ */
+export interface NeedsYouCard extends LiveCard {
+  readonly question?: OpenQuestion;
+}
+
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
 export interface LiveAgent {
   readonly session: string;
@@ -1405,8 +1422,12 @@ export interface LiveFrame extends Frame {
   readonly locks: readonly ClaimLock[];
   /** The sessions holding those locks, oldest lock first. */
   readonly agents: readonly LiveAgent[];
-  /** The cards waiting on the principal: question, then concerns, then open operator steps; board order within each. */
-  readonly needsYou: readonly LiveCard[];
+  /**
+   * The cards waiting on the principal: first the tasks with an open question (spec 015, ISC-232.1), oldest question
+   * first, each carrying it; then the cards in state question, then concerns, then open operator steps, board order
+   * within each. A card is listed once: one in state question that has an open question is listed with the first.
+   */
+  readonly needsYou: readonly NeedsYouCard[];
   /** The threshold `stale` was computed with. */
   readonly staleAfterMs: number;
   /**

@@ -144,4 +144,11 @@ export const ICON_NAMES = [
   'file-x',
   // Spec 020: the "Waits on you" marker and block (design.md § Viewport-übergreifend: word plus `user-round`).
   'user-round',
+  // Spec 015: the step timeline's kinds (design.md § Viewport-übergreifend; circle-check, git-merge and lock-open are
+  // above).
+  'send',
+  'play',
+  'circle-x',
+  'message-circle-question',
+  'file-diff',
 ] as const;

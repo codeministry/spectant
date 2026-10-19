@@ -1,0 +1,145 @@
+/* app-step-timeline (spec 015, design.md § the step vocabulary): one grid row per step. Compact and medium put the
+   word over the span with the clock right; wide reads clock, icon, word, span left to right. Tiers come from the
+   shell container, never from the viewport. */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-areas:
+    "mark word time"
+    "mark meta meta"
+    "mark question question";
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: start;
+  min-block-size: 40px;
+}
+
+.mark {
+  position: relative;
+  display: flex;
+  grid-area: mark;
+  justify-content: center;
+  block-size: 100%;
+  padding-block-start: 3px;
+  color: var(--muted-ink);
+}
+
+/* The connector to the next step: decoration only, it may drop in forced colours. */
+.mark::after {
+  position: absolute;
+  inset-block: 24px -4px;
+  inset-inline-start: 7px;
+  inline-size: 2px;
+  background: var(--line);
+  content: "";
+}
+
+.step:last-child .mark::after {
+  display: none;
+}
+
+.step[data-tone="disp"] .mark { color: var(--disp-text); }
+.step[data-tone="fail"] .mark { color: var(--fail-text); }
+.step[data-tone="lime"] .mark { color: var(--lime-text); }
+.step[data-tone="ques"] .mark { color: var(--ques-text); }
+.step[data-tone="cyan"] .mark { color: var(--cyan-text); }
+.step[data-tone="done"] .mark { color: var(--done-text); }
+
+/* The newest step: a ring around its icon marks it without colour. */
+.step[data-step-latest] .mark ui-icon {
+  border-radius: 50%;
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+.word {
+  grid-area: word;
+  min-inline-size: 0;
+  color: var(--color-base-content);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.time {
+  grid-area: time;
+  justify-self: end;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: meta;
+  gap: 4px 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.delta {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.question {
+  grid-area: question;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-inline-start: 3px solid var(--ques-text);
+  background: var(--color-base-200);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@container shell (inline-size >= 1120px) {
+  .step {
+    grid-template-areas:
+      "time mark word meta"
+      ". mark question question";
+    grid-template-columns: 72px 16px minmax(0, 1fr) minmax(112px, auto);
+    min-block-size: 28px;
+  }
+
+  .time {
+    justify-self: start;
+  }
+
+  .meta {
+    justify-content: flex-end;
+  }
+}
+
+@media (forced-colors: active) {
+  .mark::after {
+    display: none;
+  }
+}
