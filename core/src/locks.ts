@@ -50,6 +50,11 @@
 //    the reading as `steps`, their own list: never part of `runs`, so they move no task run, no item state and no lock
 //    (ISC-230.1). `steps` is set only when the log holds at least one step line, so a log without them reads as before.
 //
+//    The releases (spec 015, ISC-231): every `release` that ended its holder's claim is kept on the reading as
+//    `releases`, with its claim, session, ts and, when the line names them, task and worktree; steps.ts puts it on the
+//    timeline of the claim's task. A release of a claim nobody holds, or by another session, freed nothing and is not
+//    kept. `releases` is set only when the log holds at least one, so a log without them reads as before.
+//
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
 // With no state directory given, nothing outside `repoRoot` is touched (ISC-37).
 //
@@ -63,6 +68,7 @@ import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import { legacyActorWarning, parseActor, type ActorSighting } from './actor.ts';
+import { runSpecOf } from './spec-ref.ts';
 import type {
   AgentLockSource,
   ClaimLock,
@@ -75,10 +81,14 @@ import type {
   RunLifecycleEvent,
   RunOutcome,
   RunState,
+  ClaimRelease,
   StepEvent,
   StepKind,
   TaskRun,
 } from './files.ts';
+
+// `runSpecOf` lives in spec-ref.ts (pure, browser-safe, so steps.ts rides the barrel); kept importable from here.
+export { runSpecOf };
 
 /** LifeOS's default stale TTL for a frontier lock: a session silent this long has died or moved on. */
 export const FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
@@ -117,20 +127,6 @@ export function questionText(text: string): string {
     .join('');
 }
 
-/** A spec session ref: an agent session whose id is `spec-NNN`, alone or with its task (`a:claude:spec-041/T3`). */
-const SPEC_SESSION = /^a:[^:/]+:spec-(\d{3})(?:\/|$)/u;
-
-/** A spec worktree: `.worktrees/NNN-slug`, relative or as the tail of a longer path, with an optional trailing `/`. */
-const SPEC_WORKTREE = /(?:^|\/)\.worktrees\/(\d{3})-[^/]+\/?$/u;
-
-/**
- * The spec number `NNN` a run line names without its claim (spec 041, ISC-213): from its session ref
- * `a:<kind>:spec-NNN/…`, else from its worktree `.worktrees/NNN-slug`; null when it names neither. Pure.
- */
-export function runSpecOf(run: { readonly session: string; readonly worktree?: string }): string | null {
-  return SPEC_SESSION.exec(run.session)?.[1] ?? (run.worktree === undefined ? null : (SPEC_WORKTREE.exec(run.worktree)?.[1] ?? null));
-}
-
 const byId = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true });
 const byClaim = (a: ClaimLock, b: ClaimLock) => byId(a.claim, b.claim);
 
@@ -160,6 +156,8 @@ interface SourceRead {
   readonly openRuns?: OpenRun[];
   /** The step events (spec 015, ISC-230); absent unless the activity log holds a `probe` or `question` line. */
   readonly steps?: StepEvent[];
+  /** The releases that ended a held claim (spec 015, ISC-231); absent unless the activity log holds one. */
+  readonly releases?: ClaimRelease[];
 }
 
 const ABSENT: SourceRead = { present: false, locks: [], diagnostics: [], runs: [] };
@@ -323,6 +321,7 @@ function parseActivity(text: string): SourceRead {
   let lifecycleLines = 0;
   const steps: StepEvent[] = [];
   let stepLines = 0;
+  const releases: ClaimRelease[] = [];
   text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     if (raw.trim() === '') return;
@@ -410,6 +409,8 @@ function parseActivity(text: string): SourceRead {
       diagnostics.push(warning('locks-activity-release-foreign', `${claim} is released by ${session} but held by ${holder.session}; it stays held.`, { line, claim }));
     } else {
       held.delete(claim);
+      const { task, worktree } = entry;
+      releases.push({ claim, session, ts, ...(filled(task) ? { task } : {}), ...(filled(worktree) ? { worktree } : {}) });
     }
   });
   const legacy = legacyActorWarning(actors, 'session');
@@ -422,6 +423,7 @@ function parseActivity(text: string): SourceRead {
     runs,
     ...(lifecycleLines > 0 ? { openRuns: [...lifecycle.open.values()] } : {}),
     ...(stepLines > 0 ? { steps } : {}),
+    ...(releases.length > 0 ? { releases } : {}),
   };
 }
 
@@ -483,5 +485,6 @@ function readingOf(frontier: SourceRead, activity: SourceRead): LockReading {
     runs: activity.runs,
     ...(activity.openRuns === undefined ? {} : { openRuns: activity.openRuns }),
     ...(activity.steps === undefined ? {} : { steps: activity.steps }),
+    ...(activity.releases === undefined ? {} : { releases: activity.releases }),
   };
 }

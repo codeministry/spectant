@@ -1,0 +1,5 @@
+{
+  "specs/001-signal-intake": {},
+  "specs/002-alert-routing": {},
+  "specs/003-escalation-chains": {}
+}

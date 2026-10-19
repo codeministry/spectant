@@ -23,6 +23,9 @@
 //                                            (helpers/state-model.ts); item-state.test.ts compares it too.
 //   <tree>.guidance.golden.json  guidance    `guidanceOf` (spec 020, ISC-237) over the `state` family's items and input
 //                                            (helpers/guidance-model.ts); the dashboard and spec goldens carry it too.
+//   <tree>.steps.golden.json     steps       `taskSteps` (spec 015, ISC-231) per spec folder, keyed by `specs/…` path, over
+//                                            the live family's activity reading (helpers/steps-model.ts); a task
+//                                            without a step has no key, a folder without one is `{}`.
 //
 // Spec 040 adds the item state and nothing else (T17, T20, ISC-223, ISC-224): each `live` card carries `itemState`
 // (live.ts); each `claim-view` claim carries it at the live clock without locks, as the golden has always been built;
@@ -63,6 +66,7 @@ import { planningModel } from './helpers/planning-model.ts';
 import { planningGolden } from './helpers/planning-golden.ts';
 import { stateModel } from './helpers/state-model.ts';
 import { guidanceModel } from './helpers/guidance-model.ts';
+import { stepsModel } from './helpers/steps-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -197,6 +201,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   tech: techModel,
   state: stateModel,
   guidance: guidanceModel,
+  steps: (root) => stepsModel(root, LIVE_LOCKS.get(root) as LockReading),
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 

@@ -1,0 +1,14 @@
+{
+  "specs/001-flag-targeting": {},
+  "specs/002-audit-trail": {},
+  "specs/003-flag-expiry": {},
+  "specs/004-cache-layer": {},
+  "specs/005-sdk-rollout": {},
+  "specs/006-sdk-benchmarks": {},
+  "specs/007-segment-builder": {},
+  "specs/008-change-webhooks": {},
+  "specs/009-percent-rounding": {},
+  "specs/010-banner-copy": {},
+  "specs/011-flag-store": {},
+  "specs/012-segment-export": {}
+}

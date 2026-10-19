@@ -1772,6 +1772,17 @@ probe green:
 {"ts":"2026-03-08T16:39:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"green","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 ```
 
+**Step timeline** (spec 015, ISC-231, `steps.ts` `taskSteps`). Each task of a spec, a tasks.md line, has a timeline:
+its run events `dispatch`, `build`, `patch` and `apply`, its step events `probe` and `question`, and the `release` that
+ended the hold on its claim, each as `{kind, ts, actor}` with the line's event as `kind`, its `ts` and its `session` as
+`actor`, plus `result` on a probe and `text` on a question. `build` is the step a reader calls started and `release`
+the one it calls claim released; neither has a kind of its own. A line counts for a task the way a run line counts for
+the live frame: when it names a claim, only when that claim is the task's own; without one, only when its spec session
+or spec worktree names the spec (ISC-213). A release counts for every task of its claim, or only for the task it names.
+Only a release that freed a held claim is a step: the reading keeps those as `releases`, set only when the log holds
+at least one. Each timeline is in time order; the model keys the tasks with at least one step in tasks.md order. For
+harbor's T28 above the timeline reads dispatch, build, probe red, the question, probe green, patch, apply.
+
 **Run lifecycle events** (spec 040, ISC-222, `locks.ts`). Each command that works on a spec or an idea reports its
 start and its end: `{ts, event: "run-start" | "run-end", run, command, session, spec | idea, outcome?}`. `run` is an
 id written once per invocation, `command` the command as typed (`/spec-tasks 037`), `session` its actor in the grammar

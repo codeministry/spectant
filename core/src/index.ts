@@ -23,6 +23,8 @@
 // rides it whole; its types `ItemStateInfo`, `ItemState`, `ItemRun`, `ItemWaits` and `OpenRun` ride with files.ts.
 // Spec 020's guidance.ts (`guidanceOf`, `withGuidance`, `guidanceOfSpec`) takes the workspace, the dashboard model and
 // the item states from the caller and reads no file, so it is browser-safe and rides it whole; its types ride with files.ts.
+// Spec 015's steps.ts (`taskSteps`) takes the lock reading and the spec folder's texts from the caller and reads no
+// file; the ISC-213 helper `runSpecOf` it shares with locks.ts lives in spec-ref.ts, so it rides it whole.
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';
@@ -54,6 +56,7 @@ export * from './worktrees.ts';
 export * from './repo-source.ts';
 export * from './item-state.ts';
 export * from './guidance.ts';
+export * from './steps.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';
 export type * from './library.ts';

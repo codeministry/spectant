@@ -481,7 +481,13 @@ const RUN_LINE = /"event":"run-(?:start|end)"/u;
 describe('run events legacy: a log without run lines reads as before (spec 040, ISC-222.2)', () => {
   // Since spec 015 harbor's log carries step lines too; without them it is the log spec 040 read (ISC-230.1).
   test('run events legacy: harbor reads byte-equal to its reading before spec 040, with no openRuns key', async () => {
-    const r = await readLockSources({ repoRoot: harborWithoutSteps() });
+    const reading = await readLockSources({ repoRoot: harborWithoutSteps() });
+    // Spec 015 (ISC-231) adds `releases`, the claims a release line freed, as the reading's last key; the rest is as before.
+    const { releases, ...r } = reading;
+    expect(releases?.map((x) => [x.claim, x.ts])).toEqual([
+      ['ISC-53', '2026-03-06T09:58:00Z'],
+      ['ISC-72', '2026-03-08T15:52:00Z'],
+    ]);
     expect(JSON.stringify(r)).toBe(HARBOR_READING);
     expect('openRuns' in r).toBe(false);
     expect(await runStates(r, ticked002())).toEqual(HARBOR_RUNS);

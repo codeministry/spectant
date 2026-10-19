@@ -1,0 +1,94 @@
+{
+  "specs/001-check-scheduler": {},
+  "specs/002-status-page": {},
+  "specs/003-alert-rules": {},
+  "specs/004-incident-notes": {},
+  "specs/005-probe-agents": {
+    "T1": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T14:05:00Z",
+        "actor": "a:claude:sess-50/T1"
+      },
+      {
+        "kind": "build",
+        "ts": "2026-03-08T14:06:00Z",
+        "actor": "a:claude:sess-50/T1"
+      },
+      {
+        "kind": "patch",
+        "ts": "2026-03-08T14:12:00Z",
+        "actor": "a:claude:sess-50/T1"
+      },
+      {
+        "kind": "apply",
+        "ts": "2026-03-08T14:14:00Z",
+        "actor": "a:claude:sess-50/T1"
+      }
+    ],
+    "T3": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T14:31:00Z",
+        "actor": "a:claude:sess-51/T3"
+      },
+      {
+        "kind": "build",
+        "ts": "2026-03-08T14:32:00Z",
+        "actor": "a:claude:sess-51/T3"
+      }
+    ],
+    "T4": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T13:41:00Z",
+        "actor": "a:claude:sess-50/T4"
+      }
+    ],
+    "T5": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T14:22:00Z",
+        "actor": "a:claude:sess-51/T5"
+      },
+      {
+        "kind": "build",
+        "ts": "2026-03-08T14:23:00Z",
+        "actor": "a:claude:sess-51/T5"
+      },
+      {
+        "kind": "patch",
+        "ts": "2026-03-08T14:31:00Z",
+        "actor": "a:claude:sess-51/T5"
+      }
+    ],
+    "T6": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T14:24:00Z",
+        "actor": "a:claude:sess-51/T6"
+      },
+      {
+        "kind": "build",
+        "ts": "2026-03-08T14:25:00Z",
+        "actor": "a:claude:sess-51/T6"
+      },
+      {
+        "kind": "patch",
+        "ts": "2026-03-08T14:33:00Z",
+        "actor": "a:claude:sess-51/T6"
+      },
+      {
+        "kind": "apply",
+        "ts": "2026-03-08T14:35:00Z",
+        "actor": "a:claude:sess-51/T6"
+      }
+    ]
+  },
+  "specs/006-retry-backoff": {},
+  "specs/007-history-export": {},
+  "specs/008-export-formats": {},
+  "specs/009-timezone-labels": {},
+  "specs/010-renew-api-key": {},
+  "specs/011-maintenance-windows": {}
+}
