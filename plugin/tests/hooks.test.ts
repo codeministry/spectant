@@ -1,9 +1,11 @@
-// The activity hooks (spec 032, T6, ISC-33): `spec-check hook` reads one hook payload and writes the lock lines of a
-// builder's task to `.spectant/activity.jsonl`. `PreToolUse(Agent)` with a marker line in the prompt claims the task's
-// claim for the parent session (`a:claude:<first 8 of session_id>`); `PostToolUse(Agent)` of a background builder
-// (`async_launched`) maps its agent id to the marker; `SubagentStop` of that builder releases the claim when it was the
-// last mapped builder of it; `PostToolUse(Agent)` with `status: completed` (a foreground run) releases from its own
-// prompt. A payload without a marker writes nothing, and so does a claim held by another session.
+// The activity hooks (spec 032, T6 and T11, ISC-33 and ISC-33.1): `spec-check hook` reads one hook payload and writes
+// the lock and run lines of a builder's task to `.spectant/activity.jsonl`. `PreToolUse(Agent)` with a marker line in
+// the prompt claims the task's claim for the parent session (`a:claude:<first 8 of session_id>`) and writes the task's
+// `dispatch`; `PostToolUse(Agent)` of a background builder (`async_launched`) writes its `build` and maps its agent id
+// to the marker; `SubagentStart` writes nothing; `SubagentStop` of that builder releases the claim when it was the last
+// mapped builder of it; `PostToolUse(Agent)` with `status: completed` (a foreground run) writes `build` and releases
+// from its own prompt. Every dispatch and build line carries its claim and is core's plan (`runEventLine`). A payload
+// without a marker writes nothing, and so does a claim held by another session.
 //
 // `handleHook` is driven with the captured payload fixtures (`fixtures/payloads/`) in a fresh git repository under the
 // system temp directory, never in this repository; one test pipes a fixture into the CLI the way Claude Code calls it.
@@ -11,7 +13,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { claimLine } from '../../core/src/activity-text.ts';
+import { claimLine, runEventLine } from '../../core/src/activity-text.ts';
 import { handleHook } from '../src/hook.ts';
 
 const CLI = join(import.meta.dir, '..', 'src', 'spec-check.ts');
@@ -61,11 +63,12 @@ function second(name: string): Payload {
   return payload;
 }
 
-function lines(root: string): Payload[] {
+const rawLines = (root: string): string[] => {
   const path = join(root, LOG);
-  if (!existsSync(path)) return [];
-  return readFileSync(path, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l) as Payload);
-}
+  return existsSync(path) ? readFileSync(path, 'utf8').split('\n').filter((l) => l !== '') : [];
+};
+
+const lines = (root: string): Payload[] => rawLines(root).map((l) => JSON.parse(l) as Payload);
 
 const events = (root: string): string[] => lines(root).map((l) => `${String(l.event)} ${String(l.claim)} ${String(l.task)} ${String(l.session)}`);
 
@@ -80,46 +83,69 @@ afterEach(() => {
 });
 
 describe('handleHook: a background builder', () => {
-  test('PreToolUse(Agent) with a marker line writes one claim line for the parent session', () => {
+  test('PreToolUse(Agent) with a marker line writes one claim and one dispatch line for the parent session', () => {
     const { root, run } = setup();
-    expect(run(fixture('pre-tool-use-agent'))).toHaveLength(1);
-    expect(lines(root)).toEqual([{ ts: NOW.toISOString(), event: 'claim', claim: 'ISC-1', task: 'T1', session: ACTOR }]);
+    expect(run(fixture('pre-tool-use-agent'))).toHaveLength(2);
+    expect(lines(root)).toEqual([
+      { ts: NOW.toISOString(), event: 'claim', claim: 'ISC-1', task: 'T1', session: ACTOR },
+      { ts: NOW.toISOString(), event: 'dispatch', claim: 'ISC-1', task: 'T1', session: ACTOR },
+    ]);
   });
 
-  test('the whole round: claim at PreToolUse, release at SubagentStop of the same builder, nothing in between', () => {
+  test('the whole round: claim and dispatch at PreToolUse, build at the launch, release at SubagentStop', () => {
     const { root, data, run } = setup();
     run(fixture('pre-tool-use-agent'));
     expect(run(fixture('subagent-start'))).toEqual([]);
-    expect(run(fixture('post-tool-use-agent-async'))).toEqual([]);
+    expect(run(fixture('post-tool-use-agent-async'))).toHaveLength(1);
     expect(readdirSync(join(data, 'agents'))).toEqual([`${BUILDER}.json`]);
     expect(run(fixture('pre-tool-use-bash-in-subagent'))).toEqual([]);
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`, `build ISC-1 T1 ${ACTOR}`]);
 
     expect(run(fixture('subagent-stop'))).toHaveLength(1);
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `release ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`, `build ISC-1 T1 ${ACTOR}`, `release ISC-1 T1 ${ACTOR}`]);
     expect(readdirSync(join(data, 'agents'))).toEqual([]);
     expect(run(fixture('subagent-stop'))).toEqual([]);
   });
 
-  test('two builders of one claim: one claim line, one release after the second stop', () => {
+  test('the dispatch and build lines are core\'s plan, each with its claim', () => {
     const { root, run } = setup();
     run(fixture('pre-tool-use-agent'));
-    run(second('pre-tool-use-agent'));
+    run(fixture('subagent-start'));
     run(fixture('post-tool-use-agent-async'));
-    run(second('post-tool-use-agent-async'));
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    const ts = NOW.toISOString();
+    const [, dispatch, build] = rawLines(root);
+    expect(dispatch).toBe(runEventLine({ event: 'dispatch', claim: 'ISC-1', task: 'T1', session: ACTOR, ts }).trimEnd());
+    expect(build).toBe(runEventLine({ event: 'build', claim: 'ISC-1', task: 'T1', session: ACTOR, ts }).trimEnd());
+    for (const line of lines(root)) expect(line.claim).toBe('ISC-1');
+  });
+
+  test('two builders of one claim: one claim line, dispatch and build per task, one release after the second stop', () => {
+    const { root, run } = setup();
+    run(fixture('pre-tool-use-agent'));
+    expect(run(second('pre-tool-use-agent'))).toHaveLength(1);
+    run(fixture('post-tool-use-agent-async'));
+    expect(run(second('post-tool-use-agent-async'))).toHaveLength(1);
+    const round = [
+      `claim ISC-1 T1 ${ACTOR}`,
+      `dispatch ISC-1 T1 ${ACTOR}`,
+      `dispatch ISC-1 T2 ${ACTOR}`,
+      `build ISC-1 T1 ${ACTOR}`,
+      `build ISC-1 T2 ${ACTOR}`,
+    ];
+    expect(events(root)).toEqual(round);
 
     expect(run(fixture('subagent-stop'))).toEqual([]);
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual(round);
     run(second('subagent-stop'));
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `release ISC-1 T2 ${ACTOR}`]);
+    expect(events(root)).toEqual([...round, `release ISC-1 T2 ${ACTOR}`]);
+    for (const line of lines(root)) expect(line.claim).toBe('ISC-1');
   });
 
   test('a SubagentStop of a builder that was never mapped writes nothing', () => {
     const { root, run } = setup();
     run(fixture('pre-tool-use-agent'));
     expect(run(fixture('subagent-stop'))).toEqual([]);
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`]);
   });
 });
 
@@ -143,6 +169,15 @@ describe('handleHook: no marker, no line', () => {
     expect(existsSync(join(data, 'agents'))).toBe(false);
   });
 
+  test('SubagentStart writes no line, before or after the claim', () => {
+    const { root, run } = setup();
+    expect(run(fixture('subagent-start'))).toEqual([]);
+    expect(existsSync(join(root, LOG))).toBe(false);
+    run(fixture('pre-tool-use-agent'));
+    expect(run(fixture('subagent-start'))).toEqual([]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`]);
+  });
+
   test('a malformed payload or an unset project directory writes nothing and never throws', () => {
     const { root, data, run } = setup();
     for (const payload of [null, 'PreToolUse', 42, [], {}, { hook_event_name: 'PreToolUse' }, { ...fixture('pre-tool-use-agent'), session_id: 7 }]) {
@@ -155,39 +190,48 @@ describe('handleHook: no marker, no line', () => {
 });
 
 describe('handleHook: the fallback of a foreground run', () => {
-  test('PostToolUse(Agent) with status completed releases the claim from its own prompt, no map needed', () => {
+  test('PostToolUse(Agent) with status completed writes build, then releases the claim from its own prompt', () => {
     const { root, data, run } = setup();
     run(fixture('pre-tool-use-agent'));
-    expect(run(fixture('post-tool-use-agent-completed'))).toHaveLength(1);
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `release ISC-1 T1 ${ACTOR}`]);
+    expect(run(fixture('post-tool-use-agent-completed'))).toHaveLength(2);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`, `build ISC-1 T1 ${ACTOR}`, `release ISC-1 T1 ${ACTOR}`]);
     expect(existsSync(join(data, 'agents'))).toBe(false);
+  });
+
+  test('a completion of an agent mapped at its launch writes no second build', () => {
+    const { root, run } = setup();
+    run(fixture('pre-tool-use-agent'));
+    run(fixture('post-tool-use-agent-async'));
+    expect(run(fixture('post-tool-use-agent-completed'))).toHaveLength(1);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`, `build ISC-1 T1 ${ACTOR}`, `release ISC-1 T1 ${ACTOR}`]);
   });
 
   test('PostToolUse(Agent) with status async_launched never releases', () => {
     const { root, run } = setup();
     run(fixture('pre-tool-use-agent'));
     run(fixture('post-tool-use-agent-async'));
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`, `build ISC-1 T1 ${ACTOR}`]);
   });
 
-  test('a completion while a background builder of the same claim still runs keeps the claim', () => {
+  test('a completion while a background builder of the same claim still runs writes its build and keeps the claim', () => {
     const { root, run } = setup();
     run(fixture('pre-tool-use-agent'));
     run(second('post-tool-use-agent-async'));
-    expect(run(fixture('post-tool-use-agent-completed'))).toEqual([]);
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(run(fixture('post-tool-use-agent-completed'))).toHaveLength(1);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`, `build ISC-1 T2 ${ACTOR}`, `build ISC-1 T1 ${ACTOR}`]);
   });
 });
 
 describe('handleHook: the lock and the root', () => {
-  test('a claim held by another session: neither claim nor release is written', () => {
+  test('a claim held by another session: no claim, dispatch, build or release is written', () => {
     const { root, run } = setup();
     const other = claimLine({ claim: 'ISC-1', session: 'a:claude:ffffffff', ts: '2026-10-19T09:00:00.000Z' });
     mkdirSync(join(root, '.spectant'));
     writeFileSync(join(root, LOG), other);
     expect(run(fixture('pre-tool-use-agent'))).toEqual([]);
-    run(fixture('post-tool-use-agent-async'));
+    expect(run(fixture('post-tool-use-agent-async'))).toEqual([]);
     expect(run(fixture('subagent-stop'))).toEqual([]);
+    expect(run(fixture('post-tool-use-agent-completed'))).toEqual([]);
     expect(readFileSync(join(root, LOG), 'utf8')).toBe(other);
   });
 
@@ -197,7 +241,7 @@ describe('handleHook: the lock and the root', () => {
     git(root, ['worktree', 'add', '-q', worktree, '-b', 'feature/parent']);
     const data = tempDir('spectant-hooks-data-');
     handleHook(fixture('pre-tool-use-agent'), { projectDir: worktree, dataDir: data, now: NOW });
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`]);
     expect(existsSync(join(worktree, LOG))).toBe(false);
   });
 });
@@ -208,12 +252,12 @@ describe('spec-check hook', () => {
     return { code: r.exitCode, stdout: r.stdout.toString() };
   }
 
-  test('reads the payload from stdin, writes the claim line, prints nothing and exits 0', () => {
+  test('reads the payload from stdin, writes the claim and dispatch lines, prints nothing and exits 0', () => {
     const root = gitRepo();
     const data = tempDir('spectant-hooks-data-');
     const r = hook(readFileSync(join(FIXTURES, 'pre-tool-use-agent.json'), 'utf8'), { CLAUDE_PROJECT_DIR: root, CLAUDE_PLUGIN_DATA: data });
     expect(r).toEqual({ code: 0, stdout: '' });
-    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`]);
+    expect(events(root)).toEqual([`claim ISC-1 T1 ${ACTOR}`, `dispatch ISC-1 T1 ${ACTOR}`]);
   });
 
   test('a payload that is no JSON exits 0, prints nothing and writes nothing', () => {

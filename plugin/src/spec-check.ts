@@ -20,10 +20,9 @@ import {
   probeLine,
   questionLine,
   runEndLine,
-  runEventLine,
   runStartLine,
 } from '../../core/src/activity-text.ts';
-import { appendActivity, appendClaim, appendRelease, readActivity, repoRoot } from './activity-log.ts';
+import { ActivityLogError, appendActivity, appendClaim, appendRelease, appendRunEvent, readActivity, repoRoot } from './activity-log.ts';
 import { runHook } from './hook.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
@@ -755,7 +754,10 @@ function lockRelease(ctx: Context, args: Args): number {
 
 const STEP_EVENTS: readonly string[] = ['dispatch', 'build', 'patch', 'apply'] satisfies RunEvent[];
 
-/** `activity <event> --task T<k> --session <actor> …`: one step line, planned by core for its event. */
+/**
+ * `activity <event> --task T<k> --session <actor> …`: one step line, planned by core for its event. The four run
+ * events go through the shared writer (`appendRunEvent`), which refuses one without `--claim` (spec 032, ISC-33.1).
+ */
 function activity(ctx: Context, args: Args): number {
   const event = required(args, 0, 'the event (dispatch, build, patch, apply, probe or question)');
   const task = requiredValue(args, 'task', 'T<k>');
@@ -769,14 +771,15 @@ function activity(ctx: Context, args: Args): number {
     const result = args.values.get('result');
     if (result !== 'red' && result !== 'green') throw bad('a probe needs --result red|green');
     line = probeLine({ ...common, claim: requiredValue(args, 'claim', 'ISC-N'), result });
+    appendActivity(ctx.root, line);
   } else if (event === 'question') {
     line = questionLine({ ...common, ...withClaim, text: requiredValue(args, 'text', '"<the question>"') });
+    appendActivity(ctx.root, line);
   } else if (STEP_EVENTS.includes(event)) {
-    line = runEventLine({ ...common, ...withClaim, event: event as RunEvent });
+    line = appendRunEvent(ctx.root, { ...common, ...withClaim, event: event as RunEvent });
   } else {
     throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
   }
-  appendActivity(ctx.root, line);
   emit(ctx, args, JSON.parse(line) as unknown, [`${event} ${task}${claim === undefined ? '' : ` (${claim})`} appended to .spectant/activity.jsonl`]);
   return EXIT.ok;
 }
@@ -1614,14 +1617,15 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   activity: {
     usage:
       'activity <dispatch|build|patch|apply|probe|question> --task T<k> [--claim ISC-N] --session <actor> [--result red|green] [--text "<…>"] [--worktree <path>] [--json]',
-    summary: 'append one step line to .spectant/activity.jsonl (patch and apply need --worktree, probe --claim and --result, question --text)',
+    summary:
+      'append one step line to .spectant/activity.jsonl (dispatch, build, patch and apply need --claim, patch and apply also --worktree; probe --claim and --result; question --text); a run event without --claim exits 1, nothing written',
     values: ['task', 'claim', 'session', 'result', 'text', 'worktree'],
     run: activity,
   },
   hook: {
     usage: 'hook',
     summary:
-      'the plugin\'s activity hook: one Claude Code hook payload on stdin; claim at PreToolUse(Agent) with a marker line, release at SubagentStop of the last builder of the claim (or PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0',
+      'the plugin\'s activity hook: one Claude Code hook payload on stdin; claim and dispatch at PreToolUse(Agent) with a marker line, build at PostToolUse(Agent) async_launched, release at SubagentStop of the last builder of the claim (or build and release at PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0',
     run: hook,
   },
 };
@@ -1661,6 +1665,7 @@ export async function main(argv: readonly string[], cwd = process.cwd(), now = n
     if (error instanceof CliError) return fail(error.exit, `${name}: ${error.message}`);
     if (error instanceof SpecTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
     if (error instanceof ActivityTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
+    if (error instanceof ActivityLogError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
     throw error;
   }
 }

@@ -491,6 +491,14 @@ function readingOf(frontier, activity) {
 }
 
 // plugin/src/activity-log.ts
+class ActivityLogError extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "ActivityLogError";
+    this.code = code;
+  }
+}
 function repoRoot(dir) {
   const r = Bun.spawnSync(["git", "rev-parse", "--git-common-dir"], { cwd: dir, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   const common = r.exitCode === 0 ? r.stdout.toString().trim() : "";
@@ -536,6 +544,14 @@ function appendRelease(root, input) {
     return { done: "other", holder };
   appendActivity(root, line);
   return { done: "written", line };
+}
+function appendRunEvent(root, input) {
+  if (input.claim === undefined || input.claim === "") {
+    throw new ActivityLogError("claim-required", `a ${input.event} line of ${input.task} needs its claim; nothing written`);
+  }
+  const line = runEventLine(input);
+  appendActivity(root, line);
+  return line;
 }
 
 // plugin/src/agent-map.ts
@@ -629,9 +645,20 @@ function actorOf(sessionId) {
   return ACTOR_ID.test(id) ? `a:claude:${id}` : null;
 }
 var markerOf = (prompt) => typeof prompt === "string" ? parseMarker(prompt) : null;
-function claim(env, marker, session) {
-  const outcome = appendClaim(repoRoot(env.projectDir ?? ""), { claim: marker.claim, task: marker.task, session, ts: env.now.toISOString() });
-  return outcome.done === "written" ? [outcome.line] : [];
+function claimAndDispatch(env, marker, session) {
+  const root = repoRoot(env.projectDir ?? "");
+  const ts = env.now.toISOString();
+  const outcome = appendClaim(root, { claim: marker.claim, task: marker.task, session, ts });
+  if (outcome.done === "other")
+    return [];
+  const dispatch = appendRunEvent(root, { event: "dispatch", claim: marker.claim, task: marker.task, session, ts });
+  return outcome.done === "written" ? [outcome.line, dispatch] : [dispatch];
+}
+function build(env, marker, session) {
+  const root = repoRoot(env.projectDir ?? "");
+  if (holderOf(root, marker.claim) !== session)
+    return [];
+  return [appendRunEvent(root, { event: "build", claim: marker.claim, task: marker.task, session, ts: env.now.toISOString() })];
 }
 function releaseIfLast(env, marker, session) {
   if (agentsOf(env.dataDir, marker.claim, session).length > 0)
@@ -656,19 +683,20 @@ function handleHook(payload, env) {
     return [];
   if (event === "PreToolUse") {
     const marker = markerOf(fieldsOf(fields.tool_input)?.prompt);
-    return marker === null ? [] : claim(env, marker, session);
+    return marker === null ? [] : claimAndDispatch(env, marker, session);
   }
   if (event === "PostToolUse") {
     const response = fieldsOf(fields.tool_response);
+    const marker = markerOf(response?.prompt) ?? markerOf(fieldsOf(fields.tool_input)?.prompt);
     if (response?.status === "async_launched") {
       recordLaunch(env.dataDir, response, session);
-      return [];
+      return marker === null ? [] : build(env, marker, session);
     }
     if (response?.status === "completed") {
-      if (typeof response.agentId === "string")
-        takeAgent(env.dataDir, response.agentId);
-      const marker = markerOf(response.prompt) ?? markerOf(fieldsOf(fields.tool_input)?.prompt);
-      return marker === null ? [] : releaseIfLast(env, marker, session);
+      const launched = typeof response.agentId === "string" ? takeAgent(env.dataDir, response.agentId) : null;
+      if (marker === null)
+        return [];
+      return [...launched === null ? build(env, marker, session) : [], ...releaseIfLast(env, marker, session)];
     }
   }
   return [];
@@ -937,9 +965,9 @@ function parseClaims(text) {
       }
       const m = CLAIM_LINE.exec(line.text);
       if (m) {
-        const claim2 = parseClaim(m, current?.id ?? null, lineNo);
-        claims.push(claim2);
-        current?.claims.push(claim2.id);
+        const claim = parseClaim(m, current?.id ?? null, lineNo);
+        claims.push(claim);
+        current?.claims.push(claim.id);
       } else if (CHECKBOX_LINE.test(line.text)) {
         idlessBoxes += 1;
         diagnostics.push({ severity: "warning", code: "claim-no-id", message: "A checkbox line carries no claim ID and is invisible to the graph.", line: lineNo });
@@ -2172,11 +2200,11 @@ function transitionsOf(workflow) {
 }
 var TRANSITIONS = transitionsOf(DEFAULT);
 function placeOf(stage, row) {
-  const build = row.indexOf("build");
+  const build2 = row.indexOf("build");
   if (stage === "blocked")
-    return build;
+    return build2;
   if (stage === "close-pending")
-    return build < 0 ? -1 : build + 0.5;
+    return build2 < 0 ? -1 : build2 + 0.5;
   return row.indexOf(stage);
 }
 function explicitVerdict(input) {
@@ -2415,8 +2443,8 @@ function isRecord4(value) {
 }
 
 // core/src/status.ts
-function stateOf(claim2) {
-  return claim2.dropped ? "dropped" : claim2.checked ? "closed" : "open";
+function stateOf(claim) {
+  return claim.dropped ? "dropped" : claim.checked ? "closed" : "open";
 }
 function heldLocks(locks, claims) {
   const held = new Map;
@@ -2572,8 +2600,8 @@ function openSpecEdges(edges) {
 }
 function specEdgeHold(edges) {
   const open = openSpecEdges(edges);
-  return (task, claim2) => {
-    const specs = [...open.get(`task:${task}`) ?? [], ...open.get(`claim:${claim2}`) ?? []];
+  return (task, claim) => {
+    const specs = [...open.get(`task:${task}`) ?? [], ...open.get(`claim:${claim}`) ?? []];
     return specs.length > 0 ? waitsOnReason(specs) : null;
   };
 }
@@ -2835,9 +2863,9 @@ function parseBody(rest, warn) {
     segments = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
     textPart = body.slice(dash + 3);
   }
-  let claim2 = "";
+  let claim = "";
   if (segments.length > 0 && CLAIM_ID2.test(segments[0] ?? ""))
-    claim2 = segments.shift() ?? "";
+    claim = segments.shift() ?? "";
   else if (dash !== undefined) {
     warn("task-no-claim", `The task line names no claim ID: "${segments[0] ?? ""}".`);
     if (segments.length > 1)
@@ -2874,7 +2902,7 @@ function parseBody(rest, warn) {
       pathNote = column.note;
     }
   }
-  return { claim: claim2, parallel, seam, lane, text: text2, edgeTokens: tokens, paths, pathNote };
+  return { claim, parallel, seam, lane, text: text2, edgeTokens: tokens, paths, pathNote };
 }
 function comparable(text2) {
   const { text: noEdges } = takeEdges(text2);
@@ -3014,13 +3042,13 @@ function parseMapping(lines, tasks, diagnostics) {
   const byId2 = new Map(tasks.map((t) => [t.id, t]));
   const rows = [];
   for (const row of table) {
-    const [first = "", claim2 = "", ...rest] = cells(row.text);
+    const [first = "", claim = "", ...rest] = cells(row.text);
     if (SEPARATOR_ROW.test(row.text.trim()) || /^tasks?$/i.test(first))
       continue;
     const { ids, bad } = taskIds(first.replace(/`/g, "").split(/\s*,\s*/).filter((t) => t !== ""));
     if (bad.length > 0)
       warn("mapping-bad-task", `Probe mapping: ${bad.join(", ")} is no task id or range.`, row.line);
-    const id = claim2.replace(/`/g, "").trim();
+    const id = claim.replace(/`/g, "").trim();
     rows.push({ tasks: ids, claim: id, probe: rest.join(" | ").trim(), line: row.line });
     for (const t of ids) {
       const task = byId2.get(t);
@@ -3047,11 +3075,11 @@ function readSpec(files, num, constitution) {
   const openTasks = [];
   const specText = files.texts.spec;
   if (specText !== undefined) {
-    for (const claim2 of parseClaims(specText).claims) {
-      if (!claim2.checked && !claim2.dropped)
-        openClaims.push(claim2.id);
-      for (const toSpec of claim2.afterSpecs) {
-        edges.push({ fromSpec: num, fromKind: "claim", fromId: claim2.id, toSpec, folder: files.folder, line: claim2.line });
+    for (const claim of parseClaims(specText).claims) {
+      if (!claim.checked && !claim.dropped)
+        openClaims.push(claim.id);
+      for (const toSpec of claim.afterSpecs) {
+        edges.push({ fromSpec: num, fromKind: "claim", fromId: claim.id, toSpec, folder: files.folder, line: claim.line });
       }
     }
   }
@@ -4090,11 +4118,11 @@ function validDate(now) {
 function cell(value, what) {
   return oneLine2(value, what).trim().replace(/(?<!\\)\|/g, "\\|");
 }
-function claimLine2(id, claim2) {
-  const text2 = oneLine2(claim2.text, `the text of ${id}`).trim();
+function claimLine2(id, claim) {
+  const text2 = oneLine2(claim.text, `the text of ${id}`).trim();
   if (text2 === "")
     throw new SpecTextError("bad-input", `${id} has no text`);
-  const after = claim2.after ?? [];
+  const after = claim.after ?? [];
   return `- [ ] ${id}: ${text2}${after.length > 0 ? ` (after: ${after.join(", ")})` : ""}`;
 }
 function rowLine(id, row) {
@@ -4223,10 +4251,10 @@ function appendVerificationText(text2, id, type, stub, now) {
     throw new SpecTextError("bad-input", "the verification stub is empty");
   const updated = validDate(now);
   const parsed = parseClaims(text2);
-  const claim2 = parsed.claims.find((c) => c.id === id);
-  if (!claim2)
+  const claim = parsed.claims.find((c) => c.id === id);
+  if (!claim)
     throw new SpecTextError("unknown-id", `no claim line carries ${id}`);
-  if (claim2.dropped)
+  if (claim.dropped)
     throw new SpecTextError("dropped-claim", `${id} is dropped and takes no evidence`);
   const doc = linesOf(text2);
   const entry = `- ${id}: ${type.trim()} \u2014 ${stub.trim()}`;
@@ -4236,7 +4264,7 @@ function appendVerificationText(text2, id, type, stub, now) {
   else
     insertBlock(doc, afterSection(doc, "Changelog") ?? afterSection(doc, "Decisions") ?? newSectionAt(doc, []), ["## Verification", "", entry]);
   const reparsed = parseClaims(textOf(doc)).claims.find((c) => c.id === id);
-  const at = (reparsed?.line ?? claim2.line) - 1;
+  const at = (reparsed?.line ?? claim.line) - 1;
   doc.lines[at] = (doc.lines[at] ?? "").replace(/^(\s*- \[) \]/, "$1x]");
   recount(doc, true);
   setKey(doc, "updated", updated, true);
@@ -4787,9 +4815,9 @@ function claimInputs(path) {
       throw bad(`${at}: "id" must be a string`);
     if (item.after !== undefined && !(Array.isArray(item.after) && item.after.every(isString)))
       throw bad(`${at}: "after" must be a list of claim IDs`);
-    const claim2 = { text: item.text, ...isString(item.id) ? { id: item.id } : {}, ...Array.isArray(item.after) ? { after: item.after } : {} };
+    const claim = { text: item.text, ...isString(item.id) ? { id: item.id } : {}, ...Array.isArray(item.after) ? { after: item.after } : {} };
     if (item.row === undefined || item.row === null)
-      return { claim: claim2, row: null };
+      return { claim, row: null };
     const r = item.row;
     if (!isRecord5(r) || ![r.type, r.check, r.threshold, r.tool, r.anchorsTo].every(isString)) {
       throw bad(`${at}: "row" needs the strings type, check, threshold, tool and anchorsTo`);
@@ -4804,7 +4832,7 @@ function claimInputs(path) {
       anchorsTo: r.anchorsTo,
       ...isString(r.severity) ? { severity: r.severity } : {}
     };
-    return { claim: claim2, row };
+    return { claim, row };
   });
 }
 var ISC_NUMBER2 = /^ISC-(\d+)/u;
@@ -5177,11 +5205,11 @@ function runCommand(ctx, args) {
   throw bad(`"${sub}" is neither start nor end`);
 }
 function lockInput(ctx, args) {
-  const claim2 = required(args, 0, "the claim ID");
+  const claim = required(args, 0, "the claim ID");
   const session = requiredValue(args, "session", "<actor>");
   const task = args.values.get("task");
   const worktree = args.values.get("worktree");
-  return { claim: claim2, session, ts: ctx.now.toISOString(), ...task === undefined ? {} : { task }, ...worktree === undefined ? {} : { worktree } };
+  return { claim, session, ts: ctx.now.toISOString(), ...task === undefined ? {} : { task }, ...worktree === undefined ? {} : { worktree } };
 }
 function lockClaim(ctx, args) {
   const input = lockInput(ctx, args);
@@ -5212,25 +5240,26 @@ function activity(ctx, args) {
   const event = required(args, 0, "the event (dispatch, build, patch, apply, probe or question)");
   const task = requiredValue(args, "task", "T<k>");
   const session = requiredValue(args, "session", "<actor>");
-  const claim2 = args.values.get("claim");
+  const claim = args.values.get("claim");
   const worktree = args.values.get("worktree");
   const common = { task, session, ts: ctx.now.toISOString(), ...worktree === undefined ? {} : { worktree } };
-  const withClaim = claim2 === undefined ? {} : { claim: claim2 };
+  const withClaim = claim === undefined ? {} : { claim };
   let line;
   if (event === "probe") {
     const result = args.values.get("result");
     if (result !== "red" && result !== "green")
       throw bad("a probe needs --result red|green");
     line = probeLine({ ...common, claim: requiredValue(args, "claim", "ISC-N"), result });
+    appendActivity(ctx.root, line);
   } else if (event === "question") {
     line = questionLine({ ...common, ...withClaim, text: requiredValue(args, "text", '"<the question>"') });
+    appendActivity(ctx.root, line);
   } else if (STEP_EVENTS.includes(event)) {
-    line = runEventLine({ ...common, ...withClaim, event });
+    line = appendRunEvent(ctx.root, { ...common, ...withClaim, event });
   } else {
     throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
   }
-  appendActivity(ctx.root, line);
-  emit(ctx, args, JSON.parse(line), [`${event} ${task}${claim2 === undefined ? "" : ` (${claim2})`} appended to .spectant/activity.jsonl`]);
+  emit(ctx, args, JSON.parse(line), [`${event} ${task}${claim === undefined ? "" : ` (${claim})`} appended to .spectant/activity.jsonl`]);
   return EXIT.ok;
 }
 async function hook(ctx) {
@@ -5948,13 +5977,13 @@ var COMMANDS = {
   },
   activity: {
     usage: 'activity <dispatch|build|patch|apply|probe|question> --task T<k> [--claim ISC-N] --session <actor> [--result red|green] [--text "<\u2026>"] [--worktree <path>] [--json]',
-    summary: "append one step line to .spectant/activity.jsonl (patch and apply need --worktree, probe --claim and --result, question --text)",
+    summary: "append one step line to .spectant/activity.jsonl (dispatch, build, patch and apply need --claim, patch and apply also --worktree; probe --claim and --result; question --text); a run event without --claim exits 1, nothing written",
     values: ["task", "claim", "session", "result", "text", "worktree"],
     run: activity
   },
   hook: {
     usage: "hook",
-    summary: "the plugin's activity hook: one Claude Code hook payload on stdin; claim at PreToolUse(Agent) with a marker line, release at SubagentStop of the last builder of the claim (or PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0",
+    summary: "the plugin's activity hook: one Claude Code hook payload on stdin; claim and dispatch at PreToolUse(Agent) with a marker line, build at PostToolUse(Agent) async_launched, release at SubagentStop of the last builder of the claim (or build and release at PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0",
     run: hook
   }
 };
@@ -6003,6 +6032,8 @@ ${command.summary}`);
       return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
     if (error instanceof ActivityTextError)
       return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
+    if (error instanceof ActivityLogError)
+      return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
     throw error;
   }
 }
