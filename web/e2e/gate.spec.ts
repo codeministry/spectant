@@ -46,9 +46,10 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await page.goto('/w/harbor/s/002/status');
       const gate = page.locator(GATE);
       await expect(gate).toHaveAttribute('data-state', 'done');
-      // spec 024: prototype value (principal: the prototype wins) — the time and the session stand in the `.gate-hint` under the button.
+      // spec 045 (ISC-272): at 1440 the head's pill names the mark's short date and time, at 390 the icon keeps "Re-mark"
+      // as its name; the full time stays in the `.gate-hint`, visually hidden in the head.
       // spec 006: the shared format in the test's zone (Europe/Berlin, en): `gates.reviewed.at` 2026-03-07T15:30:00Z.
-      await expect(gate).toContainText(/Re-mark/u);
+      await expect(gate).toContainText(width === WIDTHS.desktop ? 'Reviewed 03/07, 4:30 PM' : /Re-mark/u);
       const hint = page.locator(`${HEAD} [data-gate-hint]`);
       await expect(hint).toHaveText('Reviewed 03/07/2026, 4:30 PM');
       await expect(hint.locator('time')).toHaveAttribute('datetime', goldens['specs/002-web-console']?.gates.reviewed.at ?? '');
@@ -109,10 +110,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         await expect(dialog).toBeHidden();
-        const written = page.locator(`${HEAD} [data-gate-written]`);
-        await expect(written).toBeVisible();
-        await expect(written).toContainText(/^Reviewed mark written \d{2}\/\d{2}\/\d{4}, \d{1,2}:\d{2} [AP]M\.$/u);
-        await expect(written.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/u);
+        // Spec 045 (ISC-273): the head confirms the write with the app's toast, not a line under its gate.
+        await expect(page.locator('ui-toast .alert')).toHaveText(/^Reviewed mark written \d{2}\/\d{2}\/\d{4}, \d{1,2}:\d{2} [AP]M\.$/u);
+        await expect(page.locator(`${HEAD} [data-gate-written]`)).toHaveCount(0);
         await expect(page.locator(GATE)).toHaveAttribute('data-state', 'done');
       });
     });
@@ -215,6 +215,71 @@ test.describe('spec head per tier', () => {
       await expect(details).toHaveAttribute('aria-expanded', 'true');
       await expect(head.locator('[data-head-details-actions] [data-head-command]')).toBeVisible();
       await expect(head.locator('[data-head-details-actions] [data-head-command]')).toContainText('/spec implement 002');
+    });
+  });
+});
+
+// Spec 045 (ISC-271, ISC-273): at 1440 × 900 the head's command chip, gate pill and Notes pill stand in one row, each
+// 28 px high, with one radius and centres at most 1 px apart, in all four gate states; nothing shows under the pill
+// and the pill never wraps. `bun run e2e -- gate -g head-pill`.
+test.describe('head-pill at 1440 × 900', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  const STATES = [
+    { state: 'ready', path: '/w/harbor/s/003', locks: undefined },
+    { state: 'stale', path: '/w/harbor/s/006', locks: undefined },
+    { state: 'done', path: '/w/harbor/s/002', locks: undefined },
+    { state: 'paused', path: '/w/harbor/s/002', locks: 'frontier' },
+  ] as const;
+
+  for (const { state, path, locks } of STATES) {
+    test(`head-pill ${state}: one row, 28 px, one radius, no second line`, async ({ page }) => {
+      if (locks) await page.setExtraHTTPHeaders({ [LOCKS]: locks });
+      await page.goto(path);
+      const actions = page.locator(`${HEAD} [data-head-actions]`);
+      const gate = actions.locator('app-gate-button [data-gate-action]');
+      await expect(gate).toHaveAttribute('data-state', state);
+      const parts = [actions.locator('[data-head-command] .chip'), gate, actions.locator('[data-notes-pill]')];
+      const boxes: Array<{ x: number; y: number; width: number; height: number }> = [];
+      const radii: string[] = [];
+      for (const part of parts) {
+        await expect(part).toBeVisible();
+        const box = await part.boundingBox();
+        expect(box).not.toBeNull();
+        boxes.push(box ?? { x: 0, y: 0, width: 0, height: 0 });
+        radii.push(await part.evaluate((el) => getComputedStyle(el).borderTopLeftRadius));
+      }
+      // ISC-271: 28 ± 1 px each, one radius, centres within 1 px.
+      for (const box of boxes) expect(Math.abs(box.height - 28)).toBeLessThanOrEqual(1);
+      expect(new Set(radii).size).toBe(1);
+      const centres = boxes.map((box) => box.y + box.height / 2);
+      expect(Math.max(...centres) - Math.min(...centres)).toBeLessThanOrEqual(1);
+      // ISC-273: the gate's whole host is the pill (no hint, time line or file list under it), and its label is one line.
+      const hostBox = await actions.locator('app-gate-button').boundingBox();
+      expect(hostBox?.height ?? Infinity).toBeLessThanOrEqual(29);
+      expect(await gate.locator('.gate-label').evaluate((el) => el.getClientRects().length)).toBe(1);
+      const labelBox = await gate.locator('.gate-label').boundingBox();
+      expect(labelBox?.height ?? Infinity).toBeLessThanOrEqual(20);
+    });
+  }
+
+  test.describe('after a write', () => {
+    test.use({ extraHTTPHeaders: { [SESSION]: 'gate-045-written' } });
+
+    test('head-pill after a write: the toast confirms it and nothing stands under the pill', async ({ page }) => {
+      await page.request.post('/api/__stub/reset');
+      await page.goto('/w/harbor/s/003');
+      const actions = page.locator(`${HEAD} [data-head-actions]`);
+      await actions.locator('[data-gate-action]').click();
+      const dialog = page.locator(DIALOG);
+      for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
+      await dialog.locator('[data-confirm]').click();
+      await expect(dialog).toBeHidden();
+      await expect(actions.locator('[data-gate-action]')).toHaveAttribute('data-state', 'done');
+      await expect(page.locator('ui-toast .alert')).toHaveText(/^Reviewed mark written \d{2}\/\d{2}\/\d{4}, \d{1,2}:\d{2} [AP]M\.$/u);
+      await expect(page.locator(`${HEAD} [data-gate-written]`)).toHaveCount(0);
+      const hostBox = await actions.locator('app-gate-button').boundingBox();
+      expect(hostBox?.height ?? Infinity).toBeLessThanOrEqual(29);
     });
   });
 });

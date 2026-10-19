@@ -83,10 +83,11 @@ function highlightMs(doc: Document): number {
   imports: [TranslocoPipe, UiIcon, UiLiveRegion],
   styles: `
     :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
-    /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. */
-    .chip { display: inline-flex; gap: 2px; align-items: center; min-inline-size: 0; block-size: 28px; padding-inline: 8px 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--lane); font-family: var(--font-mono); font-size: 12px; font-weight: 400; line-height: 12px; }
+    /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. A host may round it
+       through --ui-command-chip-radius (the spec head, spec 045), and the copy button follows. */
+    .chip { display: inline-flex; gap: 2px; align-items: center; min-inline-size: 0; block-size: 28px; padding-inline: 8px 0; border: 1px solid var(--line); border-radius: var(--ui-command-chip-radius, var(--radius-sm)); background: var(--lane); font-family: var(--font-mono); font-size: 12px; font-weight: 400; line-height: 12px; }
     code { overflow: hidden; color: var(--color-base-content); font: inherit; text-overflow: ellipsis; white-space: nowrap; }
-    .copy { inline-size: 26px; block-size: 26px; min-block-size: 26px; padding: 0; border-radius: 5px; color: var(--muted-ink); }
+    .copy { inline-size: 26px; block-size: 26px; min-block-size: 26px; padding: 0; border-radius: var(--ui-command-chip-radius, 5px); color: var(--muted-ink); }
     .copy[data-copied] { color: var(--done-ink); }
     .hint { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
     .chip[data-locked] { background: var(--color-base-300); }

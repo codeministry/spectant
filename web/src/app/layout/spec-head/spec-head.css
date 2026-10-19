@@ -82,6 +82,11 @@ h1 {
   margin-inline-start: auto;
 }
 
+/* Spec 045 (ISC-271): command chip, gate pill and Notes pill share one round 28 px form in the action row. */
+.actions .command {
+  --ui-command-chip-radius: 999px;
+}
+
 /* The notes pill: 28 px, violet tint, 12/600, `file-text` + "n notes"; never filled. */
 .notes-pill {
   display: inline-flex;

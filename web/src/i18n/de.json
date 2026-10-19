@@ -1242,6 +1242,11 @@
       "paused": "Schreiben pausiert: {{session}} hält eine Sperre",
       "written": "Prüfmarke geschrieben {{time}}.",
       "remark": "Neu markieren",
+      "pill": {
+        "ready": "Als geprüft markieren",
+        "stale": "Prüfung veraltet",
+        "paused": "Pausiert · {{session}}"
+      },
       "hint": {
         "ready": "keine Prüfmarke · Freigabe für /spec implement",
         "stale": "geprüft {{time}} · seitdem geändert",

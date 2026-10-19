@@ -6,6 +6,7 @@ export {
   formatDay,
   formatDayMonth,
   formatInstant,
+  formatInstantShort,
   formatMonth,
   formatStepDelta,
   formatStepDeltaLong,
