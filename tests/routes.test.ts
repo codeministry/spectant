@@ -62,13 +62,13 @@ const golden = (tree: string, family: string): Record<string, unknown> =>
 const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", actor: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false }, since: "2026-03-08T14:06:00Z" } as const;
 
 /**
- * harbor's activity log carries one unknown event (`ponder`, line 12; spec 027, ISC-179), surfaced as one `locks`
+ * harbor's activity log carries one unknown event (`ponder`, line 15 since the step lines of spec 015; spec 027, ISC-179), surfaced as one `locks`
  * warning on spec 002 (the line's claim is ISC-75); the golden is built without lock sources.
  */
 const PONDER_WARNING = {
   kind: "locks",
   ref: "ISC-75",
-  text: '.spectant/activity.jsonl line 12: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
+  text: '.spectant/activity.jsonl line 15: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
 } as const;
 
 /** harbor 002's spec page golden with the activity lock and the unknown-event warning applied (see the header). */

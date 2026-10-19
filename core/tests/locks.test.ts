@@ -15,10 +15,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { parseActor } from '../src/actor.ts';
+import { buildDashboard } from '../src/dashboard.ts';
 import type { LockReading, RunState, TaskRun } from '../src/files.ts';
+import { DEFAULT_ABORT_AFTER_MS, itemStates } from '../src/item-state.ts';
+import { taskRunsOf } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { parseTaskLines } from '../src/tasks.ts';
-import { FIXTURES } from './helpers/read-tree.ts';
+import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
 const HARBOR = join(FIXTURES, 'harbor');
 const NOW = new Date('2026-03-08T16:00:00Z');
@@ -165,7 +168,7 @@ const runLine = (event: string, task: string, ts: string, worktree = 'wt-1') => 
 describe('activity-events: dispatch, build, patch and apply per task (spec 027, ISC-179)', () => {
   test('activity-events: harbor holds all four events of T26 and T28, the unknown one between them included', () => {
     const events = readFileSync(HARBOR_LOG, 'utf8').trim().split('\n').map((l) => JSON.parse(l) as { event: string; task?: string });
-    const of = (task: string) => events.filter((e) => e.task === task && e.event !== 'claim' && e.event !== 'release').map((e) => e.event);
+    const of = (task: string) => events.filter((e) => e.task === task && !['claim', 'release', 'probe', 'question'].includes(e.event)).map((e) => e.event);
     expect(of('T26')).toEqual(['dispatch', 'build', 'patch', 'apply']);
     expect(of('T28')).toEqual(['dispatch', 'build', 'ponder', 'patch', 'apply']);
     const ticked = ticked002();
@@ -476,8 +479,9 @@ const activityTrees = (): string[] =>
 const RUN_LINE = /"event":"run-(?:start|end)"/u;
 
 describe('run events legacy: a log without run lines reads as before (spec 040, ISC-222.2)', () => {
+  // Since spec 015 harbor's log carries step lines too; without them it is the log spec 040 read (ISC-230.1).
   test('run events legacy: harbor reads byte-equal to its reading before spec 040, with no openRuns key', async () => {
-    const r = await readLockSources({ repoRoot: HARBOR });
+    const r = await readLockSources({ repoRoot: harborWithoutSteps() });
     expect(JSON.stringify(r)).toBe(HARBOR_READING);
     expect('openRuns' in r).toBe(false);
     expect(await runStates(r, ticked002())).toEqual(HARBOR_RUNS);
@@ -506,5 +510,128 @@ describe('run events legacy: a log without run lines reads as before (spec 040, 
     const legacy = Object.fromEntries(Object.entries(a).filter(([key]) => key !== 'openRuns'));
     expect(JSON.stringify(legacy)).toBe(JSON.stringify(b));
     expect(await runStates(a, ticked002())).toEqual(HARBOR_RUNS);
+  });
+});
+
+// ── spec 015, T1 (ISC-230): the step events of a task ────────────────────────────────────────────────────────────────
+// `probe` with `task`, `claim` and `result` (`red` or `green`), and `question` with `task`, `text` and an optional
+// `claim`, each with `ts` and `session` and an optional `worktree`. They are collected on the reading as `steps` in file
+// order, set only when the log holds at least one of them; a line without a required field is one
+// `locks-activity-malformed` warning at its line and is skipped. A question's text is cut to its first line and to at
+// most 200 characters.
+const STEP_LINE = /"event":"(?:probe|question)"/u;
+
+const probeLine = (task: string, claim: string, result: string, ts: string): Record<string, string> => ({ ts, event: 'probe', task, claim, result, session: `a:claude:sess-4/${task}`, worktree: 'wt-4' });
+const questionLine = (task: string, text: string, ts: string, claim?: string): Record<string, string> => ({ ts, event: 'question', task, ...(claim === undefined ? {} : { claim }), text, session: `a:claude:sess-4/${task}` });
+const without = (line: Record<string, string>, key: string): Record<string, string> => Object.fromEntries(Object.entries(line).filter(([k]) => k !== key));
+
+/** A temp repo whose activity log is harbor's with every step line taken out: harbor's log as it was before spec 015. */
+function harborWithoutSteps(): string {
+  const repo = tempRepo();
+  mkdirSync(join(repo, '.spectant'));
+  const lines = readFileSync(HARBOR_LOG, 'utf8').split('\n').filter((l) => !STEP_LINE.test(l));
+  writeFileSync(join(repo, '.spectant', 'activity.jsonl'), lines.join('\n'));
+  return repo;
+}
+
+describe('step events: probe and question per task (spec 015, ISC-230)', () => {
+  const RED = probeLine('T4', 'ISC-53', 'red', '2026-03-08T15:01:00Z');
+  const ASK = questionLine('T4', 'Keep the old flag?', '2026-03-08T15:02:00Z', 'ISC-53');
+  const ASK_BARE = questionLine('T5', 'Which fixture carries the timeout?', '2026-03-08T15:03:00Z');
+  const GREEN = probeLine('T4', 'ISC-53', 'green', '2026-03-08T15:04:00Z');
+
+  test('step events: probe red and green and a question with and without claim are read in file order', async () => {
+    const r = await readLockSources({ repoRoot: tempRepo([RED, ASK, ASK_BARE, GREEN]) });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.steps).toEqual([
+      { event: 'probe', task: 'T4', claim: 'ISC-53', result: 'red', session: 'a:claude:sess-4/T4', worktree: 'wt-4', ts: '2026-03-08T15:01:00Z' },
+      { event: 'question', task: 'T4', claim: 'ISC-53', text: 'Keep the old flag?', session: 'a:claude:sess-4/T4', ts: '2026-03-08T15:02:00Z' },
+      { event: 'question', task: 'T5', text: 'Which fixture carries the timeout?', session: 'a:claude:sess-4/T5', ts: '2026-03-08T15:03:00Z' },
+      { event: 'probe', task: 'T4', claim: 'ISC-53', result: 'green', session: 'a:claude:sess-4/T4', worktree: 'wt-4', ts: '2026-03-08T15:04:00Z' },
+    ]);
+    expect(r.runs).toEqual([]);
+    expect(r.locks).toEqual([]);
+  });
+
+  test('step events: a probe without result or claim, one with another result, a question without text are one locks-activity-malformed each', async () => {
+    const bad = [without(RED, 'result'), without(GREEN, 'claim'), { ...RED, result: 'amber' }, without(ASK, 'text'), without(ASK, 'session'), without(GREEN, 'ts'), without(RED, 'task')];
+    const r = await readLockSources({ repoRoot: tempRepo([RED, ...bad, GREEN]) });
+    expect(r.diagnostics?.map((d) => [d.code, d.line])).toEqual(bad.map((_, i) => ['locks-activity-malformed', i + 2]));
+    expect(r.diagnostics?.every((d) => d.severity === 'warning')).toBe(true);
+    expect(r.steps?.map((s) => s.event === 'probe' && s.result)).toEqual(['red', 'green']);
+  });
+
+  test('step events: a question text is cut to its first line and to at most 200 characters', async () => {
+    const long = 'x'.repeat(250);
+    const r = await readLockSources({ repoRoot: tempRepo([questionLine('T4', 'First line\nsecond line', '2026-03-08T15:02:00Z'), questionLine('T4', long, '2026-03-08T15:03:00Z')]) });
+    expect(r.steps?.map((s) => (s.event === 'question' ? s.text : null))).toEqual(['First line', 'x'.repeat(200)]);
+  });
+
+  test('step events: both events are known, so neither raises activity-event-unknown; a log without them has no steps key', async () => {
+    const r = await readLockSources({ repoRoot: tempRepo([claimLine('ISC-53', 'a:claude:sess-4', '2026-03-08T15:00:00Z'), RED, ASK]) });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.steps).toHaveLength(2);
+    expect('steps' in (await readLockSources({ repoRoot: tempRepo([claimLine('ISC-53', 'a:claude:sess-4', '2026-03-08T15:00:00Z')]) }))).toBe(false);
+    expect('steps' in (await readLockSources({ repoRoot: harborWithoutSteps() }))).toBe(false);
+  });
+
+  test('step events: harbor carries probe red and green and a question for two tasks, one question without claim, every question followed by a step', async () => {
+    const r = await readLockSources({ repoRoot: HARBOR });
+    const steps = r.steps ?? [];
+    expect(new Set(steps.map((s) => s.task))).toEqual(new Set(['T26', 'T28']));
+    expect(new Set(steps.map((s) => (s.event === 'probe' ? `probe-${s.result}` : 'question')))).toEqual(new Set(['probe-red', 'probe-green', 'question']));
+    expect(steps.some((s) => s.event === 'question' && s.claim === undefined)).toBe(true);
+    steps.forEach((s, i) => {
+      if (s.event === 'question') expect(steps.slice(i + 1).some((n) => n.task === s.task)).toBe(true);
+    });
+  });
+
+  test('step events: the FORMAT.md example lines are harbor lines and parse into steps without a diagnostic', async () => {
+    const format = readFileSync(join(FIXTURES, '..', '..', 'FORMAT.md'), 'utf8');
+    const block = /From `core\/fixtures\/harbor\/\.spectant\/activity\.jsonl`, the steps[\s\S]*?```json\n([\s\S]*?)```/u.exec(format)?.[1] ?? '';
+    const lines = block.split('\n').filter((l) => l !== '');
+    const harbor = readFileSync(HARBOR_LOG, 'utf8').split('\n');
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(harbor).toContain(line);
+    const r = await readLockSources({ repoRoot: tempRepo(lines.map((l) => JSON.parse(l) as object)) });
+    expect(r.diagnostics).toEqual([]);
+    expect(new Set(r.steps?.map((s) => s.event))).toEqual(new Set(['probe', 'question']));
+  });
+});
+
+// ── spec 015, T6 (ISC-230.1): a step line changes no state ───────────────────────────────────────────────────────────
+// Harbor with its step lines and without them, and harbor with a step line put between every two lines, give the same
+// task runs (ISC-179), the same item states (spec 040, ISC-223), the same lock list and the same diagnostics.
+describe('steps change no state (spec 015, ISC-230.1)', () => {
+  const STATE_CLOCKS = [new Date('2026-03-08T15:00:00Z'), new Date('2026-03-08T17:00:00Z')];
+
+  /** Everything a reading decides beyond its steps: locks, task runs, item states, diagnostics without line numbers. */
+  function stateOf(reading: LockReading, now: Date) {
+    const workspace = { ...readTreeAt(HARBOR), locks: reading };
+    const taskRuns = taskRunsOf(workspace.specs, reading, now);
+    const items = itemStates({ workspace, dashboard: buildDashboard(workspace), taskRuns, now, abortAfterMs: DEFAULT_ABORT_AFTER_MS });
+    return { locks: reading.locks, runs: reading.runs, taskRuns, items, diagnostics: reading.diagnostics?.map((d) => [d.code, d.message, d.claim ?? null]) };
+  }
+
+  test('steps change no state: harbor with its step lines reads as harbor without them', async () => {
+    const withSteps = await readLockSources({ repoRoot: HARBOR });
+    const plain = await readLockSources({ repoRoot: harborWithoutSteps() });
+    expect(withSteps.steps?.length ?? 0).toBeGreaterThan(0);
+    expect(await runStates(withSteps, ticked002())).toEqual(await runStates(plain, ticked002()));
+    for (const now of STATE_CLOCKS) expect(stateOf(withSteps, now)).toEqual(stateOf(plain, now));
+  });
+
+  test('steps change no state: a probe and a question between every two harbor lines change no lock, run, state or diagnostic', async () => {
+    const plainRepo = harborWithoutSteps();
+    const lines = readFileSync(join(plainRepo, '.spectant', 'activity.jsonl'), 'utf8').split('\n').filter((l) => l !== '');
+    const steps = [probeLine('T26', 'ISC-73', 'red', '2026-03-08T15:56:00Z'), questionLine('T28', 'Which focus ring?', '2026-03-08T16:34:00Z')].map((l) => JSON.stringify(l));
+    const mixed = tempRepo();
+    mkdirSync(join(mixed, '.spectant'));
+    writeFileSync(join(mixed, '.spectant', 'activity.jsonl'), `${lines.flatMap((l, i) => [l, steps[i % 2] ?? '']).join('\n')}\n`);
+    const a = await readLockSources({ repoRoot: mixed });
+    const b = await readLockSources({ repoRoot: plainRepo });
+    expect(a.steps).toHaveLength(lines.length);
+    expect(await runStates(a, ticked002())).toEqual(HARBOR_RUNS);
+    for (const now of STATE_CLOCKS) expect(stateOf(a, now)).toEqual(stateOf(b, now));
   });
 });

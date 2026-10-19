@@ -170,8 +170,9 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
     expect(r.source).toBe('activity');
     expect(r.sources).toEqual(['activity']);
     expect(r.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', actor: parseActor('a:claude:sess-2'), since: '2026-03-08T14:06:00Z' }]);
-    // The run events hold no claim; the one diagnostic is the unknown `ponder` event of T28 (spec 027, ISC-179).
-    expect(r.diagnostics).toEqual([expect.objectContaining({ severity: 'warning', code: 'activity-event-unknown', line: 12, claim: 'ISC-75' })]);
+    // The run events hold no claim; the one diagnostic is the unknown `ponder` event of T28 (spec 027, ISC-179), at line
+    // 15 since the step lines of spec 015 (T4) came before it.
+    expect(r.diagnostics).toEqual([expect.objectContaining({ severity: 'warning', code: 'activity-event-unknown', line: 15, claim: 'ISC-75' })]);
   });
 
   test('malformed lines, unknown events and a release without a claim are diagnostics with line numbers', async () => {

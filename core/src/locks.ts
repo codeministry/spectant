@@ -40,7 +40,15 @@
 //    warning; both are skipped. Neither event holds a claim or names a task. `openRuns` is set only when the log holds at
 //    least one `run-start` or `run-end` line, so a log without them reads exactly as before (ISC-222.2); for the same
 //    reason the `activity-event-unknown` text still lists the six older events only, and an unknown event is one that is
-//    none of the eight.
+//    none of the ten (the eight above and the two step events below).
+//
+//    The step events (spec 015, ISC-230): `{ts, event: "probe", task, claim, result: "red" | "green", session,
+//    worktree?}` when a task's agent ran its claim's probe, and `{ts, event: "question", task, text, claim?, session,
+//    worktree?}` when it asked the person something. `ts`, `task` and `session` are required on both, `claim` and a
+//    `result` of `red` or `green` on a probe, `text` on a question; a line that lacks one is malformed and skipped. A
+//    question's text is cut to its first line and to at most 200 characters (`questionText`). The steps are collected on
+//    the reading as `steps`, their own list: never part of `runs`, so they move no task run, no item state and no lock
+//    (ISC-230.1). `steps` is set only when the log holds at least one step line, so a log without them reads as before.
 //
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
 // With no state directory given, nothing outside `repoRoot` is touched (ISC-37).
@@ -62,10 +70,13 @@ import type {
   LockReadInput,
   LockReading,
   OpenRun,
+  ProbeResult,
   RunEvent,
   RunLifecycleEvent,
   RunOutcome,
   RunState,
+  StepEvent,
+  StepKind,
   TaskRun,
 } from './files.ts';
 
@@ -85,6 +96,26 @@ const isRunEvent = (event: string): event is RunEvent => Object.hasOwn(RUN_STATE
 const isLifecycleEvent = (event: string): event is RunLifecycleEvent => event === 'run-start' || event === 'run-end';
 
 const OUTCOMES: ReadonlySet<string> = new Set<RunOutcome>(['ok', 'error', 'released']);
+
+const isStepEvent = (event: string): event is StepKind => event === 'probe' || event === 'question';
+
+const isProbeResult = (value: unknown): value is ProbeResult => value === 'red' || value === 'green';
+
+/** The most characters of a question's text the reader keeps (spec 015, ISC-230). */
+export const QUESTION_TEXT_MAX = 200;
+
+const GRAPHEMES = new Intl.Segmenter('en', { granularity: 'grapheme' });
+
+/**
+ * A question's text as the reader keeps it: its first line, cut to at most `QUESTION_TEXT_MAX` characters. Counted in
+ * graphemes, so a cut never splits a surrogate pair or a composed emoji. Pure.
+ */
+export function questionText(text: string): string {
+  const first = text.split(/\r?\n/u, 1)[0] ?? '';
+  return Array.from(GRAPHEMES.segment(first), (s) => s.segment)
+    .slice(0, QUESTION_TEXT_MAX)
+    .join('');
+}
 
 /** A spec session ref: an agent session whose id is `spec-NNN`, alone or with its task (`a:claude:spec-041/T3`). */
 const SPEC_SESSION = /^a:[^:/]+:spec-(\d{3})(?:\/|$)/u;
@@ -127,6 +158,8 @@ interface SourceRead {
   readonly runs: RunLine[];
   /** The open runs (spec 040, ISC-222); absent unless the activity log holds a `run-start` or `run-end` line. */
   readonly openRuns?: OpenRun[];
+  /** The step events (spec 015, ISC-230); absent unless the activity log holds a `probe` or `question` line. */
+  readonly steps?: StepEvent[];
 }
 
 const ABSENT: SourceRead = { present: false, locks: [], diagnostics: [], runs: [] };
@@ -247,6 +280,27 @@ function readLifecycle(entry: Record<string, unknown>, event: RunLifecycleEvent,
 /** The claim a malformed activity entry still names, so its warning reaches that claim's row. */
 const claimOf = (entry: Record<string, unknown>): { claim?: string } => (typeof entry.claim === 'string' && entry.claim !== '' ? { claim: entry.claim } : {});
 
+/**
+ * Reads one `probe` or `question` line (spec 015, ISC-230): the step, or null after one `locks-activity-malformed`
+ * warning at its line when it lacks a required field. A question's text is kept as `questionText` cuts it.
+ */
+function readStep(entry: Record<string, unknown>, event: StepKind, line: number, diagnostics: LockDiagnostic[]): StepEvent | null {
+  const { ts, task, session, worktree, claim, result, text } = entry;
+  const malformed = (why: string): null => {
+    diagnostics.push(warning('locks-activity-malformed', `The ${event} line ${why}; it is skipped.`, { line, ...claimOf(entry) }));
+    return null;
+  };
+  if (!filled(task) || !filled(session) || !filled(ts)) return malformed('lacks a task, a session or a ts');
+  const place = filled(worktree) ? { worktree } : {};
+  if (event === 'probe') {
+    if (!filled(claim) || !isProbeResult(result)) return malformed(`of ${task} lacks a claim or a result red or green`);
+    return { event, task, claim, result, session, ...place, ts };
+  }
+  const kept = typeof text === 'string' ? questionText(text) : '';
+  if (kept.trim() === '') return malformed(`of ${task} carries no text`);
+  return { event, task, ...claimOf(entry), text: kept, session, ...place, ts };
+}
+
 async function readActivity(repoRoot: string): Promise<SourceRead> {
   let text: string;
   try {
@@ -267,6 +321,8 @@ function parseActivity(text: string): SourceRead {
   let unknownSeen = false;
   const lifecycle: LifecycleState = { open: new Map(), started: new Set() };
   let lifecycleLines = 0;
+  const steps: StepEvent[] = [];
+  let stepLines = 0;
   text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     if (raw.trim() === '') return;
@@ -291,6 +347,16 @@ function parseActivity(text: string): SourceRead {
       lifecycleLines += 1;
       const sighting = readLifecycle(entry, event, line, lifecycle, diagnostics);
       if (sighting !== null) actors.push(sighting);
+      return;
+    }
+    if (isStepEvent(event)) {
+      // Additive (spec 015, ISC-230.1): a step goes to its own list and touches neither the locks nor the task runs.
+      stepLines += 1;
+      const step = readStep(entry, event, line, diagnostics);
+      if (step !== null) {
+        actors.push({ ref: parseActor(step.session), line, ...claimOf(entry) });
+        steps.push(step);
+      }
       return;
     }
     if (event !== 'claim' && event !== 'release' && !isRunEvent(event)) {
@@ -349,7 +415,14 @@ function parseActivity(text: string): SourceRead {
   const legacy = legacyActorWarning(actors, 'session');
   const first = actors.find((a) => a.ref.legacy);
   if (legacy !== null && first !== undefined) diagnostics.push({ ...legacy, ...(first.claim === undefined ? {} : { claim: first.claim }) });
-  return { present: true, locks: [...held.values()].sort(byClaim), diagnostics, runs, ...(lifecycleLines > 0 ? { openRuns: [...lifecycle.open.values()] } : {}) };
+  return {
+    present: true,
+    locks: [...held.values()].sort(byClaim),
+    diagnostics,
+    runs,
+    ...(lifecycleLines > 0 ? { openRuns: [...lifecycle.open.values()] } : {}),
+    ...(stepLines > 0 ? { steps } : {}),
+  };
 }
 
 /**
@@ -409,5 +482,6 @@ function readingOf(frontier: SourceRead, activity: SourceRead): LockReading {
     diagnostics: [...frontier.diagnostics, ...activity.diagnostics],
     runs: activity.runs,
     ...(activity.openRuns === undefined ? {} : { openRuns: activity.openRuns }),
+    ...(activity.steps === undefined ? {} : { steps: activity.steps }),
   };
 }

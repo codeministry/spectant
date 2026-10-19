@@ -57,14 +57,14 @@ const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXT
  * them in.
  */
 /**
- * harbor's activity log carries one unknown event (`ponder`, line 12; spec 027, ISC-179): the reader skips it with one
+ * harbor's activity log carries one unknown event (`ponder`, line 15 since the step lines of spec 015; spec 027, ISC-179): the reader skips it with one
  * `activity-event-unknown` diagnostic per file, which the dashboard surfaces as a `locks` warning on spec 002 (the
  * line's claim is ISC-75). The goldens are built without lock sources, so the route's model carries it on top.
  */
 const PONDER_WARNING = {
   kind: "locks",
   ref: "ISC-75",
-  text: '.spectant/activity.jsonl line 12: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
+  text: '.spectant/activity.jsonl line 15: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
 } as const;
 
 function expected(name: Name): DashboardModel {

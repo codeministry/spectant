@@ -5,10 +5,16 @@
 {"ts":"2026-03-08T15:52:00Z","event":"release","claim":"ISC-72","session":"a:claude:sess-2"}
 {"ts":"2026-03-08T15:54:00Z","event":"dispatch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T15:55:00Z","event":"build","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T15:58:00Z","event":"probe","claim":"ISC-73","task":"T26","result":"red","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:02:00Z","event":"question","claim":"ISC-73","task":"T26","text":"Should the focus ring follow the theme accent or stay neutral?","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:06:00Z","event":"probe","claim":"ISC-73","task":"T26","result":"green","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T16:10:00Z","event":"patch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T16:12:00Z","event":"apply","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T16:32:00Z","event":"dispatch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:33:00Z","event":"build","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:35:00Z","event":"ponder","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:36:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"red","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:37:00Z","event":"question","task":"T28","text":"Does the clear button of the search box stay in the tab order?","session":"a:claude:spec-002/T28"}
+{"ts":"2026-03-08T16:39:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"green","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:40:00Z","event":"patch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:42:00Z","event":"apply","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}

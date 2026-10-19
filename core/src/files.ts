@@ -947,6 +947,12 @@ export interface LockReading {
    * them reads exactly as before (ISC-222.2).
    */
   readonly openRuns?: readonly OpenRun[];
+  /**
+   * The step events of `.spectant/activity.jsonl` (spec 015, ISC-230): every well-formed `probe` and `question`, in
+   * file order. Their own list, never part of `runs`, so `runStates` and the item states never see them. Set only when
+   * the log holds at least one step line, so a log without them reads exactly as before (ISC-230.1).
+   */
+  readonly steps?: readonly StepEvent[];
 }
 
 /**
@@ -995,6 +1001,43 @@ export interface TaskRun {
   /** ISO 8601: the last run event's `ts`. */
   readonly ts: string;
 }
+
+/** What a task's probe showed when its agent ran it: `red` before the change, `green` after (spec 015, ISC-230). */
+export type ProbeResult = 'red' | 'green';
+
+/**
+ * One step event of `.spectant/activity.jsonl` (spec 015, ISC-230), additive beside the run events: `probe` when a
+ * task's agent ran the probe of its claim, `question` when it asked the person something. Each carries `task`,
+ * `session` and `ts` as written and `worktree` when the line names one; a step event holds no claim, never moves a
+ * task's run state (ISC-179) or item state (ISC-223), and never changes a lock (ISC-230.1).
+ */
+export type StepEvent =
+  | {
+      readonly event: 'probe';
+      /** Task id, `T12`. */
+      readonly task: string;
+      /** The claim whose probe ran, required on a probe. */
+      readonly claim: string;
+      readonly result: ProbeResult;
+      readonly session: string;
+      readonly worktree?: string;
+      /** ISO 8601, as written. */
+      readonly ts: string;
+    }
+  | {
+      readonly event: 'question';
+      readonly task: string;
+      /** The claim the question concerns; optional, a question may concern the task as a whole. */
+      readonly claim?: string;
+      /** The question, cut to its first line and to at most 200 characters by the reader. */
+      readonly text: string;
+      readonly session: string;
+      readonly worktree?: string;
+      readonly ts: string;
+    };
+
+/** The two step events (spec 015, ISC-230). */
+export type StepKind = StepEvent['event'];
 
 // ─── Item state (item-state.ts, spec 040) ────────────────────────────────────────────────────────────────────────
 
