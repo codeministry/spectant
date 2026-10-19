@@ -1,10 +1,11 @@
 # Templates
 
 The skeletons `/spec init` fills: `master.md` becomes the project master `ISA.md` at the repository root, and
-`constitution.md` becomes `specs/constitution.md`. Both are English skeletons. Structure stays English in every
-repository (headings, frontmatter keys, IDs, `Anti:` and `fog:`, Test Strategy columns), because the parsers read it;
-the prose that replaces a placeholder follows the language the repository names in its own `CLAUDE.md` or
-constitution.
+`constitution.md` becomes `specs/constitution.md`. Beside them stand the six type templates `/spec new <type>` and
+`/spec idea` use: `bug.md`, `spike.md`, `refactor.md`, `feature.md`, `infra.md` and `project.md`. All are English
+skeletons. Structure stays English in every repository (headings, frontmatter keys, IDs, `Anti:` and `fog:`, Test
+Strategy columns), because the parsers read it; the prose that replaces a placeholder or an example value follows the
+language the repository names in its own `CLAUDE.md` or constitution.
 
 A placeholder is a name in double curly braces and is replaced as a whole. Every placeholder is filled; none survives into a written file.
 
@@ -73,3 +74,50 @@ Rules for filling it:
   (with a decision record) and `grandfathered` (baseline only) beside `binding`.
 - Optional frontmatter keys: `viewports: [390, 820, 1440]` for an `app` or `marketing` track,
   `dev_services: <port>=<label>, …`, `shared_files: [<path or glob>, …]`.
+
+## The six type templates
+
+Each type template has two parts, each in its own fenced block:
+
+- `## Prompt` is the fill-in prompt. Its first line is `/spec new <type>`, so the filled prompt, sent back, starts the
+  spec. Every field carries an example value and a `<!-- … -->` comment saying what belongs there. Without notes the
+  prompt is shown as is; with notes, every field the notes answer is filled from them and every other example value
+  becomes `…`, so an example never passes for the user's input. `## Goal (one sentence)` takes the user's own
+  sentence verbatim; `## Repo` takes the current repository's name and a slug suggestion; `## Open points` takes what
+  is still unclear. The prompt holds no placeholder.
+- `## spec.md` is the skeleton of the spec the answers land in. Its frontmatter keys and its sections are exactly the
+  ones `spec-check allocate` plans for the type, in the same order; the comments under `## Claims` say which prompt
+  field the claims come from. Claims are never written into the skeleton: they are minted into the master first with
+  `spec-check mint` and only then projected into the spec.
+
+| Template | Artifacts | Question budget | Required sections in `spec.md` |
+|----------|-----------|-----------------|--------------------------------|
+| `bug.md` | `spec.md` | at most two, only when the reproduction is unclear | Goal, Claims (at least one `Anti:` regression claim), Test Strategy |
+| `spike.md` | `spec.md` | exactly one, in place of the goal question: which decision should the spike make possible | Problem, Goal, Not yet specified, Claims (exactly one) |
+| `refactor.md` | `spec.md`, `tasks.md` | at most three | Problem, Out of Scope, Goal, Claims, Test Strategy |
+| `feature.md` | `spec.md`, `plan.md`, `tasks.md` | at most three | Problem, Vision, Out of Scope, Constraints, Goal, Claims, Test Strategy |
+| `infra.md` | `spec.md`, `plan.md` | at most three, plus the rollback question, which `proceed` never skips | Problem, Constraints (with the `Rollback:` line), Goal, Claims (at least one deterministic probe), Test Strategy |
+| `project.md` | all four | none in advance: a full interview | Problem, Vision, Out of Scope, Principles, Constraints, Goal, Claims, Test Strategy |
+
+The goal question is asked for every type, outside the budget. Bug and spike open no feature block of their own: their
+claim attaches to the master's block whose promise broke or whose question it answers, or to `F0 · Cross-cutting`.
+Open points become `- fog:` lines in the types with `## Not yet specified` (spike, feature, project) and
+`⟨?: … — why unsure⟩` marks in the draft of the others.
+
+The skeleton's placeholders:
+
+| Placeholder | Filled with |
+|-------------|-------------|
+| `{{task}}` | one line: what the spec is for; it is also the title; a `"` is written `\"` |
+| `{{number}}` | the spec number `allocate` gave, three digits (`001`) |
+| `{{spec}}` | the folder name `NNN-slug`, identical to the directory |
+| `{{feature}}` | the master's feature block that owns the claims (`F3`); the `isa_feature:` line and the `(feature …)` note are left out when there is none |
+| `{{now}}` | the creation time, ISO 8601 UTC |
+| `{{problem}}` | the prompt's problem field; for a bug, the reproduction: steps, expected, actual, environment |
+| `{{vision}}` | the prompt's vision field |
+| `{{out_of_scope}}` | the first item of the prompt's "Out"; add one bullet per further item |
+| `{{principle}}` | the first guard rail that holds whatever the stack (project only); one bullet each |
+| `{{constraint}}` | the first guard rail; add one bullet per further one |
+| `{{rollback}}` | the prompt's rollback answer: how back, how long, what is lost (infra only) |
+| `{{goal}}` | the confirmed goal: one sentence an observer could check |
+| `{{fog}}` | the first open point; one `- fog:` line each, and the section stays empty without any |

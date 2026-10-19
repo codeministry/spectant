@@ -105,21 +105,26 @@ two types fit equally well; that question counts against the five.
 
 ## 5 — The filled template
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/spec/templates/<type>.md` and fill **every** field from the shape and the answers.
-Keep every `<!-- … -->` comment. Fixed rules:
+Read `${CLAUDE_PLUGIN_ROOT}/skills/spec/templates/<type>.md`. Its `## Prompt` block is the template this workflow
+fills; its `## spec.md` block is the skeleton `/spec new` writes later and is not shown here. Fill **every** field of
+the prompt from the shape and the answers, replacing each example value; a field nothing answers gets `…`, never the
+example. Keep every `<!-- … -->` comment and the first line `/spec new <type>`. Fixed rules:
 
 - `## Goal (one sentence)` holds the user's original sentences **verbatim**, byte for byte. They become the spec's
-  stated goal; the shaped, sharper sentence belongs in `## Vision`, and later in the spec's `## Goal`.
+  stated goal; the shaped, sharper sentence belongs in `## Vision` (feature, project) or at the head of `## Problem`
+  (the other types), and later in the spec's `## Goal`.
+- A spike's `## The decision this spike makes possible` takes the chosen shape's question, as "X or Y for Z?".
 - `## Repo` is the name of the current repository, from its root folder or its remote.
 - The slug is kebab-case and English.
 - The prose language is the target repository's, as its `specs/constitution.md` or `CLAUDE.md` names it; English when
   neither names one.
-- What stayed unclear goes into the template's open-points field, never into an invented field value. It becomes
-  `- fog:` in the spec, not a claim.
+- What stayed unclear goes into the prompt's `## Open points`, never into an invented field value. It becomes a
+  `- fog:` line in a spike, feature or project spec and a `⟨?: … — why unsure⟩` mark in the draft of the other
+  types; never a claim.
 
 ## 6 — Show, then ask
 
-Show the template in one fenced `markdown` block, with one line above it naming the chosen shape. Then one
+Show the filled prompt in one fenced `markdown` block, with one line above it naming the chosen shape. Then one
 `AskUserQuestion`:
 
 - **Start the spec with `/spec new` (Recommended)**
