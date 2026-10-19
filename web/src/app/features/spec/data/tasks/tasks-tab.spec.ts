@@ -1,13 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import liveGolden from '../../../../../../../core/fixtures/harbor.live.golden.json';
 import golden from '../../../../../../../core/fixtures/harbor.tasks.golden.json';
 import specGolden from '../../../../../../../core/fixtures/harbor.spec.golden.json';
-import type { ItemStateInfo, LiveFrame, SpecPageModel } from '../../../../../../../core/src/files';
+import stepsGolden from '../../../../../../../core/fixtures/harbor.steps.golden.json';
+import type { ItemStateInfo, LiveFrame, SpecPageModel, TaskSteps } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type TaskCheckResult, type TasksResult } from '../../../../core/api.service';
 import { ToastService } from '../../../../shared/ui/toast/toast';
@@ -21,6 +22,9 @@ const LIVE = liveGolden['specs/002-web-console'] as unknown as LiveFrame;
 
 type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'tasks' | 'taskCheck' | 'live'>;
 
+/** The steps the fake live frame carries; undefined sends the golden frame as it is (no steps). */
+let liveSteps: TaskSteps | undefined;
+
 /** What the fake write was sent, in order. */
 let sent: Array<{ tid: string; hash: string; checked: boolean }> = [];
 
@@ -30,7 +34,7 @@ function setUp(tasks: TasksBody | null = GOLDEN, hash: string | null = 'ab12', s
     workspaces: () => Promise.resolve(ok([])),
     dashboard: () => Promise.resolve(ok(DASHBOARD)),
     spec: () => Promise.resolve(spec === null ? { kind: 'not-found', served: false } : ok(spec as never)),
-    live: () => Promise.resolve(ok(LIVE as never)),
+    live: () => Promise.resolve(ok((liveSteps === undefined ? LIVE : { ...LIVE, steps: liveSteps }) as never)),
     tasks: (): Promise<TasksResult> => Promise.resolve({ ...ok(tasks), hash: tasks === null ? null : hash }),
     taskCheck: (_ws, _id, tid, sentHash, checked): Promise<TaskCheckResult> => {
       sent.push({ tid, hash: sentHash, checked });
@@ -408,6 +412,88 @@ describe('TasksTab item state (spec 040, T52, ISC-224)', () => {
     const { root } = await open();
     expect(root.querySelector('[data-run-notice]')).toBeNull();
     expect(root.querySelector('#task-T31 [data-task-check]')?.getAttribute('aria-disabled')).toBeNull();
+  });
+});
+
+describe('TasksTab step timeline (spec 015, T23, ISC-232)', () => {
+  // The golden steps of 002: T4 and T25 one claim release each, T26 and T28 seven steps ending in `apply`.
+  const STEPS = stepsGolden['specs/002-web-console'] as unknown as TaskSteps;
+  const WITH_STEPS = { ...GOLDEN, steps: STEPS } as TasksBody;
+  const toggle = (root: HTMLElement, id: string) => root.querySelector<HTMLButtonElement>(`#task-${id} [data-steps-toggle]`);
+  const panel = (root: HTMLElement, id: string) => root.querySelector<HTMLElement>(`#task-${id} [data-steps]`);
+  const url = () => TestBed.inject(Router).url;
+
+  afterEach(() => {
+    liveSteps = undefined;
+  });
+
+  it('timeline: only rows with steps get a toggle, every one collapsed by default', async () => {
+    setUp(WITH_STEPS);
+    const { root } = await open();
+    const toggles = [...root.querySelectorAll<HTMLElement>('[data-steps-toggle]')];
+    expect(toggles.map((t) => t.closest('[data-task-row]')?.id)).toEqual(['task-T4', 'task-T25', 'task-T26', 'task-T28']);
+    expect(toggles.every((t) => t.getAttribute('aria-expanded') === 'false')).toBe(true);
+    expect(root.querySelector('[data-steps]')).toBeNull();
+    expect(toggle(root, 'T27')).toBeNull();
+  });
+
+  it('timeline: the toggle names the latest step with its kind, its clock with seconds and the count', async () => {
+    setUp(WITH_STEPS);
+    const { root } = await open();
+    const t26 = toggle(root, 'T26');
+    const latest = t26?.querySelector('[data-step-latest]');
+    expect(latest?.getAttribute('data-step-kind')).toBe('apply');
+    expect(latest?.textContent).toContain('Applied');
+    expect(t26?.querySelector('time')?.getAttribute('datetime')).toBe('2026-03-08T16:12:00Z');
+    expect(t26?.textContent).toContain('7 steps');
+    expect(t26?.textContent).toContain('Agent steps of T26');
+    // The claim's release reads its own word, never the run release of spec 040.
+    expect(toggle(root, 'T4')?.querySelector('[data-step-latest]')?.textContent).toContain('Claim released');
+    expect(toggle(root, 'T4')?.textContent).toContain('1 step');
+  });
+
+  it('timeline: ?steps=T26,T28 opens both rows with their full timeline, each wired to its toggle', async () => {
+    setUp(WITH_STEPS);
+    const { root } = await open('?steps=T26,T28');
+    for (const id of ['T26', 'T28']) {
+      expect(toggle(root, id)?.getAttribute('aria-expanded')).toBe('true');
+      expect(toggle(root, id)?.getAttribute('aria-controls')).toBe(`task-${id}-steps`);
+      expect(panel(root, id)?.id).toBe(`task-${id}-steps`);
+      expect(panel(root, id)?.querySelectorAll('[data-step-kind]')).toHaveLength(7);
+    }
+    expect(panel(root, 'T4')).toBeNull();
+  });
+
+  it('timeline: a click toggles its own row through the query and leaves the others as they are', async () => {
+    setUp(WITH_STEPS);
+    const { root, harness } = await open('?steps=T26,T28');
+    toggle(root, 'T26')?.click();
+    await harness.fixture.whenStable();
+    expect(url()).toContain('steps=T28');
+    expect(url()).not.toContain('T26');
+    expect(panel(root, 'T26')).toBeNull();
+    expect(panel(root, 'T28')).not.toBeNull();
+    toggle(root, 'T4')?.click();
+    await harness.fixture.whenStable();
+    expect(decodeURIComponent(url())).toContain('steps=T28,T4');
+    expect(panel(root, 'T4')?.querySelector('[data-step-kind="release"]')).not.toBeNull();
+  });
+
+  it('timeline: ?steps=T26#task-T26 opens the row and scrolls to and focuses it', async () => {
+    setUp(WITH_STEPS);
+    const { root } = await open('?steps=T26#task-T26');
+    expect(panel(root, 'T26')).not.toBeNull();
+    expect(document.activeElement).toBe(root.querySelector('#task-T26'));
+  });
+
+  it('timeline: the live frame\'s steps win and a live update never opens a row', async () => {
+    liveSteps = { ...STEPS, T27: [{ kind: 'probe', ts: '2026-03-08T16:20:05Z', actor: 'a:claude:sess-2/T27', result: 'red' }] };
+    setUp(WITH_STEPS);
+    const { root } = await open();
+    expect(toggle(root, 'T27')?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle(root, 'T27')?.querySelector('[data-step-latest]')?.getAttribute('data-step-kind')).toBe('probe');
+    expect(toggle(root, 'T27')?.textContent).toContain('Probe red');
+    expect(root.querySelector('[data-steps]')).toBeNull();
   });
 });
 

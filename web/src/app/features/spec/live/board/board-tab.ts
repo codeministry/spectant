@@ -364,6 +364,13 @@ export class BoardTab {
       context.changed.set(shownIndex !== null && shownIndex !== index ? new Set(events.map((c) => c.task)) : new Set());
       shownIndex = index;
     });
+    // spec 015 (ISC-232): every task's agent steps from the live answer for the cards and their detail; a card names
+    // its latest step only while the live frame is on screen.
+    effect(() => {
+      context.live.set(this.isLive());
+      const live = this.liveResult.value();
+      if (live?.kind === 'ok') context.steps.set('steps' in live.body ? live.body.steps : {});
+    });
     let places = new Map<string, DOMRect>();
     let placedIndex: number | null = null;
     afterRenderEffect(() => {

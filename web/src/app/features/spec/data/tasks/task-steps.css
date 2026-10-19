@@ -1,0 +1,81 @@
+/*
+ * Spec 015 (T23): the latest step as a ghost toggle, the open timeline under it on base-200. The host is a grid item
+ * of the Tasks-tab row (`tasks-tab.css`, whose style budget is spent): it takes the next free line under the row, from
+ * the title column to the row's end in every tier (wide column 5 of 9, medium 3 of 4, compact 2 of 4).
+ */
+:host {
+  display: grid;
+  grid-column: 5 / -1;
+  gap: 4px;
+  justify-items: start;
+  min-inline-size: 0;
+}
+
+@container shell (width < 1120px) {
+  :host { grid-column: 3 / -1; }
+}
+
+@container shell (width < 640px) {
+  :host { grid-column: 2 / -1; }
+}
+
+.toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  min-block-size: 24px;
+  margin-inline-start: -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted-ink);
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.toggle:hover { background: var(--color-base-200); }
+.chevron { transition: rotate var(--motion-duration-instant) var(--motion-ease-standard); }
+.toggle[aria-expanded='true'] .chevron { rotate: 90deg; }
+
+.latest {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--color-base-content);
+  font-weight: 600;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.panel {
+  justify-self: stretch;
+  margin-block-end: 8px;
+  padding: 8px 16px 16px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-base-200);
+}
+
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A 44 px hit area at compact and under a coarse pointer. */
+@container shell (width < 640px) {
+  .toggle { min-block-size: 44px; }
+}
+
+@media (pointer: coarse) {
+  .toggle { min-block-size: 44px; }
+}

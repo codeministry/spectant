@@ -951,6 +951,13 @@
       "one": "{{done}} of {{count}} task done or closed",
       "other": "{{done}} of {{count}} tasks done or closed"
     },
+    "steps": {
+      "lead": "Agent steps of {{task}}, latest:",
+      "count": {
+        "one": "{{count}} step",
+        "other": "{{count}} steps"
+      }
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -2736,7 +2743,12 @@
     },
     "timeline": {
       "label": "Agent steps {{task}}",
-      "latest": "latest step"
+      "latest": "latest step",
+      "heading": "Agent steps",
+      "all": {
+        "one": "{{count}} step in the Tasks tab",
+        "other": "All {{count}} steps in the Tasks tab"
+      }
     },
     "delta": {
       "first": "first step",

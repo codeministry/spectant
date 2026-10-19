@@ -951,6 +951,13 @@
       "one": "{{done}} von {{count}} Task fertig oder geschlossen",
       "other": "{{done}} von {{count}} Tasks fertig oder geschlossen"
     },
+    "steps": {
+      "lead": "Agent-Schritte von {{task}}, zuletzt:",
+      "count": {
+        "one": "{{count}} Schritt",
+        "other": "{{count}} Schritte"
+      }
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -2736,7 +2743,12 @@
     },
     "timeline": {
       "label": "Agent-Schritte {{task}}",
-      "latest": "jüngster Schritt"
+      "latest": "jüngster Schritt",
+      "heading": "Agent-Schritte",
+      "all": {
+        "one": "{{count}} Schritt im Tasks-Tab",
+        "other": "Alle {{count}} Schritte im Tasks-Tab"
+      }
     },
     "delta": {
       "first": "erster Schritt",

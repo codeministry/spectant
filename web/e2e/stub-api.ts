@@ -172,6 +172,7 @@ import type {
   TaskRow,
   TaskRun,
   TaskStatus,
+  TaskSteps,
   TasksTab,
   TechModel,
   TimelineEntry,
@@ -774,6 +775,8 @@ type SpecGoldens = {
   timeline: readonly TimelineEntry[];
   claims: ClaimViewModel;
   tasks: TasksTab | null;
+  /** Every task's steps (spec 015, T24): harbor's `harbor.steps.golden.json` entry, `{}` on the other trees. */
+  steps: TaskSteps;
   docs: Readonly<Record<Exclude<DocName, 'constitution'>, DocsPage | null>>;
   frames: readonly Frame[];
   /** The spec page and the live frame per lock fixture; `activity` is the golden as it is. */
@@ -1055,6 +1058,7 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
     return record[key] as T;
   };
   const activityClaims = claimLines(join(dir, golden));
+  const steps = golden === 'harbor' ? (read('steps') as Record<string, TaskSteps>) : {};
   return {
     golden,
     root: join(dir, golden),
@@ -1076,6 +1080,7 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
         timeline: pick(families.timeline, key, 'timeline'),
         claims,
         tasks,
+        steps: steps[key] ?? {},
         docs: specDocs,
         frames: pick(families.frames, key, 'frames'),
         locked: lockFixtures(core, spec, live, claims, activityClaims),
@@ -1479,6 +1484,33 @@ function runVariant(
 export const WAITS_STATES = ['0', '1', '7'] as const;
 export type StubWaitsState = (typeof WAITS_STATES)[number];
 export const WAITS_HEADER = 'X-Spectant-Stub-Waits';
+
+/**
+ * The open-question variant (spec 015, T24, ISC-232.1): `X-Spectant-Stub-Question: open` gives harbor 002's running
+ * card T27 (held by `a:claude:sess-2` under the `activity` locks) a latest step `question` that no step follows, and
+ * puts that card first under Needs you with `question: { text, ts }`, as core's `live.ts` lists an open question. Every
+ * other spec, and any other value, answers as without the header. The steps of every answer otherwise come from
+ * `core/fixtures/harbor.steps.golden.json` for harbor and are `{}` for the other trees.
+ */
+export const QUESTION_HEADER = 'X-Spectant-Stub-Question';
+export const STUB_QUESTION = {
+  spec: 'specs/002-web-console',
+  task: 'T27',
+  session: 'a:claude:sess-2',
+  started: '2026-03-08T14:06:00Z',
+  ts: '2026-03-08T14:58:00Z',
+  text: 'Should the focus ring follow the theme accent or stay the fixed primary outline on every settings control?',
+} as const;
+
+/** The live answer and the steps with the stub's open question on `STUB_QUESTION.task`; a frame without that card is unchanged. */
+export function withOpenQuestion(live: LiveFrame, steps: TaskSteps): { live: LiveFrame; steps: TaskSteps } {
+  const card = live.cards.find((c) => c.task === STUB_QUESTION.task);
+  if (card === undefined) return { live, steps };
+  const { task, session: actor, started, ts, text } = STUB_QUESTION;
+  const timeline = [...(steps[task] ?? [{ kind: 'build' as const, ts: started, actor }]), { kind: 'question' as const, ts, actor, text }];
+  const needsYou = [{ ...card, question: { text, ts } }, ...live.needsYou.filter((n) => n.task !== task)];
+  return { live: { ...live, needsYou }, steps: { ...steps, [task]: timeline } };
+}
 
 const LANTERN: StubWorkspace = { slug: 'lantern', name: 'lantern', golden: 'lantern' };
 export const STUB_WAITS = {
@@ -2350,6 +2382,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     return withRuns(live, runs, ticked);
   };
+  /** The live frame and the steps a request gets: with the stub's open question on harbor 002 under `X-Spectant-Stub-Question: open`. */
+  const questionOf = (req: Request, tree: TreeGoldens, spec: SpecGoldens, live: LiveFrame): { live: LiveFrame; steps: TaskSteps } =>
+    req.headers.get(QUESTION_HEADER) === 'open' && tree.golden === 'harbor' && spec.key === STUB_QUESTION.spec
+      ? withOpenQuestion(live, spec.steps)
+      : { live, steps: spec.steps };
   const sessionOf = (req: Request): string => req.headers.get(SESSION_HEADER) ?? '';
   const settingsOf = (req: Request): Settings => sessions.get(sessionOf(req)) ?? defaults();
   const writesOf = (req: Request): SessionWrites => {
@@ -2948,14 +2985,17 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
         return workspaceJson(req, 200, spec.claims);
       case 'tasks': {
         const { tab, hash } = tasksTab(req, tree, spec);
-        return workspaceJson(req, 200, tab, hash === null ? {} : { [TASKS_HASH_HEADER]: hash });
+        const body = tab === null ? null : { ...tab, steps: questionOf(req, tree, spec, liveOf(req, match.params.ws, spec, locks)).steps };
+        return workspaceJson(req, 200, body, hash === null ? {} : { [TASKS_HASH_HEADER]: hash });
       }
       case 'evidenceFile':
         return evidenceFile(req, url, tree, spec);
       case 'frames':
         return workspaceJson(req, 200, spec.frames);
-      case 'live':
-        return workspaceJson(req, 200, liveOf(req, match.params.ws, spec, locks));
+      case 'live': {
+        const { live, steps } = questionOf(req, tree, spec, liveOf(req, match.params.ws, spec, locks));
+        return workspaceJson(req, 200, { ...live, steps });
+      }
       default:
         return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowFor(match.route) });
     }

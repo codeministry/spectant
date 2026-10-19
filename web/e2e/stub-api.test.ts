@@ -18,10 +18,12 @@ import type {
   LibraryDocType,
   LiveFrame,
   MainCopy,
+  NeedsYouCard,
   SpecPageModel,
   SpecOverlap,
   SpecWait,
   SpecWarning,
+  TaskSteps,
   TasksTab,
   TimelineEntry,
   Worktree,
@@ -78,6 +80,8 @@ import {
   STUB_PERSON,
   STUB_RUN,
   type StubRunState,
+  QUESTION_HEADER,
+  STUB_QUESTION,
   STUB_WAITS,
   WAITS_HEADER,
   WAITS_STATES,
@@ -790,12 +794,21 @@ type EvidenceModule = {
 const family = (tree: string, name: string): Json => golden(`${tree}.${name}`);
 const familyValue = (tree: string, name: string, key: string): unknown => family(tree, name)[key];
 
+/**
+ * The steps the live and tasks answers carry beside their body (spec 015, T24): harbor's steps golden entry for `key`,
+ * `{}` on any other tree, as the stub serves them.
+ */
+const stepsOf = (tree: string, key: string): unknown => (tree === 'harbor' ? (familyValue(tree, 'steps', key) ?? {}) : {});
+/** A live or tasks golden value as the route answers it: with `steps`; a null tasks tab stays null. */
+const withSteps = (value: unknown, tree: string, key: string): unknown => (value === null ? null : { ...(value as object), steps: stepsOf(tree, key) });
+
 /** The golden value a read route answers for `harbor` / `specs/002-web-console`. */
 function goldenFor(route: SpecRouteName): unknown {
-  if (route === 'live') return familyValue(WS, 'live', KEY);
+  if (route === 'live') return withSteps(familyValue(WS, 'live', KEY), WS, KEY);
   const name = (GOLDEN_FAMILY as Partial<Record<SpecRouteName, string>>)[route];
   if (name === undefined) throw new Error(`no golden family for ${route}`);
-  return familyValue(WS, name, KEY);
+  const value = familyValue(WS, name, KEY);
+  return route === 'tasks' ? withSteps(value, WS, KEY) : value;
 }
 
 const specHashes = async (path: string, init?: Parameters<typeof request>[1]): Promise<ReviewedHashes> => {
@@ -2273,7 +2286,7 @@ describe('stub API: the worktree overlay via X-Spectant-Stub-Worktrees (spec 027
     expect([frame.inRound?.total, frame.inRound?.lanes]).toEqual([counts, { web: counts }]);
     expect(frame.needsYou.find((c) => c.task === 'T29')?.run?.state).toBe('building');
     expect((await live({ ...on, [LOCKS_HEADER]: 'none' })).inRound?.cards.length).toBe(4);
-    expect(await live(on, '003')).toEqual(familyValue('harbor', 'live', 'specs/003-config-loader') as LiveFrame);
+    expect(await live(on, '003')).toEqual(withSteps(familyValue('harbor', 'live', 'specs/003-config-loader'), 'harbor', 'specs/003-config-loader') as LiveFrame);
     expect(goldenText('harbor.live')).toBe(before);
   });
 
@@ -2489,7 +2502,7 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
         const folder = `specs/${rowOf(base, id).slug}`;
         expect(await page(id, as(edges))).toEqual(familyValue(WS, 'spec', folder) as SpecPageModel);
         expect(await claims(id, as(edges))).toEqual(familyValue(WS, 'claim-view', folder) as ClaimViewModel);
-        expect(await live(id, as(edges))).toEqual(familyValue(WS, 'live', folder) as LiveFrame);
+        expect(await live(id, as(edges))).toEqual(withSteps(familyValue(WS, 'live', folder), WS, folder) as LiveFrame);
       }
     }
   });
@@ -2649,7 +2662,7 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
       for (const [key, page] of Object.entries(pages)) {
         const id = page.head.id;
         expect({ key, page: await read<SpecPageModel>(specRoutes.spec(WS, id), headers) }).toEqual({ key, page });
-        expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: tabs[key] ?? null });
+        expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: withSteps(tabs[key] ?? null, WS, key) });
       }
     }
   });
@@ -2972,5 +2985,29 @@ describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5,
       const res = await ask('/api/workspaces', { headers: on(extra) });
       expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-dense-with-overlay' });
     }
+  });
+});
+
+describe('stub API: steps and the open question via X-Spectant-Stub-Question (spec 015, T24, ISC-232.1)', () => {
+  type WithSteps = { steps: TaskSteps; needsYou?: readonly NeedsYouCard[] };
+  const get = async (route: 'live' | 'tasks', id: string, ws = WS, question?: string): Promise<WithSteps> =>
+    (await (await ask(specRoutes[route](ws, id), question === undefined ? {} : { headers: { [QUESTION_HEADER]: question } })).json()) as WithSteps;
+
+  test("the live and tasks answers carry harbor's steps golden, {} on another tree", async () => {
+    expect((await get('live', '002')).steps).toEqual(familyValue(WS, 'steps', KEY) as TaskSteps);
+    expect((await get('tasks', '002')).steps).toEqual(familyValue(WS, 'steps', KEY) as TaskSteps);
+    expect((await get('live', '001', 'lantern')).steps).toEqual({});
+  });
+
+  test('open: T27 asks, its latest step is the question and it leads Needs you with the text; other specs and values unchanged', async () => {
+    const live = await get('live', '002', WS, 'open');
+    const card = live.needsYou?.[0];
+    expect(card?.task).toBe(STUB_QUESTION.task);
+    expect(card?.question).toEqual({ text: STUB_QUESTION.text, ts: STUB_QUESTION.ts });
+    expect(live.needsYou?.filter((c) => c.task === STUB_QUESTION.task).length).toBe(1);
+    expect(live.steps[STUB_QUESTION.task]?.at(-1)).toEqual({ kind: 'question', ts: STUB_QUESTION.ts, actor: STUB_QUESTION.session, text: STUB_QUESTION.text });
+    expect((await get('tasks', '002', WS, 'open')).steps).toEqual(live.steps);
+    expect(await get('live', '002', WS, 'other')).toEqual(goldenFor('live') as WithSteps);
+    expect(await get('live', '003', WS, 'open')).toEqual(withSteps(familyValue(WS, 'live', 'specs/003-config-loader'), WS, 'specs/003-config-loader') as WithSteps);
   });
 });

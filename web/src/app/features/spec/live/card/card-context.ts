@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { TaskSteps } from '../../../../../../../core/src/files';
 
 /**
  * What a board card and its detail know about the board around them (spec 024, prototype board.js): the frame on
@@ -14,4 +15,8 @@ export class CardContext {
   readonly changed = signal<ReadonlySet<string>>(new Set());
   /** The task whose detail was opened last. */
   readonly selected = signal<string | null>(null);
+  /** Every task's agent steps from the live answer (spec 015, ISC-232), the live state whatever frame is on screen. */
+  readonly steps = signal<TaskSteps>({});
+  /** Whether the frame on screen is the live one: a past frame's cards name no latest step (the steps are live). */
+  readonly live = signal(true);
 }

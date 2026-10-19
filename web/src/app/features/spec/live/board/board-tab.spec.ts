@@ -6,7 +6,7 @@ import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import frames from '../../../../../../../core/fixtures/harbor.frames.golden.json';
 import live from '../../../../../../../core/fixtures/harbor.live.golden.json';
-import type { Frame, LiveFrame } from '../../../../../../../core/src/files';
+import type { Frame, LiveFrame, TaskSteps } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { RefreshService } from '../../../../core/refresh.service';
 import { type Density, SETTINGS_URL, SettingsService } from '../../../../core/settings.service';
@@ -21,6 +21,8 @@ import { BoardTab } from './board-tab';
 const KEY = 'specs/002-web-console';
 const HISTORY = (frames as unknown as Record<string, Frame[]>)[KEY] ?? [];
 const LIVE = (live as unknown as Record<string, LiveFrame>)[KEY];
+// The live answer the stubbed client sends; spec 015 adds every task's steps beside the frame.
+let liveBody: LiveFrame & { steps?: TaskSteps } = LIVE;
 
 interface Harness {
   fixture: ComponentFixture<BoardTab>;
@@ -54,7 +56,7 @@ async function render(url: string, stored: Density): Promise<Harness> {
         provide: ApiClient,
         useValue: {
           frames: () => Promise.resolve({ kind: 'ok', body: HISTORY }),
-          live: () => Promise.resolve({ kind: 'ok', body: LIVE }),
+          live: () => Promise.resolve({ kind: 'ok', body: liveBody }),
           // The operator steps and the card detail read the tasks tab; the density probe needs none of it.
           tasks: () => Promise.resolve({ kind: 'error', status: 404 }),
         },
@@ -158,5 +160,30 @@ describe('BoardTab density (spec 021, T47, ISC-254)', () => {
     expect(switchOf(host)?.getAttribute('aria-pressed')).toBe('false');
     expect(new Set(cardDensities(host))).toEqual(new Set(['comfortable']));
     noSettingsWrite(http);
+  });
+});
+
+describe('BoardTab agent steps (spec 015, ISC-232)', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined })),
+    );
+    const steps: TaskSteps = Object.fromEntries(LIVE.cards.map((c) => [c.task, [{ kind: 'probe', ts: '2026-10-19T12:32:05Z', actor: 'a:claude:sess-2', result: 'green' }]]));
+    liveBody = { ...LIVE, steps };
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    liveBody = LIVE;
+  });
+
+  it('the live answer’s steps reach the cards of the live frame, and a past frame names no latest step', async () => {
+    const live = await render('/', 'comfortable');
+    expect(live.host.querySelectorAll('app-board-card:not([data-density="step"]) [data-card-latest-step]').length).toBeGreaterThan(0);
+    expect(live.host.querySelector('[data-card-latest-step] [data-step-word]')?.textContent.trim()).toBe('Probe green');
+    TestBed.resetTestingModule();
+    const past = await render('/?frame=0', 'comfortable');
+    expect(past.host.querySelectorAll('app-board-card').length).toBeGreaterThan(0);
+    expect(past.host.querySelector('[data-card-latest-step]')).toBeNull();
   });
 });

@@ -3,7 +3,8 @@ import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import frames from '../../../../../../../core/fixtures/harbor.frames.golden.json';
 import live from '../../../../../../../core/fixtures/harbor.live.golden.json';
-import type { Frame, LiveFrame } from '../../../../../../../core/src/files';
+import type { Frame, LiveFrame, NeedsYouCard, TaskSteps } from '../../../../../../../core/src/files';
+import { formatClock } from '../../../../shared/time';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { frameEvents } from '../board/board-model';
 import { AgentChip } from './agent-chip';
@@ -199,5 +200,77 @@ describe('alertParts', () => {
         }
       }
     }
+  });
+});
+
+describe('NeedsYou with an open question (spec 015, ISC-232.1)', () => {
+  const card = LIVE.cards.find((c) => c.task === 'T26');
+  if (card === undefined) throw new Error('the live fixture holds no card T26');
+  const ts = '2026-03-08T16:02:00Z';
+  const asking = 'a:claude:sess-2/T26';
+  // 200 characters, the most core keeps: shown in full, never cut.
+  const text = `Should the export keep the old column order for existing reports, or switch to the new order everywhere? ${'x'.repeat(200)}`.slice(0, 200);
+  const open: NeedsYouCard = { ...card, question: { text, ts } };
+  const steps: TaskSteps = {
+    [card.task]: [
+      { kind: 'build', ts: '2026-03-08T15:55:00Z', actor: 'a:claude:parent' },
+      { kind: 'question', ts, actor: asking, text },
+    ],
+  };
+  const withQuestion = [open, ...LIVE.needsYou.filter((c) => c.task !== card.task)];
+  const frame = { ...LIVE, needsYou: withQuestion, steps };
+  const words = CATALOGUES.en as { steps: { kind: Record<string, string> } };
+
+  for (const framed of [true, false]) {
+    it(`shows the question in full with HH:MM and the asking session's agent chip (${framed ? 'rail' : 'sheet'})`, async () => {
+      const root = await render(NeedsYou, { frame, cards: withQuestion, framed });
+      const row = root.querySelector(`[data-needs-question="${card.task}"]`);
+      expect(row).not.toBeNull();
+      expect(row?.querySelector('[data-question-text]')?.textContent.trim()).toBe(text);
+      const time = row?.querySelector('time');
+      expect(time?.getAttribute('datetime')).toBe(ts);
+      expect(time?.textContent).toBe(formatClock(ts, 'en'));
+      expect(row?.textContent).toContain(words.steps.kind['question']);
+      expect(row?.querySelector('app-agent-chip [data-agent-session]')?.textContent).toBe(asking);
+      // No answer action: nothing to type into, and the only control opens the card.
+      expect(row?.querySelectorAll('input, textarea').length).toBe(0);
+      expect(row?.querySelectorAll('button').length).toBe(1);
+      // The question card leads the list and is listed once.
+      const listed = [...root.querySelectorAll('[data-needs-card]')].map((c) => c.getAttribute('data-needs-card'));
+      expect(listed).toEqual(withQuestion.map((c) => c.task));
+    });
+  }
+
+  it("falls back to the card's lock session when the frame carries no steps", async () => {
+    const locked: NeedsYouCard = { ...open, lock: { source: 'activity', session: 'a:claude:lock-holder' } };
+    const root = await render(NeedsYou, { frame: LIVE, cards: [locked] });
+    expect(root.querySelector(`[data-needs-question="${card.task}"] app-agent-chip [data-agent-session]`)?.textContent).toBe('a:claude:lock-holder');
+  });
+
+  it('announces a newly asked question once and nothing else', async () => {
+    const fixture = TestBed.createComponent(NeedsYou);
+    fixture.componentRef.setInput('frame', LIVE);
+    fixture.componentRef.setInput('cards', LIVE.needsYou);
+    await fixture.whenStable();
+    const region = (): string => (fixture.nativeElement as HTMLElement).querySelector('ui-live-region[data-needs-announcer]')?.textContent ?? 'missing';
+    expect(region()).toBe('');
+
+    fixture.componentRef.setInput('frame', frame);
+    fixture.componentRef.setInput('cards', withQuestion);
+    await fixture.whenStable();
+    const said = region();
+    expect(said).toContain(card.task);
+    expect(said).toContain(text);
+
+    // Another step or a reordered list announces nothing new.
+    fixture.componentRef.setInput('frame', { ...frame, steps: { ...steps, T99: [{ kind: 'build', ts, actor: asking }] } });
+    fixture.componentRef.setInput('cards', [...withQuestion].reverse());
+    await fixture.whenStable();
+    expect(region()).toBe(said);
+  });
+
+  it('does not announce a question that was already open when it first rendered', async () => {
+    const root = await render(NeedsYou, { frame, cards: withQuestion, framed: false });
+    expect(root.querySelector('ui-live-region[data-needs-announcer]')?.textContent).toBe('');
   });
 });

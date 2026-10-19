@@ -9,14 +9,14 @@ import { formatStepDelta, formatStepDeltaLong, UiTime } from '../../../../shared
 import { UiActorChip } from '../../../../shared/ui/actor-chip/actor-chip';
 
 /** What one step reads as: its word (`steps.kind.*`), its lucide icon and its tone (design.md, the step vocabulary). */
-interface StepLook {
+export interface StepLook {
   readonly word: string;
   readonly icon: IconName;
   readonly tone: string;
 }
 
 /** A probe's look follows its result; red and green differ in shape as well as tone. */
-function lookOf(step: TaskStep): StepLook {
+export function lookOf(step: TaskStep): StepLook {
   switch (step.kind) {
     case 'dispatch':
       return { word: 'dispatch', icon: 'send', tone: 'muted' };
