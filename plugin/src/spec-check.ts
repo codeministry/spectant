@@ -12,21 +12,24 @@
 //
 // Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift or a gate open · 4 lock
 // lost. `--json` prints one JSON object on stdout; without it the output is for a person.
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
 import { buildDashboard } from '../../core/src/dashboard.ts';
 import type { DashboardInput } from '../../core/src/dashboard.ts';
+import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
-import type { LockReading, SpecFiles, TextFileKind } from '../../core/src/files.ts';
+import type { EventLine, LockReading, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
 import { SPEC_TYPES, parseFrontmatter } from '../../core/src/frontmatter.ts';
-import { reviewedGate } from '../../core/src/gates.ts';
+import { gateState, readGateMark, reviewedGate } from '../../core/src/gates.ts';
 import { nextSpecNumber, specNumbersOf } from '../../core/src/allocate.ts';
 import { readLockSources } from '../../core/src/locks.ts';
 import { listSpecs, resolveSpec } from '../../core/src/resolve.ts';
 import type { SpecRef } from '../../core/src/resolve.ts';
-import { specSlugOf } from '../../core/src/spec-ref.ts';
+import { resolveEdges } from '../../core/src/spec-edges.ts';
+import { specIdOf, specSlugOf } from '../../core/src/spec-ref.ts';
+import { WORKFLOW_STAGES, isWorkflowStage } from '../../core/src/stage.ts';
 import {
   SpecTextError,
   appendDecisionText,
@@ -36,10 +39,12 @@ import {
   specFolderText,
 } from '../../core/src/spec-text.ts';
 import type { SpecTextClaim, SpecTextRow, SpecTextType } from '../../core/src/spec-text.ts';
-import { driftReport, hasDrift, masterProgressMismatch, partitionClaims } from '../../core/src/status.ts';
+import { driftReport, hasDrift, mainFeatureOf, masterProgressMismatch, partitionClaims, specEdgeHolds } from '../../core/src/status.ts';
 import type { ClaimPartition, DriftReport } from '../../core/src/status.ts';
 import { takeableSet } from '../../core/src/takeable.ts';
 import { parseTaskLines } from '../../core/src/tasks.ts';
+import { planTransition } from '../../core/src/transition.ts';
+import type { TransitionInput } from '../../core/src/transition.ts';
 import { parseWorkflow } from '../../core/src/workflow.ts';
 
 export const EXIT = { ok: 0, badArgs: 1, drift: 3, lockLost: 4 } as const;
@@ -498,6 +503,116 @@ async function frontier(ctx: Context, args: Args): Promise<number> {
   return EXIT.ok;
 }
 
+// ── transition ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The plugin subcommand behind each command core's stage table names for a move: the one that makes it. The stage
+ * table speaks the app's command names; the plugin records its own `/spec <subcommand> NNN` instead.
+ */
+const SUBCOMMAND_OF: Readonly<Record<string, string>> = {
+  '/spec-plan': 'plan',
+  '/spec-tasks': 'tasks',
+  '/spec-review': 'review',
+  '/spec-implement': 'implement',
+  '/spec-status': 'implement',
+  '/spec-code-review': 'review',
+  '/spec-complete': 'done',
+};
+
+/** `/spec-plan 001` → `/spec plan 001`; a command without a mapping stays as core planned it. */
+function pluginCommand(command: string): string {
+  const [head = '', ...rest] = command.split(' ');
+  const sub = SUBCOMMAND_OF[head];
+  return sub === undefined ? command : ['/spec', sub, ...rest].join(' ');
+}
+
+/** Whether an active spec holds its main feature open: not complete, one claim neither checked nor dropped (dashboard row 7). */
+function holdsFeatureOpen(files: SpecFiles): boolean {
+  const spec = files.texts.spec;
+  if (spec === undefined) return false;
+  return parseFrontmatter(spec).data.phase !== 'complete' && parseClaims(spec).claims.some((c) => !c.checked && !c.dropped);
+}
+
+/**
+ * `planTransition`'s input for one spec, built the way the app's stage write builds it (`server/src/writes.ts`
+ * `transitionInput`): the reviewed mark's state, the claim partition under the lock reading counted as the dashboard
+ * counts it, the open siblings of the main feature and the spec edges. The CLI has no worktree tree id and no branch
+ * merge state, as `status` has none: the code-reviewed mark is read without a tree and the edges without merges.
+ */
+function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: string, locks: LockReading): TransitionInput {
+  const listed = listSpecs(ctx.root);
+  const active = listed.filter((s) => !s.archived).map(specFiles);
+  const archived = listed.filter((s) => s.archived).map(specFiles);
+  const files = active.find((f) => f.folder === ref.slug) ?? specFiles(ref);
+  const spec = files.texts.spec ?? '';
+  const id = specIdOf(files.folder) ?? files.folder;
+  const reviewed = reviewedGate(files.texts).check.state;
+  const partition = partitionClaims(parseClaims(spec).claims, locks.locks, reviewed);
+  const codeMark = files.texts.gateCodeReviewed === undefined ? null : readGateMark('code-reviewed', files.texts.gateCodeReviewed).mark;
+  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists(join(ctx.root, 'specs', 'constitution.md')) }, []);
+  const edgeHeld = specEdgeHolds(
+    partition.takeable,
+    edges.edges.filter((e) => e.fromSpec === id),
+  );
+  const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
+  const feature = mainFeatureOf(parseFrontmatter(spec).data.isaFeature);
+  const siblings =
+    feature === null
+      ? []
+      : active
+          .filter((f) => f.texts.spec !== undefined && mainFeatureOf(parseFrontmatter(f.texts.spec).data.isaFeature) === feature && holdsFeatureOpen(f))
+          .map((f) => specIdOf(f.folder) ?? f.folder)
+          .filter((sibling) => sibling !== id)
+          .sort();
+  return {
+    files,
+    workflow: parseWorkflow(readIfExists(join(ctx.root, 'specs', 'workflow.md'))),
+    to,
+    actor,
+    now: ctx.now,
+    reviewed,
+    codeReviewed: gateState('code-reviewed', codeMark, { worktreeTree: null }).state,
+    partition: {
+      takeable: takeable.length,
+      open: partition.open.length - takeable.length,
+      closed: partition.closed.length - partition.dropped.length,
+      dropped: partition.dropped.length,
+    },
+    featureSiblingsOpen: siblings,
+    waits: edges.waits.find((w) => w.spec === id) ?? null,
+    edgeHeld: [...new Set([...edgeHeld.values()].flat())].sort(),
+  };
+}
+
+/**
+ * The stage move, the app's write path 3 without the app: core plans it (`planTransition`); on a refusal nothing is
+ * written and the command exits 3 with core's reason and next command; on yes spec.md is written in place with its
+ * `stage:` and exactly one event line is appended to `events.jsonl` (created when absent), a newline first when the
+ * file does not end in one, as the app appends it.
+ */
+async function transition(ctx: Context, args: Args): Promise<number> {
+  const ref = specRef(ctx.root, required(args, 0, 'the spec'));
+  const to = required(args, 1, 'the target stage');
+  if (!isWorkflowStage(to)) throw bad(`"${to}" is no stage (${WORKFLOW_STAGES.join(', ')})`);
+  specText(ctx, ref);
+  const actor = args.values.get('actor') ?? 'a:claude:spec-check';
+  const plan = planTransition(transitionInput(ctx, ref, to, actor, await locksOf(ctx)));
+  if (!plan.ok) {
+    const next = plan.command === null ? '' : `; next: ${pluginCommand(plan.command)}`;
+    throw new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`);
+  }
+  const event: EventLine = { ...plan.event, command: args.values.get('command') ?? pluginCommand(plan.event.command) };
+  const line = JSON.stringify(event);
+  if (!validateEventLine(line).ok) throw bad(`the event line would be rejected: ${line}; nothing written`);
+  const eventsPath = join(ref.dir, 'events.jsonl');
+  const existing = readIfExists(eventsPath);
+  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
+  writeFileSync(join(ref.dir, 'spec.md'), plan.specText);
+  appendFileSync(eventsPath, `${lead}${line}\n`);
+  emit(ctx, args, { spec: ref.slug, from: plan.from, to: plan.to, event }, [`${ref.slug}: ${plan.from} → ${plan.to} (${event.command})`]);
+  return EXIT.ok;
+}
+
 // ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface Command {
@@ -550,7 +665,12 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   },
   claim: { usage: 'claim <ISC-N> --session <actor>', summary: 'lock a claim in .spectant/activity.jsonl', later: 'T18' },
   release: { usage: 'release <ISC-N> --session <actor>', summary: 'release a claim lock', later: 'T18' },
-  transition: { usage: 'transition <spec> <to>', summary: 'move a spec to another stage (one events.jsonl line)', later: 'T20' },
+  transition: {
+    usage: 'transition <spec> <to> [--actor <actor>] [--command "<…>"] [--json]',
+    summary: 'move a spec to another stage: stage: in spec.md and one events.jsonl line; exit 3 and nothing written when the workflow or a gate refuses',
+    values: ['actor', 'command'],
+    run: transition,
+  },
   run: { usage: 'run start <spec|idea> --command "<…>" | run end <run-id> --outcome ok|error', summary: 'open or close a run', later: 'T18' },
   gate: { usage: 'gate check reviewed|code-reviewed <spec> | gate reviewed <spec> --yes | gate code-reviewed <spec> --yes …', summary: 'check or set a gate mark', later: 'T22' },
   archive: { usage: 'archive <NNN>… [--dry-run] [--reason "<why>"] | archive restore <NNN>', summary: 'move specs to specs/archive/ and back', later: 'T24' },
