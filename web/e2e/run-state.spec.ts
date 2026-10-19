@@ -136,6 +136,9 @@ test.describe('run-state surfaces', () => {
             // "Next", not twice in the block; the block keeps the state line and the reason.
             await expect(item).toHaveAttribute('data-state', 'open');
             if (form.line !== undefined) await expect(item.locator('[data-item-line]')).toHaveText(form.line);
+            // Spec 021 (T67): at compact the head folds its next command into "Details of NNN"; open it to read it.
+            const details = page.locator('app-spec-head [data-head-details] button').first();
+            if ((await details.count()) > 0 && (await details.getAttribute('aria-expanded')) !== 'true') await details.click();
             await expect(page.locator('ui-command-chip code').filter({ hasText: form.command }).first()).toBeVisible();
           } else {
             await expectForm(item, form);

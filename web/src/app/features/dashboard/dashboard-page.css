@@ -37,3 +37,47 @@
   color: var(--muted-ink);
   font-weight: 400;
 }
+
+/* Spec 021 (ISC-246.1, E3): the compact head's link to the section #waiting, "Waits on you" with its count chip. */
+.waits-link {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  position: relative;
+  min-block-size: 28px;
+  margin-inline-start: auto;
+  color: var(--ques-ink);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.waits-link:hover {
+  text-decoration: underline;
+}
+
+/* A 44 px hit area under a coarse pointer without growing the head row. */
+@media (pointer: coarse) {
+  .waits-link::before {
+    position: absolute;
+    inset-block: -8px;
+    inset-inline: 0;
+    content: "";
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .waits-link {
+    color: LinkText;
+  }
+}

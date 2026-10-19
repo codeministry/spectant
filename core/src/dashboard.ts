@@ -71,29 +71,72 @@ import { parseTaskLines } from './tasks.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 import type { WorktreeAssignment } from './worktrees.ts';
 
-/** The key numbers above the spec list. */
+/**
+ * The groups the Specs tile splits the active specs into and the spec list filters them by (spec 021, ISC-245), in
+ * lifecycle order: `building` is a stage of `BUILDING`, `complete` is `done`, `scoping` is every other stage. One
+ * derivation from the row's derived stage, never from the frontmatter `phase:`, so the tile's split and the filter's
+ * counts cannot disagree.
+ */
+export type StageGroup = 'scoping' | 'building' | 'complete';
+
+/** The stage groups in lifecycle order, the order the tile's split and the filter's chips list them in. */
+export const STAGE_GROUPS: readonly StageGroup[] = ['scoping', 'building', 'complete'];
+
+/**
+ * The key numbers above the spec list. Each tile's number comes with its reference, the count it stands against
+ * (spec 021, ISC-245), so the band shows a fraction or an "of N" from the model alone and computes nothing itself.
+ * Each reference field says which tile it serves.
+ */
 export interface DashboardKpis {
-  /** Active (not archived) spec folders. */
+  /** Active (not archived) spec folders: the Specs tile's number and the reference of its split. */
   readonly specs: number;
-  /** Active specs at stage build, blocked or code-review. */
+  /** Active specs at stage build, blocked, code-review or close-pending (`stageGroups.building`). */
   readonly building: number;
-  /** Active specs at any other stage but done. */
+  /** Active specs at any other stage but done (`stageGroups.scoping`). */
   readonly scoping: number;
+  /**
+   * The Specs tile's split: the active specs per stage group, counted from each row's `stageGroup`, the same field the
+   * spec list filters by. The three counts sum to `specs`; `building` and `scoping` equal the fields of that name.
+   */
+  readonly stageGroups: Readonly<Record<StageGroup, number>>;
   /** The master's recounted progress, e.g. 101/124; null without a master or without a claim section in it. */
   readonly master: Progress | null;
+  /** The master's claims not yet closed, `master.total − master.closed`: the master tile's open count; null without `master`. */
+  readonly masterOpen: number | null;
+  /**
+   * The master's whole percent closed, floored so 100 means every master claim is closed: the master tile's ring; null
+   * without `master` or without a claim in it.
+   */
+  readonly masterPercent: number | null;
+  /**
+   * The active specs per frontmatter `type:`, one entry per type present, keys in name order: the spec list's type chips.
+   * A spec without a type counts in no entry.
+   */
+  readonly byType: Readonly<Partial<Record<SpecType, number>>>;
   /** Live claims over the open (active, not done) specs. */
   readonly claims: Progress;
   /** Tasks over the open specs. */
   readonly tasks: { readonly landed: number; readonly total: number };
-  /** Takeable claims over the active specs. */
+  /** Takeable claims over the active specs: the Takeable tile's number. */
   readonly takeable: number;
-  /** Warnings over the active specs. */
+  /**
+   * The Takeable tile's reference: the live claims not yet closed over the same active specs `takeable` counts, so
+   * `takeable` never exceeds it.
+   */
+  readonly openClaims: number;
+  /** Warnings over the active specs: the Warnings tile's number. */
   readonly warnings: number;
-  /** Fog lines over the master and the active specs. */
+  /** The Warnings tile's reference: the active specs carrying at least one warning, of `specs`. */
+  readonly specsWithWarnings: number;
+  /** Fog lines over the master and the active specs: the Open fog tile's number. */
   readonly fog: number;
-  /** The Attention tile: warnings plus open fog. */
+  /** The Open fog tile's reference: the active specs with at least one fog line, of `specs` (the filter's fog chip). */
+  readonly specsWithFog: number;
+  /** The fog lines of the master alone; `fog` less this is the active specs' fog. */
+  readonly masterFog: number;
+  /** Warnings plus open fog, kept for existing readers; the KPI band shows `warnings` and `fog` as two tiles instead. */
   readonly attention: number;
-  /** Folders under `specs/archive/`. */
+  /** Folders under `specs/archive/`: no tile of its own, the spec list's head shows it. */
   readonly archived: number;
 }
 
@@ -126,6 +169,11 @@ export interface DashboardSpecRow {
   /** Frontmatter `phase:` as written: a tooltip only, the stage is derived. */
   readonly phase: string | null;
   readonly stage: Stage;
+  /**
+   * The stage group of `stage` (spec 021, ISC-245): what the spec list filters by and the Specs tile's split counts,
+   * one derivation for both (`stageGroupOf`).
+   */
+  readonly stageGroup: StageGroup;
   /** Whether `stage` is the frontmatter `stage:` (`explicit`) or the stage table's (`derived`), T47. */
   readonly stageSource: StageSource;
   /** Live claims, closed over total. */
@@ -197,6 +245,12 @@ export interface DashboardBrief {
   readonly sections: Readonly<Record<string, string>>;
   /** The spec worktree `specs/tldr.md` was read from (spec 039, ISC-209); absent when read from the main checkout. */
   readonly source?: RepoFileSource;
+  /**
+   * The brief's primary language from the frontmatter `lang:` of `specs/tldr.md`, a BCP 47 tag such as `de` (spec 021,
+   * ISC-247); null when the file names none. The web app compares it with the interface language: on a mismatch the
+   * TL;DR card carries a language chip and its text block the `lang` attribute; null shows neither.
+   */
+  readonly lang: string | null;
 }
 
 /** A local listener that belongs to the workspace, for the live indicator (loopback only). */
@@ -330,6 +384,9 @@ export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review',
 
 /** Stages counted as building on the KPI split (`close-pending` waits on a sibling's build); every other but done is scoping. */
 const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review', 'close-pending']);
+
+/** The stage group of a derived stage (spec 021, ISC-245): the one derivation the Specs tile and the spec filter share. */
+export const stageGroupOf = (stage: Stage): StageGroup => (stage === 'done' ? 'complete' : BUILDING.has(stage) ? 'building' : 'scoping');
 
 /**
  * Warning kinds in the order the old dashboard listed them on a row, the two of the spec edges (spec 025, ISC-164,
@@ -685,6 +742,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     priority: fm.data.priority,
     phase,
     stage: next.stage,
+    stageGroup: stageGroupOf(next.stage),
     stageSource: next.stageSource,
     progress: doc.counted,
     tasks: f.texts.tasks === undefined ? null : (summary?.tasks ?? { landed: 0, total: 0 }),
@@ -994,6 +1052,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
       generated: tldr.generated,
       stale: state.stale,
       sections: tldr.sections,
+      lang: tldr.lang,
       // Only a worktree copy is named (spec 039, ISC-209), so a brief read from the main checkout stays as it was.
       ...(input.tldrSource?.kind === 'worktree' ? { source: input.tldrSource } : {}),
     };
@@ -1003,16 +1062,28 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   const open = rows.filter((r) => r.stage !== 'done');
   const warnings = sum(rows, (r) => r.warnings.length);
   const fog = masterFog + sum(rows, (r) => r.fog);
+  const stageGroups = Object.fromEntries(STAGE_GROUPS.map((g) => [g, rows.filter((r) => r.stageGroup === g).length])) as Record<StageGroup, number>;
+  const masterCount = master !== null && master.section !== null ? master.counted : null;
+  const types = [...new Set(rows.flatMap((r) => (r.type === null ? [] : [r.type])))].sort();
+  const byType = Object.fromEntries(types.map((t) => [t, rows.filter((r) => r.type === t).length])) as Partial<Record<SpecType, number>>;
   const kpis: DashboardKpis = {
     specs: rows.length,
-    building: rows.filter((r) => BUILDING.has(r.stage)).length,
-    scoping: open.filter((r) => !BUILDING.has(r.stage)).length,
-    master: master !== null && master.section !== null ? master.counted : null,
+    building: stageGroups.building,
+    scoping: stageGroups.scoping,
+    stageGroups,
+    master: masterCount,
+    masterOpen: masterCount === null ? null : Math.max(0, masterCount.total - masterCount.closed),
+    masterPercent: masterCount === null || masterCount.total === 0 ? null : Math.floor((masterCount.closed / masterCount.total) * 100),
+    byType,
     claims: { closed: sum(open, (r) => r.progress.closed), total: sum(open, (r) => r.progress.total) },
     tasks: { landed: sum(open, (r) => r.tasks?.landed ?? 0), total: sum(open, (r) => r.tasks?.total ?? 0) },
     takeable: sum(rows, (r) => r.takeable.length),
+    openClaims: sum(rows, (r) => r.progress.total - r.progress.closed),
     warnings,
+    specsWithWarnings: rows.filter((r) => r.warnings.length > 0).length,
     fog,
+    specsWithFog: rows.filter((r) => r.fog > 0).length,
+    masterFog,
     attention: warnings + fog,
     archived: archive.length,
   };

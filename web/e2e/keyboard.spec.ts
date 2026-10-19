@@ -142,7 +142,10 @@ test.describe('keyboard', () => {
 test.describe('keyboard in the Specs panel', () => {
   test.use(atWidth(1440));
 
-  /** Opens a harbor dashboard URL and returns the active spec ids the server sent, in model order. */
+  /**
+   * Opens a harbor dashboard URL and returns the active spec ids the server sent, in model order. The callers pass
+   * `?open=specs`: since spec 021 the list folds behind its first five rows, and the selection walks every row.
+   */
   async function openDashboard(page: Page, path: string): Promise<string[]> {
     const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
     await page.goto(path);
@@ -162,7 +165,7 @@ test.describe('keyboard in the Specs panel', () => {
   }
 
   test('arrows and j/k move the selection in the Specs panel, without wrapping or navigating', async ({ page }) => {
-    const ids = await openDashboard(page, '/w/harbor');
+    const ids = await openDashboard(page, '/w/harbor?open=specs');
     expect(ids.length).toBeGreaterThanOrEqual(3);
     const rows = rowsOf(page);
     await expect(rows).toHaveCount(ids.length);
@@ -186,11 +189,11 @@ test.describe('keyboard in the Specs panel', () => {
     await expectSelected(page, ids.at(-1) ?? '');
     await page.keyboard.press('Home');
     await expectSelected(page, ids[0] ?? '');
-    await expect(page).toHaveURL(/\/w\/harbor$/);
+    await expect(page).toHaveURL(/\/w\/harbor\?open=specs$/);
   });
 
   test('the selection moves in the order the sort query names', async ({ page }) => {
-    const ids = await openDashboard(page, '/w/harbor?sort=id');
+    const ids = await openDashboard(page, '/w/harbor?sort=id&open=specs');
     const byId = [...ids].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
     const rows = rowsOf(page);
     await expect(rows).toHaveCount(ids.length);

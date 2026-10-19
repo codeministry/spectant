@@ -3204,6 +3204,7 @@
     ],
     "counts": {
       "rows": 83,
+      "done": 27,
       "boxes": {
         "landed": 27,
         "total": 83

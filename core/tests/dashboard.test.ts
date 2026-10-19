@@ -136,6 +136,96 @@ describe('harbor: the README Expected column', () => {
   });
 });
 
+describe('kpi-band: each workspace KPI tile carries its reference (spec 021, ISC-245)', () => {
+  // harbor has warnings, fog in the master and in a spec, an archived spec, and 007 whose frontmatter `phase:` says
+  // building while its derived stage is done: the case where a split by `phase:` and one by stage disagree.
+  const m = model('harbor');
+  const { kpis } = m;
+  const count = (rows: readonly DashboardSpecRow[], of: (r: DashboardSpecRow) => boolean): number => rows.filter(of).length;
+
+  test('the master tile reads its open count and its ring percent from the model (ISC-255)', () => {
+    const master = kpis.master;
+    if (master === null) throw new Error('harbor has a master with claims');
+    expect(kpis.masterOpen).toBe(master.total - master.closed);
+    expect(kpis.masterPercent).toBe(Math.floor((master.closed / master.total) * 100));
+  });
+
+  test('the type chips read one count per type present from the model, in name order (ISC-255)', () => {
+    const present = [...new Set(m.specs.flatMap((r) => (r.type === null ? [] : [r.type])))].sort();
+    expect(present.length).toBeGreaterThan(1);
+    expect(Object.keys(kpis.byType)).toEqual(present);
+    for (const type of present) expect(kpis.byType[type], type).toBe(count(m.specs, (r) => r.type === type));
+  });
+
+  test('Takeable stands against the open claims of the same active specs', () => {
+    expect(kpis.takeable).toBe(5);
+    expect(kpis.openClaims).toBe(24);
+    expect(kpis.openClaims).toBe(m.specs.reduce((n, r) => n + r.progress.total - r.progress.closed, 0));
+  });
+
+  test('Specs splits into stage groups from one derivation, the field the spec list filters by', () => {
+    expect(Object.fromEntries(m.specs.map((r) => [r.id, r.stageGroup]))).toEqual({
+      '004': 'building',
+      '005': 'scoping',
+      '006': 'scoping',
+      '002': 'building',
+      '009': 'building',
+      '003': 'scoping',
+      '008': 'building',
+      '007': 'complete',
+    });
+    // The filter counts rows by `stageGroup`; the tile reads `stageGroups`: the same numbers, summing to `specs`.
+    expect(kpis.stageGroups).toEqual({
+      scoping: count(m.specs, (r) => r.stageGroup === 'scoping'),
+      building: count(m.specs, (r) => r.stageGroup === 'building'),
+      complete: count(m.specs, (r) => r.stageGroup === 'complete'),
+    });
+    expect(kpis.stageGroups).toEqual({ scoping: 3, building: 4, complete: 1 });
+    expect(kpis.stageGroups.building).toBe(kpis.building);
+    expect(kpis.stageGroups.scoping).toBe(kpis.scoping);
+    // The group follows the derived stage, not the frontmatter: 007 is written `building` and counts as complete.
+    expect(row(m, '007').phase).toBe('building');
+    expect(row(m, '007').stageGroup).toBe('complete');
+  });
+
+  test('Warnings and open fog are two numbers, each with its own reference; attention stays for existing readers', () => {
+    expect(kpis.warnings).toBe(8);
+    expect(kpis.specsWithWarnings).toBe(5);
+    expect(kpis.specsWithWarnings).toBe(count(m.specs, (r) => r.warnings.length > 0));
+    expect(kpis.fog).toBe(4);
+    expect(kpis.masterFog).toBe(2);
+    expect(kpis.specsWithFog).toBe(1);
+    expect(kpis.specsWithFog).toBe(count(m.specs, (r) => r.fog > 0));
+    expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
+  });
+
+  test('the archived count stays in the model for the spec list head', () => {
+    expect(kpis.archived).toBe(1);
+    expect(kpis.archived).toBe(m.archive.length);
+  });
+
+  test('every dashboard fixture: the references hold their invariants', () => {
+    for (const name of fixtureTrees()) {
+      const f = model(name);
+      const k = f.kpis;
+      const groups = k.stageGroups;
+      expect(groups, name).toBeDefined();
+      expect(groups.scoping + groups.building + groups.complete, name).toBe(k.specs);
+      expect(f.specs.every((r) => Object.keys(groups).includes(r.stageGroup)), name).toBe(true);
+      expect(k.openClaims, name).toBeGreaterThanOrEqual(k.takeable);
+      expect(k.specsWithWarnings, name).toBe(count(f.specs, (r) => r.warnings.length > 0));
+      expect(k.specsWithFog, name).toBe(count(f.specs, (r) => r.fog > 0));
+      expect(k.masterFog + f.specs.reduce((n, r) => n + r.fog, 0), name).toBe(k.fog);
+      // The master tile's open count and percent (ISC-255): null without a master, the percent also without claims.
+      expect(k.masterOpen, name).toBe(k.master === null ? null : k.master.total - k.master.closed);
+      expect(k.masterPercent, name).toBe(k.master === null || k.master.total === 0 ? null : Math.floor((k.master.closed / k.master.total) * 100));
+      // The type chips' counts: one entry per type present, together the rows that carry a type.
+      expect(Object.values(k.byType).reduce((n, c) => n + c, 0), name).toBe(count(f.specs, (r) => r.type !== null));
+      for (const [type, c] of Object.entries(k.byType)) expect(c, `${name} ${type}`).toBe(count(f.specs, (r) => r.type === type));
+    }
+  });
+});
+
 describe('lantern, empty-master and the frozen corpora', () => {
   test('lantern: two specs, both reviewed, no warning, no archive, no TL;DR', () => {
     const m = model('lantern');
@@ -573,5 +663,51 @@ describe('worktree: each row and spec head carry the spec worktree, the read sou
     const head002 = page('002-web-console').head;
     expect([head002.worktree, head002.source, head002.main]).toEqual([null, 'main', null]);
     expect(page('006-partial-push').warnings.map((w) => w.kind)).toContain('worktree-branch-mismatch');
+  });
+});
+
+describe('brief lang: the TL;DR names its primary language in `lang:` (spec 021, ISC-247)', () => {
+  const harbor = readTree('harbor');
+  const tldr = harbor.tldr ?? '';
+  const plain = model('harbor');
+  /** Harbor's tldr.md with `line` added to its frontmatter, after `generated:`. */
+  const withLine = (line: string): string => tldr.replace(/^(generated: .*)$/m, `$1\n${line}`);
+  const brief = (text: string): DashboardModel => buildDashboard({ ...harbor, tldr: text });
+  /** Every diagnostic and row warning of the model as text, so a `lang` diagnostic anywhere shows up. */
+  const noise = (m: DashboardModel): string[] => strings([m.diagnostics, m.specs.map((r) => r.warnings)]);
+
+  test('brief lang: `lang: de` reaches the brief model', () => {
+    expect(tldr).toContain('generated: ');
+    expect(brief(withLine('lang: de')).brief?.lang).toBe('de');
+    expect(brief(withLine('lang: de-CH')).brief?.lang).toBe('de-CH');
+    expect(brief(withLine('lang:   en  ')).brief?.lang).toBe('en');
+  });
+
+  test('brief lang: without `lang:` the brief names none and nothing anywhere warns about it', () => {
+    expect(tldr).not.toMatch(/^lang:/m);
+    const m = brief(tldr);
+    expect(m.brief?.lang).toBeNull();
+    expect(noise(m).filter((s) => /lang/i.test(s))).toEqual([]);
+    expect(m.diagnostics).toEqual(plain.diagnostics);
+  });
+
+  test('brief lang: an empty or malformed `lang:` is null, without a diagnostic', () => {
+    for (const line of ['lang:', 'lang: ""', 'lang: deutsch!', 'lang: 1de', 'lang: de_DE', 'lang: d']) {
+      const m = brief(withLine(line));
+      expect([line, m.brief?.lang]).toEqual([line, null]);
+      expect(m.diagnostics).toEqual(plain.diagnostics);
+    }
+  });
+
+  test('brief lang: a stale TL;DR still carries its language', () => {
+    const m = brief(withLine('lang: de'));
+    expect(m.brief?.stale).toBe(true);
+    expect(m.brief?.lang).toBe('de');
+  });
+
+  test('brief lang: the library fixture, the example FORMAT.md quotes, reads as `de`', () => {
+    const m = model('library');
+    expect(m.brief?.lang).toBe('de');
+    expect(noise(m).filter((s) => /lang/i.test(s))).toEqual([]);
   });
 });

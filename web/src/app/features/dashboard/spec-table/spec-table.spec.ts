@@ -1,12 +1,16 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { provideRouter, Router } from '@angular/router';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
+import { type Density, SETTINGS_URL, SettingsService } from '../../../core/settings.service';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
+import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { SpecTable } from './spec-table';
-import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readSpecRows } from './spec-table-model';
+import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
 /** A dashboard row as the server sends it (`DashboardSpecRow`), only the fields that matter overridden. */
 function wire(id: string, over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -16,6 +20,7 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
     title: `Spec ${id}`,
     type: 'feature',
     phase: 'scoping',
+    stageGroup: 'scoping',
     stage: 'review',
     progress: { closed: 0, total: 4 },
     nextCommand: `/spec-review ${id}`,
@@ -31,10 +36,11 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
 const LOCK = { id: 'ISC-1', session: 'spec-002-ISC-1', since: '2026-09-30T10:00:00Z', source: 'activity' };
 const BODY = {
   specs: [
-    wire('002', { phase: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.', taken: [LOCK] }),
+    wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.', taken: [LOCK] }),
     wire('003'),
   ],
   archive: [{ id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature' }],
+  kpis: { specs: 2, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 2 } },
 };
 
 const text = (el: Element | null | undefined): string => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
@@ -53,11 +59,12 @@ describe('SpecTable (prototype port, T89)', () => {
     });
   });
 
-  async function render(query: ListQuery = DEFAULT_QUERY, live: { changed?: ReadonlySet<string>; pending?: readonly string[] } = {}) {
+  async function render(query: ListQuery = DEFAULT_QUERY, live: { changed?: ReadonlySet<string>; pending?: readonly string[] } = {}, counts: SpecListCounts | null = readListCounts(BODY)) {
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(BODY));
     fixture.componentRef.setInput('archive', readArchiveRows(BODY));
+    fixture.componentRef.setInput('counts', counts);
     fixture.componentRef.setInput('query', query);
     if (live.changed) fixture.componentRef.setInput('changed', live.changed);
     if (live.pending) fixture.componentRef.setInput('pending', live.pending);
@@ -74,8 +81,24 @@ describe('SpecTable (prototype port, T89)', () => {
     const heading = host.querySelector('.t-head h2#specs');
     expect(text(heading)).toBe('Specs');
     expect(heading?.getAttribute('tabindex')).toBe('-1');
-    expect(text(host.querySelector('.t-head .meta'))).toBe('2 · 1 archived');
+    // Spec 021 (T25): the counters are chips now, the archived count among them (was the meta text "2 · 1 archived").
+    expect([...host.querySelectorAll('.t-head [data-counts] ui-chip')].map(text)).toEqual(['2 specs', '1 archived spec']);
     expect(host.querySelectorAll('.t-head [data-filter="phase"] button')).toHaveLength(3);
+  });
+
+  // Spec 021 · T83 (ISC-255): the chips carry the model's counts, the stage-group split the Specs tile shows, and the
+  // type counts `kpis.byType`; the panel counts no rows itself, so served numbers no grouping of the rows gives stand.
+  it('shows the served chip counts, never a count of its rows (ISC-255)', async () => {
+    const served = { specs: 9, stageGroups: { scoping: 7, building: 0, complete: 2 }, specsWithFog: 3, byType: { bug: 5, feature: 4 } };
+    const { host } = await render(DEFAULT_QUERY, {}, served);
+    const chips = (filter: string) => [...host.querySelectorAll(`.t-head [data-filter="${filter}"] button`)].map(text);
+    expect(chips('phase')).toEqual(['All 9', 'scoping 7', 'complete 2', 'fog 3']);
+    expect(chips('type')).toEqual(['All 9', 'bug 5', 'feature 4']);
+  });
+
+  it('shows no filter chips without the model counts', async () => {
+    const { host } = await render(DEFAULT_QUERY, {}, null);
+    expect(host.querySelectorAll('.t-head [data-filter] button')).toHaveLength(0);
   });
 
   it('sorts through a popover menu (Stage / ID / Progress), not a native select', async () => {
@@ -112,11 +135,39 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
     expect(rowA.querySelector('.rtrack .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
     expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
-    expect(text(rowA.querySelector('.rtrack ui-chip'))).toBe('building');
+    expect(text(rowA.querySelector('.rtrack ui-chip.phase'))).toBe('building');
     expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
     expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(rowB.querySelector('.rtitle .d')).toBeNull();
     expect(rowB.querySelector('.agent-dot')).toBeNull();
+  });
+
+  // Spec 021 · T73 · ISC-246.1 (design § P3 heights): at wide the row is one line, the description inline behind the
+  // title in the same cell, then mark, agent dot, priority, mini track, phase, then meter + a/b; nothing under the row.
+  it('lays the wide row out as one line: id | title · description | mark, agent, priority, track, phase | meter (T73)', async () => {
+    const { host } = await render();
+    const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
+    const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rtrack', 'rmeter']);
+    expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
+    expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
+    expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ragent', 'rprio', 'ui-stage-track', 'phase']);
+    expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(true);
+    expect(rowB.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(false);
+    expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
+    for (const row of [rowA, rowB]) {
+      expect([...row.children].filter((c) => !c.classList.contains('row-more')).map((c) => c.tagName.toLowerCase())).toEqual(['app-spec-row']);
+    }
+  });
+
+  // Spec 021 · T80: the sort control follows the counter chips in the DOM (and so in focus order), before the filters.
+  it('puts the sort control right behind the counter chips, before the filter chips (T80)', async () => {
+    const { host } = await render();
+    const head = host.querySelector('.t-head') as HTMLElement;
+    const sort = head.querySelector('[data-control="sort"]') as HTMLElement;
+    expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
+    const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
+    expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {
@@ -226,6 +277,8 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
   });
 
   async function renderHarbor(): Promise<HTMLElement> {
+    // Spec 021 (T25): harbor lists more rows than the fold shows; these pins read every row, so the list is open.
+    await TestBed.inject(Router).navigateByUrl('/?open=specs');
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(harbor));
@@ -256,32 +309,38 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     }
   });
 
-  // spec 024 (principal 2026-10-13, "Hybrid"): only a waiting spec's row carries its reason, without the command chip,
-  // which moved to the rail (design B23/B24); ISC-122.3's phrase is unchanged.
-  it("puts a waiting row's nextReason verbatim in ui-reason outside the row link, and no reason in any other row", async () => {
+  // spec 024 (principal 2026-10-13, "Hybrid"): only a waiting spec's row carries its reason, without the command chip;
+  // ISC-122.3's phrase is unchanged. Spec 021 (R1): the phrase is the row link's description, no visible line.
+  it("makes a waiting row's nextReason verbatim the row link's description, no line of its own, and no reason elsewhere", async () => {
     const host = await renderHarbor();
     let waiting = 0;
+    expect(host.querySelector('ui-reason, app-spec-row-guide, ui-command-chip')).toBeNull();
     for (const spec of GOLDEN.specs) {
-      const reason = host.querySelector<HTMLElement>(`ui-reason[data-reason="${spec.id}"]`);
+      const link = host.querySelector<HTMLElement>(`[data-spec-row="${spec.id}"]`);
+      const reason = host.querySelector<HTMLElement>(`#why-${spec.id}`);
       if (!WAITING_STAGES.has(spec.stage as Stage)) {
         expect(reason, spec.id).toBeNull();
+        expect(link?.getAttribute('aria-describedby') ?? '').not.toContain('why-');
         continue;
       }
       waiting += 1;
-      expect(reason, spec.id).not.toBeNull();
-      expect(reason?.hasAttribute('data-compact')).toBe(true);
-      expect(reason?.querySelector('.visually-hidden')?.textContent).toBe(spec.nextReason);
+      expect(reason?.textContent, spec.id).toBe(spec.nextReason);
+      expect(reason?.hidden).toBe(true);
       expect(reason?.closest('a')).toBeNull();
-      expect(reason?.parentElement).toBe(rowOf(host, spec.id).closest('li'));
-      expect(reason?.querySelector('ui-command-chip')).toBeNull();
+      expect(reason?.parentElement).toBe(rowOf(host, spec.id));
+      expect(link?.getAttribute('aria-describedby')?.split(' ')).toContain(`why-${spec.id}`);
+      expect(link?.getAttribute('title')).toContain(spec.nextReason);
     }
     expect(waiting).toBeGreaterThan(0);
   });
 
-  // Spec 020 · T26 · ISC-240: with guidance, a row whose spec waits on you reads "mark · sentence · chip", a row whose
-  // spec is next "ring · sentence · chip"; the mark is the visible word, never on a Next row or any other row.
-  it('marks exactly the rows in "Waits on you" and gives every row with an entry its whole sentence and chip', async () => {
+  // Spec 020 · T26 · ISC-240, refined by spec 021 (R1, T73): with guidance, a row whose spec waits on you carries the
+  // visible mark "Waits on you" in its line, a row whose spec is next the open ring; the entry's sentence is the row
+  // link's description and tooltip. No guide row, no command chip in the list; no mark on any other row.
+  it('marks exactly the rows in "Waits on you" in their line and makes every entry\'s sentence the row link\'s description', async () => {
     const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
+    // Spec 021 (T25): every harbor row in view, past the fold's first 5.
+    await TestBed.inject(Router).navigateByUrl('/?open=specs');
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(harbor));
@@ -295,26 +354,67 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     const next = own(guidance.next);
     expect(waits.length).toBeGreaterThan(0);
     expect(next.length).toBeGreaterThan(0);
-    const marked = [...host.querySelectorAll('[data-waits-mark]')].map((m) => m.closest('[data-reason]')?.getAttribute('data-reason'));
+    expect(host.querySelector('app-spec-row-guide, ui-reason, ui-command-chip')).toBeNull();
+    const marked = [...host.querySelectorAll('[data-waits-mark]')].map((m) => m.closest('li')?.querySelector('[data-spec-row]')?.getAttribute('data-spec-row'));
     expect(marked.sort()).toEqual(waits.map((e) => e.spec).sort());
     for (const [entry, kind] of [...waits.map((e) => [e, 'waits'] as const), ...next.map((e) => [e, 'next'] as const)]) {
-      const guide = host.querySelector<HTMLElement>(`app-spec-row-guide[data-reason="${entry.spec}"]`);
-      expect(guide, entry.spec).not.toBeNull();
-      expect(guide?.getAttribute('data-guide')).toBe(kind);
-      expect(guide?.parentElement).toBe(rowOf(host, entry.spec).closest('li'));
-      expect(guide?.closest('a')).toBeNull();
-      expect(text(guide?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
-      expect(guide?.querySelector('ui-glyph')?.getAttribute('data-shape') ?? null).toBe(kind === 'next' ? 'ring' : null);
-      const sentence = text(guide?.querySelector('[data-guide-sentence]') ?? null);
+      const li = rowOf(host, entry.spec);
+      const row = li.querySelector<HTMLElement>('app-spec-row');
+      const link = li.querySelector<HTMLElement>('[data-spec-row]');
+      expect(row?.getAttribute('data-mark'), entry.spec).toBe(kind);
+      // The mark leads the track cell, in the row's one line; outside the row link.
+      const mark = row?.querySelector('.rtrack > .rmark');
+      expect(mark?.parentElement?.firstElementChild).toBe(mark);
+      expect(mark?.closest('a')).toBeNull();
+      expect(text(row?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
+      expect(row?.querySelector('[data-next-mark] ui-glyph')?.getAttribute('data-shape') ?? null).toBe(kind === 'next' ? 'ring' : null);
+      const why = li.querySelector<HTMLElement>(`#why-${entry.spec}`);
+      expect(why?.hidden, entry.spec).toBe(true);
+      expect(why?.getAttribute('data-guide')).toBe(kind);
+      const sentence = text(why);
       expect(sentence.length, entry.spec).toBeGreaterThan(0);
       expect(sentence.startsWith('guidance.')).toBe(false);
-      expect(guide?.querySelector('ui-command-chip code')?.textContent).toBe(entry.command);
-      expect(host.querySelector(`ui-reason[data-reason="${entry.spec}"]`)).toBeNull();
+      const described = link?.getAttribute('aria-describedby')?.split(' ') ?? [];
+      expect(described.slice(0, kind === 'waits' ? 2 : 1)).toEqual(kind === 'waits' ? [`mark-${entry.spec}`, `why-${entry.spec}`] : [`why-${entry.spec}`]);
+      expect(link?.getAttribute('title')).toContain(sentence);
     }
     const guided = new Set([...waits, ...next].map((e) => e.spec));
     for (const spec of GOLDEN.specs.filter((s) => !guided.has(s.id))) {
-      expect(host.querySelector(`app-spec-row-guide[data-reason="${spec.id}"]`), spec.id).toBeNull();
+      expect(rowOf(host, spec.id).querySelector('app-spec-row')?.hasAttribute('data-mark'), spec.id).toBe(false);
+      expect(rowOf(host, spec.id).querySelector('.rmark'), spec.id).toBeNull();
     }
+  });
+
+  // Spec 021 · T74 (design § P3 heights): below 640 px of list the row's two lines are `id | title | a/b` over the mark
+  // (or, without guidance, the description) · phase · priority. The host attributes the 640 px query reads: a marked
+  // row hides its description there, so line 2 starts with the mark; the meter bar and the track are the query's to hide.
+  it('gives the compact row its two lines: the a/b in the meter cell, mark or description, phase and priority below (T74)', async () => {
+    const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
+    await TestBed.inject(Router).navigateByUrl('/?open=specs');
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(harbor));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    fixture.componentRef.setInput('guidance', guidance);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const waiting = guidance.waits.find((e) => e.item === 'spec');
+    const plain = GOLDEN.specs.find((s) => !guidanceEntryOf(guidance, s.id));
+    expect(waiting && plain).toBeTruthy();
+    for (const id of [waiting?.spec ?? '', plain?.id ?? '']) {
+      const row = rowOf(host, id).querySelector('app-spec-row') as HTMLElement;
+      // Line 1: id, title (the row link), a/b.
+      expect(row.querySelector('.rid .rnum')?.textContent.trim()).toBe(id);
+      expect(row.querySelector('.tline [data-spec-row]')).not.toBeNull();
+      expect(row.querySelector('.rmeter .frac')?.textContent).toMatch(/^\d+\/\d+$/);
+      // Line 2: phase and priority in the track cell, the mark first on a marked row.
+      expect(row.querySelector('.rtrack .phase')).not.toBeNull();
+      expect(row.querySelector('.rtrack .rprio')).not.toBeNull();
+    }
+    const marked = rowOf(host, waiting?.spec ?? '').querySelector('app-spec-row') as HTMLElement;
+    expect(marked.getAttribute('data-mark')).toBe('waits');
+    expect(marked.querySelector('.rtrack')?.firstElementChild?.hasAttribute('data-waits-mark')).toBe(true);
+    expect(rowOf(host, plain?.id ?? '').querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
   });
 });
 
@@ -322,7 +422,7 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
 // spec's "waits on NNN" chip stands behind the title as its own link to the blocker, never inside the row link and
 // without the partial meta; the hooks of the row link stay (data-spec-row, data-ref, roving tab stop).
 describe('SpecTable waits chip (T24, ISC-163)', () => {
-  const WAITS = { spec: '003', blockers: ['002'], heldTasks: 2, openTasks: 3, full: false };
+  const WAITS = { spec: '003', blockers: ['002'], heldTasks: 2, readyTasks: 1, openTasks: 3, full: false };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -363,7 +463,7 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
     expect(link?.parentElement).toBe(chip?.closest('ui-waits-chip')?.parentElement);
     expect(text(chip)).toBe('waits on 002');
     expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
-    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 of 3 open tasks');
+    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 waiting · 1 open');
     expect(host.querySelector('[data-waits-meta]')).toBeNull();
     // Keyboard order: the row link, then its chip.
     const order = [...host.querySelectorAll('a')].filter((a) => a === link || a === chip);
@@ -377,5 +477,269 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
     expect(named.join(' ')).toBe('002 Spec 002');
     expect(link?.closest('li')?.querySelector('ui-waits-chip')).toBeNull();
     expect(host.querySelectorAll('a.row-link a')).toHaveLength(0);
+  });
+});
+
+// Spec 021 (T25, ISC-246): the dashboard's spec list shows its head with the counters and its first 5 rows; the rest
+// stand behind "show all N", whose open state is `?open=specs`, so a reload keeps it.
+describe('SpecTable fold (spec 021, T25)', () => {
+  const MANY = {
+    specs: Array.from({ length: 22 }, (_, i) => wire(String(i + 2).padStart(3, '0'), i % 2 === 0 ? { phase: 'building', stageGroup: 'building', stage: 'build' } : {})),
+    archive: Array.from({ length: 17 }, (_, i) => ({ id: `1${String(i).padStart(2, '0')}`, slug: `1${String(i).padStart(2, '0')}-old`, title: 'Old', type: 'feature' })),
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderMany(url = '/', query: ListQuery = DEFAULT_QUERY, body: Record<string, unknown> = MANY) {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('archive', readArchiveRows(body));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const rowIds = () => [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((row) => row.dataset['specRow']);
+    const fold = () => host.querySelector<HTMLElement>('ui-disclosure[data-fold="specs"]');
+    const toggle = () => fold()?.querySelector<HTMLButtonElement>('button[aria-expanded]') ?? null;
+    return { fixture, host, router, rowIds, fold, toggle };
+  }
+
+  it('heads the list with the counters as one wrapping chip row, the archived count among them', async () => {
+    const { host } = await renderMany();
+    const chips = [...host.querySelectorAll<HTMLElement>('.t-head [data-counts] ui-chip')];
+    expect(chips.map(text)).toEqual(['22 specs', '17 archived specs']);
+    expect(chips.map((chip) => chip.dataset['count'])).toEqual(['active', 'archived']);
+    expect(host.querySelector('.t-head .meta')).toBeNull();
+  });
+
+  it('counts the archive from the KPI model when the page passes it', async () => {
+    const { fixture, host } = await renderMany();
+    fixture.componentRef.setInput('archivedCount', 1);
+    await fixture.whenStable();
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('1 archived spec');
+  });
+
+  it('shows the first 5 rows and folds the rest behind "Show all 22 specs", closed', async () => {
+    const { rowIds, fold, toggle } = await renderMany();
+    expect(rowIds()).toEqual(['002', '003', '004', '005', '006']);
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+    expect(text(toggle())).toBe('Show all 22 specs');
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(fold()?.querySelector('[data-spec-row]')).toBeNull();
+  });
+
+  it('opens on "show all N", writes `?open=specs` and keeps focus on the toggle', async () => {
+    const { fixture, router, rowIds, fold, toggle } = await renderMany('/?sel=spec:002');
+    toggle()?.focus();
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:002&open=specs');
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+    expect(rowIds()).toHaveLength(22);
+    expect(fold()?.querySelectorAll('[data-spec-row]')).toHaveLength(17);
+    expect(fold()?.querySelector('ol.rows-rest')?.getAttribute('start')).toBe('6');
+    expect(document.activeElement).toBe(toggle());
+
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:002');
+    expect(rowIds()).toHaveLength(5);
+  });
+
+  it('a reload with `?open=specs` shows the whole list', async () => {
+    const { rowIds, fold } = await renderMany('/?open=specs');
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(rowIds()).toHaveLength(22);
+  });
+
+  it('keeps one roving list over both parts: ↓ from row 5 lands on row 6; the toggle keeps its own arrow keys', async () => {
+    const { fixture, host, toggle } = await renderMany('/?open=specs');
+    const row = (id: string) => host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`);
+    row('006')?.focus();
+    row('006')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(row('007'));
+    expect(row('007')?.tabIndex).toBe(0);
+
+    toggle()?.focus();
+    toggle()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(toggle());
+  });
+
+  it('caps a filtered list the same way and counts its rows; no fold for 5 rows or fewer', async () => {
+    const building = await renderMany('/', { ...DEFAULT_QUERY, phase: 'building' });
+    expect(building.rowIds()).toHaveLength(5);
+    expect(text(building.toggle())).toBe('Show all 11 specs');
+
+    const few = await renderMany('/', DEFAULT_QUERY, { specs: MANY.specs.slice(0, 5), archive: [] });
+    expect(few.rowIds()).toHaveLength(5);
+    expect(few.fold()).toBeNull();
+  });
+
+  it('reads the fold in German', async () => {
+    const { fixture, toggle, host } = await renderMany();
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(toggle())).toBe('Alle 22 Specs zeigen');
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('17 archivierte Specs');
+  });
+});
+
+describe('SpecTable names (spec 021, T32, ISC-248)', () => {
+  const TYPED = {
+    specs: [wire('002', { goal: 'Serves the dashboard.' }), wire('003', { type: 'bug' }), wire('004')],
+    archive: [],
+    kpis: { specs: 3, stageGroups: { scoping: 3, building: 0, complete: 0 }, specsWithFog: 0, byType: { bug: 1, feature: 2 } },
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderTyped() {
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(TYPED));
+    fixture.componentRef.setInput('archive', readArchiveRows(TYPED));
+    fixture.componentRef.setInput('counts', readListCounts(TYPED));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    return { fixture, host: fixture.nativeElement as HTMLElement };
+  }
+  const allChip = (host: HTMLElement, group: string) => host.querySelector<HTMLButtonElement>(`[data-filter="${group}"] button`);
+
+  it('names the two "all" chips by their group, so no two chips share a name', async () => {
+    const { host } = await renderTyped();
+    expect(text(allChip(host, 'phase'))).toBe('All 3');
+    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('All 3 stages');
+    expect(text(allChip(host, 'type'))).toBe('All 3');
+    expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('All 3 types');
+    const named = [...host.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map((b) => b.getAttribute('aria-label') ?? text(b));
+    expect(new Set(named).size).toBe(named.length);
+  });
+
+  it('names the chips in German too', async () => {
+    const { fixture, host } = await renderTyped();
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('Alle 3 Stages');
+    expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('Alle 3 Typen');
+  });
+
+  it('names a row\'s "More…" by its spec once the description overflows, visible text first (label in name)', async () => {
+    const { fixture, host } = await renderTyped();
+    expect(host.querySelector('[data-more]')).toBeNull();
+    (fixture.componentInstance as unknown as { setOverflow(id: string, overflows: boolean): void }).setOverflow('002', true);
+    await fixture.whenStable();
+    const more = host.querySelector<HTMLButtonElement>('[data-more="002"]');
+    expect(text(more)).toBe('More…');
+    expect(more?.getAttribute('aria-label')).toBe('More… 002 Spec 002');
+    more?.click();
+    await fixture.whenStable();
+    expect(text(more)).toBe('Less');
+    expect(more?.getAttribute('aria-label')).toBe('Less 002 Spec 002');
+  });
+});
+
+// Spec 021 (T48, ISC-254): the row density comes from the stored setting; `?density=` overrides it for this view only
+// and never writes the setting. Compact drops the description: the title stands alone at wide, and line 2 of the
+// compact tier carries only mark, phase and priority.
+describe('SpecTable density (spec 021, T48, ISC-254)', () => {
+  async function renderWith(url: string, stored: Density) {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const settings = TestBed.inject(SettingsService);
+    const loaded = settings.load();
+    http.expectOne((r) => r.method === 'GET' && r.url === SETTINGS_URL).flush({ density: stored });
+    await loaded;
+    await TestBed.inject(Router).navigateByUrl(url);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(BODY));
+    fixture.componentRef.setInput('archive', readArchiveRows(BODY));
+    fixture.componentRef.setInput('counts', readListCounts(BODY));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const row = (id: string) => host.querySelector<HTMLElement>(`app-spec-row:has([data-spec-row="${id}"])`);
+    const writes = () => http.match((r) => r.url === SETTINGS_URL && r.method !== 'GET');
+    return { row, writes, settings };
+  }
+
+  it('a comfortable setting shows the description where it differs from the title', async () => {
+    const { row, writes } = await renderWith('/', 'comfortable');
+    expect(row('002')?.getAttribute('data-density')).toBe('comfortable');
+    expect(text(row('002')?.querySelector('.d'))).toBe('Serves the dashboard.');
+    expect(row('002')?.hasAttribute('data-desc')).toBe(true);
+    expect(row('002')?.querySelector('a.row-link')?.getAttribute('aria-describedby')).toContain('desc-002');
+    expect(row('003')?.querySelector('.d')).toBeNull();
+    expect(writes()).toEqual([]);
+  });
+
+  it('a compact setting drops the description: the title stands alone and the link names no description', async () => {
+    const { row, writes } = await renderWith('/', 'compact');
+    const compact = row('002');
+    expect(compact?.getAttribute('data-density')).toBe('compact');
+    expect(compact?.querySelector('.d')).toBeNull();
+    expect(compact?.hasAttribute('data-desc')).toBe(false);
+    expect(compact?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').not.toContain('desc-002');
+    expect(text(compact?.querySelector('a.row-link'))).toBe('Spec 002');
+    // Only the description leaves: agent dot, phase chip, priority, track and a/b stay.
+    expect(compact?.querySelector('.rtrack .agent-dot')).not.toBeNull();
+    expect(text(compact?.querySelector('.rtrack ui-chip.phase'))).toBe('building');
+    expect(compact?.querySelector('.rtrack ui-priority')).not.toBeNull();
+    expect(text(compact?.querySelector('.rmeter .frac'))).toBe('25/30');
+    expect(writes()).toEqual([]);
+  });
+
+  it('?density=compact overrides a comfortable setting for this view and writes no setting', async () => {
+    const { row, writes, settings } = await renderWith('/?density=compact', 'comfortable');
+    expect(row('002')?.getAttribute('data-density')).toBe('compact');
+    expect(row('002')?.querySelector('.d')).toBeNull();
+    expect(settings.settings().density).toBe('comfortable');
+    expect(writes()).toEqual([]);
+  });
+
+  it('?density=comfortable overrides a compact setting; an unknown value falls back to the setting', async () => {
+    const first = await renderWith('/?density=comfortable', 'compact');
+    expect(first.row('002')?.getAttribute('data-density')).toBe('comfortable');
+    expect(text(first.row('002')?.querySelector('.d'))).toBe('Serves the dashboard.');
+    TestBed.resetTestingModule();
+    const second = await renderWith('/?density=dense', 'compact');
+    expect(second.row('002')?.getAttribute('data-density')).toBe('compact');
+    expect(second.writes()).toEqual([]);
   });
 });

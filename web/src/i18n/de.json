@@ -35,8 +35,14 @@
     "skipToSpecs": "Zu den Specs springen",
     "titlePrefix": "Specs",
     "eyebrow": {
-      "dashboard": "Dashboard · {{count}} Specs",
-      "workspace": "{{workspace}} · {{count}} Specs"
+      "dashboard": {
+        "one": "Dashboard · {{count}} Spec",
+        "other": "Dashboard · {{count}} Specs"
+      },
+      "workspace": {
+        "one": "{{workspace}} · {{count}} Spec",
+        "other": "{{workspace}} · {{count}} Specs"
+      }
     },
     "search": {
       "short": "Specs durchsuchen …",
@@ -80,18 +86,37 @@
   "kpi": {
     "masterClaims": "Master-Claims",
     "specClaims": "Spec-Claims",
-    "open": "{{count}} offen",
+    "open": {
+      "one": "{{count}} offen",
+      "other": "{{count}} offen"
+    },
     "closedCaption": "{{percent}} % geschlossen · {{open}} offen",
+    "closedOpen": "{{closed}} geschlossen · {{open}} offen",
     "specs": "Specs",
     "takeable": "Nehmbar",
     "takeableNow": "Jetzt nehmbar",
     "attention": "Handlungsbedarf",
     "attentionDetail": "{{warnings}} Warnungen · {{fog}} offener Fog",
     "attentionCompact": "{{warnings}} · {{fog}} Fog",
+    "warnings": "Warnungen",
+    "fog": "Offener Fog",
+    "of": "von {{total}}",
+    "inSpecs": {
+      "one": "in {{count}} von {{total}} Spec",
+      "other": "in {{count}} von {{total}} Specs"
+    },
     "archive": "Archiv",
     "takeableCaption": "Claims bereit zum Bauen",
     "archiveCaption": "archivierte Spec",
-    "master": "Master"
+    "master": "Master",
+    "statement": {
+      "master": "Geschlossene Master-Claims; mehr ist besser",
+      "specClaims": "Geschlossene Spec-Claims; mehr ist besser",
+      "specs": "Abgeschlossene Specs; mehr ist besser",
+      "takeable": "Claims bereit zum Bauen; mehr ist besser",
+      "warnings": "Zu lösende Warnungen; weniger ist besser",
+      "fog": "Noch offene Fragen; weniger ist besser"
+    }
   },
   "brief": {
     "title": "Kurzfassung",
@@ -99,7 +124,12 @@
     "asOf": "Stand {{date}}",
     "stale": "veraltet",
     "more": "Mehr…",
-    "less": "Weniger"
+    "less": "Weniger",
+    "moreName": "Mehr… vom TL;DR",
+    "lessName": "Weniger vom TL;DR",
+    "showWhole": "Ganzes TL;DR zeigen",
+    "showWholeName": "Ganzes TL;DR zeigen, alle Abschnitte der Kurzfassung",
+    "lang": "Sprache des Textes: {{lang}}"
   },
   "specs": {
     "title": "Specs",
@@ -110,12 +140,30 @@
     },
     "meta": "{{active}} aktiv · {{archived}} archiviert",
     "metaShort": "{{active}} · {{archived}} archiviert",
-    "countSegment": "{{count}} Specs",
-    "typeMeta": "{{count}} {{type}} · {{archived}} archiviert",
+    "countSegment": {
+      "one": "{{count}} Spec",
+      "other": "{{count}} Specs"
+    },
+    "typeMeta": {
+      "one": "{{count}} {{type}} · {{archived}} archiviert",
+      "other": "{{count}} {{type}} · {{archived}} archiviert"
+    },
+    "showAll": {
+      "one": "Die {{count}} Spec zeigen",
+      "other": "Alle {{count}} Specs zeigen"
+    },
     "filter": {
       "label": "Nach Phase filtern",
       "typeLabel": "Nach Typ filtern",
       "all": "Alle",
+      "allStages": {
+        "one": "Alle {{count}} Stages",
+        "other": "Alle {{count}} Stages"
+      },
+      "allTypes": {
+        "one": "Alle {{count}} Typen",
+        "other": "Alle {{count}} Typen"
+      },
       "fog": "fog"
     },
     "sort": {
@@ -150,6 +198,8 @@
       "other": "{{count}} offene Fog-Einträge"
     },
     "agentWorking": "Agent {{session}} arbeitet",
+    "moreName": "Mehr… {{id}} {{title}}",
+    "lessName": "Weniger {{id}} {{title}}",
     "ideas": {
       "title": "Ideen · {{count}}",
       "label": "Ideen im Backlog"
@@ -158,6 +208,8 @@
   "nextUp": {
     "title": "Als Nächstes",
     "showAll": "Alle {{count}} anzeigen",
+    "moreName": "Mehr… {{entry}}, Next up",
+    "lessName": "Weniger {{entry}}, Next up",
     "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec-plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
@@ -189,13 +241,20 @@
         "other": "Teilt {{count}} Dateien mit"
       },
       "noEdge": "keine Kante",
-      "more": "+{{count}} weitere",
+      "more": {
+        "one": "+{{count}} weitere",
+        "other": "+{{count}} weitere"
+      },
       "paths": "Gemeinsame Dateien",
       "target": "in {{id}}",
       "copyTitle": "Kante für die tasks.md dieser Spec kopieren",
       "moreOverlaps": {
         "one": "+1 weitere Überschneidung",
         "other": "+{{count}} weitere Überschneidungen"
+      },
+      "disclosure": {
+        "one": "{{count}} Überschneidung",
+        "other": "{{count}} Überschneidungen"
       },
       "toHead": "Im Kopf zeigen",
       "region": "Überschneidungen mit anderen Specs"
@@ -213,7 +272,10 @@
   "overview": {
     "title": "Alle Workspaces",
     "eyebrow": "Spectant · {{workspaces}} Workspaces · {{specs}} Specs",
-    "showAllIn": "Alle {{count}} in {{workspace}} anzeigen →",
+    "showAllIn": {
+      "one": "{{count}} in {{workspace}} anzeigen →",
+      "other": "Alle {{count}} in {{workspace}} anzeigen →"
+    },
     "open": "{{workspace}} öffnen →",
     "empty": {
       "title": "Fügen Sie Ihren ersten Workspace hinzu",
@@ -267,7 +329,10 @@
     },
     "loading": "Index wird geladen …",
     "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}",
-    "wsSpecs": "{{count}} Specs"
+    "wsSpecs": {
+      "one": "{{count}} Spec",
+      "other": "{{count}} Specs"
+    }
   },
   "shortcuts": {
     "title": "Tastenkürzel",
@@ -349,14 +414,24 @@
       "intro": "Wie Spectant auf diesem Rechner aussieht. Nichts hier berührt ein Repository.",
       "display": "Anzeige, noch nicht gespeichert",
       "density": "Dichte",
+      "densityHint": "Gilt für Board, Flow-Ansicht und Spec-Zeile.",
       "comfortable": "Bequem",
       "compact": "Kompakt",
       "reducedMotion": "Weniger Bewegung"
     },
     "workspacesCard": {
-      "registered": "{{ count }} registriert",
-      "readable": "{{ count }} lesbar",
-      "missing": "{{ count }} Ordner nicht gefunden",
+      "registered": {
+        "one": "{{ count }} registriert",
+        "other": "{{ count }} registriert"
+      },
+      "readable": {
+        "one": "{{ count }} lesbar",
+        "other": "{{ count }} lesbar"
+      },
+      "missing": {
+        "one": "{{ count }} Ordner nicht gefunden",
+        "other": "{{ count }} Ordner nicht gefunden"
+      },
       "registry": "Register im Datenverzeichnis der App",
       "manage": "Workspaces verwalten",
       "manageMeta": "hinzufügen, umbenennen, umsortieren, entfernen"
@@ -397,7 +472,10 @@
   },
   "settingsWorkspaces": {
     "title": "Workspaces",
-    "registered": "· {{count}} registriert",
+    "registered": {
+      "one": "· {{count}} registriert",
+      "other": "· {{count}} registriert"
+    },
     "add": {
       "path": "Repository-Pfad",
       "pathPlaceholder": "~/code/mein-repo",
@@ -526,7 +604,10 @@
       "unreadable": "Nicht lesbar",
       "manage": "Workspaces verwalten",
       "head": "Alle Workspaces ({{count}})",
-      "showAll": "Alle {{count}} Workspaces zeigen"
+      "showAll": {
+        "one": "{{count}} Workspace zeigen",
+        "other": "Alle {{count}} Workspaces zeigen"
+      }
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
@@ -607,12 +688,18 @@
       "updated": "Aktualisiert vor",
       "ago": "{{value}} {{unit}}",
       "heading": "Live",
-      "reading": "Liest {{count}} Workspace(s) · alle {{seconds}} s",
+      "reading": {
+        "one": "Liest {{count}} Workspace · alle {{seconds}} s",
+        "other": "Liest {{count}} Workspaces · alle {{seconds}} s"
+      },
       "board": "Round-Board öffnen",
       "services": "Dev-Dienste",
       "openService": "{{kind}} auf Port {{port}} in neuem Tab öffnen",
       "noServices": "In diesem Workspace läuft kein Dev-Dienst.",
-      "servicesUp": "{{count}} Dev-Dienst(e) aktiv",
+      "servicesUp": {
+        "one": "{{count}} Dev-Dienst aktiv",
+        "other": "{{count}} Dev-Dienste aktiv"
+      },
       "servicesDown": "Kein Dev-Dienst aktiv"
     },
     "zen": {
@@ -658,8 +745,14 @@
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "planning": "{{milestones}} Meilensteine · {{features}} Features",
-        "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
-        "milestones": "{{count}} Meilensteine · nächster {{next}}",
+        "features": {
+          "one": "{{count}} Feature · {{closed}}/{{total}} geschlossen",
+          "other": "{{count}} Features · {{closed}}/{{total}} geschlossen"
+        },
+        "milestones": {
+          "one": "{{count}} Meilenstein · nächster {{next}}",
+          "other": "{{count}} Meilensteine · nächster {{next}}"
+        },
         "library": "{{docs}} Dokumente · {{stale}} veraltet · {{missing}} fehlen",
         "libraryLoading": "Alle Dokumente, Artefakte und Prototypen"
       }
@@ -842,10 +935,22 @@
       "lane": "Nach Lane filtern",
       "status": "Nach Status filtern",
       "all": "alle",
+      "allLanes": {
+        "one": "Alle {{count}} Lanes",
+        "other": "Alle {{count}} Lanes"
+      },
+      "allStatuses": {
+        "one": "Alle {{count}} Status",
+        "other": "Alle {{count}} Status"
+      },
       "hideDone": "Erledigte ausblenden"
     },
     "landed": "{{landed}}/{{total}} Kästchen abgehakt",
     "result": "{{shown}} von {{total}} Tasks",
+    "doneOfTotal": {
+      "one": "{{done}} von {{count}} Task fertig oder geschlossen",
+      "other": "{{done}} von {{count}} Tasks fertig oder geschlossen"
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -884,7 +989,10 @@
       "operator": "Ihr Schritt · haken Sie ihn ab, wenn er erledigt ist",
       "struck": "{{text}}"
     },
-    "doneHidden": "+ {{count}} weitere erledigt · {{ids}}",
+    "doneHidden": {
+      "one": "+ {{count}} weiterer erledigt · {{ids}}",
+      "other": "+ {{count}} weitere erledigt · {{ids}}"
+    },
     "doneHiddenBody": "Ausgeblendet, damit die offene Arbeit im Blick bleibt.",
     "show": "Anzeigen",
     "helper": "Ein Häkchen schreibt nur das Kästchen in tasks.md — es schließt nie einen Claim. Schreibvorgänge pausieren, solange ein Agent einen Claim dieser Spec hält.",
@@ -926,7 +1034,10 @@
       "claimsMeta": "{{open}} offen · {{takeable}} übernehmbar",
       "tasks": "Tasks erledigt",
       "round": "Runde",
-      "agentsWorking": "{{count}} Agenten arbeiten",
+      "agentsWorking": {
+        "one": "{{count}} Agent arbeitet",
+        "other": "{{count}} Agenten arbeiten"
+      },
       "noAgent": "Kein Agent arbeitet",
       "gates": "Gates",
       "waiting": "Liegt bei Ihnen",
@@ -968,11 +1079,20 @@
     "tiles": {
       "label": "In dieser Spec",
       "status": {
-        "entries": "{{count}} Timeline-Einträge",
-        "warnings": "{{count}} Warnungen"
+        "entries": {
+          "one": "{{count}} Timeline-Eintrag",
+          "other": "{{count}} Timeline-Einträge"
+        },
+        "warnings": {
+          "one": "{{count}} Warnung",
+          "other": "{{count}} Warnungen"
+        }
       },
       "live": {
-        "working": "{{count}} Agenten arbeiten",
+        "working": {
+          "one": "{{count}} Agent arbeitet",
+          "other": "{{count}} Agenten arbeiten"
+        },
         "idle": "Kein Agent arbeitet",
         "source": "Lock-Quelle: {{source}}"
       },
@@ -984,12 +1104,21 @@
       "library": {
         "present": "{{names}}",
         "none": "Noch kein Plan, Design oder Constitution",
-        "decisions": "{{count}} Entscheidungen"
+        "decisions": {
+          "one": "{{count}} Entscheidung",
+          "other": "{{count}} Entscheidungen"
+        }
       },
       "notes": {
         "later": "Notizen kommen mit einem späteren Task",
-        "count": "{{count}} Notizen",
-        "board": "{{count}} Runden auf dem Board"
+        "count": {
+          "one": "{{count}} Notiz",
+          "other": "{{count}} Notizen"
+        },
+        "board": {
+          "one": "{{count}} Runde auf dem Board",
+          "other": "{{count}} Runden auf dem Board"
+        }
       }
     },
     "docNames": {
@@ -1061,7 +1190,10 @@
       "copy": "Befehl kopieren",
       "copied": "Kopiert",
       "manual": "Markieren und ⌘C drücken",
-      "takeable": "{{count}} übernehmbar",
+      "takeable": {
+        "one": "{{count}} übernehmbar",
+        "other": "{{count}} übernehmbar"
+      },
       "locked": "gesperrt durch {{session}}",
       "free": "keine Sperre aktiv"
     },
@@ -1184,11 +1316,20 @@
     "specCrumb": "Spec {{id}}",
     "more": "Mehr…",
     "less": "Weniger",
+    "goalMore": "Mehr… Goal von {{id}}",
+    "goalLess": "Weniger, Goal von {{id}}",
+    "details": "Details zu {{id}}",
     "notes": "Notizen",
-    "notesCount": "{{count}} Notizen",
+    "notesCount": {
+      "one": "{{count}} Notiz",
+      "other": "{{count}} Notizen"
+    },
     "updated": "aktualisiert {{time}}",
     "round": "Runde {{round}}",
-    "uncommitted": "{{count}} Dateien nicht committet",
+    "uncommitted": {
+      "one": "{{count}} Datei nicht committet",
+      "other": "{{count}} Dateien nicht committet"
+    },
     "agent": {
       "on": "an {{claim}} · {{time}}",
       "paused": "Schreiben pausiert"
@@ -1202,7 +1343,10 @@
     }
   },
   "refresh": {
-    "newSpecs": "{{count}} neu",
+    "newSpecs": {
+      "one": "{{count}} neu",
+      "other": "{{count}} neu"
+    },
     "announcement": "Dashboard aktualisiert: {{changed}} geändert, {{added}} neu"
   },
   "notes": {
@@ -1318,7 +1462,10 @@
       "counts": "{{landed}}/{{total}}",
       "meter": "{{lane}}: Karten nach Abschnitt",
       "toggle": "Bahn {{lane}} ein- oder ausblenden",
-      "waiting": "· {{count}} wartend",
+      "waiting": {
+        "one": "· {{count}} wartend",
+        "other": "· {{count}} wartend"
+      },
       "hide": "Lane {{lane}} ausblenden",
       "hidden": "{{lane}} · ausgeblendet",
       "show": "zeigen",
@@ -1326,8 +1473,14 @@
       "showAll": "alle {{count}} zeigen",
       "quiet": "nichts in Arbeit",
       "next": "als Nächstes",
-      "inRound": "{{count}} in der Runde",
-      "runCount": "{{count}} {{state}}",
+      "inRound": {
+        "one": "{{count}} in der Runde",
+        "other": "{{count}} in der Runde"
+      },
+      "runCount": {
+        "one": "{{count}} {{state}}",
+        "other": "{{count}} {{state}}"
+      },
       "waitsName": "{{lane}}, wartet auf {{ids}}"
     },
     "section": {
@@ -1413,15 +1566,24 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} Karten · {{specs}} Specs · {{ideas}} Ideen",
-      "eyebrowCards": "{{count}} Karten",
+      "eyebrowCards": {
+        "one": "{{count}} Karte",
+        "other": "{{count}} Karten"
+      },
       "index": "Stages",
       "indexPrev": "Vorherige Spalte",
       "indexNext": "Nächste Spalte",
-      "sheetBar": "Dieses Board · {{count}} Karten",
+      "sheetBar": {
+        "one": "Dieses Board · {{count}} Karte",
+        "other": "Dieses Board · {{count}} Karten"
+      },
       "needsYou": "Wartet auf Sie",
       "needsNone": "Nichts wartet auf Sie.",
       "waitsCount": "Liegt bei Ihnen {{count}}",
-      "bandMeter": "{{done}} von {{count}} erledigt",
+      "bandMeter": {
+        "one": "{{done}} von {{count}} erledigt",
+        "other": "{{done}} von {{count}} erledigt"
+      },
       "search": {
         "label": "Karten durchsuchen",
         "placeholder": "ID, Titel, Feature"
@@ -1433,12 +1595,24 @@
       },
       "column": {
         "empty": "leer",
-        "cards": "{{count}} Karten",
-        "waitsOnYou": "{{count}} warten auf Sie",
-        "name": "{{stage}}, {{count}} Karten, {{waiting}} warten auf Sie",
+        "cards": {
+          "one": "{{count}} Karte",
+          "other": "{{count}} Karten"
+        },
+        "waitsOnYou": {
+          "one": "{{count}} wartet auf Sie",
+          "other": "{{count}} warten auf Sie"
+        },
+        "name": {
+          "one": "{{stage}}, {{count}} Karte, {{waiting}} warten auf Sie",
+          "other": "{{stage}}, {{count}} Karten, {{waiting}} warten auf Sie"
+        },
         "stub": "{{stage}}, keine Karten",
         "emptyIn": "Keine Karte in {{stage}}",
-        "hiddenByFilters": "{{count}} durch Filter ausgeblendet",
+        "hiddenByFilters": {
+          "one": "{{count}} durch Filter ausgeblendet",
+          "other": "{{count}} durch Filter ausgeblendet"
+        },
         "fixedGate": "festes Gate",
         "gateReviewed": "Review-Marke",
         "gateClosed": "jeder Claim geschlossen",
@@ -1487,8 +1661,14 @@
         },
         "collapse": "{{lane}} einklappen",
         "expand": "{{lane}} ausklappen",
-        "omittedFeatures": "{{count}} Features haben keine Karte in {{stage}}",
-        "omittedMilestones": "{{count}} Meilensteine haben keine Karte in {{stage}}",
+        "omittedFeatures": {
+          "one": "{{count}} Feature hat keine Karte in {{stage}}",
+          "other": "{{count}} Features haben keine Karte in {{stage}}"
+        },
+        "omittedMilestones": {
+          "one": "{{count}} Meilenstein hat keine Karte in {{stage}}",
+          "other": "{{count}} Meilensteine haben keine Karte in {{stage}}"
+        },
         "noFeature": "Kein Feature"
       },
       "card": {
@@ -1543,7 +1723,10 @@
         }
       },
       "live": {
-        "changed": "{{count}} Karten geändert · anzeigen"
+        "changed": {
+          "one": "{{count}} Karte geändert · anzeigen",
+          "other": "{{count}} Karten geändert · anzeigen"
+        }
       },
       "empty": {
         "noSpecs": "Noch keine Specs in {{ws}}",
@@ -1559,7 +1742,10 @@
         "segment": "{{stage}} {{count}}",
         "prev": "Vorherige Spalte: {{stage}}",
         "next": "Nächste Spalte: {{stage}}",
-        "back": "{{stage}}, {{count}} Karten · zurück zu den Stages",
+        "back": {
+          "one": "{{stage}}, {{count}} Karte · zurück zu den Stages",
+          "other": "{{stage}}, {{count}} Karten · zurück zu den Stages"
+        },
         "tray": "Ablageziele: die Stages"
       }
     },
@@ -1740,7 +1926,10 @@
         "one": "{{count}} Feature",
         "other": "{{count}} Features"
       },
-      "days": "{{count}} T",
+      "days": {
+        "one": "{{count}} T",
+        "other": "{{count}} T"
+      },
       "boundary": "{{name}} · {{date}}",
       "quarter": "Q{{quarter}} {{year}}",
       "emptyAxis": {
@@ -1758,8 +1947,14 @@
       "filters": "Filter",
       "specEdges": "Spec-Kanten",
       "rebundle": "Wieder bündeln",
-      "bundleDone": "{{count}} Features erledigt",
-      "bundleNoSpec": "+{{count}} Features ohne Spec",
+      "bundleDone": {
+        "one": "{{count}} Feature erledigt",
+        "other": "{{count}} Features erledigt"
+      },
+      "bundleNoSpec": {
+        "one": "+{{count}} Feature ohne Spec",
+        "other": "+{{count}} Features ohne Spec"
+      },
       "openBundle": "{{name}}, Features anzeigen",
       "label": "Planungsdiagramm",
       "drawing": "Diagramm wird gezeichnet…",
@@ -1776,7 +1971,10 @@
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
-      "unheld": "{{count}} ohne Spec",
+      "unheld": {
+        "one": "{{count}} ohne Spec",
+        "other": "{{count}} ohne Spec"
+      },
       "unheldHint": "Ein Claim des Masters, den noch keine Spec übernommen hat. Er schliesst erst, wenn eine Spec ihn hält und seine Probe besteht.",
       "unheldClaims": "Claims ohne Spec von {{id}}",
       "allHeld": "alle in Specs",
@@ -1800,7 +1998,10 @@
       "whyLess": "weniger",
       "valueText": "{{closed}} von {{total}} Claims geschlossen",
       "meterLabel": "{{id}} Claims geschlossen",
-      "moreChips": "+{{count}} weitere",
+      "moreChips": {
+        "one": "+{{count}} weitere",
+        "other": "+{{count}} weitere"
+      },
       "filter": {
         "label": "Features filtern",
         "all": "Alle",
@@ -1834,9 +2035,15 @@
         "closed": "Claims geschlossen · {{name}}",
         "mostOpen": "Meiste offene Claims"
       },
-      "meta": "{{count}} Meilensteine · nächster: {{name}}, {{date}}",
+      "meta": {
+        "one": "{{count}} Meilenstein · nächster: {{name}}, {{date}}",
+        "other": "{{count}} Meilensteine · nächster: {{name}}, {{date}}"
+      },
       "metaNone": "kein anstehender Meilenstein",
-      "metaUndated": "{{count}} Meilensteine · nächster: {{name}}",
+      "metaUndated": {
+        "one": "{{count}} Meilenstein · nächster: {{name}}",
+        "other": "{{count}} Meilensteine · nächster: {{name}}"
+      },
       "caption": "Nach Zieldatum sortiert",
       "undated": "kein Zieldatum",
       "meterLabel": "{{name}} Claims geschlossen",
@@ -1861,7 +2068,10 @@
     },
     "breadcrumb": {
       "label": "Pfad",
-      "more": "{{count}} weitere Features",
+      "more": {
+        "one": "{{count}} weiteres Feature",
+        "other": "{{count}} weitere Features"
+      },
       "archived": "archiviert",
       "unknownMilestone": "nicht im Block ## Milestones des Masters"
     },
@@ -1891,7 +2101,10 @@
     "parents": "Eltern",
     "children": "Kinder",
     "blockers": "Blocker",
-    "more": "+{{count}} weitere",
+    "more": {
+      "one": "+{{count}} weitere",
+      "other": "+{{count}} weitere"
+    },
     "noBlockers": "Keine Blocker",
     "waiting": "offen",
     "claimsClosed": "Claims geschlossen",
@@ -2149,8 +2362,14 @@
   },
   "backlog": {
     "board": {
-      "moved": "{{id}} an Position {{position}} von {{count}} in {{group}}",
-      "movedNone": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein",
+      "moved": {
+        "one": "{{id}} an Position {{position}} von {{count}} in {{group}}",
+        "other": "{{id}} an Position {{position}} von {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein",
+        "other": "{{id}} an Position {{position}} von {{count}}, ohne Meilenstein"
+      },
       "otherMilestone": "Anderer Meilenstein"
     },
     "reorder": {
@@ -2170,8 +2389,14 @@
       "title": "Priorität · {{id}}"
     },
     "tree": {
-      "moved": "{{id}} an Position {{position}} von {{count}} in {{group}}",
-      "movedNone": "{{id}} an Position {{position}} von {{count}} ohne Meilenstein",
+      "moved": {
+        "one": "{{id}} an Position {{position}} von {{count}} in {{group}}",
+        "other": "{{id}} an Position {{position}} von {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} an Position {{position}} von {{count}} ohne Meilenstein",
+        "other": "{{id}} an Position {{position}} von {{count}} ohne Meilenstein"
+      },
       "atFirst": "{{id}} steht schon an erster Stelle in {{group}}",
       "atFirstNone": "{{id}} steht schon an erster Stelle ohne Meilenstein",
       "atLast": "{{id}} steht schon an letzter Stelle in {{group}}",
@@ -2330,9 +2555,18 @@
       "missingBodyPlain": "Die Stage der Spec verlangt dieses Dokument."
     },
     "head": {
-      "docs": "{{count}} Dokumente",
-      "fog": "{{count}} offen",
-      "fogLabel": "Die {{count}} offenen Punkte von {{spec}} zeigen",
+      "docs": {
+        "one": "{{count}} Dokument",
+        "other": "{{count}} Dokumente"
+      },
+      "fog": {
+        "one": "{{count}} offen",
+        "other": "{{count}} offen"
+      },
+      "fogLabel": {
+        "one": "Den {{count}} offenen Punkt von {{spec}} zeigen",
+        "other": "Die {{count}} offenen Punkte von {{spec}} zeigen"
+      },
       "claims": "Claims",
       "claimsText": "{{closed}} von {{total}} Claims geschlossen",
       "tasks": "Tasks",
@@ -2359,12 +2593,21 @@
     },
     "evidence": {
       "toggle": "Evidence",
-      "label": "{{count}} Evidence-Dateien von {{spec}}",
-      "more": "{{count}} weitere zeigen"
+      "label": {
+        "one": "{{count}} Evidence-Datei von {{spec}}",
+        "other": "{{count}} Evidence-Dateien von {{spec}}"
+      },
+      "more": {
+        "one": "{{count}} weitere zeigen",
+        "other": "{{count}} weitere zeigen"
+      }
     },
     "meta": {
       "image": "Bild · {{path}}",
-      "prototype": "{{count}} Seiten · {{pages}}",
+      "prototype": {
+        "one": "{{count}} Seite · {{pages}}",
+        "other": "{{count}} Seiten · {{pages}}"
+      },
       "noDate": "—"
     },
     "loading": "Die Library wird geladen",
@@ -2416,7 +2659,10 @@
     "nameBare": "Wartet auf Spec {{id}}",
     "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
     "more": "Wartet auch auf {{ids}}",
-    "partial": "{{held}} von {{open}} offenen Tasks",
+    "partial": {
+      "one": "{{held}} wartet · {{ready}} offen",
+      "other": "{{held}} warten · {{ready}} offen"
+    },
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },
@@ -2461,7 +2707,14 @@
       "more": "+{{n}} weitere",
       "since": "seit {{time}}",
       "showAll": "Alle {{count}} anzeigen",
-      "waiting": "+{{n}} bei Ihnen"
+      "waiting": "+{{n}} bei Ihnen",
+      "foldName": "+{{n}} weitere · Liegt bei Ihnen, alle {{count}} zeigen",
+      "fewer": "Weniger zeigen",
+      "fewerName": "Weniger zeigen · Liegt bei Ihnen, nur der oberste Eintrag",
+      "headLinkName": {
+        "one": "Liegt bei Ihnen · {{count}} Eintrag, zur Liste",
+        "other": "Liegt bei Ihnen · {{count}} Einträge, zur Liste"
+      }
     },
     "next": {
       "label": "Als Nächstes",

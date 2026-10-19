@@ -278,7 +278,7 @@
       <span class="lane-count mono">
         <span data-lane-count>{{ 'board.lane.counts' | transloco: { landed: lane.landedCount, total: lane.total } }}</span>
         @if (waitingCount(lane) > 0) {
-          <span class="lane-waiting" data-lane-waiting>{{ 'board.lane.waiting' | transloco: { count: waitingCount(lane) } }}</span>
+          <span class="lane-waiting" data-lane-waiting>{{ (waitingCount(lane) === 1 ? 'board.lane.waiting.one' : 'board.lane.waiting.other') | transloco: { count: waitingCount(lane) } }}</span>
         }
         @if (laneWaits().get(lane.name); as held) {
           <!-- spec 025 (T25): the whole open lane waits on a spec; it stays visible, never a lane stub. -->
@@ -310,7 +310,7 @@
       <div class="lane-body">
         @if (lane.inRound.length > 0) {
           <!-- spec 027: the lane line during a round, counts above 0 only, then the round's group above every section. -->
-          <p class="lane-quiet lane-round" data-lane-round>{{ 'board.lane.inRound' | transloco: { count: lane.inRound.length } }}@for (rc of lane.runCounts; track rc.state) {<span> · {{ 'board.lane.runCount' | transloco: { count: rc.count, state: ('states.run.' + rc.state | transloco) } }}</span>}@if (nextCommand(); as next) {<span class="lane-next"> · {{ 'board.lane.next' | transloco }} <span class="mono">{{ next }}</span></span>}</p>
+          <p class="lane-quiet lane-round" data-lane-round>{{ (lane.inRound.length === 1 ? 'board.lane.inRound.one' : 'board.lane.inRound.other') | transloco: { count: lane.inRound.length } }}@for (rc of lane.runCounts; track rc.state) {<span> · {{ (rc.count === 1 ? 'board.lane.runCount.one' : 'board.lane.runCount.other') | transloco: { count: rc.count, state: ('states.run.' + rc.state | transloco) } }}</span>}@if (nextCommand(); as next) {<span class="lane-next"> · {{ 'board.lane.next' | transloco }} <span class="mono">{{ next }}</span></span>}</p>
           <div class="section sec-round" data-section="inRound">
             <h4>{{ 'live.inRound' | transloco: { round: roundNumber() ?? '' } }} <span class="count mono">{{ lane.inRound.length }}</span></h4>
             @for (c of lane.inRound; track c.task) {

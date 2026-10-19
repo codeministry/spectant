@@ -6,6 +6,11 @@ export interface FilterOption {
   readonly label: string;
   readonly count?: number;
   readonly tone?: Tone;
+  /**
+   * The accessible name, for a chip whose visible text would repeat another target's ("All 23" twice); it starts with
+   * the visible word, so label-in-name holds (spec 021, ISC-248). Absent, the visible text is the name.
+   */
+  readonly name?: string;
 }
 
 /**
@@ -49,6 +54,7 @@ export interface FilterOption {
           type="button"
           class="btn btn-sm btn-ghost chip"
           [attr.aria-pressed]="option.key === value()"
+          [attr.aria-label]="option.name ?? null"
           (click)="value.set(option.key)"
         >
           @if (option.tone; as tone) {

@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { prefersReducedMotion } from '../../../../core/motion';
+import type { Density } from '../../../../core/settings.service';
 import type { Tier } from '../../../../layout/shell/tier';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
 import { BoardCard } from '../board/board-card';
@@ -34,7 +35,8 @@ export class FlowView {
   readonly lanes = input.required<readonly LaneView[]>();
   /** The frame shown; a change of frame is what makes cards move. */
   readonly frame = input.required<number>();
-  readonly density = input<'comfortable' | 'compact'>('comfortable');
+  /** The board's resolved density: `?density` for the view, else the stored setting (spec 021, ISC-254). */
+  readonly density = input<Density>('comfortable');
   readonly tier = input<Tier>('wide');
   /** The operator steps at wide: drawn as the prototype's checklist across all columns (`.op.span`) in place of a band. */
   readonly steps = input<readonly FrameCard[] | null>(null);

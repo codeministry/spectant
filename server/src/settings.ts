@@ -31,6 +31,8 @@ const isBoolean = (value: unknown): value is boolean => typeof value === "boolea
 export const SettingsSchema = {
   theme: { default: "system", validate: oneOf("system", "light", "dark") },
   language: { default: "en", validate: oneOf("en", "de") },
+  /** Spec 021, ISC-254: the default density of board, flow view and spec row; `?density=` overrides one view only. */
+  density: { default: "comfortable", validate: oneOf("comfortable", "compact") },
   refreshSeconds: { default: 30, validate: integerIn(5, 3600) },
   singleKeyShortcuts: { default: true, validate: isBoolean },
   /** Spec 002, ISC-75: the context rail at wide shows as its 48 px strip. */

@@ -4,6 +4,7 @@ import {
   featurePlace,
   gateAction,
   gateInHead,
+  goalLines,
   pathSegments,
   provenance,
   type ProvenanceInput,
@@ -27,6 +28,12 @@ describe('gateAction (ISC-85)', () => {
 
   it('is paused while a lock holds the spec, whatever the mark says', () => {
     for (const state of ['missing', 'stale', 'fresh'] as const) expect(gateAction(gate(state), LOCK)).toBe('paused');
+  });
+});
+
+describe('goalLines (spec 021, T38, ISC-250)', () => {
+  it('stands the goal on one line at wide and on two at medium and compact', () => {
+    expect([goalLines('wide'), goalLines('medium'), goalLines('compact')]).toEqual([1, 2, 2]);
   });
 });
 

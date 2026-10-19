@@ -131,8 +131,16 @@ test.describe('dashboard', () => {
 
   test('dashboard idea quote and next command equal the golden', async ({ page }) => {
     await page.goto(DASHBOARD_BASE);
-    const quote = page.locator('app-spec-dashboard [data-section="idea"] blockquote');
-    await expect(quote).toContainText(SPEC.ideaQuote ?? 'the golden has no idea quote');
+    // Spec 021 (ISC-250): the goal sentence stands once, in the spec head; the idea card stays only for its absence.
+    await expect(page.locator('app-spec-dashboard [data-section="idea"]')).toHaveCount(0);
+    const quote = page.locator('app-spec-head [data-description]');
+    const more = page.locator('app-spec-head .desc-block button');
+    await expect(quote).toBeVisible();
+    // The head clamps the goal; its "More…" shows the whole sentence where the clamp cuts.
+    await expect(async () => {
+      if ((await more.count()) > 0 && (await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+      await expect(quote).toContainText(SPEC.ideaQuote ?? 'the golden has no idea quote', { timeout: 1000 });
+    }).toPass();
     const next = page.locator('app-spec-dashboard [data-section="next"]');
     // Spec 020 (T19, ISC-239): from 1120 px the card reads the spec's guidance sentence and holds no chip of its own;
     // the spec head carries the canonical chip (one command, one chip per screen beside the rail's).
@@ -586,9 +594,15 @@ test.describe('deep link of a former Docs or Evidence address', () => {
         await expect(page.locator(`${READER} .lib-reader-title`), what).toHaveText(landing.doc.title);
         await expect(page.locator(`${READER} .lib-file`), what).toHaveText(`specs/${landing.doc.path}`);
         if (landing.decisions) {
-          const heading = page.locator(`${READER} .docs-prose h2`).filter({ hasText: /^\s*Decisions\s*$/u });
+          // Spec 021 (ISC-251): a spec.md reads as ## disclosures; the Decisions section opens and its own toggle, in
+          // the section's h2, takes the focus. A page without sections keeps the prose's h2.
+          const heading = page
+            .locator(`${READER} .docs-prose h2, ${READER} [data-library-section] h2.heading`)
+            .filter({ hasText: /^\s*Decisions\s*$/u });
           await expect(heading, what).toHaveCount(1);
-          await expect(heading, what).toBeFocused();
+          await expect
+            .poll(() => heading.evaluate((el) => el === document.activeElement || el.contains(document.activeElement)), { message: `${what}: focus in the Decisions heading` })
+            .toBe(true);
           await expect(heading, what).toBeInViewport();
         }
         break;

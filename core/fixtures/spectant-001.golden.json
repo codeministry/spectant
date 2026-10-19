@@ -3,9 +3,19 @@
     "specs": 1,
     "building": 0,
     "scoping": 1,
+    "stageGroups": {
+      "scoping": 1,
+      "building": 0,
+      "complete": 0
+    },
     "master": {
       "closed": 14,
       "total": 47
+    },
+    "masterOpen": 33,
+    "masterPercent": 29,
+    "byType": {
+      "feature": 1
     },
     "claims": {
       "closed": 14,
@@ -16,8 +26,12 @@
       "total": 83
     },
     "takeable": 0,
+    "openClaims": 33,
     "warnings": 1,
+    "specsWithWarnings": 1,
     "fog": 0,
+    "specsWithFog": 0,
+    "masterFog": 0,
     "attention": 1,
     "archived": 0
   },
@@ -41,6 +55,7 @@
       "priority": "P3",
       "phase": "scoping",
       "stage": "review",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 14,

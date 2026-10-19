@@ -1436,6 +1436,7 @@
     ],
     "counts": {
       "rows": 33,
+      "done": 27,
       "boxes": {
         "landed": 27,
         "total": 32
@@ -2775,6 +2776,7 @@
     ],
     "counts": {
       "rows": 30,
+      "done": 30,
       "boxes": {
         "landed": 30,
         "total": 30
@@ -4254,6 +4256,7 @@
     ],
     "counts": {
       "rows": 46,
+      "done": 46,
       "boxes": {
         "landed": 46,
         "total": 46

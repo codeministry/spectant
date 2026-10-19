@@ -283,7 +283,7 @@ export interface KnownSpec {
 export function heldWait(spec: string, blockers: readonly string[], known: readonly KnownSpec[]): SpecWait {
   const ids = new Set(known.map((row) => row.id));
   const unknown = blockers.filter((id) => !ids.has(id));
-  return { spec, blockers, ...(unknown.length > 0 ? { unknownBlockers: unknown } : {}), heldTasks: 0, openTasks: 0, full: true };
+  return { spec, blockers, ...(unknown.length > 0 ? { unknownBlockers: unknown } : {}), heldTasks: 0, readyTasks: 0, openTasks: 0, full: true };
 }
 
 /** The blocker titles by number, for the chip's accessible name and the group's spec line; unknown numbers left out. */

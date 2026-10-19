@@ -61,6 +61,9 @@ import {
 } from '../../server/src/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
+  DENSE_HEADER,
+  DENSE_STATES,
+  STUB_DENSE,
   EDGES_HEADER,
   EDGE_STATES,
   EMPTY_CATALOG,
@@ -676,7 +679,7 @@ describe('stub API: the library (spec 017, T3)', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 };
+  const DEFAULTS = { theme: 'system', language: 'en', density: 'comfortable', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120 };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 
@@ -712,6 +715,7 @@ describe('stub API: /api/settings', () => {
       [{ colour: 'red' }, { error: 'unknown-key', key: 'colour' }],
       [{ theme: 'sepia' }, { error: 'invalid-value', key: 'theme' }],
       [{ language: 'fr' }, { error: 'invalid-value', key: 'language' }],
+      [{ density: 'cozy' }, { error: 'invalid-value', key: 'density' }],
       [{ refreshSeconds: 4 }, { error: 'invalid-value', key: 'refreshSeconds' }],
       [{ refreshSeconds: 3601 }, { error: 'invalid-value', key: 'refreshSeconds' }],
       [{ refreshSeconds: 30.5 }, { error: 'invalid-value', key: 'refreshSeconds' }],
@@ -2370,8 +2374,10 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
   };
   const goldenModel = (): Dashboard => golden('harbor') as unknown as Dashboard;
   const { full, partial, unknown } = STUB_EDGES;
-  const FULL: SpecWait = { spec: full.spec, blockers: [full.on], heldTasks: 0, openTasks: 0, full: true };
-  const PARTIAL: SpecWait = { spec: partial.spec, blockers: [partial.on], heldTasks: partial.tasks.length, openTasks: 5, full: false };
+  const FULL: SpecWait = { spec: full.spec, blockers: [full.on], heldTasks: 0, readyTasks: 0, openTasks: 0, full: true };
+  // In the Tasks tab's units (spec 021, ISC-252.1): of the four edged tasks one keeps its round's word (a question,
+  // concerns or a failure), so three read `held`; one row reads `open`; five open tasks in all.
+  const PARTIAL: SpecWait = { spec: partial.spec, blockers: [partial.on], heldTasks: 3, readyTasks: 1, openTasks: 5, full: false };
   const UNKNOWN_EDGE: SpecWarning = {
     kind: 'spec-edge',
     text: `The spec edge (after: ${unknown.on}) on ${unknown.task} names no spec, active or archived; it stays open.`,
@@ -2421,6 +2427,9 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
     expect(row.stage).toBe(rowOf(goldenModel(), partial.spec).stage);
     expect((await holders(headers)).filter((h) => h.slug === partial.folder).map((h) => h.waits)).toContainEqual(PARTIAL);
     expect((await page(partial.spec, headers)).head.waits).toEqual(PARTIAL);
+    // The head counts are the tab's `held` and `open` chips of the same spec (ISC-252.1).
+    const byStatus = (await tasks(partial.spec, headers)).counts.byStatus;
+    expect([PARTIAL.heldTasks, PARTIAL.readyTasks]).toEqual(['held', 'open'].map((n) => byStatus.find((c) => c.name === n)?.count ?? 0));
     const held = (await tasks(partial.spec, headers)).tasks.filter((t) => t.afterSpecs?.includes(partial.on) === true).map((t) => t.id);
     expect(held).toEqual([...partial.tasks]);
     // The tasks answer carries the same hold (core tasks.ts, ISC-162.2): no open one of them is left open or
@@ -2793,6 +2802,165 @@ describe('stub API: waiting entries via X-Spectant-Stub-Waits (spec 020, T15, IS
     for (const extra of overlays) {
       const res = await ask('/api/workspaces', { headers: as('7', extra) });
       expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-waits-with-overlay' });
+    }
+  });
+});
+
+describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5, ISC-246)', () => {
+  type Dash = {
+    kpis: unknown;
+    specs: Array<{ id: string; stage: string }>;
+    warningGroups: unknown;
+    guidance?: { next: Array<{ spec: string; command: string | null }> };
+    brief: { generated: string | null; stale: boolean; sections: Record<string, string> } | null;
+  };
+  const on = (extra: Record<string, string> = {}): Record<string, string> => ({ [DENSE_HEADER]: 'on', ...extra });
+  const dashboard = async (headers: Record<string, string>): Promise<Dash> => {
+    const res = await ask(`/api/workspaces/${STUB_DENSE.workspace.slug}/dashboard`, { headers });
+    expect(res.status).toBe(200);
+    return (await res.json()) as Dash;
+  };
+
+  test('on: the start lists the one dense workspace, its counts its dashboard kpis', async () => {
+    const res = await ask('/api/workspaces', { headers: on() });
+    expect(res.status).toBe(200);
+    const list = (await res.json()) as Json[];
+    expect(list.map((w) => w['slug'])).toEqual([STUB_DENSE.workspace.slug]);
+    expect(list[0]?.['counts']).toEqual((await dashboard(on())).kpis);
+    expect((await ask('/api/workspaces/lantern/dashboard', { headers: on() })).status).toBe(404);
+  });
+
+  test('on: 22 specs, 3 next-up entries and a fresh TL;DR whose first section is a short overview, each core-derived', async () => {
+    const served = await dashboard(on());
+    expect(served.specs).toHaveLength(STUB_DENSE.specs);
+    expect(served.specs).toHaveLength(22);
+    expect(served.guidance?.next).toHaveLength(3);
+    // The added specs are done, so Next up is harbor's own three.
+    const harbor = golden('harbor') as Dash;
+    expect(served.guidance?.next.map((e) => e.command)).toEqual(harbor.guidance?.next.map((e) => e.command));
+    expect(served.specs.slice(-STUB_DENSE.added.length).every((s) => s.stage === 'done')).toBe(true);
+    // The added claims stand in the master, so they add no drift: the warnings are harbor's own.
+    expect(served.warningGroups).toEqual(harbor.warningGroups);
+    expect(served.brief?.stale).toBe(false);
+    expect(served.brief?.generated).toBe(STUB_DENSE.generated);
+    const [first, ...rest] = Object.entries(served.brief?.sections ?? {});
+    expect(first?.[0]).toBe('overview');
+    expect(first?.[1].split(/(?<=\.)\s+/).length).toBeGreaterThanOrEqual(3);
+    expect(rest.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('on: the TL;DR first section stands alone in at most 400 characters (spec 021, T72, ISC-246.1)', async () => {
+    const served = await dashboard(on());
+    const [first] = Object.entries(served.brief?.sections ?? {});
+    expect(first?.[0]).toBe('overview');
+    const raw = /<!-- section: overview -->\n([\s\S]*?)\n\n/u.exec(STUB_DENSE.tldr)?.[1] ?? '';
+    const text = raw.replace(/\s+/gu, ' ').trim();
+    expect(text.length).toBeGreaterThan(200);
+    expect(text.length).toBeLessThanOrEqual(400);
+    // One paragraph of prose: no list item, no sub-heading, no link.
+    expect(raw).not.toMatch(/^\s*(?:[-*+]|\d+\.)\s/mu);
+    expect(raw).not.toMatch(/^#/mu);
+    expect(raw).not.toMatch(/\]\(|<a\s|https?:\/\//u);
+    expect(first?.[1].replace(/\s+/gu, ' ').trim()).toContain(text.slice(0, 60));
+  });
+
+  test('off or absent serves the goldens as they are', async () => {
+    expect(await dashboard({ [DENSE_HEADER]: 'off' })).toEqual(golden('harbor') as Dash);
+    expect(await dashboard({})).toEqual(golden('harbor') as Dash);
+  });
+
+  test('on: titles and goal lines long enough that every expand toggle appears through overflow, each core-derived (T34, ISC-248)', async () => {
+    type Row = { id: string; slug: string; title: string; goal: string };
+    const served = (await dashboard(on())) as unknown as { specs: Row[]; guidance?: { next: Array<{ spec: string }> } };
+    const plain = golden('harbor') as unknown as { specs: Row[] };
+    const longs = Object.entries(STUB_DENSE.long) as Array<[string, { title?: string; goal?: string }]>;
+    expect(longs.length).toBeGreaterThanOrEqual(5);
+    for (const [folder, long] of longs) {
+      const row = served.specs.find((s) => s.slug === folder);
+      const before = plain.specs.find((s) => s.slug === folder);
+      if (long.title !== undefined) {
+        expect(row?.title).toBe(long.title);
+        expect(long.title.length).toBeGreaterThanOrEqual(120);
+        expect(row?.title).not.toBe(before?.title);
+      }
+      if (long.goal !== undefined) {
+        expect(row?.goal).toBe(long.goal);
+        expect(long.goal.length).toBeGreaterThanOrEqual(250);
+      }
+    }
+    // Every Next-up entry carries a long title, and no two titles repeat each other.
+    const next = served.guidance?.next.map((e) => e.spec) ?? [];
+    expect(next).toHaveLength(STUB_DENSE.next);
+    for (const id of next) expect(served.specs.find((s) => s.id === id)?.title.length ?? 0).toBeGreaterThanOrEqual(120);
+    const titles = served.specs.map((s) => s.title);
+    expect(new Set(titles).size).toBe(titles.length);
+    // The first five rows of the list (core's order, and the id order) each overflow by title or goal.
+    const overflowing = (s: Row): boolean => s.title.length >= 120 || s.goal.length >= 250;
+    expect(served.specs.slice(0, 5).every(overflowing)).toBe(true);
+    expect([...served.specs].sort((a, b) => (a.id < b.id ? -1 : 1)).slice(0, 5).every(overflowing)).toBe(true);
+  });
+
+  test('on: the long-goal spec page carries the long goal sentence from core; every other page stays the golden (T34, ISC-248)', async () => {
+    type Page = { head: { id: string }; ideaQuote: string | null; ideaSource: string | null };
+    const ws = STUB_DENSE.workspace.slug;
+    const id = STUB_DENSE.goalSpec;
+    const res = await ask(specRoutes.spec(ws, id), { headers: on() });
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as Page;
+    expect(page.head.id).toBe(id);
+    expect(page.ideaSource).toBe('goal');
+    expect(page.ideaQuote?.length ?? 0).toBeGreaterThanOrEqual(300);
+    const long = (Object.entries(STUB_DENSE.long) as Array<[string, { goal?: string }]>).find(([folder]) => folder.startsWith(`${id}-`))?.[1];
+    expect(long?.goal?.startsWith(page.ideaQuote ?? '\0')).toBe(true);
+    const plain = (await (await ask(specRoutes.spec(ws, id))).json()) as Page;
+    expect(plain.ideaQuote).not.toBe(page.ideaQuote);
+    const other = async (headers: Record<string, string>): Promise<string> => (await ask(specRoutes.spec(ws, '007'), { headers })).text();
+    expect(await other(on())).toBe(await other({}));
+  });
+
+  test('on: the library lists one long document with 20 sections and about 30 screens, rendered by core (T53, ISC-251)', async () => {
+    const ws = STUB_DENSE.workspace.slug;
+    const { doc } = STUB_DENSE;
+    const listed = async (headers: Record<string, string>): Promise<string[]> =>
+      ((await (await ask(workspaceRoutes.library(ws), { headers })).json()) as { docs: Array<{ path: string }> }).docs.map((d) => d.path);
+    const dense = await listed(on());
+    expect(dense).toContain(doc.path);
+    expect(await listed({})).not.toContain(doc.path);
+    expect(dense.filter((p) => p !== doc.path)).toEqual(await listed({}));
+    expect((await ask(workspaceRoutes.libraryDoc(ws, doc.path))).status).toBe(404);
+
+    const res = await ask(workspaceRoutes.libraryDoc(ws, doc.path), { headers: on() });
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as DocsPage;
+    const level2 = page.sections.filter((s) => s.level === 2);
+    expect(level2).toHaveLength(doc.sections);
+    expect(new Set(level2.map((s) => s.heading)).size).toBe(doc.sections);
+    // The reader's reference estimate (85 characters a 26 px line, 12 px after a paragraph, an h2 58 px), in 900 px screens.
+    const paragraphs = [...page.html.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => (m[1] ?? '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim());
+    const px = paragraphs.reduce((sum, p) => sum + Math.ceil(p.length / 85) * 26 + 12, 0) + level2.length * 58;
+    expect(px / 900).toBeGreaterThanOrEqual(27);
+    expect(px / 900).toBeLessThanOrEqual(34);
+    // Each section opens with its own first sentence, so no two collapsed sections read the same.
+    const firsts = page.html.split(/<h2[^>]*>/).slice(1).map((part) => /<p>([^.]+\.)/.exec(part)?.[1] ?? '');
+    expect(firsts.every((s) => s.length > 20)).toBe(true);
+    expect(new Set(firsts).size).toBe(doc.sections);
+    const hits = (await (await ask(workspaceRoutes.librarySearch(ws, doc.title), { headers: on() })).json()) as { hits: Array<{ path: string }> };
+    expect(hits.hits.map((h) => h.path)).toContain(doc.path);
+  });
+
+  test('an unknown value, or on beside an overlay, is a 400', async () => {
+    const unknown = await ask('/api/workspaces', { headers: { [DENSE_HEADER]: 'yes' } });
+    expect([unknown.status, await unknown.json()]).toEqual([400, { error: 'unknown-stub-dense', dense: 'yes', states: [...DENSE_STATES] }]);
+    const overlays: ReadonlyArray<Record<string, string>> = [
+      { [WAITS_HEADER]: '7' },
+      { [LOCKS_HEADER]: 'runs' },
+      { [WORKTREES_HEADER]: 'on' },
+      { [EDGES_HEADER]: 'met' },
+      { [MIDNIGHT_HEADER]: 'on' },
+    ];
+    for (const extra of overlays) {
+      const res = await ask('/api/workspaces', { headers: on(extra) });
+      expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-dense-with-overlay' });
     }
   });
 });

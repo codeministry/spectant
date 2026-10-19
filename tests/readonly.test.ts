@@ -702,9 +702,13 @@ const LIBRARY_FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "library
 const SHELF = "shelf";
 const PIER = "005-pier-lamp";
 
-/** `core/fixtures/library` as a repository with the planted state, and the pier spec's fresh code-reviewed mark. */
-function buildLibraryRepository(dir: string): void {
+/**
+ * `core/fixtures/library` as a repository with the planted state, and the pier spec's fresh code-reviewed mark;
+ * `plant` adds files to the fixture copy before the first commit, so they are tracked like the rest.
+ */
+function buildLibraryRepository(dir: string, plant?: (dir: string) => void): void {
   cpSync(LIBRARY_FIXTURE, dir, { recursive: true });
+  plant?.(dir);
   // Stale (ISC-155.1): 001's plan.md older than its last events.jsonl line (03-12), tldr.md older than the newest spec.
   for (const [path, at] of [
     ["specs/001-lighthouse-map/plan.md", "2026-03-05T00:00:00Z"],
@@ -913,6 +917,171 @@ describe("ISC-160: the library, its reader, search, assets, prototypes and the o
     expect(underGit(after)).toEqual(underGit(before));
     expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
     expect(lstatSync(join(copy, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+  });
+});
+
+// Density and readability (spec 021, T58, ISC-255) under the same guard, `-t density`: every route the denser
+// dashboard, the spec page, the Tasks tab and the sectioned library reader read, and the density setting's GET, HEAD
+// and PUT, leave the registered repository byte-identical, `.git/` included, and call no host but loopback. The
+// workspace is the library fixture (its `specs/tldr.md` names `lang: de`) with planted git state, plus one rounds.jsonl
+// line that holds 001's open task T3 and one more open task T4, so the Tasks tab counts open, done and held rows.
+//
+// Opening and closing a fold and the per-view density override are client-side: they rewrite the address only
+// (`?open=…`, `?density=…`) and call no write route. The address half is covered by requesting the API routes and the
+// SPA pages with those query parameters: each answers as without them and changes no byte. The density setting lives in
+// the app's SQLite (`spectant.db` in the data directory): its PUTs change the data directory, never the repository.
+const DENSITY_ROUND = {
+  v: 1,
+  round: 1,
+  ts: "2026-03-12T09:00:00Z",
+  mode: "agent",
+  width: 1,
+  dispatched: [],
+  tasks: [{ id: "T3", claim: "ISC-3", lane: "web", seam: false, parallel: false, text: "remember the last area", paths: [], state: "held", reason: "width 1 reached" }],
+  claims: { closed: ["ISC-1", "ISC-2"], open: ["ISC-3"], closed_this_round: [] },
+  progress: "2/3",
+};
+
+describe("ISC-255 density: KPIs, the brief's language, the Tasks tab, the sectioned reader, the density setting and the fold addresses change no byte", () => {
+  test("readonly: every read and the density PUTs change no byte of the repository, .git/ included, only the data directory; every request is loopback", async () => {
+    const copy = join(mkdtempSync(join(root, "density-")), SHELF);
+    buildLibraryRepository(copy, (dir) => {
+      writeFileSync(join(dir, "specs", "001-lighthouse-map", "rounds.jsonl"), `${JSON.stringify(DENSITY_ROUND)}\n`);
+      appendFileSync(join(dir, "specs", "001-lighthouse-map", "tasks.md"), "- [ ] T4 · ISC-3 · web — keep the zoom level\n");
+    });
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+    const indexMtimeBefore = lstatSync(join(copy, ".git", "index")).mtimeMs;
+
+    const xdg = mkdtempSync(join(root, "xdg-density-"));
+    const env = { XDG_DATA_HOME: xdg };
+    const lines: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    // Every fetch of this process, the test's and any the server might make, names its host here (as ISC-182).
+    const hosts = new Set<string>();
+    const realFetch = globalThis.fetch;
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+      hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return realFetch(input, init);
+    }) as typeof fetch);
+    const stop = new AbortController();
+    let model: DashboardModel;
+    let tasks: TasksTab | null;
+    let dataChanged: string[] = [];
+    try {
+      expect(await run(["add", copy], manifest(), { env })).toBe(0);
+      const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
+      const deadline = Date.now() + 5_000;
+      let url = "";
+      while (url === "") {
+        url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+        if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+        if (url === "") await Bun.sleep(5);
+      }
+      /** GET 200 with an ETag, its revalidation 304 and HEAD 200; the GET's body as JSON. */
+      const read = async <T>(path: string): Promise<T> => {
+        const first = await fetch(`${url}${path}`);
+        expect({ path, status: first.status }).toEqual({ path, status: 200 });
+        const etag = first.headers.get("etag") ?? "";
+        expect({ path, etag: etag !== "" }).toEqual({ path, etag: true });
+        expect({ path, status: (await fetch(`${url}${path}`, { headers: { "If-None-Match": etag } })).status }).toEqual({ path, status: 304 });
+        expect({ path, status: (await fetch(`${url}${path}`, { method: "HEAD" })).status }).toEqual({ path, status: 200 });
+        return (await first.json()) as T;
+      };
+      const put = async (body: unknown): Promise<{ status: number; json: Record<string, unknown> }> => {
+        const res = await fetch(`${url}/api/settings`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        return { status: res.status, json: (await res.json()) as Record<string, unknown> };
+      };
+
+      // The dashboard: the KPI tiles with their references and the brief with its language, plain and with fold and
+      // density addresses (the API ignores them; the body is the same).
+      const dashboardPath = `/api/workspaces/${SHELF}/dashboard`;
+      model = await read<DashboardModel>(dashboardPath);
+      for (const query of ["?open=specs,tldr", "?open=specs,tldr,overlaps&density=compact", "?density=comfortable"]) {
+        expect(await read<DashboardModel>(`${dashboardPath}${query}`)).toEqual(model);
+      }
+
+      // A spec page and its Tasks tab, plain and with the addresses.
+      await read(specRoutes.spec(SHELF, "001"));
+      await read(`${specRoutes.spec(SHELF, "001")}?open=overlaps&density=compact`);
+      tasks = await read<TasksTab | null>(specRoutes.tasks(SHELF, "001"));
+      expect(await read<TasksTab | null>(`${specRoutes.tasks(SHELF, "001")}?density=compact`)).toEqual(tasks);
+
+      // The library reader: the catalog, then its documents until a sectioned one (two or more headings) is read, and
+      // the TL;DR document.
+      const catalog = await read<WorkspaceRouteResponses["library"]>(workspaceRoutes.library(SHELF));
+      const readable = catalog.docs.filter((d) => d.media === "markdown" && d.state !== "missing");
+      let sectioned = 0;
+      for (const doc of readable) {
+        const page = await read<WorkspaceRouteResponses["libraryDoc"]>(workspaceRoutes.libraryDoc(SHELF, doc.path));
+        if (page.toc.length >= 2) sectioned += 1;
+      }
+      expect(sectioned).toBeGreaterThan(0);
+      expect(readable.some((d) => d.type === "tldr")).toBe(true);
+
+      // The density setting: GET, its revalidation and HEAD; PUT compact, an invalid value (refused, nothing stored),
+      // comfortable. The data directory changes, the repository does not.
+      const dataBefore = snapshot(xdg);
+      const initial = await read<{ density: string }>("/api/settings");
+      expect(initial.density).toBe("comfortable");
+      const compact = await put({ density: "compact" });
+      expect([compact.status, compact.json.density]).toEqual([200, "compact"]);
+      expect((await read<{ density: string }>("/api/settings")).density).toBe("compact");
+      const invalid = await put({ density: "dense" });
+      expect([invalid.status, invalid.json.error, invalid.json.key]).toEqual([400, "invalid-value", "density"]);
+      expect((await read<{ density: string }>("/api/settings")).density).toBe("compact");
+      const comfortable = await put({ density: "comfortable" });
+      expect([comfortable.status, comfortable.json.density]).toEqual([200, "comfortable"]);
+      dataChanged = changed(dataBefore, snapshot(xdg));
+
+      // The SPA pages a fold or a density override addresses: the shell, and nothing else.
+      for (const page of [
+        `/w/${SHELF}?open=specs,tldr`,
+        `/w/${SHELF}?density=compact`,
+        `/w/${SHELF}/s/001?open=overlaps&density=compact`,
+        `/w/${SHELF}/s/001/tasks?density=comfortable`,
+        `/w/${SHELF}/library?open=s-goal`,
+        `/w/${SHELF}/board?density=compact`,
+      ]) {
+        const res = await fetch(`${url}${page}`);
+        expect({ page, status: res.status }).toEqual({ page, status: 200 });
+        expect(await res.text()).toContain("<title>spectant</title>");
+      }
+
+      stop.abort();
+      expect(await done).toBe(0);
+    } finally {
+      stop.abort();
+      spy.mockRestore();
+      log.mockRestore();
+    }
+
+    // The numbers are the model's own: each tile's reference holds its number, and the brief names the file's language.
+    const k = model.kpis;
+    expect(k.stageGroups.scoping + k.stageGroups.building + k.stageGroups.complete).toBe(k.specs);
+    expect([k.stageGroups.building, k.stageGroups.scoping]).toEqual([k.building, k.scoping]);
+    expect(k.takeable).toBeLessThanOrEqual(k.openClaims);
+    expect(k.specsWithWarnings).toBeLessThanOrEqual(k.specs);
+    expect(k.specsWithFog).toBeLessThanOrEqual(k.specs);
+    expect(k.masterFog).toBeLessThanOrEqual(k.fog);
+    expect(model.brief?.lang).toBe("de");
+    // The Tasks tab counts rows: open, done and held each appear, and the statuses sum to the rows.
+    const counts = tasks?.counts;
+    const byStatus = Object.fromEntries((counts?.byStatus ?? []).map((c) => [c.name, c.count]));
+    expect(byStatus).toEqual({ open: 1, held: 1, done: 2 });
+    const statusSum = (counts?.byStatus ?? []).reduce((sum, c) => sum + c.count, 0);
+    expect([counts?.rows, counts?.done, statusSum]).toEqual([4, 2, 4]);
+
+    // The settings went to the data directory.
+    expect(dataChanged.length).toBeGreaterThan(0);
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+    expect(lstatSync(join(copy, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+    expect([...hosts]).toEqual(["127.0.0.1"]);
   });
 });
 

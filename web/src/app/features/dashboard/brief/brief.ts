@@ -1,10 +1,13 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, ViewEncapsulation } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { RepoFileSource } from '../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
+import { OpenState } from '../../../shared/open-state';
 import { UiTimeLabel } from '../../../shared/time';
-import { UiCard, UiChip, UiCommandChip, UiSourceChip } from '../../../shared/ui';
+import { UiCard, UiChip, UiCommandChip, UiDisclosure, UiSourceChip } from '../../../shared/ui';
 import { nextId } from '../../../shared/ui/overlay/ids';
 
 /**
@@ -21,6 +24,16 @@ export interface BriefModel {
   readonly stale: boolean;
   /** The spec worktree tldr.md was read from (spec 039, ISC-209); absent when read from the main checkout. */
   readonly source?: RepoFileSource;
+  /**
+   * Core's markdown per `<!-- section: key -->`, in file order (`DashboardBrief.sections`). With it the card stands on
+   * its first section and folds the others (spec 021); without it (a spec's own TL;DR) it clips the whole text.
+   */
+  readonly sections?: Readonly<Record<string, string>>;
+  /**
+   * The brief's primary language from `lang:` in the frontmatter, a BCP 47 tag such as `de` (`DashboardBrief.lang`,
+   * spec 021, ISC-247); null or absent when the file names none.
+   */
+  readonly lang?: string | null;
 }
 
 /** The skill command that writes (or refreshes) `specs/tldr.md`. */
@@ -40,11 +53,21 @@ export const TLDR_COMMAND = '/spec-tldr';
  * - `open` (expanded) is a two-way model, so the page can bind it to a query param; `copied` passes a copy on for the
  *   page's live region.
  *
+ * Spec 021 (T26, ISC-246): a brief with core's `sections` (the workspace TL;DR) stands on its first section
+ * (`sections[0]`), whole and unclipped; the other sections sit in a `ui-disclosure` whose one toggle ("Show whole
+ * TL;DR", named for the TL;DR) opens them, its state `?open=tldr` (`OpenState`), so a reload keeps it. The toggle
+ * and the `/spec-tldr` chip share the footer, the toggle at the start, the chip at the end. The text before the first
+ * marker (the file's own title) is not shown: the card's label names it. A brief without sections keeps the clip.
+ *
+ * Spec 021 (T29, ISC-247): when the brief's `lang:` differs from the interface language by its primary subtag, a
+ * `ui-chip` with the upper-case code ("DE", named by `brief.lang`) stands after the as-of date and before "stale", and
+ * every text block carries `lang`, so hyphenation and screen readers know the language. Without `lang:` neither shows.
+ *
  * Not encapsulated: the prose is `[innerHTML]`; every selector in the stylesheet starts with `app-brief`.
  */
 @Component({
   selector: 'app-brief',
-  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip, UiSourceChip, UiTimeLabel],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDisclosure, UiSourceChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -63,6 +86,21 @@ export class Brief {
   protected readonly bodyId = nextId('brief-body');
 
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly transloco = inject(TranslocoService);
+  private readonly uiLang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+  /**
+   * The brief's `lang:` when its primary subtag differs from the interface language (spec 021, ISC-247): the card then
+   * carries a language chip and its text block the `lang` attribute. Null when it matches (`de-CH` in a German UI) or
+   * the file names no language, so neither appears.
+   */
+  protected readonly textLang = computed(() => {
+    const lang = this.brief()?.lang?.trim() ?? '';
+    if (lang === '') return null;
+    return primarySubtag(lang) === primarySubtag(this.uiLang()) ? null : lang;
+  });
+  /** The language chip's visible code, upper-case (`DE`). */
+  protected readonly langCode = computed(() => this.textLang()?.toUpperCase() ?? null);
 
   /**
    * The `generated:` instant, shown as its local date by `<ui-time-label form="date">` (spec 006); null when absent or
@@ -75,12 +113,42 @@ export class Brief {
 
   protected readonly html = computed<SafeHtml | null>(() => {
     const brief = this.brief();
-    if (!brief) return null;
-    const { html } = renderMarkdown(brief.markdown, { idPrefix: 'brief-' });
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    return brief ? this.render(brief.markdown) : null;
   });
+
+  private readonly openState = inject(OpenState);
+
+  /** The non-empty sections in file order; empty for a brief without core's sections. */
+  private readonly parts = computed(() => Object.values(this.brief()?.sections ?? {}).filter((part) => part.trim() !== ''));
+  /** The brief stands on its first section (spec 021) instead of clipping the whole text. */
+  protected readonly sectioned = computed(() => this.parts().length > 0);
+  protected readonly firstHtml = computed<SafeHtml | null>(() => {
+    const first = this.parts().at(0);
+    return first === undefined ? null : this.render(first);
+  });
+  /** The sections behind "Show whole TL;DR"; null when there is only one. */
+  protected readonly restHtml = computed<SafeHtml | null>(() => {
+    const rest = this.parts().slice(1);
+    return rest.length === 0 ? null : this.render(rest.join('\n\n'));
+  });
+  /** "Show whole TL;DR" is open: `?open=tldr` in the address. */
+  protected readonly wholeOpen = computed(() => this.openState.isOpen('tldr'));
+
+  protected setWhole(open: boolean): void {
+    void this.openState.set('tldr', open);
+  }
+
+  private render(markdown: string): SafeHtml {
+    const { html } = renderMarkdown(markdown, { idPrefix: 'brief-' });
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
 
   protected toggle(): void {
     this.open.update((open) => !open);
   }
+}
+
+/** The primary language subtag of a BCP 47 tag, lower-case: `de-CH` → `de`. */
+function primarySubtag(tag: string): string {
+  return tag.split('-', 1)[0].toLowerCase();
 }

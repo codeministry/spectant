@@ -287,6 +287,9 @@ The Tasks tab's state per task is the newest `rounds.jsonl` result card of the s
 dispatched, held, question, concerns, fail, done or closed; without one the checkbox decides, and a checked box
 outranks a round that left the task unfinished. An open spec edge on an open task, or on its claim, makes that task
 `held` with the reason `waits on NNN` over an open, dispatched or held state; fail, question and concerns keep theirs.
+The Tasks tab counts one unit, the task row (spec 021): `rows` is every row, struck ones included; `done` is the rows
+whose state is done or closed; `byStatus` holds one count per row's state, so its counts sum to `rows`, and carries
+`done` even at 0. The box fraction (`boxes`) stays for the views that show it.
 
 The frontmatter is not read; the reviewed hash ignores checkbox states and `~~`.
 
@@ -1883,6 +1886,20 @@ From `core/fixtures/harbor/specs/tldr.md`:
 ```markdown
 <!-- section: next -->
 Answer the empty-state question in 002, then run the code review for 004.
+```
+
+The optional frontmatter key `lang:` names the TL;DR's primary language as a BCP 47 tag (spec 021, ISC-247): a primary
+subtag of two or three letters, then hyphenated subtags of one to eight letters or digits, such as `de`, `en` or
+`de-CH`. `parseTldr` trims it and carries it as `TldrDocument.lang`, and the dashboard as `brief.lang`. A missing, empty
+or malformed value is `null` and never a diagnostic, since the key is optional; staleness does not touch it, so a stale
+TL;DR still names its language. The web app compares it with the interface language: on a mismatch the TL;DR card
+carries a language chip and its text block the `lang` attribute; `null` shows neither.
+
+From `core/fixtures/library/specs/tldr.md`:
+
+```markdown
+generated: 2026-03-08T12:00:00Z
+lang: de
 ```
 
 ## The tech page

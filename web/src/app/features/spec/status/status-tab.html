@@ -92,7 +92,7 @@
                 </ul>
               }
               <p class="takeable" data-takeable>
-                <span>{{ 'status.where.takeable' | transloco: { count: m.keyNumbers.claims.takeable } }}</span>
+                <span>{{ (m.keyNumbers.claims.takeable === 1 ? 'status.where.takeable.one' : 'status.where.takeable.other') | transloco: { count: m.keyNumbers.claims.takeable } }}</span>
                 @if (lock(); as held) {
                   <span class="locked"><ui-icon name="lock" [size]="14" />{{ 'status.where.locked' | transloco: { session: held.session } }}</span>
                 } @else {

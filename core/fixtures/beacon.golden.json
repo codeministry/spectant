@@ -3,9 +3,23 @@
     "specs": 11,
     "building": 5,
     "scoping": 4,
+    "stageGroups": {
+      "scoping": 4,
+      "building": 5,
+      "complete": 2
+    },
     "master": {
       "closed": 13,
       "total": 29
+    },
+    "masterOpen": 16,
+    "masterPercent": 44,
+    "byType": {
+      "bug": 2,
+      "chore": 1,
+      "feature": 5,
+      "refactor": 1,
+      "spike": 2
     },
     "claims": {
       "closed": 8,
@@ -16,8 +30,12 @@
       "total": 10
     },
     "takeable": 4,
+    "openClaims": 16,
     "warnings": 5,
+    "specsWithWarnings": 5,
     "fog": 0,
+    "specsWithFog": 0,
+    "masterFog": 0,
     "attention": 5,
     "archived": 0
   },
@@ -41,6 +59,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "close",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 1,
@@ -105,6 +124,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "code-review",
+      "stageGroup": "building",
       "stageSource": "derived",
       "progress": {
         "closed": 2,
@@ -186,6 +206,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "review",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 0,
@@ -256,6 +277,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "build",
+      "stageGroup": "building",
       "stageSource": "derived",
       "progress": {
         "closed": 2,
@@ -337,6 +359,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "build",
+      "stageGroup": "building",
       "stageSource": "derived",
       "progress": {
         "closed": 1,
@@ -398,6 +421,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "blocked",
+      "stageGroup": "building",
       "stageSource": "derived",
       "progress": {
         "closed": 0,
@@ -445,6 +469,7 @@
           "002"
         ],
         "heldTasks": 0,
+        "readyTasks": 0,
         "openTasks": 0,
         "full": true
       },
@@ -470,6 +495,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "tasks",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 0,
@@ -544,6 +570,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "plan",
+      "stageGroup": "scoping",
       "stageSource": "derived",
       "progress": {
         "closed": 0,
@@ -608,6 +635,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "close-pending",
+      "stageGroup": "building",
       "stageSource": "derived",
       "progress": {
         "closed": 2,
@@ -672,6 +700,7 @@
       "priority": "P3",
       "phase": "complete",
       "stage": "done",
+      "stageGroup": "complete",
       "stageSource": "derived",
       "progress": {
         "closed": 3,
@@ -740,6 +769,7 @@
       "priority": "P3",
       "phase": "building",
       "stage": "done",
+      "stageGroup": "complete",
       "stageSource": "derived",
       "progress": {
         "closed": 2,

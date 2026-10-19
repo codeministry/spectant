@@ -59,6 +59,9 @@ interface ReadSpec {
   readonly openClaims: readonly string[];
   /** Open tasks (`state: open`): id and claim; their own edges are in `edges`. */
   readonly openTasks: ReadonlyArray<{ readonly id: string; readonly claim: string }>;
+  /** The folder's texts and the constitution, for the Tasks tab's statuses once the edges are resolved (ISC-252.1). */
+  readonly files: SpecFiles;
+  readonly constitution: string | undefined;
 }
 
 function readSpec(files: SpecFiles, num: string, constitution: string | undefined): ReadSpec {
@@ -84,7 +87,7 @@ function readSpec(files: SpecFiles, num: string, constitution: string | undefine
       }
     }
   }
-  return { num, folder: files.folder, edges, openClaims, openTasks };
+  return { num, folder: files.folder, edges, openClaims, openTasks, files, constitution };
 }
 
 /**
@@ -129,9 +132,11 @@ function activeSpecs(model: SpecEdgesModel): ReadSpec[] {
  * number no spec carries stays open, and so does an edge between two specs of one cycle (ISC-162.4).
  *
  * `SpecWait`: `blockers` are the targets of the open edges on open work (an open claim or an open task), ascending,
- * each once. `heldTasks` counts the open tasks with an open edge of their own or on their claim. `full` holds when the
- * spec has open tasks and every one is held, or, with no open task, when it has open claims and every one carries an
- * open edge.
+ * each once. `heldTasks` and `readyTasks` are the Tasks tab's `held` and `open` status counts (ISC-252.1), read from
+ * the one tab derivation (`parseTaskLines` over the spec's tasks, its rounds and its resolved edges, as the server's
+ * tasks route builds the tab), so the spec head and the tab never count apart. `full` holds when the spec has open
+ * tasks and every one has an open edge of its own or on its claim, or, with no open task, when it has open claims and
+ * every one carries an open edge (ISC-162.3): the stage rule stays the edge rule, whatever a round reported.
  */
 export function resolveEdges(model: SpecEdgesModel, mergeState: readonly MergeState[]): ResolvedSpecEdges {
   const states = mergeStates(model, mergeState);
@@ -165,20 +170,39 @@ export function resolveEdges(model: SpecEdgesModel, mergeState: readonly MergeSt
       heldClaims.add(id);
       on.forEach((n) => blockers.add(n));
     }
-    let heldTasks = 0;
+    let edgeHeld = 0;
     for (const task of spec.openTasks) {
       const own = openEdges.get(`task:${task.id}`) ?? [];
       own.forEach((n) => blockers.add(n));
-      if (own.length > 0 || heldClaims.has(task.claim)) heldTasks += 1;
+      if (own.length > 0 || heldClaims.has(task.claim)) edgeHeld += 1;
     }
     const openTasks = spec.openTasks.length;
-    const full = openTasks > 0 ? heldTasks === openTasks : spec.openClaims.length > 0 && heldClaims.size === spec.openClaims.length;
+    const full = openTasks > 0 ? edgeHeld === openTasks : spec.openClaims.length > 0 && heldClaims.size === spec.openClaims.length;
+    const { held: heldTasks, open: readyTasks } = tabCounts(spec, edges.filter((e) => e.fromSpec === spec.num));
     const sorted = [...blockers].sort();
     // A number no spec carries holds as well, but has no page to link to (ISC-163): named apart, only when present.
     const unknown = sorted.filter((n) => !states.has(n));
-    waits.push({ spec: spec.num, blockers: sorted, ...(unknown.length > 0 ? { unknownBlockers: unknown } : {}), heldTasks, openTasks, full });
+    waits.push({ spec: spec.num, blockers: sorted, ...(unknown.length > 0 ? { unknownBlockers: unknown } : {}), heldTasks, readyTasks, openTasks, full });
   }
   return { edges, waits, diagnostics: edgeDiagnostics(model, specs, cycles) };
+}
+
+/**
+ * The Tasks tab's `held` and `open` status counts of one spec (ISC-252.1): `parseTaskLines` with the constitution, the
+ * spec's rounds.jsonl and its own resolved edges, the input the server's tasks route gives it. No tasks.md, none.
+ */
+function tabCounts(spec: ReadSpec, specEdges: readonly SpecEdge[]): { held: number; open: number } {
+  const tasks = spec.files.texts.tasks;
+  if (tasks === undefined) return { held: 0, open: 0 };
+  const rounds = spec.files.texts.rounds;
+  const tab = parseTaskLines({
+    tasks,
+    ...(spec.constitution === undefined ? {} : { constitution: spec.constitution }),
+    ...(rounds === undefined ? {} : { rounds }),
+    specEdges,
+  });
+  const count = (name: string): number => tab.counts.byStatus.find((c) => c.name === name)?.count ?? 0;
+  return { held: count('held'), open: count('open') };
 }
 
 // ─── diagnostics (ISC-162.4) ─────────────────────────────────────────────────────────────────────────────────────

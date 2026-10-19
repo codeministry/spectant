@@ -710,7 +710,7 @@ describe('ShellComponent', () => {
       const { root } = await open('/w/harbor');
       const live = control(root, 'live');
       expect(live.getAttribute('data-services')).toBe('up');
-      expect(live.getAttribute('aria-label')).toContain('1 dev service(s) running');
+      expect(live.getAttribute('aria-label')).toContain('1 dev service running');
       expect(root.querySelectorAll('[data-live-service]')).toHaveLength(1);
 
       const { root: overview } = await open('/');

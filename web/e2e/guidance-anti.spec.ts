@@ -107,7 +107,7 @@ test.describe('guidance anti', () => {
       await expect(page.locator('ui-waits-block'), 'one block per workspace, none elsewhere').toHaveCount(slugs.length);
       await expect(page.locator('[data-ui="workspace-column"] ui-waits-block')).toHaveCount(slugs.length);
       // Next up stays off the start: no Next entry the start could show.
-      await expect(page.locator('[data-next-up], app-next-up-entry, app-spec-row-guide')).toHaveCount(0);
+      await expect(page.locator('[data-next-up], app-next-up-entry, [data-guide]')).toHaveCount(0);
 
       for (const ws of slugs) {
         const want = expected.get(ws) ?? [];
@@ -123,7 +123,8 @@ test.describe('guidance anti', () => {
       await page.context().setExtraHTTPHeaders(headers);
       for (const ws of await workspacesOf(request, headers)) {
         const { body, guidance } = await dashboardOf(request, ws, headers);
-        await page.goto(`/w/${ws}#waiting`);
+        // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
+        await page.goto(`/w/${ws}?open=specs#waiting`);
         const section = page.locator('#waiting');
         await expect(section, `${ws}: the #waiting section`).toBeVisible();
 
@@ -155,16 +156,26 @@ test.describe('guidance anti', () => {
         );
         expect(shownNext, `${ws}: Next up lists the API's next, in order`).toEqual(next.map((e) => ({ ...shownOf(e, 'workspace'), marked: false })));
 
-        // Specs table: a guide row exactly for each spec with its own entry, its sentence and kind the API's.
-        await expect(page.locator('app-spec-row-guide').first(), `${ws}: the guide rows render`).toBeVisible();
-        const rows = await page.locator('app-spec-row-guide').evaluateAll((els) =>
-          els.map((el) => ({
-            spec: el.getAttribute('data-reason') ?? '',
-            guide: el.getAttribute('data-guide'),
-            marked: el.querySelector('[data-waits-mark]') !== null,
-            sentence: (el.querySelector('[data-guide-sentence]')?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
-          })),
+        // Specs table (spec 021, R1): a guided row exactly for each spec with its own entry, its kind and its reason the
+        // API's. The reason is the row link's description (the hidden `why-<id>`), the row shows only the mark or ring.
+        await expect(page.locator('app-spec-table [data-spec-row]').first(), `${ws}: the list rows render`).toBeVisible();
+        await expect(page.locator('app-spec-table :is(app-spec-row-guide, [data-guide-sentence])'), `${ws}: no guide line in the list`).toHaveCount(0);
+        const rows = await page.locator('app-spec-table li:has([data-guide])').evaluateAll((els) =>
+          els.map((el) => {
+            const why = el.querySelector('[data-guide]');
+            const mark = el.querySelector('app-spec-row')?.getAttribute('data-mark') ?? null;
+            const describedBy = (el.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').split(' ');
+            return {
+              spec: why?.getAttribute('data-reason') ?? '',
+              // The row's mark, the reason's kind and the link's description agree, or the row reads as a mismatch.
+              guide: why !== null && why.getAttribute('data-guide') === mark && describedBy.includes(why.id) ? mark : `mismatch: ${mark ?? 'none'}`,
+              marked: el.querySelector('[data-waits-mark]') !== null,
+              sentence: (why?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
+            };
+          }),
         );
+        // No row carries a mark or ring without its own entry.
+        await expect(page.locator('app-spec-table app-spec-row[data-mark]'), `${ws}: marked rows`).toHaveCount(rows.length);
         const waiting = new Set(waitingSpecs(guidance));
         const wantRows = body.specs.flatMap(({ id }) => {
           const own = ownOf(guidance, id);

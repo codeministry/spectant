@@ -3,10 +3,18 @@
     "specs": 0,
     "building": 0,
     "scoping": 0,
+    "stageGroups": {
+      "scoping": 0,
+      "building": 0,
+      "complete": 0
+    },
     "master": {
       "closed": 0,
       "total": 3
     },
+    "masterOpen": 3,
+    "masterPercent": 0,
+    "byType": {},
     "claims": {
       "closed": 0,
       "total": 0
@@ -16,8 +24,12 @@
       "total": 0
     },
     "takeable": 0,
+    "openClaims": 0,
     "warnings": 0,
+    "specsWithWarnings": 0,
     "fog": 0,
+    "specsWithFog": 0,
+    "masterFog": 0,
     "attention": 0,
     "archived": 0
   },

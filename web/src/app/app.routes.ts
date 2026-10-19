@@ -1,7 +1,6 @@
 import { inject } from '@angular/core';
 import { type RedirectFunction, Router, type Routes } from '@angular/router';
 import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
-import { SpecPage } from './features/spec/spec-page';
 import { anchorRef, planningTreeLink, type ShellRouteData } from './layout/shell/areas';
 import { PLANNING_LENSES, type PlanningLensId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
@@ -123,7 +122,13 @@ export const routes: Routes = [
       { path: 'w/:ws/tech', children: [{ path: '**', loadComponent: notFoundPage, data: notFound }] },
       // Spec 017 (T48, ISC-158.1): the former Docs and Evidence tabs redirect into the spec's Library area.
       ...LEGACY_SPEC_REDIRECTS,
-      { path: 'w/:ws/s/:id', component: SpecPage, children: SPEC_AREA_ROUTES },
+      // Spec 021: the spec page (its head, gate button, overlaps and rail) is a lazy chunk like every other page, which
+      // keeps it out of the initial bundle (its 1 MB budget in angular.json); its tab views load lazily below it.
+      {
+        path: 'w/:ws/s/:id',
+        loadComponent: () => import('./features/spec/spec-page').then((m) => m.SpecPage),
+        children: SPEC_AREA_ROUTES,
+      },
       { path: '**', loadComponent: notFoundPage, data: notFound },
     ],
   },

@@ -775,7 +775,8 @@ describe("the library search reads each spec from its read source (spec 041, ISC
 describe("the reader and the search look up only what they answer (ISC-156.5)", () => {
   // Re-pinned for ISC-157.2: tech.md's answer adds core's `techSections`; every other answer is unchanged. Re-pinned for
   // ISC-187: the archived spec's documents are catalog entries now, so their reader answers and search hits join in.
-  const BEFORE_DIGEST = "53c4bfb8536b1b56e706acd29aad6c8aa24abb2a4cd7481c5f3706f14115d343";
+  // Re-pinned for ISC-247: the fixture's tldr.md names `lang: de` and reads in German; only its answer changes.
+  const BEFORE_DIGEST = "471446479833e3e0b01bb47fff683194e1d6c62ce2286c67b33f68557d2155aa";
   const BAD = "/api/workspaces/shelf/library/doc?path=%E0%A4%A";
   const QUERIES = ["lighthouse", "the", "plan", "Map ", "  TIDE  ", "zz-no-such-word", ""];
   const extraPaths = ["../README.md", "nope.md", "001-lighthouse-map/nope.md", "archive/005-old/spec.md", "001-lighthouse-map/report.html", "/etc/passwd"];

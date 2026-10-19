@@ -1,4 +1,4 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, input, linkedSignal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, input, linkedSignal, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -11,49 +11,72 @@ import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 
 /** The fragment of `/w/:ws` that lists every waiting entry; the start's "+n more" leads here (ISC-238). */
 export const WAITING_FRAGMENT = 'waiting';
-/** Rows under the highlighted entry before the rest fold into "Show all n" (design.md § Desktop: from five entries). */
-export const WAITING_SHOWN = 4;
+/**
+ * Rows under the highlighted entry before the rest fold (spec 021, ISC-246.1, the P3 short form): none, so the block
+ * is its header, the top entry whole and the fold "+n more" right below it.
+ */
+export const WAITING_SHOWN = 0;
 
 /**
- * The workspace dashboard's section `#waiting` (spec 020 T17, ISC-238; design.md § Workspace-Dashboard): the
- * `ui-waits-block` of `guidance.waits` with a copy chip on every row. Five entries or fewer are listed whole; past
- * them the block shows the top entry and four rows, and the rest sit in `ui-disclosure` "Show all n" in core's order,
- * each row with its reason and its chip. Arriving over `#waiting` opens the disclosure, scrolls the section into view
- * and focuses it (`tabindex="-1"`, DS-APP-35), so the fragment lists every entry. The context rail places it as the
- * rail's first block at wide, the page before the KPI card below wide.
+ * The workspace dashboard's section `#waiting` (spec 020 T17, ISC-238; design.md § Workspace-Dashboard), in the short
+ * form of spec 021 (ISC-246.1, design.md § P3 heights): the `ui-waits-block` of `guidance.waits` holds the header with
+ * the count chip and the top entry whole (spec, reason never shortened, copy chip); every other entry sits in core's
+ * order behind `ui-disclosure` "+n more" right below it, each row with its reason and its chip. The toggle's
+ * accessible name starts with its visible text and names the list ("+6 more · Waits on you, show all 7"). Arriving
+ * over `#waiting` opens the disclosure, scrolls the section into view and focuses it (`tabindex="-1"`, DS-APP-35), so
+ * the fragment lists every entry. The context rail places it as the rail's first block at wide, the page before the
+ * KPI band at medium and after the spec list at compact.
+ *
+ * Unencapsulated (like the Brief) so the fold's toggle can be a 28 px text row instead of the disclosure's 48 px
+ * summary; under a coarse pointer a `::before` widens its hit area to 44 px without growing the row. Every selector
+ * is scoped by the host element.
  */
 @Component({
   selector: 'app-waiting-section',
   imports: [GuidanceReasonPipe, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiDisclosure, UiWaitsBlock],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
   host: { id: WAITING_FRAGMENT, tabindex: '-1', 'data-ui': 'waiting-section', '[attr.data-count]': 'entries().length' },
   styles: `
-    :host { display: grid; gap: 8px; min-inline-size: 0; scroll-margin-block-start: 80px; }
-    .rest { margin: 0; padding: 0; list-style: none; }
-    .rest li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding-block: 8px; border-block-end: 1px solid var(--line); }
-    .rest li:last-child { border-block-end: 0; }
-    .row { display: flex; flex: 1 1 24ch; gap: 8px; align-items: flex-start; min-block-size: 44px; min-inline-size: 0; color: inherit; text-decoration: none; }
-    .row:hover .reason { text-decoration: underline; }
-    .id { flex: none; color: var(--ques-ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; line-height: 20px; }
-    .reason { flex: 1 1 auto; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; overflow-wrap: break-word; }
+    app-waiting-section { display: grid; gap: 0; min-inline-size: 0; scroll-margin-block-start: 80px; }
+    app-waiting-section .waits-fold > .head .summary { position: relative; min-block-size: 28px; color: var(--disp-ink); font-size: 13px; line-height: 20px; }
+    app-waiting-section .waits-visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    @media (pointer: coarse) {
+      app-waiting-section .waits-fold > .head .summary::before { position: absolute; inset-block: -8px; inset-inline: 0; content: ''; }
+    }
+    app-waiting-section .waits-rest { margin: 0; padding: 0; list-style: none; border-block-start: 1px solid var(--line); }
+    app-waiting-section .waits-rest li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding-block: 8px; border-block-end: 1px solid var(--line); }
+    app-waiting-section .waits-rest li:last-child { border-block-end: 0; }
+    app-waiting-section .waits-row { display: flex; flex: 1 1 24ch; gap: 8px; align-items: flex-start; min-block-size: 44px; min-inline-size: 0; color: inherit; text-decoration: none; }
+    app-waiting-section .waits-row:hover .waits-reason { text-decoration: underline; }
+    app-waiting-section .waits-id { flex: none; color: var(--ques-ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; line-height: 20px; }
+    app-waiting-section .waits-reason { flex: 1 1 auto; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; overflow-wrap: break-word; }
     @media (forced-colors: active) {
-      .id { color: LinkText; }
+      app-waiting-section .waits-id, app-waiting-section .waits-fold > .head .summary { color: LinkText; }
     }
   `,
   template: `
     <ui-waits-block [entries]="entries()" [workspace]="workspace()" [limit]="folds() ? shown : null" [chips]="true" [headingId]="headingId()" />
     @if (folds()) {
-      <ui-disclosure data-show-all [(open)]="open">
-        <span uiDisclosureSummary>{{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}</span>
-        <ol class="rest">
+      <ui-disclosure class="waits-fold" data-show-all [(open)]="open">
+        <span uiDisclosureSummary data-fold-toggle>
+          @if (open()) {
+            <span aria-hidden="true" data-visible>{{ 'guidance.waits.fewer' | transloco }}</span>
+            <span class="waits-visually-hidden" data-name>{{ 'guidance.waits.fewerName' | transloco }}</span>
+          } @else {
+            <span aria-hidden="true" data-visible>{{ 'guidance.waits.more' | transloco: { n: folded().length } }}</span>
+            <span class="waits-visually-hidden" data-name>{{ 'guidance.waits.foldName' | transloco: { n: folded().length, count: entries().length } }}</span>
+          }
+        </span>
+        <ol class="waits-rest">
           @for (entry of folded(); track key(entry)) {
             <li data-row>
-              <a class="row" [routerLink]="['/w', workspace(), 's', entry.spec]">
-                <span class="id">{{ entry.spec }}</span>
+              <a class="waits-row" [routerLink]="['/w', workspace(), 's', entry.spec]">
+                <span class="waits-id id">{{ entry.spec }}</span>
                 @if (entry.ref) {
                   <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
                 }
-                <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+                <span class="waits-reason" data-reason>{{ entry.reason | guidanceReason }}</span>
               </a>
               @if (entry.command; as cmd) {
                 <ui-command-chip
@@ -84,7 +107,7 @@ export class WaitingSection {
 
   protected readonly shown = WAITING_SHOWN;
   protected readonly key = waitsKey;
-  /** More than the top entry and four rows: the rest fold. */
+  /** More than the top entry and the shown rows: the rest fold. */
   protected readonly folds = computed(() => this.entries().length > 1 + WAITING_SHOWN);
   protected readonly folded = computed(() => this.entries().slice(1 + WAITING_SHOWN));
   /** Open on arrival over `#waiting`, else closed; the user's toggle wins until the fragment changes again. */

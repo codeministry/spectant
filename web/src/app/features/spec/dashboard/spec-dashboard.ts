@@ -32,7 +32,7 @@ import type { Tone } from '../../../shared/ui/tone';
 import { Brief, type BriefModel } from '../../dashboard/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
 import { SpecRailGuide } from '../rail/spec-rail-guide';
-import { GATE_NAMES, GATE_TONE, quoteIdea, stageIndex, TRACK_STAGES } from './dashboard-model';
+import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from './dashboard-model';
 
 /** The five area tiles in menu order, each with its provisional `g` key (the sequences themselves arrive with T102). */
 const TILE_AREAS: ReadonlyArray<{ readonly id: Exclude<AreaId, 'dashboard'>; readonly key: string }> = [
@@ -71,13 +71,13 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
   switch (id) {
     case 'status':
       return [
-        ['specDashboard.tiles.status.entries', { count: areas.status.timelineEntries }],
-        ['specDashboard.tiles.status.warnings', { count: areas.status.warnings }],
+        [areas.status.timelineEntries === 1 ? 'specDashboard.tiles.status.entries.one' : 'specDashboard.tiles.status.entries.other', { count: areas.status.timelineEntries }],
+        [areas.status.warnings === 1 ? 'specDashboard.tiles.status.warnings.one' : 'specDashboard.tiles.status.warnings.other', { count: areas.status.warnings }],
       ];
     case 'live':
       return [
         areas.live.agentsWorking > 0
-          ? ['specDashboard.tiles.live.working', { count: areas.live.agentsWorking }]
+          ? [areas.live.agentsWorking === 1 ? 'specDashboard.tiles.live.working.one' : 'specDashboard.tiles.live.working.other', { count: areas.live.agentsWorking }]
           : ['specDashboard.tiles.live.idle', {}],
         ['specDashboard.tiles.live.source', { source: areas.live.lockSource }],
       ];
@@ -91,12 +91,12 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
         DOC_KEYS.some((doc) => areas.docs[doc])
           ? ['specDashboard.tiles.library.present', { names: DOC_KEYS.filter((doc) => areas.docs[doc]).map((doc) => t(`specDashboard.docNames.${doc}`)).join(' · ') }]
           : ['specDashboard.tiles.library.none', {}],
-        ['specDashboard.tiles.library.decisions', { count: areas.docs.decisions }],
+        [areas.docs.decisions === 1 ? 'specDashboard.tiles.library.decisions.one' : 'specDashboard.tiles.library.decisions.other', { count: areas.docs.decisions }],
       ];
     case 'notes':
       return [
-        areas.notes.count === null ? ['specDashboard.tiles.notes.later', {}] : ['specDashboard.tiles.notes.count', { count: areas.notes.count }],
-        ['specDashboard.tiles.notes.board', { count: areas.board.rounds }],
+        areas.notes.count === null ? ['specDashboard.tiles.notes.later', {}] : [areas.notes.count === 1 ? 'specDashboard.tiles.notes.count.one' : 'specDashboard.tiles.notes.count.other', { count: areas.notes.count }],
+        [areas.board.rounds === 1 ? 'specDashboard.tiles.notes.board.one' : 'specDashboard.tiles.notes.board.other', { count: areas.board.rounds }],
       ];
   }
 }
@@ -104,7 +104,8 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
 /**
  * T53 · ISC-78 · ISC-72: the spec dashboard at `/w/:ws/s/:id`. It renders the spec payload the shell already loads
  * (`ShellData.spec`, `SpecPageModel`) as it is, or `AreaPlaceholder` while the spec route is unserved (a catch-all
- * 404). It shows the KPI band from `keyNumbers`, the idea quote, the next step with its reasons and the stage track
+ * 404). It shows the KPI band from `keyNumbers`, the idea card only where the spec has no goal sentence (spec 021,
+ * ISC-250: the spec head carries that sentence, and the page never repeats it), the next step with its reasons and the stage track
  * beside one bar per lane in the model's (constitution) order, the spec's TL;DR, the five area tiles from `areas`, and
  * the Spec context (spec 024 T38, 018-B14): Waiting on you, Warnings and Gates. From 1120 px the Spec context is the
  * shell's 352 px rail (registered with `RailContent`, the board's seam) with the key line below it; under 1120 px it
@@ -209,11 +210,6 @@ export class SpecDashboard {
   protected readonly gateSegments = computed<readonly MeterSegment[]>(() => {
     const gates = this.model()?.gates;
     return gates ? GATE_NAMES.map((name) => ({ key: name, count: 1, tone: GATE_TONE[gates[name].state] })) : [];
-  });
-
-  protected readonly quote = computed(() => {
-    const text = this.model()?.ideaQuote;
-    return text ? quoteIdea(text, this.lang()) : null;
   });
 
   /** At most three reasons (design.md § Next step); shown only where the guidance names no entry for the spec. */

@@ -1,53 +1,56 @@
 /*
- * The KPI band, ported from the prototype (`styles.css` kpi-band and Pulse, design.md § Prototype port). The host is
- * the `kpi` container; the rules below query that container, never the viewport, so the band keeps its form in a
- * 600 px cmux panel and full-window alike (ISC-63). The prototype switches on the shell (640 / 1120); the band measures
- * its own width, which is the shell's less the page gutters and, at wide, the rail, so its thresholds are the band's
- * own 560 / 880 (design.md § KPI band). Only placement and the band's own markup live here; the tile anatomy is
+ * The KPI band, ported from the prototype (`styles.css` kpi-band and Pulse, design.md § Prototype port), six tiles
+ * since spec 021 (ISC-245). The form follows the tier the shell measures on its container (`data-tier`, compact < 640,
+ * medium 640–1119, wide ≥ 1120), never the viewport, so the band keeps its form in a 600 px cmux panel and
+ * full-window alike (ISC-63). Only placement and the band's own markup live here; the tile anatomy is
  * `ui-kpi-tile`'s, edge and glow `ui-card`'s.
  */
 :host {
   display: block;
-  container: kpi / inline-size;
 }
 
-/* Compact (< 560): the Pulse card stands in for the band. */
+/* Medium: three columns by two equal rows. */
 .band {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 16px;
+}
+
+/*
+ * Wide: one row, the master tile twice as wide as the five beside it (spec 021, P3 heights). The template turns the
+ * master tile to the default tile's 16 px padding with an 88 px ring; its number keeps the hero's 40 px on a 40 px
+ * line. Narrower than 2fr, the band beside the 352 px rail at 1440 leaves the master's text column too narrow for its
+ * fraction and its closed · open line. The template drops the Specs tile's phase legend at wide (the spec list's
+ * filter chips carry its counts).
+ */
+:host([data-tier='wide']) .band {
+  grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr));
+}
+
+/* Compact: the Pulse card stands in for the band; at medium and wide the band stands. */
+:host([data-tier='compact']) .band,
+:host(:not([data-tier='compact'])) .pulse {
   display: none;
 }
 
-/* Medium (560–879): three columns of 120 px rows, the hero over two columns and two rows. */
-@container kpi (width >= 560px) {
-  .band {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-rows: minmax(120px, auto);
-    gap: 16px;
-  }
-
-  .master {
-    grid-row: span 2;
-    grid-column: span 2;
-  }
-
-  .pulse {
-    display: none;
-  }
+/* The statement line: what the number means and which way is good, 12/16, at most two lines, hyphenated in the
+   host's `lang`. In a tile without a meta line it goes to the foot. */
+.statement {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
-/* Wide (≥ 880): the 352 px hero column beside three tiles; Attention takes two of them in the second row. */
-@container kpi (width >= 880px) {
-  .band {
-    grid-template-columns: 352px repeat(3, minmax(0, 1fr));
-  }
-
-  .master {
-    grid-column: auto;
-  }
-
-  .span-wide {
-    grid-column: span 2;
-  }
+.foot {
+  margin-block-start: auto;
 }
 
 /* `.legend`: an 8 px square per phase, the name, then its count in the text colour. */
@@ -84,16 +87,37 @@
   font-weight: 600;
 }
 
-/* `.pulse-in`, `.pulse-top`, `.pulse-stats`. */
+/* `.pulse-in`, `.pulse-top`, `.pulse-stats`, 12 px apart (spec 021, P3 heights). */
 .pulse-in {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .top {
   display: flex;
   gap: 16px;
   align-items: center;
+}
+
+.lead {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* Eyebrow and number on one line, the number at the end. */
+.head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-inline-size: 0;
+}
+
+.head > .type-eyebrow {
+  overflow: hidden;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .figure {
@@ -108,46 +132,94 @@
   letter-spacing: 0;
 }
 
+/* The wide master tile's number (see the band rule above). */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host([data-tier='wide']) .master ::ng-deep .figure {
+  font-size: 40px;
+  line-height: 40px;
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host([data-tier='wide']) .master ::ng-deep .den {
+  font-size: 20px;
+  line-height: 20px;
+}
+
 .claims {
   display: grid;
   gap: 8px;
 }
 
+/* Label, meter and fraction on one line. */
 .claims-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
 }
 
-.frac {
-  font-family: var(--font-mono);
+.frac,
+.ref {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   line-height: 16px;
 }
 
-.stats {
+.frac {
+  font-family: var(--font-mono);
+}
+
+.ref {
+  color: var(--muted-ink);
+}
+
+/* Reference and statement as one text of at most two lines: on one line where they fit. */
+.say {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.say > .ref,
+.say > .statement {
+  display: inline;
+}
+
+.say > .ref::after {
+  content: ' · ' / '';
+}
+
+/* `.pulse-stats` as a 2 × 2 grid: Specs, Takeable, Warnings, Open fog. */
+.cells {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding-block-start: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  padding-block-start: 12px;
   border-block-start: 1px solid var(--line);
 }
 
-.stats a {
+.cells a {
   display: grid;
-  gap: 2px;
+  align-content: start;
+  gap: 0;
   min-inline-size: 0;
   color: inherit;
   text-decoration: none;
 }
 
-.stats a + a {
+.cells a:nth-child(even) {
   padding-inline-start: 16px;
   border-inline-start: 1px solid var(--line);
 }
 
-.stats b {
+.cells b {
   font-size: 20px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;

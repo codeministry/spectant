@@ -64,7 +64,7 @@ const text = (s: string | null | undefined): string => (s ?? '').replace(/\s+/gu
 /** One rendered board card, read in one pass. */
 type CardView = { key: string; id: string; state: string | null; marked: boolean; reason: string };
 /** One rendered Specs-table guide row. */
-type GuideView = { id: string; guide: string | null; marked: boolean; sentence: string };
+type GuideView = { id: string; guide: string | null; marked: boolean; ring: boolean; hidden: boolean; described: boolean; sentence: string };
 /** One rendered Next up entry. */
 type NextView = { id: string; guided: boolean; sentence: string; marked: boolean };
 
@@ -80,14 +80,28 @@ async function boardCards(page: Page): Promise<CardView[]> {
   );
 }
 
+/**
+ * The Specs list's guided rows (spec 021, R1; ISC-240 refined): a row with its own entry carries the reason as the
+ * hidden `why-<id>` (with `data-guide`), named in the row link's `aria-describedby` and on its own line of the link's
+ * `title`; a waiting row shows the "Waits on you" mark, a Next row the open ring. No guide line stands in the row.
+ */
 async function guideRows(page: Page): Promise<GuideView[]> {
-  return page.locator('app-spec-table app-spec-row-guide').evaluateAll((els) =>
-    els.map((el) => ({
-      id: el.getAttribute('data-reason') ?? '',
-      guide: el.getAttribute('data-guide'),
-      marked: el.querySelector('[data-waits-mark]') !== null,
-      sentence: el.querySelector('[data-guide-sentence]')?.textContent ?? '',
-    })),
+  return page.locator('app-spec-table li:has([data-guide])').evaluateAll((els) =>
+    els.map((el) => {
+      const why = el.querySelector('[data-guide]');
+      const link = el.querySelector('a.row-link');
+      const sentence = why?.textContent ?? '';
+      const describedBy = (link?.getAttribute('aria-describedby') ?? '').split(' ');
+      return {
+        id: why?.getAttribute('data-reason') ?? '',
+        guide: why?.getAttribute('data-guide') ?? null,
+        marked: el.querySelector('app-spec-row [data-waits-mark]') !== null,
+        ring: el.querySelector('app-spec-row [data-next-mark]') !== null,
+        hidden: why?.hasAttribute('hidden') === true,
+        described: describedBy.includes(why?.id ?? '-') && (link?.getAttribute('title') ?? '').endsWith(`\n${sentence}`),
+        sentence,
+      };
+    }),
   );
 }
 
@@ -155,10 +169,13 @@ test.describe('guidance board', () => {
       const entries = specEntries(guidance);
       const waiting = waitingSpecs(guidance);
 
-      await page.goto(`/w/${ws}`);
-      await expect(page.locator('app-spec-table app-spec-row-guide').first()).toBeVisible();
+      // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
+      await page.goto(`/w/${ws}?open=specs`);
+      await expect(page.locator('app-spec-table [data-spec-row]').first()).toBeVisible();
+      // Spec 021 (R1): no guide line, sentence or command chip in the list rows; they stand in Waits on you and Next up.
+      await expect(page.locator('app-spec-table :is(app-spec-row-guide, [data-guide-sentence], ui-command-chip)'), `${ws}: no guide line in the list`).toHaveCount(0);
 
-      // Specs table: one guide row per spec with its own entry, the mark exactly on the waiting ones.
+      // Specs table: one guided row per spec with its own entry, the mark exactly on the waiting ones, the ring on the rest.
       const rows = await guideRows(page);
       expect(rows.map((r) => r.id).sort(), `${ws}: guided rows`).toEqual([...entries.keys()].sort());
       expect(rows.filter((r) => r.marked).map((r) => r.id).sort(), `${ws}: marked rows`).toEqual(waiting);
@@ -166,6 +183,9 @@ test.describe('guidance board', () => {
       for (const row of rows) {
         const own = entries.get(row.id);
         expect(row.guide, `${ws} ${row.id}: guide kind`).toBe(own?.waits ? 'waits' : 'next');
+        expect(row.ring, `${ws} ${row.id}: the Next ring`).toBe(!own?.waits);
+        expect(row.hidden, `${ws} ${row.id}: the reason is no visible line`).toBe(true);
+        expect(row.described, `${ws} ${row.id}: the reason describes the row link and ends its title`).toBe(true);
         expect(text(row.sentence), `${ws} ${row.id}: the row's sentence`).toBe(text(own ? sentenceOf(own.entry.reason) : '?'));
       }
 

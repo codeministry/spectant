@@ -111,8 +111,8 @@ test.describe('tasks', () => {
         await page.goto('/w/harbor/s/002/tasks');
         await expect(page.locator('[data-task-row]')).toHaveCount(golden.counts.rows);
         await expect(page.locator('[data-mapping-row]')).toHaveCount(golden.probeMapping.length);
-        await expect(page.locator('[data-tasks-landed]')).toContainText(
-          `${String(golden.counts.boxes.landed)}/${String(golden.counts.boxes.total)}`,
+        await expect(page.locator('[data-tasks-done]')).toContainText(
+          `${String(golden.counts.done)} of ${String(golden.counts.rows)} tasks done or closed`,
         );
       });
     });
@@ -222,8 +222,8 @@ test.describe('task checkbox', () => {
     await expect(box).toBeEnabled();
     await expect(row.locator('.status')).toHaveAttribute('data-tone', 'done');
     await expect(page.locator('ui-toast .alert')).toContainText(`${webOpen.id} ticked in tasks.md, line ${String(webOpen.line)}`);
-    await expect(page.locator('[data-tasks-landed]')).toContainText(
-      `${String(golden.counts.boxes.landed + 1)}/${String(golden.counts.boxes.total)}`,
+    await expect(page.locator('[data-tasks-done]')).toContainText(
+      `${String(golden.counts.done + 1)} of ${String(golden.counts.rows)} tasks done or closed`,
     );
 
     // The answer's hash is the one the next tick sends: unticking again is accepted, not a stale 409.

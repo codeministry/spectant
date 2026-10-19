@@ -1,18 +1,17 @@
 /*
- * The spec row, ported from the prototype (styles.css 380-397, 512-513, 598-601). The list declares `container:
- * specs`; the row reads it, never the viewport. Below 760 px: `id title title` over `. track meter`, 64 px. From
- * 760 px: one line `48px | 1fr | auto | auto`, 48 px (64 px with the description line). Dense (the overview column):
- * one 48 px line at every width. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
+ * The spec row (spec 021, design § P3 heights). The list declares `container: specs`; the row reads it, never the
+ * viewport. From 640 px one 48 px line, `48px | 1fr | auto | auto`: id, title with its description inline behind it,
+ * the track cell (mark, agent dot, priority, mini track, phase), meter + a/b. Below 640 px two lines, `id title a/b`
+ * over `. mark · phase · priority` (or `phase · priority · description`), without meter bar and track. Compact
+ * density (ISC-254) renders no description, so the title has the line to itself. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
  */
 :host {
   display: grid;
-  grid-template-areas:
-    'id title title'
-    '. track meter';
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-areas: 'id title track meter';
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
   gap: 4px 16px;
   align-items: center;
-  min-block-size: 64px;
+  min-block-size: 48px;
   padding: 8px 16px;
 }
 
@@ -22,7 +21,6 @@
   grid-area: id;
   gap: 4px;
   align-items: center;
-  align-self: start;
   white-space: nowrap;
   color: var(--row-id-ink, var(--disp-text));
   font-family: var(--font-mono);
@@ -39,9 +37,12 @@
   color: var(--muted-ink);
 }
 
+/* Title, then the description inline on the same line (ISC-249 keeps it to a differing sentence). */
 .rtitle {
-  display: grid;
+  display: flex;
   grid-area: title;
+  gap: 8px;
+  align-items: baseline;
   min-inline-size: 0;
 }
 
@@ -49,9 +50,14 @@
    lives in spec-table.css, which owns the link), then the waits chip, lifted above the link stretched over the row. */
 .tline {
   display: flex;
+  flex: 0 1 auto;
   gap: 8px;
   align-items: center;
   min-inline-size: 0;
+}
+
+.rtitle:has(.d) .tline {
+  max-inline-size: 70%;
 }
 
 .rwaits {
@@ -63,11 +69,23 @@
 /* The description, one line cut at a whole word by `uiClamp` (ISC-111); the list renders "more…" / "less" outside the
    row link, and it opens title and description. */
 .d {
+  flex: 1 1 0;
+  min-inline-size: 0;
   overflow: hidden;
   overflow-wrap: anywhere;
   color: var(--muted-ink);
   font-size: 13px;
   line-height: 20px;
+}
+
+/* Opened, title and description each take their whole width again. */
+:host([data-expanded]) .rtitle {
+  flex-direction: column;
+  gap: 0;
+}
+
+:host([data-expanded]) .tline {
+  max-inline-size: none;
 }
 
 .rtrack {
@@ -76,6 +94,12 @@
   gap: 16px;
   align-items: center;
   min-inline-size: 0;
+}
+
+.rmark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
 }
 
 .ragent {
@@ -138,31 +162,60 @@
   text-align: end;
 }
 
-@container specs (width >= 760px) {
+/* Below 640 px of list: two lines (69 px with the hairline). Line 1 `id | title | a/b`, line 2 mark · phase · priority
+   (without guidance phase · priority · description); the meter bar and the stage track leave (the stage stays in the phase
+   chip and the a/b in the meter cell's name). */
+@container specs (width < 640px) {
+  /* The description ends line 2 at the row's end, where its anchored "more…" stays clear of the title link. */
   :host {
-    grid-template-areas: 'id title track meter';
-    grid-template-columns: 48px minmax(0, 1fr) auto auto;
-    min-block-size: 48px;
+    grid-template:
+      'id title title meter' 24px
+      '. track desc desc' 24px
+      / 48px auto minmax(0, 1fr) auto;
   }
 
-  .rid {
-    align-self: center;
+  :host .rtitle {
+    display: contents;
   }
-}
 
-:host([data-density='dense']) {
-  grid-template-areas: 'id title track meter';
-  grid-template-columns: 48px minmax(0, 1fr) auto auto;
-  min-block-size: 48px;
-}
+  :host .tline {
+    grid-area: title;
+    max-inline-size: none;
+  }
 
-:host([data-density='dense']) .rid {
-  align-self: center;
-}
+  :host .d {
+    grid-area: desc;
+  }
 
-/* Dense keeps the overview column to one line: no description line, no phase chip. */
-:host([data-density='dense']) :is(.d, .phase) {
-  display: none;
+  :host .rtrack {
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  /* A marked row shows its mark where the description stood; without either, line 2 starts under the title. */
+  :host([data-mark]) .d {
+    display: none;
+  }
+
+  :host(:is([data-mark], :not([data-desc]))) .rtrack {
+    grid-column: 2 / -1;
+  }
+
+  :host .phase {
+    order: 1;
+  }
+
+  :host .rprio {
+    order: 2;
+  }
+
+  :host :is(ui-stage-track, .meter) {
+    display: none;
+  }
+
+  :host([data-expanded]) {
+    grid-template-rows: auto auto;
+  }
 }
 
 @media (forced-colors: active) {
@@ -175,22 +228,11 @@
   }
 }
 
-/* Prototype styles.css 524: below 520 px the mini stage track leaves the row, so the phase chip never runs under the
-   meter (the stage stays in the chip and in the row's accessible name). */
-@container specs (width < 520px) {
-  :host(:not([data-density='dense'])) ui-stage-track {
-    display: none;
-  }
-
-  :host(:not([data-density='dense'])) .rtrack {
-    gap: 8px;
-    overflow: hidden;
-  }
-}
-
-/* Spec 024: the room at the end of the one description line for the list's anchored "more…" (spec-table.css). */
+/* Spec 024: the room at the end of the one description line for the list's anchored "more…" (spec-table.css). Without
+   a description (none, or compact density) a cut title line keeps that room instead, being the anchor then. */
 @supports (position-anchor: --a) {
-  :host(:not([data-density='dense'])) .d {
+  .d,
+  :host([data-overflow]:not([data-desc], [data-expanded])) .tline {
     padding-inline-end: 56px;
   }
 }

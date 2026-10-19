@@ -8,6 +8,7 @@ import {
   parseListQuery,
   phaseOptions,
   readArchiveRows,
+  readListCounts,
   readSpecRows,
   SORT_MENU,
   type SpecTableRow,
@@ -22,6 +23,7 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
     title: `Spec ${id}`,
     type: 'feature',
     phase: 'scoping',
+    stageGroup: 'scoping',
     stage: 'review',
     progress: { closed: 0, total: 4 },
     tasks: null,
@@ -41,12 +43,13 @@ function wire(id: string, over: Record<string, unknown> = {}): Record<string, un
 
 const BODY = {
   specs: [
-    wire('004', { phase: 'building', stage: 'code-review', progress: { closed: 30, total: 30 }, warnings: [{}, {}] }),
+    wire('004', { phase: 'building', stageGroup: 'building', stage: 'code-review', progress: { closed: 30, total: 30 }, warnings: [{}, {}] }),
     wire('010', { type: 'bug', progress: { closed: 1, total: 4 }, fog: 2 }),
-    wire('002', { phase: 'building', stage: 'build', progress: { closed: 25, total: 30 }, takeable: ['ISC-1', 'ISC-2'] }),
-    wire('003', { type: 'refactor', stage: 'tasks', progress: { closed: 0, total: 13 }, nextCommand: null }),
+    wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, takeable: ['ISC-1', 'ISC-2'] }),
+    wire('003', { type: 'refactor', phase: 'climbing', stageGroup: 'complete', stage: 'tasks', progress: { closed: 0, total: 13 }, nextCommand: null }),
   ],
   archive: [{ id: '001', slug: '001-first', title: 'First', type: 'feature' }],
+  kpis: { specs: 4, stageGroups: { scoping: 1, building: 2, complete: 1 }, specsWithFog: 1, byType: { feature: 2, bug: 1, refactor: 1 } },
 };
 
 const ids = (rows: readonly SpecTableRow[]): string[] => rows.map((row) => row.id);
@@ -90,6 +93,10 @@ describe('parseListQuery and listQueryParams', () => {
       takeable: true,
     });
     expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes' }))).toEqual(DEFAULT_QUERY);
+    // The phase chips filter by stage group (ISC-255): an old frontmatter value such as `climbing` reads as all.
+    expect(parseListQuery(params({ phase: 'climbing' }))).toEqual(DEFAULT_QUERY);
+    expect(parseListQuery(params({ phase: 'complete' })).phase).toBe('complete');
+    expect(parseListQuery(params({ phase: 'fog' })).phase).toBe('fog');
   });
 
   it('writes defaults as null, so the URL only carries what differs', () => {
@@ -113,6 +120,9 @@ describe('applyListQuery', () => {
   it('filters by phase, by fog, by type and by takeable', () => {
     expect(ids(applyListQuery(rows, query({ phase: 'building' })))).toEqual(['004', '002']);
     expect(ids(applyListQuery(rows, query({ phase: 'fog' })))).toEqual(['010']);
+    // By the stage group core derives, not the frontmatter `phase:` (003 is written `climbing`, grouped complete).
+    expect(ids(applyListQuery(rows, query({ phase: 'complete' })))).toEqual(['003']);
+    expect(ids(applyListQuery(rows, query({ phase: 'scoping' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ type: 'bug' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ takeable: true })))).toEqual(['002']);
   });
@@ -128,21 +138,49 @@ describe('applyListQuery', () => {
   });
 });
 
-describe('phaseOptions and typeOptions', () => {
-  const rows = readSpecRows(BODY);
+describe('phaseOptions and typeOptions (spec 021, ISC-255: every count is the model\'s)', () => {
+  const counts = readListCounts(BODY);
 
-  it('lists All, the phases in lifecycle order with counts, and fog when a spec has fog', () => {
-    expect(phaseOptions(rows)).toEqual([
+  it('reads the chip counts from the model kpis, and none from a body without them', () => {
+    expect(counts).toEqual(BODY.kpis);
+    expect(readListCounts({ specs: [] })).toBeNull();
+    expect(phaseOptions(null)).toEqual([]);
+    expect(typeOptions(null)).toEqual([]);
+  });
+
+  it('lists All, the stage groups in lifecycle order with the served counts, and fog when a spec has fog', () => {
+    expect(phaseOptions(counts)).toEqual([
       { key: 'all', count: 4 },
-      { key: 'scoping', count: 2 },
+      { key: 'scoping', count: 1 },
       { key: 'building', count: 2 },
+      { key: 'complete', count: 1 },
       { key: 'fog', count: 1 },
     ]);
   });
 
-  it('lists types only when there are two or more', () => {
-    expect(typeOptions(rows).map((option) => option.key)).toEqual(['all', 'bug', 'feature', 'refactor']);
-    expect(typeOptions(rows.filter((row) => row.type === 'feature'))).toEqual([]);
+  it('shows the served numbers, never a count of the rows', () => {
+    // Counts no grouping of BODY's rows gives: the chips must carry these.
+    const served = { specs: 9, stageGroups: { scoping: 7, building: 0, complete: 2 }, specsWithFog: 0, byType: { bug: 5, chore: 4 } };
+    expect(phaseOptions(served)).toEqual([
+      { key: 'all', count: 9 },
+      { key: 'scoping', count: 7 },
+      { key: 'complete', count: 2 },
+    ]);
+    expect(typeOptions(served)).toEqual([
+      { key: 'all', count: 9 },
+      { key: 'bug', count: 5 },
+      { key: 'chore', count: 4 },
+    ]);
+  });
+
+  it('lists types alphabetically, only when there are two or more', () => {
+    expect(typeOptions(counts)).toEqual([
+      { key: 'all', count: 4 },
+      { key: 'bug', count: 1 },
+      { key: 'feature', count: 2 },
+      { key: 'refactor', count: 1 },
+    ]);
+    expect(typeOptions({ ...BODY.kpis, byType: { feature: 4 } })).toEqual([]);
   });
 });
 
@@ -161,5 +199,25 @@ describe('holdNewRows (design.md § Live update: new specs never reflow under th
 
   it('shows nothing extra for a seen spec that has gone', () => {
     expect(holdNewRows(rows.slice(0, 1), new Set(['002', '009']))).toEqual({ shown: rows.slice(0, 1), pending: [] });
+  });
+});
+
+describe('spec-table-model description beside the title (ISC-249)', () => {
+  const described = (title: string, goal: string): SpecTableRow | undefined => readSpecRows({ specs: [wire('021', { title, goal })] })[0];
+
+  it('spec-table-model drops the description when it equals the title', () => {
+    expect(described('Keeps the manifest in step', 'Keeps the manifest in step')?.description).toBeNull();
+  });
+
+  it('spec-table-model drops the description when it differs from the title only by the trailing full stop or whitespace', () => {
+    expect(described('Keeps the manifest in step', 'Keeps the manifest in step.')?.description).toBeNull();
+    expect(described('Keeps the manifest  in step.', '  Keeps the manifest in\tstep ')?.description).toBeNull();
+    expect(described('Keeps the manifest in step!', 'Keeps the manifest in step …')?.description).toBeNull();
+  });
+
+  it('spec-table-model keeps title and description when they differ, and shows the description as the model gives it', () => {
+    const row = described('Keeps the manifest in step', 'The manifest never drifts from the folder.');
+    expect(row).toMatchObject({ title: 'Keeps the manifest in step', description: 'The manifest never drifts from the folder.' });
+    expect(described('Keeps the manifest', 'Keeps the manifest in step.')?.description).toBe('Keeps the manifest in step.');
   });
 });

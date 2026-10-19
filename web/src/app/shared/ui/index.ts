@@ -38,7 +38,7 @@ export { type MeterSegment, UiMeter } from './meter/meter';
 export { type NoticeTone, UiNotice } from './notice/notice';
 export { UiDialog } from './overlay/dialog';
 export { UiDocProse } from './doc-prose/doc-prose';
-export { UiDisclosure } from './overlay/disclosure';
+export { UiDisclosure, UiDisclosureDescription, type UiDisclosureHeadingLevel } from './overlay/disclosure';
 export { type PopoverPlacement, UiPopover, UiPopoverTrigger } from './overlay/popover';
 export { type SheetTier, UiSheet } from './overlay/sheet';
 export { DEFAULT_PRIORITY, PRIORITY_LOOK, type PriorityLook, UiPriority } from './priority/priority';

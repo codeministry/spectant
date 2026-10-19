@@ -68,13 +68,15 @@ const laneCount = (lane: string) => count(GOLDEN.counts.byLane.find((c) => c.nam
 const statusCount = (status: string) => count(GOLDEN.counts.byStatus.find((c) => c.name === status)?.count);
 
 describe('TasksTab', () => {
-  it('renders one row per task line and the landed fraction from the golden counts', async () => {
+  it('renders one row per task line and the done rows of all rows from the golden counts', async () => {
     setUp();
     const { root } = await open();
     expect(rows(root)).toHaveLength(GOLDEN.counts.rows);
-    expect(root.querySelector('[data-tasks-landed]')?.textContent).toContain(
-      `${String(GOLDEN.counts.boxes.landed)}/${String(GOLDEN.counts.boxes.total)}`,
+    expect(root.querySelector('[data-tasks-done]')?.textContent).toContain(
+      `${String(GOLDEN.counts.done)} of ${String(GOLDEN.counts.rows)} tasks done or closed`,
     );
+    // "hide done" stands in the head line, beside the count (spec 021, T43).
+    expect(root.querySelector('.head [data-hide-done]')).not.toBeNull();
   });
 
   it('renders a row with its claim link, edges, lane, path tail, status and builder', async () => {
@@ -228,6 +230,75 @@ describe('TasksTab', () => {
     const { root } = await open();
     expect(rows(root)).toHaveLength(0);
     expect(root.querySelector('ui-empty-state')?.textContent).toContain('No tasks.md for a feature');
+  });
+});
+
+describe('TasksTab tasks-tab counts (spec 021, T42, ISC-252)', () => {
+  /** The status chips as `[label, count]`, the `all` chip first. */
+  const statusChips = (root: HTMLElement): Array<[string, number]> =>
+    [...root.querySelectorAll('[data-filter="status"] button')].map((b) => {
+      const count = b.querySelector('.count')?.textContent.trim() ?? '';
+      return [b.textContent.trim().slice(0, -count.length).trim(), Number(count)];
+    });
+  const head = (root: HTMLElement) => root.querySelector('[data-tasks-done]')?.textContent.replace(/\s+/g, ' ').trim();
+
+  it('tasks-tab counts: head line, `all` and the sum of the status chips name the same row count (open, done, held)', async () => {
+    // The golden 002 holds open, held, done and closed rows besides a struck one.
+    expect(GOLDEN.tasks.some((t) => t.status === 'open')).toBe(true);
+    expect(GOLDEN.tasks.some((t) => t.status === 'held')).toBe(true);
+    expect(GOLDEN.tasks.some((t) => t.status === 'done')).toBe(true);
+    setUp();
+    const { root } = await open();
+    const { rows: total, done } = GOLDEN.counts;
+    expect(head(root)).toBe(`${String(done)} of ${String(total)} tasks done or closed`);
+    const [all, ...chips] = statusChips(root);
+    expect(all).toEqual(['all', total]);
+    expect(chips.reduce((sum, [, n]) => sum + n, 0)).toBe(total);
+    expect(chips.map(([label]) => label)).toContain('done');
+    expect(rows(root)).toHaveLength(total);
+  });
+
+  it('tasks-tab counts: the chip "done" shows at 0, and one row reads the singular', async () => {
+    const [first] = GOLDEN.tasks.filter((t) => t.status === 'open');
+    const body: TasksBody = {
+      ...GOLDEN,
+      tasks: [first],
+      counts: {
+        rows: 1,
+        done: 0,
+        boxes: { landed: 0, total: 1 },
+        byLane: [{ name: first.lane, count: 1 }],
+        byStatus: [
+          { name: 'open', count: 1 },
+          { name: 'done', count: 0 },
+        ],
+      },
+    };
+    setUp(body);
+    const { root } = await open();
+    expect(head(root)).toBe('0 of 1 task done or closed');
+    expect(statusChips(root)).toEqual([
+      ['all', 1],
+      ['open', 1],
+      ['done', 0],
+    ]);
+  });
+});
+
+describe('TasksTab filter names (spec 021, T44, ISC-248)', () => {
+  const allChip = (root: HTMLElement, group: string) => root.querySelector<HTMLButtonElement>(`[data-filter="${group}"] button`);
+
+  it('names the two `all` chips by their group, the visible text first, so no two chips share a name', async () => {
+    setUp();
+    const { root } = await open();
+    const total = GOLDEN.counts.rows;
+    expect(allChip(root, 'lane')?.textContent.replace(/\s+/g, ' ').trim()).toBe(`all ${String(total)}`);
+    expect(allChip(root, 'lane')?.getAttribute('aria-label')).toBe(`All ${String(total)} lanes`);
+    expect(allChip(root, 'status')?.getAttribute('aria-label')).toBe(`All ${String(total)} statuses`);
+    const named = [...root.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map(
+      (b) => b.getAttribute('aria-label') ?? b.textContent.replace(/\s+/g, ' ').trim(),
+    );
+    expect(new Set(named).size).toBe(named.length);
   });
 });
 

@@ -58,7 +58,7 @@ export function milestonesLine(milestones: PlanningBody['milestones']): SummaryL
   const named = milestones.filter((entry) => entry.specs.length > 0);
   const next = named.find((entry) => entry.state !== 'complete');
   if (next === undefined) return null;
-  const key = 'shell.pages.summary.milestones';
+  const key = named.length === 1 ? 'shell.pages.summary.milestones.one' : 'shell.pages.summary.milestones.other';
   return next.target === null
     ? { key, params: { count: named.length, next: next.name } }
     : { key, params: { count: named.length }, time: { param: 'next', value: next.target, form: 'day' } };

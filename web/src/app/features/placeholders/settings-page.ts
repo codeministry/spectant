@@ -6,7 +6,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LANGS } from '../../../i18n/catalogues';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LanguageService } from '../../core/language.service';
-import { SettingsService, type ThemeMode } from '../../core/settings.service';
+import { isDensity, SettingsService, type ThemeMode } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
@@ -44,8 +44,9 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
 
 /**
  * `/settings` (spec 024, T60; design.md § Settings and the static prototype `settings.html`): the page head, the
- * anchor pills (the Help nav), then five cards. Appearance holds theme and language as stored settings; density and
- * reduced motion are not stored by the core yet, so they sit in one disabled demo block. Actors, Workspaces (the
+ * anchor pills (the Help nav), then five cards. Appearance holds theme, language and density (spec 021, ISC-254: the
+ * default of board, flow view and spec row; `?density=` overrides it for one view and never changes it here) as stored
+ * settings; reduced motion is not stored yet, so it sits alone in a disabled demo block. Actors, Workspaces (the
  * registry summary and the row link to `/settings/workspaces`), Keyboard (the single-key switch, the common keys and
  * the shortcut sheet) and About follow. The way back is the header.
  */
@@ -70,7 +71,7 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
     .set-row { display: grid; gap: var(--space-2); align-items: center; padding: 12px 0; border-block-start: 1px solid var(--line); }
     .set-row:first-of-type { border-block-start: 0; }
     .set-row ui-segmented, .set-row .switch { justify-self: start; }
-    @container (inline-size >= 560px) { .set-row { grid-template-columns: 200px minmax(0, 1fr); } }
+    @container (inline-size >= 560px) { .set-row { grid-template-columns: 200px minmax(0, 1fr); } .set-row .row-hint { grid-column: 2; } }
     .demo-block { margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
     .demo-head { display: flex; gap: 8px; align-items: center; }
     fieldset { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
@@ -131,16 +132,23 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
                 (valueChange)="setLanguage($event)"
               />
             </div>
+            <div class="set-row">
+              <span class="eyebrow" aria-hidden="true">{{ 'settings.appearance.density' | transloco }}</span>
+              <ui-segmented
+                data-setting="density"
+                [label]="'settings.appearance.density' | transloco"
+                [options]="densityOptions()"
+                [value]="density()"
+                (valueChange)="setDensity($event)"
+              />
+              <p class="meta row-hint" data-setting-hint="density">{{ 'settings.appearance.densityHint' | transloco }}</p>
+            </div>
             <div class="demo-block" data-demo>
               <div class="demo-head" data-demo-head>
                 <span class="eyebrow">{{ 'settings.appearance.display' | transloco }}</span>
                 <ui-chip variant="demo" />
               </div>
               <fieldset disabled>
-                <div class="set-row">
-                  <span class="eyebrow" aria-hidden="true">{{ 'settings.appearance.density' | transloco }}</span>
-                  <ui-segmented [label]="'settings.appearance.density' | transloco" [options]="densityOptions()" value="comfortable" />
-                </div>
                 <div class="set-row">
                   <span class="eyebrow" aria-hidden="true">{{ 'settings.appearance.reducedMotion' | transloco }}</span>
                   <button
@@ -163,18 +171,18 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
         <ui-card [padding]="0">
           <div class="c-head">
             <h2 id="settings-workspaces">{{ 'settings.nav.workspaces' | transloco }}</h2>
-            <span class="meta">{{ 'settings.workspacesCard.registered' | transloco: { count: registry().total } }}</span>
+            <span class="meta">{{ (registry().total === 1 ? 'settings.workspacesCard.registered.one' : 'settings.workspacesCard.registered.other') | transloco: { count: registry().total } }}</span>
           </div>
           <div class="card-pad">
             <div class="sum-line" data-workspaces-summary>
               <span class="check-line s-ok"
                 ><span class="sdot" aria-hidden="true"></span
-                >{{ 'settings.workspacesCard.readable' | transloco: { count: registry().readable } }}</span
+                >{{ (registry().readable === 1 ? 'settings.workspacesCard.readable.one' : 'settings.workspacesCard.readable.other') | transloco: { count: registry().readable } }}</span
               >
               @if (registry().missing > 0) {
                 <span class="check-line s-red"
                   ><span class="sdot" aria-hidden="true"></span
-                  >{{ 'settings.workspacesCard.missing' | transloco: { count: registry().missing } }}</span
+                  >{{ (registry().missing === 1 ? 'settings.workspacesCard.missing.one' : 'settings.workspacesCard.missing.other') | transloco: { count: registry().missing } }}</span
                 >
               }
               <span class="meta">{{ 'settings.workspacesCard.registry' | transloco }}</span>
@@ -270,6 +278,8 @@ export class SettingsPage {
   });
   protected readonly langOptions: readonly SegmentedOption[] = LANGS.map((key) => ({ key, label: key.toUpperCase() }));
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
+  /** The stored density; `?density=` on a view never reaches it (ISC-254). */
+  protected readonly density = computed(() => this.settings.settings().density);
 
   /** The registry summary: every registered workspace, the readable ones and the ones whose folder is gone. */
   protected readonly registry = computed(() => {
@@ -288,6 +298,10 @@ export class SettingsPage {
     if (next === undefined) return;
     this.language.set(next);
     void this.settings.update({ language: next });
+  }
+
+  protected setDensity(value: string | undefined): void {
+    if (isDensity(value) && value !== this.density()) void this.settings.update({ density: value });
   }
 
   protected toggleSingleKeys(): void {

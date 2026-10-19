@@ -63,3 +63,25 @@ describe("mermaid stays a lazy chunk", () => {
     expect(lazy.some((file) => marker.test(readFileSync(join(DIST, file), "utf8")))).toBe(true);
   });
 });
+
+// The spec page (its head, gate button, overlaps and rail) is a route-level lazy chunk like every other page, so it does
+// not weigh on the initial bundle and its 1 MB budget in angular.json (spec 021).
+describe("the spec page stays a lazy chunk", () => {
+  const ROUTES = join(SRC, "app", "app.routes.ts");
+
+  test("app.routes.ts loads it through import(), never a static import", () => {
+    const code = readFileSync(ROUTES, "utf8");
+    expect(code).not.toMatch(/^\s*import\s[^;]*from\s+['"]\.\/features\/spec\/spec-page['"]/m);
+    expect(code).toMatch(/loadComponent:\s*\(\)\s*=>\s*import\(\s*['"]\.\/features\/spec\/spec-page['"]\s*\)/);
+  });
+
+  const noBuild = !existsSync(join(DIST, "index.html"));
+  test.skipIf(noBuild)("the initial bundle carries no spec head, a lazy chunk does (skipped without a build)", () => {
+    const initial = initialFiles();
+    expect(initial.length).toBeGreaterThan(0);
+    const marker = /["'`]app-spec-head["'`]/;
+    for (const file of initial) expect(marker.test(readFileSync(join(DIST, file), "utf8")), file).toBe(false);
+    const lazy = readdirSync(DIST).filter((file) => file.endsWith(".js") && !initial.includes(file));
+    expect(lazy.some((file) => marker.test(readFileSync(join(DIST, file), "utf8")))).toBe(true);
+  });
+});

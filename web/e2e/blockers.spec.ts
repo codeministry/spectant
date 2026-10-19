@@ -85,7 +85,7 @@ test.describe('blockers waits: the spec edges hold their specs (waiting)', () =>
         const chip = headChip(page);
         await expectChip(chip, partial.on, '002 head');
         await expect(chip).not.toHaveAttribute('data-full');
-        await expect(chip.locator('[data-waits-meta]')).toHaveText(`· ${String(partial.tasks.length)} of 5 open tasks`);
+        await expect(chip.locator('[data-waits-meta]')).toHaveText('· 3 waiting · 1 open');
         await expect(chip.locator('a[data-waits]')).toBeVisible();
       });
     });
@@ -255,7 +255,7 @@ test.describe('blockers overlap: the spec-overlap warning of 002 and 004', () =>
     [OVERLAP.other, OVERLAP.waiting, false],
   ] as const) {
     test(`overlap: ${spec}'s head holds the line with ${other}, its chip copies (after: ${other})`, async ({ page }) => {
-      await open(page, specPath(spec));
+      await open(page, `${specPath(spec)}?open=overlaps`);
       const line = headOverlaps(page);
       await expect(line, `one overlap line in ${spec}'s head`).toHaveCount(1);
       await expect(line).toHaveAttribute('id', `overlap-${other}`);
@@ -288,7 +288,7 @@ test.describe('blockers overlap: the spec-overlap warning of 002 and 004', () =>
     await expect(listOverlaps(page)).toHaveCount(1);
     shown += await listOverlaps(page).count();
     for (const spec of [OVERLAP.waiting, OVERLAP.other]) {
-      await open(page, specPath(spec));
+      await open(page, `${specPath(spec)}?open=overlaps`);
       await expect(headOverlaps(page)).toHaveCount(1);
       shown += await headOverlaps(page).count();
     }

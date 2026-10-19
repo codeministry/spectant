@@ -26,6 +26,14 @@
   margin: 0;
 }
 
+/* Spec 021 (T25): the counters wrap as chips; they never scroll sideways. */
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-inline-size: 0;
+}
+
 .t-head ui-filter-chips {
   flex: 0 1 auto;
   min-inline-size: 0;
@@ -68,10 +76,37 @@
 
 .rows {
   container: specs / inline-size;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   border-block-start: 1px solid var(--line);
   list-style: none;
+}
+
+/*
+ * "Show all N" (spec 021, T25): the fold insets its toggle 16 px like the head; the folded rows step back out to the
+ * card edges and continue the first list's hairlines (the next-up fold's pattern).
+ */
+.show-all {
+  display: block;
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+.show-all-label {
+  color: var(--disp-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.rows-rest {
+  margin: 0 -16px;
+  border-block-start: 1px solid var(--line);
+}
+
+/* While open, the fold's hairline is the folded list's top edge; the last row's own closes the list. */
+.show-all[data-open] {
+  border-block-end: 0;
 }
 
 .rows > li {
@@ -307,12 +342,6 @@
   .row-more {
     min-block-size: 44px;
   }
-}
-
-/* The reason line under the row (ISC-122.3), aligned with the title column like "more…": it pulls into the row's
-   bottom padding, and after "more…" the two margins collapse, so it follows that toggle directly. */
-.row-reason {
-  margin: -8px 16px 8px 80px;
 }
 
 /* Spec 024 (principal 2026-10-13 "Hybrid", ISC-111 refined): the row's description is one muted line with "more…" at

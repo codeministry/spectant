@@ -177,26 +177,44 @@ test.describe('spec head per tier', () => {
     // 002's 240 px budget was set for a head without a breadcrumb; the crumb row (20 px plus the 8 px row gap at a fine
     // pointer) sits on top of it, so the head is measured without that row against the budget and as a whole against
     // the budget plus the row.
-    test('short breadcrumb, full-width command chip, at most 240 px tall beside the breadcrumb row', async ({ page }) => {
+    // Spec 021 (T67, T70, ISC-250): at compact the meta line, the command chip and Notes fold into "Details of NNN",
+    // the gate is an icon button that keeps its label as its accessible name, and the collapsed head stays under 20 %
+    // of the first screen.
+    test('short breadcrumb, icon gate, the command chip in the Details fold, the collapsed head under 20 % of the screen', async ({ page }) => {
+      // ISC-250 measures the first screen at 390 × 900 (`density-head.spec.ts`).
+      await page.setViewportSize({ width: 390, height: 900 });
       await page.goto('/w/harbor/s/002/status');
       const head = page.locator(HEAD);
-      await expect(head.locator('[data-head-command]')).toBeVisible();
       // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
       await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('Spec 002');
       await expect(head.locator('[data-breadcrumb] [data-crumb]').first()).toHaveAttribute('data-crumb', 'workspace');
       await expect(head.locator('[data-breadcrumb] [data-crumb="area"]')).toHaveAttribute('aria-current', 'page');
       await expect(head.locator('[data-description]')).toBeVisible();
-      const box = await head.boundingBox();
       const crumbs = await head.locator('[data-breadcrumb]').boundingBox();
-      const crumbRow = (crumbs?.height ?? 0) + 8;
-      // spec 024: prototype value (principal: the prototype wins; ISC-105 adjusted to the prototype) — the prototype's
-      // `.gate-btn` carries its 11 px `.gate-hint` line under the button (2 px gap, at most one 16 px line), measured like
-      // the crumb row on top of the 240 px budget.
-      const hint = await head.locator('[data-gate-hint]').boundingBox();
-      expect(hint?.height ?? 0).toBeLessThanOrEqual(16);
-      const hintRow = hint === null ? 0 : hint.height + 2;
       expect(crumbs?.height ?? Infinity).toBeLessThanOrEqual(44);
-      expect((box?.height ?? Infinity) - crumbRow - hintRow).toBeLessThanOrEqual(240);
+
+      // The gate: icon-only in the title row, its label (and hint) read but not shown.
+      const gate = head.locator('[data-head-actions] app-gate-button[data-size="icon"] button').first();
+      await expect(gate).toBeVisible();
+      const label = ((await gate.locator('.gate-label').textContent()) ?? '').trim();
+      expect(label).not.toBe('');
+      await expect(gate).toHaveAccessibleName(new RegExp(label.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
+      const box = await gate.boundingBox();
+      expect(box?.width ?? Infinity).toBeLessThanOrEqual(44);
+
+      // The collapsed head: no command chip in sight, at most 20 % of the first screen.
+      await expect(head.locator('[data-head-command]')).toBeHidden();
+      const viewport = page.viewportSize();
+      const collapsed = await head.boundingBox();
+      expect(collapsed?.height ?? Infinity).toBeLessThanOrEqual((viewport?.height ?? 0) * 0.2);
+
+      // "Details of 002" opens the meta line and the command chip.
+      const details = head.locator('[data-head-details] button').first();
+      await expect(details).toHaveAccessibleName(/002/u);
+      await details.click();
+      await expect(details).toHaveAttribute('aria-expanded', 'true');
+      await expect(head.locator('[data-head-details-actions] [data-head-command]')).toBeVisible();
+      await expect(head.locator('[data-head-details-actions] [data-head-command]')).toContainText('/spec-implement 002');
     });
   });
 });

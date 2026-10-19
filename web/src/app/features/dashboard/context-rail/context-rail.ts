@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, type TemplateRef, viewChild } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { afterEveryRender, ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal, type TemplateRef, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoService } from '@jsverse/transloco';
 import type { DashboardView } from './dashboard-view';
@@ -11,29 +12,40 @@ import { WarningsPanel } from '../warnings-panel/warnings-panel';
 /** Which parts render in place below wide; at wide the rail always holds both. */
 export type ContextRailInline = 'all' | 'next-up' | 'warnings';
 
+/** The id of the rail's Next up block at wide, which the context rail's host owns for assistive technology. */
+export const RAIL_NEXT_UP = 'rail-next-up';
+
 /**
  * The dashboard's context rail (T64, design.md § Desktop): Waits on you (spec 020 T17, the section `#waiting`, at wide
- * only: below wide the page puts it before the KPI card), Next up, then Warnings, nothing else. At wide it registers
+ * only: at medium the page puts it before the KPI band, at compact after the spec list with a link in the page head,
+ * spec 021 ISC-246.1), Next up, then Warnings, nothing else. At wide it registers
  * both as rail blocks with spec 002's seam (`RailContent`, rendered by the shell's `app-rail-slot`), the way the board
  * does, plus the collapsed strip's two counts; below wide it renders them in place — Next up as one card, then
  * Warnings as the `#warnings` section after it at compact and medium alike (018-B15). `inline` lets a page split the
  * two parts across its slots below wide (the dashboard puts Warnings after the Specs, the prototype's `#warnings-n`).
+ *
+ * Spec 021 (ISC-246): Next up is read in the page's order at every tier, after the TL;DR and before the spec list. At
+ * wide it stands only visually in the rail: the rail block is the one rendered copy (no hidden twin, no duplicate
+ * ids, every control live for pointer and keyboard), and this host, which sits in the page's main column where Next
+ * up stands below wide, claims it with `aria-owns`, so the accessibility tree reads it there and not in the rail's
+ * landmark. The host owns the block only while the rail renders it (not in the collapsed strip, not while the docked
+ * detail sidebar holds the slot), and an empty host stays in that tree (`display: contents`: no box, no grid gap).
  */
 @Component({
   selector: 'app-context-rail',
   imports: [NextUpList, WaitingSection, WarningsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-context-rail': '', '[attr.data-tier]': 'tier()' },
+  host: { 'data-context-rail': '', '[attr.data-tier]': 'tier()', '[attr.aria-owns]': 'owns()' },
   styles: `
     :host { display: grid; gap: 16px; min-inline-size: 0; }
-    :host(:empty) { display: none; }
+    :host(:empty) { display: contents; }
   `,
   template: `
     <ng-template #railBlocks>
       @if (model().guidance; as guidance) {
         <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
       }
-      <app-next-up-list form="rail" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
+      <app-next-up-list [id]="railNextUp" form="rail"[specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
       <app-warnings-panel form="rail" [specs]="model().specs" [kpis]="model().kpis" />
     </ng-template>
     @if (!wide()) {
@@ -59,6 +71,13 @@ export class ContextRail {
   protected readonly tier = computed(() => this.state.tier());
   protected readonly wide = computed(() => this.tier() === 'wide');
 
+  protected readonly railNextUp = RAIL_NEXT_UP;
+  private readonly document = inject(DOCUMENT);
+  /** Whether the shell's rail slot rendered the Next up block after the last change (read back from the DOM). */
+  private readonly railNextUpShown = signal(false);
+  /** The host's `aria-owns`: the rail's Next up block at wide while it is shown and the page reads Next up here. */
+  protected readonly owns = computed(() => (this.wide() && this.inline() !== 'warnings' && this.railNextUpShown() ? RAIL_NEXT_UP : null));
+
   private readonly railBlocks = viewChild<TemplateRef<unknown>>('railBlocks');
   private readonly badges = computed<readonly RailBadge[]>(() => {
     this.lang();
@@ -79,5 +98,7 @@ export class ContextRail {
       },
       inject(DestroyRef),
     );
+    // After every render, not on a signal of this view: the shell's slot (strip, docked sidebar, zen) decides.
+    afterEveryRender({ read: () => this.railNextUpShown.set(this.document.getElementById(RAIL_NEXT_UP) !== null) });
   }
 }

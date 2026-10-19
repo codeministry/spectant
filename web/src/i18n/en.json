@@ -35,8 +35,14 @@
     "skipToSpecs": "Skip to specs",
     "titlePrefix": "Specs",
     "eyebrow": {
-      "dashboard": "Dashboard · {{count}} specs",
-      "workspace": "{{workspace}} · {{count}} specs"
+      "dashboard": {
+        "one": "Dashboard · {{count}} spec",
+        "other": "Dashboard · {{count}} specs"
+      },
+      "workspace": {
+        "one": "{{workspace}} · {{count}} spec",
+        "other": "{{workspace}} · {{count}} specs"
+      }
     },
     "search": {
       "short": "Search specs…",
@@ -80,18 +86,37 @@
   "kpi": {
     "masterClaims": "Master claims",
     "specClaims": "Spec claims",
-    "open": "{{count}} open",
+    "open": {
+      "one": "{{count}} open",
+      "other": "{{count}} open"
+    },
     "closedCaption": "{{percent}} % closed · {{open}} open",
+    "closedOpen": "{{closed}} closed · {{open}} open",
     "specs": "Specs",
     "takeable": "Takeable",
     "takeableNow": "Takeable now",
     "attention": "Attention",
     "attentionDetail": "{{warnings}} warnings · {{fog}} open fog",
     "attentionCompact": "{{warnings}} · {{fog}} fog",
+    "warnings": "Warnings",
+    "fog": "Open fog",
+    "of": "of {{total}}",
+    "inSpecs": {
+      "one": "in {{count}} of {{total}} spec",
+      "other": "in {{count}} of {{total}} specs"
+    },
     "archive": "Archive",
     "takeableCaption": "claims ready to build",
     "archiveCaption": "archived spec",
-    "master": "Master"
+    "master": "Master",
+    "statement": {
+      "master": "Master claims closed; more is better",
+      "specClaims": "Spec claims closed; more is better",
+      "specs": "Specs complete; more is better",
+      "takeable": "Claims ready to build; more is better",
+      "warnings": "Warnings to resolve; fewer is better",
+      "fog": "Questions still open; fewer is better"
+    }
   },
   "brief": {
     "title": "Brief",
@@ -99,7 +124,12 @@
     "asOf": "as of {{date}}",
     "stale": "stale",
     "more": "More…",
-    "less": "Less"
+    "less": "Less",
+    "moreName": "More… of the TL;DR",
+    "lessName": "Less of the TL;DR",
+    "showWhole": "Show whole TL;DR",
+    "showWholeName": "Show whole TL;DR, all sections of the brief",
+    "lang": "Language of the text: {{lang}}"
   },
   "specs": {
     "title": "Specs",
@@ -110,12 +140,30 @@
     },
     "meta": "{{active}} active · {{archived}} archived",
     "metaShort": "{{active}} · {{archived}} archived",
-    "countSegment": "{{count}} specs",
-    "typeMeta": "{{count}} {{type}} · {{archived}} archived",
+    "countSegment": {
+      "one": "{{count}} spec",
+      "other": "{{count}} specs"
+    },
+    "typeMeta": {
+      "one": "{{count}} {{type}} · {{archived}} archived",
+      "other": "{{count}} {{type}} · {{archived}} archived"
+    },
+    "showAll": {
+      "one": "Show the {{count}} spec",
+      "other": "Show all {{count}} specs"
+    },
     "filter": {
       "label": "Filter by phase",
       "typeLabel": "Filter by type",
       "all": "All",
+      "allStages": {
+        "one": "All {{count}} stage",
+        "other": "All {{count}} stages"
+      },
+      "allTypes": {
+        "one": "All {{count}} type",
+        "other": "All {{count}} types"
+      },
       "fog": "fog"
     },
     "sort": {
@@ -150,6 +198,8 @@
       "other": "{{count}} open fog items"
     },
     "agentWorking": "Agent {{session}} working",
+    "moreName": "More… {{id}} {{title}}",
+    "lessName": "Less {{id}} {{title}}",
     "ideas": {
       "title": "Ideas · {{count}}",
       "label": "Ideas in the backlog"
@@ -158,6 +208,8 @@
   "nextUp": {
     "title": "Next up",
     "showAll": "Show all {{count}}",
+    "moreName": "More… {{entry}}, next up",
+    "lessName": "Less {{entry}}, next up",
     "badge": "Next up: {{count}}",
     "empty": "Nothing ready to build",
     "emptyHint": "Every active spec is waiting on scoping. Run /spec-plan on a specified spec to get one moving.",
@@ -189,13 +241,20 @@
         "other": "Shares {{count}} files with"
       },
       "noEdge": "no edge",
-      "more": "+{{count}} more",
+      "more": {
+        "one": "+{{count}} more",
+        "other": "+{{count}} more"
+      },
       "paths": "Shared files",
       "target": "in {{id}}",
       "copyTitle": "Copy the edge for this spec’s tasks.md",
       "moreOverlaps": {
         "one": "+1 more overlap",
         "other": "+{{count}} more overlaps"
+      },
+      "disclosure": {
+        "one": "{{count}} overlap",
+        "other": "{{count}} overlaps"
       },
       "toHead": "Show in the head",
       "region": "Overlaps with other specs"
@@ -213,7 +272,10 @@
   "overview": {
     "title": "All workspaces",
     "eyebrow": "Spectant · {{workspaces}} workspaces · {{specs}} specs",
-    "showAllIn": "Show all {{count}} in {{workspace}} →",
+    "showAllIn": {
+      "one": "Show {{count}} in {{workspace}} →",
+      "other": "Show all {{count}} in {{workspace}} →"
+    },
     "open": "Open {{workspace}} →",
     "empty": {
       "title": "Add your first workspace",
@@ -267,7 +329,10 @@
     },
     "loading": "Loading the index …",
     "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}",
-    "wsSpecs": "{{count}} specs"
+    "wsSpecs": {
+      "one": "{{count}} spec",
+      "other": "{{count}} specs"
+    }
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
@@ -349,14 +414,24 @@
       "intro": "How Spectant looks on this machine. Nothing here touches a repository.",
       "display": "Display, not stored yet",
       "density": "Density",
+      "densityHint": "Applies to the board, the flow view and the spec row.",
       "comfortable": "Comfortable",
       "compact": "Compact",
       "reducedMotion": "Reduced motion"
     },
     "workspacesCard": {
-      "registered": "{{ count }} registered",
-      "readable": "{{ count }} readable",
-      "missing": "{{ count }} folder not found",
+      "registered": {
+        "one": "{{ count }} registered",
+        "other": "{{ count }} registered"
+      },
+      "readable": {
+        "one": "{{ count }} readable",
+        "other": "{{ count }} readable"
+      },
+      "missing": {
+        "one": "{{ count }} folder not found",
+        "other": "{{ count }} folders not found"
+      },
       "registry": "registry in the app's data directory",
       "manage": "Manage workspaces",
       "manageMeta": "add, rename, re-order, remove"
@@ -397,7 +472,10 @@
   },
   "settingsWorkspaces": {
     "title": "Workspaces",
-    "registered": "· {{count}} registered",
+    "registered": {
+      "one": "· {{count}} registered",
+      "other": "· {{count}} registered"
+    },
     "add": {
       "path": "Repository path",
       "pathPlaceholder": "~/code/my-repo",
@@ -526,7 +604,10 @@
       "unreadable": "Cannot be read",
       "manage": "Manage workspaces",
       "head": "All workspaces ({{count}})",
-      "showAll": "Show all {{count}} workspaces"
+      "showAll": {
+        "one": "Show {{count}} workspace",
+        "other": "Show all {{count}} workspaces"
+      }
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
@@ -607,12 +688,18 @@
       "updated": "Updated",
       "ago": "{{value}} {{unit}} ago",
       "heading": "Live",
-      "reading": "Reading {{count}} workspace(s) · every {{seconds}} s",
+      "reading": {
+        "one": "Reading {{count}} workspace · every {{seconds}} s",
+        "other": "Reading {{count}} workspaces · every {{seconds}} s"
+      },
       "board": "Open the round board",
       "services": "Dev services",
       "openService": "Open {{kind}} on port {{port}} in a new tab",
       "noServices": "No dev service is running in this workspace.",
-      "servicesUp": "{{count}} dev service(s) running",
+      "servicesUp": {
+        "one": "{{count}} dev service running",
+        "other": "{{count}} dev services running"
+      },
       "servicesDown": "No dev service running"
     },
     "zen": {
@@ -658,8 +745,14 @@
         "specs": "{{active}} active · {{archived}} archived",
         "board": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
         "planning": "{{milestones}} milestones · {{features}} features",
-        "features": "{{count}} features · {{closed}}/{{total}} closed",
-        "milestones": "{{count}} milestones · next {{next}}",
+        "features": {
+          "one": "{{count}} feature · {{closed}}/{{total}} closed",
+          "other": "{{count}} features · {{closed}}/{{total}} closed"
+        },
+        "milestones": {
+          "one": "{{count}} milestone · next {{next}}",
+          "other": "{{count}} milestones · next {{next}}"
+        },
         "library": "{{docs}} documents · {{stale}} outdated · {{missing}} missing",
         "libraryLoading": "Every document, artifact and prototype"
       }
@@ -842,10 +935,22 @@
       "lane": "Filter by lane",
       "status": "Filter by state",
       "all": "all",
+      "allLanes": {
+        "one": "All {{count}} lane",
+        "other": "All {{count}} lanes"
+      },
+      "allStatuses": {
+        "one": "All {{count}} status",
+        "other": "All {{count}} statuses"
+      },
       "hideDone": "hide done"
     },
     "landed": "{{landed}}/{{total}} boxes ticked",
     "result": "{{shown}} of {{total}} tasks",
+    "doneOfTotal": {
+      "one": "{{done}} of {{count}} task done or closed",
+      "other": "{{done}} of {{count}} tasks done or closed"
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -884,7 +989,10 @@
       "operator": "your step · tick it when done",
       "struck": "{{text}}"
     },
-    "doneHidden": "+ {{count}} more done · {{ids}}",
+    "doneHidden": {
+      "one": "+ {{count}} more done · {{ids}}",
+      "other": "+ {{count}} more done · {{ids}}"
+    },
     "doneHiddenBody": "Hidden to keep the open work in view.",
     "show": "Show",
     "helper": "Ticking a task only writes the box in tasks.md — it never closes a claim. Writes pause while an agent holds a claim on this spec.",
@@ -926,7 +1034,10 @@
       "claimsMeta": "{{open}} open · {{takeable}} takeable",
       "tasks": "Tasks landed",
       "round": "Round",
-      "agentsWorking": "{{count}} agents working",
+      "agentsWorking": {
+        "one": "{{count}} agent working",
+        "other": "{{count}} agents working"
+      },
       "noAgent": "No agent working",
       "gates": "Gates",
       "waiting": "Waits on you",
@@ -968,11 +1079,20 @@
     "tiles": {
       "label": "Inside this spec",
       "status": {
-        "entries": "{{count}} timeline entries",
-        "warnings": "{{count}} warnings"
+        "entries": {
+          "one": "{{count}} timeline entry",
+          "other": "{{count}} timeline entries"
+        },
+        "warnings": {
+          "one": "{{count}} warning",
+          "other": "{{count}} warnings"
+        }
       },
       "live": {
-        "working": "{{count}} agents working",
+        "working": {
+          "one": "{{count}} agent working",
+          "other": "{{count}} agents working"
+        },
         "idle": "No agent working",
         "source": "Lock source: {{source}}"
       },
@@ -984,12 +1104,21 @@
       "library": {
         "present": "{{names}}",
         "none": "No plan, design or constitution yet",
-        "decisions": "{{count}} decisions"
+        "decisions": {
+          "one": "{{count}} decision",
+          "other": "{{count}} decisions"
+        }
       },
       "notes": {
         "later": "Notes arrive with a later task",
-        "count": "{{count}} notes",
-        "board": "{{count}} rounds on the board"
+        "count": {
+          "one": "{{count}} note",
+          "other": "{{count}} notes"
+        },
+        "board": {
+          "one": "{{count}} round on the board",
+          "other": "{{count}} rounds on the board"
+        }
       }
     },
     "docNames": {
@@ -1061,7 +1190,10 @@
       "copy": "Copy command",
       "copied": "Copied",
       "manual": "Select and press ⌘C",
-      "takeable": "{{count}} takeable",
+      "takeable": {
+        "one": "{{count}} takeable",
+        "other": "{{count}} takeable"
+      },
       "locked": "locked by {{session}}",
       "free": "no lock held"
     },
@@ -1184,11 +1316,20 @@
     "specCrumb": "Spec {{id}}",
     "more": "More…",
     "less": "Less",
+    "goalMore": "More… goal of {{id}}",
+    "goalLess": "Less, goal of {{id}}",
+    "details": "Details of {{id}}",
     "notes": "Notes",
-    "notesCount": "{{count}} notes",
+    "notesCount": {
+      "one": "{{count}} note",
+      "other": "{{count}} notes"
+    },
     "updated": "updated {{time}}",
     "round": "round {{round}}",
-    "uncommitted": "{{count}} files uncommitted",
+    "uncommitted": {
+      "one": "{{count}} file uncommitted",
+      "other": "{{count}} files uncommitted"
+    },
     "agent": {
       "on": "on {{claim}} · {{time}}",
       "paused": "writes paused"
@@ -1202,7 +1343,10 @@
     }
   },
   "refresh": {
-    "newSpecs": "{{count}} new",
+    "newSpecs": {
+      "one": "{{count}} new",
+      "other": "{{count}} new"
+    },
     "announcement": "Dashboard updated: {{changed}} changed, {{added}} new"
   },
   "notes": {
@@ -1318,7 +1462,10 @@
       "counts": "{{landed}}/{{total}}",
       "meter": "{{lane}}: cards by section",
       "toggle": "Show or hide lane {{lane}}",
-      "waiting": "· {{count}} waiting",
+      "waiting": {
+        "one": "· {{count}} waiting",
+        "other": "· {{count}} waiting"
+      },
       "hide": "Hide lane {{lane}}",
       "hidden": "{{lane}} · hidden",
       "show": "show",
@@ -1326,8 +1473,14 @@
       "showAll": "show all {{count}}",
       "quiet": "nothing in flight",
       "next": "next",
-      "inRound": "{{count}} in the round",
-      "runCount": "{{count}} {{state}}",
+      "inRound": {
+        "one": "{{count}} in the round",
+        "other": "{{count}} in the round"
+      },
+      "runCount": {
+        "one": "{{count}} {{state}}",
+        "other": "{{count}} {{state}}"
+      },
       "waitsName": "{{lane}}, waits on {{ids}}"
     },
     "section": {
@@ -1413,15 +1566,24 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} cards · {{specs}} specs · {{ideas}} ideas",
-      "eyebrowCards": "{{count}} cards",
+      "eyebrowCards": {
+        "one": "{{count}} card",
+        "other": "{{count}} cards"
+      },
       "index": "Stages",
       "indexPrev": "Previous column",
       "indexNext": "Next column",
-      "sheetBar": "This board · {{count}} cards",
+      "sheetBar": {
+        "one": "This board · {{count}} card",
+        "other": "This board · {{count}} cards"
+      },
       "needsYou": "Needs you",
       "needsNone": "Nothing waits on you.",
       "waitsCount": "Waits on you {{count}}",
-      "bandMeter": "{{done}} of {{count}} done",
+      "bandMeter": {
+        "one": "{{done}} of {{count}} done",
+        "other": "{{done}} of {{count}} done"
+      },
       "search": {
         "label": "Search cards",
         "placeholder": "id, title, feature"
@@ -1433,12 +1595,24 @@
       },
       "column": {
         "empty": "empty",
-        "cards": "{{count}} cards",
-        "waitsOnYou": "{{count}} wait on you",
-        "name": "{{stage}}, {{count}} cards, {{waiting}} wait on you",
+        "cards": {
+          "one": "{{count}} card",
+          "other": "{{count}} cards"
+        },
+        "waitsOnYou": {
+          "one": "{{count}} waits on you",
+          "other": "{{count}} wait on you"
+        },
+        "name": {
+          "one": "{{stage}}, {{count}} card, {{waiting}} wait on you",
+          "other": "{{stage}}, {{count}} cards, {{waiting}} wait on you"
+        },
         "stub": "{{stage}}, no cards",
         "emptyIn": "No card in {{stage}}",
-        "hiddenByFilters": "{{count}} hidden by filters",
+        "hiddenByFilters": {
+          "one": "{{count}} hidden by filters",
+          "other": "{{count}} hidden by filters"
+        },
         "fixedGate": "fixed gate",
         "gateReviewed": "reviewed mark",
         "gateClosed": "every claim closed",
@@ -1487,8 +1661,14 @@
         },
         "collapse": "Collapse {{lane}}",
         "expand": "Expand {{lane}}",
-        "omittedFeatures": "{{count}} features have no card in {{stage}}",
-        "omittedMilestones": "{{count}} milestones have no card in {{stage}}",
+        "omittedFeatures": {
+          "one": "{{count}} feature has no card in {{stage}}",
+          "other": "{{count}} features have no card in {{stage}}"
+        },
+        "omittedMilestones": {
+          "one": "{{count}} milestone has no card in {{stage}}",
+          "other": "{{count}} milestones have no card in {{stage}}"
+        },
         "noFeature": "No feature"
       },
       "card": {
@@ -1543,7 +1723,10 @@
         }
       },
       "live": {
-        "changed": "{{count}} cards changed · show"
+        "changed": {
+          "one": "{{count}} card changed · show",
+          "other": "{{count}} cards changed · show"
+        }
       },
       "empty": {
         "noSpecs": "No specs in {{ws}} yet",
@@ -1559,7 +1742,10 @@
         "segment": "{{stage}} {{count}}",
         "prev": "Previous column: {{stage}}",
         "next": "Next column: {{stage}}",
-        "back": "{{stage}}, {{count}} cards · back to the stages",
+        "back": {
+          "one": "{{stage}}, {{count}} card · back to the stages",
+          "other": "{{stage}}, {{count}} cards · back to the stages"
+        },
         "tray": "Drop targets: the stages"
       }
     },
@@ -1740,7 +1926,10 @@
         "one": "{{count}} feature",
         "other": "{{count}} features"
       },
-      "days": "{{count}} d",
+      "days": {
+        "one": "{{count}} d",
+        "other": "{{count}} d"
+      },
       "boundary": "{{name}} · {{date}}",
       "quarter": "Q{{quarter}} {{year}}",
       "emptyAxis": {
@@ -1758,8 +1947,14 @@
       "filters": "Filters",
       "specEdges": "Spec edges",
       "rebundle": "Bundle again",
-      "bundleDone": "{{count}} features done",
-      "bundleNoSpec": "+{{count}} features without a spec",
+      "bundleDone": {
+        "one": "{{count}} feature done",
+        "other": "{{count}} features done"
+      },
+      "bundleNoSpec": {
+        "one": "+{{count}} feature without a spec",
+        "other": "+{{count}} features without a spec"
+      },
       "openBundle": "{{name}}, show the features",
       "label": "Planning graph",
       "drawing": "Drawing the graph…",
@@ -1776,7 +1971,10 @@
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} features · {{closed}}/{{total}} claims closed · {{unheld}} unheld",
-      "unheld": "{{count}} unheld",
+      "unheld": {
+        "one": "{{count}} unheld",
+        "other": "{{count}} unheld"
+      },
       "unheldHint": "A master claim that no spec has taken on yet. It closes only once a spec holds it and its probe passes.",
       "unheldClaims": "Unheld claims of {{id}}",
       "allHeld": "all held",
@@ -1800,7 +1998,10 @@
       "whyLess": "less",
       "valueText": "{{closed}} of {{total}} claims closed",
       "meterLabel": "{{id}} claims closed",
-      "moreChips": "+{{count}} more",
+      "moreChips": {
+        "one": "+{{count}} more",
+        "other": "+{{count}} more"
+      },
       "filter": {
         "label": "Filter features",
         "all": "All",
@@ -1834,9 +2035,15 @@
         "closed": "claims closed · {{name}}",
         "mostOpen": "Most open claims"
       },
-      "meta": "{{count}} milestones · next: {{name}}, {{date}}",
+      "meta": {
+        "one": "{{count}} milestone · next: {{name}}, {{date}}",
+        "other": "{{count}} milestones · next: {{name}}, {{date}}"
+      },
       "metaNone": "no upcoming milestone",
-      "metaUndated": "{{count}} milestones · next: {{name}}",
+      "metaUndated": {
+        "one": "{{count}} milestone · next: {{name}}",
+        "other": "{{count}} milestones · next: {{name}}"
+      },
       "caption": "Ordered by target date",
       "undated": "no target date",
       "meterLabel": "{{name}} claims closed",
@@ -1861,7 +2068,10 @@
     },
     "breadcrumb": {
       "label": "Breadcrumb",
-      "more": "{{count}} more features",
+      "more": {
+        "one": "{{count}} more feature",
+        "other": "{{count}} more features"
+      },
       "archived": "archived",
       "unknownMilestone": "not in the master's Milestones block"
     },
@@ -1891,7 +2101,10 @@
     "parents": "Parents",
     "children": "Children",
     "blockers": "Blockers",
-    "more": "+{{count}} more",
+    "more": {
+      "one": "+{{count}} more",
+      "other": "+{{count}} more"
+    },
     "noBlockers": "No blockers",
     "waiting": "open",
     "claimsClosed": "claims closed",
@@ -2149,8 +2362,14 @@
   },
   "backlog": {
     "board": {
-      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
-      "movedNone": "{{id}} at position {{position}} of {{count}}, no milestone",
+      "moved": {
+        "one": "{{id}} at position {{position}} of {{count}} in {{group}}",
+        "other": "{{id}} at position {{position}} of {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} at position {{position}} of {{count}}, no milestone",
+        "other": "{{id}} at position {{position}} of {{count}}, no milestone"
+      },
       "otherMilestone": "Other milestone"
     },
     "reorder": {
@@ -2170,8 +2389,14 @@
       "title": "Priority · {{id}}"
     },
     "tree": {
-      "moved": "{{id}} at position {{position}} of {{count}} in {{group}}",
-      "movedNone": "{{id}} at position {{position}} of {{count}} without a milestone",
+      "moved": {
+        "one": "{{id}} at position {{position}} of {{count}} in {{group}}",
+        "other": "{{id}} at position {{position}} of {{count}} in {{group}}"
+      },
+      "movedNone": {
+        "one": "{{id}} at position {{position}} of {{count}} without a milestone",
+        "other": "{{id}} at position {{position}} of {{count}} without a milestone"
+      },
       "atFirst": "{{id}} is already first in {{group}}",
       "atFirstNone": "{{id}} is already first without a milestone",
       "atLast": "{{id}} is already last in {{group}}",
@@ -2330,9 +2555,18 @@
       "missingBodyPlain": "The spec’s stage asks for this document."
     },
     "head": {
-      "docs": "{{count}} documents",
-      "fog": "{{count}} open",
-      "fogLabel": "Show the {{count}} open points of {{spec}}",
+      "docs": {
+        "one": "{{count}} document",
+        "other": "{{count}} documents"
+      },
+      "fog": {
+        "one": "{{count}} open",
+        "other": "{{count}} open"
+      },
+      "fogLabel": {
+        "one": "Show the {{count}} open point of {{spec}}",
+        "other": "Show the {{count}} open points of {{spec}}"
+      },
       "claims": "Claims",
       "claimsText": "{{closed}} of {{total}} claims closed",
       "tasks": "Tasks",
@@ -2359,12 +2593,21 @@
     },
     "evidence": {
       "toggle": "Evidence",
-      "label": "{{count}} evidence files of {{spec}}",
-      "more": "Show {{count}} more"
+      "label": {
+        "one": "{{count}} evidence file of {{spec}}",
+        "other": "{{count}} evidence files of {{spec}}"
+      },
+      "more": {
+        "one": "Show {{count}} more",
+        "other": "Show {{count}} more"
+      }
     },
     "meta": {
       "image": "Image · {{path}}",
-      "prototype": "{{count}} pages · {{pages}}",
+      "prototype": {
+        "one": "{{count}} page · {{pages}}",
+        "other": "{{count}} pages · {{pages}}"
+      },
       "noDate": "—"
     },
     "loading": "Loading the library",
@@ -2416,7 +2659,10 @@
     "nameBare": "Waits on spec {{id}}",
     "unknown": "Waits on spec {{id}}, no such spec",
     "more": "Also waits on {{ids}}",
-    "partial": "{{held}} of {{open}} open tasks",
+    "partial": {
+      "one": "{{held}} waiting · {{ready}} open",
+      "other": "{{held}} waiting · {{ready}} open"
+    },
     "spec": "Spec {{id}} · {{title}}",
     "specBare": "Spec {{id}}"
   },
@@ -2461,7 +2707,14 @@
       "more": "+{{n}} more",
       "since": "waiting {{time}}",
       "showAll": "Show all {{count}}",
-      "waiting": "+{{n}} waiting"
+      "waiting": "+{{n}} waiting",
+      "foldName": "+{{n}} more · Waits on you, show all {{count}}",
+      "fewer": "Show fewer",
+      "fewerName": "Show fewer · Waits on you, only the top entry",
+      "headLinkName": {
+        "one": "Waits on you · {{count}} entry, go to the list",
+        "other": "Waits on you · {{count}} entries, go to the list"
+      }
     },
     "next": {
       "label": "Next",

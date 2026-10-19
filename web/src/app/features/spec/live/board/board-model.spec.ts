@@ -272,7 +272,7 @@ describe('spec waits on the live board (spec 025, T25, ISC-163)', () => {
 
   it('links a known blocker by its title and leaves an unknown one unlinked; a met edge leaves nothing', () => {
     const known = [{ id: '006', title: 'Registry webhooks' }];
-    expect(heldWait('002', ['006', '042'], known)).toEqual({ spec: '002', blockers: ['006', '042'], unknownBlockers: ['042'], heldTasks: 0, openTasks: 0, full: true });
+    expect(heldWait('002', ['006', '042'], known)).toEqual({ spec: '002', blockers: ['006', '042'], unknownBlockers: ['042'], heldTasks: 0, readyTasks: 0, openTasks: 0, full: true });
     expect(blockerTitles(['006', '042'], known)).toEqual({ '006': 'Registry webhooks' });
     expect(laneSpecWait(laneView('web', [card('T27', 'waiting', { lane: 'web', reason: '' })]))).toBeNull();
   });

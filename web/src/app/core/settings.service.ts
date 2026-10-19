@@ -5,6 +5,9 @@ import { isLang, type Lang } from '../../i18n/catalogues';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
+/** The row density of board, flow view and spec row (spec 021, ISC-254); `?density=` overrides it for one view. */
+export type Density = 'comfortable' | 'compact';
+
 /**
  * The browser-side copy of `Settings` from `server/src/settings.ts` (`SettingsSchema`, T43). Duplicated on purpose:
  * that module imports `bun:sqlite` and the server's HTTP layer, which must not reach the browser bundle. Keep the
@@ -21,6 +24,8 @@ export interface Settings {
   notesImportDismissed: boolean;
   /** Minutes after which an open run reads aborted and no longer locks its item (spec 040, ISC-222.1). */
   runAbortMinutes: number;
+  /** The default density of board, flow view and spec row (spec 021, ISC-254). */
+  density: Density;
 }
 
 /** `SettingsSchema`'s defaults: what a fresh install gets, and what the app shows until `/api/settings` answers. */
@@ -32,19 +37,21 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   railCollapsed: false,
   notesImportDismissed: false,
   runAbortMinutes: 120,
+  density: 'comfortable',
 });
 
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
 export const SETTINGS_URL = '/api/settings';
 
 const isThemeMode = (value: unknown): value is ThemeMode => value === 'system' || value === 'light' || value === 'dark';
+export const isDensity = (value: unknown): value is Density => value === 'comfortable' || value === 'compact';
 const isRefresh = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 3600;
 const isAbortMinutes = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 1440;
 
 /** A server answer read field by field; a field that fails its check reads as its default, as the server does. */
 function sanitize(raw: unknown): Settings {
   const value = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes } = value;
+  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes, density } = value;
   return {
     theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme,
     language: typeof language === 'string' && isLang(language) ? language : DEFAULT_SETTINGS.language,
@@ -53,11 +60,12 @@ function sanitize(raw: unknown): Settings {
     railCollapsed: typeof railCollapsed === 'boolean' ? railCollapsed : DEFAULT_SETTINGS.railCollapsed,
     notesImportDismissed: typeof notesImportDismissed === 'boolean' ? notesImportDismissed : DEFAULT_SETTINGS.notesImportDismissed,
     runAbortMinutes: isAbortMinutes(runAbortMinutes) ? runAbortMinutes : DEFAULT_SETTINGS.runAbortMinutes,
+    density: isDensity(density) ? density : DEFAULT_SETTINGS.density,
   };
 }
 
 /**
- * The user's settings (theme mode, language, refresh interval, single-key shortcuts, the collapsed rail, the Notes import notice), stored server-side through
+ * The user's settings (theme mode, language, refresh interval, single-key shortcuts, the collapsed rail, the Notes import notice, the density), stored server-side through
  * `GET` / `PUT /api/settings` so they survive a reload on a different port (ISC-18.3). Never in `localStorage`:
  * per-origin storage is lost when the port changes (web/CLAUDE.md § State).
  *

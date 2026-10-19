@@ -11,6 +11,14 @@ import type { Stage } from '../../../../../core/src/stage';
 import type { SheetTier } from '../../shared/ui/overlay/sheet';
 import type { Tier } from '../shell/tier';
 
+// ─── Goal sentence (spec 021, T38, ISC-250) ───────────────────────────────────────────────────────────────────────
+
+/**
+ * How many lines the goal sentence stands on before its "More…": one at wide, where the head has to stay within its
+ * height budget at 1440 px, two at medium and compact, where the line is short.
+ */
+export const goalLines = (tier: Tier): 1 | 2 => (tier === 'wide' ? 1 : 2);
+
 // ─── Provenance line (spec 027, T34, T35, ISC-175, ISC-181) ───────────────────────────────────────────────────────
 
 /** What the head knows of where the spec comes from: the head's three fields, the copy's stage and claims, the warnings. */

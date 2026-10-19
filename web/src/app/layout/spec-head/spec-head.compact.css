@@ -1,22 +1,45 @@
 /*
- * The spec head under 800 px of its own width (prototype `@container shell (max-width: 799px)`): the row in one column,
- * the actions below the title, start-aligned. The compact tier (< 640 px, design.md § Mobile): the chip row under the
- * breadcrumb, start-aligned; the title Sora 600 20/28 on at most two lines; the description clamped to two lines.
+ * The compact tier (< 640 px, design.md § Mobile): the chip row under the breadcrumb, start-aligned; the title Sora 600
+ * 20/28 on at most two lines; the goal on two lines (`goalLines`); under it the overlaps disclosure and "Details of NNN"
+ * on one line (spec 021 T37, T38, T67, T70, ISC-250).
+ *
+ * Spec 021 T70 (ISC-250): the title row never wraps at compact. Its only action is the gate button, icon only
+ * (`size="icon"`, 28 px), beside the title's first line; the next command and Notes live in "Details of NNN".
  */
-@container spec-head (width < 800px) {
-  .row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
+:host([data-tier='compact']) .title-row {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
 
-  .actions {
-    justify-content: flex-start;
-  }
+:host([data-tier='compact']) .actions {
+  flex: none;
+  justify-content: flex-start;
+  margin-inline-start: 0;
+}
 
-  .desc.clamped {
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
+/*
+ * Spec 021 T67, T70 (ISC-250): the overlaps fold and "Details of NNN" (which carries the `.overlap-fold` look: 32 px
+ * summary, 44 px under coarse pointers, the whole line once open) share one line while both are closed, start-aligned.
+ * The details hold the meta line and, under it, the next command and Notes. A closed fold's region is 0 rows high but
+ * would still lend the fold its content's width and push the second fold to a line of its own; at zero intrinsic
+ * width (and the full fold width once laid out) it sizes the fold by its summary alone.
+ */
+:host([data-tier='compact']) .overlap-fold {
+  margin-inline-start: 0;
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host([data-tier='compact']) .overlap-fold ::ng-deep .region {
+  inline-size: 0;
+  min-inline-size: 100%;
+}
+
+.details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-block-start: 8px;
 }
 
 :host([data-tier='compact']) {
@@ -25,21 +48,20 @@
   padding-block: 8px 4px;
 }
 
+/* Spec 021 T70 (ISC-250): breadcrumb and chip row 4 px apart, the head's tightest pair, so it stays ≤ 170 px at 390. */
 :host([data-tier='compact']) .sh-context {
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: 4px;
 }
 
 :host([data-tier='compact']) .chips {
   justify-content: flex-start;
 }
 
-:host([data-tier='compact']) .row {
-  gap: 8px;
-}
-
+/* Spec 021 T70: the title takes the row beside the gate button's square. */
 :host([data-tier='compact']) h1 {
   display: -webkit-box;
+  flex: 1 1 auto;
   overflow: hidden;
   font-size: 20px;
   line-height: 28px;

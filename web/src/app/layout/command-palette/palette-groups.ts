@@ -165,7 +165,7 @@ function workspacesSource(): PaletteSource {
         id: ws.slug,
         label: ws.name,
         // The prototype's meta "6 specs"; the path tail stays a search key.
-        meta: specsOf(ws.counts) === null ? ws.pathTail : t('palette.wsSpecs', { count: specsOf(ws.counts) }),
+        meta: specsOf(ws.counts) === null ? ws.pathTail : t(specsOf(ws.counts) === 1 ? 'palette.wsSpecs.one' : 'palette.wsSpecs.other', { count: specsOf(ws.counts) }),
         link: ['/w', ws.slug],
         keywords: [ws.slug, ws.pathTail],
       })),

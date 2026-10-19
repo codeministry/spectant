@@ -171,7 +171,7 @@ const sub = (entry: HTMLElement) => entry.querySelector('.sub')?.textContent.tri
 describe('the milestones line (spec 006, ISC-114.3)', () => {
   it("carries the next milestone's target as a structured calendar day, not as a formatted text", () => {
     expect(milestonesLine(WITH_MILESTONES.milestones)).toEqual({
-      key: 'shell.pages.summary.milestones',
+      key: 'shell.pages.summary.milestones.other',
       params: { count: 2 },
       time: { param: 'next', value: '2026-11-30', form: 'day' },
     });
@@ -194,7 +194,7 @@ describe('the milestones line (spec 006, ISC-114.3)', () => {
 
   it('names an undated next milestone without a time, and is left out without an open one', () => {
     const undated = planning([milestone('Harbor 2.0', null, 'upcoming', [holder('003')])]);
-    expect(milestonesLine(undated.milestones)).toEqual({ key: 'shell.pages.summary.milestones', params: { count: 1, next: 'Harbor 2.0' } });
+    expect(milestonesLine(undated.milestones)).toEqual({ key: 'shell.pages.summary.milestones.one', params: { count: 1, next: 'Harbor 2.0' } });
     expect(milestonesLine(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001')])]).milestones)).toBeNull();
   });
 });

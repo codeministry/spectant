@@ -22,7 +22,15 @@ export interface DashboardRowView {
 }
 
 export interface DashboardView {
-  readonly kpis: { readonly warnings: number; readonly fog: number };
+  readonly kpis: {
+    readonly warnings: number;
+    readonly fog: number;
+    /**
+     * The archived specs (`DashboardKpis.archived`): no tile of its own, the spec list's head counts them (spec 021).
+     * Optional here only because the warnings panel's `kpis` input reuses this shape; the model always carries it.
+     */
+    readonly archived?: number;
+  };
   /** Active specs in action order. */
   readonly specs: readonly DashboardRowView[];
   /** The ids of the first rows with a next command, in row order. */

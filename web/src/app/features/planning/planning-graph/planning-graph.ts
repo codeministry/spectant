@@ -143,7 +143,7 @@ export class PlanningGraph {
       noMilestone: t('planning.tree.noMilestone'),
       archived: t('planning.features.archived'),
       stage: (stage) => t(`stages.${stage}`),
-      bundle: (kind, count) => t(kind === 'done' ? 'planning.graph.bundleDone' : 'planning.graph.bundleNoSpec', { count }),
+      bundle: (kind, count) => t(`${kind === 'done' ? 'planning.graph.bundleDone' : 'planning.graph.bundleNoSpec'}.${count === 1 ? 'one' : 'other'}`, { count }),
     };
   });
 

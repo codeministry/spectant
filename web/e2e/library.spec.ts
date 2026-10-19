@@ -65,7 +65,7 @@ const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, im
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const EN = read('../src/i18n/en.json') as {
   library: {
-    meta: { image: string; prototype: string };
+    meta: { image: string; prototype: { one: string; other: string } };
     outdated: string;
     missing: string;
     control: Record<ControlKey, { word: string; one: string; other: string; none: string }>;
@@ -109,7 +109,7 @@ function expectedRow(doc: LibraryDoc): Row {
   const file = `specs/${doc.path}`;
   const meta =
     doc.media === 'prototype'
-      ? template(EN.library.meta.prototype, { count: doc.pages?.length ?? 0, pages: (doc.pages ?? []).join(', ') })
+      ? template(doc.pages?.length === 1 ? EN.library.meta.prototype.one : EN.library.meta.prototype.other, { count: doc.pages?.length ?? 0, pages: (doc.pages ?? []).join(', ') })
       : doc.media === 'image'
         ? template(EN.library.meta.image, { path: file })
         : file;
@@ -812,13 +812,18 @@ test.describe('reader', () => {
       const toc = page.locator(`${PROSE} nav.docs-toc .docs-toc-list a`);
       await expect(toc).toHaveText(served.toc.map((entry) => entry.text));
       expect(await toc.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual(served.toc.map((entry) => `#${entry.anchor}`));
-      for (const entry of served.toc) await expect(page.locator(`${PROSE} .docs-prose [id="${entry.anchor}"]`)).toHaveText(entry.text);
-      // An entry scrolls in place: the heading takes the focus, the fragment keeps naming the document.
+      // Spec 021 (ISC-251): each ## is a disclosure whose h2 holds its toggle (keyed by the heading's id); deeper
+      // headings stay in the prose with their id.
+      const headingOf = (anchor: string) => page.locator(`${PROSE} .docs-prose [id="${anchor}"], ${PROSE} [data-library-section="${anchor}"] > .head h2.heading`);
+      for (const entry of served.toc) await expect(headingOf(entry.anchor)).toHaveText(entry.text);
+      // An entry scrolls in place: the heading (a section's own toggle) takes the focus, the fragment keeps naming the document.
       const last = served.toc.at(-1);
       if (last === undefined) throw new Error('library.spec: the reader document has no heading');
       await toc.last().click();
-      await expect(page.locator(`${PROSE} [id="${last.anchor}"]`)).toBeFocused();
-      await expect(page.locator(`${PROSE} [id="${last.anchor}"]`)).toBeInViewport();
+      await expect
+        .poll(() => headingOf(last.anchor).evaluate((el) => el === document.activeElement || el.contains(document.activeElement)), { message: 'focus on the last heading' })
+        .toBe(true);
+      await expect(headingOf(last.anchor)).toBeInViewport();
       expect(address(page).doc).toBe(doc.path);
 
       // The mermaid fence as a figure: drawn client-side, captioned, with its toolbar (ISC-154, ISC-154.1).
