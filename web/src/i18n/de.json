@@ -406,9 +406,15 @@
     "nav": {
       "appearance": "Darstellung",
       "actors": "Akteure",
+      "board": "Board",
       "workspaces": "Workspaces",
       "keyboard": "Tastatur",
       "about": "Über"
+    },
+    "board": {
+      "staleLabel": "Veraltet nach (Minuten)",
+      "staleHint": "Ein Claim ohne Release, der älter ist, erscheint auf dem Board als veraltet und sein Item als abgebrochen.",
+      "staleRange": "Geben Sie ganze Minuten von 5 bis 1440 ein; nichts wurde gespeichert."
     },
     "appearance": {
       "intro": "Wie Spectant auf diesem Rechner aussieht. Nichts hier berührt ein Repository.",

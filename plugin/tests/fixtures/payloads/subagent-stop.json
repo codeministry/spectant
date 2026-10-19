@@ -1,0 +1,33 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/home/user/.claude/projects/-repo/00000000-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/repo/.claude/worktrees/agent-a1b2c3d4e5f6a7b8c",
+  "scratchpad_dir": "/tmp/claude/scratchpad",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "permission_mode": "auto",
+  "agent_id": "a1b2c3d4e5f6a7b8c",
+  "agent_type": "general-purpose",
+  "effort": {
+    "level": "low"
+  },
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_transcript_path": "/home/user/.claude/projects/-repo/00000000-0000-4000-8000-000000000001/subagents/agent-a1b2c3d4e5f6a7b8c.jsonl",
+  "background_tasks": [
+    {
+      "id": "a0123456789abcdef",
+      "type": "subagent",
+      "status": "running",
+      "description": "Builder T2",
+      "agent_type": "general-purpose"
+    },
+    {
+      "id": "a1b2c3d4e5f6a7b8c",
+      "type": "subagent",
+      "status": "running",
+      "description": "Builder T1",
+      "agent_type": "general-purpose"
+    }
+  ],
+  "session_crons": []
+}

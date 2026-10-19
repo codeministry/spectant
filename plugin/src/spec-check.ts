@@ -16,15 +16,14 @@ import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdir
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import {
   ActivityTextError,
-  claimLine,
   newRunId,
   probeLine,
   questionLine,
-  releaseLine,
   runEndLine,
-  runEventLine,
   runStartLine,
 } from '../../core/src/activity-text.ts';
+import { ActivityLogError, appendActivity, appendClaim, appendRelease, appendRunEvent, readActivity, repoRoot } from './activity-log.ts';
+import { runHook } from './hook.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
@@ -136,12 +135,6 @@ interface Context {
 function git(cwd: string, args: readonly string[]): string | null {
   const r = Bun.spawnSync(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
-}
-
-/** The main checkout's root: the parent of the common git directory; the current directory outside git. */
-function repoRoot(cwd: string): string {
-  const common = git(cwd, ['rev-parse', '--git-common-dir'])?.trim();
-  return common === undefined || common === '' ? cwd : dirname(resolve(cwd, common));
 }
 
 function readIfExists(path: string): string | null {
@@ -659,21 +652,7 @@ async function transition(ctx: Context, args: Args): Promise<number> {
 /** The session a line names when the caller passes none: the CLI itself, in the actor grammar. */
 const CLI_SESSION = 'a:claude:spec-check';
 
-const activityPath = (ctx: Context): string => join(ctx.root, '.spectant', 'activity.jsonl');
-
-const activityText = (ctx: Context): string => readIfExists(activityPath(ctx)) ?? '';
-
-/**
- * Appends one line core planned to `.spectant/activity.jsonl` at the root (the folder created when absent), a newline
- * first when the file does not end in one. The root is the main checkout's, so a builder's worktree writes there too.
- */
-function appendActivity(ctx: Context, line: string): void {
-  const path = activityPath(ctx);
-  mkdirSync(dirname(path), { recursive: true });
-  const existing = readIfExists(path);
-  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
-  appendFileSync(path, `${lead}${line}`);
-}
+const activityText = (ctx: Context): string => readActivity(ctx.root);
 
 function requiredValue(args: Args, name: string, what: string): string {
   const value = args.values.get(name);
@@ -708,7 +687,7 @@ function runStart(ctx: Context, args: Args): number {
   const run = newRunId({ ts, session, command, target });
   const line = runStartLine({ run, target, command, session, ts });
   if (startedRunIds(activityText(ctx)).has(run)) throw bad(`the run ${run} was started already; nothing written`);
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command, session }, [run]);
   return EXIT.ok;
 }
@@ -727,7 +706,7 @@ function runEnd(ctx: Context, args: Args): number {
   const target = open.spec ?? open.idea ?? '';
   const ended: RunOutcome = outcome;
   const line = runEndLine({ run, target, command: open.command, session, ts: ctx.now.toISOString(), outcome: ended });
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command: open.command, session, outcome }, [`${run} ended (${outcome})`]);
   return EXIT.ok;
 }
@@ -737,11 +716,6 @@ function runCommand(ctx: Context, args: Args): number {
   if (sub === 'start') return runStart(ctx, args);
   if (sub === 'end') return runEnd(ctx, args);
   throw bad(`"${sub}" is neither start nor end`);
-}
-
-/** The session holding `claim` per core's lock reader, or null. */
-function holderOf(ctx: Context, claim: string): string | null {
-  return activityReading(activityText(ctx)).locks.findLast((l) => l.claim === claim)?.session ?? null;
 }
 
 function lockInput(ctx: Context, args: Args): { claim: string; session: string; ts: string; task?: string; worktree?: string } {
@@ -755,14 +729,12 @@ function lockInput(ctx: Context, args: Args): { claim: string; session: string; 
 /** `claim <ISC-N> --session <actor>`: one `claim` line; exit 4 when another session holds it, nothing written. */
 function lockClaim(ctx: Context, args: Args): number {
   const input = lockInput(ctx, args);
-  const line = claimLine(input);
-  const holder = holderOf(ctx, input.claim);
-  if (holder !== null && holder !== input.session) throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${holder}; nothing written`);
-  if (holder === input.session) {
+  const outcome = appendClaim(ctx.root, input);
+  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`);
+  if (outcome.done === 'held') {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
   }
-  appendActivity(ctx, line);
   emit(ctx, args, { claim: input.claim, session: input.session, already: false }, [`${input.claim}: claimed by ${input.session}`]);
   return EXIT.ok;
 }
@@ -770,21 +742,22 @@ function lockClaim(ctx: Context, args: Args): number {
 /** `release <ISC-N> --session <actor>`: one `release` line by the holder; exit 4 when another session holds it. */
 function lockRelease(ctx: Context, args: Args): number {
   const input = lockInput(ctx, args);
-  const line = releaseLine(input);
-  const holder = holderOf(ctx, input.claim);
-  if (holder === null) {
+  const outcome = appendRelease(ctx.root, input);
+  if (outcome.done === 'held') {
     emit(ctx, args, { claim: input.claim, session: input.session, released: false }, [`${input.claim}: not held; nothing written`]);
     return EXIT.ok;
   }
-  if (holder !== input.session) throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${holder}, not ${input.session}; nothing written`);
-  appendActivity(ctx, line);
+  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`);
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
 
 const STEP_EVENTS: readonly string[] = ['dispatch', 'build', 'patch', 'apply'] satisfies RunEvent[];
 
-/** `activity <event> --task T<k> --session <actor> …`: one step line, planned by core for its event. */
+/**
+ * `activity <event> --task T<k> --session <actor> …`: one step line, planned by core for its event. The four run
+ * events go through the shared writer (`appendRunEvent`), which refuses one without `--claim` (spec 032, ISC-33.1).
+ */
 function activity(ctx: Context, args: Args): number {
   const event = required(args, 0, 'the event (dispatch, build, patch, apply, probe or question)');
   const task = requiredValue(args, 'task', 'T<k>');
@@ -798,15 +771,31 @@ function activity(ctx: Context, args: Args): number {
     const result = args.values.get('result');
     if (result !== 'red' && result !== 'green') throw bad('a probe needs --result red|green');
     line = probeLine({ ...common, claim: requiredValue(args, 'claim', 'ISC-N'), result });
+    appendActivity(ctx.root, line);
   } else if (event === 'question') {
     line = questionLine({ ...common, ...withClaim, text: requiredValue(args, 'text', '"<the question>"') });
+    appendActivity(ctx.root, line);
   } else if (STEP_EVENTS.includes(event)) {
-    line = runEventLine({ ...common, ...withClaim, event: event as RunEvent });
+    line = appendRunEvent(ctx.root, { ...common, ...withClaim, event: event as RunEvent });
   } else {
     throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
   }
-  appendActivity(ctx, line);
   emit(ctx, args, JSON.parse(line) as unknown, [`${event} ${task}${claim === undefined ? '' : ` (${claim})`} appended to .spectant/activity.jsonl`]);
+  return EXIT.ok;
+}
+
+/**
+ * `hook`: the plugin's activity hook (`hook.ts`), one payload on stdin. It never fails the tool call it watches: exit 0
+ * whatever happened, nothing on stdout, diagnostics on stderr only.
+ */
+async function hook(ctx: Context): Promise<number> {
+  let stdin = '';
+  try {
+    stdin = await Bun.stdin.text();
+  } catch {
+    return EXIT.ok;
+  }
+  runHook(stdin, process.env, ctx.now);
   return EXIT.ok;
 }
 
@@ -1628,9 +1617,16 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   activity: {
     usage:
       'activity <dispatch|build|patch|apply|probe|question> --task T<k> [--claim ISC-N] --session <actor> [--result red|green] [--text "<…>"] [--worktree <path>] [--json]',
-    summary: 'append one step line to .spectant/activity.jsonl (patch and apply need --worktree, probe --claim and --result, question --text)',
+    summary:
+      'append one step line to .spectant/activity.jsonl (dispatch, build, patch and apply need --claim, patch and apply also --worktree; probe --claim and --result; question --text); a run event without --claim exits 1, nothing written',
     values: ['task', 'claim', 'session', 'result', 'text', 'worktree'],
     run: activity,
+  },
+  hook: {
+    usage: 'hook',
+    summary:
+      'the plugin\'s activity hook: one Claude Code hook payload on stdin; claim and dispatch at PreToolUse(Agent) with a marker line, build at PostToolUse(Agent) async_launched, release at SubagentStop of the last builder of the claim (or build and release at PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0',
+    run: hook,
   },
 };
 
@@ -1669,6 +1665,7 @@ export async function main(argv: readonly string[], cwd = process.cwd(), now = n
     if (error instanceof CliError) return fail(error.exit, `${name}: ${error.message}`);
     if (error instanceof SpecTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
     if (error instanceof ActivityTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
+    if (error instanceof ActivityLogError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
     throw error;
   }
 }

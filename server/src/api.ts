@@ -338,6 +338,11 @@ export type DashboardApiOptions = {
    * Absent, core's default.
    */
   abortAfterMs?: () => number;
+  /**
+   * The age after which a claim lock or task run reads `aborted` in the dashboard's item states (spec 032, ISC-35): the
+   * `staleMinutes` setting × 60 000, read per request. Absent, core's default.
+   */
+  staleAfterMs?: () => number;
 };
 
 /** The local calendar date of `date` as `YYYY-MM-DD`: the day the user sees, not the UTC one. */
@@ -442,8 +447,12 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const searchTexts = new Map<string, Map<string, SearchText>>();
   const today = options.today ?? (() => localDate());
   const clock = options.now ?? (() => new Date());
-  /** This request's clock and the abort age as the setting now stands (spec 040, ISC-224), for every item state. */
-  const stateClock = (): StateClock => ({ now: clock(), ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }) });
+  /** This request's clock and the abort and stale ages as the settings now stand (spec 040, ISC-224; spec 032, ISC-35). */
+  const stateClock = (): StateClock => ({
+    now: clock(),
+    ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }),
+    ...(options.staleAfterMs === undefined ? {} : { staleAfterMs: options.staleAfterMs() }),
+  });
 
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();

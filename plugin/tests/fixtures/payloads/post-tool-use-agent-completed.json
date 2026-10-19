@@ -1,0 +1,40 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/home/user/.claude/projects/-repo/00000000-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/repo",
+  "scratchpad_dir": "/tmp/claude/scratchpad",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "permission_mode": "auto",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Builder T1",
+    "prompt": "spectant: spec=001 task=T1 claim=ISC-1\n\nImplement task T1 of spec 001 in this worktree.\nRun the lane probe and report its exit code. Do not commit.",
+    "subagent_type": "general-purpose",
+    "model": "haiku",
+    "effort": "lower",
+    "isolation": "worktree"
+  },
+  "tool_response": {
+    "status": "completed",
+    "prompt": "spectant: spec=001 task=T1 claim=ISC-1\n\nImplement task T1 of spec 001 in this worktree.\nRun the lane probe and report its exit code. Do not commit.",
+    "agentId": "a1b2c3d4e5f6a7b8c",
+    "agentType": "general-purpose",
+    "description": "Builder T1",
+    "resolvedModel": "claude-haiku-5-5",
+    "content": [
+      {
+        "type": "text",
+        "text": "T1 done: lane probe exit 0, files touched: src/example.ts"
+      }
+    ],
+    "totalDurationMs": 47630,
+    "totalTokens": 18342,
+    "totalToolUseCount": 9
+  },
+  "tool_use_id": "toolu_01FixtureAgentDispatch01",
+  "duration_ms": 48210
+}

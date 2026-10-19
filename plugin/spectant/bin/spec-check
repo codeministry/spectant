@@ -2,8 +2,8 @@
 // @bun
 
 // plugin/src/spec-check.ts
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync as readdirSync2, readlinkSync, renameSync, statSync, writeFileSync } from "fs";
-import { basename, dirname, join as join3, relative, resolve as resolve3, sep as sep2 } from "path";
+import { appendFileSync as appendFileSync2, existsSync, lstatSync, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync3, readlinkSync, renameSync as renameSync2, statSync, writeFileSync as writeFileSync2 } from "fs";
+import { basename, dirname as dirname2, join as join5, relative, resolve as resolve4, sep as sep2 } from "path";
 
 // core/src/actor.ts
 var PERSON = /^u:[0-9a-f]{8}$/;
@@ -184,6 +184,530 @@ function newRunId(input) {
   const stamp = new Date(input.ts).toISOString().replace(/[-:.]/gu, "");
   return `r-${stamp}-${fnv1a([input.ts, input.session, input.command, input.target].join(`
 `))}`;
+}
+
+// plugin/src/activity-log.ts
+import { appendFileSync, mkdirSync, readFileSync } from "fs";
+import { dirname, join as join2, resolve as resolve2 } from "path";
+
+// core/src/locks.ts
+import { createHash } from "crypto";
+import { readdir, readFile, realpath, stat } from "fs/promises";
+import { join, resolve } from "path";
+var FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
+var LOCK_SUFFIX = ".lock";
+var RUN_STATE = { dispatch: "dispatched", build: "building", patch: "patched", apply: "applied" };
+var isRunEvent = (event) => Object.hasOwn(RUN_STATE, event);
+var isLifecycleEvent = (event) => event === "run-start" || event === "run-end";
+var OUTCOMES2 = new Set(["ok", "error", "released"]);
+var isStepEvent = (event) => event === "probe" || event === "question";
+var isProbeResult = (value) => value === "red" || value === "green";
+var QUESTION_TEXT_MAX2 = 200;
+var GRAPHEMES2 = new Intl.Segmenter("en", { granularity: "grapheme" });
+function questionText(text) {
+  const first = text.split(/\r?\n/u, 1)[0] ?? "";
+  return Array.from(GRAPHEMES2.segment(first), (s) => s.segment).slice(0, QUESTION_TEXT_MAX2).join("");
+}
+var byId = (a, b) => a.localeCompare(b, "en", { numeric: true });
+var byClaim = (a, b) => byId(a.claim, b.claim);
+var filled = (value) => typeof value === "string" && value !== "";
+function errorCode(error) {
+  return typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function warning(code, message, at = {}) {
+  return { severity: "warning", code, message, ...at.line === undefined ? {} : { line: at.line }, ...at.claim === undefined ? {} : { claim: at.claim } };
+}
+var ABSENT = { present: false, locks: [], diagnostics: [], runs: [] };
+async function isDirectory(path) {
+  try {
+    return (await stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readFrontier(repoRoot, stateDir, now) {
+  if (!await isDirectory(stateDir))
+    return ABSENT;
+  const isa = resolve(repoRoot, "ISA.md");
+  const real = await realpath(isa).catch(() => isa);
+  const dir = join(stateDir, "isa-locks", createHash("sha1").update(real).digest("hex").slice(0, 16));
+  const locks = [];
+  const diagnostics = [];
+  let names;
+  try {
+    names = await readdir(dir);
+  } catch (error) {
+    if (errorCode(error) !== "ENOENT") {
+      diagnostics.push(warning("locks-frontier-unreadable", `The frontier lock directory for this ISA could not be read (${errorCode(error) || "error"}).`));
+    }
+    return { present: true, locks, diagnostics, runs: [] };
+  }
+  const claims = names.filter((n) => n.endsWith(LOCK_SUFFIX) && n.length > LOCK_SUFFIX.length).map((n) => n.slice(0, -LOCK_SUFFIX.length)).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  for (const claim of claims) {
+    const malformed = (why) => diagnostics.push(warning("locks-frontier-malformed", `The frontier lock for ${claim} ${why}; it is not counted.`, { claim }));
+    let data;
+    try {
+      data = JSON.parse(await readFile(join(dir, `${claim}${LOCK_SUFFIX}`), "utf8"));
+    } catch {
+      malformed("is not readable JSON");
+      continue;
+    }
+    if (!isRecord(data)) {
+      malformed("is not a JSON object");
+      continue;
+    }
+    const { session, ts } = data;
+    if (typeof session !== "string" || session === "") {
+      malformed("names no session");
+      continue;
+    }
+    const since = typeof ts === "string" ? Date.parse(ts) : Number.NaN;
+    if (typeof ts !== "string" || !Number.isFinite(since)) {
+      malformed("carries no valid timestamp");
+      continue;
+    }
+    if (typeof data.isa === "string" && data.isa !== isa && data.isa !== real && await realpath(data.isa).catch(() => null) !== real) {
+      diagnostics.push(warning("locks-frontier-foreign", `The frontier lock for ${claim} names another ISA file; it is not counted.`, { claim }));
+      continue;
+    }
+    const actor = parseActor(session);
+    const legacy = legacyActorWarning([{ ref: actor }], "session", `The frontier lock for ${claim}`);
+    if (legacy !== null)
+      diagnostics.push({ ...legacy, claim });
+    if (now - since > FRONTIER_STALE_MS) {
+      diagnostics.push(warning("locks-frontier-stale", `The frontier lock for ${claim} (${session}, since ${ts}) is older than two hours; LifeOS treats it as stale, so it is not counted.`, { claim }));
+      continue;
+    }
+    locks.push({ source: "frontier", claim, session, actor, since: ts });
+  }
+  return { present: true, locks, diagnostics, runs: [] };
+}
+function readLifecycle(entry, event, line, state, diagnostics) {
+  const { ts, run, command, session, spec, idea, outcome } = entry;
+  if (!filled(ts) || !filled(run) || !filled(command) || !filled(session)) {
+    diagnostics.push(warning("locks-activity-malformed", `The ${event} line lacks a ts, a run, a command or a session; it is skipped.`, { line }));
+    return null;
+  }
+  if (filled(spec) === filled(idea)) {
+    const why = filled(spec) ? "names both a spec and an idea" : "names neither a spec nor an idea";
+    diagnostics.push(warning("locks-activity-malformed", `The ${event} line of run ${run} ${why}; it is skipped.`, { line }));
+    return null;
+  }
+  if (event === "run-end" && outcome !== undefined && !(typeof outcome === "string" && OUTCOMES2.has(outcome))) {
+    const message = `The run-end line of run ${run} carries the outcome ${JSON.stringify(outcome)}, none of ok, error or released; it is skipped.`;
+    diagnostics.push(warning("locks-activity-malformed", message, { line }));
+    return null;
+  }
+  const actor = parseActor(session);
+  if (event === "run-end") {
+    if (!state.open.delete(run)) {
+      diagnostics.push(warning("locks-activity-run-unmatched", `The run-end line of run ${run} ends no open run; it is skipped.`, { line }));
+    }
+    return { ref: actor, line };
+  }
+  if (state.started.has(run)) {
+    diagnostics.push(warning("locks-activity-run-duplicate", `The run-start line reuses the run id ${run}; it is skipped.`, { line }));
+    return { ref: actor, line };
+  }
+  state.started.add(run);
+  state.open.set(run, { run, command, session, actor, since: ts, ...filled(spec) ? { spec } : {}, ...filled(idea) ? { idea } : {}, line });
+  return { ref: actor, line };
+}
+var claimOf = (entry) => typeof entry.claim === "string" && entry.claim !== "" ? { claim: entry.claim } : {};
+function readStep(entry, event, line, diagnostics) {
+  const { ts, task, session, worktree, claim, result, text } = entry;
+  const malformed = (why) => {
+    diagnostics.push(warning("locks-activity-malformed", `The ${event} line ${why}; it is skipped.`, { line, ...claimOf(entry) }));
+    return null;
+  };
+  if (!filled(task) || !filled(session) || !filled(ts))
+    return malformed("lacks a task, a session or a ts");
+  const place = filled(worktree) ? { worktree } : {};
+  if (event === "probe") {
+    if (!filled(claim) || !isProbeResult(result))
+      return malformed(`of ${task} lacks a claim or a result red or green`);
+    return { event, task, claim, result, session, ...place, ts };
+  }
+  const kept = typeof text === "string" ? questionText(text) : "";
+  if (kept.trim() === "")
+    return malformed(`of ${task} carries no text`);
+  return { event, task, ...claimOf(entry), text: kept, session, ...place, ts };
+}
+async function readActivity(repoRoot) {
+  let text;
+  try {
+    text = await readFile(join(repoRoot, ".spectant", "activity.jsonl"), "utf8");
+  } catch (error) {
+    if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR")
+      return ABSENT;
+    return { present: false, locks: [], diagnostics: [warning("locks-activity-unreadable", `.spectant/activity.jsonl could not be read (${errorCode(error) || "error"}).`)], runs: [] };
+  }
+  return parseActivity(text);
+}
+function parseActivity(text) {
+  const held = new Map;
+  const diagnostics = [];
+  const runs = [];
+  const actors = [];
+  let unknownSeen = false;
+  const lifecycle = { open: new Map, started: new Set };
+  let lifecycleLines = 0;
+  const steps = [];
+  let stepLines = 0;
+  const releases = [];
+  text.split(`
+`).forEach((raw, index) => {
+    const line = index + 1;
+    if (raw.trim() === "")
+      return;
+    let entry;
+    try {
+      entry = JSON.parse(raw);
+    } catch {
+      diagnostics.push(warning("locks-activity-malformed", "The line is not JSON; it is skipped.", { line }));
+      return;
+    }
+    if (!isRecord(entry)) {
+      diagnostics.push(warning("locks-activity-malformed", "The line is not a JSON object; it is skipped.", { line }));
+      return;
+    }
+    const { ts, event, claim, session } = entry;
+    if (!filled(event)) {
+      diagnostics.push(warning("locks-activity-malformed", "The line names no event; it is skipped.", { line, ...claimOf(entry) }));
+      return;
+    }
+    if (isLifecycleEvent(event)) {
+      lifecycleLines += 1;
+      const sighting = readLifecycle(entry, event, line, lifecycle, diagnostics);
+      if (sighting !== null)
+        actors.push(sighting);
+      return;
+    }
+    if (isStepEvent(event)) {
+      stepLines += 1;
+      const step = readStep(entry, event, line, diagnostics);
+      if (step !== null) {
+        actors.push({ ref: parseActor(step.session), line, ...claimOf(entry) });
+        steps.push(step);
+      }
+      return;
+    }
+    if (event !== "claim" && event !== "release" && !isRunEvent(event)) {
+      if (!unknownSeen) {
+        unknownSeen = true;
+        const message = `The event ${JSON.stringify(event)} is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.`;
+        diagnostics.push(warning("activity-event-unknown", message, { line, ...claimOf(entry) }));
+      }
+      return;
+    }
+    if (isRunEvent(event)) {
+      const { task, worktree } = entry;
+      const needsWorktree = event === "patch" || event === "apply";
+      if (!filled(task) || !filled(session) || !filled(ts) || needsWorktree && !filled(worktree)) {
+        const fields = needsWorktree ? "a task, a session, a worktree or a ts" : "a task, a session or a ts";
+        diagnostics.push(warning("locks-activity-malformed", `The ${event} line lacks ${fields}; it is skipped.`, { line, ...claimOf(entry) }));
+        return;
+      }
+      actors.push({ ref: parseActor(session), line, ...claimOf(entry) });
+      const run = { event, task, session, ...filled(worktree) ? { worktree } : {}, ts, ...claimOf(entry) };
+      if (run.claim === undefined && runSpecOf(run) === null) {
+        const message = `The ${event} line of ${task} names no claim, no spec session (a:<kind>:spec-NNN/\u2026) and no spec worktree (.worktrees/NNN-slug); it counts for no spec.`;
+        diagnostics.push(warning("locks-activity-unassigned", message, { line }));
+      }
+      runs.push(run);
+      return;
+    }
+    if (!filled(claim) || !filled(session) || !filled(ts)) {
+      diagnostics.push(warning("locks-activity-malformed", "The line lacks a claim, a session or a ts; it is skipped.", { line, ...claimOf(entry) }));
+      return;
+    }
+    const actor = parseActor(session);
+    actors.push({ ref: actor, line, claim });
+    const holder = held.get(claim);
+    if (event === "claim") {
+      if (holder?.session === session)
+        return;
+      if (holder !== undefined) {
+        diagnostics.push(warning("locks-activity-takeover", `${claim} is claimed by ${session} while ${holder.session} holds it; the later claim holds it now.`, { line, claim }));
+        held.delete(claim);
+      }
+      held.set(claim, { source: "activity", claim, session, actor, since: ts });
+      return;
+    }
+    if (holder === undefined) {
+      diagnostics.push(warning("locks-activity-release-unclaimed", `${claim} is released by ${session} but is not held.`, { line, claim }));
+    } else if (holder.session !== session) {
+      diagnostics.push(warning("locks-activity-release-foreign", `${claim} is released by ${session} but held by ${holder.session}; it stays held.`, { line, claim }));
+    } else {
+      held.delete(claim);
+      const { task, worktree } = entry;
+      releases.push({ claim, session, ts, ...filled(task) ? { task } : {}, ...filled(worktree) ? { worktree } : {} });
+    }
+  });
+  const legacy = legacyActorWarning(actors, "session");
+  const first = actors.find((a) => a.ref.legacy);
+  if (legacy !== null && first !== undefined)
+    diagnostics.push({ ...legacy, ...first.claim === undefined ? {} : { claim: first.claim } });
+  return {
+    present: true,
+    locks: [...held.values()].sort(byClaim),
+    diagnostics,
+    runs,
+    ...lifecycleLines > 0 ? { openRuns: [...lifecycle.open.values()] } : {},
+    ...stepLines > 0 ? { steps } : {},
+    ...releases.length > 0 ? { releases } : {}
+  };
+}
+async function readLockSources(input) {
+  const now = (input.now ?? new Date).getTime();
+  const [frontier, activity] = await Promise.all([
+    input.lifeosStateDir ? readFrontier(input.repoRoot, input.lifeosStateDir, now) : Promise.resolve(ABSENT),
+    readActivity(input.repoRoot)
+  ]);
+  return readingOf(frontier, activity);
+}
+function activityReading(text) {
+  return readingOf(ABSENT, parseActivity(text));
+}
+function readingOf(frontier, activity) {
+  const sources = [];
+  if (frontier.present)
+    sources.push("frontier");
+  if (activity.present)
+    sources.push("activity");
+  return {
+    source: sources[0] ?? "none",
+    sources,
+    locks: [...activity.locks, ...frontier.locks],
+    diagnostics: [...frontier.diagnostics, ...activity.diagnostics],
+    runs: activity.runs,
+    ...activity.openRuns === undefined ? {} : { openRuns: activity.openRuns },
+    ...activity.steps === undefined ? {} : { steps: activity.steps },
+    ...activity.releases === undefined ? {} : { releases: activity.releases }
+  };
+}
+
+// plugin/src/activity-log.ts
+class ActivityLogError extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "ActivityLogError";
+    this.code = code;
+  }
+}
+function repoRoot(dir) {
+  const r = Bun.spawnSync(["git", "rev-parse", "--git-common-dir"], { cwd: dir, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
+  const common = r.exitCode === 0 ? r.stdout.toString().trim() : "";
+  return common === "" ? dir : dirname(resolve2(dir, common));
+}
+var activityPath = (root) => join2(root, ".spectant", "activity.jsonl");
+function readIfExists(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT")
+      return null;
+    throw error;
+  }
+}
+function appendActivity(root, line) {
+  const path = activityPath(root);
+  mkdirSync(dirname(path), { recursive: true });
+  const existing = readIfExists(path);
+  const lead = existing !== null && existing !== "" && !existing.endsWith(`
+`) ? `
+` : "";
+  appendFileSync(path, `${lead}${line}`);
+}
+var readActivity2 = (root) => readIfExists(activityPath(root)) ?? "";
+function holderOf(root, claim) {
+  return activityReading(readActivity2(root)).locks.findLast((l) => l.claim === claim)?.session ?? null;
+}
+function appendClaim(root, input) {
+  const line = claimLine(input);
+  const holder = holderOf(root, input.claim);
+  if (holder !== null)
+    return { done: holder === input.session ? "held" : "other", holder };
+  appendActivity(root, line);
+  return { done: "written", line };
+}
+function appendRelease(root, input) {
+  const line = releaseLine(input);
+  const holder = holderOf(root, input.claim);
+  if (holder === null)
+    return { done: "held", holder };
+  if (holder !== input.session)
+    return { done: "other", holder };
+  appendActivity(root, line);
+  return { done: "written", line };
+}
+function appendRunEvent(root, input) {
+  if (input.claim === undefined || input.claim === "") {
+    throw new ActivityLogError("claim-required", `a ${input.event} line of ${input.task} needs its claim; nothing written`);
+  }
+  const line = runEventLine(input);
+  appendActivity(root, line);
+  return line;
+}
+
+// plugin/src/agent-map.ts
+import { mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join as join3 } from "path";
+
+// plugin/src/marker.ts
+var LINE = /^spectant:[ \t]+spec=(\d{3})[ \t]+task=(T\d+)[ \t]+claim=(ISC-\d+(?:\.\d+)*)$/u;
+function parseMarker(prompt) {
+  const first = prompt.trimStart().split(`
+`, 1)[0]?.trim() ?? "";
+  const match = LINE.exec(first);
+  if (!match)
+    return null;
+  const [, spec, task, claim] = match;
+  if (spec === undefined || task === undefined || claim === undefined)
+    return null;
+  return { spec, task, claim };
+}
+
+// plugin/src/agent-map.ts
+var AGENT_ID = /^[a-z0-9]+$/iu;
+var isAgentId = (value) => typeof value === "string" && AGENT_ID.test(value);
+function pluginDataDir(env) {
+  const data = env.CLAUDE_PLUGIN_DATA;
+  return data === undefined || data === "" ? join3(tmpdir(), "spectant-plugin-data") : data;
+}
+var agentsDir = (dataDir) => join3(dataDir, "agents");
+var agentFile = (dataDir, agentId) => join3(agentsDir(dataDir), `${agentId}.json`);
+function entryOf(value) {
+  if (typeof value !== "object" || value === null)
+    return null;
+  const { spec, task, claim, session } = value;
+  if (typeof spec !== "string" || typeof task !== "string" || typeof claim !== "string" || typeof session !== "string")
+    return null;
+  return { spec, task, claim, session };
+}
+function readEntry(path) {
+  try {
+    return entryOf(JSON.parse(readFileSync2(path, "utf8")));
+  } catch {
+    return null;
+  }
+}
+function recordLaunch(dataDir, response, session) {
+  if (typeof response !== "object" || response === null)
+    return null;
+  const { agentId, prompt } = response;
+  if (!isAgentId(agentId) || typeof prompt !== "string")
+    return null;
+  const marker = parseMarker(prompt);
+  if (marker === null)
+    return null;
+  const entry = { ...marker, session };
+  const path = agentFile(dataDir, agentId);
+  mkdirSync2(agentsDir(dataDir), { recursive: true });
+  writeFileSync(`${path}.${process.pid}.tmp`, `${JSON.stringify(entry)}
+`);
+  renameSync(`${path}.${process.pid}.tmp`, path);
+  return entry;
+}
+function takeAgent(dataDir, agentId) {
+  if (!isAgentId(agentId))
+    return null;
+  const path = agentFile(dataDir, agentId);
+  const entry = readEntry(path);
+  rmSync(path, { force: true });
+  return entry;
+}
+function agentsOf(dataDir, claim, session) {
+  let names;
+  try {
+    names = readdirSync(agentsDir(dataDir));
+  } catch {
+    return [];
+  }
+  return names.filter((name) => name.endsWith(".json") && isAgentId(name.slice(0, -".json".length))).filter((name) => {
+    const entry = readEntry(join3(agentsDir(dataDir), name));
+    return entry !== null && entry.claim === claim && entry.session === session;
+  }).map((name) => name.slice(0, -".json".length));
+}
+
+// plugin/src/hook.ts
+var fieldsOf = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+var ACTOR_ID = /^[a-z0-9][a-z0-9_-]*$/u;
+function actorOf(sessionId) {
+  if (typeof sessionId !== "string")
+    return null;
+  const id = sessionId.slice(0, 8).toLowerCase();
+  return ACTOR_ID.test(id) ? `a:claude:${id}` : null;
+}
+var markerOf = (prompt) => typeof prompt === "string" ? parseMarker(prompt) : null;
+function claimAndDispatch(env, marker, session) {
+  const root = repoRoot(env.projectDir ?? "");
+  const ts = env.now.toISOString();
+  const outcome = appendClaim(root, { claim: marker.claim, task: marker.task, session, ts });
+  if (outcome.done === "other")
+    return [];
+  const dispatch = appendRunEvent(root, { event: "dispatch", claim: marker.claim, task: marker.task, session, ts });
+  return outcome.done === "written" ? [outcome.line, dispatch] : [dispatch];
+}
+function build(env, marker, session) {
+  const root = repoRoot(env.projectDir ?? "");
+  if (holderOf(root, marker.claim) !== session)
+    return [];
+  return [appendRunEvent(root, { event: "build", claim: marker.claim, task: marker.task, session, ts: env.now.toISOString() })];
+}
+function releaseIfLast(env, marker, session) {
+  if (agentsOf(env.dataDir, marker.claim, session).length > 0)
+    return [];
+  const outcome = appendRelease(repoRoot(env.projectDir ?? ""), { claim: marker.claim, task: marker.task, session, ts: env.now.toISOString() });
+  return outcome.done === "written" ? [outcome.line] : [];
+}
+function handleHook(payload, env) {
+  const fields = fieldsOf(payload);
+  if (fields === null || env.projectDir === undefined || env.projectDir === "")
+    return [];
+  const session = actorOf(fields.session_id);
+  if (session === null)
+    return [];
+  const event = fields.hook_event_name;
+  if (event === "SubagentStop") {
+    const agentId = fields.agent_id;
+    const entry = typeof agentId === "string" ? takeAgent(env.dataDir, agentId) : null;
+    return entry === null ? [] : releaseIfLast(env, entry, entry.session);
+  }
+  if (fields.tool_name !== "Agent")
+    return [];
+  if (event === "PreToolUse") {
+    const marker = markerOf(fieldsOf(fields.tool_input)?.prompt);
+    return marker === null ? [] : claimAndDispatch(env, marker, session);
+  }
+  if (event === "PostToolUse") {
+    const response = fieldsOf(fields.tool_response);
+    const marker = markerOf(response?.prompt) ?? markerOf(fieldsOf(fields.tool_input)?.prompt);
+    if (response?.status === "async_launched") {
+      recordLaunch(env.dataDir, response, session);
+      return marker === null ? [] : build(env, marker, session);
+    }
+    if (response?.status === "completed") {
+      const launched = typeof response.agentId === "string" ? takeAgent(env.dataDir, response.agentId) : null;
+      if (marker === null)
+        return [];
+      return [...launched === null ? build(env, marker, session) : [], ...releaseIfLast(env, marker, session)];
+    }
+  }
+  return [];
+}
+function runHook(stdin, env, now) {
+  try {
+    handleHook(JSON.parse(stdin), { projectDir: env.CLAUDE_PROJECT_DIR, dataDir: pluginDataDir(env), now });
+  } catch (error) {
+    process.stderr.write(`spec-check hook: ${error instanceof Error ? error.message : String(error)}; nothing written
+`);
+  }
 }
 
 // core/src/claims.ts
@@ -1011,12 +1535,12 @@ function specFilePath(specDir, kind) {
 }
 
 // core/src/gates.ts
-import { createHash } from "crypto";
+import { createHash as createHash2 } from "crypto";
 var REVIEWED_FILES = ["spec.md", "plan.md", "tasks.md"];
 var OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 var SHA256_HEX = /^[0-9a-f]{64}$/;
 var FEATURE_ID = /^F[0-9]+$/;
-function isRecord(value) {
+function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 var stringOrNull = (value) => typeof value === "string" ? value : null;
@@ -1031,7 +1555,7 @@ function readGateMark(gate, text) {
   } catch (error) {
     return fail("gate-json-invalid", `The ${gate} mark is not valid JSON: ${error instanceof Error ? error.message : "parse error"}.`);
   }
-  if (!isRecord(data))
+  if (!isRecord2(data))
     return fail("gate-not-object", `The ${gate} mark is not a JSON object.`);
   if (data.gate === undefined)
     warn("gate-name-missing", `The mark names no gate; read as ${gate} from its file name.`);
@@ -1043,7 +1567,7 @@ function readGateMark(gate, text) {
   else
     warn("gate-at-missing", `The ${gate} mark carries no time.`);
   if (gate === "reviewed") {
-    if (!isRecord(data.files))
+    if (!isRecord2(data.files))
       return fail("gate-files-missing", "The reviewed mark holds no files object.");
     const files = {};
     for (const f of REVIEWED_FILES) {
@@ -1063,7 +1587,7 @@ function readGateMark(gate, text) {
     return fail("gate-tree-missing", "The code-reviewed mark holds no tree id.");
   if (!OBJECT_ID.test(data.tree))
     return fail("gate-tree-invalid", `The code-reviewed mark's tree ${JSON.stringify(data.tree)} is not a git object id.`);
-  const source = isRecord(data.findings) ? data.findings : data;
+  const source = isRecord2(data.findings) ? data.findings : data;
   const code = count(source.code);
   const security = count(source.security);
   let findings = null;
@@ -1173,13 +1697,13 @@ function normalizeForGate(file, text) {
 `).trim();
 }
 function hashForGate(file, text) {
-  return createHash("sha256").update(normalizeForGate(file, text)).digest("hex");
+  return createHash2("sha256").update(normalizeForGate(file, text)).digest("hex");
 }
 var MODES = new Set(["100644", "100755", "120000"]);
 var newDir = () => ({ files: new Map, dirs: new Map });
 var encoder = new TextEncoder;
 function objectId(type, body) {
-  return createHash("sha1").update(`${type} ${body.length}\x00`).update(body).digest();
+  return createHash2("sha1").update(`${type} ${body.length}\x00`).update(body).digest();
 }
 function treeObjectId(dir) {
   const entries = [];
@@ -1234,7 +1758,7 @@ function tableCells2(line) {
 var IDEAS_DIR = "specs/ideas/";
 var INDEX = "README.md";
 var STORY_FILE = /^([^/\\.][^/\\]*)\.md$/;
-var warning = (code, message, subject) => ({ severity: "warning", code, message, subject });
+var warning2 = (code, message, subject) => ({ severity: "warning", code, message, subject });
 function keyValue(value) {
   const v = value?.trim();
   return v === undefined || v === "" ? null : v;
@@ -1307,10 +1831,10 @@ function checkIndex(index, slugs) {
   const present = new Set(slugs);
   const file = `${IDEAS_DIR}${INDEX}`;
   return [
-    ...slugs.filter((slug) => !named.has(slug)).map((slug) => ({ file, diagnostic: warning("ideas-index", `The story ${slug} is not named in the index ${INDEX}.`, slug) })),
+    ...slugs.filter((slug) => !named.has(slug)).map((slug) => ({ file, diagnostic: warning2("ideas-index", `The story ${slug} is not named in the index ${INDEX}.`, slug) })),
     ...[...new Set(rows.filter((r) => !r.started && !present.has(r.name)).map((r) => r.name))].map((name) => ({
       file,
-      diagnostic: warning("ideas-index", `The index names ${name}, but ${IDEAS_DIR}${name}.md is not a story file.`, name)
+      diagnostic: warning2("ideas-index", `The index names ${name}, but ${IDEAS_DIR}${name}.md is not a story file.`, name)
     }))
   ];
 }
@@ -1325,14 +1849,14 @@ function readIdeas(files) {
     for (const diagnostic of fm.diagnostics)
       diagnostics.push({ file: path, diagnostic });
     if (!fm.present) {
-      diagnostics.push({ file: path, diagnostic: warning("ideas-frontmatter", `${path} has no frontmatter block, so it is not a story; it is skipped.`, slug) });
+      diagnostics.push({ file: path, diagnostic: warning2("ideas-frontmatter", `${path} has no frontmatter block, so it is not a story; it is skipped.`, slug) });
       continue;
     }
     const { status: rawStatus } = fm.values;
     const status = keyValue(rawStatus);
     if (status !== "idea") {
       const said = status === null ? "has no `status` key" : `says status "${status}"`;
-      diagnostics.push({ file: path, diagnostic: warning("ideas-status", `${path} ${said}; a story says \`status: idea\`, so it is skipped.`, slug) });
+      diagnostics.push({ file: path, diagnostic: warning2("ideas-status", `${path} ${said}; a story says \`status: idea\`, so it is skipped.`, slug) });
       continue;
     }
     const { type: rawType, feature } = fm.rest;
@@ -1341,7 +1865,7 @@ function readIdeas(files) {
     if (type !== null && known === null) {
       diagnostics.push({
         file: path,
-        diagnostic: warning("ideas-type", `type "${type}" is not a spec type (${SPEC_TYPES.join(", ")}); the story reads as untyped.`, type)
+        diagnostic: warning2("ideas-type", `type "${type}" is not a spec type (${SPEC_TYPES.join(", ")}); the story reads as untyped.`, type)
       });
     }
     ideas.push({
@@ -1676,11 +2200,11 @@ function transitionsOf(workflow) {
 }
 var TRANSITIONS = transitionsOf(DEFAULT);
 function placeOf(stage, row) {
-  const build = row.indexOf("build");
+  const build2 = row.indexOf("build");
   if (stage === "blocked")
-    return build;
+    return build2;
   if (stage === "close-pending")
-    return build < 0 ? -1 : build + 0.5;
+    return build2 < 0 ? -1 : build2 + 0.5;
   return row.indexOf(stage);
 }
 function explicitVerdict(input) {
@@ -1732,12 +2256,12 @@ function roundLines(text) {
     } catch {
       continue;
     }
-    if (isRecord2(line) && typeof line.round === "number" && typeof line.ts === "string")
+    if (isRecord3(line) && typeof line.round === "number" && typeof line.ts === "string")
       out.push(line);
   }
   return out;
 }
-function isRecord2(value) {
+function isRecord3(value) {
   return typeof value === "object" && value !== null;
 }
 
@@ -1872,7 +2396,7 @@ function recorded(task) {
   };
 }
 function claimCounts(line) {
-  const lists = isRecord3(line.claims) ? line.claims : {};
+  const lists = isRecord4(line.claims) ? line.claims : {};
   const closedThisRound = strings(lists.closed_this_round);
   const progress = typeof line.progress === "string" ? /^\s*(\d+)\s*\/\s*(\d+)\s*$/.exec(line.progress) : null;
   if (progress)
@@ -1883,7 +2407,7 @@ function claimCounts(line) {
 function tasksOf(line) {
   if (!Array.isArray(line.tasks))
     return [];
-  return line.tasks.filter(isRecord3).flatMap((task) => {
+  return line.tasks.filter(isRecord4).flatMap((task) => {
     if (typeof task.id !== "string" || task.id === "")
       return [];
     return [
@@ -1914,7 +2438,7 @@ function text(value) {
 function strings(value) {
   return Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
 }
-function isRecord3(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -2013,10 +2537,10 @@ function driftReport(input) {
   const { frontmatter, spec, master } = input;
   const heldElsewhere = input.heldElsewhere ?? new Set;
   const fm = frontmatter.data;
-  const byId = new Map(spec.claims.map((c) => [c.id, c]));
+  const byId2 = new Map(spec.claims.map((c) => [c.id, c]));
   const evidence = new Set(spec.verification.map((v) => v.id));
   const evidenceWithoutClose = [...evidence].filter((id) => {
-    const c = byId.get(id);
+    const c = byId2.get(id);
     return c !== undefined && !c.checked && !c.dropped;
   });
   const feature = mainFeatureOf(fm.isaFeature);
@@ -2025,7 +2549,7 @@ function driftReport(input) {
     const masterById = new Map(master.claims.map((c) => [c.id, c]));
     const block = master.features.find((f) => f.id === feature);
     for (const id of block?.claims ?? []) {
-      if (byId.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped)
+      if (byId2.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped)
         continue;
       missingInSpec.push(id);
     }
@@ -2107,7 +2631,7 @@ function takeableSet(input) {
   const taken = new Map(partition.taken.map((t) => [t.id, t.session]));
   const gated = new Set(partition.gated);
   const units = unitsOf(input);
-  const byId = new Map(units.map((u) => [u.id, u]));
+  const byId2 = new Map(units.map((u) => [u.id, u]));
   const dispatch = [];
   const held = [];
   const filesThisRound = new Set;
@@ -2129,9 +2653,9 @@ function takeableSet(input) {
       return `spec not reviewed \u2014 the reviewed mark is ${partition.reviewed}`;
     if (!takeable.has(u.claim))
       return "claim unknown to the spec";
-    const openAfter = u.after.filter((a) => byId.get(a)?.done !== true);
+    const openAfter = u.after.filter((a) => byId2.get(a)?.done !== true);
     if (openAfter.length > 0) {
-      const seams = openAfter.filter((a) => byId.get(a)?.seam === true);
+      const seams = openAfter.filter((a) => byId2.get(a)?.seam === true);
       return seams.length > 0 ? `behind open seam ${seams.join(", ")}` : `after ${openAfter.join(", ")} still open`;
     }
     const collision = u.paths.find((p) => filesThisRound.has(p));
@@ -2515,7 +3039,7 @@ function parseMapping(lines, tasks, diagnostics) {
   const warn = (code, message, line) => {
     diagnostics.push({ severity: "warning", code, message, line });
   };
-  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const byId2 = new Map(tasks.map((t) => [t.id, t]));
   const rows = [];
   for (const row of table) {
     const [first = "", claim = "", ...rest] = cells(row.text);
@@ -2527,7 +3051,7 @@ function parseMapping(lines, tasks, diagnostics) {
     const id = claim.replace(/`/g, "").trim();
     rows.push({ tasks: ids, claim: id, probe: rest.join(" | ").trim(), line: row.line });
     for (const t of ids) {
-      const task = byId.get(t);
+      const task = byId2.get(t);
       if (task === undefined)
         warn("mapping-unknown-task", `Probe mapping names ${t}, which no task line carries.`, row.line);
       else if (task.state === "struck")
@@ -3229,7 +3753,7 @@ function specOverlaps(specs, edges, sharedFiles) {
 var baseName = (file) => file.slice(file.lastIndexOf("/") + 1);
 function edgeWarnings(rows, active, edges, constitution) {
   const out = new Map;
-  const add = (id, warning2) => void out.set(id, [...out.get(id) ?? [], warning2]);
+  const add = (id, warning3) => void out.set(id, [...out.get(id) ?? [], warning3]);
   const idOf = new Map(rows.map((r) => [r.slug, r.id]));
   for (const { file, diagnostic } of edges.diagnostics) {
     const id = idOf.get(file.split("/")[1] ?? "");
@@ -3367,7 +3891,7 @@ function buildDashboard(input) {
   };
   const warningGroups = WARNING_ORDER.map((kind) => ({
     kind,
-    items: rows.flatMap((r) => r.warnings.filter((w) => w.kind === kind).map((warning2) => ({ spec: r.id, warning: warning2 })))
+    items: rows.flatMap((r) => r.warnings.filter((w) => w.kind === kind).map((warning3) => ({ spec: r.id, warning: warning3 })))
   })).filter((g) => g.items.length > 0);
   const services = [...input.services ?? []].sort((a, b) => a.port - b.port).map((s) => s.label === null && labels.has(s.port) ? { ...s, label: labels.get(s.port) ?? null } : s);
   diagnostics.push(...input.sourceDiagnostics ?? []);
@@ -3404,309 +3928,9 @@ function nextSpecNumber(taken) {
   return highest + 1;
 }
 
-// core/src/locks.ts
-import { createHash as createHash2 } from "crypto";
-import { readdir, readFile, realpath, stat } from "fs/promises";
-import { join, resolve } from "path";
-var FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
-var LOCK_SUFFIX = ".lock";
-var RUN_STATE = { dispatch: "dispatched", build: "building", patch: "patched", apply: "applied" };
-var isRunEvent = (event) => Object.hasOwn(RUN_STATE, event);
-var isLifecycleEvent = (event) => event === "run-start" || event === "run-end";
-var OUTCOMES2 = new Set(["ok", "error", "released"]);
-var isStepEvent = (event) => event === "probe" || event === "question";
-var isProbeResult = (value) => value === "red" || value === "green";
-var QUESTION_TEXT_MAX2 = 200;
-var GRAPHEMES2 = new Intl.Segmenter("en", { granularity: "grapheme" });
-function questionText(text2) {
-  const first = text2.split(/\r?\n/u, 1)[0] ?? "";
-  return Array.from(GRAPHEMES2.segment(first), (s) => s.segment).slice(0, QUESTION_TEXT_MAX2).join("");
-}
-var byId = (a, b) => a.localeCompare(b, "en", { numeric: true });
-var byClaim = (a, b) => byId(a.claim, b.claim);
-var filled = (value) => typeof value === "string" && value !== "";
-function errorCode(error) {
-  return typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
-}
-function isRecord4(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function warning2(code, message, at = {}) {
-  return { severity: "warning", code, message, ...at.line === undefined ? {} : { line: at.line }, ...at.claim === undefined ? {} : { claim: at.claim } };
-}
-var ABSENT = { present: false, locks: [], diagnostics: [], runs: [] };
-async function isDirectory(path) {
-  try {
-    return (await stat(path)).isDirectory();
-  } catch {
-    return false;
-  }
-}
-async function readFrontier(repoRoot, stateDir, now) {
-  if (!await isDirectory(stateDir))
-    return ABSENT;
-  const isa = resolve(repoRoot, "ISA.md");
-  const real = await realpath(isa).catch(() => isa);
-  const dir = join(stateDir, "isa-locks", createHash2("sha1").update(real).digest("hex").slice(0, 16));
-  const locks = [];
-  const diagnostics = [];
-  let names3;
-  try {
-    names3 = await readdir(dir);
-  } catch (error) {
-    if (errorCode(error) !== "ENOENT") {
-      diagnostics.push(warning2("locks-frontier-unreadable", `The frontier lock directory for this ISA could not be read (${errorCode(error) || "error"}).`));
-    }
-    return { present: true, locks, diagnostics, runs: [] };
-  }
-  const claims = names3.filter((n) => n.endsWith(LOCK_SUFFIX) && n.length > LOCK_SUFFIX.length).map((n) => n.slice(0, -LOCK_SUFFIX.length)).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
-  for (const claim of claims) {
-    const malformed = (why) => diagnostics.push(warning2("locks-frontier-malformed", `The frontier lock for ${claim} ${why}; it is not counted.`, { claim }));
-    let data;
-    try {
-      data = JSON.parse(await readFile(join(dir, `${claim}${LOCK_SUFFIX}`), "utf8"));
-    } catch {
-      malformed("is not readable JSON");
-      continue;
-    }
-    if (!isRecord4(data)) {
-      malformed("is not a JSON object");
-      continue;
-    }
-    const { session, ts } = data;
-    if (typeof session !== "string" || session === "") {
-      malformed("names no session");
-      continue;
-    }
-    const since = typeof ts === "string" ? Date.parse(ts) : Number.NaN;
-    if (typeof ts !== "string" || !Number.isFinite(since)) {
-      malformed("carries no valid timestamp");
-      continue;
-    }
-    if (typeof data.isa === "string" && data.isa !== isa && data.isa !== real && await realpath(data.isa).catch(() => null) !== real) {
-      diagnostics.push(warning2("locks-frontier-foreign", `The frontier lock for ${claim} names another ISA file; it is not counted.`, { claim }));
-      continue;
-    }
-    const actor = parseActor(session);
-    const legacy = legacyActorWarning([{ ref: actor }], "session", `The frontier lock for ${claim}`);
-    if (legacy !== null)
-      diagnostics.push({ ...legacy, claim });
-    if (now - since > FRONTIER_STALE_MS) {
-      diagnostics.push(warning2("locks-frontier-stale", `The frontier lock for ${claim} (${session}, since ${ts}) is older than two hours; LifeOS treats it as stale, so it is not counted.`, { claim }));
-      continue;
-    }
-    locks.push({ source: "frontier", claim, session, actor, since: ts });
-  }
-  return { present: true, locks, diagnostics, runs: [] };
-}
-function readLifecycle(entry, event, line, state, diagnostics) {
-  const { ts, run, command, session, spec, idea, outcome } = entry;
-  if (!filled(ts) || !filled(run) || !filled(command) || !filled(session)) {
-    diagnostics.push(warning2("locks-activity-malformed", `The ${event} line lacks a ts, a run, a command or a session; it is skipped.`, { line }));
-    return null;
-  }
-  if (filled(spec) === filled(idea)) {
-    const why = filled(spec) ? "names both a spec and an idea" : "names neither a spec nor an idea";
-    diagnostics.push(warning2("locks-activity-malformed", `The ${event} line of run ${run} ${why}; it is skipped.`, { line }));
-    return null;
-  }
-  if (event === "run-end" && outcome !== undefined && !(typeof outcome === "string" && OUTCOMES2.has(outcome))) {
-    const message = `The run-end line of run ${run} carries the outcome ${JSON.stringify(outcome)}, none of ok, error or released; it is skipped.`;
-    diagnostics.push(warning2("locks-activity-malformed", message, { line }));
-    return null;
-  }
-  const actor = parseActor(session);
-  if (event === "run-end") {
-    if (!state.open.delete(run)) {
-      diagnostics.push(warning2("locks-activity-run-unmatched", `The run-end line of run ${run} ends no open run; it is skipped.`, { line }));
-    }
-    return { ref: actor, line };
-  }
-  if (state.started.has(run)) {
-    diagnostics.push(warning2("locks-activity-run-duplicate", `The run-start line reuses the run id ${run}; it is skipped.`, { line }));
-    return { ref: actor, line };
-  }
-  state.started.add(run);
-  state.open.set(run, { run, command, session, actor, since: ts, ...filled(spec) ? { spec } : {}, ...filled(idea) ? { idea } : {}, line });
-  return { ref: actor, line };
-}
-var claimOf = (entry) => typeof entry.claim === "string" && entry.claim !== "" ? { claim: entry.claim } : {};
-function readStep(entry, event, line, diagnostics) {
-  const { ts, task, session, worktree, claim, result, text: text2 } = entry;
-  const malformed = (why) => {
-    diagnostics.push(warning2("locks-activity-malformed", `The ${event} line ${why}; it is skipped.`, { line, ...claimOf(entry) }));
-    return null;
-  };
-  if (!filled(task) || !filled(session) || !filled(ts))
-    return malformed("lacks a task, a session or a ts");
-  const place = filled(worktree) ? { worktree } : {};
-  if (event === "probe") {
-    if (!filled(claim) || !isProbeResult(result))
-      return malformed(`of ${task} lacks a claim or a result red or green`);
-    return { event, task, claim, result, session, ...place, ts };
-  }
-  const kept = typeof text2 === "string" ? questionText(text2) : "";
-  if (kept.trim() === "")
-    return malformed(`of ${task} carries no text`);
-  return { event, task, ...claimOf(entry), text: kept, session, ...place, ts };
-}
-async function readActivity(repoRoot) {
-  let text2;
-  try {
-    text2 = await readFile(join(repoRoot, ".spectant", "activity.jsonl"), "utf8");
-  } catch (error) {
-    if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR")
-      return ABSENT;
-    return { present: false, locks: [], diagnostics: [warning2("locks-activity-unreadable", `.spectant/activity.jsonl could not be read (${errorCode(error) || "error"}).`)], runs: [] };
-  }
-  return parseActivity(text2);
-}
-function parseActivity(text2) {
-  const held = new Map;
-  const diagnostics = [];
-  const runs = [];
-  const actors = [];
-  let unknownSeen = false;
-  const lifecycle = { open: new Map, started: new Set };
-  let lifecycleLines = 0;
-  const steps = [];
-  let stepLines = 0;
-  const releases = [];
-  text2.split(`
-`).forEach((raw, index) => {
-    const line = index + 1;
-    if (raw.trim() === "")
-      return;
-    let entry;
-    try {
-      entry = JSON.parse(raw);
-    } catch {
-      diagnostics.push(warning2("locks-activity-malformed", "The line is not JSON; it is skipped.", { line }));
-      return;
-    }
-    if (!isRecord4(entry)) {
-      diagnostics.push(warning2("locks-activity-malformed", "The line is not a JSON object; it is skipped.", { line }));
-      return;
-    }
-    const { ts, event, claim, session } = entry;
-    if (!filled(event)) {
-      diagnostics.push(warning2("locks-activity-malformed", "The line names no event; it is skipped.", { line, ...claimOf(entry) }));
-      return;
-    }
-    if (isLifecycleEvent(event)) {
-      lifecycleLines += 1;
-      const sighting = readLifecycle(entry, event, line, lifecycle, diagnostics);
-      if (sighting !== null)
-        actors.push(sighting);
-      return;
-    }
-    if (isStepEvent(event)) {
-      stepLines += 1;
-      const step = readStep(entry, event, line, diagnostics);
-      if (step !== null) {
-        actors.push({ ref: parseActor(step.session), line, ...claimOf(entry) });
-        steps.push(step);
-      }
-      return;
-    }
-    if (event !== "claim" && event !== "release" && !isRunEvent(event)) {
-      if (!unknownSeen) {
-        unknownSeen = true;
-        const message = `The event ${JSON.stringify(event)} is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.`;
-        diagnostics.push(warning2("activity-event-unknown", message, { line, ...claimOf(entry) }));
-      }
-      return;
-    }
-    if (isRunEvent(event)) {
-      const { task, worktree } = entry;
-      const needsWorktree = event === "patch" || event === "apply";
-      if (!filled(task) || !filled(session) || !filled(ts) || needsWorktree && !filled(worktree)) {
-        const fields = needsWorktree ? "a task, a session, a worktree or a ts" : "a task, a session or a ts";
-        diagnostics.push(warning2("locks-activity-malformed", `The ${event} line lacks ${fields}; it is skipped.`, { line, ...claimOf(entry) }));
-        return;
-      }
-      actors.push({ ref: parseActor(session), line, ...claimOf(entry) });
-      const run = { event, task, session, ...filled(worktree) ? { worktree } : {}, ts, ...claimOf(entry) };
-      if (run.claim === undefined && runSpecOf(run) === null) {
-        const message = `The ${event} line of ${task} names no claim, no spec session (a:<kind>:spec-NNN/\u2026) and no spec worktree (.worktrees/NNN-slug); it counts for no spec.`;
-        diagnostics.push(warning2("locks-activity-unassigned", message, { line }));
-      }
-      runs.push(run);
-      return;
-    }
-    if (!filled(claim) || !filled(session) || !filled(ts)) {
-      diagnostics.push(warning2("locks-activity-malformed", "The line lacks a claim, a session or a ts; it is skipped.", { line, ...claimOf(entry) }));
-      return;
-    }
-    const actor = parseActor(session);
-    actors.push({ ref: actor, line, claim });
-    const holder = held.get(claim);
-    if (event === "claim") {
-      if (holder?.session === session)
-        return;
-      if (holder !== undefined) {
-        diagnostics.push(warning2("locks-activity-takeover", `${claim} is claimed by ${session} while ${holder.session} holds it; the later claim holds it now.`, { line, claim }));
-        held.delete(claim);
-      }
-      held.set(claim, { source: "activity", claim, session, actor, since: ts });
-      return;
-    }
-    if (holder === undefined) {
-      diagnostics.push(warning2("locks-activity-release-unclaimed", `${claim} is released by ${session} but is not held.`, { line, claim }));
-    } else if (holder.session !== session) {
-      diagnostics.push(warning2("locks-activity-release-foreign", `${claim} is released by ${session} but held by ${holder.session}; it stays held.`, { line, claim }));
-    } else {
-      held.delete(claim);
-      const { task, worktree } = entry;
-      releases.push({ claim, session, ts, ...filled(task) ? { task } : {}, ...filled(worktree) ? { worktree } : {} });
-    }
-  });
-  const legacy = legacyActorWarning(actors, "session");
-  const first = actors.find((a) => a.ref.legacy);
-  if (legacy !== null && first !== undefined)
-    diagnostics.push({ ...legacy, ...first.claim === undefined ? {} : { claim: first.claim } });
-  return {
-    present: true,
-    locks: [...held.values()].sort(byClaim),
-    diagnostics,
-    runs,
-    ...lifecycleLines > 0 ? { openRuns: [...lifecycle.open.values()] } : {},
-    ...stepLines > 0 ? { steps } : {},
-    ...releases.length > 0 ? { releases } : {}
-  };
-}
-async function readLockSources(input) {
-  const now = (input.now ?? new Date).getTime();
-  const [frontier, activity] = await Promise.all([
-    input.lifeosStateDir ? readFrontier(input.repoRoot, input.lifeosStateDir, now) : Promise.resolve(ABSENT),
-    readActivity(input.repoRoot)
-  ]);
-  return readingOf(frontier, activity);
-}
-function activityReading(text2) {
-  return readingOf(ABSENT, parseActivity(text2));
-}
-function readingOf(frontier, activity) {
-  const sources = [];
-  if (frontier.present)
-    sources.push("frontier");
-  if (activity.present)
-    sources.push("activity");
-  return {
-    source: sources[0] ?? "none",
-    sources,
-    locks: [...activity.locks, ...frontier.locks],
-    diagnostics: [...frontier.diagnostics, ...activity.diagnostics],
-    runs: activity.runs,
-    ...activity.openRuns === undefined ? {} : { openRuns: activity.openRuns },
-    ...activity.steps === undefined ? {} : { steps: activity.steps },
-    ...activity.releases === undefined ? {} : { releases: activity.releases }
-  };
-}
-
 // core/src/resolve.ts
-import { readdirSync } from "fs";
-import { join as join2, resolve as resolve2, sep } from "path";
+import { readdirSync as readdirSync2 } from "fs";
+import { join as join4, resolve as resolve3, sep } from "path";
 function listSpecs(workspaceRoot) {
   return scan(workspaceRoot) ?? [];
 }
@@ -3734,11 +3958,11 @@ function notFound(ref, reason) {
   return { kind: "not_found", ref, reason };
 }
 function scan(workspaceRoot) {
-  const specsDir = resolve2(workspaceRoot, "specs");
+  const specsDir = resolve3(workspaceRoot, "specs");
   const active = folders(specsDir);
   if (active === null)
     return null;
-  const archiveDir = join2(specsDir, "archive");
+  const archiveDir = join4(specsDir, "archive");
   return [...refs(specsDir, active, false), ...refs(archiveDir, folders(archiveDir) ?? [], true)];
 }
 function refs(parent, names3, archived) {
@@ -3747,14 +3971,14 @@ function refs(parent, names3, archived) {
     const match = SPEC_FOLDER.exec(name);
     if (match?.[1] === undefined)
       continue;
-    out.push({ kind: "spec", id: match[1], slug: name, dir: join2(parent, name), archived });
+    out.push({ kind: "spec", id: match[1], slug: name, dir: join4(parent, name), archived });
   }
   return out.sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
 }
 function folders(dir) {
   let entries;
   try {
-    entries = readdirSync(dir, { withFileTypes: true });
+    entries = readdirSync2(dir, { withFileTypes: true });
   } catch (error) {
     const code = error.code;
     if (code === "ENOENT" || code === "ENOTDIR")
@@ -4483,13 +4707,9 @@ function git(cwd, args) {
   const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
 }
-function repoRoot(cwd) {
-  const common = git(cwd, ["rev-parse", "--git-common-dir"])?.trim();
-  return common === undefined || common === "" ? cwd : dirname(resolve3(cwd, common));
-}
-function readIfExists(path) {
+function readIfExists2(path) {
   try {
-    return readFileSync(path, "utf8");
+    return readFileSync3(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
@@ -4500,7 +4720,7 @@ var FOLDER_KINDS = Object.keys(FILE_KINDS).filter((kind) => !FILE_KINDS[kind].di
 function specFiles(ref) {
   const texts = {};
   for (const kind of FOLDER_KINDS) {
-    const text2 = readIfExists(join3(ref.dir, FILE_KINDS[kind].path));
+    const text2 = readIfExists2(join5(ref.dir, FILE_KINDS[kind].path));
     if (text2 !== null)
       texts[kind] = text2;
   }
@@ -4515,12 +4735,12 @@ function specRef(root, arg) {
 }
 var rel = (ctx, path) => relative(ctx.root, path).split(sep2).join("/");
 function specText(ctx, ref) {
-  const text2 = readIfExists(join3(ref.dir, "spec.md"));
+  const text2 = readIfExists2(join5(ref.dir, "spec.md"));
   if (text2 === null)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
   return text2;
 }
-var masterPath = (ctx) => join3(ctx.root, "ISA.md");
+var masterPath = (ctx) => join5(ctx.root, "ISA.md");
 async function locksOf(ctx) {
   return readLockSources({ repoRoot: ctx.root });
 }
@@ -4560,13 +4780,13 @@ function allocate(ctx, args) {
     now: ctx.now,
     actor: args.values.get("actor") ?? "a:claude:spec-check"
   });
-  const dir = join3(ctx.root, ...plan.dir.split("/"));
+  const dir = join5(ctx.root, ...plan.dir.split("/"));
   if (existsSync(dir))
     throw bad(`${plan.dir} exists already`);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync3(dir, { recursive: true });
   const files = Object.keys(plan.files);
   for (const name of files)
-    writeFileSync(join3(dir, name), plan.files[name]);
+    writeFileSync2(join5(dir, name), plan.files[name]);
   emit(ctx, args, { dir: plan.dir, number, files }, [
     `allocated ${plan.dir} (${files.join(", ")})`,
     ...goal === undefined ? ["no --goal given: the goal reads as the title; confirm it in spec.md and context.md"] : []
@@ -4576,7 +4796,7 @@ function allocate(ctx, args) {
 var isRecord5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var isString = (v) => typeof v === "string";
 function claimInputs(path) {
-  const text2 = readIfExists(path);
+  const text2 = readIfExists2(path);
   if (text2 === null)
     throw bad(`the claims file ${basename(path)} does not exist`);
   let data;
@@ -4619,7 +4839,7 @@ var ISC_NUMBER2 = /^ISC-(\d+)/u;
 function nextIdAcrossSpecs(root) {
   let highest = 0;
   for (const ref of listSpecs(root)) {
-    const text2 = readIfExists(join3(ref.dir, "spec.md"));
+    const text2 = readIfExists2(join5(ref.dir, "spec.md"));
     if (text2 === null)
       continue;
     for (const c of parseClaims(text2).claims)
@@ -4635,19 +4855,19 @@ function mint(ctx, args) {
   const claimsFile = args.values.get("claims");
   if (claimsFile === undefined)
     throw bad("--claims <json-file> is required");
-  const inputs = claimInputs(resolve3(ctx.cwd, claimsFile));
+  const inputs = claimInputs(resolve4(ctx.cwd, claimsFile));
   const claims = inputs.map((i) => i.claim);
   const rows = inputs.map((i) => i.row);
   const featureName = args.values.get("feature-name");
   const why = args.values.get("why");
-  const specPath = join3(ref.dir, "spec.md");
+  const specPath = join5(ref.dir, "spec.md");
   const spec = specText(ctx, ref);
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   if (master === null) {
     let next = nextIdAcrossSpecs(ctx.root);
     const numbered = claims.map((c) => c.id === undefined ? { ...c, id: `ISC-${next++}` } : c);
     const planned = mintClaimsText(spec, feature, numbered, rows);
-    writeFileSync(specPath, planned.text);
+    writeFileSync2(specPath, planned.text);
     emit(ctx, args, { ids: planned.ids, master: false, spec: rel(ctx, specPath) }, [
       `minted ${planned.ids.join(", ")} into ${rel(ctx, specPath)}`,
       "no master ISA.md in this repository: the claims went into the spec only"
@@ -4659,8 +4879,8 @@ function mint(ctx, args) {
     ...why === undefined ? {} : { why }
   });
   const projected = projectClaimsText(spec, claims.map((c, i) => ({ ...c, id: minted.ids[i] ?? "" })), rows);
-  writeFileSync(masterPath(ctx), minted.text);
-  writeFileSync(specPath, projected);
+  writeFileSync2(masterPath(ctx), minted.text);
+  writeFileSync2(specPath, projected);
   emit(ctx, args, { ids: minted.ids, master: true, spec: rel(ctx, specPath) }, [
     `minted ${minted.ids.join(", ")} into ISA.md (${feature}), then projected them into ${rel(ctx, specPath)}`
   ]);
@@ -4671,9 +4891,9 @@ function verify(ctx, args) {
   const id = required(args, 1, "the claim ID");
   const type = required(args, 2, "the verification type");
   const stub = required(args, 3, "the one-line stub");
-  const specPath = join3(ref.dir, "spec.md");
+  const specPath = join5(ref.dir, "spec.md");
   const nextSpec = appendVerificationText(specText(ctx, ref), id, type, stub, ctx.now);
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   let nextMaster = null;
   if (master !== null) {
     if (!parseClaims(master).claims.some((c) => c.id === id)) {
@@ -4681,31 +4901,31 @@ function verify(ctx, args) {
     }
     nextMaster = appendVerificationText(master, id, type, stub, ctx.now);
   }
-  writeFileSync(specPath, nextSpec);
+  writeFileSync2(specPath, nextSpec);
   if (nextMaster !== null)
-    writeFileSync(masterPath(ctx), nextMaster);
+    writeFileSync2(masterPath(ctx), nextMaster);
   const files = [rel(ctx, specPath), ...nextMaster === null ? [] : ["ISA.md"]];
   emit(ctx, args, { id, files }, [`verified ${id} in ${files.join(" and ")}`]);
   return EXIT.ok;
 }
 function decisionFile(ctx, arg) {
-  for (const candidate of [resolve3(ctx.cwd, arg), resolve3(ctx.root, arg)]) {
+  for (const candidate of [resolve4(ctx.cwd, arg), resolve4(ctx.root, arg)]) {
     if (!existsSync(candidate) || !statSync(candidate).isFile())
       continue;
     const inside = relative(ctx.root, candidate);
-    if (inside.startsWith("..") || resolve3(ctx.root, inside) !== candidate)
+    if (inside.startsWith("..") || resolve4(ctx.root, inside) !== candidate)
       throw bad(`${arg} lies outside the repository`);
     return candidate;
   }
-  return join3(specRef(ctx.root, arg).dir, "spec.md");
+  return join5(specRef(ctx.root, arg).dir, "spec.md");
 }
 function decide(ctx, args) {
   const path = decisionFile(ctx, required(args, 0, "the file"));
   const line = required(args, 1, "the decision line");
-  const text2 = readIfExists(path);
+  const text2 = readIfExists2(path);
   if (text2 === null)
     throw bad(`${rel(ctx, path)} does not exist`);
-  writeFileSync(path, appendDecisionText(text2, line, ctx.now));
+  writeFileSync2(path, appendDecisionText(text2, line, ctx.now));
   emit(ctx, args, { file: rel(ctx, path) }, [`decision added to ${rel(ctx, path)}`]);
   return EXIT.ok;
 }
@@ -4728,12 +4948,12 @@ function drift(ctx, args) {
   const listed2 = listSpecs(ctx.root);
   const one = args.positional[0];
   const targets = one === undefined ? listed2.filter((s) => !s.archived) : [specRef(ctx.root, one)];
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   const masterDoc = master === null ? null : parseClaims(master);
-  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists(join3(s.dir, "spec.md")))]));
+  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists2(join5(s.dir, "spec.md")))]));
   const specs = [];
   for (const ref of targets) {
-    const text2 = readIfExists(join3(ref.dir, "spec.md"));
+    const text2 = readIfExists2(join5(ref.dir, "spec.md"));
     if (text2 === null)
       continue;
     const heldElsewhere2 = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
@@ -4756,14 +4976,14 @@ function partitionView(p) {
 function dashboardInput(ctx, locks) {
   const listed2 = listSpecs(ctx.root);
   return {
-    master: readIfExists(masterPath(ctx)),
-    constitution: readIfExists(join3(ctx.root, "specs", "constitution.md")),
-    tldr: readIfExists(join3(ctx.root, "specs", "tldr.md")),
+    master: readIfExists2(masterPath(ctx)),
+    constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
+    tldr: readIfExists2(join5(ctx.root, "specs", "tldr.md")),
     specs: listed2.filter((s) => !s.archived).map(specFiles),
     archived: listed2.filter((s) => s.archived).map(specFiles),
     worktreeTree: null,
     locks,
-    workflow: parseWorkflow(readIfExists(join3(ctx.root, "specs", "workflow.md")))
+    workflow: parseWorkflow(readIfExists2(join5(ctx.root, "specs", "workflow.md")))
   };
 }
 async function status(ctx, args) {
@@ -4807,7 +5027,7 @@ async function frontier(ctx, args) {
   const claims = [...parseClaims(text2).claims];
   const reviewed = reviewedGate(files.texts).check.state;
   const locks = (await locksOf(ctx)).locks;
-  const constitution = readIfExists(join3(ctx.root, "specs", "constitution.md"));
+  const constitution = readIfExists2(join5(ctx.root, "specs", "constitution.md"));
   const tasks = files.texts.tasks === undefined ? null : parseTaskLines({
     tasks: files.texts.tasks,
     ...constitution === null ? {} : { constitution },
@@ -4866,14 +5086,14 @@ function transitionInput(ctx, ref, to, actor, locks) {
   const reviewed = reviewedGate(files.texts).check.state;
   const partition = partitionClaims(parseClaims(spec).claims, locks.locks, reviewed);
   const codeMark = files.texts.gateCodeReviewed === undefined ? null : readGateMark("code-reviewed", files.texts.gateCodeReviewed).mark;
-  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists(join3(ctx.root, "specs", "constitution.md")) }, []);
+  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")) }, []);
   const edgeHeld = specEdgeHolds(partition.takeable, edges.edges.filter((e) => e.fromSpec === id));
   const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
   const feature = mainFeatureOf(parseFrontmatter(spec).data.isaFeature);
   const siblings = feature === null ? [] : active.filter((f) => f.texts.spec !== undefined && mainFeatureOf(parseFrontmatter(f.texts.spec).data.isaFeature) === feature && holdsFeatureOpen2(f)).map((f) => specIdOf(f.folder) ?? f.folder).filter((sibling) => sibling !== id).sort();
   return {
     files,
-    workflow: parseWorkflow(readIfExists(join3(ctx.root, "specs", "workflow.md"))),
+    workflow: parseWorkflow(readIfExists2(join5(ctx.root, "specs", "workflow.md"))),
     to,
     actor,
     now: ctx.now,
@@ -4920,23 +5140,13 @@ async function transition(ctx, args) {
   }
   const event = { ...plan.event, command: args.values.get("command") ?? pluginCommand(plan.event.command) };
   const line = checkedEvent(event);
-  writeFileSync(join3(ref.dir, "spec.md"), plan.specText);
+  writeFileSync2(join5(ref.dir, "spec.md"), plan.specText);
   appendEventLine(ref.dir, line);
   emit(ctx, args, { spec: ref.slug, from: plan.from, to: plan.to, event }, [`${ref.slug}: ${plan.from} \u2192 ${plan.to} (${event.command})`]);
   return EXIT.ok;
 }
 var CLI_SESSION = "a:claude:spec-check";
-var activityPath = (ctx) => join3(ctx.root, ".spectant", "activity.jsonl");
-var activityText = (ctx) => readIfExists(activityPath(ctx)) ?? "";
-function appendActivity(ctx, line) {
-  const path = activityPath(ctx);
-  mkdirSync(dirname(path), { recursive: true });
-  const existing = readIfExists(path);
-  const lead = existing !== null && existing !== "" && !existing.endsWith(`
-`) ? `
-` : "";
-  appendFileSync(path, `${lead}${line}`);
-}
+var activityText = (ctx) => readActivity2(ctx.root);
 function requiredValue(args, name, what) {
   const value = args.values.get(name);
   if (value === undefined || value === "")
@@ -4966,7 +5176,7 @@ function runStart(ctx, args) {
   const line = runStartLine({ run, target, command, session, ts });
   if (startedRunIds(activityText(ctx)).has(run))
     throw bad(`the run ${run} was started already; nothing written`);
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command, session }, [run]);
   return EXIT.ok;
 }
@@ -4982,7 +5192,7 @@ function runEnd(ctx, args) {
   const target = open.spec ?? open.idea ?? "";
   const ended = outcome;
   const line = runEndLine({ run, target, command: open.command, session, ts: ctx.now.toISOString(), outcome: ended });
-  appendActivity(ctx, line);
+  appendActivity(ctx.root, line);
   emit(ctx, args, { run, target, command: open.command, session, outcome }, [`${run} ended (${outcome})`]);
   return EXIT.ok;
 }
@@ -4994,9 +5204,6 @@ function runCommand(ctx, args) {
     return runEnd(ctx, args);
   throw bad(`"${sub}" is neither start nor end`);
 }
-function holderOf(ctx, claim) {
-  return activityReading(activityText(ctx)).locks.findLast((l) => l.claim === claim)?.session ?? null;
-}
 function lockInput(ctx, args) {
   const claim = required(args, 0, "the claim ID");
   const session = requiredValue(args, "session", "<actor>");
@@ -5006,29 +5213,25 @@ function lockInput(ctx, args) {
 }
 function lockClaim(ctx, args) {
   const input = lockInput(ctx, args);
-  const line = claimLine(input);
-  const holder = holderOf(ctx, input.claim);
-  if (holder !== null && holder !== input.session)
-    throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${holder}; nothing written`);
-  if (holder === input.session) {
+  const outcome = appendClaim(ctx.root, input);
+  if (outcome.done === "other")
+    throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`);
+  if (outcome.done === "held") {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
   }
-  appendActivity(ctx, line);
   emit(ctx, args, { claim: input.claim, session: input.session, already: false }, [`${input.claim}: claimed by ${input.session}`]);
   return EXIT.ok;
 }
 function lockRelease(ctx, args) {
   const input = lockInput(ctx, args);
-  const line = releaseLine(input);
-  const holder = holderOf(ctx, input.claim);
-  if (holder === null) {
+  const outcome = appendRelease(ctx.root, input);
+  if (outcome.done === "held") {
     emit(ctx, args, { claim: input.claim, session: input.session, released: false }, [`${input.claim}: not held; nothing written`]);
     return EXIT.ok;
   }
-  if (holder !== input.session)
-    throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${holder}, not ${input.session}; nothing written`);
-  appendActivity(ctx, line);
+  if (outcome.done === "other")
+    throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`);
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
@@ -5047,15 +5250,26 @@ function activity(ctx, args) {
     if (result !== "red" && result !== "green")
       throw bad("a probe needs --result red|green");
     line = probeLine({ ...common, claim: requiredValue(args, "claim", "ISC-N"), result });
+    appendActivity(ctx.root, line);
   } else if (event === "question") {
     line = questionLine({ ...common, ...withClaim, text: requiredValue(args, "text", '"<the question>"') });
+    appendActivity(ctx.root, line);
   } else if (STEP_EVENTS.includes(event)) {
-    line = runEventLine({ ...common, ...withClaim, event });
+    line = appendRunEvent(ctx.root, { ...common, ...withClaim, event });
   } else {
     throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
   }
-  appendActivity(ctx, line);
   emit(ctx, args, JSON.parse(line), [`${event} ${task}${claim === undefined ? "" : ` (${claim})`} appended to .spectant/activity.jsonl`]);
+  return EXIT.ok;
+}
+async function hook(ctx) {
+  let stdin = "";
+  try {
+    stdin = await Bun.stdin.text();
+  } catch {
+    return EXIT.ok;
+  }
+  runHook(stdin, process.env, ctx.now);
   return EXIT.ok;
 }
 var ROUND_OUTCOMES = ["result", "question", "failed", "pass", "concerns", "fail", "skipped"];
@@ -5064,7 +5278,7 @@ var OPEN_ATTENTION = new Set(["question", "concerns", "fail"]);
 var ROUND_MODES = ["agent", "workflow", "cockpit"];
 var records = (value) => Array.isArray(value) ? value.filter(isRecord5) : [];
 function readJsonFile(ctx, file, flag) {
-  const text2 = readIfExists(resolve3(ctx.cwd, file));
+  const text2 = readIfExists2(resolve4(ctx.cwd, file));
   if (text2 === null)
     throw bad(`${flag} ${basename(file)} does not exist`);
   try {
@@ -5150,7 +5364,7 @@ function pairs(args, name) {
   });
 }
 function roundUnits(ref, claims) {
-  const tasks = readIfExists(join3(ref.dir, "tasks.md"));
+  const tasks = readIfExists2(join5(ref.dir, "tasks.md"));
   if (tasks === null) {
     const units2 = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
     return { units: units2, hasTasks: false };
@@ -5196,8 +5410,8 @@ function roundsRecord(ctx, args) {
     if (!outcomes.reader.has(task))
       outcomes.reader.set(task, r);
   const { units, hasTasks } = roundUnits(ref, doc.claims);
-  const logPath = join3(ref.dir, "rounds.jsonl");
-  const existing = readIfExists(logPath);
+  const logPath = join5(ref.dir, "rounds.jsonl");
+  const existing = readIfExists2(logPath);
   const prev = roundLines(existing ?? undefined).at(-1);
   const prevById = new Map;
   for (const t of records(prev?.tasks))
@@ -5299,7 +5513,7 @@ function roundsRecord(ctx, args) {
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
 ` : "";
-  appendFileSync(logPath, `${lead}${JSON.stringify(line)}
+  appendFileSync2(logPath, `${lead}${JSON.stringify(line)}
 `);
   const landed = tasks.filter((t) => line.dispatched.includes(t.id)).map((t) => `${t.id} ${t.state}`);
   emit(ctx, args, { file: rel(ctx, logPath), line }, [
@@ -5313,7 +5527,7 @@ function rounds(ctx, args) {
     throw bad(`"${sub}" is no rounds command (record)`);
   return roundsRecord(ctx, args);
 }
-var gatePath = (ref, gate) => join3(ref.dir, ".gates", `${gate}.json`);
+var gatePath = (ref, gate) => join5(ref.dir, ".gates", `${gate}.json`);
 var numberOf = (ref) => specIdOf(ref.slug) ?? ref.slug;
 var nextFor = (ref, gate) => gate === "reviewed" ? `/spec review ${numberOf(ref)}` : `/spec review ${numberOf(ref)} code`;
 function checkedEvent(event) {
@@ -5323,12 +5537,12 @@ function checkedEvent(event) {
   return line;
 }
 function appendEventLine(dir, line) {
-  const path = join3(dir, "events.jsonl");
-  const existing = readIfExists(path);
+  const path = join5(dir, "events.jsonl");
+  const existing = readIfExists2(path);
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
 ` : "";
-  appendFileSync(path, `${lead}${line}
+  appendFileSync2(path, `${lead}${line}
 `);
 }
 function ensureGatesIgnored(ref) {
@@ -5338,18 +5552,18 @@ function ensureGatesIgnored(ref) {
   const probe = relative(top, gatePath(ref, "reviewed")).split(sep2).join("/");
   if (git(top, ["-c", "core.fsmonitor=false", "check-ignore", "-q", "--", probe]) !== null)
     return "ignored";
-  const path = join3(top, ".gitignore");
-  const have = readIfExists(path) ?? "";
+  const path = join5(top, ".gitignore");
+  const have = readIfExists2(path) ?? "";
   const lead = have === "" || have.endsWith(`
 `) ? "" : `
 `;
-  appendFileSync(path, `${lead}# Spec: gate marks stay on this machine
+  appendFileSync2(path, `${lead}# Spec: gate marks stay on this machine
 .gates/
 `);
   return "added";
 }
 function treeEntry(root, path) {
-  const absolute = join3(root, path);
+  const absolute = join5(root, path);
   let stat2;
   try {
     stat2 = lstatSync(absolute);
@@ -5363,7 +5577,7 @@ function treeEntry(root, path) {
   if (!stat2.isFile())
     return null;
   const mode = (stat2.mode & 64) === 0 ? "100644" : "100755";
-  return { path, mode, bytes: readFileSync(absolute) };
+  return { path, mode, bytes: readFileSync3(absolute) };
 }
 var listedPaths = (out) => [...new Set((out ?? "").split("\x00"))].filter((p) => p !== "" && !p.endsWith("/"));
 function checkoutOf(cwd) {
@@ -5387,7 +5601,7 @@ function changedSince(checkout, head) {
   return [...new Set([...listedPaths(tracked), ...listedPaths(untracked)])].sort();
 }
 function gateCheckOf(ctx, ref, gate) {
-  const text2 = readIfExists(gatePath(ref, gate));
+  const text2 = readIfExists2(gatePath(ref, gate));
   const reading = text2 === null ? null : readGateMark(gate, text2);
   const problems = reading !== null && reading.mark === null ? reading.diagnostics.map((d) => d.message) : [];
   if (gate === "reviewed")
@@ -5439,8 +5653,8 @@ function gateReviewed(ctx, args, ref) {
   const line = checkedEvent(event);
   const mark = reviewedMarkText(at, files);
   const gitignore = ensureGatesIgnored(ref);
-  mkdirSync(join3(ref.dir, ".gates"), { recursive: true });
-  writeFileSync(gatePath(ref, "reviewed"), mark);
+  mkdirSync3(join5(ref.dir, ".gates"), { recursive: true });
+  writeFileSync2(gatePath(ref, "reviewed"), mark);
   appendEventLine(ref.dir, line);
   const ignored = gitignore === "added" ? "; .gitignore: added .gates/" : "";
   emit(ctx, args, { spec: ref.slug, gate: "reviewed", at, files, event, gitignore }, [
@@ -5475,8 +5689,8 @@ async function gateCodeReviewed(ctx, args, ref) {
     throw bad(`the tree id of the working tree could not be computed${line === null ? "" : " after the event line was appended"}; no mark written`);
   const note = args.values.get("note");
   const mark = codeReviewedMarkText({ at, actor, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, ...note === undefined ? {} : { note } });
-  mkdirSync(join3(ref.dir, ".gates"), { recursive: true });
-  writeFileSync(gatePath(ref, "code-reviewed"), mark);
+  mkdirSync3(join5(ref.dir, ".gates"), { recursive: true });
+  writeFileSync2(gatePath(ref, "code-reviewed"), mark);
   const on = checkout.branch === null ? "" : ` on ${checkout.branch}`;
   const moved = event === null ? "" : "; code-review \u2192 close";
   const ignored = gitignore === "added" ? "; .gitignore: added .gates/" : "";
@@ -5535,8 +5749,8 @@ function stampedText(spec, date, reason) {
 }
 function plannedTexts(ctx, ref, down, date, reason) {
   const texts = new Map;
-  for (const name of readdirSync2(ref.dir).filter((n) => n.endsWith(".md"))) {
-    const before = readFileSync(join3(ref.dir, name), "utf8");
+  for (const name of readdirSync3(ref.dir).filter((n) => n.endsWith(".md"))) {
+    const before = readFileSync3(join5(ref.dir, name), "utf8");
     let after = shiftedText(before, down);
     if (name === "spec.md")
       after = stampedText(after, date, reason);
@@ -5551,7 +5765,7 @@ function archiveBlockers(text2, ref, listed2, master, locks) {
   const blockers = [];
   const fm = parseFrontmatter(text2);
   const spec = parseClaims(text2);
-  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists(join3(s.dir, "spec.md")))]));
+  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join5(s.dir, "spec.md")))]));
   const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere: heldElsewhere2 });
   if (hasDrift(report))
     blockers.push({ kind: "drift", hard: true, detail: `drift against the master: run spec-check drift ${ref.id} and repair it first` });
@@ -5573,7 +5787,7 @@ function archiveReferences(ctx, slug) {
     if (needle.test(text2))
       out.push({ file, line, text: text2.trim().slice(0, 160) });
   };
-  (readIfExists(masterPath(ctx)) ?? "").split(`
+  (readIfExists2(masterPath(ctx)) ?? "").split(`
 `).forEach((text2, i) => add("ISA.md", i + 1, text2));
   const grep = git(ctx.root, ["grep", "-n", "-I", "-F", "-e", `specs/${slug}`, "--", ".", ":!specs", ":!ISA.md"]) ?? "";
   for (const hit of grep.split(`
@@ -5585,16 +5799,16 @@ function archiveReferences(ctx, slug) {
   return out;
 }
 function performMove(ctx, move) {
-  mkdirSync(dirname(join3(ctx.root, move.to)), { recursive: true });
+  mkdirSync3(dirname2(join5(ctx.root, move.to)), { recursive: true });
   const tracked = (git(ctx.root, ["ls-files", "--", move.from]) ?? "").trim() !== "";
   if (tracked) {
     if (git(ctx.root, ["mv", move.from, move.to]) === null)
       throw bad(`git mv ${move.from} ${move.to} failed`);
   } else {
-    renameSync(join3(ctx.root, move.from), join3(ctx.root, move.to));
+    renameSync2(join5(ctx.root, move.from), join5(ctx.root, move.to));
   }
   for (const [name, text2] of move.texts)
-    writeFileSync(join3(ctx.root, move.to, name), text2);
+    writeFileSync2(join5(ctx.root, move.to, name), text2);
 }
 async function archive(ctx, args) {
   const restore = args.positional[0] === "restore";
@@ -5625,7 +5839,7 @@ async function archive(ctx, args) {
   }
   if (restore)
     return archiveRestore(ctx, args, refs2, dry);
-  const master = readIfExists(masterPath(ctx));
+  const master = readIfExists2(masterPath(ctx));
   const locks = await locksOf(ctx);
   const verdicts = refs2.map((ref) => {
     const blockers = archiveBlockers(specText(ctx, ref), ref, listed2, master, locks);
@@ -5763,9 +5977,14 @@ var COMMANDS = {
   },
   activity: {
     usage: 'activity <dispatch|build|patch|apply|probe|question> --task T<k> [--claim ISC-N] --session <actor> [--result red|green] [--text "<\u2026>"] [--worktree <path>] [--json]',
-    summary: "append one step line to .spectant/activity.jsonl (patch and apply need --worktree, probe --claim and --result, question --text)",
+    summary: "append one step line to .spectant/activity.jsonl (dispatch, build, patch and apply need --claim, patch and apply also --worktree; probe --claim and --result; question --text); a run event without --claim exits 1, nothing written",
     values: ["task", "claim", "session", "result", "text", "worktree"],
     run: activity
+  },
+  hook: {
+    usage: "hook",
+    summary: "the plugin's activity hook: one Claude Code hook payload on stdin; claim and dispatch at PreToolUse(Agent) with a marker line, build at PostToolUse(Agent) async_launched, release at SubagentStop of the last builder of the claim (or build and release at PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0",
+    run: hook
   }
 };
 function help() {
@@ -5813,6 +6032,8 @@ ${command.summary}`);
       return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
     if (error instanceof ActivityTextError)
       return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
+    if (error instanceof ActivityLogError)
+      return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
     throw error;
   }
 }

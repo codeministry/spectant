@@ -66,8 +66,10 @@ The client sends the raw sha256 of the whole file it rendered in `X-Spectant-Act
 the order is 400 (no hash header) → 404 (no such open run, unknown or already ended, as core's `activityReading` reads
 the file) → 409 `hash-mismatch` with the hash now → 422 `release-refused` (`no-viewer` without a `u:` id, there is no
 fallback; `run-aborted` when core's `runLockOf` reads the run `aborted`) → 200. No claim lock is read and no run locks
-it, so no 423. Reason: the plugin is the file's writer, so the app may only add one complete line, and only over the
-exact bytes the user saw; a line the plugin appended meanwhile is the 409, never a torn or lost line.
+it, so no 423. Reason: the plugin writes every other line of the file (its hooks the `claim`, `dispatch`, `build` and
+`release` of a builder whose brief carries the marker line, `spec-check` the rest; spec 032) and the app only reads
+it, so the app may only add one complete line, and only over the exact bytes the user saw; a line the plugin appended
+meanwhile is the 409, never a torn or lost line.
 
 The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every
 read route and every refused write, and after an accepted one only the files of that write's `WRITE_PATHS` entry may

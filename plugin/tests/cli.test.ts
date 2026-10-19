@@ -255,3 +255,36 @@ describe('spec-check: the command surface', () => {
     expect(read(root, 'specs/001-digest/spec.md')).toBe(before);
   });
 });
+
+describe('spec-check: activity run events (spec 032, ISC-33.1)', () => {
+  const LOG = '.spectant/activity.jsonl';
+  const SESSION = 'a:claude:00000000';
+  const WORKTREE = '.claude/worktrees/agent-a1b2c3d4e5f6a7b8c';
+
+  const logLines = (root: string): Array<Record<string, unknown>> =>
+    existsSync(join(root, LOG)) ? read(root, LOG).split('\n').filter((l) => l !== '').map((l) => JSON.parse(l) as Record<string, unknown>) : [];
+
+  test('a run event without --claim is refused, exit 1, nothing written', () => {
+    const root = repo();
+    for (const event of ['patch', 'apply', 'dispatch', 'build']) {
+      const r = run(root, 'activity', event, '--task', 'T1', '--session', SESSION, '--worktree', WORKTREE);
+      expect(r.code).toBe(1);
+      expect(r.err).toContain('claim');
+      expect(r.err).toContain('nothing written');
+    }
+    expect(existsSync(join(root, LOG))).toBe(false);
+  });
+
+  test('patch and apply with --claim are written through the shared writer, each line carrying its claim', () => {
+    const root = repo();
+    for (const event of ['patch', 'apply']) {
+      const r = run(root, 'activity', event, '--task', 'T1', '--claim', 'ISC-1', '--session', SESSION, '--worktree', WORKTREE, '--json');
+      expect(r.code).toBe(0);
+      expect(json(r)).toMatchObject({ event, claim: 'ISC-1', task: 'T1', session: SESSION, worktree: WORKTREE });
+    }
+    expect(logLines(root).map((l) => [l.event, l.claim, l.task])).toEqual([
+      ['patch', 'ISC-1', 'T1'],
+      ['apply', 'ISC-1', 'T1'],
+    ]);
+  });
+});

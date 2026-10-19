@@ -1,12 +1,12 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LANGS } from '../../../i18n/catalogues';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LanguageService } from '../../core/language.service';
-import { isDensity, SettingsService, type ThemeMode } from '../../core/settings.service';
+import { isAgeMinutes, isDensity, SettingsService, type ThemeMode } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
@@ -29,6 +29,7 @@ const THEMES: ReadonlyArray<{ readonly key: ThemeMode; readonly icon: 'monitor' 
 const SECTIONS: readonly HelpSection[] = [
   { id: 'appearance', heading: 'settings-appearance', label: 'settings.nav.appearance' },
   { id: 'actors', heading: 'actors-heading', label: 'settings.nav.actors' },
+  { id: 'board', heading: 'settings-board', label: 'settings.nav.board' },
   { id: 'workspaces', heading: 'settings-workspaces', label: 'settings.nav.workspaces' },
   { id: 'keyboard', heading: 'settings-keyboard', label: 'settings.nav.keyboard' },
   { id: 'about', heading: 'settings-about', label: 'settings.nav.about' },
@@ -44,9 +45,10 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
 
 /**
  * `/settings` (spec 024, T60; design.md § Settings and the static prototype `settings.html`): the page head, the
- * anchor pills (the Help nav), then five cards. Appearance holds theme, language and density (spec 021, ISC-254: the
+ * anchor pills (the Help nav), then six cards. Appearance holds theme, language and density (spec 021, ISC-254: the
  * default of board, flow view and spec row; `?density=` overrides it for one view and never changes it here) as stored
- * settings; reduced motion is not stored yet, so it sits alone in a disabled demo block. Actors, Workspaces (the
+ * settings; reduced motion is not stored yet, so it sits alone in a disabled demo block. Actors, Board (the claim
+ * stale age `staleMinutes`, spec 032, ISC-35: whole minutes from 5 to 1440, stored on commit), Workspaces (the
  * registry summary and the row link to `/settings/workspaces`), Keyboard (the single-key switch, the common keys and
  * the shortcut sheet) and About follow. The way back is the header.
  */
@@ -98,6 +100,10 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
     .single { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding-block-end: 12px; border-block-end: 1px solid var(--line); }
     .single .meta { font-size: 12px; line-height: 16px; }
     .mono { font-family: var(--font-mono); }
+    .field { justify-self: start; box-sizing: border-box; inline-size: 112px; block-size: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--lane); color: var(--color-base-content); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .field[aria-invalid='true'] { border-color: var(--color-error); }
+    @media (pointer: coarse) { .field { block-size: 44px; } }
+    .field-err { margin: 0; color: var(--hover-text); font-size: 12px; line-height: 16px; }
   `,
   template: `
     <ui-page-head [segments]="[('shell.eyebrow.app' | transloco), ('settings.title' | transloco)]">
@@ -166,6 +172,35 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
       </section>
 
       <app-actors-section id="actors" />
+
+      <section id="board" aria-labelledby="settings-board">
+        <ui-card [padding]="0">
+          <div class="c-head"><h2 id="settings-board">{{ 'settings.nav.board' | transloco }}</h2></div>
+          <div class="card-pad">
+            <div class="set-row">
+              <label class="eyebrow" for="settings-stale-minutes">{{ 'settings.board.staleLabel' | transloco }}</label>
+              <input
+                id="settings-stale-minutes"
+                class="field"
+                type="number"
+                inputmode="numeric"
+                min="5"
+                max="1440"
+                step="1"
+                data-setting="stale-minutes"
+                aria-describedby="settings-stale-hint"
+                [value]="staleMinutes()"
+                [attr.aria-invalid]="staleInvalid() ? 'true' : null"
+                (change)="setStaleMinutes($event)"
+              />
+              <p class="meta row-hint" id="settings-stale-hint" data-setting-hint="stale-minutes">{{ 'settings.board.staleHint' | transloco }}</p>
+              @if (staleInvalid()) {
+                <p class="field-err row-hint" role="alert" data-setting-error="stale-minutes">{{ 'settings.board.staleRange' | transloco }}</p>
+              }
+            </div>
+          </div>
+        </ui-card>
+      </section>
 
       <section id="workspaces" aria-labelledby="settings-workspaces">
         <ui-card [padding]="0">
@@ -280,6 +315,10 @@ export class SettingsPage {
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
   /** The stored density; `?density=` on a view never reaches it (ISC-254). */
   protected readonly density = computed(() => this.settings.settings().density);
+  /** The stored claim age (spec 032, ISC-35): a claim without a release older than it reads stale on the board. */
+  protected readonly staleMinutes = computed(() => this.settings.settings().staleMinutes);
+  /** The last committed age was refused (not whole minutes from 5 to 1440); nothing was sent. */
+  protected readonly staleInvalid = signal(false);
 
   /** The registry summary: every registered workspace, the readable ones and the ones whose folder is gone. */
   protected readonly registry = computed(() => {
@@ -302,6 +341,18 @@ export class SettingsPage {
 
   protected setDensity(value: string | undefined): void {
     if (isDensity(value) && value !== this.density()) void this.settings.update({ density: value });
+  }
+
+  /**
+   * Stores a committed claim age (native `change`: on blur or Enter) when it is whole minutes from 5 to 1440 and not
+   * the stored one; anything else marks the field invalid and sends nothing, so the server never sees a refused value.
+   */
+  protected setStaleMinutes(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value.trim();
+    const minutes = raw === '' ? Number.NaN : Number(raw);
+    const valid = isAgeMinutes(minutes);
+    this.staleInvalid.set(!valid);
+    if (valid && minutes !== this.staleMinutes()) void this.settings.update({ staleMinutes: minutes });
   }
 
   protected toggleSingleKeys(): void {

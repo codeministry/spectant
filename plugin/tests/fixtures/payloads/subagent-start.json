@@ -1,0 +1,10 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/home/user/.claude/projects/-repo/00000000-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/repo/.claude/worktrees/agent-a1b2c3d4e5f6a7b8c",
+  "scratchpad_dir": "/tmp/claude/scratchpad",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "agent_id": "a1b2c3d4e5f6a7b8c",
+  "agent_type": "general-purpose",
+  "hook_event_name": "SubagentStart"
+}

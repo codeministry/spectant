@@ -62,9 +62,11 @@ edge added mid-run makes the mark stale on purpose.
   edge points at a patch applied earlier in this run needs that patch in HEAD: commit it first where the repository's
   `CLAUDE.md` allows commits; otherwise run that task without worktree isolation in this checkout, serially, and say so
   in the round report.
-- **The actor.** Locks and step lines carry an actor in the grammar `FORMAT.md` defines: the parent is
-  `a:<kind>:<id>` (for example `a:claude:spec-NNN`; lower case, letters, digits, `-` and `_`), each builder is
-  `<parent actor>/T<k>`. Strings such as `spec-NNN-ISC-7` are not actors; the reader flags them as legacy.
+- **The actor.** Every line carries an actor in the grammar `FORMAT.md` defines. The parent's own lines (`patch`,
+  `apply`) carry `a:<kind>:<id>` (for example `a:claude:spec-NNN`; lower case, letters, digits, `-` and `_`), each
+  builder's `<parent actor>/T<k>`. The lock and launch lines the plugin's hooks write carry the session's own actor,
+  `a:claude:<first 8 characters of the session id>`. Strings such as `spec-NNN-ISC-7` are not actors; the reader flags
+  them as legacy.
 - **The CLI path for builders.** Resolve `${CLAUDE_PLUGIN_ROOT}/bin/spec-check` to its absolute path once and put
   `bun "<that path>"` into every brief, so a builder needs no plugin variable of its own.
 - **Width.** The user's only optional input: default wide for `feature`, `refactor` and `project`; serial for `bug`,
@@ -94,22 +96,27 @@ round plan and saves it as `<scratch>/round-N.plan.json`:
 
 *(safety gate — these are not style preferences)*
 
-1. **Locks live in the repository root's `.spectant/activity.jsonl`**, written only by `spec-check claim` and
-   `spec-check release`, never by hand. Every checkout and worktree of the repository shares that one file.
-2. **The parent claims before dispatching:** `spec-check claim ISC-N --session <parent actor>`. A lost race then costs
-   one CLI call instead of a builder's whole run. A refused claim while the frontier said takeable means another session
-   holds it or the spec's edges are stale against the master: stop and reconcile, never override.
+1. **Locks live in the repository root's `.spectant/activity.jsonl`, and the plugin's hooks write them** from the
+   marker line of each brief (Step 5): `claim` when the `Agent` call starts, `release` when the claim's last builder of
+   this session stops. Every checkout and worktree of the repository shares that one file; nobody writes it by hand.
+2. **The parent takes no lock itself.** It runs neither the `claim` nor the `release` command for a claim it
+   dispatches. The hooks write under the session's own actor, so a lock the parent held under its actor would make the
+   hook see the claim held by another session and write nothing for the task: no `claim`, `dispatch`, `build` or
+   `release`. The race check is `frontier` right before the round (Step 3): a claim another session holds is not
+   takeable. A dispatched task without its `claim` and `dispatch` lines in the activity check lost that race or its
+   marker line: stop and reconcile, never override.
 3. **The parent is the only writer of `spec.md`, `tasks.md` and the master.** Builders change code and return one of the
    two shapes below.
-4. **Release on close and on failure:** `spec-check release ISC-N --session <parent actor>`. Exit 4 means the lock was
-   lost: write nothing more for that claim and report it. A lock held by a dead session is cleared only on the user's
-   word, never by this workflow on its own.
+4. **Release comes with the last builder's stop**, on a result, a question or a failure alike; a redispatch claims
+   again. The claim is unlocked from that stop on, so the write order (Step 8) follows the patches without delay. A lock
+   held by a dead session is cleared only on the user's word, never by this workflow on its own.
 
 ## Step 5: the dispatch brief
 
 *(output format — every builder gets this shape, nothing less)*
 
 ```
+spectant: spec=<NNN> task=T<k> claim=ISC-N
 SPEC:      <absolute path>/specs/NNN-slug/spec.md   (read it; you are closing one claim of it)
 GOAL:      "<the spec's goal, byte for byte>"
 CLAIM:     ISC-N — <claim text verbatim>
@@ -129,6 +136,11 @@ RETURN:    result | question — the shapes under "What a builder returns". A qu
            changes the claim set, the seam, or makes the probe unmeetable; everything else is a mark.
 DONE:      the probe named above ran red before your change and green after, in your worktree.
 ```
+
+The first line is the marker, exactly this shape and always first, before `SPEC:`: the plugin's hooks read it from
+the Agent tool's prompt to write the task's `claim`, `dispatch`, `build` and `release` lines, and a brief without it
+is no task to them. `<NNN>` is the spec's three-digit number, `T<k>` and `ISC-N` the task and claim of this brief. The
+parent writes none of these four lines itself.
 
 `STEPS` is how Spectant sees what a builder does inside its run: the builder writes `probe` and `question` itself, from
 inside its worktree, and the CLI puts the line into the repository root's `.spectant/activity.jsonl`. The parent never
@@ -157,20 +169,21 @@ decide nor phrase options returns a `result` with a red probe and the reason.
 
 ## Step 6: run the round
 
-For each dispatched task, in this order: `spec-check claim ISC-N --session <parent actor>`, then
-`spec-check activity dispatch --task T<k> --claim ISC-N --session <parent actor>`, then the build on one of two paths:
+Each dispatched task is built on one of two paths, and the parent writes nothing before it: when the `Agent` call
+starts, the hooks write the claim's `claim` (unless this session holds it already) and the task's `dispatch`; when the
+builder is launched, its `build`.
 
 - **Agent tool** (default): one `Agent(isolation: "worktree", …)` per dispatched task, run in the background, the brief
-  above as its prompt. Write `spec-check activity build --task T<k> --claim ISC-N --session <parent actor>` as each
-  starts. The loop is the parent's.
+  above as its prompt. The loop is the parent's.
 - **Workflow** (only when the user asks for it in this run, "run the workflow"): `Workflow({scriptPath:
   "${CLAUDE_PLUGIN_ROOT}/skills/spec/scripts/implement.workflow.js", args: {plan, brief, builder, ts}})`. The script
   pipelines each task through a worktree-isolated builder with schema-enforced returns and gives back
   `{dispatched, results, questions, failed, verdicts}`; it closes nothing and is resumable by its run ID. It has no
   filesystem, so the parent fills `brief` with text: `spec` (absolute path), `goal` verbatim, `cli` (the resolved
   `bun "<path>"`), `actor` (the parent actor), `lanes` (lane → profile text from the constitution), `seams` (task →
-  contract from `plan.md`). Start the Workflow from this checkout, for the same HEAD reason as in Step 2. The parent
-  writes `build` per task when the workflow starts.
+  contract from `plan.md`). The script opens every builder's prompt with the same marker line, the spec number taken
+  from the folder in `brief.spec`, so the hooks write the same lines on this path. Start the Workflow from this
+  checkout, for the same HEAD reason as in Step 2.
 
 **Isolation: one worktree per task.** What comes back is a patch, not a branch:
 
@@ -184,22 +197,31 @@ git worktree remove --force <worktree>                     # after the patch lan
 
 Staging inside the builder's worktree is only how new files get into the patch; nothing is committed there. Check the
 patch's `--stat` against `files touched` and leave out what the builder only set up for itself (a linked dependency
-folder is the usual one). Write `spec-check activity patch …` after the patch was pulled and `spec-check activity apply
-…` after it landed, both with `--task T<k> --claim ISC-N --session <parent actor> --worktree <path>`. `--check` red
-means this checkout moved under the task: that is not a merge to resolve by hand; redispatch the task on the current
-tree with the same brief and its own `state`. `git apply` resolves paths from the root; run it there or pass
-`--directory`.
+folder is the usual one). The task's two last run events are the parent's, written through the activity tool with the
+task's claim, `patch` after the patch was pulled and `apply` after it landed:
+
+```bash
+spec-check activity patch --task T<k> --claim ISC-N --session <parent actor> --worktree <path>   # after the pull
+spec-check activity apply --task T<k> --claim ISC-N --session <parent actor> --worktree <path>   # after git apply
+```
+
+`--check` red means this checkout moved under the task: that is not a merge to resolve by hand; redispatch the task on
+the current tree with the same brief and its own `state`. `git apply` resolves paths from the root; run it there or
+pass `--directory`.
 
 **The activity check.** After the patches are applied, check the log for every dispatched task. A task whose probe ran
-red before its change carries `dispatch`, `build`, `probe red`, `probe green`, `patch`, `apply` in that order:
+red before its change carries `dispatch` and `build` from the hooks, `probe red` and `probe green` from its builder,
+`patch` and `apply` from the parent, in that order; the claim's `claim` comes before them, and its `release`, written
+when the claim's last builder stopped, may come before the `patch`:
 
 ```bash
 log="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.spectant/activity.jsonl"
 grep '"task":"T<k>"' "$log" | grep -oE '"event":"[a-z-]+"|"result":"[a-z]+"'
 ```
 
-Name every gap (a missing `probe red` is the usual one) in the round report and on the round line. A gap closes nothing
-and blocks nothing; it is a builder that ignored `STEPS`.
+Name every gap in the round report and on the round line. A gap closes nothing and blocks nothing. A missing `probe red`
+is the usual one: a builder that ignored `STEPS`. A missing `dispatch` or `build` means the hooks did not see the brief:
+the plugin's hooks are off in this session, the brief lost its marker line, or another session held the claim.
 
 **A second look** is off by default; a claim closes on its probe. Only when the user asks for one in this run, a fresh,
 read-only reviewer agent (one that did not build the patch, ideally another model) reads each patch of a `feature`,
@@ -242,8 +264,9 @@ producing a **one-line** provenance stub: a test name, a command with its exit c
 2. spec-check verify NNN ISC-N <type> "<stub>"   # Verification line in spec.md, then the master; ticks the claim
                                                  # after its evidence; recounts progress in both
 3. tasks.md ← every task of ISC-N → [x]; updated:
-4. spec-check release ISC-N --session <parent actor>
 ```
+
+The claim's lock is no step here: the hooks released it when its last builder stopped.
 
 `<type>` is the second column of the claim's Test Strategy row. `verify` refuses multi-line evidence and an ID the
 master does not hold (exit 3, nothing written: run `spec-check drift`). Structural checks run at every stop and after a
@@ -252,7 +275,7 @@ shows no error diagnostic.
 
 ## Step 9: record the round
 
-After the write order and the lock release, on both paths, the last step of every round:
+After the write order, on both paths, the last step of every round:
 
 ```bash
 spec-check rounds record specs/NNN-slug --plan <scratch>/round-N.plan.json [--result <return.json>] \
@@ -305,7 +328,8 @@ Report the reason; never guess past it. Each one goes on the last round line via
 - **Never hand-edit the master.** Claims, Verification and Decisions lines go through the CLI.
 - **Never write an acceptance criterion into `plan.md` or `tasks.md`.**
 - **Never check a claim whose probe it did not run.**
-- **Never release a lock it does not own.**
+- **Never write a `claim`, `release`, `dispatch` or `build` line itself.** The hooks write them; a lock the parent took
+  would silence them for the task.
 - **Never weaken a gate to make a claim close.**
 
 ## Gotchas
@@ -317,5 +341,5 @@ Report the reason; never guess past it. Each one goes on the last round line via
 - `isolation: "worktree"` branches from the session's HEAD. Dispatching from the default branch while the spec's work
   lives on its feature branch gives every builder stale code; check `git rev-parse --abbrev-ref HEAD` before the first
   dispatch.
-- A lock cannot say whether its builder is out or its question waits on the user. A claim still locked after a
-  `question` keeps that state until a round line records the redispatch.
+- A claim stays locked only while one of its builders runs: the hooks release it when the last one stops, also after a
+  `question`. A question waiting on the user therefore holds no lock; the redispatch claims the claim again.

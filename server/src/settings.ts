@@ -41,6 +41,12 @@ export const SettingsSchema = {
   notesImportDismissed: { default: false, validate: isBoolean },
   /** Spec 040, ISC-222.1: an open run older than this many minutes reads `aborted` and no longer locks its item. */
   runAbortMinutes: { default: 120, validate: integerIn(5, 1440) },
+  /**
+   * Spec 032, ISC-35: a claim lock without a release older than this many minutes shows `stale` on the agent board and
+   * reads `aborted` in the item states (ISC-223); the live frame's `staleAfterMs`. It ages locks (claims), where
+   * `runAbortMinutes` ages runs; the two are separate settings.
+   */
+  staleMinutes: { default: 45, validate: integerIn(5, 1440) },
 } as const satisfies Record<string, SettingSpec<unknown>>;
 
 type Schema = typeof SettingsSchema;

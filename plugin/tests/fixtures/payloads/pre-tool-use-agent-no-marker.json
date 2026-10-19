@@ -1,0 +1,22 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/home/user/.claude/projects/-repo/00000000-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/repo",
+  "scratchpad_dir": "/tmp/claude/scratchpad",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "permission_mode": "auto",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Task summary",
+    "prompt": "Summarise the open tasks of spec 001 in three lines. Do not edit any file.",
+    "subagent_type": "general-purpose",
+    "model": "haiku",
+    "effort": "lower",
+    "isolation": "worktree"
+  },
+  "tool_use_id": "toolu_01FixtureAgentNoMarker01"
+}
