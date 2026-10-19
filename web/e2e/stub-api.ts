@@ -77,9 +77,9 @@
  *   has it and lists the fixture tree `beacon` after the other workspaces (`STUB_RUN.workspace`), rebuilt by core
  *   (`runVariant`: `itemStates` over core's `activityReading` of its log, at `STUB_NOW`, the default abort age); a
  *   400 beside `X-Spectant-Stub-Worktrees: on`, `X-Spectant-Stub-Edges` or `X-Spectant-Stub-Midnight: on`.
- * - `X-Spectant-Stub-Run: none | running | ended` switches beacon's `/spec-tasks 003` run (`STUB_RUN`) under the
+ * - `X-Spectant-Stub-Run: none | running | ended` switches beacon's `/spec tasks 003` run (`STUB_RUN`) under the
  *   `runs` locks (absent: `running`; a 400 under any other lock fixture), each body derived by core from the edited
- *   log, never written by hand: `none` drops its run-start line, so 003 reads `open` with `/spec-tasks 003`;
+ *   log, never written by hand: `none` drops its run-start line, so 003 reads `open` with `/spec tasks 003`;
  *   `running` is the log as it is, every body beacon's golden (003 `running` since 14:52); `ended` appends its
  *   `run-end` with outcome `ok`, so 003 reads the state its files give, which no file change moves: `open` again.
  * - `X-Spectant-Stub-Waits: 0 | 1 | 7` (spec 020, T15) picks how many entries wait on the principal in the first
@@ -328,7 +328,7 @@ export const WORKTREES_HEADER = 'X-Spectant-Stub-Worktrees';
 /**
  * The library fixtures (spec 017, ISC-156): the workspace's catalog, or none at all. The `empty` workspace state lists
  * no workspace, so every library route there is a 404 as on the server; a readable workspace without one document is
- * this header's `empty` (the page's empty state, `/spec-bootstrap`).
+ * this header's `empty` (the page's empty state, `/spec init`).
  */
 export const LIBRARY_STATES = ['catalog', 'empty', 'tech-heading'] as const;
 export type StubLibraryState = (typeof LIBRARY_STATES)[number];
@@ -1374,21 +1374,23 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
  * The run variants (spec 040, T53, ISC-224, ISC-224.1): under `X-Spectant-Stub-Locks: runs` the stub also serves the
  * fixture tree `beacon`, rebuilt by core from its files with `.spectant/activity.jsonl` edited in memory per
  * `X-Spectant-Stub-Run` (absent: `running`). `none` drops the run-start of `STUB_RUN`, so 003 reads `open` with
- * `/spec-tasks 003`; `running` is the log as it is, so the bodies equal beacon's goldens (003 `running` since 14:52);
+ * `/spec tasks 003`; `running` is the log as it is, so the bodies equal beacon's goldens (003 `running` since 14:52);
  * `ended` appends that run's `run-end` with outcome `ok` and gives 003 the `tasks.md` the run wrote (`STUB_RUN_TASKS`,
- * in memory), so 003 reads the stage and state its files then give: `review`, open with `/spec-review 003` (ISC-224.1).
+ * in memory), so 003 reads the stage and state its files then give: `review`, open with `/spec review 003` (ISC-224.1).
  */
 export const RUN_STATES = ['none', 'running', 'ended'] as const;
 export type StubRunState = (typeof RUN_STATES)[number];
 export const RUN_HEADER = 'X-Spectant-Stub-Run';
 
-/** The run the variants switch: beacon's `/spec-tasks 003`, open at `STUB_NOW` for eight minutes. */
+/** The run the variants switch: beacon's `/spec tasks 003` (logged as `/spec-tasks 003`), open at `STUB_NOW` for eight minutes. */
 export const STUB_RUN = {
   workspace: { slug: 'beacon', name: 'beacon', golden: 'beacon' },
   spec: '003',
   folder: '003-alert-rules',
   run: 'r-0308-1452',
   command: '/spec-tasks 003',
+  /** The command as the app shows it: core reads the recorded old name in the plugin form (`pluginCommand`, ISC-265). */
+  shown: '/spec tasks 003',
   session: 'a:claude:sess-32',
   since: '2026-03-08T14:52:00Z',
   /** When the `ended` variant's run-end line is stamped, before `STUB_NOW`. */

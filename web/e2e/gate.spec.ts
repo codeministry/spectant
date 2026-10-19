@@ -163,7 +163,7 @@ test.describe('spec head per tier', () => {
       await expect(crumbs.locator('[data-crumb="spec"]')).toHaveText('Spec 002');
       await expect(crumbs.locator('[data-crumb="area"]')).toHaveAttribute('aria-current', 'page');
       await expect(head.locator('.spec-title')).toHaveAttribute('title', 'Web console');
-      await expect(head.locator('[data-head-actions] [data-head-command]')).toContainText('/spec-implement 002');
+      await expect(head.locator('[data-head-actions] [data-head-command]')).toContainText('/spec implement 002');
       await expect(head.locator('[data-head-actions] [data-notes-pill]')).toHaveAttribute('href', '/w/harbor/s/002/notes');
       await expect(head.locator('[data-meta]')).toContainText(/updated .* ago/u);
     });
@@ -214,7 +214,7 @@ test.describe('spec head per tier', () => {
       await details.click();
       await expect(details).toHaveAttribute('aria-expanded', 'true');
       await expect(head.locator('[data-head-details-actions] [data-head-command]')).toBeVisible();
-      await expect(head.locator('[data-head-details-actions] [data-head-command]')).toContainText('/spec-implement 002');
+      await expect(head.locator('[data-head-details-actions] [data-head-command]')).toContainText('/spec implement 002');
     });
   });
 });

@@ -287,7 +287,7 @@ test.describe('list', () => {
       expect(catalog.docs).toEqual([]);
       await page.goto(PAGE);
       await expect(page.locator('[data-library-none]')).toBeVisible();
-      await expect(page.locator('[data-library-none]')).toContainText('/spec-bootstrap');
+      await expect(page.locator('[data-library-none]')).toContainText('/spec init');
       await expect(page.locator(ENTRY)).toHaveCount(0);
       await expect(page.locator('[data-library-list]')).toHaveCount(0);
       await expect(page.locator('[data-library-error]')).toHaveCount(0);
@@ -466,7 +466,7 @@ test.describe('control', () => {
     await expect(page.locator('[data-library-reader] [data-library-prose]')).toHaveCount(0);
     // Core marks only plan.md and tasks.md missing (ISC-155.2), and each has the command that writes it.
     expect(['plan', 'tasks']).toContain(missing.type);
-    await expect(empty.locator('ui-command-chip')).toContainText(`/spec-${missing.type} ${keyOf(missing.spec)}`);
+    await expect(empty.locator('ui-command-chip')).toContainText(`/spec ${missing.type} ${keyOf(missing.spec)}`);
   });
 });
 
@@ -1193,12 +1193,10 @@ test.describe('prototype', () => {
  *   and fog (`[data-library-head=…]`) and the Specs card's Goal and first Approach paragraph.
  * - Open: under `?state=open` every `- fog:` line of each open spec under its number (`[data-library-fog-group]`).
  * - Without `specs/tech.md` (lantern, `pages: null`): the dimmed row `[data-library-placeholder="tech.md"]` opens the
- *   empty state `[data-library-tech-empty]` with the `/spec-doc` chip, as the former Overview tab did.
+ *   empty state `[data-library-tech-empty]`, with no command chip: the Spec plugin has no command that writes it (spec 031).
  */
 const TECH_SECTION_ORDER = ['overview', 'stack', 'architecture', 'risks'] as const;
 type TechSectionKey = (typeof TECH_SECTION_ORDER)[number];
-/** The command the empty state offers (`/spec-doc` writes `specs/tech.md`): named by the claim, in neither catalogue. */
-const DOC_COMMAND = '/spec-doc';
 
 const techGolden = (ws: string): TechModel => read(`../../core/fixtures/${ws}.tech.golden.json`) as TechModel;
 const TECH_EN = read('../src/i18n/en.json') as {
@@ -1436,7 +1434,7 @@ test.describe('tech', () => {
     }
   });
 
-  test('tech · without tech.md: the dimmed tech.md row opens the empty state with the /spec-doc chip, as the former Overview tab', async ({ page, request }) => {
+  test('tech · without tech.md: the dimmed tech.md row opens the empty state without a command chip', async ({ page, request }) => {
     expect(LANTERN.pages, 'the lantern tech golden has no tech.md').toBeNull();
     const answer = await request.get(`/api/workspaces/${LANTERN_WS}/library`);
     expect(answer.status()).toBe(200);
@@ -1453,9 +1451,8 @@ test.describe('tech', () => {
     await expect(empty).toBeVisible();
     await expect(empty.locator('.title')).toHaveText(TECH_EN.library.tech.emptyHeading);
     await expect(empty.locator('.body')).toHaveText(TECH_EN.library.tech.emptyBody);
-    const chip = empty.locator('ui-command-chip');
-    await expect(chip).toHaveCount(1);
-    await expect(chip.locator('code')).toHaveText(DOC_COMMAND);
+    // No plugin command writes specs/tech.md (spec 031), so the empty state offers no chip.
+    await expect(empty.locator('ui-command-chip')).toHaveCount(0);
     await expect(page.locator('[data-library-reader] [data-library-prose]')).toHaveCount(0);
     await expect(page.locator('[data-library-reader] section[data-library-tech-section]')).toHaveCount(0);
 

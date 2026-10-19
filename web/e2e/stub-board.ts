@@ -51,6 +51,8 @@ export type BoardCore = {
   rowTransitions: (row: WorkflowRow) => ReadonlyArray<{ from: WorkflowStage; to: WorkflowStage }>;
   defaultWorkflowRow: (type: SpecType) => WorkflowRow;
   SPEC_RULES: ReadonlyArray<{ stage: string; next: string | null }>;
+  /** Fills a row's `NNN` or `<slug>` with the argument: `/spec tasks NNN` → `/spec tasks 003`. */
+  commandWith: (next: string, arg: string) => string;
   /** `server/src/writes.contract.ts`: the 409 bodies, the 423 choice, the allocation paths, the fallback actor. */
   specConflict: (sent: string, now: string) => StaleBody | null;
   ideaConflict: (path: string, sent: string, now: string) => StaleBody | null;
@@ -107,7 +109,7 @@ export function loadBoardCore(): BoardCore {
   const src = join(import.meta.dir, '..', '..', 'core', 'src');
   const docs = load(join(src, 'markdown-docs.ts')) as Pick<BoardCore, 'renderDocsMarkdown'>;
   const evidence = load(join(src, 'evidence.ts')) as Pick<BoardCore, 'docsRenderOptions'>;
-  const stage = load(join(src, 'stage.ts')) as Pick<BoardCore, 'rowTransitions' | 'defaultWorkflowRow' | 'SPEC_RULES'>;
+  const stage = load(join(src, 'stage.ts')) as Pick<BoardCore, 'rowTransitions' | 'defaultWorkflowRow' | 'SPEC_RULES' | 'commandWith'>;
   const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'writes.contract.ts')) as Pick<
     BoardCore,
     'specConflict' | 'ideaConflict' | 'blockingLock' | 'writePathsOf' | 'VIEWER_ACTOR_FALLBACK' | 'backlogConflict'
@@ -231,7 +233,7 @@ export function refusalOf(core: BoardCore, row: WorkflowRow, type: SpecType | nu
 /** The stage table's command for a stage, with the spec number (`planTransition`'s `commandOf`); null where none. */
 export function commandFor(core: BoardCore, stage: WorkflowStage, number: string): string | null {
   const next = core.SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
-  return next === undefined || next === null ? null : `${next} ${number}`;
+  return next === undefined || next === null ? null : core.commandWith(next, number);
 }
 
 // ---- the worktree overlay (spec 027, T33: ISC-175, ISC-175.1, ISC-179, ISC-181) -----------------------------------

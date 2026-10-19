@@ -280,7 +280,7 @@ describe("answers", () => {
     expect(writeAnswerOf("transition", 409, stale)).toEqual({ status: 409, body: stale });
     expect(writeAnswerOf("transition", 409, tasksConflict(HEX_C, HEX_A))).toBeNull();
 
-    const refused = { error: "transition-refused", reason: "build needs a fresh reviewed mark", command: "/spec-review 005" };
+    const refused = { error: "transition-refused", reason: "build needs a fresh reviewed mark", command: "/spec review 005" };
     const answer = writeAnswerOf("transition", 422, refused);
     expect(answer && describeAnswer(answer)).toBe("transition-refused build needs a fresh reviewed mark");
     expect(writeAnswerOf("transition", 422, { ...refused, command: null })).not.toBeNull();

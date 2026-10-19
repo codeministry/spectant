@@ -101,10 +101,10 @@ describe('item state', () => {
   test('beacon: an open run makes its spec or idea running, the newest of two decides, past the age it is aborted', () => {
     const items = stateModel(BEACON);
     const tasks = itemOf(items, 'spec', '003');
-    expect(tasks).toMatchObject({ state: 'running', stage: 'tasks', run: { run: 'r-0308-1452', command: '/spec-tasks 003', since: '2026-03-08T14:52:00Z', elapsedMs: 8 * MIN, openRuns: 1, source: 'run' } });
+    expect(tasks).toMatchObject({ state: 'running', stage: 'tasks', run: { run: 'r-0308-1452', command: '/spec tasks 003', since: '2026-03-08T14:52:00Z', elapsedMs: 8 * MIN, openRuns: 1, source: 'run' } });
     expect(tasks.run?.actor.raw).toBe('a:claude:sess-32');
-    expect(itemOf(items, 'spec', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec-code-review 006', elapsedMs: 200 * MIN, openRuns: 1 } });
-    expect(itemOf(items, 'spec', '005')).toMatchObject({ state: 'running', stage: 'build', run: { run: 'r-0308-1440', command: '/spec-implement 005', openRuns: 2 } });
+    expect(itemOf(items, 'spec', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec review 006 code', elapsedMs: 200 * MIN, openRuns: 1 } });
+    expect(itemOf(items, 'spec', '005')).toMatchObject({ state: 'running', stage: 'build', run: { run: 'r-0308-1440', command: '/spec implement 005', openRuns: 2 } });
     expect(itemOf(items, 'idea', 'uptime-badges')).toMatchObject({ state: 'running', stage: 'idea', run: { command: '/spec new uptime-badges', elapsedMs: 15 * MIN } });
     expect(itemOf(items, 'idea', 'digest-emails')).toMatchObject({ state: 'open', stage: 'idea', command: '/spec new digest-emails' });
     // A run that ended (error, ok, released) leaves the stage table's state.
@@ -123,7 +123,7 @@ describe('item state', () => {
     expect(itemOf(items, 'review-mark', '002', '002')).toMatchObject({ state: 'waiting', waits: { specs: ['002'] } });
     expect(itemOf(items, 'review-mark', '005', '005').state).toBe('done');
     expect(itemOf(items, 'review-mark', '005', '005').doneAt).toBeString();
-    expect(itemOf(items, 'code-review-mark', '006', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec-code-review 006' } });
+    expect(itemOf(items, 'code-review-mark', '006', '006')).toMatchObject({ state: 'aborted', run: { command: '/spec review 006 code' } });
     expect(itemOf(items, 'code-review-mark', '007', '007')).toMatchObject({ state: 'waiting', waits: { siblings: ['008'] } });
     expect(itemOf(items, 'code-review-mark', '005', '005')).toMatchObject({ state: 'waiting', waits: { specs: ['005'] } });
     // `bug` has `code_review: none` in beacon's workflow: no code-review mark item.

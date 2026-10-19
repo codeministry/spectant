@@ -335,7 +335,7 @@ test.describe('zen', () => {
       await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');
       await expect(footer.locator('[data-zen-part="title"]')).toHaveText('Web console');
       await expect(footer.locator('[data-zen-part="claims"]')).toContainText('25/30');
-      await expect(footer.locator('ui-command-chip')).toContainText('/spec-implement 002');
+      await expect(footer.locator('ui-command-chip')).toContainText('/spec implement 002');
       // The bar slides in from 8 px below (prototype `zen-statusbar`); measure it once its entry has finished.
       await footer.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
       const box = await footer.boundingBox();
