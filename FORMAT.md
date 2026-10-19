@@ -1692,10 +1692,22 @@ hold a claim:
 
 - **LifeOS frontier locks**, lock files under the LifeOS state directory, read only when LifeOS is present; without
   LifeOS no LifeOS path is read (ISC-37).
-- **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks: one JSON object per line,
+- **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks and its CLI `spec-check`
+  (`spec-check claim` and `spec-check release`): one JSON object per line,
   `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open. The
   same file carries the four run events of an implement round (spec 027, ISC-179, below) and the two run lifecycle
   events of a command (spec 040, ISC-222, below), none of which holds a claim.
+
+**Who writes the lines** (spec 031, ISC-227). The plugin CLI `spec-check` writes every line of this file except the
+app's run release: `claim` and `release`, `run-start` and `run-end` (`spec-check run start` and `spec-check run end`),
+and the run and step events (`spec-check activity <event>`), beside the plugin's hooks. It plans each line through
+core's `activity-text.ts` (`claimLine`, `releaseLine`, `runStartLine`, `runEndLine`, `runEventLine`, `probeLine`,
+`questionLine`), which writes nothing and returns one JSON object and its newline with its keys in the order the
+skill's activity writer and the app use (the reader ignores key order): `ts`, `event`, then `claim`, `task`, `session` for the claim, release, run and step events
+(`result` or `text` after `session`, `worktree` last), and `run`, `command`, `session`, the target and `outcome` for
+the run lifecycle events. A planner refuses input the reader would skip or read as legacy (a session outside the actor
+grammar, a bad claim or task id, a time that is no date, a field with a line break, an unknown outcome) and plans
+nothing.
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
@@ -1727,7 +1739,8 @@ any other session) and `ts` are required on every run event; a run event that la
 skipped. `worktree` is required on `patch` and `apply` only, and a `patch` or `apply` without it is malformed too. On
 `dispatch` and `build` it is optional (spec 035, ISC-189): the builder's worktree does not exist yet when its task is
 dispatched, so the round may write both lines without it, and they are read as usual. `claim` is optional and only
-names the claim; a run event never holds or releases it.
+names the claim; a run event never holds or releases it. The round writes them, and its builders their step events
+(below), through the plugin CLI (`spec-check activity <event>`, above).
 
 A `dispatch` and a `build` line without `worktree`, both read:
 
@@ -1810,6 +1823,16 @@ for a run that is not open, unknown or already ended, is one `locks-activity-run
 a claim, names a task or changes a lock or a task run. Both are additive (ISC-222.2): `openRuns` is set only when the
 log holds at least one `run-start` or `run-end` line, so a log without them reads byte for byte as before, harbor
 included, and `openRuns` is `[]` when every run in it has ended.
+
+Each plugin subcommand that works on a spec or an idea writes exactly one `run-start` when it begins and exactly one
+`run-end` with the same `run` when it ends, `outcome: ok` on success and `outcome: error` when it fails (spec 031,
+ISC-227); only the app writes `released`. The `run-end` repeats its start's `command`, `session` and target, since the
+reader requires them on both lines. The run id comes from `newRunId` (`activity-text.ts`): `r-`, the start's UTC time
+to the millisecond and eight hex digits of a digest over the start's time, session, command and target, e.g.
+`r-20260308T120000123Z-1a2b3c4d`, deterministic for the same inputs. A target of three digits or a folder name is
+written as `spec`, a story slug as `idea`. `/spec init` works on the repository rather than one spec or idea, and the
+line must name exactly one of the two, so its run names `spec: "init"`, a name no spec folder carries: the pair is read
+like any other, and while open the run puts no item into `running`.
 
 From `core/fixtures/beacon/.spectant/activity.jsonl`: a run that ended with an error, one that ended `ok`, and two
 open runs, one on a spec and one on an idea:

@@ -4,7 +4,9 @@
 // code-review → close → done, the feature row of the default workflow (FORMAT.md § workflow) — is one
 // `spec-check transition <spec> <to>`, and each appends exactly one valid line to `events.jsonl` and sets `stage:` in
 // spec.md. A move the workflow does not allow exits 3 and leaves every file byte-identical; a repository
-// `specs/workflow.md` that reorders the stages is honoured.
+// `specs/workflow.md` that reorders the stages is honoured. T18: in the real order a subcommand writes the file that
+// carries the spec on first (plan.md, tasks.md, the last verification) and records the move after it; core's catch-up
+// still makes that one event, and the same transition called again exits 0 with "already there" and writes nothing.
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -217,6 +219,108 @@ describe('spec-check transition: the full chain (ISC-44)', () => {
       'code-review→close',
       'close→done',
     ]);
+  });
+
+  test('the real order: each subcommand writes its file first, then records the move; still exactly one event each', () => {
+    const root = repo();
+    allocate(root);
+    const claimsFile = join(root, '.claims.json');
+    writeFileSync(claimsFile, JSON.stringify(CLAIMS));
+    expect(run(root, 'mint', '001', '--feature', 'F1', '--claims', claimsFile).code).toBe(0);
+
+    // `/spec plan` writes plan.md, which carries the spec to tasks; the move is recorded after it (catch-up).
+    writeFileSync(join(root, DIR, 'plan.md'), PLAN);
+    move(root, 'plan', 'tasks', '/spec plan 001');
+
+    // `/spec tasks` writes tasks.md, which carries the spec to review; then the move.
+    writeFileSync(join(root, DIR, 'tasks.md'), TASKS);
+    move(root, 'tasks', 'review', '/spec tasks 001');
+
+    // review → build stays with the reviewed mark (T22): no `transition` records it, not even late; the test writes the
+    // mark and its line as the app does.
+    markReviewed(root);
+    const marked = snapshot(root);
+    expect(run(root, 'transition', '001', 'build').code).toBe(3);
+    expect(snapshot(root)).toEqual(marked);
+    appendReviewedEvent(root);
+
+    // `/spec implement` verifies the last claim, which carries the spec to code-review; then the move.
+    for (const id of ['ISC-1', 'ISC-2', 'ISC-3']) expect(run(root, 'verify', '001', id, 'test', `bun test digest.test.ts — ${id} pass`).code).toBe(0);
+    expect(eventLines(root)).toHaveLength(4);
+    move(root, 'build', 'code-review', '/spec implement 001');
+    move(root, 'code-review', 'close', '/spec review 001');
+    move(root, 'close', 'done', '/spec done 001');
+
+    expect(events(root).map((e) => `${e.from ?? 'null'}→${e.to}`)).toEqual([
+      'null→plan',
+      'plan→tasks',
+      'tasks→review',
+      'review→build',
+      'build→code-review',
+      'code-review→close',
+      'close→done',
+    ]);
+  });
+
+  test('code_review none: verifying the last claim, then `transition … close`, appends the one build → close event', () => {
+    const root = repo();
+    allocate(root);
+    writeFileSync(
+      join(root, 'specs', 'workflow.md'),
+      ['# Workflow', '', '| type | stages | code_review |', '|------|--------|-------------|', '| feature | plan · tasks · review · build · close · done | none |', ''].join('\n'),
+    );
+    const claimsFile = join(root, '.claims.json');
+    writeFileSync(claimsFile, JSON.stringify(CLAIMS));
+    expect(run(root, 'mint', '001', '--feature', 'F1', '--claims', claimsFile).code).toBe(0);
+    writeFileSync(join(root, DIR, 'plan.md'), PLAN);
+    move(root, 'plan', 'tasks', '/spec plan 001');
+    writeFileSync(join(root, DIR, 'tasks.md'), TASKS);
+    move(root, 'tasks', 'review', '/spec tasks 001');
+    markReviewed(root);
+    appendReviewedEvent(root);
+    for (const id of ['ISC-1', 'ISC-2', 'ISC-3']) expect(run(root, 'verify', '001', id, 'test', `bun test digest.test.ts — ${id} pass`).code).toBe(0);
+    move(root, 'build', 'close', '/spec implement 001');
+    expect(events(root).map((e) => `${e.from ?? 'null'}→${e.to}`)).toEqual(['null→plan', 'plan→tasks', 'tasks→review', 'review→build', 'build→close']);
+  });
+
+  test('the same transition twice: the second call exits 0 with "already there" and writes nothing', () => {
+    const root = repo();
+    allocate(root);
+    const claimsFile = join(root, '.claims.json');
+    writeFileSync(claimsFile, JSON.stringify(CLAIMS));
+    expect(run(root, 'mint', '001', '--feature', 'F1', '--claims', claimsFile).code).toBe(0);
+    writeFileSync(join(root, DIR, 'plan.md'), PLAN);
+    move(root, 'plan', 'tasks', '/spec plan 001');
+    const before = snapshot(root);
+    const again = run(root, 'transition', '001', 'tasks');
+    expect({ code: again.code, err: again.err }).toEqual({ code: 0, err: '' });
+    expect(again.out).toContain('already there');
+    expect(snapshot(root)).toEqual(before);
+    const json = run(root, 'transition', '001', 'tasks', '--json');
+    expect(JSON.parse(json.out)).toMatchObject({ from: 'tasks', to: 'tasks', event: null, already: true });
+    expect(snapshot(root)).toEqual(before);
+  });
+
+  test('files two stages ahead of the last event are refused (exit 3) and nothing is written', () => {
+    const root = repo();
+    allocate(root);
+    const claimsFile = join(root, '.claims.json');
+    writeFileSync(claimsFile, JSON.stringify(CLAIMS));
+    expect(run(root, 'mint', '001', '--feature', 'F1', '--claims', claimsFile).code).toBe(0);
+    writeFileSync(join(root, DIR, 'plan.md'), PLAN);
+    writeFileSync(join(root, DIR, 'tasks.md'), TASKS);
+    const before = snapshot(root);
+    const r = run(root, 'transition', '001', 'review');
+    expect(r.code).toBe(3);
+    expect(r.err).toContain('plan → review');
+    expect(snapshot(root)).toEqual(before);
+  });
+
+  test('--help names the catch-up and the "already there" answer', () => {
+    const r = run(tmpdir(), 'transition', '--help');
+    expect(r.code).toBe(0);
+    expect(r.out).toContain('already stand in <to>');
+    expect(r.out).toContain('already there');
   });
 
   test('--actor and --command land in the event line as given', () => {

@@ -43,7 +43,7 @@ import { driftReport, hasDrift, mainFeatureOf, masterProgressMismatch, partition
 import type { ClaimPartition, DriftReport } from '../../core/src/status.ts';
 import { takeableSet } from '../../core/src/takeable.ts';
 import { parseTaskLines } from '../../core/src/tasks.ts';
-import { planTransition } from '../../core/src/transition.ts';
+import { planCatchUp, planTransition } from '../../core/src/transition.ts';
 import type { TransitionInput } from '../../core/src/transition.ts';
 import { parseWorkflow } from '../../core/src/workflow.ts';
 
@@ -584,11 +584,22 @@ function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: s
   };
 }
 
+/** The refusal of a planned move: exit 3 with core's reason and next command; nothing is written. */
+function refusal(ref: SpecRef, plan: { readonly from: string; readonly reason: string; readonly command: string | null }): CliError {
+  const next = plan.command === null ? '' : `; next: ${pluginCommand(plan.command)}`;
+  return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`);
+}
+
 /**
  * The stage move, the app's write path 3 without the app: core plans it (`planTransition`); on a refusal nothing is
  * written and the command exits 3 with core's reason and next command; on yes spec.md is written in place with its
  * `stage:` and exactly one event line is appended to `events.jsonl` (created when absent), a newline first when the
  * file does not end in one, as the app appends it.
+ *
+ * A subcommand writes the file that carries the spec on (plan.md, tasks.md, the last claim's verification) before it
+ * records the move, so the files may already stand in `<to>`. Then core's catch-up (`planCatchUp`) records the move
+ * late: the one event from the last recorded stage to `<to>`, exit 0. When the last event already enters `<to>` (the
+ * same transition called twice), nothing is written and the command exits 0 with "already there".
  */
 async function transition(ctx: Context, args: Args): Promise<number> {
   const ref = specRef(ctx.root, required(args, 0, 'the spec'));
@@ -596,10 +607,20 @@ async function transition(ctx: Context, args: Args): Promise<number> {
   if (!isWorkflowStage(to)) throw bad(`"${to}" is no stage (${WORKFLOW_STAGES.join(', ')})`);
   specText(ctx, ref);
   const actor = args.values.get('actor') ?? 'a:claude:spec-check';
-  const plan = planTransition(transitionInput(ctx, ref, to, actor, await locksOf(ctx)));
-  if (!plan.ok) {
-    const next = plan.command === null ? '' : `; next: ${pluginCommand(plan.command)}`;
-    throw new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`);
+  const input = transitionInput(ctx, ref, to, actor, await locksOf(ctx));
+  const direct = planTransition(input);
+  let plan: { readonly from: WorkflowStage; readonly to: WorkflowStage; readonly specText: string; readonly event: EventLine };
+  if (direct.ok) plan = direct;
+  else if (direct.from !== to) throw refusal(ref, direct);
+  else {
+    // The files already stand in `<to>`: record the move they made, once.
+    const late = planCatchUp(input);
+    if (late.kind === 'refused') throw refusal(ref, late);
+    if (late.kind === 'recorded') {
+      emit(ctx, args, { spec: ref.slug, from: to, to, event: null, already: true }, [`${ref.slug}: already there (${to}); nothing written`]);
+      return EXIT.ok;
+    }
+    plan = late;
   }
   const event: EventLine = { ...plan.event, command: args.values.get('command') ?? pluginCommand(plan.event.command) };
   const line = JSON.stringify(event);
@@ -667,7 +688,8 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   release: { usage: 'release <ISC-N> --session <actor>', summary: 'release a claim lock', later: 'T18' },
   transition: {
     usage: 'transition <spec> <to> [--actor <actor>] [--command "<…>"] [--json]',
-    summary: 'move a spec to another stage: stage: in spec.md and one events.jsonl line; exit 3 and nothing written when the workflow or a gate refuses',
+    summary:
+      'move a spec to another stage: stage: in spec.md and one events.jsonl line. Files that already stand in <to> (plan.md, tasks.md or the last verification written first) get the one line from the last recorded stage. Called again once the last line enters <to>: exit 0, "already there", nothing written. Exit 3 and nothing written when the workflow or a gate refuses',
     values: ['actor', 'command'],
     run: transition,
   },

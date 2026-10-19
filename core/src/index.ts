@@ -28,6 +28,9 @@
 // the item states from the caller and reads no file, so it is browser-safe and rides it whole; its types ride with files.ts.
 // Spec 015's steps.ts (`taskSteps`) takes the lock reading and the spec folder's texts from the caller and reads no
 // file; the ISC-213 helper `runSpecOf` it shares with locks.ts lives in spec-ref.ts, so it rides it whole.
+// Spec 031's activity-text.ts (`claimLine`, `releaseLine`, `runStartLine`, `runEndLine`, `runEventLine`, `probeLine`,
+// `questionLine`, `newRunId`) plans the lines of `.spectant/activity.jsonl` from the caller's input, imports only
+// actor.ts, spec-ref.ts and types, writes nothing and rides it whole; the plugin CLI appends what it returns.
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';
@@ -52,6 +55,7 @@ export * from './assignee.ts';
 export * from './transition.ts';
 export * from './allocate.ts';
 export * from './spec-text.ts';
+export * from './activity-text.ts';
 export * from './glossary.ts';
 export * from './tokens.ts';
 export * from './backlog.ts';
