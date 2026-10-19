@@ -77,7 +77,8 @@ const PLAY_STEP_MS = 1200;
  * Lanes come in constitution order (the spec model's `lanes`), then lanes only the cards name, `operator` last. Each
  * lane holds four sections (Needs you, In flight with the lock's session, Waiting grouped by reason, Landed). At wide
  * the operator lane is "Your steps", rendered with "This frame" and "Needs you" in the shell rail (T88); below wide
- * and in zen a sticky bottom bar steps frames and opens both lists in a sheet.
+ * and in zen a sticky bottom bar steps frames and opens both lists in a sheet. In zen the scrub row (scrubber, play,
+ * frame chip, progress line) leaves the board, so the bar is the only frame control there (spec 047).
  *
  * Each card owns its detail dialog, opened from its id button (T83, `card/card.ts`). The board opens the same
  * `app-card-detail` only for a row of This frame or Needs you, which are rows and not cards.
