@@ -166,11 +166,16 @@ const SPECS = join(REPO_ROOT, 'specs');
 const SHAPED = ['answer-in-app', 'mcp-endpoint', 'model-panel', 'agent-step-feed'];
 const SHAPING = /^#{2,3} Shaping record\b/m;
 
-/** The texts of the started spec folder `specs/NNN-<slug>/` that may carry the record; empty when there is none. */
+/**
+ * The texts of the started spec folder `specs/NNN-<slug>/`, or `specs/archive/NNN-<slug>/` once it is archived, that may
+ * carry the record; empty when there is none.
+ */
 function startedTexts(slug: string): string[] {
-  const folder = readdirSync(SPECS).find((name) => /^\d{3}-/.test(name) && name.slice(4) === slug);
+  const dirs = [SPECS, join(SPECS, 'archive')].filter((dir) => existsSync(dir));
+  const found = dirs.flatMap((dir) => readdirSync(dir).filter((name) => /^\d{3}-/.test(name) && name.slice(4) === slug).map((name) => join(dir, name)));
+  const folder = found[0];
   if (folder === undefined) return [];
-  return ['context.md', 'spec.md'].map((f) => join(SPECS, folder, f)).filter((p) => existsSync(p)).map((p) => readFileSync(p, 'utf8'));
+  return ['context.md', 'spec.md'].map((f) => join(folder, f)).filter((p) => existsSync(p)).map((p) => readFileSync(p, 'utf8'));
 }
 
 describe('ideas: shaped (T53, ISC-128.1)', () => {

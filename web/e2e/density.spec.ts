@@ -20,7 +20,7 @@ import { atWidth, expect, test } from './fixtures';
 import { DENSE_HEADER, STUB_DENSE } from './stub-api';
 
 /** The rows the spec list shows before "show all N" (`SPEC_ROW_CAP`, `spec-table.ts`). */
-const ROW_CAP = 5;
+const ROW_CAP = 10;
 /** The dashboard widths of ISC-246: desktop, the side panel and the phone. */
 const WIDTHS = [1440, 600, 390] as const;
 
