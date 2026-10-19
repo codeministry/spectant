@@ -64,6 +64,45 @@
       </button>
     }
   }
+  <!-- Only a spec page has an Area select: the six spec areas (spec 024 T80, ISC-150.2), before the Spec select (spec 048, ISC-280). -->
+  <!-- Below 1120 px the area switch is an entry of the overflow menu `⋯` instead (spec 024 T76). -->
+  @if (specRoute() && wide()) {
+    <span class="pill-divider" aria-hidden="true"></span>
+    @if (specOpen()) {
+      <button
+        type="button"
+        class="pick area"
+        data-control="area"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="expanded().area"
+        [attr.aria-label]="'shell.area.label' | transloco: { area: (areaKey() | transloco) }"
+        (pointerdown)="press('area')"
+        (click)="toggle($event, 'area')"
+      >
+        <span class="area-dot" aria-hidden="true" [attr.data-dot]="state.area() ?? 'dashboard'"></span>
+        <span class="pill">
+          <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+          <span class="pill-value pick-text" data-pill-value>{{ areaKey() | transloco }}</span>
+        </span>
+        <ui-icon class="chevron" name="chevron-down" [size]="14" />
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="pick area"
+        data-control="area"
+        aria-disabled="true"
+        [attr.title]="'shell.area.needsSpec' | transloco"
+        [attr.aria-label]="'shell.area.menu' | transloco"
+      >
+        <span class="pill">
+          <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+          <span class="pill-value pick-text" data-pill-value>{{ 'shell.area.menu' | transloco }}</span>
+        </span>
+        <ui-icon class="chevron" name="chevron-down" [size]="14" />
+      </button>
+    }
+  }
   <!-- Outside a workspace (`/`, `/help`, `/settings`) there is no spec pill rather than a `0` (ISC-140.2). -->
   @if (specHref(); as href) {
     <span class="pill-divider" aria-hidden="true"></span>
@@ -99,45 +138,6 @@
     </a>
   }
 </div>
-
-<!-- Only a spec page has an Area select: the six spec areas (spec 024 T80, ISC-150.2). -->
-<!-- Below 1120 px the area switch is an entry of the overflow menu `⋯` instead (spec 024 T76). -->
-@if (specRoute() && wide()) {
-  @if (specOpen()) {
-    <button
-      type="button"
-      class="pick area"
-      data-control="area"
-      aria-haspopup="dialog"
-      [attr.aria-expanded]="expanded().area"
-      [attr.aria-label]="'shell.area.label' | transloco: { area: (areaKey() | transloco) }"
-      (pointerdown)="press('area')"
-      (click)="toggle($event, 'area')"
-    >
-      <span class="area-dot" aria-hidden="true" [attr.data-dot]="state.area() ?? 'dashboard'"></span>
-      <span class="pill">
-        <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
-        <span class="pill-value pick-text" data-pill-value>{{ areaKey() | transloco }}</span>
-      </span>
-      <ui-icon class="chevron" name="chevron-down" [size]="14" />
-    </button>
-  } @else {
-    <button
-      type="button"
-      class="pick area"
-      data-control="area"
-      aria-disabled="true"
-      [attr.title]="'shell.area.needsSpec' | transloco"
-      [attr.aria-label]="'shell.area.menu' | transloco"
-    >
-      <span class="pill">
-        <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
-        <span class="pill-value pick-text" data-pill-value>{{ 'shell.area.menu' | transloco }}</span>
-      </span>
-      <ui-icon class="chevron" name="chevron-down" [size]="14" />
-    </button>
-  }
-}
 
 <!-- The lists, sheets and popovers load after first render; their overlay primitives stay out of the initial bundle. -->
 @defer (on immediate) {

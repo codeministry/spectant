@@ -8,8 +8,8 @@ import type { Page } from '@playwright/test';
 import { atWidth, expect, menusReady, test } from './fixtures';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
-// spec 024: PAGE select (principal 2026-10-13): Workspace · Page · Spec · Area, the Area select only on a spec route
-const CONTROLS = ['brand', 'workspace', 'page', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
+// spec 024: PAGE select (principal 2026-10-13); spec 048 (ISC-280): Workspace · Page · Area · Spec, the Area select only on a spec route
+const CONTROLS = ['brand', 'workspace', 'page', 'area', 'spec', 'palette', 'live', 'zen', 'settings'] as const;
 /** Outside a workspace the page, spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
 const controlsOn = (route: string): readonly string[] =>
   route.includes('/s/')
