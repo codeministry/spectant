@@ -14,17 +14,28 @@
 // lost. `--json` prints one JSON object on stdout; without it the output is for a person.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import {
+  ActivityTextError,
+  claimLine,
+  newRunId,
+  probeLine,
+  questionLine,
+  releaseLine,
+  runEndLine,
+  runEventLine,
+  runStartLine,
+} from '../../core/src/activity-text.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
 import { buildDashboard } from '../../core/src/dashboard.ts';
 import type { DashboardInput } from '../../core/src/dashboard.ts';
 import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
-import type { EventLine, LockReading, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
+import type { EventLine, LockReading, RunEvent, RunOutcome, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
 import { SPEC_TYPES, parseFrontmatter } from '../../core/src/frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from '../../core/src/gates.ts';
 import { nextSpecNumber, specNumbersOf } from '../../core/src/allocate.ts';
-import { readLockSources } from '../../core/src/locks.ts';
+import { activityReading, readLockSources } from '../../core/src/locks.ts';
 import { listSpecs, resolveSpec } from '../../core/src/resolve.ts';
 import type { SpecRef } from '../../core/src/resolve.ts';
 import { resolveEdges } from '../../core/src/spec-edges.ts';
@@ -43,6 +54,7 @@ import { driftReport, hasDrift, mainFeatureOf, masterProgressMismatch, partition
 import type { ClaimPartition, DriftReport } from '../../core/src/status.ts';
 import { takeableSet } from '../../core/src/takeable.ts';
 import { parseTaskLines } from '../../core/src/tasks.ts';
+import { roundLines } from '../../core/src/timeline.ts';
 import { planCatchUp, planTransition } from '../../core/src/transition.ts';
 import type { TransitionInput } from '../../core/src/transition.ts';
 import { parseWorkflow } from '../../core/src/workflow.ts';
@@ -66,7 +78,10 @@ const bad = (message: string): CliError => new CliError(EXIT.badArgs, message);
 
 interface Args {
   readonly positional: readonly string[];
+  /** The last value of each named option. */
   readonly values: ReadonlyMap<string, string>;
+  /** Every value of each named option, in order: the repeatable ones (`--outcome T1=pass --outcome T2=fail`). */
+  readonly lists: ReadonlyMap<string, readonly string[]>;
   readonly flags: ReadonlySet<string>;
 }
 
@@ -76,6 +91,7 @@ const COMMON_FLAGS = ['json', 'help'];
 function parseArgs(argv: readonly string[], valueNames: readonly string[], flagNames: readonly string[]): Args {
   const positional: string[] = [];
   const values = new Map<string, string>();
+  const lists = new Map<string, string[]>();
   const flags = new Set<string>();
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -92,11 +108,12 @@ function parseArgs(argv: readonly string[], valueNames: readonly string[], flagN
       const value = eq >= 0 ? arg.slice(eq + 1) : argv[(i += 1)];
       if (value === undefined) throw bad(`--${name} needs a value`);
       values.set(name, value);
+      lists.set(name, [...(lists.get(name) ?? []), value]);
     } else {
       throw bad(`unknown option --${name}`);
     }
   }
-  return { positional, values, flags };
+  return { positional, values, lists, flags };
 }
 
 function required(args: Args, index: number, what: string): string {
@@ -634,6 +651,449 @@ async function transition(ctx: Context, args: Args): Promise<number> {
   return EXIT.ok;
 }
 
+// ── the activity log: runs, locks, steps ────────────────────────────────────────────────────────────────────────────
+
+/** The session a line names when the caller passes none: the CLI itself, in the actor grammar. */
+const CLI_SESSION = 'a:claude:spec-check';
+
+const activityPath = (ctx: Context): string => join(ctx.root, '.spectant', 'activity.jsonl');
+
+const activityText = (ctx: Context): string => readIfExists(activityPath(ctx)) ?? '';
+
+/**
+ * Appends one line core planned to `.spectant/activity.jsonl` at the root (the folder created when absent), a newline
+ * first when the file does not end in one. The root is the main checkout's, so a builder's worktree writes there too.
+ */
+function appendActivity(ctx: Context, line: string): void {
+  const path = activityPath(ctx);
+  mkdirSync(dirname(path), { recursive: true });
+  const existing = readIfExists(path);
+  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
+  appendFileSync(path, `${lead}${line}`);
+}
+
+function requiredValue(args: Args, name: string, what: string): string {
+  const value = args.values.get(name);
+  if (value === undefined || value === '') throw bad(`--${name} ${what} is required`);
+  return value;
+}
+
+/** Every run id a `run-start` line of the log carries, open or ended: a second start with one is a duplicate. */
+function startedRunIds(text: string): Set<string> {
+  const ids = new Set<string>();
+  for (const raw of text.split('\n')) {
+    if (raw.trim() === '') continue;
+    try {
+      const line: unknown = JSON.parse(raw);
+      if (isRecord(line) && line.event === 'run-start' && isString(line.run)) ids.add(line.run);
+    } catch {
+      // A malformed line is the reader's diagnostic, not a run.
+    }
+  }
+  return ids;
+}
+
+/**
+ * `run start <target> --command "<…>"`: one `run-start` line, the run id on stdout. The target is a spec (`NNN`,
+ * `NNN-slug`, a folder path cut to its name), an idea's slug or `init`; core refuses any other form.
+ */
+function runStart(ctx: Context, args: Args): number {
+  const target = basename(required(args, 1, 'the target (NNN, NNN-slug, an idea slug or init)').replace(/[\\/]+$/u, ''));
+  const command = requiredValue(args, 'command', '"<the command as typed>"');
+  const session = args.values.get('session') ?? CLI_SESSION;
+  const ts = ctx.now.toISOString();
+  const run = newRunId({ ts, session, command, target });
+  const line = runStartLine({ run, target, command, session, ts });
+  if (startedRunIds(activityText(ctx)).has(run)) throw bad(`the run ${run} was started already; nothing written`);
+  appendActivity(ctx, line);
+  emit(ctx, args, { run, target, command, session }, [run]);
+  return EXIT.ok;
+}
+
+/**
+ * `run end <run-id> --outcome ok|error`: one `run-end` line repeating the open run's command, session and target, as
+ * the reader requires. An id that is not open (unknown or ended already) is refused and nothing is written.
+ */
+function runEnd(ctx: Context, args: Args): number {
+  const run = required(args, 1, 'the run id');
+  const outcome = requiredValue(args, 'outcome', 'ok|error');
+  if (outcome !== 'ok' && outcome !== 'error') throw bad(`the outcome "${outcome}" is neither ok nor error`);
+  const open = (activityReading(activityText(ctx)).openRuns ?? []).find((r) => r.run === run);
+  if (open === undefined) throw bad(`no open run ${run} in .spectant/activity.jsonl (unknown or ended already); nothing written`);
+  const session = args.values.get('session') ?? open.session;
+  const target = open.spec ?? open.idea ?? '';
+  const ended: RunOutcome = outcome;
+  const line = runEndLine({ run, target, command: open.command, session, ts: ctx.now.toISOString(), outcome: ended });
+  appendActivity(ctx, line);
+  emit(ctx, args, { run, target, command: open.command, session, outcome }, [`${run} ended (${outcome})`]);
+  return EXIT.ok;
+}
+
+function runCommand(ctx: Context, args: Args): number {
+  const sub = required(args, 0, 'start or end');
+  if (sub === 'start') return runStart(ctx, args);
+  if (sub === 'end') return runEnd(ctx, args);
+  throw bad(`"${sub}" is neither start nor end`);
+}
+
+/** The session holding `claim` per core's lock reader, or null. */
+function holderOf(ctx: Context, claim: string): string | null {
+  return activityReading(activityText(ctx)).locks.findLast((l) => l.claim === claim)?.session ?? null;
+}
+
+function lockInput(ctx: Context, args: Args): { claim: string; session: string; ts: string; task?: string; worktree?: string } {
+  const claim = required(args, 0, 'the claim ID');
+  const session = requiredValue(args, 'session', '<actor>');
+  const task = args.values.get('task');
+  const worktree = args.values.get('worktree');
+  return { claim, session, ts: ctx.now.toISOString(), ...(task === undefined ? {} : { task }), ...(worktree === undefined ? {} : { worktree }) };
+}
+
+/** `claim <ISC-N> --session <actor>`: one `claim` line; exit 4 when another session holds it, nothing written. */
+function lockClaim(ctx: Context, args: Args): number {
+  const input = lockInput(ctx, args);
+  const line = claimLine(input);
+  const holder = holderOf(ctx, input.claim);
+  if (holder !== null && holder !== input.session) throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${holder}; nothing written`);
+  if (holder === input.session) {
+    emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
+    return EXIT.ok;
+  }
+  appendActivity(ctx, line);
+  emit(ctx, args, { claim: input.claim, session: input.session, already: false }, [`${input.claim}: claimed by ${input.session}`]);
+  return EXIT.ok;
+}
+
+/** `release <ISC-N> --session <actor>`: one `release` line by the holder; exit 4 when another session holds it. */
+function lockRelease(ctx: Context, args: Args): number {
+  const input = lockInput(ctx, args);
+  const line = releaseLine(input);
+  const holder = holderOf(ctx, input.claim);
+  if (holder === null) {
+    emit(ctx, args, { claim: input.claim, session: input.session, released: false }, [`${input.claim}: not held; nothing written`]);
+    return EXIT.ok;
+  }
+  if (holder !== input.session) throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${holder}, not ${input.session}; nothing written`);
+  appendActivity(ctx, line);
+  emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
+  return EXIT.ok;
+}
+
+const STEP_EVENTS: readonly string[] = ['dispatch', 'build', 'patch', 'apply'] satisfies RunEvent[];
+
+/** `activity <event> --task T<k> --session <actor> …`: one step line, planned by core for its event. */
+function activity(ctx: Context, args: Args): number {
+  const event = required(args, 0, 'the event (dispatch, build, patch, apply, probe or question)');
+  const task = requiredValue(args, 'task', 'T<k>');
+  const session = requiredValue(args, 'session', '<actor>');
+  const claim = args.values.get('claim');
+  const worktree = args.values.get('worktree');
+  const common = { task, session, ts: ctx.now.toISOString(), ...(worktree === undefined ? {} : { worktree }) };
+  const withClaim = claim === undefined ? {} : { claim };
+  let line: string;
+  if (event === 'probe') {
+    const result = args.values.get('result');
+    if (result !== 'red' && result !== 'green') throw bad('a probe needs --result red|green');
+    line = probeLine({ ...common, claim: requiredValue(args, 'claim', 'ISC-N'), result });
+  } else if (event === 'question') {
+    line = questionLine({ ...common, ...withClaim, text: requiredValue(args, 'text', '"<the question>"') });
+  } else if (STEP_EVENTS.includes(event)) {
+    line = runEventLine({ ...common, ...withClaim, event: event as RunEvent });
+  } else {
+    throw bad(`"${event}" is none of dispatch, build, patch, apply, probe or question`);
+  }
+  appendActivity(ctx, line);
+  emit(ctx, args, JSON.parse(line) as unknown, [`${event} ${task}${claim === undefined ? '' : ` (${claim})`} appended to .spectant/activity.jsonl`]);
+  return EXIT.ok;
+}
+
+// ── rounds record ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+type RoundTaskState = 'held' | 'dispatched' | 'question' | 'concerns' | 'fail' | 'done' | 'closed';
+const ROUND_OUTCOMES = ['result', 'question', 'failed', 'pass', 'concerns', 'fail', 'skipped'] as const;
+type RoundOutcome = (typeof ROUND_OUTCOMES)[number];
+type Verdict = 'pass' | 'concerns' | 'fail' | 'skipped';
+const VERDICTS: ReadonlySet<string> = new Set<Verdict>(['pass', 'concerns', 'fail', 'skipped']);
+const OPEN_ATTENTION: ReadonlySet<string> = new Set<RoundTaskState>(['question', 'concerns', 'fail']);
+const ROUND_MODES = ['agent', 'workflow', 'cockpit'];
+
+/** One card of a round line, in the field order the round log has always carried (frames.ts reads it). */
+interface BoardTask {
+  id: string;
+  claim: string;
+  lane: string | null;
+  seam: boolean;
+  parallel: boolean;
+  text: string;
+  paths: string[];
+  state: RoundTaskState;
+  reason?: string;
+  verdict?: Verdict;
+  note?: string;
+  builder?: string;
+  reader?: string;
+}
+
+interface RoundUnit {
+  readonly id: string;
+  readonly claim: string;
+  readonly lane: string | null;
+  readonly seam: boolean;
+  readonly parallel: boolean;
+  readonly text: string;
+  readonly paths: readonly string[];
+  readonly done: boolean;
+}
+
+interface PlanEntry {
+  readonly id: string;
+  readonly claim: string;
+  readonly reason: string;
+}
+
+/** The round's plan: `frontier --json` (`task`) or the older plan shape (`id`, `claims.closed`). */
+interface RoundPlan {
+  readonly dispatch: readonly PlanEntry[];
+  readonly held: readonly PlanEntry[];
+  readonly width: number | null;
+  readonly closed: readonly string[] | null;
+}
+
+interface RoundOutcomes {
+  readonly outcome: Map<string, RoundOutcome>;
+  readonly note: Map<string, string>;
+  readonly builder: Map<string, string>;
+  readonly reader: Map<string, string>;
+}
+
+const records = (value: unknown): Array<Record<string, unknown>> => (Array.isArray(value) ? value.filter(isRecord) : []);
+
+function readJsonFile(ctx: Context, file: string, flag: string): unknown {
+  const text = readIfExists(resolve(ctx.cwd, file));
+  if (text === null) throw bad(`${flag} ${basename(file)} does not exist`);
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw bad(`${flag} ${basename(file)} is not valid JSON`);
+  }
+}
+
+function planEntries(value: unknown, what: string): PlanEntry[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw bad(`--plan: "${what}" must be a list`);
+  return value.map((entry: unknown, i) => {
+    const id = isRecord(entry) ? (isString(entry.task) ? entry.task : entry.id) : undefined;
+    if (!isRecord(entry) || !isString(id) || !isString(entry.claim)) throw bad(`--plan: ${what} ${i + 1} needs a task (or id) and a claim`);
+    return { id, claim: entry.claim, reason: isString(entry.reason) ? entry.reason : '' };
+  });
+}
+
+function roundPlan(data: unknown): RoundPlan {
+  if (!isRecord(data)) throw bad('--plan must hold a JSON object');
+  const closed = isRecord(data.claims) && Array.isArray(data.claims.closed) ? data.claims.closed.filter(isString) : null;
+  return {
+    dispatch: planEntries(data.dispatch, 'dispatch'),
+    held: planEntries(data.held, 'held'),
+    width: typeof data.width === 'number' ? data.width : null,
+    closed,
+  };
+}
+
+/** The workflow's return `{results, questions, failed}` (or the same shapes collected from agent returns). */
+function outcomesFromResult(data: unknown, into: RoundOutcomes): void {
+  if (!isRecord(data)) throw bad('--result must hold a JSON object {results, questions, failed}');
+  for (const q of records(data.questions)) {
+    if (!isString(q.task) || q.task === '') continue;
+    into.outcome.set(q.task, 'question');
+    if (isString(q.question)) into.note.set(q.task, q.question);
+    if (isString(q.builder)) into.builder.set(q.task, q.builder);
+  }
+  for (const f of records(data.failed)) {
+    if (!isString(f.task) || f.task === '') continue;
+    into.outcome.set(f.task, 'failed');
+    if (isString(f.reason)) into.note.set(f.task, f.reason);
+    if (isString(f.builder)) into.builder.set(f.task, f.builder);
+  }
+  for (const x of records(data.results)) {
+    if (!isString(x.task) || x.task === '') continue;
+    const task = x.task;
+    if (isString(x.builder)) into.builder.set(task, x.builder);
+    if (isString(x.reader)) into.reader.set(task, x.reader);
+    if (typeof x.exit_code === 'number' && x.exit_code !== 0) {
+      into.outcome.set(task, 'failed');
+      into.note.set(task, `probe exit ${x.exit_code}${isString(x.probe_command) ? ` — ${x.probe_command}` : ''}`);
+      continue;
+    }
+    const verdict = isRecord(x.verdict) ? x.verdict : {};
+    const v = verdict.verdict;
+    into.outcome.set(task, isString(v) && VERDICTS.has(v) ? (v as Verdict) : 'result');
+    const findings = records(verdict.findings);
+    const worst = findings.find((f) => f.severity === 'critical') ?? findings.find((f) => f.severity === 'warning');
+    if (worst !== undefined && isString(worst.issue)) into.note.set(task, `${String(worst.severity)}: ${worst.issue}`);
+    else if (isString(x.stub)) into.note.set(task, x.stub);
+  }
+}
+
+/** `--outcome T1=pass` and its kind: the task and the value, split at the first `=`. */
+function pairs(args: Args, name: string): Array<[string, string]> {
+  return (args.lists.get(name) ?? []).map((raw) => {
+    const eq = raw.indexOf('=');
+    if (eq <= 0) throw bad(`--${name} expects T<k>=<value>, got "${raw}"`);
+    return [raw.slice(0, eq).trim(), raw.slice(eq + 1).trim()];
+  });
+}
+
+/** The units of the board: tasks.md's task lines (struck ones left out), or without it the live claims. */
+function roundUnits(ref: SpecRef, claims: readonly Claim[]): { units: RoundUnit[]; hasTasks: boolean } {
+  const tasks = readIfExists(join(ref.dir, 'tasks.md'));
+  if (tasks === null) {
+    const units = claims
+      .filter((c) => !c.dropped)
+      .map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
+    return { units, hasTasks: false };
+  }
+  const units = parseTaskLines({ tasks })
+    .tasks.filter((t) => t.state !== 'struck')
+    .map((t) => ({
+      id: t.id,
+      claim: t.claim,
+      lane: t.lane === '' ? null : t.lane,
+      seam: t.flags.seam,
+      parallel: t.flags.parallel,
+      text: t.text,
+      paths: [...t.paths],
+      done: t.state === 'done',
+    }));
+  return { units, hasTasks: true };
+}
+
+/**
+ * `rounds record <spec>`: one line appended to `specs/NNN-slug/rounds.jsonl` after a round's write order, the whole
+ * board as the round left it (frames.ts and timeline.ts read it). Everything in it is derived from the plan, the
+ * outcomes and spec.md and tasks.md as they stand; it never writes them, takes no lock and starts no agent.
+ */
+function roundsRecord(ctx: Context, args: Args): number {
+  const ref = specRef(ctx.root, required(args, 1, 'the spec'));
+  const doc = parseClaims(specText(ctx, ref));
+  const mode = args.values.get('mode') ?? 'agent';
+  if (!ROUND_MODES.includes(mode)) throw bad(`--mode "${mode}" is none of ${ROUND_MODES.join(', ')}`);
+  const ts = args.values.get('ts') ?? ctx.now.toISOString();
+  if (Number.isNaN(Date.parse(ts))) throw bad(`--ts "${ts}" is not a date`);
+  const planFile = args.values.get('plan');
+  const plan = planFile === undefined ? null : roundPlan(readJsonFile(ctx, planFile, '--plan'));
+  const outcomes: RoundOutcomes = { outcome: new Map(), note: new Map(), builder: new Map(), reader: new Map() };
+  const resultFile = args.values.get('result');
+  if (resultFile !== undefined) outcomesFromResult(readJsonFile(ctx, resultFile, '--result'), outcomes);
+  for (const [task, o] of pairs(args, 'outcome')) {
+    if (!(ROUND_OUTCOMES as readonly string[]).includes(o)) throw bad(`--outcome ${task}=${o}: expected one of ${ROUND_OUTCOMES.join(', ')}`);
+    outcomes.outcome.set(task, o as RoundOutcome);
+  }
+  for (const [task, n] of pairs(args, 'note')) outcomes.note.set(task, n.replace(/\s+/gu, ' '));
+  // The manual path for returns without a --result file; --result wins where both name a task.
+  for (const [task, b] of pairs(args, 'builder')) if (!outcomes.builder.has(task)) outcomes.builder.set(task, b);
+  for (const [task, r] of pairs(args, 'reader')) if (!outcomes.reader.has(task)) outcomes.reader.set(task, r);
+
+  const { units, hasTasks } = roundUnits(ref, doc.claims);
+  const logPath = join(ref.dir, 'rounds.jsonl');
+  const existing = readIfExists(logPath);
+  const prev = roundLines(existing ?? undefined).at(-1) as Record<string, unknown> | undefined;
+  const prevById = new Map<string, Record<string, unknown>>();
+  for (const t of records(prev?.tasks)) if (isString(t.id)) prevById.set(t.id, t);
+  const stubs = new Map<string, string>();
+  for (const v of doc.verification) if (!stubs.has(v.id)) stubs.set(v.id, v.text);
+  const closed = new Set(doc.claims.filter((c) => c.checked && !c.dropped).map((c) => c.id));
+  const live = doc.claims.filter((c) => !c.dropped);
+
+  // A plan entry names a task, or without tasks.md a claim unit (`C<n>`) mapped back to its claim.
+  const entries = [...(plan?.dispatch ?? []), ...(plan?.held ?? [])];
+  const key = (e: PlanEntry): string => (hasTasks ? e.id : e.claim);
+  const norm = (id: string): string => (hasTasks ? id : (entries.find((e) => e.id === id)?.claim ?? id));
+  const planned = new Map<string, { reason: string; dispatched: boolean }>();
+  for (const d of plan?.dispatch ?? []) planned.set(key(d), { reason: d.reason, dispatched: true });
+  for (const h of plan?.held ?? []) planned.set(key(h), { reason: h.reason, dispatched: false });
+  const normed = <T>(m: ReadonlyMap<string, T>): Map<string, T> => new Map([...m].map(([k, v]) => [norm(k), v]));
+  const outcome = normed(outcomes.outcome);
+  const note = normed(outcomes.note);
+  const builderOf = normed(outcomes.builder);
+  const readerOf = normed(outcomes.reader);
+  const dispatched = new Set([...[...planned].filter(([, p]) => p.dispatched).map(([id]) => id), ...outcome.keys()]);
+
+  const tasks = units.map((u): BoardTask => {
+    const base: BoardTask = { id: u.id, claim: u.claim, lane: u.lane, seam: u.seam, parallel: u.parallel, text: u.text, paths: [...u.paths], state: 'held' };
+    const p = planned.get(u.id);
+    if (p !== undefined) base.reason = p.reason;
+    const o = outcome.get(u.id);
+    if (o !== undefined && VERDICTS.has(o)) base.verdict = o as Verdict;
+    const n = note.get(u.id);
+    if (n !== undefined) base.note = n;
+    const b = builderOf.get(u.id);
+    if (b !== undefined) base.builder = b;
+    const r = readerOf.get(u.id);
+    if (r !== undefined) base.reader = r;
+
+    if (u.done) {
+      base.state = closed.has(u.claim) ? 'closed' : 'done';
+      const stub = stubs.get(u.claim);
+      if (base.note === undefined && closed.has(u.claim) && stub !== undefined) base.note = stub;
+      return base;
+    }
+    if (dispatched.has(u.id)) {
+      if (o === 'question') base.state = 'question';
+      else if (o === 'failed' || o === 'fail') base.state = 'fail';
+      else if (o === 'concerns') base.state = 'concerns';
+      else if (o === 'pass' || o === 'skipped' || o === 'result') base.state = closed.has(u.claim) ? 'closed' : 'done';
+      else base.state = 'dispatched'; // no outcome yet: recorded mid-round, the worker is still out
+      return base;
+    }
+    // Not in this round: an unanswered question or an open finding keeps its state until it is dispatched again.
+    const was = prevById.get(u.id);
+    if (was !== undefined && isString(was.state) && OPEN_ATTENTION.has(was.state)) {
+      base.state = was.state as RoundTaskState;
+      if (isString(was.verdict) && VERDICTS.has(was.verdict)) base.verdict = was.verdict as Verdict;
+      if (base.note === undefined && isString(was.note)) base.note = was.note;
+      if (base.builder === undefined && isString(was.builder)) base.builder = was.builder;
+      if (base.reader === undefined && isString(was.reader)) base.reader = was.reader;
+      base.reason ??= 'waiting — not dispatched again this round';
+      return base;
+    }
+    base.reason ??= plan === null ? 'not dispatched' : "not in this round's plan";
+    return base;
+  });
+
+  const prevClaims = isRecord(prev?.claims) && Array.isArray(prev.claims.closed) ? prev.claims.closed.filter(isString) : [];
+  const before = new Set(plan?.closed ?? prevClaims);
+  const stop = args.values.get('stop');
+  const line = {
+    v: 1,
+    round: (typeof prev?.round === 'number' ? prev.round : 0) + 1,
+    ts,
+    mode,
+    width: plan?.width ?? null,
+    dispatched: units.filter((u) => dispatched.has(u.id)).map((u) => u.id),
+    tasks,
+    claims: {
+      closed: [...closed],
+      open: live.filter((c) => !c.checked).map((c) => c.id),
+      closed_this_round: [...closed].filter((c) => !before.has(c)),
+    },
+    progress: `${closed.size}/${live.length}`,
+    ...(stop === undefined || stop === '' ? {} : { stop }),
+  };
+  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
+  appendFileSync(logPath, `${lead}${JSON.stringify(line)}\n`);
+  const landed = tasks.filter((t) => line.dispatched.includes(t.id)).map((t) => `${t.id} ${t.state}`);
+  emit(ctx, args, { file: rel(ctx, logPath), line }, [
+    `round ${line.round} → ${rel(ctx, logPath)} · dispatched ${landed.length === 0 ? 'none' : landed.join(', ')} · progress ${line.progress}${stop === undefined ? '' : ` · stop: ${stop}`}`,
+  ]);
+  return EXIT.ok;
+}
+
+function rounds(ctx: Context, args: Args): number {
+  const sub = required(args, 0, 'record');
+  if (sub !== 'record') throw bad(`"${sub}" is no rounds command (record)`);
+  return roundsRecord(ctx, args);
+}
+
 // ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface Command {
@@ -684,8 +1144,18 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     summary: 'takeable claims and tasks of one spec, with what holds the rest',
     run: frontier,
   },
-  claim: { usage: 'claim <ISC-N> --session <actor>', summary: 'lock a claim in .spectant/activity.jsonl', later: 'T18' },
-  release: { usage: 'release <ISC-N> --session <actor>', summary: 'release a claim lock', later: 'T18' },
+  claim: {
+    usage: 'claim <ISC-N> [--task T<k>] --session <actor> [--worktree <path>] [--json]',
+    summary: 'lock a claim in .spectant/activity.jsonl; exit 4 and nothing written when another session holds it',
+    values: ['task', 'session', 'worktree'],
+    run: lockClaim,
+  },
+  release: {
+    usage: 'release <ISC-N> [--task T<k>] --session <actor> [--worktree <path>] [--json]',
+    summary: 'release a claim lock the session holds; exit 4 and nothing written when another session holds it',
+    values: ['task', 'session', 'worktree'],
+    run: lockRelease,
+  },
   transition: {
     usage: 'transition <spec> <to> [--actor <actor>] [--command "<…>"] [--json]',
     summary:
@@ -693,11 +1163,30 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     values: ['actor', 'command'],
     run: transition,
   },
-  run: { usage: 'run start <spec|idea> --command "<…>" | run end <run-id> --outcome ok|error', summary: 'open or close a run', later: 'T18' },
+  run: {
+    usage: 'run start <NNN|NNN-slug|idea-slug|init> --command "<…>" [--session <actor>] [--json] | run end <run-id> --outcome ok|error [--session <actor>] [--json]',
+    summary:
+      'open a run (one run-start line, prints the run id) or close it (one run-end line with the start\'s command and target, also on an error); an id that is not open exits 1, nothing written',
+    values: ['command', 'session', 'outcome'],
+    run: runCommand,
+  },
   gate: { usage: 'gate check reviewed|code-reviewed <spec> | gate reviewed <spec> --yes | gate code-reviewed <spec> --yes …', summary: 'check or set a gate mark', later: 'T22' },
   archive: { usage: 'archive <NNN>… [--dry-run] [--reason "<why>"] | archive restore <NNN>', summary: 'move specs to specs/archive/ and back', later: 'T24' },
-  rounds: { usage: 'rounds record <spec> …', summary: 'append one rounds.jsonl line', later: 'T22' },
-  activity: { usage: 'activity <event> …', summary: 'append one activity line (dispatch, build, patch, apply, probe, question)', later: 'T18' },
+  rounds: {
+    usage:
+      'rounds record <spec> [--plan <file>] [--result <file>] [--outcome T<k>=<o>]… [--note T<k>=<text>]… [--builder T<k>=<name>]… [--reader T<k>=<name>]… [--mode agent|workflow|cockpit] [--stop "<reason>"] [--ts <iso>] [--json]',
+    summary:
+      'append one round to rounds.jsonl after the write order: the whole board from the plan (frontier --json), the outcomes (result, question, failed, pass, concerns, fail, skipped) and spec.md and tasks.md as they stand',
+    values: ['plan', 'result', 'outcome', 'note', 'builder', 'reader', 'mode', 'stop', 'ts'],
+    run: rounds,
+  },
+  activity: {
+    usage:
+      'activity <dispatch|build|patch|apply|probe|question> --task T<k> [--claim ISC-N] --session <actor> [--result red|green] [--text "<…>"] [--worktree <path>] [--json]',
+    summary: 'append one step line to .spectant/activity.jsonl (patch and apply need --worktree, probe --claim and --result, question --text)',
+    values: ['task', 'claim', 'session', 'result', 'text', 'worktree'],
+    run: activity,
+  },
 };
 
 function help(): string {
@@ -735,6 +1224,7 @@ export async function main(argv: readonly string[], cwd = process.cwd(), now = n
   } catch (error) {
     if (error instanceof CliError) return fail(error.exit, `${name}: ${error.message}`);
     if (error instanceof SpecTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
+    if (error instanceof ActivityTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
     throw error;
   }
 }
