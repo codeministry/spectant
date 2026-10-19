@@ -224,7 +224,12 @@ for (const width of [1440, 600, 390] as const) {
   test.describe(`P5 · details of a card @${width}`, () => {
     test.use({ ...atWidth(width), hasTouch: touch });
 
-    test(`P5 card @${width}: one click on the spec card → its parents, children and blockers on screen, the board unchanged, in ≤ ${P5_BUDGET.steps} step and ≤ ${P5_BUDGET.seconds} s`, async ({ page }) => {
+    test(`P5 card @${width}: one click on the spec card → its parents, children and blockers on screen, the board unchanged, in ≤ ${P5_BUDGET.steps} step and ≤ ${P5_BUDGET.seconds} s`, async ({ page, request }, info) => {
+      // An own stub session: the bare board route restores the query a board last had in that session, and another
+      // case's `?group=milestone` must not decide what P5 sees (spec 042).
+      const session = `p5-${info.testId}-${String(info.retry)}`;
+      await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
+      expect((await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } })).status()).toBe(204);
       await page.goto(`/w/${P5.ws}/board`);
       const card = page.locator(`a.title[data-ref="${P5_REF}"]`);
       await expect(card).toBeVisible();

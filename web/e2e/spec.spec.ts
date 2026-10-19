@@ -543,7 +543,8 @@ async function formerTargets(request: APIRequestContext, id: string): Promise<Re
   return {
     plan: ofKind('plan'),
     design: ofKind('design'),
-    decisions: { query: { section: 'decisions' }, hash: spec.path, landing: { kind: 'doc', doc: spec, decisions: true } },
+    // Opening Decisions writes the page's open sections, the default first one included (spec 021, ISC-246).
+    decisions: { query: { section: 'decisions', open: 's-problem,s-decisions' }, hash: spec.path, landing: { kind: 'doc', doc: spec, decisions: true } },
     constitution: { query: {}, hash: constitution.path, landing: { kind: 'doc', doc: constitution, decisions: false } },
     evidence: { query: { type: 'evidence' }, hash: '', landing: { kind: 'evidence', evidence: own.filter((doc) => doc.type === 'evidence') } },
     docs: plain,
@@ -581,9 +582,9 @@ test.describe('deep link of a former Docs or Evidence address', () => {
     const what = `/w/harbor/s/${id}/${from}`;
     await expect(page.locator('app-library-page'), what).toHaveAttribute('data-scope', 'spec');
     await expect(page, what).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}/library` && !url.searchParams.has('doc'));
-    const url = new URL(page.url());
-    expect(Object.fromEntries(url.searchParams), `query of ${what}`).toEqual(target.query);
-    expect(url.hash, `fragment of ${what}`).toBe(target.hash === '' ? '' : `#${target.hash}`);
+    // The reader writes `open` once the document has rendered: wait for the settled address, not the first one (spec 042).
+    await expect.poll(() => Object.fromEntries(new URL(page.url()).searchParams), { message: `query of ${what}` }).toEqual(target.query);
+    expect(new URL(page.url()).hash, `fragment of ${what}`).toBe(target.hash === '' ? '' : `#${target.hash}`);
 
     const current = page.locator(`${LIBRARY_ENTRY}[aria-current="true"]`);
     const landing = target.landing;

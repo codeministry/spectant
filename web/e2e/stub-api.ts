@@ -1844,8 +1844,10 @@ const emptyStubCatalog = (): StubCatalog => ({ catalog: EMPTY_CATALOG, texts: ne
 /** plan.md's approach heading, as `core/src/tech.ts` reads it (its constant is not exported). */
 const APPROACH_HEADINGS: readonly string[] = ['Approach'];
 
-/** The `Origin` a sandboxed prototype page sends (opaque); `prototypeFileRoute` answers it for a font alone. */
+/** The `Origin` a sandboxed prototype page sends (opaque); `prototypeFileRoute` answers it for a render fetch alone. */
 const OPAQUE_ORIGIN = 'null';
+/** The `Sec-Fetch-Dest` values of what a page runs or renders in CORS mode, as `server/src/prototype.ts`. */
+const OPAQUE_DESTINATIONS: ReadonlySet<string> = new Set(['script', 'style', 'font']);
 
 const isoMinutesBefore = (iso: string, minutes: number): string =>
   new Date(Date.parse(iso) - minutes * 60_000).toISOString().replace('.000Z', 'Z');
@@ -2571,13 +2573,17 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
    * core's resolver with the prototype's folder as the root (403 for what confinement refuses, 404 for no file), with
    * the evidence file's headers but inline and `PROTOTYPE_CSP`; every answer, errors included, carries that CSP. 404 for
    * a path the contract does not match or a prototype the catalog does not list; 405 with `PROTOTYPE_ALLOW`. As
-   * `server/src/prototype.ts`: `Origin: null` (the sandboxed page) gets a font (`font/*`) with
-   * `Access-Control-Allow-Origin: *`, every other answer to it is 403 without that header; a font carries `Vary: Origin`.
+   * `server/src/prototype.ts` (spec 017 T58, ISC-159.3): `Origin: null` (the sandboxed page) gets any file but HTML
+   * with `Access-Control-Allow-Origin: *`, only for a fetch the browser makes to run or render it (`Sec-Fetch-Mode: cors`
+   * with `Sec-Fetch-Dest` `script`, `style` or `font`); every other answer to it is 403 without that header. Every
+   * non-HTML answer carries `Vary: Origin, Sec-Fetch-Mode, Sec-Fetch-Dest`.
    */
   const prototypeFileRoute = async (req: Request, pathname: string): Promise<Response> => {
     const opaque = req.headers.get('Origin') === OPAQUE_ORIGIN;
     if (!opaque) return prototypeFileAnswer(req, pathname, false);
     if (!isLoopbackHost(req.headers.get('Host'))) return prototypeForbidden(req);
+    const renderFetch = req.headers.get('Sec-Fetch-Mode') === 'cors' && OPAQUE_DESTINATIONS.has(req.headers.get('Sec-Fetch-Dest') ?? '');
+    if (!renderFetch) return prototypeForbidden(req);
     const res = await prototypeFileAnswer(req, pathname, true);
     return res.status === 200 || res.status === 304 ? res : prototypeForbidden(req);
   };
@@ -2590,7 +2596,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
 
   const prototypeForbidden = (req: Request): Response => withCsp(workspaceJson(req, 403, { error: 'forbidden' }));
 
-  /** The prototype answer; `opaque` (a request from `Origin: null`) is answered for a font file alone. */
+  /** The prototype answer; `opaque` (a request from `Origin: null`) is answered for any file but HTML. */
   const prototypeFileAnswer = async (req: Request, pathname: string, opaque: boolean): Promise<Response> => {
     if (!opaque && !guarded(req)) return prototypeForbidden(req);
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -2625,8 +2631,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       read = () => new Uint8Array(readFileSync(resolved.absolute));
     }
     const type = core.prototypeMediaTypeOf(name);
-    const font = type.startsWith('font/');
-    if (opaque && !font) return prototypeForbidden(req);
+    const html = type.startsWith('text/html');
+    if (opaque && html) return prototypeForbidden(req);
     const bytes = read();
     const etag = strongEtag(bytes);
     const headers: Record<string, string> = {
@@ -2634,7 +2640,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       'Content-Disposition': 'inline',
       'Content-Security-Policy': PROTOTYPE_CSP,
       ETag: etag,
-      ...(font ? { Vary: 'Origin' } : {}),
+      ...(html ? {} : { Vary: 'Origin, Sec-Fetch-Mode, Sec-Fetch-Dest' }),
       ...(opaque ? { 'Access-Control-Allow-Origin': '*' } : {}),
     };
     if (matchesIfNoneMatch(req.headers.get('If-None-Match'), etag)) return new Response(null, { status: 304, headers });

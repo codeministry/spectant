@@ -645,7 +645,7 @@ describe('stub API: the library (spec 017, T3)', () => {
     expect((await ask(prototypeRoute('harbor', '004-retention-policies', 'prototype', offline.file))).status).toBe(404);
   });
 
-  test('prototype fonts: Origin null gets a font with ACAO *, a foreign Origin 403, Origin null 403 for anything else', async () => {
+  test('prototype files for Origin null: a script, style or font fetch gets the file with ACAO * as the server answers it (spec 017 T58), HTML, other fetches, a miss and a foreign Origin 403', async () => {
     // A copy of the fixtures with one font in the board, so the committed tree stays as it is.
     const dir = mkdtempSync(join(tmpdir(), 'spectant-stub-fonts-'));
     try {
@@ -654,21 +654,31 @@ describe('stub API: the library (spec 017, T3)', () => {
       mkdirSync(fonts, { recursive: true });
       writeFileSync(join(fonts, 'tide.woff2'), new Uint8Array([0x77, 0x4f, 0x46, 0x32]));
       const withFont = stubApi({ fixturesDir: dir });
-      const send = (file: string, origin: string): Promise<Response> => call(withFont, request(proto(file), { headers: { Origin: origin } }));
+      const send = (file: string, origin: string, dest?: string): Promise<Response> =>
+        call(withFont, request(proto(file), { headers: { Origin: origin, ...(dest === undefined ? {} : { 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': dest }) } }));
 
-      const font = await send('fonts/tide.woff2', 'null');
-      expect([font.status, font.headers.get('Content-Type'), font.headers.get('Access-Control-Allow-Origin'), font.headers.get('Vary')]).toEqual([200, 'font/woff2', '*', 'Origin']);
-      expect([font.headers.get('Content-Security-Policy'), font.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
+      const served: ReadonlyArray<readonly [string, string, string]> = [
+        ['fonts/tide.woff2', 'font', 'font/woff2'],
+        ['main.js', 'script', 'text/javascript; charset=utf-8'],
+        ['styles.css', 'style', 'text/css; charset=utf-8'],
+      ];
+      for (const [file, dest, type] of served) {
+        const res = await send(file, 'null', dest);
+        expect({ file, status: res.status, type: res.headers.get('Content-Type'), acao: res.headers.get('Access-Control-Allow-Origin'), vary: res.headers.get('Vary') })
+          .toEqual({ file, status: 200, type, acao: '*', vary: 'Origin, Sec-Fetch-Mode, Sec-Fetch-Dest' });
+        expect([res.headers.get('Content-Security-Policy'), res.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
+      }
 
-      const answers: ReadonlyArray<readonly [string, string]> = [
-        ['fonts/tide.woff2', 'https://evil.example'],
-        ['index.html', 'null'],
+      const answers: ReadonlyArray<readonly [string, string, string?]> = [
+        ['fonts/tide.woff2', 'https://evil.example', 'font'],
+        ['index.html', 'null', 'script'],
         ['styles.css', 'null'],
         ['app.js', 'null'],
-        ['fonts/missing.woff2', 'null'],
+        ['app.js', 'null', 'empty'],
+        ['fonts/missing.woff2', 'null', 'font'],
       ];
-      for (const [file, origin] of answers) {
-        const res = await send(file, origin);
+      for (const [file, origin, dest] of answers) {
+        const res = await send(file, origin, dest);
         expect({ file, origin, status: res.status, acao: res.headers.get('Access-Control-Allow-Origin') }).toEqual({ file, origin, status: 403, acao: null });
         expect([res.headers.get('Content-Security-Policy'), res.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
       }
