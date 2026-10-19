@@ -955,20 +955,38 @@ test.describe('navigation', () => {
       await expect(page.locator('a[data-library-link]')).toHaveCount(0);
     });
 
-    test('the header selects run Workspace · Page · Spec · Area, the Area select only on a spec page', async ({ page }) => {
+    // Spec 048 (ISC-280, refines ISC-150.2): from 1120 px the Area select stands before the Spec select, in DOM, tab
+    // and screen order.
+    test('the header selects run Workspace · Page · Area · Spec, the Area select only on a spec page', async ({ page }) => {
       const order = (): Promise<Array<string | null>> =>
         page.locator('app-shell-nav [data-control]').evaluateAll((els) => els.map((el) => el.getAttribute('data-control')));
       await page.goto('/w/harbor/s/002');
       await expect(page.locator('header [data-control="area"]')).toBeVisible();
-      expect(await order()).toEqual(['workspace', 'page', 'spec', 'area']);
+      expect(await order()).toEqual(['workspace', 'page', 'area', 'spec']);
       const labels = page.locator('app-shell-nav [data-control] [data-pill-label]');
-      await expect(labels).toHaveText([/^workspace$/iu, /^page$/iu, /^spec$/iu, /^area$/iu]);
+      await expect(labels).toHaveText([/^workspace$/iu, /^page$/iu, /^area$/iu, /^spec$/iu]);
+      const xs: number[] = [];
+      for (const name of ['workspace', 'page', 'area', 'spec']) xs.push((await page.locator(`app-shell-nav [data-control="${name}"]`).boundingBox())?.x ?? -1);
+      expect(xs).toEqual([...xs].sort((a, b) => a - b));
       await page.goto('/w/harbor');
       await expect(page.locator('header [data-control="page"]')).toBeVisible();
       expect(await order()).toEqual(['workspace', 'page', 'spec']);
       // spec 024: PAGE select without trigger icon (principal 2026-10-13): eyebrow, name and chevron only
       await expect(page.locator('header [data-control="page"] ui-icon')).toHaveCount(1);
       await expect(page.locator('header [data-control="page"] ui-icon')).toHaveAttribute('data-icon', 'chevron-down');
+    });
+
+    // Spec 048 (ISC-281): below 1120 px the Area stays an entry of the ⋯ menu; the row keeps the Spec select.
+    test('the header selects at 820 keep Area in the ⋯ menu and the Spec select in the row', async ({ page }) => {
+      await page.setViewportSize({ width: 820, height: 900 });
+      await page.goto('/w/harbor/s/002');
+      await expect(page.locator('app-shell-nav [data-control="spec"]')).toBeVisible();
+      // The row only: the ⋯ menu's entries (area, zen, settings) carry data-control too.
+      const row = await page
+        .locator('app-shell-nav [data-control]')
+        .evaluateAll((els) => els.filter((el) => el.closest('[data-menu]') === null).map((el) => el.getAttribute('data-control')));
+      expect(row).toEqual(['workspace', 'page', 'spec']);
+      await expect(page.locator('header [data-menu="more"] [data-control="area"]')).toHaveCount(1);
     });
 
     for (const [key, path] of [

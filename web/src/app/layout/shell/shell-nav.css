@@ -18,7 +18,7 @@
   min-inline-size: 0;
 }
 
-/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | page, page | spec, spec | area. */
+/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | page, page | area | spec (spec 048), page | spec. */
 .pickers::before,
 .pill-divider {
   flex-shrink: 0;
@@ -29,19 +29,6 @@
   content: "";
 }
 
-.area {
-  position: relative;
-  margin-inline-start: 5px;
-}
-
-.area::before {
-  position: absolute;
-  inset-block: 10px;
-  inset-inline-start: -3px;
-  inline-size: 1px;
-  background: var(--line);
-  content: "";
-}
 
 .pick {
   display: inline-flex;

@@ -24,8 +24,8 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
   event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
 /**
- * The header's navigation group (ISC-73): Workspace · Page · Spec · Area (spec 024 T80, ISC-150.2, principal
- * 2026-10-13). The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
+ * The header's navigation group (ISC-73): Workspace · Page · Area · Spec (spec 024 T80, ISC-150.2, principal
+ * 2026-10-13; Area before Spec since spec 048, ISC-280). The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
  * select names the open workspace page (Specs on a spec page) and opens the workspace's pages; it stays in the row on
  * every width. The Area select is there only on a spec page and lists the six spec areas; below 1120 px it is an entry
  * of the overflow menu `⋯` (`areaEntry`, rendered by `ShellMenus`). The header's `⋯` and settings buttons open their

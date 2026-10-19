@@ -1,19 +1,30 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { SpecPageModel } from '../../../../../core/src/files';
 import { REVIEWED_HASH_FILES, type ReviewedHashFile } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
+import { LanguageService } from '../../core/language.service';
 import { UiIcon } from '../../shared/icons/icon';
-import { UiTimeLabel } from '../../shared/time';
+import { formatInstant, UiTimeLabel } from '../../shared/time';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
+import { ToastService } from '../../shared/ui/toast/toast';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { type GateAction, gateAction, pathSegments, shortHash } from './spec-head-model';
 
 const HASH_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
+
+let gateCount = 0;
+/** The ids one gate's pill names itself by (spec 045, ISC-272). */
+function gateIds(): { readonly label: string; readonly hint: string; readonly changed: string } {
+  gateCount += 1;
+  const id = `gate-${String(gateCount)}`;
+  return { label: `${id}-label`, hint: `${id}-hint`, changed: `${id}-changed` };
+}
 
 /** Where the gate write stands inside the dialog; a 200 closes the dialog and shows `written` instead. */
 type WriteState =
@@ -30,7 +41,10 @@ type WriteState =
  * the lock's session as visible text). The dialog lists the three hashed files with the hashes `GET …/:id` carried
  * and posts them; 200 closes it, 409 shows an inline alert with Reload (ISC-26), 423 names the lock's session.
  *
- * `size="block"` is the Status tab's full-width 48 px button; `size="inline"` the head's 32 px one in its cluster.
+ * `size="block"` is the Status tab's full-width 48 px button; `size="inline"` the head's one-line 28 px pill in its
+ * cluster (spec 045, ISC-271, ISC-272): round like the Notes pill, "Mark reviewed", "Review stale", "Reviewed <short
+ * date and time>" or "Paused · <session>", with the hint, the full time or session and the changed files as its tooltip
+ * and in its name (aria-labelledby), visually hidden under it; the dialog still lists the changed files.
  * `size="icon"` (spec 021 T70, ISC-250) is the compact head's 28 px square beside the title: the state icon and tone
  * stay visible, the label stays in the button as its accessible name, and the hint and the changed files stay in the
  * accessibility tree (visually hidden; the dialog lists the changed files again), so the button never wraps under the
@@ -62,9 +76,13 @@ type WriteState =
     /* size="icon": a 28 px square; label, hint and changed files visually hidden, still read. */
     :host([data-size='icon']) .gate-button { inline-size: 28px; min-block-size: 28px; block-size: 28px; padding: 0; }
     @media (pointer: coarse) { :host([data-size='icon']) .gate-button { inline-size: 44px; min-block-size: 44px; block-size: 44px; } }
-    :host([data-size='icon']) :is(.gate-label, .gate-hint, .changed) {
+    :host([data-size='icon']) :is(.gate-label, .gate-hint, .changed), :host([data-size='inline']) :is(.gate-hint, .changed) {
       position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
     }
+    /* size="inline" (spec 045, ISC-271): the head's one-line pill, 28 px and round like the Notes pill beside it. */
+    :host([data-size='inline']) .gate-button { --size: 28px; gap: 6px; min-block-size: 28px; block-size: 28px; padding-inline: 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    :host([data-size='inline']) .gate-button:is(.done, .stale) { --btn-border: transparent; }
+    :host([data-size='inline']) .gate-button.done { --btn-bg: var(--done-t); --btn-fg: var(--done-ink); }
     /* Prototype [data-ui=confirm-dialog]: 520 px, 96 px from the top, card, radius-card, scrim with blur 4. */
     ui-dialog { --ui-dialog-size: 520px; --ui-dialog-top: 96px; --ui-dialog-padding: 24px; }
     .dialog-body { display: grid; gap: 16px; }
@@ -91,29 +109,67 @@ type WriteState =
   template: `
     @if (model(); as m) {
       <span class="gate-btn" data-ui="mark-reviewed" [attr.data-gate-state]="action()">
+        <!-- Spec 045 (ISC-272): as the head's pill the button carries the hint, the full time or session and the changed
+             files as its tooltip and, through aria-labelledby, in its name; the block button keeps its own label. -->
         @switch (action()) {
           @case ('paused') {
-            <button type="button" class="btn btn-primary btn-sm gate-button" data-gate-action data-state="paused" disabled>
-              <ui-icon name="lock" [size]="16" />
-              <span class="gate-label">{{ 'status.gate.ready' | transloco }}</span>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm gate-button"
+              data-gate-action
+              data-state="paused"
+              disabled
+              [attr.title]="pill() ? tooltip() : null"
+              [attr.aria-labelledby]="pill() ? labelledBy() : null"
+            >
+              <ui-icon name="lock" [size]="pill() ? 14 : 16" />
+              <span class="gate-label" [id]="ids.label">
+                @if (pill()) {
+                  {{ 'status.gate.pill.paused' | transloco: { session: shortSession(lock()?.session ?? '') } }}
+                } @else {
+                  {{ 'status.gate.ready' | transloco }}
+                }
+              </span>
             </button>
-            <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
+            <span class="gate-hint" data-gate-hint [id]="ids.hint">{{ 'status.gate.hint.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
           }
           @case ('done') {
-            <button type="button" class="btn btn-sm gate-button done" data-gate-action data-state="done" (click)="openDialog()">
-              <ui-icon name="check" [size]="16" />
-              <span class="gate-label">{{ 'status.gate.remark' | transloco }}</span>
+            <button
+              type="button"
+              class="btn btn-sm gate-button done"
+              data-gate-action
+              data-state="done"
+              [attr.title]="pill() ? tooltip() : null"
+              [attr.aria-labelledby]="pill() ? labelledBy() : null"
+              (click)="openDialog()"
+            >
+              <ui-icon name="check" [size]="pill() ? 14 : 16" />
+              <span class="gate-label" [id]="ids.label">
+                @if (pill()) {
+                  <ui-time-label key="status.gate.done" form="instantShort" [value]="m.gates.reviewed.at ?? ''" />
+                } @else {
+                  {{ 'status.gate.remark' | transloco }}
+                }
+              </span>
             </button>
-            <span class="gate-hint" data-gate-hint><ui-time-label key="status.gate.done" [value]="m.gates.reviewed.at ?? ''" /></span>
+            <span class="gate-hint" data-gate-hint [id]="ids.hint"><ui-time-label key="status.gate.done" [value]="m.gates.reviewed.at ?? ''" /></span>
           }
           @case ('stale') {
-            <button type="button" class="btn btn-sm gate-button stale" data-gate-action data-state="stale" (click)="openDialog()">
-              <ui-icon name="triangle-alert" [size]="16" />
-              <span class="gate-label">{{ 'status.gate.stale' | transloco }}</span>
+            <button
+              type="button"
+              class="btn btn-sm gate-button stale"
+              data-gate-action
+              data-state="stale"
+              [attr.title]="pill() ? tooltip() : null"
+              [attr.aria-labelledby]="pill() ? labelledBy() : null"
+              (click)="openDialog()"
+            >
+              <ui-icon name="triangle-alert" [size]="pill() ? 14 : 16" />
+              <span class="gate-label" [id]="ids.label">{{ (pill() ? 'status.gate.pill.stale' : 'status.gate.stale') | transloco }}</span>
             </button>
-            <span class="gate-hint" data-gate-hint><ui-time-label key="status.gate.hint.stale" [value]="m.gates.reviewed.at ?? ''" /></span>
+            <span class="gate-hint" data-gate-hint [id]="ids.hint"><ui-time-label key="status.gate.hint.stale" [value]="m.gates.reviewed.at ?? ''" /></span>
             @if (m.gates.reviewed.files?.length) {
-              <ul class="changed" data-changed-files [attr.aria-label]="'status.gate.changed' | transloco">
+              <ul class="changed" data-changed-files [id]="ids.changed" [attr.aria-label]="'status.gate.changed' | transloco">
                 @for (file of m.gates.reviewed.files; track file) {
                   <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
                 }
@@ -121,11 +177,19 @@ type WriteState =
             }
           }
           @default {
-            <button type="button" class="btn btn-primary btn-sm gate-button" data-gate-action data-state="ready" (click)="openDialog()">
-              <ui-icon name="flag" [size]="16" />
-              <span class="gate-label">{{ 'status.gate.ready' | transloco }}</span>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm gate-button"
+              data-gate-action
+              data-state="ready"
+              [attr.title]="pill() ? tooltip() : null"
+              [attr.aria-labelledby]="pill() ? labelledBy() : null"
+              (click)="openDialog()"
+            >
+              <ui-icon name="flag" [size]="pill() ? 14 : 16" />
+              <span class="gate-label" [id]="ids.label">{{ (pill() ? 'status.gate.pill.ready' : 'status.gate.ready') | transloco }}</span>
             </button>
-            <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.ready' | transloco }}</span>
+            <span class="gate-hint" data-gate-hint [id]="ids.hint">{{ 'status.gate.hint.ready' | transloco }}</span>
           }
         }
       </span>
@@ -227,8 +291,18 @@ export class GateButton {
   private readonly data = inject(ShellData);
   private readonly state = inject(ShellState);
 
+  private readonly toast = inject(ToastService);
+  private readonly transloco = inject(TranslocoService);
+  private readonly lang = inject(LanguageService).current;
+  // Recomputes the tooltip once the active language's catalogue has loaded.
+  private readonly translation = toSignal(this.transloco.selectTranslation());
+
   protected readonly specId = this.state.specId;
   protected readonly inline = computed(() => this.size() === 'inline');
+  /** Spec 045 (ISC-272): the head's inline size is a one-line pill; `block` and `icon` keep their own forms. */
+  protected readonly pill = this.inline;
+  /** Per-instance ids: the head and the Status tab render a gate each on one page. */
+  protected readonly ids = gateIds();
   protected readonly hashFiles = HASH_FILES;
   protected readonly hashFileNames = REVIEWED_HASH_FILES;
   protected readonly segments = pathSegments;
@@ -242,6 +316,40 @@ export class GateButton {
     const model = this.model();
     return model ? gateAction(model.gates.reviewed, this.lock()) : null;
   });
+
+  /** The pill's name: its label, then the hint and, when stale, the list of changed files. */
+  protected readonly labelledBy = computed(() => {
+    const files = this.model()?.gates.reviewed.files ?? [];
+    return [this.ids.label, this.ids.hint, ...(this.action() === 'stale' && files.length > 0 ? [this.ids.changed] : [])].join(' ');
+  });
+
+  /** The pill's tooltip: what the block shows under its button, with the full time and the full session. */
+  protected readonly tooltip = computed(() => {
+    this.translation();
+    const model = this.model();
+    if (!model) return null;
+    const lang = this.lang();
+    const t = (key: string, params: Record<string, unknown> = {}): string => this.transloco.translate(key, params, lang);
+    const time = formatInstant(model.gates.reviewed.at ?? '', lang);
+    switch (this.action()) {
+      case 'paused':
+        return t('status.gate.hint.paused', { session: this.lock()?.session ?? '' });
+      case 'done':
+        return t('status.gate.done', { time });
+      case 'stale': {
+        const files = model.gates.reviewed.files ?? [];
+        const hint = t('status.gate.hint.stale', { time });
+        return files.length > 0 ? `${hint}\n${t('status.gate.changed')}: ${files.join(', ')}` : hint;
+      }
+      default:
+        return t('status.gate.hint.ready');
+    }
+  });
+
+  /** The session the pill names: the actor without its `a:<kind>:` prefix (`a:claude:sess-2` → `sess-2`). */
+  protected shortSession(session: string): string {
+    return session.replace(/^[a-z]:[^:]+:/u, '');
+  }
 
   private readonly params = computed(() => {
     const ws = this.state.ws();
@@ -274,7 +382,7 @@ export class GateButton {
 
   protected readonly dialogOpen = signal(false);
   protected readonly write = signal<WriteState>({ kind: 'idle' });
-  /** The `at` of the mark this button wrote, shown as the success line until the page is left. */
+  /** The `at` of the mark the block button wrote, shown as the success line until the page is left; the head toasts. */
   protected readonly written = signal<string | null>(null);
 
   protected openDialog(): void {
@@ -291,7 +399,9 @@ export class GateButton {
     const result = await this.api.gateReviewed(params.ws, params.id, hashes);
     switch (result.kind) {
       case 'ok':
-        this.written.set(result.body.at);
+        // Spec 045 (ISC-273): in the head the toast confirms the write, so no line stands under the pill or icon.
+        if (this.size() === 'block') this.written.set(result.body.at);
+        else this.toast.show(this.transloco.translate('status.gate.written', { time: formatInstant(result.body.at, this.lang()) }, this.lang()));
         this.write.set({ kind: 'idle' });
         this.dialogOpen.set(false);
         this.data.spec.reload();

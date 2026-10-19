@@ -1242,6 +1242,11 @@
       "paused": "Writes paused: {{session}} holds a lock",
       "written": "Reviewed mark written {{time}}.",
       "remark": "Re-mark",
+      "pill": {
+        "ready": "Mark reviewed",
+        "stale": "Review stale",
+        "paused": "Paused · {{session}}"
+      },
       "hint": {
         "ready": "no review mark · release for /spec implement",
         "stale": "reviewed {{time}} · changed since",
@@ -2093,7 +2098,7 @@
       "noMilestones": "The master names no milestones.",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
-      "hideEmpty": "Hide empty features"
+      "hideEmpty": "Hide done and empty"
     }
   },
   "sidebar": {

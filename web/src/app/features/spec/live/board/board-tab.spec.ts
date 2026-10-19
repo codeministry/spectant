@@ -11,6 +11,7 @@ import { ApiClient } from '../../../../core/api.service';
 import { RefreshService } from '../../../../core/refresh.service';
 import { type Density, SETTINGS_URL, SettingsService } from '../../../../core/settings.service';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
+import { RailContent } from '../../../../layout/shell/rail-content';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { BoardTab } from './board-tab';
@@ -39,7 +40,7 @@ async function settle(fixture: ComponentFixture<BoardTab>): Promise<void> {
   }
 }
 
-async function render(url: string, stored: Density): Promise<Harness> {
+async function render(url: string, stored: Density, zen = false): Promise<Harness> {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -61,7 +62,7 @@ async function render(url: string, stored: Density): Promise<Harness> {
           tasks: () => Promise.resolve({ kind: 'error', status: 404 }),
         },
       },
-      { provide: ShellState, useValue: { ws: signal('harbor'), specId: signal('002'), tier: signal('wide'), zen: signal(false) } },
+      { provide: ShellState, useValue: { ws: signal('harbor'), specId: signal('002'), tier: signal('wide'), zen: signal(zen) } },
       { provide: ShellData, useValue: { spec: { value: () => undefined }, specRows: () => [], archiveRows: () => [], planningModel: () => null } },
       { provide: RefreshService, useValue: { lastRefresh: signal(0), refreshes: signal(0) } },
     ],
@@ -185,5 +186,31 @@ describe('BoardTab agent steps (spec 015, ISC-232)', () => {
     const past = await render('/?frame=0', 'comfortable');
     expect(past.host.querySelectorAll('app-board-card').length).toBeGreaterThan(0);
     expect(past.host.querySelector('[data-card-latest-step]')).toBeNull();
+  });
+});
+
+// Spec 047 · ISC-278 · ISC-279: in zen the board has no scrub row (the zen footer's frame bar steps the frames);
+// out of zen the row is whole.
+describe('BoardTab scrub row in zen (spec 047)', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined })),
+    );
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const scrubParts = (host: HTMLElement): number[] =>
+    ['.scrub', 'ui-scrubber', '[data-frame-chip]', '[data-progress]'].map((sel) => host.querySelectorAll(sel).length);
+
+  it('ISC-278: in zen no scrub row, and the frame bar still goes to the zen footer', async () => {
+    const { host } = await render('/', 'comfortable', true);
+    expect(scrubParts(host)).toEqual([0, 0, 0, 0]);
+    expect(TestBed.inject(RailContent).bar()).not.toBeNull();
+  });
+
+  it('ISC-279: out of zen the scrub row stands whole', async () => {
+    const { host } = await render('/', 'comfortable');
+    expect(scrubParts(host)).toEqual([1, 1, 1, 1]);
   });
 });

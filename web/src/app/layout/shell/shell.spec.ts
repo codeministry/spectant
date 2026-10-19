@@ -120,8 +120,8 @@ describe('ShellComponent', () => {
       const { root } = await open(url);
       expect(root.querySelectorAll('header'), url).toHaveLength(1);
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
-      // spec 024: PAGE select (principal 2026-10-13): Workspace · Page · Spec, and the Area select only on a spec route
-      const pills = url.startsWith('/w/') ? ['workspace', 'page', 'spec', ...(url.includes('/s/') ? ['area'] : [])] : ['workspace'];
+      // spec 024: PAGE select (principal 2026-10-13); spec 048 (ISC-280): the Area select, only on a spec route, before the Spec select
+      const pills = url.startsWith('/w/') ? ['workspace', 'page', ...(url.includes('/s/') ? ['area'] : []), 'spec'] : ['workspace'];
       expect(controls, url).toEqual(['brand', ...pills, 'palette', 'live', 'zen', 'settings']);
     }
   });

@@ -11,6 +11,7 @@ import leadgen from '../../../../../../core/fixtures/leadgen.planning.golden.jso
 import milestoneLines from '../../../../../../core/fixtures/milestone-lines.planning.golden.json';
 import spectant001 from '../../../../../../core/fixtures/spectant-001.planning.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import de from '../../../../i18n/de.json';
 import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
 import { ShellState } from '../../../layout/shell/shell-state.service';
@@ -160,16 +161,19 @@ describe('planning-tree', () => {
         expect([...shown].sort()).toEqual(held.sort());
       });
 
-      it('hides the features without a spec row on the empty-feature toggle, offered only when the tree shows one', async () => {
+      // Spec 046 (ISC-275, ISC-276): the toggle hides the specs on done, the features whose specs are all done and the
+      // features without a spec, offered while the tree shows any of them.
+      it('hides done specs, done features and empty features on the toggle, offered only when the tree shows one', async () => {
         const { el, stable } = await render(model);
-        const holdsSpec = (ref: string): boolean => childrenOf(model, ref, 'spec').some((spec) => entry(model, spec).archived !== true);
+        const shownSpecs = (ref: string): string[] => childrenOf(model, ref, 'spec').filter((spec) => entry(model, spec).archived !== true);
+        const holdsSpec = (ref: string): boolean => shownSpecs(ref).some((spec) => entry(model, spec).stage !== 'done');
         const before = rows(el, 'feature').map((row) => row.dataset['ref'] ?? '');
         const toggle = el.querySelector<HTMLButtonElement>('[data-hide-empty]');
-        if (before.every(holdsSpec)) {
+        if (before.every((ref) => holdsSpec(ref) && shownSpecs(ref).every((spec) => entry(model, spec).stage !== 'done'))) {
           expect(toggle).toBeNull();
           return;
         }
-        expect(toggle?.textContent).toContain(en.planning.tree.hideEmpty);
+        expect(toggle?.textContent.trim()).toBe('Hide done and empty');
         expect(toggle?.getAttribute('aria-pressed')).toBe('false');
         toggle?.click();
         await stable();
@@ -582,5 +586,11 @@ describe('planning-tree refusal (T38, ISC-198)', () => {
     expect(selection.picks).toEqual([]);
     expect(el.querySelector('app-refusal-notice')).toBeNull();
     expect(row?.hasAttribute('aria-describedby')).toBe(false);
+  });
+});
+
+describe('the done-and-empty toggle label (spec 046, ISC-276)', () => {
+  it('names what it hides in both languages', () => {
+    expect([en.planning.tree.hideEmpty, de.planning.tree.hideEmpty]).toEqual(['Hide done and empty', 'Erledigte und leere ausblenden']);
   });
 });

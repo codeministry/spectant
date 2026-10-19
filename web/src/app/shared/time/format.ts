@@ -7,7 +7,7 @@ import type { Lang } from '../../../i18n/catalogues';
  */
 
 /** The forms a value can take; `day` is a calendar day, read as a UTC day so no zone can shift it. */
-export type TimeForm = 'instant' | 'date' | 'clock' | 'clockSeconds' | 'day';
+export type TimeForm = 'instant' | 'instantShort' | 'date' | 'clock' | 'clockSeconds' | 'day';
 
 /** App language to Intl locale; `en-US` gives `10/01/2026, 2:05 PM`. */
 const LOCALE: Readonly<Record<Lang, string>> = { de: 'de-DE', en: 'en-US' };
@@ -19,6 +19,8 @@ const HOUR: Readonly<Record<Lang, Intl.DateTimeFormatOptions['hour']>> = { de: '
 
 const OPTIONS: Readonly<Record<TimeForm, (lang: Lang) => Intl.DateTimeFormatOptions>> = {
   instant: (lang) => ({ ...DATE_PART, hour: HOUR[lang], minute: '2-digit' }),
+  // Spec 045: a one-line pill names the day without its year.
+  instantShort: (lang) => ({ day: '2-digit', month: '2-digit', hour: HOUR[lang], minute: '2-digit' }),
   date: () => DATE_PART,
   clock: () => ({ timeStyle: 'short' }),
   // A step timeline (spec 015): red to green often lies within a minute, so the seconds show, on a 24-hour clock.
@@ -48,6 +50,11 @@ function formatIso(iso: string, lang: Lang, form: TimeForm): string {
 /** Date and time of an instant: `01.10.2026, 14:05` / `10/01/2026, 2:05 PM`. */
 export function formatInstant(iso: string, lang: Lang): string {
   return formatIso(iso, lang, 'instant');
+}
+
+/** Date without the year and time of an instant (spec 045, the head's gate pill): `01.10., 14:05` / `10/01, 2:05 PM`. */
+export function formatInstantShort(iso: string, lang: Lang): string {
+  return formatIso(iso, lang, 'instantShort');
 }
 
 /** The local date of an instant: `01.10.2026` / `10/01/2026`. */

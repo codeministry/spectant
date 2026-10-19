@@ -105,36 +105,39 @@
         <ng-container [ngTemplateOutlet]="filteredTpl" />
       }
 
-      <div class="scrub">
-        <ui-scrubber
-          class="scrubber"
-          [frames]="stops()"
-          [markers]="markers()"
-          [value]="index()"
-          [playing]="playing()"
-          [ariaLabel]="'board.frame.scrubber' | transloco"
-          (valueChange)="setFrame($event)"
-          (playingChange)="playing.set($event)"
-        />
-        <div class="frame-meta">
-          @if (isLive()) {
-            <span class="flabel" data-frame-chip="live"
-              ><i class="live-i" aria-hidden="true"></i>{{ 'board.frame.live' | transloco }}<span class="updated" data-frame-updated>
-                · {{ 'board.frame.updated' | transloco: ago() }}</span
-              ></span
-            >
-          } @else {
-            <span class="history" data-frame-chip="history">
-              <span class="flabel" data-frame-label>{{ 'board.frame.replay' | transloco: { label: f.label, kind: ('board.frame.kinds.' + f.kind | transloco) } }}</span>
-              <span class="hist-chip" data-history-chip>{{ 'board.frame.historyChip' | transloco }}</span>
-              <button type="button" class="btn btn-sm tool back" data-back-to-live (click)="setFrame(lastIndex())">{{ 'board.frame.backToLive' | transloco }}</button>
-            </span>
-          }
-          <p class="progress-line" data-progress>
-            {{ 'board.progress' | transloco: { closed: f.progress.claims.closed, claims: f.progress.claims.total, landed: f.progress.tasks.landed, tasks: f.progress.tasks.total } }}
-          </p>
+      <!-- Spec 047 (ISC-278): in zen the scrub row leaves; the zen footer's frame bar steps the frames. -->
+      @if (!state.zen()) {
+        <div class="scrub">
+          <ui-scrubber
+            class="scrubber"
+            [frames]="stops()"
+            [markers]="markers()"
+            [value]="index()"
+            [playing]="playing()"
+            [ariaLabel]="'board.frame.scrubber' | transloco"
+            (valueChange)="setFrame($event)"
+            (playingChange)="playing.set($event)"
+          />
+          <div class="frame-meta">
+            @if (isLive()) {
+              <span class="flabel" data-frame-chip="live"
+                ><i class="live-i" aria-hidden="true"></i>{{ 'board.frame.live' | transloco }}<span class="updated" data-frame-updated>
+                  · {{ 'board.frame.updated' | transloco: ago() }}</span
+                ></span
+              >
+            } @else {
+              <span class="history" data-frame-chip="history">
+                <span class="flabel" data-frame-label>{{ 'board.frame.replay' | transloco: { label: f.label, kind: ('board.frame.kinds.' + f.kind | transloco) } }}</span>
+                <span class="hist-chip" data-history-chip>{{ 'board.frame.historyChip' | transloco }}</span>
+                <button type="button" class="btn btn-sm tool back" data-back-to-live (click)="setFrame(lastIndex())">{{ 'board.frame.backToLive' | transloco }}</button>
+              </span>
+            }
+            <p class="progress-line" data-progress>
+              {{ 'board.progress' | transloco: { closed: f.progress.claims.closed, claims: f.progress.claims.total, landed: f.progress.tasks.landed, tasks: f.progress.tasks.total } }}
+            </p>
+          </div>
         </div>
-      </div>
+      }
       @if (f.stop; as stop) {
         <p class="stop" data-stop>{{ 'board.frame.stop' | transloco: { reason: stop } }}</p>
       }
