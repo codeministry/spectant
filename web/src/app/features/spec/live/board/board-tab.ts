@@ -319,9 +319,11 @@ export class BoardTab {
     // n s ago" names when this board was last read.
     const clock = setInterval(() => this.now.set(Date.now()), 10_000);
     inject(DestroyRef).onDestroy(() => clearInterval(clock));
+    // The refresh count, not its clock (spec 015, ISC-233): two refreshes in one millisecond, or under a pinned clock,
+    // leave `lastRefresh` unchanged and would skip the read of a streamed step.
     let firstRefresh = true;
     effect(() => {
-      this.refresher.lastRefresh();
+      this.refresher.refreshes();
       if (firstRefresh) firstRefresh = false;
       else untracked(() => this.liveResult.reload());
     });
@@ -363,6 +365,13 @@ export class BoardTab {
       const events = untracked(() => this.events());
       context.changed.set(shownIndex !== null && shownIndex !== index ? new Set(events.map((c) => c.task)) : new Set());
       shownIndex = index;
+    });
+    // spec 015 (ISC-232): every task's agent steps from the live answer for the cards and their detail; a card names
+    // its latest step only while the live frame is on screen.
+    effect(() => {
+      context.live.set(this.isLive());
+      const live = this.liveResult.value();
+      if (live?.kind === 'ok') context.steps.set('steps' in live.body ? live.body.steps : {});
     });
     let places = new Map<string, DOMRect>();
     let placedIndex: number | null = null;

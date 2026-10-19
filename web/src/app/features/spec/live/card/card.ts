@@ -8,10 +8,12 @@ import { UiIcon } from '../../../../shared/icons/icon';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { glyphSpec, runGlyphState, stateKey } from '../../../../shared/ui/glyph/states';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
+import { UiTime } from '../../../../shared/time';
 import { toneMark } from '../../../../shared/ui/tone';
 import { agentOfCard } from '../live-frame';
 import { runOf } from '../board/board-model';
 import { absentNote } from '../recut';
+import { lookOf } from '../steps/step-timeline';
 import { AgentChip } from '../this-frame/agent-chip';
 import { CardContext } from './card-context';
 import { CardDetail } from './card-detail';
@@ -71,7 +73,7 @@ export class RunChip {
  */
 @Component({
   selector: 'app-board-card',
-  imports: [AgentChip, CardDetail, RunChip, TranslocoPipe, UiChip, UiGlyph, UiIcon, UiStateChip],
+  imports: [AgentChip, CardDetail, RunChip, TranslocoPipe, UiChip, UiGlyph, UiIcon, UiStateChip, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; min-inline-size: 0; }
@@ -128,7 +130,13 @@ export class RunChip {
     :host([data-run]) article { grid-template-columns: minmax(0, 1fr) auto; }
     :host([data-run]) .r1 { grid-area: 1 / 1; }
     :host([data-run]) .run-state { grid-area: 1 / 2; align-self: center; }
-    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .r3 { grid-column: 1 / -1; }
+    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .step, :host([data-run]) .r3 { grid-column: 1 / -1; }
+    /* spec 015: the latest agent step, a text line and no chip; a new step swaps it with a fade (0 ms under reduce). */
+    .step { display: flex; gap: 6px; align-items: center; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; white-space: nowrap; animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard); }
+    .step .sw { overflow: hidden; font-weight: 600; text-overflow: ellipsis; }
+    .step ui-icon, .step .st { flex: none; }
+    .step .st { font: 11px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
+    @keyframes step-in { from { opacity: 0; } }
     @container live-card (width < 320px) {
       :host([data-run]) .run-state { grid-area: auto / 1 / auto / -1; justify-self: start; }
     }
@@ -174,6 +182,11 @@ export class RunChip {
       @if (run(); as run) {
         <app-run-chip small class="run-state" [run]="run.state" />
       }
+      @for (l of latestStep(); track l.key) {
+        <p class="step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
+          <ui-icon [name]="l.icon" [size]="12" [style.color]="l.color" /><span class="sw" data-step-word>{{ 'steps.kind.' + l.word | transloco }}</span><span aria-hidden="true">·</span><ui-time class="st" data-step-time [value]="l.step.ts" form="clock" />
+        </p>
+      }
       @if (density() === 'comfortable') {
         <div class="r3">@if (c.builder) {<span class="tag builder" data-builder><ui-icon name="wrench" [size]="12" />{{ c.builder }}</span>}@if (c.reader) {<span class="tag reader" data-reader><ui-icon name="eye" [size]="12" />{{ c.reader }}@if (c.verdict) {<i class="vdot" [attr.data-verdict]="c.verdict" [attr.title]="c.verdict"></i>}</span>}@if (c.tries > 1) {<span class="try" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (agent(); as agent) {<app-agent-chip [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />}</div>
       } @else if (agent(); as agent) {
@@ -217,6 +230,18 @@ export class BoardCard {
   protected readonly edge = computed(() => toneMark(this.spec().tone));
   /** An absent card's strike note, shown on its face in both densities (ISC-91); null for any other card. */
   protected readonly strikeNote = computed(() => absentNote(this.card()));
+  /**
+   * The task's latest agent step (spec 015, ISC-232) as a list of at most one, keyed by the step so a new step renders
+   * a fresh line that fades in. None in the step density (operator tasks have no agent) and none on a past frame.
+   */
+  protected readonly latestStep = computed(() => {
+    if (this.density() === 'step' || this.context?.live() === false) return [];
+    const step = this.context?.steps()[this.card().task]?.at(-1);
+    if (step === undefined) return [];
+    const look = lookOf(step);
+    const color = look.tone === 'muted' ? 'var(--muted-ink)' : `var(--${look.tone}-text)`;
+    return [{ ...look, step, color, key: `${step.ts} ${step.kind}` }];
+  });
   protected readonly stale = computed(() => {
     const c = this.card();
     return 'stale' in c && c.stale === true;

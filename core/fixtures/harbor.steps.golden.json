@@ -1,0 +1,106 @@
+{
+  "specs/002-web-console": {
+    "T4": [
+      {
+        "kind": "release",
+        "ts": "2026-03-06T09:58:00Z",
+        "actor": "a:claude:sess-2/T4"
+      }
+    ],
+    "T25": [
+      {
+        "kind": "release",
+        "ts": "2026-03-08T15:52:00Z",
+        "actor": "a:claude:sess-2"
+      }
+    ],
+    "T26": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T15:54:00Z",
+        "actor": "a:claude:sess-2/T26"
+      },
+      {
+        "kind": "build",
+        "ts": "2026-03-08T15:55:00Z",
+        "actor": "a:claude:sess-2/T26"
+      },
+      {
+        "kind": "probe",
+        "ts": "2026-03-08T15:58:00Z",
+        "actor": "a:claude:sess-2/T26",
+        "result": "red"
+      },
+      {
+        "kind": "question",
+        "ts": "2026-03-08T16:02:00Z",
+        "actor": "a:claude:sess-2/T26",
+        "text": "Should the focus ring follow the theme accent or stay neutral?"
+      },
+      {
+        "kind": "probe",
+        "ts": "2026-03-08T16:06:00Z",
+        "actor": "a:claude:sess-2/T26",
+        "result": "green"
+      },
+      {
+        "kind": "patch",
+        "ts": "2026-03-08T16:10:00Z",
+        "actor": "a:claude:sess-2/T26"
+      },
+      {
+        "kind": "apply",
+        "ts": "2026-03-08T16:12:00Z",
+        "actor": "a:claude:sess-2/T26"
+      }
+    ],
+    "T28": [
+      {
+        "kind": "dispatch",
+        "ts": "2026-03-08T16:32:00Z",
+        "actor": "a:claude:sess-2/T28"
+      },
+      {
+        "kind": "build",
+        "ts": "2026-03-08T16:33:00Z",
+        "actor": "a:claude:sess-2/T28"
+      },
+      {
+        "kind": "probe",
+        "ts": "2026-03-08T16:36:00Z",
+        "actor": "a:claude:sess-2/T28",
+        "result": "red"
+      },
+      {
+        "kind": "question",
+        "ts": "2026-03-08T16:37:00Z",
+        "actor": "a:claude:spec-002/T28",
+        "text": "Does the clear button of the search box stay in the tab order?"
+      },
+      {
+        "kind": "probe",
+        "ts": "2026-03-08T16:39:00Z",
+        "actor": "a:claude:sess-2/T28",
+        "result": "green"
+      },
+      {
+        "kind": "patch",
+        "ts": "2026-03-08T16:40:00Z",
+        "actor": "a:claude:sess-2/T28"
+      },
+      {
+        "kind": "apply",
+        "ts": "2026-03-08T16:42:00Z",
+        "actor": "a:claude:sess-2/T28"
+      }
+    ]
+  },
+  "specs/003-config-loader": {},
+  "specs/004-retention-policies": {},
+  "specs/005-config-format-choice": {},
+  "specs/006-partial-push": {},
+  "specs/007-rotate-mirror-token": {},
+  "specs/008-referrers-support": {},
+  "specs/009-chunked-upload-limits": {},
+  "specs/archive/001-manifest-sync": {}
+}

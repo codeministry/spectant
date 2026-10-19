@@ -12,8 +12,10 @@ import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ClaimViewModel, ItemStateInfo, SpecPageModel } from "../core/src/files.ts";
+import type { ClaimViewModel, ItemStateInfo, SpecPageModel, TaskSteps } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
+import { readLockSources } from "../core/src/locks.ts";
+import { taskSteps } from "../core/src/steps.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
 import { composeApi, dashboardApi } from "../server/src/api.ts";
@@ -62,13 +64,13 @@ const golden = (tree: string, family: string): Record<string, unknown> =>
 const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", actor: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false }, since: "2026-03-08T14:06:00Z" } as const;
 
 /**
- * harbor's activity log carries one unknown event (`ponder`, line 12; spec 027, ISC-179), surfaced as one `locks`
+ * harbor's activity log carries one unknown event (`ponder`, line 15 since the step lines of spec 015; spec 027, ISC-179), surfaced as one `locks`
  * warning on spec 002 (the line's claim is ISC-75); the golden is built without lock sources.
  */
 const PONDER_WARNING = {
   kind: "locks",
   ref: "ISC-75",
-  text: '.spectant/activity.jsonl line 12: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
+  text: '.spectant/activity.jsonl line 15: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
 } as const;
 
 /** harbor 002's spec page golden with the activity lock and the unknown-event warning applied (see the header). */
@@ -169,10 +171,15 @@ function readRoutes(): Array<{ route: SpecRouteName; path: string; body: () => u
     { route: "spec", path: specRoutes.spec("harbor", "002"), body: expectedSpecPage },
     { route: "timeline", path: specRoutes.timeline("harbor", "002"), body: () => golden("harbor", "timeline")[KEY] },
     { route: "claims", path: specRoutes.claims("harbor", "002"), body: expectedClaims },
-    { route: "tasks", path: specRoutes.tasks("harbor", "002"), body: () => golden("harbor", "tasks")[KEY] },
+    { route: "tasks", path: specRoutes.tasks("harbor", "002"), body: () => withSteps(golden("harbor", "tasks")[KEY], golden("harbor", "steps")[KEY]) },
     { route: "frames", path: specRoutes.frames("harbor", "002"), body: () => golden("harbor", "frames")[KEY] },
-    { route: "live", path: specRoutes.live("harbor", "002"), body: () => golden("harbor", "live")[KEY] },
+    { route: "live", path: specRoutes.live("harbor", "002"), body: () => withSteps(golden("harbor", "live")[KEY], golden("harbor", "steps")[KEY]) },
   ];
+}
+
+/** A model with core's step timelines beside it, as the live and tasks routes send it (spec 015, ISC-232); null stays null. */
+function withSteps(model: unknown, steps: unknown): unknown {
+  return model === null ? null : { ...(model as object), steps };
 }
 
 /** A timeline answer without the server's joined entries (spec 024: `note` and `agent`). */
@@ -301,6 +308,34 @@ describe("hash headers", () => {
   });
 });
 
+describe("steps beside the model (spec 015, ISC-232)", () => {
+  // The live and tasks routes send core's `taskSteps` beside the model, restricted to the queried spec: every harbor
+  // spec's `steps` is its key of the steps golden, read from the repository-wide activity log.
+  type WithSteps = { readonly steps?: TaskSteps };
+  const family = (): Record<string, TaskSteps> => golden("harbor", "steps") as Record<string, TaskSteps>;
+  const live = async (id: string): Promise<WithSteps> => (await call(specRoutes.live("harbor", id))).json() as Promise<WithSteps>;
+  const tasks = async (id: string): Promise<WithSteps | null> => (await call(specRoutes.tasks("harbor", id))).json() as Promise<WithSteps | null>;
+
+  test("harbor 002: live and tasks carry taskSteps(reading, files) of 002, one timeline per task", async () => {
+    const expected = taskSteps(await readLockSources({ repoRoot: HARBOR }), readSpecFiles({ dir: SPEC_DIR, slug: "002-web-console" }));
+    expect(Object.keys(expected)).toEqual(["T4", "T25", "T26", "T28"]);
+    expect(expected).toEqual(family()[KEY] as TaskSteps);
+    expect((await live("002")).steps).toEqual(expected);
+    expect((await tasks("002"))?.steps).toEqual(expected);
+  });
+
+  test("every other harbor spec answers its own key: 002's T4 or T26 never leaks into a sibling", async () => {
+    const tabs = golden("harbor", "tasks");
+    for (const [folder, steps] of Object.entries(family())) {
+      if (folder === KEY || folder.startsWith("specs/archive/")) continue;
+      const id = folder.slice("specs/".length, "specs/".length + 3);
+      expect({ folder, steps: (await live(id)).steps }).toEqual({ folder, steps });
+      const tab = await tasks(id);
+      expect({ folder, tab: tab === null ? null : tab.steps }).toEqual({ folder, tab: tabs[folder] === null ? null : steps });
+    }
+  });
+});
+
 describe("lantern 002: no rounds, no tasks.md", () => {
   test("frames are [], tasks null, the live frame has no agents and no lock source; the goldens agree", async () => {
     const frames: unknown = await (await call(specRoutes.frames("lantern", "002"))).json();
@@ -313,7 +348,7 @@ describe("lantern 002: no rounds, no tasks.md", () => {
     expect([frames, tasks, live]).toEqual([
       golden("lantern", "frames")[LANTERN_KEY],
       golden("lantern", "tasks")[LANTERN_KEY],
-      golden("lantern", "live")[LANTERN_KEY],
+      withSteps(golden("lantern", "live")[LANTERN_KEY], golden("lantern", "steps")[LANTERN_KEY]),
     ]);
   });
 });

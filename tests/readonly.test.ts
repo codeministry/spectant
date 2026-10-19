@@ -63,7 +63,7 @@ import {
 } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { tokensCommand } from "../server/src/tokens-cli.ts";
-import { WRITE_PATHS, WRITE_TABLE, writePathsOf } from "../server/src/writes.contract.ts";
+import { WRITE_PATHS, WRITE_TABLE, runReleaseEvent, writePathsOf } from "../server/src/writes.contract.ts";
 import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { BACKLOG_UI_SEQUENCE, EMPTY_BACKLOG_HASH } from "../web/e2e/backlog-ui-sequence.ts";
 import { BUILDER_WORKTREE, type PlantedWorktreeRepo, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
@@ -1972,4 +1972,91 @@ describe("ISC-28 with the live stream: an open stream and its updates leave the 
     expect(gitPaths([...after.entries.keys()])).toEqual(gitPaths([...before.entries.keys()]));
     expect(changed(before, after, { mtime: true }).filter((path) => gitPaths([path]).length > 0)).toEqual([]);
   }, 60_000);
+});
+
+// The step feed under the same guard (spec 015, T37, ISC-235, `-t steps`): the main checkout's `.spectant/activity.jsonl`
+// carries probe (red, then green) and question step lines for task T2 of the live spec 002. With the stream open, every
+// read of the dashboard, the board and the spec page (the tasks and live routes carry `steps` now) changes no byte or
+// mtime of the repository, its worktrees or `.git/`; every request is loopback; and no route writes `.spectant/`: the
+// log keeps its bytes and the folder gains no file. The step lines are the plugin's to write, never the app's; the
+// second case proves that statically: no server source names a `probe` or `question` event, the one line builder that
+// appends to the log writes `run-end`, and `WRITE_PATHS.runRelease` is the only write path under `.spectant/`.
+
+type StepsBody = { steps: Record<string, Array<{ kind: string; result?: string; text?: string }>> };
+
+describe("ISC-235 steps: the step lines, the routes that carry them and the stream leave the repository byte-identical", () => {
+  test("readonly: steps — probe and question lines in the log, stream open, spec page and live board read: no byte or mtime moves, .git/ and worktrees included; every request is loopback; no route writes .spectant/", async () => {
+    const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs: true });
+    const repo = planted.root;
+    const logPath = WRITE_PATHS.runRelease.writes[0];
+    const log = join(repo, logPath);
+    const at = (minutes: number): string => new Date(Date.now() - minutes * 60_000).toISOString();
+    const step = { claim: "ISC-51", task: "T2", session: `a:claude:spec-${SPEC_ID}/T2` };
+    const lines = [
+      { ts: at(3), event: "probe", ...step, result: "red" },
+      { ts: at(2), event: "question", ...step, text: "Which empty state does the list show?" },
+      { ts: at(1), event: "probe", ...step, result: "green" },
+    ];
+    appendFileSync(log, lines.map((line) => `${JSON.stringify(line)}\n`).join(""));
+
+    const spectantDir = join(repo, ".spectant");
+    const listing = (): string[] => readdirSync(spectantDir).sort();
+    const listingBefore = listing();
+    const logBefore = readFileSync(log);
+    const before = snapshot(repo);
+    expectWorktreesHashed(before);
+    expect(before.entries.has(logPath)).toBe(true);
+
+    const hosts = new Set<string>();
+    const realFetch = globalThis.fetch;
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+      hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return realFetch(input, init);
+    }) as typeof fetch);
+
+    const { url, stop } = await serve(repo, "steps");
+    const abort = new AbortController();
+    try {
+      const stream = await fetch(`${url}${EVENTS_PATH}`, { signal: abort.signal });
+      expect(stream.status).toBe(200);
+      await readEverything(url, [SPEC_ID, "004"]);
+      for (const path of ["/api/settings", ACTORS_PATH, workspaceRoutes.boardQuery(SLUG)]) {
+        expect({ path, status: (await fetch(`${url}${path}`)).status }).toEqual({ path, status: 200 });
+      }
+      // The steps were read, not skipped: both routes carry T2's three steps from the log.
+      for (const path of [specRoutes.tasks(SLUG, SPEC_ID), specRoutes.live(SLUG, SPEC_ID)]) {
+        const body = (await (await fetch(`${url}${path}`)).json()) as StepsBody;
+        expect({ path, kinds: (body.steps.T2 ?? []).map((s) => s.kind) }).toEqual({ path, kinds: ["probe", "question", "probe"] });
+      }
+      await Bun.sleep(250);
+      abort.abort();
+    } finally {
+      abort.abort();
+      await stop();
+      spy.mockRestore();
+    }
+
+    const after = snapshot(repo);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(log).equals(logBefore)).toBe(true);
+    expect(listing()).toEqual(listingBefore);
+    expect([...hosts]).toEqual(["127.0.0.1"]);
+  }, 60_000);
+
+  test("readonly steps: no server source writes a probe or question line; the release appends only run-end; .spectant/ is WRITE_PATHS.runRelease alone", () => {
+    // Static, over the source text: an event literal `event: 'probe'` or `event: "question"` anywhere in server/src.
+    const literal = /\bevent['"]?\s*:\s*['"](probe|question)['"]/;
+    const src = join(import.meta.dir, "..", "server", "src");
+    const sources = [...new Bun.Glob("**/*.ts").scanSync(src)];
+    expect(sources.length).toBeGreaterThan(10);
+    expect(sources.filter((file) => literal.test(readFileSync(join(src, file), "utf8")))).toEqual([]);
+    // The one line builder the app appends to the log with.
+    expect(runReleaseEvent(new Date(0).toISOString(), { run: "r-1", command: "/spec-implement 002", spec: SPEC_ID }, "u:viewer").event).toBe("run-end");
+    const underSpectant = Object.entries(WRITE_PATHS).flatMap(([op, p]) =>
+      [...p.writes, ...p.removes, ...(p.creates === null ? [] : [p.creates])].filter((path) => path.startsWith(".spectant/")).map((path) => `${op}:${path}`),
+    );
+    expect(underSpectant).toEqual(["runRelease:.spectant/activity.jsonl"]);
+  });
 });

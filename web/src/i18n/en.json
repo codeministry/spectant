@@ -951,6 +951,13 @@
       "one": "{{done}} of {{count}} task done or closed",
       "other": "{{done}} of {{count}} tasks done or closed"
     },
+    "steps": {
+      "lead": "Agent steps of {{task}}, latest:",
+      "count": {
+        "one": "{{count}} step",
+        "other": "{{count}} steps"
+      }
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -2721,5 +2728,38 @@
       "step": "Next step"
     },
     "marker": "Waits on you"
+  },
+  "steps": {
+    "kind": {
+      "dispatch": "Dispatched",
+      "build": "Started",
+      "probe": "Probe run",
+      "probeRed": "Probe red",
+      "probeGreen": "Probe green",
+      "question": "Question asked",
+      "patch": "Patch ready",
+      "apply": "Applied",
+      "release": "Claim released"
+    },
+    "timeline": {
+      "label": "Agent steps {{task}}",
+      "latest": "latest step",
+      "heading": "Agent steps",
+      "all": {
+        "one": "{{count}} step in the Tasks tab",
+        "other": "All {{count}} steps in the Tasks tab"
+      }
+    },
+    "delta": {
+      "first": "first step",
+      "after": "{{duration}} after the previous step"
+    },
+    "needsYou": {
+      "heading": "Needs you",
+      "question": "{{task}} asks",
+      "askedAt": "Asked at {{time}}",
+      "answerIn": "Answer in the session {{session}}",
+      "announce": "New question from {{task}}: {{text}}"
+    }
   }
 }

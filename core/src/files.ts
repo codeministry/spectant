@@ -947,6 +947,18 @@ export interface LockReading {
    * them reads exactly as before (ISC-222.2).
    */
   readonly openRuns?: readonly OpenRun[];
+  /**
+   * The step events of `.spectant/activity.jsonl` (spec 015, ISC-230): every well-formed `probe` and `question`, in
+   * file order. Their own list, never part of `runs`, so `runStates` and the item states never see them. Set only when
+   * the log holds at least one step line, so a log without them reads exactly as before (ISC-230.1).
+   */
+  readonly steps?: readonly StepEvent[];
+  /**
+   * The releases of `.spectant/activity.jsonl` that ended a held claim (spec 015, ISC-231), in file order: the last step
+   * on the timeline of the claim's task (steps.ts). Set only when the log holds at least one, so a log without them
+   * reads exactly as before.
+   */
+  readonly releases?: readonly ClaimRelease[];
 }
 
 /**
@@ -995,6 +1007,83 @@ export interface TaskRun {
   /** ISO 8601: the last run event's `ts`. */
   readonly ts: string;
 }
+
+/** What a task's probe showed when its agent ran it: `red` before the change, `green` after (spec 015, ISC-230). */
+export type ProbeResult = 'red' | 'green';
+
+/**
+ * One step event of `.spectant/activity.jsonl` (spec 015, ISC-230), additive beside the run events: `probe` when a
+ * task's agent ran the probe of its claim, `question` when it asked the person something. Each carries `task`,
+ * `session` and `ts` as written and `worktree` when the line names one; a step event holds no claim, never moves a
+ * task's run state (ISC-179) or item state (ISC-223), and never changes a lock (ISC-230.1).
+ */
+export type StepEvent =
+  | {
+      readonly event: 'probe';
+      /** Task id, `T12`. */
+      readonly task: string;
+      /** The claim whose probe ran, required on a probe. */
+      readonly claim: string;
+      readonly result: ProbeResult;
+      readonly session: string;
+      readonly worktree?: string;
+      /** ISO 8601, as written. */
+      readonly ts: string;
+    }
+  | {
+      readonly event: 'question';
+      readonly task: string;
+      /** The claim the question concerns; optional, a question may concern the task as a whole. */
+      readonly claim?: string;
+      /** The question, cut to its first line and to at most 200 characters by the reader. */
+      readonly text: string;
+      readonly session: string;
+      readonly worktree?: string;
+      readonly ts: string;
+    };
+
+/** The two step events (spec 015, ISC-230). */
+export type StepKind = StepEvent['event'];
+
+/**
+ * A release that ended its holder's claim in `.spectant/activity.jsonl` (spec 015, ISC-231): the `release` line's
+ * claim, session and ts as written, and its task and worktree when the line names them. A release of a claim nobody
+ * holds, or by a session that does not hold it, freed nothing and is not one.
+ */
+export interface ClaimRelease {
+  readonly claim: string;
+  readonly session: string;
+  readonly ts: string;
+  readonly task?: string;
+  readonly worktree?: string;
+}
+
+/**
+ * The kind of a step on a task's timeline (spec 015, ISC-231): the four run events, the two step events and the
+ * `release` of the task's claim. `build` is the step a reader names "started" and `release` the one it names "claim
+ * released"; no other word is a kind of its own.
+ */
+export type TaskStepKind = RunEvent | StepKind | 'release';
+
+/** One step on a task's timeline (spec 015, ISC-231), from one line of `.spectant/activity.jsonl`. */
+export interface TaskStep {
+  readonly kind: TaskStepKind;
+  /** ISO 8601, the line's `ts` as written. */
+  readonly ts: string;
+  /** The line's session, as written: who took the step. */
+  readonly actor: string;
+  /** On a `probe` only: what the probe showed. */
+  readonly result?: ProbeResult;
+  /** On a `question` only: the question as the reader kept it (`questionText`). */
+  readonly text?: string;
+}
+
+/**
+ * Every task's timeline of one spec (spec 015, ISC-231), keyed by task id in tasks.md order, each in time order; a task
+ * without a step has no key. A plain JSON record: the live and tasks routes send it beside `LiveFrame` and `TasksTab`,
+ * which carry no steps themselves (ISC-230.1).
+ */
+export type TaskSteps = Readonly<Record<string, readonly TaskStep[]>>;
 
 // ─── Item state (item-state.ts, spec 040) ────────────────────────────────────────────────────────────────────────
 
@@ -1295,6 +1384,23 @@ export interface LiveCard extends FrameCard {
   readonly itemState?: ItemStateInfo;
 }
 
+/**
+ * A task's open question (spec 015, ISC-232.1): its latest step is a `question` that no later step follows and the last
+ * recorded round has not ended since. `text` is the step's text as the reader kept it, `ts` its time as written.
+ */
+export interface OpenQuestion {
+  readonly text: string;
+  readonly ts: string;
+}
+
+/**
+ * A card under Needs you (spec 015, ISC-232.1): the board's card, plus `question` when its task has an open question.
+ * Without one the field is absent, so the entry is the board's card itself. The board's cards never carry it.
+ */
+export interface NeedsYouCard extends LiveCard {
+  readonly question?: OpenQuestion;
+}
+
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
 export interface LiveAgent {
   readonly session: string;
@@ -1316,8 +1422,12 @@ export interface LiveFrame extends Frame {
   readonly locks: readonly ClaimLock[];
   /** The sessions holding those locks, oldest lock first. */
   readonly agents: readonly LiveAgent[];
-  /** The cards waiting on the principal: question, then concerns, then open operator steps; board order within each. */
-  readonly needsYou: readonly LiveCard[];
+  /**
+   * The cards waiting on the principal: first the tasks with an open question (spec 015, ISC-232.1), oldest question
+   * first, each carrying it; then the cards in state question, then concerns, then open operator steps, board order
+   * within each. A card is listed once: one in state question that has an open question is listed with the first.
+   */
+  readonly needsYou: readonly NeedsYouCard[];
   /** The threshold `stale` was computed with. */
   readonly staleAfterMs: number;
   /**

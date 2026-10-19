@@ -186,6 +186,22 @@ Switch the header between two polls to step a card through a run within one refr
 any other lock fixture, and `runs` is a 400 beside the worktree, edge or midnight overlays. Reason: the state is core's
 decision over the same log the server reads, never hand-written JSON (`stub-api.test.ts`, `-t "run variants"`).
 
+## Driving a step from an e2e spec
+
+An agent's steps (spec 015) come from step lines in `.spectant/activity.jsonl`; the stub serves harbor's from core's
+steps golden (`core/fixtures/harbor.steps.golden.json`) on the live and tasks answers. To make a step arrive while a
+page is open (ISC-233, `web/e2e/agent-steps.spec.ts`, `-g live`), `POST /api/__stub/step?ws=<slug>&spec=<id>&task=<tid>&kind=<kind>`
+with `&result=red|green` on a `probe` and `&text=` on a `question`, under the test's `X-Spectant-Stub-Session`:
+
+- The step lands after the task's own, a minute after its latest step (or `STUB_NOW`), by that step's actor; body and
+  ETag of both answers change as a log line would change them. 400 for a malformed step, 404 for an unknown task.
+- Before its 204 it pushes one `update` frame to that session's open `/api/events` streams, as `bump` does. Leave the
+  stream connected (never route `/api/events` away), wait for its 200 response before the POST, and prove "no reload"
+  with a marker on `window` and no `document` request. `POST /api/__stub/reset` drops the steps and closes the streams.
+- Views re-read the live frame on `RefreshService.refreshes()`, the count, never on `lastRefresh`: under the pinned
+  clock every refresh stamps the same instant, so a view keyed on the clock would never re-read. Reason: a step must
+  reach the page through the stream within 2 s, and only the count moves on every refresh.
+
 ## Driving what waits on you from an e2e spec
 
 The block "Waits on you" (spec 020, ISC-238) reads `guidance.waits` from each workspace's dashboard. Pick how many

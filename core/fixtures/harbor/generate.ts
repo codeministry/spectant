@@ -987,9 +987,16 @@ const SESSION_002 = "a:claude:sess-2";
  * four after round 3, so it ends `applied-open` until the write-order ticks it. Between T28's build and patch sits
  * one event no reader knows (`ponder`): exactly one `activity-event-unknown` warning for the file, and the lines
  * after it are still read.
+ *
+ * The step events (spec 015, ISC-230): each of T26 and T28 runs its probe red, asks one question and runs its probe
+ * green between build and patch, so every question has a later step and harbor carries no open question. T28's
+ * question names no claim and comes from the spec session `a:claude:spec-002/T28` (spec 041, ISC-213 assigns it to
+ * 002). The steps change no run state, item state or lock (ISC-230.1); they move the `ponder` line to line 15.
  */
 const run = (ts: string, event: string, claim: string, task: string, worktree: string) =>
     ({ts, event, claim, task, session: `${SESSION_002}/${task}`, worktree});
+const probe = (ts: string, claim: string, task: string, result: "red" | "green", worktree: string) =>
+    ({ts, event: "probe", claim, task, result, session: `${SESSION_002}/${task}`, worktree});
 const ACTIVITY_002 = [
     {ts: "2026-03-06T09:12:00Z", event: "claim", claim: "ISC-53", task: "T4", session: `${SESSION_002}/T4`, worktree: "wt-1"},
     {ts: "2026-03-06T09:58:00Z", event: "release", claim: "ISC-53", task: "T4", session: `${SESSION_002}/T4`},
@@ -998,11 +1005,19 @@ const ACTIVITY_002 = [
     {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: SESSION_002},
     run("2026-03-08T15:54:00Z", "dispatch", "ISC-73", "T26", "wt-8"),
     run("2026-03-08T15:55:00Z", "build", "ISC-73", "T26", "wt-8"),
+    probe("2026-03-08T15:58:00Z", "ISC-73", "T26", "red", "wt-8"),
+    {ts: "2026-03-08T16:02:00Z", event: "question", claim: "ISC-73", task: "T26",
+        text: "Should the focus ring follow the theme accent or stay neutral?", session: `${SESSION_002}/T26`, worktree: "wt-8"},
+    probe("2026-03-08T16:06:00Z", "ISC-73", "T26", "green", "wt-8"),
     run("2026-03-08T16:10:00Z", "patch", "ISC-73", "T26", "wt-8"),
     run("2026-03-08T16:12:00Z", "apply", "ISC-73", "T26", "wt-8"),
     run("2026-03-08T16:32:00Z", "dispatch", "ISC-75", "T28", "wt-9"),
     run("2026-03-08T16:33:00Z", "build", "ISC-75", "T28", "wt-9"),
     run("2026-03-08T16:35:00Z", "ponder", "ISC-75", "T28", "wt-9"),
+    probe("2026-03-08T16:36:00Z", "ISC-75", "T28", "red", "wt-9"),
+    {ts: "2026-03-08T16:37:00Z", event: "question", task: "T28",
+        text: "Does the clear button of the search box stay in the tab order?", session: "a:claude:spec-002/T28"},
+    probe("2026-03-08T16:39:00Z", "ISC-75", "T28", "green", "wt-9"),
     run("2026-03-08T16:40:00Z", "patch", "ISC-75", "T28", "wt-9"),
     run("2026-03-08T16:42:00Z", "apply", "ISC-75", "T28", "wt-9"),
 ].map((line) => JSON.stringify(line)).join("\n") + "\n";

@@ -2,12 +2,14 @@ import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import type { CardState, FrameCard, FrameKind } from '../../../../../../../core/src/files';
+import type { CardState, FrameCard, FrameKind, TaskStep } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
+import { formatClock, formatClockSeconds } from '../../../../shared/time';
 import { CARD_STATES } from '../../../../shared/ui/glyph/states';
 import { BoardCard } from './card';
+import { CardContext } from './card-context';
 import { cardHistory, type HistoryFrame } from './card-history';
 
 const base: FrameCard = { task: 'T14', claim: 'ISC-61', lane: 'web', text: 'tag-table: no overflow at 390 px', parallel: true, seam: false, state: 'fail', builder: 'Engineer', tries: 2, note: 'probe exit 1' };
@@ -62,6 +64,7 @@ describe('BoardCard', () => {
       ],
       providers: [
         provideRouter([]),
+        CardContext,
         { provide: ShellState, useValue: { ws: signal('harbor'), specId: signal('002'), tier } },
         {
           provide: ApiClient,
@@ -157,5 +160,100 @@ describe('BoardCard', () => {
     (article.querySelector('.id') as HTMLButtonElement).click();
     await fixture.whenStable();
     expect(host.querySelector('ui-dialog')?.hasAttribute('data-fullscreen')).toBe(true);
+  });
+
+  describe('spec 015: agent steps (ISC-232)', () => {
+    const at = (minute: number): string => `2026-10-19T12:${String(minute).padStart(2, '0')}:05Z`;
+    const step = (kind: TaskStep['kind'], minute: number, extra: Partial<TaskStep> = {}): TaskStep => ({ kind, ts: at(minute), actor: 'a:claude:builder/T14', ...extra });
+    const THREE: readonly TaskStep[] = [step('dispatch', 30), step('build', 31), step('probe', 32, { result: 'red' })];
+    const TEN: readonly TaskStep[] = Array.from({ length: 10 }, (_, i) => step(i === 0 ? 'dispatch' : 'build', 10 + i));
+
+    function withSteps(steps: readonly TaskStep[], live = true): CardContext {
+      const context = TestBed.inject(CardContext);
+      context.steps.set({ T14: steps, T99: [step('release', 50)] });
+      context.live.set(live);
+      return context;
+    }
+
+    it('the card names its latest step as a text line under the text, with HH:MM, no chip', async () => {
+      withSteps(THREE);
+      const { article } = await render(base);
+      const line = article.querySelector('[data-card-latest-step]') as HTMLElement;
+      expect(line).not.toBeNull();
+      expect(line.getAttribute('data-step-kind')).toBe('probe');
+      expect(line.getAttribute('data-step-result')).toBe('red');
+      expect(line.querySelector('[data-step-word]')?.textContent.trim()).toBe('Probe red');
+      expect(line.querySelector('[data-step-time]')?.textContent.trim()).toBe(formatClock(at(32), 'en'));
+      expect(line.querySelector('ui-chip, ui-state-chip, button')).toBeNull();
+      expect(line.previousElementSibling?.classList.contains('text')).toBe(true);
+    });
+
+    it('the line shows in the compact density and never in the step density', async () => {
+      withSteps(THREE);
+      const compact = await render(base, 'compact');
+      expect(compact.article.querySelector('[data-card-latest-step]')).not.toBeNull();
+      const fixture = TestBed.createComponent(BoardCard);
+      fixture.componentRef.setInput('card', base);
+      fixture.componentRef.setInput('density', 'step');
+      await fixture.whenStable();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-card-latest-step]')).toBeNull();
+    });
+
+    it('a task without steps and a past frame on the scrubber show no step line', async () => {
+      withSteps(THREE);
+      const none = await render({ ...base, task: 'T15' });
+      expect(none.article.querySelector('[data-card-latest-step]')).toBeNull();
+      const context = withSteps(THREE, false);
+      const past = await render(base);
+      expect(past.article.querySelector('[data-card-latest-step]')).toBeNull();
+      context.live.set(true);
+      await past.fixture.whenStable();
+      expect(past.article.querySelector('[data-card-latest-step]')).not.toBeNull();
+    });
+
+    it('a new step swaps the line in place (a fresh node, cross-faded), the claim release reads its own word', async () => {
+      const context = withSteps(THREE);
+      const { fixture, article } = await render(base);
+      const before = article.querySelector('[data-card-latest-step]');
+      context.steps.set({ T14: [...THREE, step('release', 40)] });
+      await fixture.whenStable();
+      const after = article.querySelector('[data-card-latest-step]') as HTMLElement;
+      expect(after).not.toBe(before);
+      expect(after.getAttribute('data-step-kind')).toBe('release');
+      const word = after.querySelector('[data-step-word]')?.textContent.trim();
+      expect(word).toBe('Claim released');
+      // ISC-226's run release, the app's write of spec 040, reads a different word.
+      expect(word).not.toBe('Run released');
+    });
+
+    it('the detail shows the last 8 steps in app-step-timeline and links the full list in the Tasks tab', async () => {
+      withSteps(TEN);
+      const { fixture, article, host } = await render(base);
+      (article.querySelector('.id') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      const section = host.querySelector('[data-card-detail] [data-detail-steps]') as HTMLElement;
+      expect(section).not.toBeNull();
+      const rows = [...section.querySelectorAll('app-step-timeline [data-step-timeline] > li')];
+      expect(rows.length).toBe(8);
+      expect(rows[0]?.querySelector('[data-step-time]')?.textContent.trim()).toBe(formatClockSeconds(at(12), 'en'));
+      expect(rows[7]?.hasAttribute('data-step-latest')).toBe(true);
+      const more = section.querySelector('a[data-detail-steps-more]') as HTMLAnchorElement;
+      expect(more.getAttribute('href')).toBe('/w/harbor/s/002/tasks?steps=T14#task-T14');
+      expect(more.textContent.trim()).toBe('All 10 steps in the Tasks tab');
+    });
+
+    it('the detail lists every step of a short timeline without a link, and drops the section without steps', async () => {
+      withSteps(THREE);
+      const short = await render(base);
+      (short.article.querySelector('.id') as HTMLButtonElement).click();
+      await short.fixture.whenStable();
+      expect(short.host.querySelectorAll('[data-detail-steps] [data-step-timeline] > li').length).toBe(3);
+      expect(short.host.querySelector('[data-detail-steps-more]')).toBeNull();
+      const none = await render({ ...base, task: 'T15' });
+      (none.article.querySelector('.id') as HTMLButtonElement).click();
+      await none.fixture.whenStable();
+      expect(none.host.querySelector('[data-card-detail]')).not.toBeNull();
+      expect(none.host.querySelector('[data-detail-steps]')).toBeNull();
+    });
   });
 });

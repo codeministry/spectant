@@ -12,7 +12,7 @@
 // Every git command the server runs here sees an empty global config and no system config (set on `process.env` for
 // this file and restored after it), as in `tests/readonly.test.ts`.
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, cpSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, cpSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
@@ -36,6 +36,8 @@ const LIVE_MS = 2_000;
 const ARM_MS = 250;
 /** The spec whose tasks.md the plain copy's cases tick: harbor's 002 has open boxes. */
 const TICK_SPEC = { folder: "002-web-console", id: "002" } as const;
+/** The task of harbor's 002 the step case appends a probe line for: T28 holds ISC-75 and already has run lines. */
+const STEP_TASK = { task: "T28", claim: "ISC-75", session: "a:claude:live-step/T28" } as const;
 
 let root: string;
 let repo: string;
@@ -288,6 +290,39 @@ describe("ISC-28 live: a change to a watched file reaches an open page within 2 
         const res = await fetch(`${url}${view.path}`);
         expect({ path: view.path, status: res.status, etag: res.headers.get("etag") }).toEqual({ path: view.path, status: 200, etag: view.etag });
         expect(await res.json()).toEqual(view.body);
+      }
+    } finally {
+      await stream.close();
+    }
+  });
+
+  test("live step: a probe line appended to .spectant/activity.jsonl arrives as an update, and the spec's live and tasks routes then carry it", async () => {
+    // spec 015, ISC-233: the stream reports the workspace whose activity log changed. The log is repository-wide, so
+    // the frame names no spec (`specIds` empty); the open page refreshes on any update of its workspace and re-reads
+    // its live and tasks routes, which must then carry the new step.
+    const livePath = specRoutes.live(slug, TICK_SPEC.id);
+    const tasksPath = specRoutes.tasks(slug, TICK_SPEC.id);
+    type Steps = Record<string, Array<{ kind: string; ts: string; actor: string; result?: string }>>;
+    const stepsAt = async (path: string): Promise<Steps> => {
+      const res = await fetch(`${url}${path}`);
+      expect({ path, status: res.status }).toEqual({ path, status: 200 });
+      return ((await res.json()) as { steps: Steps }).steps;
+    };
+    const ts = new Date().toISOString();
+    const line = { ts, event: "probe", claim: STEP_TASK.claim, task: STEP_TASK.task, session: STEP_TASK.session, result: "red" };
+    const isOurs = (steps: Steps): boolean => (steps[STEP_TASK.task] ?? []).some((s) => s.ts === ts && s.actor === STEP_TASK.session);
+    expect(isOurs(await stepsAt(livePath))).toBe(false);
+
+    const { stream, update, latency } = await changeAndWait(
+      (u) => u.ws === slug && paths(u).includes(dashboardPath(slug)),
+      () => appendFileSync(join(repo, ".spectant", "activity.jsonl"), `${JSON.stringify(line)}\n`),
+    );
+    try {
+      expect(update).not.toBeNull();
+      expect(latency).toBeLessThanOrEqual(LIVE_MS);
+      for (const path of [livePath, tasksPath]) {
+        const last = (await stepsAt(path))[STEP_TASK.task]?.at(-1);
+        expect({ path, last }).toEqual({ path, last: { kind: "probe", ts, actor: STEP_TASK.session, result: "red" } });
       }
     } finally {
       await stream.close();

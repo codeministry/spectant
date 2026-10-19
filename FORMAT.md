@@ -1751,6 +1751,50 @@ which names no claim. A line `{"event":"dispatch","task":"T3","session":"a:claud
 041, one with `"session":"a:claude:sess-9/T3","worktree":".worktrees/042-beta"` for spec 042, and one with
 `"worktree":"wt-3"` and a session of the same form for none.
 
+**Step events** (spec 015, ISC-230, `locks.ts` `steps`). While a task runs, its agent reports what it is doing in two
+more events: `{ts, event: "probe", task, claim, result: "red" | "green", session, worktree?}` each time it runs the
+probe of its claim, and `{ts, event: "question", task, text, claim?, session, worktree?}` when it asks the person
+something. `ts`, `task` and `session` (in the actor grammar above, legacy-checked like any other session) are required
+on both; a probe also requires `claim` and a `result` of `red` or `green`, a question requires `text`, and its `claim`
+is optional. A line that lacks a required field, or a probe with any other result, is one `locks-activity-malformed`
+warning at its line and is skipped. The reader keeps a question's text up to its first line break and at most 200
+characters. The reading carries the steps as `steps`, every well-formed one in file order, as a list of their own: a
+step is not a run event, so it holds no claim and moves no task's run state, no item state and no lock (ISC-230.1).
+`steps` is set only when the log holds at least one `probe` or `question` line, so a log without them reads byte for
+byte as before.
+
+From `core/fixtures/harbor/.spectant/activity.jsonl`, the steps of T28: its probe red, a question without `claim`, its
+probe green:
+
+```json
+{"ts":"2026-03-08T16:36:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"red","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:37:00Z","event":"question","task":"T28","text":"Does the clear button of the search box stay in the tab order?","session":"a:claude:spec-002/T28"}
+{"ts":"2026-03-08T16:39:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"green","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+```
+
+**Step timeline** (spec 015, ISC-231, `steps.ts` `taskSteps`). Each task of a spec, a tasks.md line, has a timeline:
+its run events `dispatch`, `build`, `patch` and `apply`, its step events `probe` and `question`, and the `release` that
+ended the hold on its claim, each as `{kind, ts, actor}` with the line's event as `kind`, its `ts` and its `session` as
+`actor`, plus `result` on a probe and `text` on a question. `build` is the step a reader calls started and `release`
+the one it calls claim released; neither has a kind of its own. A line counts for a task the way a run line counts for
+the live frame: when it names a claim, only when that claim is the task's own; without one, only when its spec session
+or spec worktree names the spec (ISC-213). A release counts for every task of its claim, or only for the task it names.
+Only a release that freed a held claim is a step: the reading keeps those as `releases`, set only when the log holds
+at least one. Each timeline is in time order; the model keys the tasks with at least one step in tasks.md order. For
+harbor's T28 above the timeline reads dispatch, build, probe red, the question, probe green, patch, apply.
+
+**Needs you on an open question** (spec 015, ISC-232.1, `live.ts`). A task's question is open when the latest step on
+its timeline is that `question`, no later step follows it, and it was asked after the last round in `rounds.jsonl`
+ended (the last result frame's `ts`; without a round any question qualifies). While it is open, the live frame lists the
+task under Needs you, before the round's own entries, carrying `question: {text, ts}` with the step's text and time;
+several open questions stand oldest first. A task already under Needs you through its round state is listed once,
+carrying the question. A landed or absent card is never listed for a question. The card itself does not change: its
+`state` and `itemState` (spec 040) stay what the round and the locks made them, and the board's cards never carry
+`question`. A Needs you entry without an open question has no `question` field. A later step of the task (a probe, a
+patch, the release of its claim) or the end of a round closes the question; from then on the round's record in
+`rounds.jsonl` speaks for the task as before. Harbor's two questions above are each followed by a probe, so neither is
+open and harbor's Needs you list reads as before.
+
 **Run lifecycle events** (spec 040, ISC-222, `locks.ts`). Each command that works on a spec or an idea reports its
 start and its end: `{ts, event: "run-start" | "run-end", run, command, session, spec | idea, outcome?}`. `run` is an
 id written once per invocation, `command` the command as typed (`/spec-tasks 037`), `session` its actor in the grammar
@@ -1779,24 +1823,31 @@ open runs, one on a spec and one on an idea:
 {"ts":"2026-03-08T14:52:00Z","event":"run-start","run":"r-0308-1452","command":"/spec-tasks 003","session":"a:claude:sess-32","spec":"003-alert-rules"}
 ```
 
-An event that is none of `claim`, `release`, the four run events and the two run lifecycle events is one
+An event that is none of `claim`, `release`, the four run events, the two run lifecycle events and the two step events is one
 `activity-event-unknown` warning per file, at the first such line, with the event quoted in its text and the line's
 claim when it names one; that line and every later line with an unknown event are skipped, and the lines after them
 are read as usual. The warning's text still lists only the six older events, so it reads as it did before spec 040. A line with no event at all
 is a malformed line. In harbor 002, T26 ran all four steps and `tasks.md` checks it, so it reads `applied`; T28 ran
 them too, with one unknown `ponder` line between `build` and `patch`, and is not checked, so it reads `applied-open`.
-That `ponder` line is harbor's one lock diagnostic.
+That `ponder` line is harbor's one lock diagnostic. The probe and question lines of both tasks are step events (spec
+015) and change none of this.
 
 From `core/fixtures/harbor/.spectant/activity.jsonl`:
 
 ```json
 {"ts":"2026-03-08T15:54:00Z","event":"dispatch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T15:55:00Z","event":"build","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T15:58:00Z","event":"probe","claim":"ISC-73","task":"T26","result":"red","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:02:00Z","event":"question","claim":"ISC-73","task":"T26","text":"Should the focus ring follow the theme accent or stay neutral?","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:06:00Z","event":"probe","claim":"ISC-73","task":"T26","result":"green","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T16:10:00Z","event":"patch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T16:12:00Z","event":"apply","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
 {"ts":"2026-03-08T16:32:00Z","event":"dispatch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:33:00Z","event":"build","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:35:00Z","event":"ponder","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:36:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"red","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:37:00Z","event":"question","task":"T28","text":"Does the clear button of the search box stay in the tab order?","session":"a:claude:spec-002/T28"}
+{"ts":"2026-03-08T16:39:00Z","event":"probe","claim":"ISC-75","task":"T28","result":"green","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:40:00Z","event":"patch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 {"ts":"2026-03-08T16:42:00Z","event":"apply","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
 ```
@@ -1831,8 +1882,8 @@ names its task itself; an agent session's task is the card its claim puts in fli
 (`{raw, kind, id, task?, legacy}`) or `null`: `null` on every card that is not `running`, and on a running card whose
 lock a person (`u:`) or a legacy session holds, since neither is an agent; a sub-agent on another task of the claim
 leaves `subagent` `null`. In harbor 002, T27 is worked by `a:claude:sess-2` with no sub-agent. The frame names the reading's source (`frontier`,
-`activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
-operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
+`activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (open questions of the
+step timeline, above, then question, concerns, open operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
 
 Last, the run events (spec 027, ISC-179.1): every card but an `absent` one whose task a run event of this spec names
 carries `run`, the task's `TaskRun` (`{task, state, session, worktree, ts}`, above); a card without one has no `run`

@@ -951,6 +951,13 @@
       "one": "{{done}} von {{count}} Task fertig oder geschlossen",
       "other": "{{done}} von {{count}} Tasks fertig oder geschlossen"
     },
+    "steps": {
+      "lead": "Agent-Schritte von {{task}}, zuletzt:",
+      "count": {
+        "one": "{{count}} Schritt",
+        "other": "{{count}} Schritte"
+      }
+    },
     "columns": {
       "task": "Task",
       "claim": "Claim",
@@ -2721,5 +2728,38 @@
       "step": "Nächster Schritt"
     },
     "marker": "Liegt bei Ihnen"
+  },
+  "steps": {
+    "kind": {
+      "dispatch": "Dispatcht",
+      "build": "Gestartet",
+      "probe": "Probe gelaufen",
+      "probeRed": "Probe rot",
+      "probeGreen": "Probe grün",
+      "question": "Frage gestellt",
+      "patch": "Patch fertig",
+      "apply": "Angewendet",
+      "release": "Claim freigegeben"
+    },
+    "timeline": {
+      "label": "Agent-Schritte {{task}}",
+      "latest": "jüngster Schritt",
+      "heading": "Agent-Schritte",
+      "all": {
+        "one": "{{count}} Schritt im Tasks-Tab",
+        "other": "Alle {{count}} Schritte im Tasks-Tab"
+      }
+    },
+    "delta": {
+      "first": "erster Schritt",
+      "after": "{{duration}} nach dem vorigen Schritt"
+    },
+    "needsYou": {
+      "heading": "Wartet auf Sie",
+      "question": "{{task}} fragt",
+      "askedAt": "Gefragt um {{time}}",
+      "answerIn": "Antworten Sie in der Session {{session}}",
+      "announce": "Neue Frage von {{task}}: {{text}}"
+    }
   }
 }

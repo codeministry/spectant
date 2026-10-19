@@ -28,7 +28,8 @@ import { type CheckEvent, type CheckState, checkBlock, IDLE, landedDelta, nextCh
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
-import type { FrameCard, ItemRun, ItemState, ItemStateInfo, RunState, TaskRun } from '../../../../../../../core/src/files';
+import type { FrameCard, ItemRun, ItemState, ItemStateInfo, RunState, TaskRun, TaskStep, TaskSteps } from '../../../../../../../core/src/files';
+import { TaskStepsToggle } from './task-steps';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { elapsedText } from '../../../../shared/ui/item-state/duration';
 import { UiItemState } from '../../../../shared/ui/item-state/item-state';
@@ -59,7 +60,7 @@ const OWN_WORDS: ReadonlySet<string> = new Set(['question', 'concerns', 'fail'])
 /** The statuses whose round card carries a reason worth a sub-line (a hold, a fail, a question, concerns). */
 const REASONED = new Set(['held', 'fail', 'concerns', 'question']);
 
-/** `T1, T2, …, T26, T30` → `T1–T26, T30`: consecutive numbers fold into a range, file order kept. */
+/** `T1, T2, …, T26, T30` →`T1–T26, T30`: consecutive numbers fold into a range, file order kept. */
 export function taskRanges(ids: readonly string[]): string {
   const parts: string[] = [];
   let start: string | null = null;
@@ -120,6 +121,10 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
  * without one keeps its status chip. While the spec head's state is `running` from a run line, every box is locked
  * (lock icon, `aria-disabled`, "locked · <session>" as its description, a click writes nothing) and a notice at the
  * top names the run. Nothing here derives a state; it reads `itemState` and the head's `state`.
+ *
+ * Spec 015 (T23, ISC-232): a row whose task has steps gets a toggle naming its latest step, that step's clock and the
+ * count; it opens `app-step-timeline` under the row. Which rows are open is the query `?steps=T4,T14` and nothing
+ * else, so reload and back land the same and a live update never opens one.
  */
 @Component({
   selector: 'app-tasks-tab',
@@ -127,6 +132,7 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
     RouterLink,
     RunChip,
     TaskActors,
+    TaskStepsToggle,
     TranslocoPipe,
     UiChip,
     UiEmptyState,
@@ -309,6 +315,37 @@ export class TasksTab {
   protected readonly specLink = computed(() => ['/w', this.state.ws() ?? '', 's', this.state.specId() ?? '']);
   protected readonly type = computed(() => this.data.currentRow()?.type ?? null);
 
+  /**
+   * Every task's steps (spec 015, ISC-232): the live frame's, read again every refresh, else the tasks route's; an
+   * older payload carries none.
+   */
+  private readonly steps = computed<TaskSteps>(() => {
+    const live = this.live.hasValue() ? this.live.value() : undefined;
+    const fromLive = live?.kind === 'ok' ? (live.body as Partial<{ steps: TaskSteps }>).steps : undefined;
+    return fromLive ?? this.body()?.steps ?? {};
+  });
+  /** The rows `?steps=T4,T14` opens, each on its own; nothing else opens a row. */
+  protected readonly openSteps = computed<ReadonlySet<string>>(
+    () => new Set((this.query().get('steps') ?? '').split(',').filter((id) => id !== '')),
+  );
+
+  /** A task's steps; empty for a task without any, which then gets no toggle and no "0 steps". */
+  protected stepsOf(id: string): readonly TaskStep[] {
+    return this.steps()[id] ?? [];
+  }
+
+  /** Opens or closes one row's timeline through the query; the other open rows stay, the fragment too. */
+  protected toggleSteps(id: string): void {
+    const open = [...this.openSteps()];
+    const next = open.includes(id) ? open.filter((other) => other !== id) : [...open, id];
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { steps: next.length === 0 ? null : next.join(',') },
+      queryParamsHandling: 'merge',
+      preserveFragment: true,
+    });
+  }
+
   /** The task a `#task-T<n>` fragment names. */
   protected readonly target = computed(() => {
     const fragment = this.fragment();
@@ -318,10 +355,12 @@ export class TasksTab {
   private scrolledTo: string | null = null;
 
   constructor() {
-    // The live frame again on every refresh (ETag: a 304 costs no body), so a run chip moves within one tick (ISC-62).
+    // The live frame again on every refresh (ETag: a 304 costs no body), so a run chip moves within one tick (ISC-62)
+    // and a streamed step shows within 2 s (spec 015, ISC-233). The refresh count, not its clock: two refreshes in
+    // one millisecond, or under a pinned clock, leave `lastRefresh` unchanged and would skip the read.
     let firstRefresh = true;
     effect(() => {
-      this.refresher.lastRefresh();
+      this.refresher.refreshes();
       if (firstRefresh) firstRefresh = false;
       else untracked(() => this.live.reload());
     });

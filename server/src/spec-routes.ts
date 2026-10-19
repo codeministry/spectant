@@ -14,10 +14,10 @@
  * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72), the head's `state` the spec's item (spec 040), `guidance` that spec's slice of the workspace guidance from the same items (spec 020); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
  * | timeline | `buildTimeline({files, commits, worktree})`, commits from `git.ts` `commitsFor`, the worktree from `timelineWorktreeOf`; ETag over body and `HEAD` |
  * | claims | `buildClaimViews({files, locks, specEdges, now})`, the spec edges resolved over the workspace reading (spec 025); each claim's `itemState` at the clock (spec 040) |
- * | tasks | `parseTaskLines` or `null` without tasks.md, each row's `itemState` its task's item (`itemStates`, spec 040); header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
+ * | tasks | `parseTaskLines` or `null` without tasks.md, each row's `itemState` its task's item (`itemStates`, spec 040), `steps` core's `taskSteps` beside it (spec 015); header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
  * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside `artifacts/`, `.evidence/` and `.design/`, 404 no file |
  * | frames | `buildFrames(files)` |
- * | live | `buildLiveFrame({files + constitution, locks, now, specEdges})`, edges as for claims |
+ * | live | `buildLiveFrame({files + constitution, locks, now, specEdges})`, edges as for claims; `steps` core's `taskSteps(locks, files)` beside it (spec 015, ISC-232) |
  *
  * The evidence listing (`…/evidence`) and the Docs tabs (`…/docs/:name`) went with spec 017 T53: the library reads and
  * renders every document (`api.ts`), and a request to either is the unmatched API path's 404.
@@ -47,6 +47,7 @@ import { buildLiveFrame } from "../../core/src/live.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import type { SpecRef } from "../../core/src/resolve.ts";
 import { buildSpecPage } from "../../core/src/spec.ts";
+import { taskSteps } from "../../core/src/steps.ts";
 import { parseTaskLines } from "../../core/src/tasks.ts";
 import { codeReviewOf } from "../../core/src/stage.ts";
 import { buildTimeline, type TimelineNote, type TimelineSession } from "../../core/src/timeline.ts";
@@ -67,6 +68,7 @@ import {
   SPEC_API_ROOT,
   SPEC_HASH_HEADER,
   type SpecRouteMatch,
+  type SpecRouteResponses,
   TASKS_HASH_HEADER,
   type Unavailable,
   allowFor,
@@ -278,9 +280,11 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         const bytes = readBytesIfExists(specFilePath(dir, "tasks"));
         if (bytes === null) return json(req, 200, null);
         const text = await constitution();
-        const { specEdges, items } = await workspaceOf(root, ref, clock());
+        const now = clock();
+        const { specEdges, items } = await workspaceOf(root, ref, now);
+        const tasks = bytes.toString("utf8");
         const tab = parseTaskLines({
-          tasks: bytes.toString("utf8"),
+          tasks,
           ...(text === null ? {} : { constitution: text }),
           ...(files.texts.rounds === undefined ? {} : { rounds: files.texts.rounds }),
           // The spec edges as the claims and live routes read them: a held task carries `waits on NNN` (ISC-162.2).
@@ -288,7 +292,9 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
           // Each row's `itemState`, the workspace model's item of its task (spec 040, ISC-224).
           itemStates: items,
         });
-        return json(req, 200, tab, { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
+        // Each task's step timeline beside the tab (spec 015, ISC-232), over the very text the tab and the hash read.
+        const steps = taskSteps(await locksOf(root, now), { ...files, texts: { ...files.texts, tasks } });
+        return json(req, 200, { ...tab, steps } satisfies SpecRouteResponses["tasks"], { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
       }
       case "evidenceFile":
         return evidenceFileResponse(req, dir, url.search);
@@ -296,7 +302,10 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, buildFrames(files));
       case "live": {
         const now = clock();
-        return json(req, 200, buildLiveFrame({ files: withConstitution(files, await constitution()), locks: await locksOf(root, now), now, specEdges: await specEdgesOf(root, ref) }));
+        const locks = await locksOf(root, now);
+        const frame = buildLiveFrame({ files: withConstitution(files, await constitution()), locks, now, specEdges: await specEdgesOf(root, ref) });
+        // Each task's step timeline beside the frame (spec 015, ISC-232): core's model over the same reading.
+        return json(req, 200, { ...frame, steps: taskSteps(locks, files) } satisfies SpecRouteResponses["live"]);
       }
       case "gateReviewed": {
         const parsed = parseWriteBody("gateReviewed", await req.text());

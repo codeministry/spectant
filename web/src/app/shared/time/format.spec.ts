@@ -1,4 +1,55 @@
-import { dateTimeFormat, formatClock, formatDate, formatDay, formatDayMonth, formatInstant, formatMonth, localDayKey, type TimeForm } from './format';
+import {
+  dateTimeFormat,
+  formatClock,
+  formatClockSeconds,
+  formatDate,
+  formatDay,
+  formatDayMonth,
+  formatInstant,
+  formatMonth,
+  formatStepDelta,
+  formatStepDeltaLong,
+  localDayKey,
+  type TimeForm,
+} from './format';
+
+describe('formatClockSeconds / formatStepDelta / formatStepDeltaLong (spec 015)', () => {
+  const ISO = '2026-10-19T12:03:07.000Z';
+
+  it('writes the clock with seconds on a 24-hour clock in both languages', () => {
+    for (const lang of ['en', 'de'] as const) {
+      expect(formatClockSeconds(ISO, lang)).toMatch(/^\d{2}:03:07$/u);
+      expect(formatClockSeconds(ISO, lang)).toBe(dateTimeFormat(lang, 'clockSeconds').format(Date.parse(ISO)));
+    }
+    expect(formatClockSeconds('not a date', 'en')).toBe('not a date');
+  });
+
+  it('writes the time since the previous step at the precision its size needs', () => {
+    const cases: ReadonlyArray<readonly [number, string]> = [
+      [0, '+0 s'],
+      [45_000, '+45 s'],
+      [59_999, '+59 s'],
+      [60_000, '+1 min'],
+      [125_000, '+2 min 5 s'],
+      [599_000, '+9 min 59 s'],
+      [600_000, '+10 min'],
+      [720_000, '+12 min'],
+      [3_599_000, '+59 min'],
+      [3_600_000, '+1 h'],
+      [4_320_000, '+1 h 12 min'],
+      [-5_000, '+0 s'],
+    ];
+    for (const [ms, text] of cases) expect(formatStepDelta(ms)).toBe(text);
+  });
+
+  it('writes the long form of the same parts in the app language', () => {
+    expect(formatStepDeltaLong(125_000, 'en')).toBe('2 minutes 5 seconds');
+    expect(formatStepDeltaLong(1_000, 'en')).toBe('1 second');
+    expect(formatStepDeltaLong(4_320_000, 'en')).toBe('1 hour 12 minutes');
+    expect(formatStepDeltaLong(45_000, 'de')).toBe('45 Sekunden');
+    expect(formatStepDeltaLong(60_000, 'de')).toBe('1 Minute');
+  });
+});
 
 /** Intl may put a narrow no-break space before the day period; compare on plain spaces. */
 const plain = (text: string): string => text.replace(/[\u202f\u00a0]/g, ' ');

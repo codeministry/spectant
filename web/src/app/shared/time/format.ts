@@ -7,7 +7,7 @@ import type { Lang } from '../../../i18n/catalogues';
  */
 
 /** The forms a value can take; `day` is a calendar day, read as a UTC day so no zone can shift it. */
-export type TimeForm = 'instant' | 'date' | 'clock' | 'day';
+export type TimeForm = 'instant' | 'date' | 'clock' | 'clockSeconds' | 'day';
 
 /** App language to Intl locale; `en-US` gives `10/01/2026, 2:05 PM`. */
 const LOCALE: Readonly<Record<Lang, string>> = { de: 'de-DE', en: 'en-US' };
@@ -21,6 +21,8 @@ const OPTIONS: Readonly<Record<TimeForm, (lang: Lang) => Intl.DateTimeFormatOpti
   instant: (lang) => ({ ...DATE_PART, hour: HOUR[lang], minute: '2-digit' }),
   date: () => DATE_PART,
   clock: () => ({ timeStyle: 'short' }),
+  // A step timeline (spec 015): red to green often lies within a minute, so the seconds show, on a 24-hour clock.
+  clockSeconds: () => ({ hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }),
   day: () => ({ ...DATE_PART, timeZone: 'UTC' }),
 };
 
@@ -56,6 +58,57 @@ export function formatDate(iso: string, lang: Lang): string {
 /** The clock time of an instant alone, only under a heading that shows the date: `14:05` / `2:05 PM`. */
 export function formatClock(iso: string, lang: Lang): string {
   return formatIso(iso, lang, 'clock');
+}
+
+/** The clock time of an instant with its seconds, 24-hour in both languages: `14:32:05` (spec 015, a step timeline). */
+export function formatClockSeconds(iso: string, lang: Lang): string {
+  return formatIso(iso, lang, 'clockSeconds');
+}
+
+type DeltaUnit = 'hour' | 'minute' | 'second';
+
+/**
+ * The parts of a span at the precision its size needs (spec 015): seconds under 1 min, minutes and seconds under
+ * 10 min, whole minutes under 1 h, hours and minutes above; a zero part after the first drops, a negative span is 0 s.
+ */
+function deltaParts(ms: number): ReadonlyArray<readonly [number, DeltaUnit]> {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const parts: Array<readonly [number, DeltaUnit]> =
+    seconds < 60
+      ? [[seconds, 'second']]
+      : minutes < 10
+        ? [[minutes, 'minute'], [seconds % 60, 'second']]
+        : minutes < 60
+          ? [[minutes, 'minute']]
+          : [[Math.floor(minutes / 60), 'hour'], [minutes % 60, 'minute']];
+  return parts.filter(([value], i) => i === 0 || value > 0);
+}
+
+const DELTA_SHORT: Readonly<Record<DeltaUnit, string>> = { hour: 'h', minute: 'min', second: 's' };
+
+/** The time since the previous step, the same in both languages: `+45 s`, `+2 min 5 s`, `+12 min`, `+1 h 12 min`. */
+export function formatStepDelta(ms: number): string {
+  return `+${deltaParts(ms)
+    .map(([value, unit]) => `${value} ${DELTA_SHORT[unit]}`)
+    .join(' ')}`;
+}
+
+const unitCache = new Map<string, Intl.NumberFormat>();
+
+/** The same span spelled out for a screen reader in the app language: `2 minutes 5 seconds` / `2 Minuten 5 Sekunden`. */
+export function formatStepDeltaLong(ms: number, lang: Lang): string {
+  return deltaParts(ms)
+    .map(([value, unit]) => {
+      const key = `${lang}:${unit}`;
+      let format = unitCache.get(key);
+      if (!format) {
+        format = new Intl.NumberFormat(LOCALE[lang], { style: 'unit', unit, unitDisplay: 'long' });
+        unitCache.set(key, format);
+      }
+      return format.format(value);
+    })
+    .join(' ');
 }
 
 /** A calendar day (`YYYY-MM-DD`, a milestone target) as that same day in every zone: `15.03.2026` / `03/15/2026`. */

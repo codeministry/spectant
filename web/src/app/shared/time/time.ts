@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LanguageService } from '../../core/language.service';
-import { formatClock, formatDate, formatDay, formatInstant } from './format';
+import { formatClock, formatClockSeconds, formatDate, formatDay, formatInstant } from './format';
 
-/** What `<ui-time>` shows: date and time, the date, the clock alone (under a day heading), or a calendar day. */
-export type UiTimeForm = 'instant' | 'date' | 'clock' | 'day';
+/**
+ * What `<ui-time>` shows: date and time, the date, the clock alone (under a day heading), the clock with seconds (a step
+ * timeline), or a calendar day.
+ */
+export type UiTimeForm = 'instant' | 'date' | 'clock' | 'clockSeconds' | 'day';
 
 /**
  * The one place that writes a displayed time (ISC-114.4): a `<time>` whose `datetime` is exactly the ISO value it was
@@ -33,6 +36,8 @@ export class UiTime {
         return formatDate(value, lang);
       case 'clock':
         return formatClock(value, lang);
+      case 'clockSeconds':
+        return formatClockSeconds(value, lang);
       case 'day':
         return formatDay(value, lang);
       default:

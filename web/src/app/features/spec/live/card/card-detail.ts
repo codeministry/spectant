@@ -12,9 +12,13 @@ import { UiDialog } from '../../../../shared/ui/overlay/dialog';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { specWaitOf } from '../board/board-model';
 import { agentOfCard } from '../live-frame';
+import { StepTimeline } from '../steps/step-timeline';
 import { AgentChip } from '../this-frame/agent-chip';
 import type { CardHistoryEntry } from './card-history';
 import { CardContext } from './card-context';
+
+/** How many of a task's latest steps the detail lists; the Tasks tab holds the full timeline (spec 015). */
+const DETAIL_STEPS = 8;
 
 /**
  * The card detail (design.md § Live, card detail; ISC-88; spec 024: the prototype `.cdetail`): a `ui-dialog`, full
@@ -27,7 +31,7 @@ import { CardContext } from './card-context';
  */
 @Component({
   selector: 'app-card-detail',
-  imports: [AgentChip, RouterLink, TranslocoPipe, UiDialog, UiGlyph, UiIcon, UiKbd, UiStateChip],
+  imports: [AgentChip, RouterLink, StepTimeline, TranslocoPipe, UiDialog, UiGlyph, UiIcon, UiKbd, UiStateChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKey($event)' },
   styles: `
@@ -56,6 +60,8 @@ import { CardContext } from './card-context';
     .mono { font-family: var(--font-mono); }
     .num { font-variant-numeric: tabular-nums; }
     h3 { margin: 0; font-size: 13px; font-weight: 600; }
+    .cd-steps { display: grid; gap: 8px; justify-items: start; min-inline-size: 0; }
+    .cd-steps app-step-timeline { justify-self: stretch; }
     ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
     li { display: flex; gap: 8px; align-items: center; min-block-size: 24px; }
     .frame { min-inline-size: 88px; font-family: var(--font-mono); color: var(--muted-ink); }
@@ -122,6 +128,19 @@ import { CardContext } from './card-context';
             <dd data-detail-session><app-agent-chip [session]="agent.session" [since]="agent.since" [stale]="agent.stale" /></dd>
           }
         </dl>
+        @if (steps().length > 0) {
+          <section class="cd-steps" data-detail-steps>
+            <h3>{{ 'steps.timeline.heading' | transloco }} · <span class="mono num" data-detail-steps-count>{{ steps().length }}</span></h3>
+            @if (steps().length > shownSteps().length) {
+              @if (specLink(); as base) {
+                <a class="btn btn-sm" data-detail-steps-more [routerLink]="[...base, 'tasks']" [queryParams]="{ steps: c.task }" [fragment]="'task-' + c.task">{{
+                  'steps.timeline.all.' + (steps().length === 1 ? 'one' : 'other') | transloco: { count: steps().length }
+                }}</a>
+              }
+            }
+            <app-step-timeline [steps]="shownSteps()" [task]="c.task" />
+          </section>
+        }
         <h3>{{ 'board.detail.history' | transloco }}</h3>
         @if (history(); as steps) {
           @if (steps.length > 0) {
@@ -166,6 +185,9 @@ export class CardDetail {
   protected readonly compact = computed(() => this.shell.tier() === 'compact');
   protected readonly frameLabel = computed(() => this.context?.frameLabel() ?? null);
   protected readonly agent = computed(() => agentOfCard(this.card()));
+  /** The task's agent steps from the live answer (spec 015, ISC-232); the detail shows the last eight. */
+  protected readonly steps = computed(() => this.context?.steps()[this.card().task] ?? []);
+  protected readonly shownSteps = computed(() => this.steps().slice(-DETAIL_STEPS));
   protected readonly specLink = computed(() => {
     const ws = this.shell.ws();
     const id = this.shell.specId();

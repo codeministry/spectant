@@ -39,3 +39,17 @@ export function specRefMatches(folder: string, ref: string): boolean {
   if (SPEC_ID.test(ref)) return ref === specIdOf(folder);
   return ref === folder || ref === specIdOf(folder) || ref === specSlugOf(folder);
 }
+
+/** A spec session ref: an agent session whose id is `spec-NNN`, alone or with its task (`a:claude:spec-041/T3`). */
+const SPEC_SESSION = /^a:[^:/]+:spec-(\d{3})(?:\/|$)/u;
+
+/** A spec worktree: `.worktrees/NNN-slug`, relative or as the tail of a longer path, with an optional trailing `/`. */
+const SPEC_WORKTREE = /(?:^|\/)\.worktrees\/(\d{3})-[^/]+\/?$/u;
+
+/**
+ * The spec number `NNN` a run line names without its claim (spec 041, ISC-213): from its session ref
+ * `a:<kind>:spec-NNN/…`, else from its worktree `.worktrees/NNN-slug`; null when it names neither. Pure.
+ */
+export function runSpecOf(run: { readonly session: string; readonly worktree?: string }): string | null {
+  return SPEC_SESSION.exec(run.session)?.[1] ?? (run.worktree === undefined ? null : (SPEC_WORKTREE.exec(run.worktree)?.[1] ?? null));
+}

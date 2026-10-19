@@ -230,6 +230,10 @@
               }
             </span>
           }
+          @if (stepsOf(row.id).length > 0) {
+            <!-- spec 015 (T23, ISC-232): the latest step as the toggle; ?steps=T4,T14 alone opens a row's timeline. -->
+            <app-task-steps [steps]="stepsOf(row.id)" [task]="row.id" [open]="openSteps().has(row.id)" (toggled)="toggleSteps(row.id)" />
+          }
         </li>
       }
     </ul>

@@ -18,10 +18,12 @@ import type {
   LibraryDocType,
   LiveFrame,
   MainCopy,
+  NeedsYouCard,
   SpecPageModel,
   SpecOverlap,
   SpecWait,
   SpecWarning,
+  TaskSteps,
   TasksTab,
   TimelineEntry,
   Worktree,
@@ -61,6 +63,7 @@ import {
 } from '../../server/src/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
+  STEP_PATH,
   DENSE_HEADER,
   DENSE_STATES,
   STUB_DENSE,
@@ -78,6 +81,8 @@ import {
   STUB_PERSON,
   STUB_RUN,
   type StubRunState,
+  QUESTION_HEADER,
+  STUB_QUESTION,
   STUB_WAITS,
   WAITS_HEADER,
   WAITS_STATES,
@@ -790,12 +795,21 @@ type EvidenceModule = {
 const family = (tree: string, name: string): Json => golden(`${tree}.${name}`);
 const familyValue = (tree: string, name: string, key: string): unknown => family(tree, name)[key];
 
+/**
+ * The steps the live and tasks answers carry beside their body (spec 015, T24): harbor's steps golden entry for `key`,
+ * `{}` on any other tree, as the stub serves them.
+ */
+const stepsOf = (tree: string, key: string): unknown => (tree === 'harbor' ? (familyValue(tree, 'steps', key) ?? {}) : {});
+/** A live or tasks golden value as the route answers it: with `steps`; a null tasks tab stays null. */
+const withSteps = (value: unknown, tree: string, key: string): unknown => (value === null ? null : { ...(value as object), steps: stepsOf(tree, key) });
+
 /** The golden value a read route answers for `harbor` / `specs/002-web-console`. */
 function goldenFor(route: SpecRouteName): unknown {
-  if (route === 'live') return familyValue(WS, 'live', KEY);
+  if (route === 'live') return withSteps(familyValue(WS, 'live', KEY), WS, KEY);
   const name = (GOLDEN_FAMILY as Partial<Record<SpecRouteName, string>>)[route];
   if (name === undefined) throw new Error(`no golden family for ${route}`);
-  return familyValue(WS, name, KEY);
+  const value = familyValue(WS, name, KEY);
+  return route === 'tasks' ? withSteps(value, WS, KEY) : value;
 }
 
 const specHashes = async (path: string, init?: Parameters<typeof request>[1]): Promise<ReviewedHashes> => {
@@ -1639,6 +1653,84 @@ describe('GET /api/events (spec 030, T17)', () => {
   });
 });
 
+describe('POST /api/__stub/step (spec 015, T28)', () => {
+  type Step = { kind: string; ts: string; actor: string; result?: string; text?: string };
+  type Steps = Record<string, Step[]>;
+  const SPEC_KEY = 'specs/002-web-console';
+  const goldenSteps = (golden('harbor.steps') as Record<string, Steps>)[SPEC_KEY] ?? {};
+  const liveOf = async (session: string): Promise<{ etag: string | null; steps: Steps }> => {
+    const res = await ask(specRoutes.live(WS, '002'), { session });
+    return { etag: res.headers.get('ETag'), steps: ((await res.json()) as { steps: Steps }).steps };
+  };
+  const tasksOf = async (session: string): Promise<{ etag: string | null; steps: Steps }> => {
+    const res = await ask(specRoutes.tasks(WS, '002'), { session });
+    return { etag: res.headers.get('ETag'), steps: ((await res.json()) as { steps: Steps }).steps };
+  };
+  const step = (query: string, session: string, method = 'POST'): Promise<Response> => ask(`${STEP_PATH}?${query}`, { method, session });
+
+  test('appends the step to the session live and tasks answers (body and ETag), pushes one update frame first; reset drops it', async () => {
+    const session = 'stub-step';
+    const other = 'stub-step-bystander';
+    const t26 = goldenSteps['T26'] ?? [];
+    expect(t26.at(-1)?.ts).toBe('2026-03-08T16:12:00Z');
+    const before = { live: await liveOf(session), tasks: await tasksOf(session) };
+    expect(before.live.steps['T26']).toEqual(t26);
+    const mine = sseReader(await ask(EVENTS_PATH, { session }));
+    const bystander = sseReader(await ask(EVENTS_PATH, { session: other }));
+    for (const sse of [mine, bystander]) expect(await sse.next()).toEqual({ comment: 'ping' });
+
+    expect((await step(`ws=${WS}&spec=002&task=T26&kind=probe&result=red`, session)).status).toBe(204);
+    // The frame was on the stream before the 204: the workspace's views, as a bump sends them.
+    const frame = await mine.update(300);
+    if (typeof frame === 'string' || 'comment' in frame) throw new Error(`no update frame: ${JSON.stringify(frame)}`);
+    expect(frame.event).toBe(LIVE_EVENT);
+    expect((JSON.parse(frame.data) as LiveUpdate).ws).toBe(WS);
+    expect(await bystander.update(300)).toBe('timeout');
+
+    const added: Step = { kind: 'probe', ts: '2026-03-08T16:13:00Z', actor: 'a:claude:sess-2/T26', result: 'red' };
+    const after = { live: await liveOf(session), tasks: await tasksOf(session) };
+    expect(after.live.steps['T26']).toEqual([...t26, added]);
+    expect(after.tasks.steps['T26']).toEqual([...t26, added]);
+    expect(after.live.etag).not.toBe(before.live.etag);
+    expect(after.tasks.etag).not.toBe(before.tasks.etag);
+    // Every other task, and every other session, stays as the golden has it.
+    expect(before.live.steps).toEqual({ ...after.live.steps, T26: t26 });
+    expect((await liveOf(other)).steps['T26']).toEqual(t26);
+
+    // A second step follows a minute later; a task without steps starts its own timeline.
+    expect((await step(`ws=${WS}&spec=002&task=T26&kind=question&text=Which%20outline%3F`, session)).status).toBe(204);
+    expect((await step(`ws=${WS}&spec=002&task=T29&kind=build`, session)).status).toBe(204);
+    const twice = (await liveOf(session)).steps;
+    expect(twice['T26']?.slice(-2)).toEqual([added, { kind: 'question', ts: '2026-03-08T16:14:00Z', actor: 'a:claude:sess-2/T26', text: 'Which outline?' }]);
+    expect(twice['T29']).toEqual([{ kind: 'build', ts: '2026-03-08T15:01:00Z', actor: 'a:claude:stub-step' }]);
+    // One frame per step, no more.
+    for (let i = 0; i < 2; i++) expect(await mine.update(300)).toMatchObject({ event: LIVE_EVENT });
+    expect(await mine.update(300)).toBe('timeout');
+
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    expect(await mine.update()).toBe('end');
+    expect(await liveOf(session)).toEqual(before.live);
+    expect(await tasksOf(session)).toEqual(before.tasks);
+    expect((await ask(RESET_PATH, { method: 'POST', session: other })).status).toBe(204);
+    expect(await bystander.update()).toBe('end');
+  });
+
+  test('refuses an unknown workspace, spec or task (404), a malformed step (400) and another method (405)', async () => {
+    const session = 'stub-step-refused';
+    for (const query of [`ws=nowhere&spec=002&task=T26&kind=build`, `ws=${WS}&spec=999&task=T26&kind=build`, `ws=${WS}&spec=002&task=T99&kind=build`, `ws=${WS}&spec=002&kind=build`]) {
+      expect({ query, status: (await step(query, session)).status }).toEqual({ query, status: 404 });
+    }
+    const malformed = ['kind=sleep', '', 'kind=probe&result=amber', 'kind=build&result=red', 'kind=build&text=why', 'kind=question'];
+    for (const rest of malformed) {
+      const query = `ws=${WS}&spec=002&task=T26&${rest}`;
+      expect({ query, status: (await step(query, session)).status }).toEqual({ query, status: 400 });
+    }
+    const wrong = await step(`ws=${WS}&spec=002&task=T26&kind=build`, session, 'GET');
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'POST']);
+    expect((await liveOf(session)).steps).toEqual(goldenSteps);
+  });
+});
+
 describe('PUT /api/__stub/workflow (T151)', () => {
   const PLANNING = '/api/workspaces/harbor/planning';
   const HARBOR_FEATURE = ['plan', 'review', 'tasks', 'build', 'code-review', 'close', 'done'];
@@ -2273,7 +2365,7 @@ describe('stub API: the worktree overlay via X-Spectant-Stub-Worktrees (spec 027
     expect([frame.inRound?.total, frame.inRound?.lanes]).toEqual([counts, { web: counts }]);
     expect(frame.needsYou.find((c) => c.task === 'T29')?.run?.state).toBe('building');
     expect((await live({ ...on, [LOCKS_HEADER]: 'none' })).inRound?.cards.length).toBe(4);
-    expect(await live(on, '003')).toEqual(familyValue('harbor', 'live', 'specs/003-config-loader') as LiveFrame);
+    expect(await live(on, '003')).toEqual(withSteps(familyValue('harbor', 'live', 'specs/003-config-loader'), 'harbor', 'specs/003-config-loader') as LiveFrame);
     expect(goldenText('harbor.live')).toBe(before);
   });
 
@@ -2489,7 +2581,7 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
         const folder = `specs/${rowOf(base, id).slug}`;
         expect(await page(id, as(edges))).toEqual(familyValue(WS, 'spec', folder) as SpecPageModel);
         expect(await claims(id, as(edges))).toEqual(familyValue(WS, 'claim-view', folder) as ClaimViewModel);
-        expect(await live(id, as(edges))).toEqual(familyValue(WS, 'live', folder) as LiveFrame);
+        expect(await live(id, as(edges))).toEqual(withSteps(familyValue(WS, 'live', folder), WS, folder) as LiveFrame);
       }
     }
   });
@@ -2649,7 +2741,7 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
       for (const [key, page] of Object.entries(pages)) {
         const id = page.head.id;
         expect({ key, page: await read<SpecPageModel>(specRoutes.spec(WS, id), headers) }).toEqual({ key, page });
-        expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: tabs[key] ?? null });
+        expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: withSteps(tabs[key] ?? null, WS, key) });
       }
     }
   });
@@ -2972,5 +3064,29 @@ describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5,
       const res = await ask('/api/workspaces', { headers: on(extra) });
       expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-dense-with-overlay' });
     }
+  });
+});
+
+describe('stub API: steps and the open question via X-Spectant-Stub-Question (spec 015, T24, ISC-232.1)', () => {
+  type WithSteps = { steps: TaskSteps; needsYou?: readonly NeedsYouCard[] };
+  const get = async (route: 'live' | 'tasks', id: string, ws = WS, question?: string): Promise<WithSteps> =>
+    (await (await ask(specRoutes[route](ws, id), question === undefined ? {} : { headers: { [QUESTION_HEADER]: question } })).json()) as WithSteps;
+
+  test("the live and tasks answers carry harbor's steps golden, {} on another tree", async () => {
+    expect((await get('live', '002')).steps).toEqual(familyValue(WS, 'steps', KEY) as TaskSteps);
+    expect((await get('tasks', '002')).steps).toEqual(familyValue(WS, 'steps', KEY) as TaskSteps);
+    expect((await get('live', '001', 'lantern')).steps).toEqual({});
+  });
+
+  test('open: T27 asks, its latest step is the question and it leads Needs you with the text; other specs and values unchanged', async () => {
+    const live = await get('live', '002', WS, 'open');
+    const card = live.needsYou?.[0];
+    expect(card?.task).toBe(STUB_QUESTION.task);
+    expect(card?.question).toEqual({ text: STUB_QUESTION.text, ts: STUB_QUESTION.ts });
+    expect(live.needsYou?.filter((c) => c.task === STUB_QUESTION.task).length).toBe(1);
+    expect(live.steps[STUB_QUESTION.task]?.at(-1)).toEqual({ kind: 'question', ts: STUB_QUESTION.ts, actor: STUB_QUESTION.session, text: STUB_QUESTION.text });
+    expect((await get('tasks', '002', WS, 'open')).steps).toEqual(live.steps);
+    expect(await get('live', '002', WS, 'other')).toEqual(goldenFor('live') as WithSteps);
+    expect(await get('live', '003', WS, 'open')).toEqual(withSteps(familyValue(WS, 'live', 'specs/003-config-loader'), WS, 'specs/003-config-loader') as WithSteps);
   });
 });
