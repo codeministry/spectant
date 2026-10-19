@@ -210,6 +210,9 @@ test.describe('run-state tasks-run', () => {
     const variant = (run: StubRunState): Promise<void> => page.setExtraHTTPHeaders({ [LOCKS_HEADER]: 'runs', [RUN_HEADER]: run });
     const card = page.locator(`app-board-card[data-key="spec:${STUB_RUN.folder}"]`);
     const item = card.locator('[data-card-state] ui-item-state');
+    // The header switch below pushes nothing down the live stream, and the app polls only while that stream is down
+    // (spec 030); refused before the first load, the page refreshes on the tick (spec 042).
+    await page.route('**/api/events', (route) => route.fulfill({ status: 204 }));
     await page.clock.install({ time: new Date(STUB_NOW) });
 
     // No run-start line: 003 waits for its command.

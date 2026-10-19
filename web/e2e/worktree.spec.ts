@@ -254,6 +254,9 @@ test.describe('tasks', () => {
       const headers = { ...ON, [SESSION_HEADER]: `worktree-tasks-${info.testId}-${String(info.retry)}` };
       await page.setExtraHTTPHeaders(headers);
       await request.post('/api/__stub/reset', { headers });
+      // A bump-run pushes nothing down the live stream, and the app polls only while that stream is down (spec 030);
+      // refused before the first load, the page refreshes on the tick (spec 042).
+      await page.route('**/api/events', (route) => route.fulfill({ status: 204 }));
       await page.clock.install({ time: new Date(FIXED_NOW) });
       const bump = async (): Promise<void> => {
         expect((await request.post(`${BUMP_RUN_PATH}?ws=harbor&spec=002&task=T32`, { headers })).status()).toBe(204);

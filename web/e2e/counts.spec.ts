@@ -108,7 +108,8 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '', what: 'waits on you rows', golden: 'spec.guidance.waits (other than its own)', selector: '[data-spec-context] ui-waits-block :is([data-top], [data-row]), [data-guidance-spot] ui-waits-block :is([data-top], [data-row])', kind: 'count', want: others },
     { tab: '', what: 'lanes rows', golden: 'spec.lanes.length', selector: `${dash} [data-lane]`, kind: 'count', want: lanes.length },
     { tab: '', what: 'warnings header count', golden: 'spec.areas.status.warnings', selector: '[data-spec-context] [data-context-block="warnings"] [data-count-badge]', kind: 'text', want: n(areas.status.warnings) },
-    { tab: '', what: 'warnings rows', golden: 'spec.warnings.length', selector: '[data-spec-context] [data-context-block="warnings"] [data-context-warning]', kind: 'count', want: g.spec.warnings.length },
+    // A spec-overlap warning is drawn as an overlap line, not a warning row (spec 025); the badge above counts it.
+    { tab: '', what: 'warnings rows', golden: 'spec.warnings (other than spec-overlap)', selector: '[data-spec-context] [data-context-block="warnings"] [data-context-warning]', kind: 'count', want: g.spec.warnings.filter((w) => w.kind !== 'spec-overlap').length },
     { tab: '', what: 'gates rows', golden: 'spec.keyNumbers.gates.total', selector: '[data-spec-context] [data-context-block="gates"] [data-gate-row]', kind: 'count', want: k.gates.total },
     // core counts a gate ok when its state is `fresh` or `ok` (`keyNumbers.gates.ok` in core/src/spec.ts).
     { tab: '', what: 'gates rows ok', golden: 'spec.keyNumbers.gates.ok', selector: '[data-spec-context] [data-context-block="gates"] [data-gate-row]:is([data-state="fresh"], [data-state="ok"])', kind: 'count', want: k.gates.ok },
