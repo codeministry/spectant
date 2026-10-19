@@ -28,7 +28,7 @@ export interface LatestStep {
     @if (latest(); as latest) {
       <button
         type="button"
-        class="toggle"
+        class="steps-toggle"
         data-steps-toggle
         [attr.aria-expanded]="open()"
         [attr.aria-controls]="open() ? panelId() : null"

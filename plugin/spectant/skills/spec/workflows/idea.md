@@ -27,7 +27,7 @@ arguments, 3 drift or gate open, 4 lock lost. Before anything else, open the run
 subject:
 
 ```bash
-spec-check run start <working-slug> --command "/spec idea <the sentences>" --json
+spec-check run start <working-slug> --session <actor> --command "/spec idea <the sentences>" --json
 ```
 
 Keep the returned run ID. Close the run on every way out of this workflow, the hand-off included:

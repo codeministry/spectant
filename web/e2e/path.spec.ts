@@ -255,7 +255,7 @@ for (const width of [1440, 600, 390] as const) {
         const section = sidebar.locator(`section[data-section="${name}"]`);
         await expect(section, `${name} section`).toHaveCount(1);
         await expect(section.locator('h3'), `${name} heading on screen`).toBeInViewport({ ratio: 1 });
-        await expect(section.locator('a.link, p.none').first(), `${name} first entry on screen`).toBeInViewport({ ratio: 1 });
+        await expect(section.locator('a.text-link, p.none').first(), `${name} first entry on screen`).toBeInViewport({ ratio: 1 });
       }
 
       const seconds = klm(steps.sequence);

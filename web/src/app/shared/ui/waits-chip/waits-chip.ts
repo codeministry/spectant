@@ -42,6 +42,8 @@ interface BlockerView {
       padding-inline: 7px; border: 1px dashed var(--color-secondary); border-radius: 4px; background: none; color: var(--ques-ink);
       font-family: var(--font-mono); font-size: 11px; font-weight: 500; line-height: 1; text-decoration: none; white-space: nowrap;
     }
+    /* What daisyUI's \`.label\` gave the old class name (spec 049), kept so the chip looks as it did. */
+    .chip-label { display: inline-flex; gap: 0.375rem; align-items: center; color: color-mix(in oklab, currentcolor 60%, transparent); white-space: nowrap; }
     .num { text-decoration: underline dotted; text-underline-offset: 2px; }
     a.waits:hover { background: var(--ques-t); }
     a.waits:hover .num, a.waits:focus-visible .num { text-decoration-style: solid; }
@@ -65,7 +67,7 @@ interface BlockerView {
         </a>
       } @else {
         <span class="waits" data-waits data-unknown [attr.data-blocker]="blocker.id" [attr.title]="blocker.name">
-          <ui-icon name="clock" [size]="12" /><span class="label" aria-hidden="true">{{ prefix() }} <span class="num">{{ blocker.id }}</span></span>
+          <ui-icon name="clock" [size]="12" /><span class="chip-label" aria-hidden="true">{{ prefix() }} <span class="num">{{ blocker.id }}</span></span>
           <span class="visually-hidden">{{ blocker.name }}</span>
         </span>
       }

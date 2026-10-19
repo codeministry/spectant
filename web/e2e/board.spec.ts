@@ -1194,7 +1194,7 @@ async function expectActor(chip: Locator, actor: ActorGolden, name: string | nul
   await expect(chip).toHaveCount(1);
   await expect(chip).toHaveAttribute('data-kind', actor.kind);
   await expect(chip).toHaveAttribute('title', actor.raw);
-  const label = chip.locator('.label');
+  const label = chip.locator('.chip-label');
   await expect(label).toHaveText(name ?? actor.id);
   if (name === null) await expect(label).toHaveClass(/\bmono\b/u);
   else await expect(label).not.toHaveClass(/\bmono\b/u);

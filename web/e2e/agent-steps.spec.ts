@@ -305,3 +305,81 @@ test.describe('agent steps live at 1440', () => {
     await noReload();
   });
 });
+
+/**
+ * Spec 049 (ISC-282, ISC-283): the step views render as their own layout, not as the daisyUI components their old class
+ * names (`.toggle`, `.steps`, `.step`) pulled in. `bun run e2e -- agent-steps -g "step layout"` is the probe.
+ */
+test.describe('step layout at 1440', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  /** Every element of `root` lies within `outer`'s box (1 px slack). */
+  async function inside(root: Locator, outer: Locator): Promise<string[]> {
+    const box = await outer.boundingBox();
+    if (box === null) return ['outer has no box'];
+    return root.evaluate(
+      (el, b) =>
+        [el, ...el.querySelectorAll('*')].flatMap((node) => {
+          const r = node.getBoundingClientRect();
+          if (r.width === 0 && r.height === 0) return [];
+          const ok = r.left >= b.x - 1 && r.right <= b.x + b.width + 1 && r.top >= b.y - 1 && r.bottom <= b.y + b.height + 1;
+          return ok ? [] : [`${node.tagName.toLowerCase()} ${String(Math.round(r.left))},${String(Math.round(r.top))}`];
+        }),
+      box,
+    );
+  }
+
+  /** The steps stand one under the other at one x, and no step draws daisyUI's counter or connector pseudo-element. */
+  async function expectVerticalList(timeline: Locator): Promise<void> {
+    const items = timeline.locator(':scope > li');
+    await expect(items.first()).toBeVisible();
+    const n = await items.count();
+    expect(n).toBeGreaterThan(1);
+    const boxes = await items.evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        const before = getComputedStyle(el, '::before').content;
+        const after = getComputedStyle(el, '::after').content;
+        return { x: Math.round(r.left), y: Math.round(r.top), bottom: Math.round(r.bottom), before, after };
+      }),
+    );
+    for (let i = 1; i < boxes.length; i++) {
+      const prev = boxes[i - 1];
+      const cur = boxes[i];
+      expect(Math.abs((cur?.x ?? 0) - (prev?.x ?? 0)), `step ${String(i)} x`).toBeLessThanOrEqual(1);
+      expect(cur?.y ?? 0, `step ${String(i)} below the one before`).toBeGreaterThanOrEqual((prev?.bottom ?? 0) - 1);
+    }
+    for (const b of boxes) {
+      expect(['none', 'normal'], 'no ::before on a step').toContain(b.before);
+      expect(['none', 'normal'], 'no ::after on a step').toContain(b.after);
+    }
+  }
+
+  test('step layout: every step toggle on the tasks tab is one line inside its task row (ISC-282)', async ({ page }) => {
+    await page.goto(TASKS);
+    for (const task of WITH_STEPS) {
+      const row = page.locator(`#task-${task}`);
+      const toggle = row.locator('[data-steps-toggle]');
+      await expect(toggle, task).toBeVisible();
+      expect((await toggle.boundingBox())?.height ?? Infinity, `${task} toggle height`).toBeLessThanOrEqual(24);
+      expect(await inside(toggle, row), `${task} toggle parts outside the row`).toEqual([]);
+      expect(await inside(toggle, toggle), `${task} toggle parts outside the toggle`).toEqual([]);
+    }
+  });
+
+  test('step layout: the open timeline on the tasks tab and in the live board card detail is a vertical list (ISC-283)', async ({ page }) => {
+    await page.goto(`${TASKS}?steps=T26`);
+    await expectVerticalList(page.locator('[data-steps]#task-T26-steps [data-step-timeline]'));
+
+    await page.goto(BOARD);
+    const id = page.locator('app-board-tab article[data-card="T26"] button.id');
+    if (!(await id.isVisible())) {
+      const lane = await page.locator('app-board-tab [data-lane]:has(article[data-card="T26"])').first().getAttribute('data-lane');
+      await page.locator(`app-board-tab [data-lane="${lane ?? ''}"] [data-show-all]`).click();
+    }
+    await id.click();
+    const detail = page.locator('dialog[open] [data-card-detail][data-task="T26"]');
+    await expect(detail).toBeVisible();
+    await expectVerticalList(detail.locator('[data-detail-steps] [data-step-timeline]'));
+  });
+});

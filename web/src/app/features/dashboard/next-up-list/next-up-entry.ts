@@ -39,7 +39,7 @@ import type { NextUpForm } from './next-up-list';
     .next-item { display: grid; gap: 8px; min-inline-size: 0; padding: 8px 8px 8px 12px; border-inline-start: 3px solid var(--color-primary); }
     .next-item h3 { display: flex; gap: 8px; align-items: baseline; min-inline-size: 0; margin: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
     .next-item ui-id-chip { flex: none; padding-inline: 6px; border-radius: 4px; background: var(--disp-t); font-size: 12px; font-weight: 500; }
-    .next-item .link { display: block; flex: 1 1 auto; min-inline-size: 0; }
+    .next-item .text-link { display: block; flex: 1 1 auto; min-inline-size: 0; }
     .visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .title { display: block; overflow: hidden; overflow-wrap: anywhere; }
     .more { position: relative; justify-self: start; min-block-size: 24px; padding: 2px 0; border: 0; background: none; color: var(--ques-text); font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; cursor: pointer; }
@@ -52,8 +52,8 @@ import type { NextUpForm } from './next-up-list';
     /* Spec 021 (T31): a 44 px hit area (WCAG 2.5.8) around the 24 px toggle under a coarse pointer, as ui-button and
        the worktree chip grow theirs: an invisible ::before, so the row keeps its height. */
     @media (pointer: coarse) { .more::before { position: absolute; inset: min(0px, (100% - 44px) / 2); content: ''; } }
-    .link { border-radius: var(--radius-field); color: var(--color-base-content); text-decoration: none; }
-    .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .text-link { border-radius: var(--radius-field); color: var(--color-base-content); text-decoration: none; }
+    .text-link:hover { text-decoration: underline; text-underline-offset: 3px; }
     .next-foot { display: flex; flex-wrap: wrap; gap: 8px 6px; align-items: center; min-inline-size: 0; }
     .next-foot .reason, .next-foot .sentence { flex: 1 1 100%; }
     /* The guide's sentence and chip join the foot's flow, so the command chip and the takeable chip share one line. */
@@ -61,7 +61,7 @@ import type { NextUpForm } from './next-up-list';
     /* Prototype [data-ui=chip].take: mono 500 12 px, no capitals, the hand glyph. */
     ui-chip.take { gap: 4px; padding-inline: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .next-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 4px 8px; align-items: baseline; padding: 8px 12px; border-inline-start: 3px solid var(--color-primary); }
-    .next-row .link { min-inline-size: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
+    .next-row .text-link { min-inline-size: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
     .next-row .cmd { grid-column: 2 / -1; min-inline-size: 0; }
     /* Spec 020 (T25): the sentence in 13/20 over the chip, wrapping on whole words and never clamped; the ring of
        "open" in its own tone (secondary). A card row as wide as the 820 px dashboard keeps the chip right, top-aligned. */
@@ -82,7 +82,7 @@ import type { NextUpForm } from './next-up-list';
         <div class="head">
           <h3>
             <ui-id-chip>{{ row().id }}</ui-id-chip>
-            <a class="link" data-next-link [routerLink]="[]" [queryParams]="{ sel: 'spec:' + row().id }" queryParamsHandling="merge"
+            <a class="text-link" data-next-link [routerLink]="[]" [queryParams]="{ sel: 'spec:' + row().id }" queryParamsHandling="merge"
               ><span
                 #railTitle="uiClamp"
                 class="title"
@@ -119,7 +119,7 @@ import type { NextUpForm } from './next-up-list';
     } @else {
       <div class="next-row" data-next-row>
         <ui-id-chip>{{ row().id }}</ui-id-chip>
-        <a class="link" data-next-link [routerLink]="[]" [queryParams]="{ sel: 'spec:' + row().id }" queryParamsHandling="merge"
+        <a class="text-link" data-next-link [routerLink]="[]" [queryParams]="{ sel: 'spec:' + row().id }" queryParamsHandling="merge"
           ><span
             #rowTitle="uiClamp"
             class="title"

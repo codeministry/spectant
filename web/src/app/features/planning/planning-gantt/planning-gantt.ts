@@ -94,7 +94,7 @@ const markIcon = (mark: GanttMark): 'clock-alert' | 'circle-check' => (mark === 
   imports: [NgTemplateOutlet, TranslocoPipe, UiEmptyState, UiIcon, UiMeter, UiPriority, UiRovingItem, UiRovingList, UiTerm, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-lens': 'gantt' },
-  styleUrls: ['./planning-gantt.css', '../../../layout/detail-sidebar/selection.css'],
+  styleUrls: ['./planning-gantt.css', './planning-gantt.label.css', '../../../layout/detail-sidebar/selection.css'],
   templateUrl: './planning-gantt.html',
 })
 export class PlanningGantt {

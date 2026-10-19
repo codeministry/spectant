@@ -220,7 +220,7 @@ test.describe('task checkbox', () => {
     await expect(row).toHaveAttribute('data-check', 'written');
     await expect(box).toBeChecked();
     await expect(box).toBeEnabled();
-    await expect(row.locator('.status')).toHaveAttribute('data-tone', 'done');
+    await expect(row.locator('.tstate')).toHaveAttribute('data-tone', 'done');
     await expect(page.locator('ui-toast .alert')).toContainText(`${webOpen.id} ticked in tasks.md, line ${String(webOpen.line)}`);
     await expect(page.locator('[data-tasks-done]')).toContainText(
       `${String(golden.counts.done + 1)} of ${String(golden.counts.rows)} tasks done or closed`,

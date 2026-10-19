@@ -28,7 +28,7 @@
         [body]="'board.workspace.empty.body' | transloco"
       >
         <ui-command-chip command="/spec idea" data-empty-command />
-        <a class="link" routerLink="/help" fragment="getting-started">{{ 'board.workspace.empty.gettingStarted' | transloco }}</a>
+        <a class="text-link" routerLink="/help" fragment="getting-started">{{ 'board.workspace.empty.gettingStarted' | transloco }}</a>
       </ui-empty-state>
     } @else {
       <p class="meta">{{ 'board.workspace.summary' | transloco: { cards: b.total, specs: b.specs, ideas: b.ideas } }}</p>
@@ -155,7 +155,7 @@
                 {{ 'board.workspace.column.emptyIn' | transloco: { stage: label } }}
                 @if (c.hidden > 0) {
                   · {{ (c.hidden === 1 ? 'board.workspace.column.hiddenByFilters.one' : 'board.workspace.column.hiddenByFilters.other') | transloco: { count: c.hidden } }} ·
-                  <button type="button" class="btn btn-sm btn-ghost link" (click)="clearFilters()">{{ 'board.workspace.filter.clear' | transloco }}</button>
+                  <button type="button" class="btn btn-sm btn-ghost text-link" (click)="clearFilters()">{{ 'board.workspace.filter.clear' | transloco }}</button>
                 }
               </p>
             } @else if (c.bands.length === 0) {
@@ -552,7 +552,7 @@
       }
     }
   } @else {
-    <div class="loading" aria-hidden="true">
+    <div class="board-loading" aria-hidden="true">
       <ui-skeleton height="40px" />
       <div class="skeleton-cols">
         @for (slot of [0, 1, 2]; track slot) {

@@ -23,7 +23,7 @@ ok, 1 bad arguments, 3 drift or gate open, 4 lock lost. Before anything else, op
 a number the subject is the working slug:
 
 ```bash
-spec-check run start <working-slug> --command "/spec new <type> <args>" --json
+spec-check run start <working-slug> --session <actor> --command "/spec new <type> <args>" --json
 ```
 
 Keep the run ID and close it on every way out, also when the turn ends on an open question; the next turn opens a new

@@ -110,7 +110,7 @@
             @if (claim.dropped?.note; as note) {
               <span class="muted"> — {{ note }}</span>
             }
-            <a class="link" data-link="decisions" [routerLink]="base() + '/decisions'">{{ 'claims.dropped.see' | transloco }}</a>
+            <a class="text-link" data-link="decisions" [routerLink]="base() + '/decisions'">{{ 'claims.dropped.see' | transloco }}</a>
           </p>
         } @else {
           <p class="text-row"><span class="text">{{ claim.text }}</span></p>
@@ -175,7 +175,7 @@
             <ui-icon class="verification-icon" name="circle-check" [size]="14" />
             <span class="verification-label sr-only">{{ 'claims.verification' | transloco }}</span>
             @if (evidenceFile(verification); as file) {
-              <a class="link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
+              <a class="text-link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
                 plain(verification)
               }}</a>
             } @else {

@@ -14,7 +14,7 @@
   gap: 24px;
 }
 
-.card {
+.section-card {
   position: relative;
   display: grid;
   gap: 16px;

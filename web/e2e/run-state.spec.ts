@@ -172,7 +172,7 @@ test.describe('run-state surfaces', () => {
       test(`surfaces: the task row shows each of the five forms with its details (${project})`, async ({ page }) => {
         // The status cell names the state; the row's details line carries what the form asks for.
         const row = (id: string): { word: Locator; item: Locator } => ({
-          word: page.locator(`#task-${id} .status[data-item-state]`),
+          word: page.locator(`#task-${id} .tstate[data-item-state]`),
           item: page.locator(`#task-${id} ui-item-state[data-details]`),
         });
         await open(page, `/w/${WS}/s/004/tasks`);

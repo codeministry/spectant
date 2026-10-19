@@ -13,7 +13,7 @@ master `ISA.md`; the CLI writes the marks and their events.
 
 1. Resolve the folder under `./specs/`: `NNN` given → `specs/NNN-*`; nothing given → the folder whose `spec.md`,
    `plan.md` or `tasks.md` changed last, else the highest number. No `specs/` or no `spec.md` there → say so and stop.
-2. `CLI run start specs/NNN-slug --command "/spec review NNN"` (or `"/spec review NNN code"`). Keep the run ID. Every
+2. `CLI run start specs/NNN-slug --session <actor> --command "/spec review NNN"` (or `"/spec review NNN code"`). Keep the run ID. Every
    exit from here on, a "not yet", a stop or an error included, ends with `CLI run end <run-id> --outcome ok` (or
    `--outcome error`).
 

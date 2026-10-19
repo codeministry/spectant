@@ -207,7 +207,7 @@ test.describe('tasks', () => {
       }
       const t28 = taskRow(page, 'T28');
       await expect(t28.locator('[data-task-check]')).not.toBeChecked();
-      await expect(t28.locator('.state .status')).toBeVisible();
+      await expect(t28.locator('.state .tstate')).toBeVisible();
       const session = t28.locator('[data-run-session]');
       await expect(session).toBeVisible();
       await expect(session).not.toHaveText('');

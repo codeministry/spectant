@@ -70,7 +70,7 @@ describe('TaskActors', () => {
     expect(host.querySelectorAll('ui-actor-chip')).toHaveLength(1);
     const agent = host.querySelector('ui-actor-chip[data-task-agent]');
     expect(agent?.getAttribute('data-kind')).toBe('agent');
-    expect(agent?.querySelector('.label')?.textContent.trim()).toBe('a:claude:sess-2');
+    expect(agent?.querySelector('.chip-label')?.textContent.trim()).toBe('a:claude:sess-2');
     expect(agent?.hasAttribute('data-stale')).toBe(true);
     expect(agent?.querySelector('.stale')?.textContent).toContain(elapsedLabel(T27.since ?? '', Date.now(), 'en') ?? '-');
     expect(host.querySelector('[data-task-subagent]')).toBeNull();
@@ -81,7 +81,7 @@ describe('TaskActors', () => {
     const host = await render(withSubagent(true));
     const agent = host.querySelector('ui-actor-chip[data-task-agent]');
     const sub = host.querySelector('ui-actor-chip[data-task-subagent]');
-    expect(agent?.querySelector('.label')?.textContent.trim()).toBe('a:claude:sess-9');
+    expect(agent?.querySelector('.chip-label')?.textContent.trim()).toBe('a:claude:sess-9');
     expect(agent?.hasAttribute('data-stale')).toBe(false);
     expect(agent?.hasAttribute('data-active')).toBe(false);
     expect(sub?.getAttribute('data-kind')).toBe('subagent');

@@ -45,7 +45,7 @@ async function expectChip(chip: Locator, raw: string): Promise<void> {
   const [session, task] = raw.split('/');
   await expect(chip).toHaveAttribute('data-kind', task === undefined ? 'agent' : 'subagent');
   await expect(chip).toHaveAttribute('title', raw);
-  await expect(chip.locator('.label')).toHaveText(session ?? raw);
+  await expect(chip.locator('.chip-label')).toHaveText(session ?? raw);
   await expect(chip.locator('.task')).toHaveText(task === undefined ? [] : [task]);
 }
 

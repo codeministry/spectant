@@ -88,7 +88,7 @@
 
         <!-- Spec 021 (T39, ISC-250): the spec head carries the goal sentence; the card stays only for its absence. -->
         @if (m.ideaQuote === null) {
-          <section class="card idea" data-section="idea" aria-labelledby="spec-dashboard-idea">
+          <section class="section-card idea" data-section="idea" aria-labelledby="spec-dashboard-idea">
             <p class="eyebrow" id="spec-dashboard-idea">{{ 'specDashboard.idea.eyebrow' | transloco }}</p>
             <p class="muted">{{ 'specDashboard.idea.none' | transloco }}</p>
           </section>
@@ -106,7 +106,7 @@
           <h2 class="section-head" id="spec-dashboard-tiles">{{ 'specDashboard.tiles.label' | transloco }}</h2>
           <div class="tile-grid">
           @for (tile of tiles(); track tile.id) {
-            <a class="card tile" [attr.data-area-tile]="tile.id" [routerLink]="tile.link">
+            <a class="section-card tile" [attr.data-area-tile]="tile.id" [routerLink]="tile.link">
               <span class="tile-head">
                 <span class="area-ic" [attr.data-area-dot]="tile.id" aria-hidden="true"></span>
                 <span class="tile-name">{{ 'specDashboard.areas.' + tile.id | transloco }}</span>
@@ -140,7 +140,7 @@
 <ng-template #nextStep let-guide="guide">
   @if (model(); as m) {
     <section
-      class="card next"
+      class="section-card next"
       data-section="next"
       [attr.data-form]="guide ? 'guide' : 'card'"
       [attr.id]="guide ? 'waiting' : null"
@@ -203,7 +203,7 @@
 
 <ng-template #lanes>
   @if (model(); as m) {
-        <section class="card lanes" data-section="lanes">
+        <section class="section-card lanes" data-section="lanes">
           <ui-section-header [heading]="'specDashboard.lanes.heading' | transloco" />
           @if (m.lanes.length === 0) {
             <p class="muted">{{ 'specDashboard.lanes.none' | transloco }}</p>
@@ -243,7 +243,7 @@
         <app-spec-rail-guide />
       }
 
-      <section class="card rail-card" data-context-block="warnings" aria-labelledby="spec-context-warnings">
+      <section class="section-card rail-card" data-context-block="warnings" aria-labelledby="spec-context-warnings">
         <div class="block-head">
           <h2 id="spec-context-warnings">{{ 'specDashboard.warnings.heading' | transloco }}</h2>
           <ui-chip data-count-badge variant="count" tone="secondary">{{ m.areas.status.warnings }}</ui-chip>
@@ -284,7 +284,7 @@
         }
       </section>
 
-      <section class="card rail-card" data-context-block="gates" aria-labelledby="spec-context-gates">
+      <section class="section-card rail-card" data-context-block="gates" aria-labelledby="spec-context-gates">
         <div class="block-head">
           <!-- Prototype `.term` on the gates heading (spec 024): the glossary hint, closing in a link to the guide row. -->
           <h2 id="spec-context-gates"

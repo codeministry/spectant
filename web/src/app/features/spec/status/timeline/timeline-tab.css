@@ -21,7 +21,7 @@
 }
 
 /* Prototype `[data-ui="timeline-filter"] button`: 30 px pills, 12 px muted text on a hairline, pressed on the card. */
-.filter {
+.kind-filter {
   --btn-bg: transparent;
   --btn-fg: var(--muted-ink);
   --btn-border: var(--line);
@@ -39,7 +39,7 @@
   white-space: nowrap;
 }
 
-.filter[aria-pressed='true'] {
+.kind-filter[aria-pressed='true'] {
   --btn-bg: var(--color-base-100);
   --btn-fg: var(--color-base-content);
   --btn-border: var(--track);
@@ -61,11 +61,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.filter[aria-pressed='true'] .count {
+.kind-filter[aria-pressed='true'] .count {
   color: var(--disp-ink);
 }
 
-.skeleton {
+.timeline-skeleton {
   display: grid;
   gap: 16px;
 }

@@ -9,9 +9,9 @@
 // (`rounds record`) are driven in the same run. Every test works in a fresh git repository under the system temp
 // directory, never in this repository's own `specs/`.
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { activityReading } from '../../core/src/locks.ts';
 import { roundLines } from '../../core/src/timeline.ts';
 
@@ -242,5 +242,25 @@ describe('spec-check run start / run end (ISC-227)', () => {
     expect(reading.locks).toEqual([]);
     expect(reading.openRuns).toEqual([]);
     expect(lines(root).map((l) => l.event)).toEqual(['run-start', 'claim', 'release', 'run-end']);
+  });
+});
+
+// Spec 049 (ISC-286): a run carries the session that starts it. Without `--session` the CLI writes its own name
+// (`a:claude:spec-check`), and the app then shows every task of a running spec as locked by the CLI. So every
+// `run start` the skill's texts tell an agent to run names the session.
+describe('the skill starts every run with its session (ISC-286)', () => {
+  const SKILL = join(import.meta.dir, '..', 'spectant', 'skills', 'spec');
+  const texts = [join(SKILL, 'SKILL.md'), ...readdirSync(join(SKILL, 'workflows')).filter((f) => f.endsWith('.md')).map((f) => join(SKILL, 'workflows', f))];
+
+  test('no run start without --session in SKILL.md or a workflow', () => {
+    const missing = texts.flatMap((file) => {
+      const text = readFileSync(file, 'utf8');
+      // Each `run start` up to the end of its code span, code line or sentence.
+      return [...text.matchAll(/run start[^`\n]*(?:\n(?!\s*\n)[^`\n]*)?/gu)]
+        .map((m) => m[0])
+        .filter((call) => !call.includes('--session'))
+        .map((call) => `${relative(SKILL, file)}: ${call.replace(/\s+/gu, ' ').slice(0, 80)}`);
+    });
+    expect(missing).toEqual([]);
   });
 });

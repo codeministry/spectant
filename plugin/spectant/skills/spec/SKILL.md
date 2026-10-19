@@ -75,7 +75,7 @@ Context, plan text, task text, `context.md`) is written directly.
 | `claim <ISC-N> --session <actor>` · `release <ISC-N> --session <actor>` | locks, in `.spectant/activity.jsonl` only |
 | `gate check reviewed\|code-reviewed <spec>` · `gate reviewed <spec> --yes` · `gate code-reviewed <spec> --yes --code N --security N` | read and set the marks in `.gates/`; setting the review mark appends the one `review → build` line to `events.jsonl` |
 | `transition <spec> <to>` | one `events.jsonl` line per stage change |
-| `run start <spec\|idea> --command "<…>"` · `run end <run-id> --outcome ok\|error` | the run pair the app shows |
+| `run start <spec\|idea> --session <actor> --command "<…>"` · `run end <run-id> --outcome ok\|error` | the run pair the app shows |
 | `rounds record <spec> …` · `activity <event> …` | the round log line · one step line (dispatch, build, patch, apply, probe, question) |
 
 `<actor>` follows the actor grammar in the repository's `FORMAT.md` when it has one: `a:<kind>:<id>` for an agent
@@ -83,10 +83,12 @@ session, `a:<kind>:<id>/T<n>` for a sub-agent on one task.
 
 ## Runs and stage changes
 
-- Every subcommand that works on a spec or an idea starts with `spec-check run start <spec|idea> --command "/spec
+- Every subcommand that works on a spec or an idea starts with `spec-check run start <spec|idea> --session <actor> --command "/spec
   <subcommand> <args>"` and ends with `spec-check run end <run-id> --outcome ok`, or `--outcome error` when it fails or
   is aborted. End the run before the reply that ends the turn, also when that reply is an open question; the next turn
   starts a new run.
+- The `--session <actor>` of a run is the session's own actor (`a:claude:spec-NNN` for the session working spec NNN). Without
+  it the CLI records its own name, and the app shows every task of the running spec as locked by the CLI.
 - Every subcommand that moves a spec's stage appends exactly one event through `spec-check transition`, never by
   editing `stage:` or `events.jsonl` by hand.
 - `implement` checks `spec-check gate check reviewed <spec>` first; exit 3 stops it and points at `/spec review NNN`.

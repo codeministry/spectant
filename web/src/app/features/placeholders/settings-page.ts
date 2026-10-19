@@ -91,8 +91,8 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
     .row-link { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; min-block-size: 48px; padding: 0 var(--space-3); border-block-start: 1px solid var(--line); color: var(--color-base-content); font-size: 14px; text-decoration: none; }
     .row-link:hover { background: var(--lane); }
     .row-link .end { margin-inline-start: auto; color: var(--muted); }
-    .link { display: inline-flex; gap: 4px; align-items: center; color: var(--disp-text); font-size: 13px; text-decoration: none; }
-    .link:hover { text-decoration: underline; }
+    .text-link { display: inline-flex; gap: 4px; align-items: center; color: var(--disp-text); font-size: 13px; text-decoration: none; }
+    .text-link:hover { text-decoration: underline; }
     .key-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; min-block-size: 36px; padding: 8px 0; border-block-end: 1px solid var(--line); font-size: 13px; }
     .key-row .k { display: inline-flex; gap: 4px; }
     .sheet-row { inline-size: 100%; border-inline: 0; border-block-start: 0; border-block-end: 0; background: transparent; color: inherit; font: inherit; font-size: 13px; text-align: start; cursor: pointer; }
@@ -236,7 +236,7 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
         <ui-card [padding]="0">
           <div class="c-head">
             <h2 id="settings-keyboard">{{ 'settings.nav.keyboard' | transloco }}</h2>
-            <a class="link" routerLink="/help" fragment="keys" data-action="help"
+            <a class="text-link" routerLink="/help" fragment="keys" data-action="help"
               >{{ 'settings.keyboard.guide' | transloco }} <ui-icon name="arrow-right" [size]="14"
             /></a>
           </div>
@@ -280,7 +280,7 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
           <div class="card-pad">
             <p class="meta mono">
               Spectant · {{ host }} · {{ 'settings.about.loopback' | transloco }} ·
-              <a class="link" routerLink="/help">{{ 'settings.about.guide' | transloco }}</a>
+              <a class="text-link" routerLink="/help">{{ 'settings.about.guide' | transloco }}</a>
             </p>
           </div>
         </ui-card>

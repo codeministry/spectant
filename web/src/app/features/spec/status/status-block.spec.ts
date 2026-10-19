@@ -111,13 +111,13 @@ describe('StatusBlock assignee (T133, ISC-131)', () => {
     const { host } = await render('002-web-console');
     const chip = host.querySelector('[data-assignee] ui-actor-chip');
     expect(chip?.getAttribute('data-kind')).toBe('person');
-    expect(chip?.querySelector('.label')?.textContent.trim()).toBe('Harbour Master');
+    expect(chip?.querySelector('.chip-label')?.textContent.trim()).toBe('Harbour Master');
     expect(host.querySelector('[data-unassigned]')).toBeNull();
   });
 
   it('shows the raw id in mono for an unmapped person (009)', async () => {
     const { host } = await render('009-chunked-upload-limits', { actors: [] });
-    const label = host.querySelector('[data-assignee] ui-actor-chip .label');
+    const label = host.querySelector('[data-assignee] ui-actor-chip .chip-label');
     expect(label?.textContent.trim()).toBe('u:3f9c0a7d');
     expect(label?.classList.contains('mono')).toBe(true);
   });

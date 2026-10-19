@@ -106,7 +106,7 @@ describe('TasksTab', () => {
     const actors = root.querySelectorAll('[data-task-row] app-task-actors');
     expect(actors).toHaveLength(LIVE.cards.filter((c) => c.agent !== null || c.subagent !== null).length);
     const t27 = root.querySelector('#task-T27 app-task-actors');
-    expect(t27?.querySelector('ui-actor-chip[data-task-agent] .label')?.textContent.trim()).toBe('a:claude:sess-2');
+    expect(t27?.querySelector('ui-actor-chip[data-task-agent] .chip-label')?.textContent.trim()).toBe('a:claude:sess-2');
     expect(t27?.querySelector('ui-actor-chip[data-task-agent]')?.hasAttribute('data-stale')).toBe(true);
     expect(t27?.querySelector('[data-task-subagent]')).toBeNull();
     expect(root.querySelector('#task-T2 app-task-actors')).toBeNull();
@@ -152,7 +152,7 @@ describe('TasksTab', () => {
     await harness.fixture.whenStable();
     expect(sent).toEqual([{ tid: 'T31', hash: 'ab12', checked: true }]);
     expect(root.querySelector('#task-T31')?.getAttribute('data-check')).toBe('written');
-    expect(root.querySelector('#task-T31 .status')?.getAttribute('data-tone')).toBe('done');
+    expect(root.querySelector('#task-T31 .tstate')?.getAttribute('data-tone')).toBe('done');
     expect(box()?.checked).toBe(true);
     expect(TestBed.inject(ToastService).message()).toBe('T31 ticked in tasks.md, line 49');
 
@@ -378,14 +378,14 @@ describe('TasksTab item state (spec 040, T52, ISC-224)', () => {
     expect(stateCell(root, 'T32')?.textContent.trim()).toBe('waiting');
     expect(stateCell(root, 'T34')?.textContent.replace(/\s+/g, ' ').trim()).toBe('done · struck');
     expect(stateCell(root, 'T29')?.textContent.trim()).toBe('open');
-    expect(root.querySelector('#task-T29 .status[data-tone="question"]')).not.toBeNull();
+    expect(root.querySelector('#task-T29 .tstate[data-tone="question"]')).not.toBeNull();
   });
 
   it('keeps the old status chip on a row without itemState (older payloads)', async () => {
     setUp({ ...GOLDEN, tasks: GOLDEN.tasks.map((t) => ({ ...t, itemState: undefined })) });
     const { root } = await open();
     expect(root.querySelector('[data-item-state]')).toBeNull();
-    expect(root.querySelector('#task-T2 .status')?.getAttribute('data-tone')).toBe('closed');
+    expect(root.querySelector('#task-T2 .tstate')?.getAttribute('data-tone')).toBe('closed');
   });
 
   it('locks every checkbox and shows the notice while a run stands on the spec; a click writes nothing', async () => {
@@ -501,5 +501,21 @@ describe('runShort (spec 035, ISC-189)', () => {
   it('takes the worktree tail when the run names one, else the session tail, as for a dispatch without worktree', () => {
     expect(runShort({ session: 'a:claude:sess-2/T26', worktree: '.claude/worktrees/agent-a1b2' })).toBe('agent-a1b2');
     expect(runShort({ session: 'a:claude:sess-2/T26' })).toBe('T26');
+  });
+});
+
+// Spec 049 (ISC-285): a done task the files give no date for shows no "files give no date" sentence; with agent steps
+// it shows the date of its last step instead (harbor 002: T1 done without steps, T4 done with steps).
+describe('TasksTab done rows without a date (spec 049)', () => {
+  const STEPS = stepsGolden['specs/002-web-console'] as unknown as TaskSteps;
+  const lastT4 = STEPS['T4'].at(-1)?.ts ?? '';
+
+  it('drops the no-date sentence and shows the last step date where steps exist', async () => {
+    setUp({ ...GOLDEN, steps: STEPS });
+    const { root } = await open();
+    expect(lastT4).not.toBe('');
+    expect(root.textContent).not.toContain('the files give no date');
+    expect(root.querySelector('#task-T1 [data-task-item] [data-done]')).toBeNull();
+    expect(root.querySelector('#task-T4 [data-task-item] [data-done] time')?.getAttribute('datetime')).toBe(lastT4);
   });
 });

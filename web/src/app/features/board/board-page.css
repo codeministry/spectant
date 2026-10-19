@@ -92,7 +92,7 @@ h1 {
   line-height: 20px;
 }
 
-.link {
+.text-link {
   color: var(--disp-ink);
   font-weight: 600;
 }
@@ -398,7 +398,7 @@ h1 {
   white-space: nowrap;
 }
 
-.loading {
+.board-loading {
   display: grid;
   gap: 12px;
 }
