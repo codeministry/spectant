@@ -12,7 +12,7 @@
 //
 // Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift or a gate open · 4 lock
 // lost. `--json` prints one JSON object on stdout; without it the output is for a person.
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import {
   ActivityTextError,
@@ -25,6 +25,7 @@ import {
   runEventLine,
   runStartLine,
 } from '../../core/src/activity-text.ts';
+import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
 import { buildDashboard } from '../../core/src/dashboard.ts';
@@ -1310,6 +1311,221 @@ async function gateCommand(ctx: Context, args: Args): Promise<number> {
   return sub === 'reviewed' ? gateReviewed(ctx, args, ref) : gateCodeReviewed(ctx, args, ref);
 }
 
+// ── archive ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+//
+// The folder's location is the fact: `specs/NNN-slug/` is active, `specs/archive/NNN-slug/` archived. Nothing is deleted,
+// the number stays taken (`allocate` counts both trees) and the claims stay in the master. Every text is planned and
+// read back through core before the first folder moves, so a refused plan moves nothing.
+
+interface ArchiveBlocker {
+  readonly kind: 'drift' | 'lock' | 'phase' | 'open-claims';
+  /** Hard blockers are never lifted; a soft one is lifted by `--reason`. */
+  readonly hard: boolean;
+  readonly detail: string;
+}
+
+interface ArchiveReference {
+  readonly file: string;
+  readonly line: number;
+  readonly text: string;
+}
+
+/** The planned move of one folder: where from, where to, and the `.md` texts as they will stand there. */
+interface FolderMove {
+  readonly ref: SpecRef;
+  readonly from: string;
+  readonly to: string;
+  readonly texts: ReadonlyMap<string, string>;
+}
+
+/** The folder `arg` names among `pool`: its number, its folder name or its slug without the number. */
+function pickFolder(pool: readonly SpecRef[], arg: string): SpecRef | undefined {
+  const name = basename(arg.replace(/[\\/]+$/u, ''));
+  return pool.find((s) => s.id === name || s.slug === name || specSlugOf(s.slug) === name);
+}
+
+/**
+ * `text` with one `../` more (`down`, archiving) or less (restoring) on every path that leaves the folder: a frontmatter
+ * value that starts with `../` (`isa_master`, `constitution`) and a Markdown link target `](../…)` in the body. A path
+ * inside the folder stays as written. The block and its key lines are core's reading; this only edits those lines.
+ */
+function shiftedText(text: string, down: boolean): string {
+  const fm = parseFrontmatter(text);
+  const lines = text.split('\n');
+  const shift = (path: string): string => (down ? `../${path}` : path.replace(/^\.\.\//u, ''));
+  if (fm.present) {
+    for (const [key, line] of Object.entries(fm.keyLines)) {
+      if (!(fm.values[key] ?? '').startsWith('../')) continue;
+      lines[line - 1] = (lines[line - 1] ?? '').replace(/^([\w-]+:\s*["']?)(\.\.\/)/u, (_m, head: string, up: string) => `${head}${shift(up)}`);
+    }
+  }
+  for (let i = fm.present ? fm.bodyLine - 1 : 0; i < lines.length; i++) {
+    lines[i] = (lines[i] ?? '').replace(/\]\((\.\.\/[^)\s]*)/gu, (_m, path: string) => `](${shift(path)}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * `spec` with `archived: <date>` (and `archived_reason:` when a reason lifted a blocker) at the end of its frontmatter,
+ * or, with a null date, both keys removed; null when the edit does not read back as exactly that with the body unmoved.
+ */
+function stampedText(spec: string, date: string | null, reason: string | null): string | null {
+  const fm = parseFrontmatter(spec);
+  if (!fm.present) return date === null ? spec : null;
+  const lines = spec.split('\n');
+  const close = fm.bodyLine - 2; // the closing delimiter's 0-based line
+  const cr = (lines[close] ?? '').endsWith('\r') ? '\r' : '';
+  const keep = lines.slice(1, close).filter((line) => !/^archived(?:_reason)?:/u.test(line));
+  const added = date === null ? [] : [`archived: ${date}${cr}`, ...(reason === null ? [] : [`archived_reason: ${JSON.stringify(reason)}${cr}`])];
+  const out = [lines[0] ?? '', ...keep, ...added, ...lines.slice(close)].join('\n');
+  const back = parseFrontmatter(out);
+  return back.data.archived === date && back.data.archivedReason === (date === null ? null : reason) && back.body === fm.body ? out : null;
+}
+
+/** The `.md` texts of a folder as they stand after the move: paths shifted, the spec stamped (or unstamped). */
+function plannedTexts(ctx: Context, ref: SpecRef, down: boolean, date: string | null, reason: string | null): Map<string, string> {
+  const texts = new Map<string, string>();
+  for (const name of readdirSync(ref.dir).filter((n) => n.endsWith('.md'))) {
+    const before = readFileSync(join(ref.dir, name), 'utf8');
+    let after: string | null = shiftedText(before, down);
+    if (name === 'spec.md') after = stampedText(after, date, reason);
+    if (after === null) throw bad(`${rel(ctx, ref.dir)}/spec.md: the archive stamp does not read back; nothing moved`);
+    if (after !== before) texts.set(name, after);
+  }
+  return texts;
+}
+
+/** What holds a spec in place: drift and live locks (hard), a phase other than complete and open claims (soft). */
+function archiveBlockers(text: string, ref: SpecRef, listed: readonly SpecRef[], master: string | null, locks: LockReading): ArchiveBlocker[] {
+  const blockers: ArchiveBlocker[] = [];
+  const fm = parseFrontmatter(text);
+  const spec = parseClaims(text);
+  const heldElsewhere = new Set(listed.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists(join(s.dir, 'spec.md')))]));
+  const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere });
+  if (hasDrift(report)) blockers.push({ kind: 'drift', hard: true, detail: `drift against the master: run spec-check drift ${ref.id} and repair it first` });
+  const ids = new Set(spec.claims.map((c) => c.id));
+  const held = locks.locks.filter((l) => ids.has(l.claim));
+  if (held.length > 0) blockers.push({ kind: 'lock', hard: true, detail: `live claim lock on ${[...new Set(held.map((l) => `${l.claim} (${l.session})`))].join(', ')}` });
+  if (fm.data.phase !== 'complete') blockers.push({ kind: 'phase', hard: false, detail: `phase is ${fm.data.phase ?? 'unset'}, not complete` });
+  const open = spec.counted.total - spec.counted.closed;
+  if (open > 0) blockers.push({ kind: 'open-claims', hard: false, detail: `${open} claim${open === 1 ? '' : 's'} still open` });
+  return blockers;
+}
+
+/** Every line outside `specs/` that still names `specs/<slug>`: the master ISA.md and the tracked files. */
+function archiveReferences(ctx: Context, slug: string): ArchiveReference[] {
+  const needle = new RegExp(`(?<!archive/)specs/${slug.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}(?![\\w-])`, 'u');
+  const out: ArchiveReference[] = [];
+  const add = (file: string, line: number, text: string): void => {
+    if (needle.test(text)) out.push({ file, line, text: text.trim().slice(0, 160) });
+  };
+  (readIfExists(masterPath(ctx)) ?? '').split('\n').forEach((text, i) => add('ISA.md', i + 1, text));
+  const grep = git(ctx.root, ['grep', '-n', '-I', '-F', '-e', `specs/${slug}`, '--', '.', ':!specs', ':!ISA.md']) ?? '';
+  for (const hit of grep.split('\n')) {
+    const m = /^([^:]+):(\d+):(.*)$/u.exec(hit);
+    if (m) add(m[1] ?? '', Number(m[2]), m[3] ?? '');
+  }
+  return out;
+}
+
+/** Moves the folder (`git mv` when tracked, so untracked files move along; a plain rename otherwise), then writes its texts. */
+function performMove(ctx: Context, move: FolderMove): void {
+  mkdirSync(dirname(join(ctx.root, move.to)), { recursive: true });
+  const tracked = (git(ctx.root, ['ls-files', '--', move.from]) ?? '').trim() !== '';
+  if (tracked) {
+    if (git(ctx.root, ['mv', move.from, move.to]) === null) throw bad(`git mv ${move.from} ${move.to} failed`);
+  } else {
+    renameSync(join(ctx.root, move.from), join(ctx.root, move.to));
+  }
+  for (const [name, text] of move.texts) writeFileSync(join(ctx.root, move.to, name), text);
+}
+
+async function archive(ctx: Context, args: Args): Promise<number> {
+  const restore = args.positional[0] === 'restore';
+  const targets = args.positional.slice(restore ? 1 : 0);
+  if (targets.length === 0) throw bad(restore ? 'archive restore needs at least one NNN' : 'archive needs at least one NNN');
+  const dry = args.flags.has('dry-run');
+  const reason = args.values.get('reason') ?? null;
+  if (reason !== null && (reason.trim() === '' || /[\r\n]/u.test(reason))) throw bad('--reason needs one line of text');
+  if (restore && reason !== null) throw bad('archive restore takes no --reason');
+
+  const listed = listSpecs(ctx.root);
+  const active = listed.filter((s) => !s.archived);
+  const archived = listed.filter((s) => s.archived);
+  const pool = restore ? archived : active;
+  const refs: SpecRef[] = [];
+  for (const target of targets) {
+    const hit = pickFolder(pool, target);
+    if (hit === undefined) {
+      const other = pickFolder(restore ? active : archived, target);
+      throw bad(`no ${restore ? 'archived' : 'active'} spec ${target}${other === undefined ? '' : `: ${rel(ctx, other.dir)} is ${restore ? 'active' : 'already archived'}`}`);
+    }
+    if (restore && active.some((s) => s.id === hit.id)) throw bad(`an active folder holds ${hit.id} already; restoring ${hit.slug} would collide`);
+    if (!refs.includes(hit)) refs.push(hit);
+  }
+
+  if (restore) return archiveRestore(ctx, args, refs, dry);
+
+  const master = readIfExists(masterPath(ctx));
+  const locks = await locksOf(ctx);
+  const verdicts = refs.map((ref) => {
+    const blockers = archiveBlockers(specText(ctx, ref), ref, listed, master, locks);
+    const ok = blockers.every((b) => !b.hard) && (blockers.length === 0 || reason !== null);
+    return { spec: ref.slug, from: rel(ctx, ref.dir), to: `specs/archive/${ref.slug}`, ok, blockers, ref };
+  });
+  const verdictLines = verdicts.flatMap((v) => [
+    `${v.spec}  ${v.ok ? (v.blockers.length === 0 ? 'ok' : 'ok with --reason') : 'blocked'}`,
+    ...v.blockers.map((b) => `    ${b.hard ? 'hard' : 'soft'}: ${b.detail}${b.hard ? '' : ' (--reason lifts it)'}`),
+  ]);
+  const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: v.to, ok: v.ok, blockers: v.blockers }));
+  const refused = verdicts.filter((v) => !v.ok);
+  if (refused.length > 0) {
+    emit(ctx, args, { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
+      ...verdictLines,
+      `nothing moved: ${refused.length} spec${refused.length === 1 ? '' : 's'} blocked`,
+    ]);
+    return EXIT.drift;
+  }
+
+  // Plan every text first: a stamp that does not read back refuses the whole call before anything moves.
+  const date = ctx.now.toISOString().slice(0, 10);
+  const moves = verdicts.map((v) => {
+    const why = v.blockers.length === 0 ? null : reason;
+    return { move: { ref: v.ref, from: v.from, to: v.to, texts: plannedTexts(ctx, v.ref, true, date, why) }, reason: why };
+  });
+  const report = moves.map(({ move, reason: why }) => {
+    if (!dry) performMove(ctx, move);
+    return { spec: move.ref.slug, from: move.from, to: move.to, reason: why, references: archiveReferences(ctx, move.ref.slug) };
+  });
+  const lines = [
+    ...verdictLines,
+    ...report.flatMap((r) => [
+      `${dry ? 'would archive' : 'archived'} ${r.from} → ${r.to}${r.reason === null ? '' : ` (reason: ${r.reason})`}`,
+      ...r.references.map((x) => `    reference left: ${x.file}:${x.line}  ${x.text}`),
+    ]),
+    ...(report.some((r) => r.references.length > 0) ? ['references outside specs/ are reported, never edited'] : []),
+  ];
+  emit(ctx, args, { dryRun: dry, reason, moved: !dry, verdicts: verdictView, archived: report }, lines);
+  return EXIT.ok;
+}
+
+function archiveRestore(ctx: Context, args: Args, refs: readonly SpecRef[], dry: boolean): number {
+  const rows = listArchive(refs.map(specFiles));
+  const moves: FolderMove[] = refs.map((ref) => ({ ref, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
+  for (const move of moves) if (!dry) performMove(ctx, move);
+  const restored = moves.map((m) => {
+    const row = rows.find((r) => r.slug === m.ref.slug);
+    return { spec: m.ref.slug, from: m.from, to: m.to, archived: row?.archived ?? null, archivedReason: row?.archivedReason ?? null };
+  });
+  emit(
+    ctx,
+    args,
+    { dryRun: dry, restored },
+    restored.map((r) => `${dry ? 'would restore' : 'restored'} ${r.from} → ${r.to}${r.archived === null ? '' : ` (archived ${r.archived}${r.archivedReason === null ? '' : `: ${r.archivedReason}`})`}`),
+  );
+  return EXIT.ok;
+}
+
 // ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface Command {
@@ -1317,9 +1533,7 @@ interface Command {
   readonly summary: string;
   readonly values?: readonly string[];
   readonly flags?: readonly string[];
-  readonly run?: (ctx: Context, args: Args) => number | Promise<number>;
-  /** The task of a later round that builds it; the command exits 1 until then. */
-  readonly later?: string;
+  readonly run: (ctx: Context, args: Args) => number | Promise<number>;
 }
 
 const COMMANDS: Readonly<Record<string, Command>> = {
@@ -1395,7 +1609,14 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     flags: ['yes'],
     run: gateCommand,
   },
-  archive: { usage: 'archive <NNN>… [--dry-run] [--reason "<why>"] | archive restore <NNN>', summary: 'move specs to specs/archive/ and back', later: 'T24' },
+  archive: {
+    usage: 'archive <NNN>… [--dry-run] [--reason "<why>"] [--json] | archive restore <NNN>… [--dry-run] [--json]',
+    summary:
+      'move specs to specs/archive/NNN-slug/, all or none, and back: drift and a live lock block (hard); a phase other than complete or an open claim blocks unless --reason; outbound relative paths shift one level; references left outside specs/ are reported, never edited; the number stays taken. Exit 3 and nothing moved when one is blocked',
+    values: ['reason'],
+    flags: ['dry-run'],
+    run: archive,
+  },
   rounds: {
     usage:
       'rounds record <spec> [--plan <file>] [--result <file>] [--outcome T<k>=<o>]… [--note T<k>=<text>]… [--builder T<k>=<name>]… [--reader T<k>=<name>]… [--mode agent|workflow|cockpit] [--stop "<reason>"] [--ts <iso>] [--json]',
@@ -1418,7 +1639,7 @@ function help(): string {
   return [
     'spec-check <command> [args] [--json]',
     '',
-    ...Object.entries(COMMANDS).map(([name, c]) => `  ${name.padEnd(width)}  ${c.summary}${c.later === undefined ? '' : ' (not built yet)'}`),
+    ...Object.entries(COMMANDS).map(([name, c]) => `  ${name.padEnd(width)}  ${c.summary}`),
     '',
     'spec-check <command> --help shows one command. Exit: 0 ok, 1 bad arguments, 3 drift or gate open, 4 lock lost.',
   ].join('\n');
@@ -1441,7 +1662,6 @@ export async function main(argv: readonly string[], cwd = process.cwd(), now = n
     out(`spec-check ${command.usage}\n\n${command.summary}`);
     return EXIT.ok;
   }
-  if (command.run === undefined) return fail(EXIT.badArgs, `${name}: not built yet (T18/T20/T22/T24; this one in ${command.later ?? 'a later round'})`);
   try {
     const args = parseArgs(rest, command.values ?? [], command.flags ?? []);
     return await command.run({ cwd, root: repoRoot(cwd), now, out }, args);

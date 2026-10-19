@@ -235,14 +235,14 @@ describe('spec-check: the command surface', () => {
     expect(one.out).toContain('--claims');
   });
 
-  test('an unknown command and the commands of later rounds exit 1', () => {
+  test('an unknown command exits 1, and every command the help lists is built', () => {
     const root = repo();
-    expect(run(root, 'nonsense').code).toBe(1);
-    for (const c of ['archive']) {
-      const r = run(root, c, 'x');
-      expect(r.code).toBe(1);
-      expect(r.err).toContain('not built yet');
-    }
+    const unknown = run(root, 'nonsense');
+    expect(unknown.code).toBe(1);
+    expect(unknown.err).toContain('unknown command');
+    const help = run(root, '--help');
+    expect(help.out).toContain('archive');
+    expect(help.out).not.toContain('not built yet');
   });
 
   test('verify refuses a multi-line stub and an unknown claim, writing nothing', () => {

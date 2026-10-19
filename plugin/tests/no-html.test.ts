@@ -6,9 +6,8 @@
 //    pair: allocate, mint, decide, transition plan → tasks → review → build → code-review → close → done, verify,
 //    frontier, claim and release, every `activity` step, `rounds record`, status and drift. Then it walks the whole
 //    fixture tree (`.git/` and the linked worktree included) in TypeScript, so the test needs no extra tool, and finds
-//    no file ending `.html` or `.htm`. `gate` and `archive` were still stubs when this test was written (they exit 1
-//    and write nothing); the chain calls their read-only forms anyway, so they fall under the same walk once built.
-//    The reviewed mark is written the way the app's reviewed write does it, as in transitions.test.ts.
+//    no file ending `.html` or `.htm`. The chain checks both gates and, at done, archives the spec (dry run, the move)
+//    and restores it, so the archive's moves and rewrites fall under the same walk. The reviewed mark is written the way the app's reviewed write does it, as in transitions.test.ts.
 //
 // 2. The static guard. The rule, as the regexes below implement it:
 //    - Prose (every file under `plugin/spectant/`, the bundle `bin/spec-check` excluded): a line breaks the rule when
@@ -23,7 +22,7 @@
 //      no write call, so they pass.
 //    The guard's own fixtures prove each regex fires on an offending line and stays quiet on the allowed ones.
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { hashForGate } from '../../core/src/gates.ts';
@@ -274,7 +273,7 @@ const called: string[] = [];
 /** One CLI call; its exit code must be one of `codes`. */
 function cli(root: string, codes: readonly number[], ...args: string[]): string {
   const r = Bun.spawnSync(['bun', CLI, ...args], { cwd: root, stdout: 'pipe', stderr: 'pipe' });
-  if (!codes.includes(r.exitCode)) throw new Error(`spec-check ${args.join(" ")}: exit ${r.exitCode}, expected ${codes.join("|")}: ${r.stderr.toString()}`);
+  if (!codes.includes(r.exitCode)) throw new Error(`spec-check ${args.join(" ")}: exit ${r.exitCode}, expected ${codes.join("|")}: ${r.stderr.toString()}${r.stdout.toString()}`);
   called.push(args[0] ?? '');
   return r.stdout.toString();
 }
@@ -302,7 +301,7 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
     const tree = join(root, '.worktrees', '001-digest');
     const claimsFile = join(root, '.claims.json');
     writeFileSync(claimsFile, JSON.stringify(CLAIMS));
-    const STUB = [0, 1, 3]; // gate and archive: stubs (exit 1) when written; a built gate check exits 0 or 3
+    const GATE = [0, 3]; // a gate check exits 0 on a fresh mark, 3 on a missing or stale one
 
     subcommand(root, 'init', '/spec', () => {
       cli(root, [0], 'status');
@@ -323,9 +322,9 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
       cli(root, [0], 'transition', '001', 'review', '--command', '/spec tasks 001');
     });
     subcommand(root, '001', '/spec review 001', () => {
-      cli(root, STUB, 'gate', 'check', 'reviewed', '001');
+      cli(root, GATE, 'gate', 'check', 'reviewed', '001');
       markReviewed(root);
-      cli(root, STUB, 'gate', 'check', 'reviewed', '001');
+      cli(root, GATE, 'gate', 'check', 'reviewed', '001');
     });
     subcommand(root, '001', '/spec implement 001', () => {
       git(root, 'worktree', 'add', '-q', tree, '-b', 'feature/001-digest');
@@ -354,14 +353,20 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
       cli(root, [0], 'transition', '001', 'code-review', '--command', '/spec implement 001');
     });
     subcommand(root, '001', '/spec review 001', () => {
-      cli(root, STUB, 'gate', 'check', 'code-reviewed', '001');
+      cli(root, GATE, 'gate', 'check', 'code-reviewed', '001');
       cli(root, [0], 'transition', '001', 'close', '--command', '/spec review 001');
     });
     subcommand(root, '001', '/spec done 001', () => {
       cli(root, [0], 'transition', '001', 'done', '--command', '/spec done 001');
       cli(root, [0], 'status', '001', '--json');
       cli(root, [0, 3], 'drift', '001', '--json');
-      cli(root, STUB, 'archive', '001', '--dry-run');
+      // The close step of the done workflow writes `phase: complete` by hand; the archive then moves without a reason.
+      const spec = join(root, DIR, 'spec.md');
+      writeFileSync(spec, readFileSync(spec, 'utf8').replace(/^phase: .*$/m, 'phase: complete'));
+      cli(root, [0], 'archive', '001', '--dry-run');
+      cli(root, [0], 'archive', '001');
+      expect(existsSync(join(root, 'specs', 'archive', '001-digest', 'spec.md'))).toBe(true);
+      cli(root, [0], 'archive', 'restore', '001');
     });
 
     // Every command `spec-check --help` lists ran at least once.
