@@ -2,11 +2,11 @@
 // app, whether a spec may be implemented. Without `.gates/reviewed.json` it exits 3 and names the review as the next
 // step (`/spec review NNN`); with a fresh mark it exits 0; with a stale mark it exits 3 and names the changed files.
 //
-// RED until T22 builds `gate`: each case is `test.failing`, so `bun test plugin/` stays green while the stub exits 1,
-// and each one turns into a reported failure the moment `gate check reviewed` behaves as written here. T22 then drops
-// `.failing` from every case.
+// T24 adds the writes: `gate reviewed <spec> --yes` sets the mark the app sets (write path 1: the mark, then one
+// `review → build` line in events.jsonl), and `gate code-reviewed <spec> --yes` the per-spec code-review mark; without
+// `--yes` neither writes anything.
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { REVIEWED_FILES, hashForGate } from '../../core/src/gates.ts';
@@ -69,8 +69,8 @@ function markReviewed(root: string): void {
   writeFileSync(join(root, DIR, '.gates', 'reviewed.json'), `${JSON.stringify({ gate: 'reviewed', at: '2026-03-04T08:00:00Z', files })}\n`);
 }
 
-describe('spec-check gate check reviewed (ISC-45) — red until T22', () => {
-  test.failing('without a reviewed mark: exit 3, a review is needed, next step /spec review 001', () => {
+describe('spec-check gate check reviewed (ISC-45)', () => {
+  test('without a reviewed mark: exit 3, a review is needed, next step /spec review 001', () => {
     const root = repoWithSpec();
     const r = run(root, 'gate', 'check', 'reviewed', '001');
     expect(r.code).toBe(3);
@@ -78,13 +78,13 @@ describe('spec-check gate check reviewed (ISC-45) — red until T22', () => {
     expect(r.text).toContain('/spec review 001');
   });
 
-  test.failing('with a fresh reviewed mark: exit 0', () => {
+  test('with a fresh reviewed mark: exit 0', () => {
     const root = repoWithSpec();
     markReviewed(root);
     expect(run(root, 'gate', 'check', 'reviewed', '001').code).toBe(0);
   });
 
-  test.failing('with a stale reviewed mark: exit 3 and the changed files named', () => {
+  test('with a stale reviewed mark: exit 3 and the changed files named', () => {
     const root = repoWithSpec();
     markReviewed(root);
     writeFileSync(join(root, DIR, 'plan.md'), `${PLAN}\nA second pass sorts the notes by tag.\n`);
@@ -108,5 +108,64 @@ describe('the gate fixtures read as intended (green now)', () => {
     expect(reviewedOf(root)).toBe('fresh');
     writeFileSync(join(root, DIR, 'plan.md'), `${PLAN}\nA second pass sorts the notes by tag.\n`);
     expect(reviewedOf(root)).toBe('stale');
+  });
+});
+
+/** The last line of the spec's events.jsonl, parsed; null without the file. */
+function lastEvent(root: string): Record<string, unknown> | null {
+  if (!existsSync(join(root, DIR, 'events.jsonl'))) return null;
+  const lines = read(root, `${DIR}/events.jsonl`).split('\n').filter((l) => l.trim() !== '');
+  return JSON.parse(lines.at(-1) ?? 'null') as Record<string, unknown> | null;
+}
+
+describe('spec-check gate reviewed --yes (ISC-45.1, T24)', () => {
+  test('without --yes: exit 1, "needs --yes", no mark and no event', () => {
+    const root = repoWithSpec();
+    const before = read(root, `${DIR}/events.jsonl`);
+    const r = run(root, 'gate', 'reviewed', '001');
+    expect(r.code).toBe(1);
+    expect(r.text).toContain('needs --yes');
+    expect(existsSync(join(root, DIR, '.gates'))).toBe(false);
+    expect(read(root, `${DIR}/events.jsonl`)).toBe(before);
+  });
+
+  test('with --yes: .gates/reviewed.json exists, one review → build line is appended, and the check then exits 0', () => {
+    const root = repoWithSpec();
+    const before = read(root, `${DIR}/events.jsonl`).split('\n').filter((l) => l.trim() !== '').length;
+    const r = run(root, 'gate', 'reviewed', '001', '--yes', '--actor', 'u:0a1b2c3d');
+    expect(r.code).toBe(0);
+    expect(existsSync(join(root, DIR, '.gates', 'reviewed.json'))).toBe(true);
+    const lines = read(root, `${DIR}/events.jsonl`).split('\n').filter((l) => l.trim() !== '');
+    expect(lines.length).toBe(before + 1);
+    expect(lastEvent(root)).toMatchObject({ from: 'review', to: 'build', command: '/spec review 001', actor: 'u:0a1b2c3d' });
+    const mark = JSON.parse(read(root, `${DIR}/.gates/reviewed.json`)) as { gate: string; at: string; files: Record<string, string | null> };
+    expect(mark.gate).toBe('reviewed');
+    expect(lastEvent(root)?.ts).toBe(mark.at);
+    expect(mark.files['tasks.md']).toBeNull();
+    expect(run(root, 'gate', 'check', 'reviewed', '001').code).toBe(0);
+  });
+});
+
+describe('spec-check gate code-reviewed (T22, T24)', () => {
+  test('absent: exit 3 naming the code review; --yes without counts exits 1; with them the check exits 0, an edit makes it stale', () => {
+    const root = repoWithSpec();
+    const absent = run(root, 'gate', 'check', 'code-reviewed', '001');
+    expect(absent.code).toBe(3);
+    expect(absent.text).toContain('/spec review 001');
+    expect(run(root, 'gate', 'code-reviewed', '001').code).toBe(1);
+    expect(run(root, 'gate', 'code-reviewed', '001', '--yes').code).toBe(1);
+    expect(existsSync(join(root, DIR, '.gates', 'code-reviewed.json'))).toBe(false);
+
+    const r = run(root, 'gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '1', '--note', 'one accepted finding');
+    expect(r.code).toBe(0);
+    const mark = JSON.parse(read(root, `${DIR}/.gates/code-reviewed.json`)) as Record<string, unknown>;
+    expect(mark).toMatchObject({ gate: 'code-reviewed', code: 0, security: 1, note: 'one accepted finding' });
+    expect(mark.scope).toBeUndefined();
+    expect(run(root, 'gate', 'check', 'code-reviewed', '001').code).toBe(0);
+
+    writeFileSync(join(root, 'notes.ts'), 'export const week = 7;\n');
+    const stale = run(root, 'gate', 'check', 'code-reviewed', '001');
+    expect(stale.code).toBe(3);
+    expect(stale.text).toContain('notes.ts');
   });
 });

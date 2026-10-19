@@ -32,8 +32,8 @@ master `ISA.md`; the CLI writes the marks and their events.
    recommended when something blocks, with the reason in its description).
 4. **Approve** → `CLI gate reviewed specs/NNN-slug --yes`. It writes `specs/NNN-slug/.gates/reviewed.json`, bound to
    the sha256 of the normalised `spec.md`, `plan.md` and `tasks.md` (frontmatter, checkbox states, `~~` and the
-   `## Not yet specified`, `## Decisions` and `## Verification` sections ignored), and appends exactly one line to the
-   spec's `events.jsonl`. Without `--yes` it only prints what it would write. **Not yet** → write nothing and say that
+   `## Not yet specified`, `## Decisions` and `## Verification` sections ignored), and appends exactly one `review → build`
+   line to the spec's `events.jsonl`. Without `--yes` it writes nothing and exits 1. **Not yet** → write nothing and say that
    `/spec implement` stays closed until a fresh mark exists.
 5. **Reply in one line:** spec, missing files, first-round preview, whether the review is recorded. Then
    `CLI run end <run-id> --outcome ok`.

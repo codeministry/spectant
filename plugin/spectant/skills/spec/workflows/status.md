@@ -75,7 +75,7 @@ running it twice changes nothing the second time.
 ID: `spec-check mint <NNN> …` with the claim and its Test Strategy row. The master is always written first.
 
 **Step 3: closes.** For each claim closed on one side and open on the other, write the close through with its
-evidence: `spec-check verify <NNN> <ISC-N> "<one-line stub>"`, the stub taken from the side that holds the Verification
+evidence: `spec-check verify <NNN> <ISC-N> <type> "<one-line stub>"`, the stub taken from the side that holds the Verification
 line. The command writes the Verification line into the master and the spec before the checkmark and recounts
 `progress:` in both. A claim ticked without any Verification line is not ticked through: name it and leave it to
 `/spec implement <NNN>`.

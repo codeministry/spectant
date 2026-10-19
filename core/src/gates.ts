@@ -235,6 +235,24 @@ export function featureCodeReviewTargets(planning: PlanningModel, feature: strin
     .map((h) => h.slug);
 }
 
+/**
+ * The text of `.gates/reviewed.json`: byte for byte what the app's reviewed write (write path 1) and the old SpecGate
+ * `mark` write, `JSON.stringify({gate, at, files}, null, 2)` and one newline, `files` keyed in `REVIEWED_FILES` order
+ * with null for a file that does not exist. `readGateMark` reads it back unchanged. Pure: the caller hashes the files
+ * (`hashForGate`) and writes the text. Throws a RangeError on an empty `at` or a hash that is no sha256 hex, since a
+ * mark with them could not be read back as written.
+ */
+export function reviewedMarkText(at: string, files: Readonly<Record<ReviewedFile, string | null>>): string {
+  if (at === '') throw new RangeError('reviewedMarkText: the mark needs a time');
+  const ordered = {} as Record<ReviewedFile, string | null>;
+  for (const f of REVIEWED_FILES) {
+    const hash = files[f];
+    if (hash !== null && !SHA256_HEX.test(hash)) throw new RangeError(`reviewedMarkText: the hash of ${f} ${JSON.stringify(hash)} is not a sha256 hex`);
+    ordered[f] = hash;
+  }
+  return `${JSON.stringify({ gate: 'reviewed', at, files: ordered }, null, 2)}\n`;
+}
+
 /** What a code-reviewed mark records; `scope` only on the mark of a feature-level code review. */
 export interface CodeReviewedMarkFields {
   /** ISO 8601. */

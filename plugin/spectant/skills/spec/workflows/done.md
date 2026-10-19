@@ -47,7 +47,7 @@ workflow can run. It closes only on the user's own words in this session:
 1. Show the claim and its Test Strategy row, then ask one question (`AskUserQuestion`, recommended option first):
    confirmed as stated, or not yet.
 2. On a confirmation, record the user's words verbatim, quoted, never paraphrased:
-   `spec-check verify <NNN> <ISC-N> "confirmed by the user: \"<their words>\""`. The Verification line lands in the
+   `spec-check verify <NNN> <ISC-N> manual "confirmed by the user: \"<their words>\""`. The Verification line lands in the
    master and the spec before the checkmark; the command keeps that order and recounts progress.
 3. "Not yet" leaves the claim open and the close fails on it. A claim the user wants dropped is a change to the claim
    set, not a close: it is made in the master first, never by ticking or editing the spec here.

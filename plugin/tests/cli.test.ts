@@ -238,7 +238,7 @@ describe('spec-check: the command surface', () => {
   test('an unknown command and the commands of later rounds exit 1', () => {
     const root = repo();
     expect(run(root, 'nonsense').code).toBe(1);
-    for (const c of ['gate', 'archive']) {
+    for (const c of ['archive']) {
       const r = run(root, c, 'x');
       expect(r.code).toBe(1);
       expect(r.err).toContain('not built yet');

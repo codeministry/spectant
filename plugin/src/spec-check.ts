@@ -12,7 +12,7 @@
 //
 // Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift or a gate open · 4 lock
 // lost. `--json` prints one JSON object on stdout; without it the output is for a person.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import {
   ActivityTextError,
@@ -33,7 +33,8 @@ import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
 import type { EventLine, LockReading, RunEvent, RunOutcome, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
 import { SPEC_TYPES, parseFrontmatter } from '../../core/src/frontmatter.ts';
-import { gateState, readGateMark, reviewedGate } from '../../core/src/gates.ts';
+import { REVIEWED_FILES, codeReviewedMarkText, gateState, hashForGate, readGateMark, reviewedGate, reviewedMarkText, treeIdOf } from '../../core/src/gates.ts';
+import type { GateCheck, ReviewedFile, TreeEntry, TreeEntryMode } from '../../core/src/gates.ts';
 import { nextSpecNumber, specNumbersOf } from '../../core/src/allocate.ts';
 import { activityReading, readLockSources } from '../../core/src/locks.ts';
 import { listSpecs, resolveSpec } from '../../core/src/resolve.ts';
@@ -437,22 +438,27 @@ function partitionView(p: ClaimPartition): Record<string, unknown> {
   return { closed: p.closed, open: p.open, takeable: p.takeable, gated: p.gated, blocked: p.blocked, taken: p.taken, dropped: p.dropped };
 }
 
-async function status(ctx: Context, args: Args): Promise<number> {
+/** The dashboard's input over every spec folder of the root, as the app builds it, without a worktree tree id. */
+function dashboardInput(ctx: Context, locks: LockReading): DashboardInput {
   const listed = listSpecs(ctx.root);
-  const one = args.positional[0] === undefined ? null : specRef(ctx.root, args.positional[0]);
-  if (one?.archived) throw bad(`${rel(ctx, one.dir)} is archived`);
-  const active = listed.filter((s) => !s.archived).map(specFiles);
-  const locks = await locksOf(ctx);
-  const input: DashboardInput = {
+  return {
     master: readIfExists(masterPath(ctx)),
     constitution: readIfExists(join(ctx.root, 'specs', 'constitution.md')),
     tldr: readIfExists(join(ctx.root, 'specs', 'tldr.md')),
-    specs: active,
+    specs: listed.filter((s) => !s.archived).map(specFiles),
     archived: listed.filter((s) => s.archived).map(specFiles),
     worktreeTree: null,
     locks,
     workflow: parseWorkflow(readIfExists(join(ctx.root, 'specs', 'workflow.md'))),
   };
+}
+
+async function status(ctx: Context, args: Args): Promise<number> {
+  const one = args.positional[0] === undefined ? null : specRef(ctx.root, args.positional[0]);
+  if (one?.archived) throw bad(`${rel(ctx, one.dir)} is archived`);
+  const locks = await locksOf(ctx);
+  const input = dashboardInput(ctx, locks);
+  const active = input.specs;
   const model = buildDashboard(input);
   const rows = model.specs.filter((row) => one === null || row.slug === one.slug);
   const specs = rows.map((row) => {
@@ -640,13 +646,9 @@ async function transition(ctx: Context, args: Args): Promise<number> {
     plan = late;
   }
   const event: EventLine = { ...plan.event, command: args.values.get('command') ?? pluginCommand(plan.event.command) };
-  const line = JSON.stringify(event);
-  if (!validateEventLine(line).ok) throw bad(`the event line would be rejected: ${line}; nothing written`);
-  const eventsPath = join(ref.dir, 'events.jsonl');
-  const existing = readIfExists(eventsPath);
-  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
+  const line = checkedEvent(event);
   writeFileSync(join(ref.dir, 'spec.md'), plan.specText);
-  appendFileSync(eventsPath, `${lead}${line}\n`);
+  appendEventLine(ref.dir, line);
   emit(ctx, args, { spec: ref.slug, from: plan.from, to: plan.to, event }, [`${ref.slug}: ${plan.from} → ${plan.to} (${event.command})`]);
   return EXIT.ok;
 }
@@ -1094,6 +1096,220 @@ function rounds(ctx: Context, args: Args): number {
   return roundsRecord(ctx, args);
 }
 
+// ── gates: the reviewed and the code-reviewed mark ──────────────────────────────────────────────────────────────────
+
+type Gate = 'reviewed' | 'code-reviewed';
+
+const gatePath = (ref: Pick<SpecRef, 'dir'>, gate: Gate): string => join(ref.dir, '.gates', `${gate}.json`);
+
+const numberOf = (ref: Pick<SpecRef, 'slug'>): string => specIdOf(ref.slug) ?? ref.slug;
+
+/** The subcommand that sets the gate: the next step a check names, and the command of the event the mark appends. */
+const nextFor = (ref: Pick<SpecRef, 'slug'>, gate: Gate): string => (gate === 'reviewed' ? `/spec review ${numberOf(ref)}` : `/spec review ${numberOf(ref)} code`);
+
+function checkedEvent(event: EventLine): string {
+  const line = JSON.stringify(event);
+  if (!validateEventLine(line).ok) throw bad(`the event line would be rejected: ${line}; nothing written`);
+  return line;
+}
+
+/** One event line appended to the folder's `events.jsonl` (created when absent), a newline first when it lacks its last one. */
+function appendEventLine(dir: string, line: string): void {
+  const path = join(dir, 'events.jsonl');
+  const existing = readIfExists(path);
+  const lead = existing !== null && existing !== '' && !existing.endsWith('\n') ? '\n' : '';
+  appendFileSync(path, `${lead}${line}\n`);
+}
+
+/**
+ * Keeps `.gates/` out of git, as the old skill did: when the mark's path is not ignored, one `.gates/` line goes into
+ * the `.gitignore` of the checkout holding the spec. A code-reviewed mark must lie outside the tree it names, or
+ * writing it would make it stale; the reviewed mark lies beside it.
+ */
+function ensureGatesIgnored(ref: Pick<SpecRef, 'dir'>): 'ignored' | 'added' | 'no-git' {
+  const top = git(ref.dir, ['rev-parse', '--show-toplevel'])?.trim();
+  if (top === undefined || top === '') return 'no-git';
+  const probe = relative(top, gatePath(ref, 'reviewed')).split(sep).join('/');
+  if (git(top, ['-c', 'core.fsmonitor=false', 'check-ignore', '-q', '--', probe]) !== null) return 'ignored';
+  const path = join(top, '.gitignore');
+  const have = readIfExists(path) ?? '';
+  const lead = have === '' || have.endsWith('\n') ? '' : '\n';
+  appendFileSync(path, `${lead}# Spec: gate marks stay on this machine\n.gates/\n`);
+  return 'added';
+}
+
+/** The checkout around the current directory as `git add -A && git write-tree` would see it, in memory. */
+interface Checkout {
+  readonly root: string;
+  /** core's `treeIdOf` over the listed files; null when git could not list them. */
+  readonly tree: string | null;
+  readonly head: string | null;
+  readonly branch: string | null;
+}
+
+/** One listed path as git would store it; null when it is gone or is no file (a submodule). */
+function treeEntry(root: string, path: string): TreeEntry | null {
+  const absolute = join(root, path);
+  let stat;
+  try {
+    stat = lstatSync(absolute);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+  if (stat.isSymbolicLink()) return { path, mode: '120000', bytes: readlinkSync(absolute, { encoding: 'buffer' }) };
+  if (!stat.isFile()) return null;
+  const mode: TreeEntryMode = (stat.mode & 0o100) === 0 ? '100644' : '100755';
+  return { path, mode, bytes: readFileSync(absolute) };
+}
+
+/** The paths `ls-files -z` printed, without an untracked nested repository (`dir/`). */
+const listedPaths = (out: string | null): string[] => [...new Set((out ?? '').split('\0'))].filter((p) => p !== '' && !p.endsWith('/'));
+
+function checkoutOf(cwd: string): Checkout | null {
+  const root = git(cwd, ['rev-parse', '--show-toplevel'])?.trim();
+  if (root === undefined || root === '') return null;
+  const word = (out: string | null): string | null => {
+    const value = out?.trim() ?? '';
+    return value === '' ? null : value;
+  };
+  const head = word(git(root, ['rev-parse', '--verify', '-q', 'HEAD']));
+  const branch = word(git(root, ['rev-parse', '--abbrev-ref', 'HEAD']));
+  const paths = git(root, ['-c', 'core.fsmonitor=false', 'ls-files', '-z', '--cached', '--others', '--exclude-standard']);
+  if (paths === null) return { root, tree: null, head, branch };
+  return { root, tree: treeIdOf(listedPaths(paths).flatMap((p) => treeEntry(root, p) ?? [])), head, branch };
+}
+
+/**
+ * The paths of the checkout that differ from the commit the code review saw (the mark's `head`), untracked ones
+ * included. The tree the mark names exists only as an id, never as a git object, so the reviewed commit is the nearest
+ * thing to compare with: a path already changed at review time is listed too.
+ */
+function changedSince(checkout: Checkout, head: string | null): string[] {
+  const tracked = head === null ? null : git(checkout.root, ['-c', 'core.fsmonitor=false', 'diff', '--name-only', '-z', head, '--']);
+  const untracked = git(checkout.root, ['-c', 'core.fsmonitor=false', 'ls-files', '-z', '--others', '--exclude-standard']);
+  return [...new Set([...listedPaths(tracked), ...listedPaths(untracked)])].sort();
+}
+
+/** A mark's check and why it reads so: the changed files, or the diagnostics of a mark that could not be read. */
+function gateCheckOf(ctx: Context, ref: SpecRef, gate: Gate): { check: GateCheck; problems: string[] } {
+  const text = readIfExists(gatePath(ref, gate));
+  const reading = text === null ? null : readGateMark(gate, text);
+  const problems = reading !== null && reading.mark === null ? reading.diagnostics.map((d) => d.message) : [];
+  if (gate === 'reviewed') return { check: reviewedGate(specFiles(ref).texts).check, problems };
+  const checkout = checkoutOf(ctx.cwd);
+  const check = gateState(gate, reading?.mark ?? null, { worktreeTree: checkout?.tree ?? null });
+  if (check.state !== 'stale') return { check, problems };
+  if (checkout?.tree == null) return { check, problems: [...problems, 'the tree id of the working tree could not be computed'] };
+  const head = reading?.mark?.gate === 'code-reviewed' ? reading.mark.head : null;
+  return { check: { ...check, changed: changedSince(checkout, head) }, problems };
+}
+
+/** `gate check reviewed|code-reviewed <spec>`: exit 0 on a fresh mark, 3 on a missing or stale one, with the next step. */
+function gateCheck(ctx: Context, args: Args): number {
+  const gate = required(args, 1, 'the gate (reviewed or code-reviewed)');
+  if (gate !== 'reviewed' && gate !== 'code-reviewed') throw bad(`"${gate}" is no gate (reviewed, code-reviewed)`);
+  const ref = specRef(ctx.root, required(args, 2, 'the spec'));
+  specText(ctx, ref);
+  const { check, problems } = gateCheckOf(ctx, ref, gate);
+  const next = check.state === 'fresh' ? null : nextFor(ref, gate);
+  const mark = rel(ctx, gatePath(ref, gate));
+  let line: string;
+  if (check.state === 'fresh') line = `${ref.slug}: ${gate} mark fresh (${check.at ?? 'no time'})`;
+  else if (check.state === 'missing') line = `${ref.slug}: not ${gate}, no readable ${mark}${problems.length > 0 ? ` (${problems.join('; ')})` : ''}`;
+  else {
+    const why = check.changed.length > 0 ? `changed since: ${check.changed.join(', ')}` : problems.join('; ') || 'the working tree changed';
+    line = `${ref.slug}: the ${gate} mark is stale, ${why}`;
+  }
+  emit(ctx, args, { spec: ref.slug, gate, state: check.state, at: check.at, changed: check.changed, problems, next }, next === null ? [line] : [line, `next: ${next}`]);
+  return check.state === 'fresh' ? EXIT.ok : EXIT.drift;
+}
+
+const needsYes = (ctx: Context, ref: SpecRef, gate: Gate): CliError =>
+  bad(`gate ${gate} needs --yes: it writes ${rel(ctx, gatePath(ref, gate))} and appends to events.jsonl; nothing written`);
+
+/**
+ * `gate reviewed <spec> --yes`: the app's write path 1 without the app. The mark over the three files as they stand
+ * (`reviewedMarkText`, the app's bytes), then exactly one event line for the move the mark makes, in the stage table's
+ * names `review → build` (FORMAT.md, "Mark reviewed"), at the mark's time. The mark first: a failure between the two
+ * leaves a mark without its event, never an event without a mark. No lock is read: the command runs inside the run of
+ * the subcommand that asked the user.
+ */
+function gateReviewed(ctx: Context, args: Args, ref: SpecRef): number {
+  if (!args.flags.has('yes')) throw needsYes(ctx, ref, 'reviewed');
+  specText(ctx, ref);
+  const texts = specFiles(ref).texts;
+  const textOf: Record<ReviewedFile, string | undefined> = { 'spec.md': texts.spec, 'plan.md': texts.plan, 'tasks.md': texts.tasks };
+  const files = {} as Record<ReviewedFile, string | null>;
+  for (const f of REVIEWED_FILES) {
+    const text = textOf[f];
+    files[f] = text === undefined ? null : hashForGate(f, text);
+  }
+  const at = ctx.now.toISOString();
+  const event: EventLine = { ts: at, from: 'review', to: 'build', command: args.values.get('command') ?? nextFor(ref, 'reviewed'), actor: args.values.get('actor') ?? CLI_SESSION };
+  const line = checkedEvent(event);
+  const mark = reviewedMarkText(at, files);
+  const gitignore = ensureGatesIgnored(ref);
+  mkdirSync(join(ref.dir, '.gates'), { recursive: true });
+  writeFileSync(gatePath(ref, 'reviewed'), mark);
+  appendEventLine(ref.dir, line);
+  const ignored = gitignore === 'added' ? '; .gitignore: added .gates/' : '';
+  emit(ctx, args, { spec: ref.slug, gate: 'reviewed', at, files, event, gitignore }, [
+    `${ref.slug}: reviewed (${rel(ctx, gatePath(ref, 'reviewed'))}); review → build (${event.command})${ignored}`,
+  ]);
+  return EXIT.ok;
+}
+
+function countValue(args: Args, name: string): number {
+  const raw = requiredValue(args, name, 'N (the accepted open findings)');
+  if (!/^\d+$/u.test(raw)) throw bad(`--${name} "${raw}" is no non-negative integer`);
+  return Number(raw);
+}
+
+/**
+ * `gate code-reviewed <spec> --yes --code N --security N [--note "…"]`: the per-spec code-review mark, without `scope`
+ * (the feature-scope mark is the app's own CLI). When the spec stands in `code-review`, one `code-review → close` line
+ * first, so the tree the mark names holds it; then the tree id of the current checkout, computed in memory, and the
+ * mark (`codeReviewedMarkText`).
+ */
+async function gateCodeReviewed(ctx: Context, args: Args, ref: SpecRef): Promise<number> {
+  if (!args.flags.has('yes')) throw needsYes(ctx, ref, 'code-reviewed');
+  const code = countValue(args, 'code');
+  const security = countValue(args, 'security');
+  specText(ctx, ref);
+  if (checkoutOf(ctx.cwd) === null) throw bad('not inside a git checkout: a code-reviewed mark names a git tree; nothing written');
+  const at = ctx.now.toISOString();
+  const actor = args.values.get('actor') ?? CLI_SESSION;
+  const row = buildDashboard(dashboardInput(ctx, await locksOf(ctx))).specs.find((r) => r.slug === ref.slug);
+  const event: EventLine | null =
+    row?.stage === 'code-review' ? { ts: at, from: 'code-review', to: 'close', command: args.values.get('command') ?? nextFor(ref, 'code-reviewed'), actor } : null;
+  const line = event === null ? null : checkedEvent(event);
+  const gitignore = ensureGatesIgnored(ref);
+  if (line !== null) appendEventLine(ref.dir, line);
+  const checkout = checkoutOf(ctx.cwd);
+  if (checkout?.tree == null) throw bad(`the tree id of the working tree could not be computed${line === null ? '' : ' after the event line was appended'}; no mark written`);
+  const note = args.values.get('note');
+  const mark = codeReviewedMarkText({ at, actor, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, ...(note === undefined ? {} : { note }) });
+  mkdirSync(join(ref.dir, '.gates'), { recursive: true });
+  writeFileSync(gatePath(ref, 'code-reviewed'), mark);
+  const on = checkout.branch === null ? '' : ` on ${checkout.branch}`;
+  const moved = event === null ? '' : '; code-review → close';
+  const ignored = gitignore === 'added' ? '; .gitignore: added .gates/' : '';
+  emit(ctx, args, { spec: ref.slug, gate: 'code-reviewed', at, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, event, gitignore }, [
+    `${ref.slug}: code-reviewed at tree ${checkout.tree.slice(0, 12)}${on} (code ${code}, security ${security})${moved}${ignored}`,
+  ]);
+  return EXIT.ok;
+}
+
+async function gateCommand(ctx: Context, args: Args): Promise<number> {
+  const sub = required(args, 0, 'check, reviewed or code-reviewed');
+  if (sub === 'check') return gateCheck(ctx, args);
+  if (sub !== 'reviewed' && sub !== 'code-reviewed') throw bad(`"${sub}" is neither check, reviewed nor code-reviewed`);
+  const ref = specRef(ctx.root, required(args, 1, 'the spec'));
+  if (ref.archived) throw bad(`${rel(ctx, ref.dir)} is archived; nothing written`);
+  return sub === 'reviewed' ? gateReviewed(ctx, args, ref) : gateCodeReviewed(ctx, args, ref);
+}
+
 // ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface Command {
@@ -1170,7 +1386,15 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     values: ['command', 'session', 'outcome'],
     run: runCommand,
   },
-  gate: { usage: 'gate check reviewed|code-reviewed <spec> | gate reviewed <spec> --yes | gate code-reviewed <spec> --yes …', summary: 'check or set a gate mark', later: 'T22' },
+  gate: {
+    usage:
+      'gate check reviewed|code-reviewed <spec> [--json] | gate reviewed <spec> --yes [--actor <actor>] [--command "<…>"] [--json] | gate code-reviewed <spec> --yes --code N --security N [--note "<…>"] [--actor <actor>] [--json]',
+    summary:
+      'check a gate mark (exit 0 fresh; 3 missing or stale, with the changed files and the next step) or set one: reviewed writes .gates/reviewed.json and one review → build line in events.jsonl; code-reviewed writes the per-spec .gates/code-reviewed.json over the tree id of the checkout, one code-review → close line first when the spec stands in code-review. Without --yes nothing is written, exit 1',
+    values: ['actor', 'command', 'code', 'security', 'note'],
+    flags: ['yes'],
+    run: gateCommand,
+  },
   archive: { usage: 'archive <NNN>… [--dry-run] [--reason "<why>"] | archive restore <NNN>', summary: 'move specs to specs/archive/ and back', later: 'T24' },
   rounds: {
     usage:

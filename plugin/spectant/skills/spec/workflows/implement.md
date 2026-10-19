@@ -42,7 +42,7 @@ Exit 0 → go to Step 2. Exit 3 (no mark, or a stale one: the CLI names the file
    **Approve and implement** (recommended and listed first when nothing blocks) and **Not yet** (listed first and
    recommended when something blocks, with the reason in its description).
 3. **On the user's explicit yes** → `spec-check gate reviewed specs/NNN-slug --yes`. It writes
-   `specs/NNN-slug/.gates/reviewed.json` and appends exactly one stage line to the spec's `events.jsonl`. Run
+   `specs/NNN-slug/.gates/reviewed.json` and appends exactly one `review → build` line to the spec's `events.jsonl`. Run
    `spec-check gate check reviewed specs/NNN-slug` again; exit 0 → Step 2.
 4. **Not yet**, silence, or anything but an explicit yes → write nothing, say that `implement` stays closed until a
    fresh mark exists (`/spec review NNN`, or the review view in Spectant), end the run, stop.

@@ -69,11 +69,11 @@ Context, plan text, task text, `context.md`) is written directly.
 |---|---|
 | `allocate <type> <slug>` | the next free number, the folder `specs/NNN-slug/` and its first files from the type template |
 | `mint <spec> …` | claims into the master `ISA.md` first, then into the spec |
-| `verify <spec> <ISC-N> "<stub>"` | the Verification line in spec and master, the claim ticked, progress recounted |
+| `verify <spec> <ISC-N> <type> "<stub>"` | the Verification line in spec and master, the claim ticked, progress recounted |
 | `decide <file> "<line>"` | one Decisions row |
 | `status [NNN]` · `drift [NNN]` · `frontier <spec>` | stage and progress · drift against the master · takeable claims and blockers |
 | `claim <ISC-N> --session <actor>` · `release <ISC-N> --session <actor>` | locks, in `.spectant/activity.jsonl` only |
-| `gate check reviewed <spec>` · `gate reviewed <spec> --yes` | read and set the review mark in `.gates/` |
+| `gate check reviewed\|code-reviewed <spec>` · `gate reviewed <spec> --yes` · `gate code-reviewed <spec> --yes --code N --security N` | read and set the marks in `.gates/`; setting the review mark appends the one `review → build` line to `events.jsonl` |
 | `transition <spec> <to>` | one `events.jsonl` line per stage change |
 | `run start <spec\|idea> --command "<…>"` · `run end <run-id> --outcome ok\|error` | the run pair the app shows |
 | `rounds record <spec> …` · `activity <event> …` | the round log line · one step line (dispatch, build, patch, apply, probe, question) |
