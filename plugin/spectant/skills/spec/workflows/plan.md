@@ -13,9 +13,11 @@ refused with one line naming `/spec new NNN`, which mints its claims in its own 
 row of the plan's file table needs a claim ID. The run still opens and ends `ok`, as for every refusal by design.
 
 For the types `feature`, `infra` and `project`, after `spec.md` exists. Never for `bug` or `spike`: there the diff and
-the question are the how, and a plan would be ceremony. A spec of another type, a spec with `phase: complete`, or a
-spec that already has a `plan.md` the user did not ask to rewrite is refused with a one-line reason, and nothing is
-written.
+the question are the how, and a plan would be ceremony. A spec of another type (`bug`, `spike`, `refactor`, `chore`)
+has no `plan.md`: it is refused with one line that names the `next` from `spec-check status NNN --json` as the command
+to run instead, for example "a refactor has no plan.md; next: /spec tasks 053", nothing is written, and the run ends
+`ok`. A spec with `phase: complete`, or a spec that already has a `plan.md` the user did not ask to rewrite, is refused
+with a one-line reason, and nothing is written.
 
 ## The run rule
 

@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
 export default defineConfig(
   {
     // Build output, caches and generated fixture trees are not source; nor are the prototype files of a fixture (spec 017).
-    ignores: ['**/dist/**', '**/coverage/**', 'web/e2e/.report/**', 'web/e2e/.results/**', 'web/.angular/**', 'web/public/**', 'specs/**', '**/.vendor/**', '**/*.gen.ts', '.claude/**', 'core/fixtures/*/specs/**/.design/prototype/**', 'plugin/spectant/skills/spec/scripts/*.workflow.js'],
+    ignores: ['**/dist/**', '**/coverage/**', 'web/e2e/.report/**', 'web/e2e/.results/**', 'web/.angular/**', 'web/public/**', 'specs/**', '**/.vendor/**', '**/*.gen.ts', '.claude/**', '.worktrees/**', 'core/fixtures/*/specs/**/.design/prototype/**', 'plugin/spectant/skills/spec/scripts/*.workflow.js'],
   },
 
   // Plain JavaScript (this file and any config next to it): the core recommended set, no type information.

@@ -14,8 +14,10 @@ with one line naming `/spec new NNN`, which mints its claims in its own folder, 
 hangs on a claim ID. The run still opens and ends `ok`, as for every refusal by design.
 
 For the types `refactor`, `feature` and `project`, after `spec.md` (and `plan.md` where the type has one). Not below
-three claims: a task list with one entry is a checkbox with a cover page. With fewer, say so and stop; the spec goes
-to `/spec review <NNN>` without a `tasks.md`.
+three claims: a task list with one entry is a checkbox with a cover page. A spec of another type (`bug`, `spike`,
+`infra`, `chore`), or one below three claims, has no `tasks.md`: it is refused with one line that names the `next` from
+`CLI status NNN --json` as the command to run instead, for example "a spike has no tasks.md; next: /spec review 054",
+nothing is written, and the run ends `ok`.
 
 ## Step 0 — Open the run
 
