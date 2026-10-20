@@ -521,7 +521,17 @@
       "counts": "{{specs}} Specs · {{active}} aktiv",
       "countsOne": "{{specs}} Spec · {{active}} aktiv",
       "actions": "Aktionen für {{name}}",
-      "noCounts": "keine Zählung"
+      "noCounts": "keine Zählung",
+      "rescanning": "Wird eingelesen…",
+      "rescanningShort": "liest neu…",
+      "rescanned": "{{name}} neu eingelesen: {{counts}}",
+      "rescanFailed": "{{name}} konnte nicht neu eingelesen werden.",
+      "uploadScreenshotFor": "Screenshot für {{name}} hochladen",
+      "uploadedLogo": "Logo für {{name}} hochgeladen.",
+      "uploadedScreenshot": "Screenshot für {{name}} hochgeladen.",
+      "uploadTooLarge": "{{name}}: Das Bild ist grösser als {{max}} MB; es wurde nichts gespeichert.",
+      "uploadUnsupported": "{{name}}: Nur PNG-, JPEG- oder WebP-Bilder; es wurde nichts gespeichert.",
+      "uploadFailed": "Das Bild für {{name}} konnte nicht hochgeladen werden."
     },
     "menu": {
       "rename": "Umbenennen…",
@@ -536,6 +546,24 @@
       "body": "Spectant vergisst den Workspace. Der Ordner und seine Specs bleiben unberührt.",
       "cancel": "Abbrechen",
       "confirm": "Entfernen"
+    },
+    "rename": {
+      "title": "{{name}} umbenennen",
+      "label": "Anzeigename",
+      "slug": "Slug bleibt: /w/{{slug}}",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "busy": "Wird gespeichert…",
+      "error": {
+        "invalidName": "Bitte geben Sie einen Namen ein.",
+        "failed": "Der Workspace konnte nicht umbenannt werden. Bitte versuchen Sie es erneut."
+      }
+    },
+    "sort": {
+      "label": "Sortieren",
+      "name": "Name",
+      "status": "Status",
+      "added": "Hinzugefügt"
     },
     "foot": "Die Registry liegt im Datenverzeichnis der App · die CLI kann dasselbe:",
     "toolbar": {

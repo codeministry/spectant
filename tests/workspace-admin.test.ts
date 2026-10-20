@@ -4,7 +4,7 @@
 //
 // One `describe` per probe name of the spec's Test Strategy, so `-t "<name>"` selects exactly that case.
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
@@ -383,5 +383,95 @@ describe("workspace admin: upload", () => {
     const foreign = await fetch(`${base}${workspaceAdminRoutes.image("harbor", "logo")}`, { method: "PUT", headers: { Origin: "http://evil.example" }, body: logo });
     expect(foreign.status).toBe(403);
     expect(readdirSync(dir).sort()).toEqual(["logo.jpg", "screenshot.png"]);
+  });
+});
+
+/** Every file below the app's data folder: what an upload could have left behind. */
+function dataFiles(): string[] {
+  return readdirSync(join(xdgHome(), "spectant"), { recursive: true, withFileTypes: true })
+    .filter((entry) => !entry.isDirectory())
+    .map((entry) => join(entry.parentPath, entry.name))
+    .sort();
+}
+
+describe("workspace admin: upload refused", () => {
+  test("SVG, text and a 3 MB PNG are refused with 4xx whatever their header says, and no file lands in the data folder", async () => {
+    const repo = fixtureCopy("harbor");
+    const base = await start([repo]);
+    const before = dataFiles();
+    const svg = new TextEncoder().encode('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const text = new TextEncoder().encode("just some text, no image\n");
+    const bigPng = png(4, 3 * 1024 * 1024);
+
+    const refusals: Array<[string, Uint8Array, string, number, Record<string, unknown>]> = [
+      ["svg as svg", svg, "image/svg+xml", 415, { error: "unsupported-type" }],
+      ["svg as png", svg, "image/png", 415, { error: "unsupported-type" }],
+      ["text as plain", text, "text/plain", 415, { error: "unsupported-type" }],
+      ["text as jpeg", text, "image/jpeg", 415, { error: "unsupported-type" }],
+      ["empty body", new Uint8Array(0), "image/png", 415, { error: "unsupported-type" }],
+      ["3 MB png", bigPng, "image/png", 413, { error: "too-large", maxBytes: IMAGE_MAX_BYTES }],
+    ];
+    for (const kind of ["logo", "screenshot"] as const) {
+      for (const [label, bytes, type, status, answer] of refusals) {
+        const res = await putImage(base, "harbor", kind, bytes, type);
+        const got = { kind, label, status: res.status, answer: (await res.json()) };
+        expect(got).toEqual({ kind, label, status, answer });
+      }
+      expect((await fetch(`${base}${workspaceAdminRoutes.image("harbor", kind)}`)).status).toBe(404);
+    }
+
+    expect(dataFiles()).toEqual(before);
+    expect(existsSync(join(xdgHome(), "spectant", "workspaces", "harbor"))).toBe(false);
+    const [row] = await list(base);
+    expect(row?.images).toEqual({ logo: null, screenshot: null });
+  });
+});
+
+describe("workspace admin: remove", () => {
+  test("DELETE drops the entry and its image folder from the data folder; the repository folder stays on disk", async () => {
+    const repo = fixtureCopy("harbor");
+    const other = fixtureCopy("other");
+    const base = await start([repo, other]);
+    for (const ws of ["harbor", "other"]) {
+      expect((await putImage(base, ws, "logo", png(5))).status).toBe(200);
+    }
+    expect((await putImage(base, "harbor", "screenshot", png(6, 512))).status).toBe(200);
+    const images = join(xdgHome(), "spectant", "workspaces");
+    expect(readdirSync(join(images, "harbor")).sort()).toEqual(["logo.png", "screenshot.png"]);
+    const repoFiles = readdirSync(repo, { recursive: true }).map(String).sort();
+
+    const stream = await openStream(base);
+    try {
+      const res = await fetch(`${base}${workspaceAdminRoutes.remove("harbor")}`, { method: "DELETE" });
+      expect([res.status, res.headers.get("Cache-Control"), await res.text()]).toEqual([204, "no-store", ""]);
+      // The header's workspace menu drops it from the live frame, without a restart.
+      const pushed = await stream.next(
+        (update) =>
+          update.views.some((view) => view.path === SPEC_API_ROOT && !(view.body as WorkspaceAdminSummary[]).some((w) => w.slug === "harbor")),
+        LIVE_MS,
+      );
+      expect(pushed).not.toBeNull();
+    } finally {
+      await stream.close();
+    }
+
+    expect((await list(base)).map((w) => w.slug)).toEqual(["other"]);
+    expect(registryNow()).toEqual([["other", "other"]]);
+    expect(await cliList()).toEqual(["other  other"]);
+    expect(existsSync(join(images, "harbor"))).toBe(false);
+    expect(readdirSync(join(images, "other"))).toEqual(["logo.png"]);
+    expect((await fetch(`${base}${workspaceAdminRoutes.image("harbor", "logo")}`)).status).toBe(404);
+    expect((await fetch(`${base}${SPEC_API_ROOT}/harbor/dashboard`)).status).toBe(404);
+    expect(readdirSync(repo, { recursive: true }).map(String).sort()).toEqual(repoFiles);
+
+    // A second DELETE, an unknown slug, a foreign origin and a wrong method change nothing.
+    const again = await fetch(`${base}${workspaceAdminRoutes.remove("harbor")}`, { method: "DELETE" });
+    expect({ status: again.status, answer: await again.json() }).toEqual({ status: 404, answer: { error: "not-found" } });
+    const foreign = await fetch(`${base}${workspaceAdminRoutes.remove("other")}`, { method: "DELETE", headers: { Origin: "http://evil.example" } });
+    expect(foreign.status).toBe(403);
+    const wrong = await fetch(`${base}${workspaceAdminRoutes.remove("other")}`, { method: "PUT" });
+    expect([wrong.status, wrong.headers.get("Allow")]).toEqual([405, "PATCH, DELETE"]);
+    expect(registryNow()).toEqual([["other", "other"]]);
+    expect(readdirSync(join(images, "other"))).toEqual(["logo.png"]);
   });
 });

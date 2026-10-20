@@ -1,10 +1,18 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, type ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { type WorkspaceStatus, workspaceStatusOf } from '../../../../../server/src/workspace-admin.contract';
-import type { WorkspaceListEntry } from '../../core/api.service';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import {
+  IMAGE_MAX_BYTES,
+  IMAGE_TYPES,
+  type ImageKind,
+  type WorkspaceStatus,
+  workspaceStatusOf,
+} from '../../../../../server/src/workspace-admin.contract';
+import type { WorkspaceAdminResult, WorkspaceListEntry } from '../../core/api.service';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { ToastService } from '../../shared/ui/toast/toast';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
@@ -19,6 +27,11 @@ function countOf(counts: unknown, key: 'specs' | 'building'): number | null {
   return typeof value === 'number' ? value : null;
 }
 
+/** What the hidden file inputs accept: the contract's image types (PNG, JPEG, WebP), never SVG. */
+const IMAGE_ACCEPT = Object.values(IMAGE_TYPES)
+  .map((type) => type.contentType)
+  .join(',');
+
 /**
  * One row of `/settings/workspaces` (spec 016, T15, ISC-309; design.md § Zeile on all three viewports): the screenshot
  * thumb (`ui-ws-cover`, 64 × 40, the name pattern without an image), the badge (`ui-ws-badge`, initials without a logo)
@@ -27,8 +40,16 @@ function countOf(counts: unknown, key: 'specs' | 'building'): number | null {
  * tier read from `ShellState`. The accent comes from the name hash as `ui-ws-badge` picks it, so it stays with the
  * workspace under every sort order.
  *
- * The row writes nothing: each menu entry but Open emits the entry, and the page wires the writes (T16 to T21). Open
- * is a plain link. Mounted on an `<li>` so the page's list keeps its list semantics.
+ * Re-scan (T17, ISC-306) runs in the row through `ShellData.rescanWorkspace`: the row is `aria-busy`, "Re-reading…"
+ * stands in the status slot on compact and a spinner with "re-reading…" in the counts cell from medium, the menu
+ * entry is disabled; the list reload brings the fresh counts, and the result is spoken through the app's one
+ * `ui-live-region` (`ToastService.announce`, no visible toast). Every other entry but Open emits the entry and the
+ * page wires the write (T16, T21); re-scan still emits too. Upload (T18, ISC-310) runs in the row as well: one hidden
+ * file input per kind, opened from the menu entries and, for the screenshot, from a click on the thumb, sends the file
+ * through `ShellData.uploadWorkspaceImage`; the list reload brings the new versioned URL, which the badge and the
+ * 16:10 thumb read from `entry().images`. The result, a server refusal included, is spoken through the same live
+ * region until T19 adds the client pre-check and the persistent notice; the upload outputs still emit. Open is a plain link. Mounted on an `<li>` so the
+ * page's list keeps its list semantics.
  */
 @Component({
   // eslint-disable-next-line @angular-eslint/component-selector -- an attribute on the page's <li>, so the list stays a list
@@ -39,6 +60,7 @@ function countOf(counts: unknown, key: 'specs' | 'building'): number | null {
     class: 'ws-row',
     '[attr.data-ws-row]': 'entry().slug',
     '[attr.data-tier]': 'tier()',
+    '[attr.aria-busy]': 'busy() ? "true" : null',
     '[style.--ws]': 'tokens().mark',
     '[style.--ws-ink]': 'tokens().ink',
   },
@@ -47,12 +69,11 @@ function countOf(counts: unknown, key: 'specs' | 'building'): number | null {
 })
 export class WorkspaceRow {
   private readonly shell = inject(ShellState);
+  private readonly data = inject(ShellData);
+  private readonly toasts = inject(ToastService);
+  private readonly transloco = inject(TranslocoService);
 
   readonly entry = input.required<WorkspaceListEntry>();
-  /** The logo's loopback URL; null shows the initials. T18 passes the image route. */
-  readonly logo = input<string | null>(null);
-  /** The screenshot's loopback URL; null shows the name pattern. T19 passes the image route. */
-  readonly screenshot = input<string | null>(null);
 
   readonly rename = output<WorkspaceListEntry>();
   readonly rescan = output<WorkspaceListEntry>();
@@ -67,6 +88,17 @@ export class WorkspaceRow {
   protected readonly active = computed(() => countOf(this.entry().counts, 'building') ?? 0);
   protected readonly status = computed<WorkspaceStatus>(() => this.entry().status ?? workspaceStatusOf(this.entry().readable, this.specs()));
   protected readonly link = computed(() => ['/w', this.entry().slug]);
+  /** The logo's versioned loopback URL from the list entry; null shows the initials. */
+  protected readonly logo = computed(() => this.entry().images?.logo ?? null);
+  /** The screenshot's versioned loopback URL from the list entry; null shows the name pattern. */
+  protected readonly screenshot = computed(() => this.entry().images?.screenshot ?? null);
+  protected readonly accept = IMAGE_ACCEPT;
+  private readonly logoInput = viewChild.required<ElementRef<HTMLInputElement>>('logoInput');
+  private readonly screenshotInput = viewChild.required<ElementRef<HTMLInputElement>>('screenshotInput');
+  private readonly inputs = { logo: this.logoInput, screenshot: this.screenshotInput };
+
+  /** True while this row's re-scan is in flight (T17). */
+  protected readonly busy = signal(false);
 
   /** The compact sheet's open state; the popover holds its own. */
   protected readonly sheetOpen = signal(false);
@@ -76,6 +108,60 @@ export class WorkspaceRow {
   protected act(action: 'rename' | 'rescan' | 'uploadLogo' | 'uploadScreenshot' | 'remove'): void {
     this.close();
     this[action].emit(this.entry());
+    if (action === 'rescan') void this.runRescan();
+    if (action === 'uploadLogo') this.pick('logo');
+    if (action === 'uploadScreenshot') this.pick('screenshot');
+  }
+
+  /** Opens the file chooser of one kind (the menu entries and the thumb). */
+  protected pick(kind: ImageKind): void {
+    this.inputs[kind]().nativeElement.click();
+  }
+
+  /** Sends the chosen file as the workspace's image of `kind` and speaks the result; the input is cleared for a retry. */
+  protected async upload(kind: ImageKind): Promise<void> {
+    const input = this.inputs[kind]().nativeElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file === undefined) return;
+    const { slug, name } = this.entry();
+    this.toasts.announce(this.uploadText(kind, name, await this.data.uploadWorkspaceImage(slug, kind, file)));
+  }
+
+  private uploadText(kind: ImageKind, name: string, result: WorkspaceAdminResult<'putImage'>): string {
+    const key = 'settingsWorkspaces.row.';
+    if (result.kind === 'ok') return this.transloco.translate(`${key}${kind === 'logo' ? 'uploadedLogo' : 'uploadedScreenshot'}`, { name });
+    if (result.kind === 'refused' && result.body.error === 'too-large') {
+      const max = 'maxBytes' in result.body ? result.body.maxBytes : IMAGE_MAX_BYTES;
+      return this.transloco.translate(`${key}uploadTooLarge`, { name, max: Math.round(max / (1024 * 1024)) });
+    }
+    if (result.kind === 'refused' && result.body.error === 'unsupported-type') return this.transloco.translate(`${key}uploadUnsupported`, { name });
+    return this.transloco.translate(`${key}uploadFailed`, { name });
+  }
+
+  /** Re-reads the workspace from its files (ISC-306) and speaks the result; the list reload shows the fresh counts. */
+  private async runRescan(): Promise<void> {
+    if (this.busy()) return;
+    const { slug, name } = this.entry();
+    this.busy.set(true);
+    try {
+      const result = await this.data.rescanWorkspace(slug);
+      this.toasts.announce(
+        result.kind === 'ok'
+          ? this.transloco.translate('settingsWorkspaces.row.rescanned', { name, counts: this.countsText(result.body.counts) })
+          : this.transloco.translate('settingsWorkspaces.row.rescanFailed', { name }),
+      );
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The counts as the row prints them, for the announcement. */
+  private countsText(counts: unknown): string {
+    const specs = countOf(counts, 'specs');
+    if (specs === null) return this.transloco.translate('settingsWorkspaces.row.noCounts');
+    const key = specs === 1 ? 'settingsWorkspaces.row.countsOne' : 'settingsWorkspaces.row.counts';
+    return this.transloco.translate(key, { specs, active: countOf(counts, 'building') ?? 0 });
   }
 
   protected close(): void {

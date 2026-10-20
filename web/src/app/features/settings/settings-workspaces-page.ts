@@ -1,7 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import {
+  compareWorkspaces,
+  DEFAULT_WORKSPACE_SORT,
+  WORKSPACE_SORT_KEYS,
+  type WorkspaceSortKey,
+  type WorkspaceStatus,
+  workspaceSortKeyOf,
+  workspaceStatusOf,
+} from '../../../../../server/src/workspace-admin.contract';
 import type { WorkspaceListEntry } from '../../core/api.service';
+import { SettingsService } from '../../core/settings.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
+import { ShellState } from '../../layout/shell/shell-state.service';
+import { type SortOption, UiSortMenu } from '../../shared/ui/sort-menu/sort-menu';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
@@ -21,6 +35,24 @@ type AddError =
   | { readonly key: 'empty' | 'notADirectory' | 'failed' }
   | { readonly key: 'duplicatePath'; readonly name: string };
 
+/** A rename refusal shown inline in the dialog, keyed like `settingsWorkspaces.rename.error.*`. */
+type RenameError = 'invalidName' | 'failed';
+
+/** Typing targets: a key pressed here is text, never a shortcut (as `KeyboardService`). */
+const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+/** An entry as the contract's comparator reads it; an entry without `status` derives it as the row shows it. */
+function sortable(entry: WorkspaceListEntry): { slug: string; name: string; status: WorkspaceStatus } {
+  const counts: unknown = entry.counts;
+  const specs = typeof counts === 'object' && counts !== null ? (counts as Readonly<Record<string, unknown>>)['specs'] : undefined;
+  const status = entry.status ?? workspaceStatusOf(entry.readable, typeof specs === 'number' ? specs : null);
+  return { slug: entry.slug, name: entry.name, status };
+}
+
+/** How often and how long the focus return waits for the rename dialog to close before it moves focus. */
+const FOCUS_TRIES = 20;
+const FOCUS_STEP_MS = 16;
+
 /**
  * `/settings/workspaces` (spec 016, T14, ISC-312): the registry's entries from `GET /api/workspaces` through
  * `ShellData.workspaces`, the resource the header's workspace menu reads too. The add form posts through
@@ -28,8 +60,10 @@ type AddError =
  * restart (ISC-303). Loading shows three skeleton rows after 150 ms, an empty registry the empty state with the CLI
  * command, a failed read an error notice with Retry; the form stays usable in every state.
  *
- * Each entry renders as `app-workspace-row` (T15), which emits its menu actions. Later tasks own the rest: rename (T16), re-scan (T17), upload (T18, T19), the
- * sort control (T20) and the remove write (T21). Until then only Remove is wired, and its dialog only opens and closes.
+ * Each entry renders as `app-workspace-row` (T15), which emits its menu actions. Rename (T16, ISC-305) opens a dialog
+ * that sends the name only; `?sort=` (T20, ISC-313) orders the rows on the client with the contract's comparator.
+ * Later tasks own the rest: re-scan (T17), upload (T18, T19) and the remove write (T21); until then the remove dialog
+ * only opens and closes.
  */
 @Component({
   selector: 'app-settings-workspaces-page',
@@ -44,15 +78,23 @@ type AddError =
     UiNotice,
     UiPageHead,
     UiSkeleton,
+    UiSortMenu,
     WorkspaceRow,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-page': 'settings-workspaces' },
+  host: { 'data-page': 'settings-workspaces', '(keydown)': 'onKey($event)' },
   templateUrl: './settings-workspaces-page.html',
   styleUrl: './settings-workspaces-page.css',
 })
 export class SettingsWorkspacesPage {
   private readonly data = inject(ShellData);
+  private readonly settings = inject(SettingsService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly transloco = inject(TranslocoService);
+  private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
+  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   /** The list read as served: undefined while the first read runs, else the `ApiResult`. */
   private readonly result = computed(() => (this.data.workspaces.hasValue() ? this.data.workspaces.value() : undefined));
@@ -62,9 +104,20 @@ export class SettingsWorkspacesPage {
     if (result.kind !== 'ok') return 'error';
     return result.body.length === 0 ? 'empty' : 'list';
   });
+  /** `?sort=` (T20, ISC-313): the router's query param, so reload and back keep it; `added` when missing or unknown. */
+  protected readonly sort = computed<WorkspaceSortKey>(() => workspaceSortKeyOf(this.params().get('sort')));
+  protected readonly sortOptions = computed<SortOption[]>(() => {
+    this.lang();
+    return WORKSPACE_SORT_KEYS.map((key) => ({ key, label: this.transloco.translate(`settingsWorkspaces.sort.${key}`) }));
+  });
+  protected readonly tier = inject(ShellState).tier;
+
+  /** The registry's entries sorted on the client with the contract's comparator; sorting reads nothing anew. */
   protected readonly rows = computed<readonly WorkspaceListEntry[]>(() => {
     const result = this.result();
-    return result?.kind === 'ok' ? result.body : [];
+    if (result?.kind !== 'ok') return [];
+    const compare = compareWorkspaces(this.sort());
+    return [...result.body].sort((a, b) => compare(sortable(a), sortable(b)));
   });
   protected readonly total = computed(() => this.rows().length);
 
@@ -77,6 +130,14 @@ export class SettingsWorkspacesPage {
   protected readonly name = signal('');
   protected readonly busy = signal(false);
   protected readonly addError = signal<AddError | null>(null);
+
+  /** The row the rename dialog renames, what its field holds, and its state (T16); local, never stored. */
+  protected readonly renaming = signal<WorkspaceListEntry | null>(null);
+  protected readonly renameOpen = signal(false);
+  protected readonly renameName = signal('');
+  protected readonly renameBusy = signal(false);
+  protected readonly renameError = signal<RenameError | null>(null);
+  private renameTrigger: HTMLElement | null = null;
 
   /** The row the remove dialog asks about; the dialog changes nothing until T21 wires the write. */
   protected readonly removing = signal<WorkspaceListEntry | null>(null);
@@ -139,6 +200,111 @@ export class SettingsWorkspacesPage {
       default:
         return { key: 'failed' };
     }
+  }
+
+  /**
+   * Opens the rename dialog (T16, ISC-305) for one row, from its menu or from `e` on the focused row: the field holds
+   * the name, the slug stands below it unchangeable. Focus goes back to the row's menu trigger when it closes.
+   */
+  protected askRename(entry: WorkspaceListEntry): void {
+    this.renaming.set(entry);
+    this.renameName.set(entry.name);
+    this.renameError.set(null);
+    this.renameTrigger = this.rowElement(entry.slug)?.querySelector<HTMLElement>('[data-row-menu]') ?? null;
+    this.renameOpen.set(true);
+  }
+
+  protected setRenameName(value: string): void {
+    this.renameName.set(value);
+    this.renameError.set(null);
+  }
+
+  /** The dialog's open state; Esc, Cancel, the close button and a backdrop click land here and send nothing. */
+  protected setRenameOpen(open: boolean): void {
+    this.renameOpen.set(open);
+    if (open) return;
+    this.renameError.set(null);
+    this.returnFocus();
+  }
+
+  /**
+   * Save: `PATCH /api/workspaces/:ws` with the trimmed name and nothing else, through `ShellData`, which reloads the
+   * list. A blank name is refused inline without a request; the server's `invalid-name` shows the same way.
+   */
+  protected async saveRename(event?: Event): Promise<void> {
+    event?.preventDefault();
+    const entry = this.renaming();
+    if (entry === null || this.renameBusy()) return;
+    const name = this.renameName().trim();
+    if (name === '') {
+      this.renameError.set('invalidName');
+      return;
+    }
+    this.renameBusy.set(true);
+    this.renameError.set(null);
+    try {
+      const result = await this.data.renameWorkspace(entry.slug, name);
+      if (result.kind === 'ok') this.setRenameOpen(false);
+      else this.renameError.set(result.kind === 'refused' && result.body.error === 'invalid-name' ? 'invalidName' : 'failed');
+    } finally {
+      this.renameBusy.set(false);
+    }
+  }
+
+  /**
+   * `e` on a focused row (the name link or the ⋯ trigger) opens the rename dialog, gated like every single-key
+   * shortcut by the setting; a key typed into a field or with a modifier is never one.
+   */
+  protected onKey(event: KeyboardEvent): void {
+    if (event.key !== 'e' || event.defaultPrevented || event.isComposing) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (!this.settings.settings().singleKeyShortcuts) return;
+    const target = event.target;
+    if (!(target instanceof Element) || target.closest(TYPING) !== null) return;
+    const slug = target.closest<HTMLElement>('[data-ws-row]')?.dataset['wsRow'];
+    const entry = this.rows().find((row) => row.slug === slug);
+    if (entry === undefined) return;
+    event.preventDefault();
+    this.askRename(entry);
+  }
+
+  private rowElement(slug: string): HTMLElement | undefined {
+    return [...this.host.nativeElement.querySelectorAll<HTMLElement>('[data-ws-row]')].find((row) => row.dataset['wsRow'] === slug);
+  }
+
+  /**
+   * Focus back on the row's ⋯ trigger once the native dialog has closed (the element cannot take focus while the
+   * modal is open). The opener the dialog itself remembers may be an entry of the row's closed menu sheet.
+   */
+  private returnFocus(): void {
+    const trigger = this.renameTrigger;
+    this.renameTrigger = null;
+    if (trigger === null) return;
+    const dialog = this.host.nativeElement.querySelector<HTMLDialogElement>('[data-ws-rename-dialog] dialog');
+    let tries = 0;
+    const step = (): void => {
+      if (dialog?.open === true && tries++ < FOCUS_TRIES) {
+        setTimeout(step, FOCUS_STEP_MS);
+        return;
+      }
+      if (trigger.isConnected) trigger.focus();
+    };
+    setTimeout(step, 0);
+  }
+
+  /**
+   * A pick from `ui-sort-menu`: only `?sort=` changes, through the router with `replaceUrl`, so back leaves the page
+   * rather than stepping through sort orders; the default drops the param. No request; the current key changes nothing.
+   */
+  protected setSort(value: string): void {
+    const key = workspaceSortKeyOf(value);
+    if (key !== value || key === this.sort()) return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { sort: key === DEFAULT_WORKSPACE_SORT ? null : key },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   protected askRemove(entry: WorkspaceListEntry): void {

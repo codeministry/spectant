@@ -1,13 +1,17 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { WorkspaceAdminSummary } from '../../../../../server/src/workspace-admin.contract';
 import { ApiClient, type ApiResult, type WorkspaceAdminResult, type WorkspaceListEntry } from '../../core/api.service';
 import { DemoData } from '../../shared/demo/demo-data';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
+import { SettingsService } from '../../core/settings.service';
+import { UiSortMenu } from '../../shared/ui/sort-menu/sort-menu';
 import { SettingsWorkspacesPage } from './settings-workspaces-page';
+import { WorkspaceRow } from './workspace-row';
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 
@@ -20,13 +24,19 @@ const TWO: readonly WorkspaceListEntry[] = [
 interface Calls {
   lists: number;
   adds: unknown[];
+  renames: Array<readonly [string, string]>;
+  /** Every other admin call: re-scan, remove and the uploads. */
+  writes: string[];
 }
+
+const failed = { kind: 'error', status: 500 } as const;
 
 function setUp(
   list: () => Promise<ApiResult<readonly WorkspaceListEntry[]>> = () => Promise.resolve(ok(TWO)),
-  add: () => Promise<WorkspaceAdminResult<'add'>> = () => Promise.resolve({ kind: 'error', status: 500 }),
+  add: () => Promise<WorkspaceAdminResult<'add'>> = () => Promise.resolve(failed),
+  rename: () => Promise<WorkspaceAdminResult<'rename'>> = () => Promise.resolve(failed),
 ): Calls {
-  const calls: Calls = { lists: 0, adds: [] };
+  const calls: Calls = { lists: 0, adds: [], renames: [], writes: [] };
   const api: Partial<ApiClient> = {
     workspaces: () => {
       calls.lists += 1;
@@ -36,6 +46,23 @@ function setUp(
     addWorkspace: (request) => {
       calls.adds.push(request);
       return add();
+    },
+    // The slug and the name only: the client builds the PATCH body `{name}` from them (api-workspace-admin.spec.ts).
+    renameWorkspace: (ws, name) => {
+      calls.renames.push([ws, name]);
+      return rename();
+    },
+    rescanWorkspace: (ws) => {
+      calls.writes.push(`rescan ${ws}`);
+      return Promise.resolve(failed);
+    },
+    removeWorkspace: (ws) => {
+      calls.writes.push(`remove ${ws}`);
+      return Promise.resolve(failed);
+    },
+    uploadWorkspaceImage: (ws) => {
+      calls.writes.push(`upload ${ws}`);
+      return Promise.resolve(failed);
     },
   };
   TestBed.configureTestingModule({
@@ -186,5 +213,214 @@ describe('SettingsWorkspacesPage (spec 016, T14, ISC-312)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+/** Three entries in the registry's order of adding, each key sorting them differently. */
+const THREE: readonly WorkspaceListEntry[] = [
+  ...TWO,
+  { slug: 'pier', name: 'pier', pathTail: 'pier', readable: true, counts: { specs: 0, building: 0 }, status: 'empty' },
+];
+
+function slugs(root: HTMLElement): Array<string | undefined> {
+  return [...root.querySelectorAll<HTMLElement>('[data-ws-row]')].map((row) => row.dataset['wsRow']);
+}
+
+describe('SettingsWorkspacesPage sort (spec 016, T20, ISC-313)', () => {
+  for (const [query, order] of [
+    ['', ['harbor', 'quay', 'pier']],
+    ['?sort=added', ['harbor', 'quay', 'pier']],
+    ['?sort=bogus', ['harbor', 'quay', 'pier']],
+    ['?sort=name', ['harbor', 'pier', 'quay']],
+    ['?sort=status', ['quay', 'pier', 'harbor']],
+  ] as const) {
+    it(`sort: orders the rows for "${query || 'no query'}" and the menu names that key`, async () => {
+      setUp(() => Promise.resolve(ok(THREE)));
+      await TestBed.inject(Router).navigateByUrl(`/${query}`);
+      const { fixture, root } = await render();
+      expect(slugs(root)).toEqual(order);
+      const menu = fixture.debugElement.query(By.directive(UiSortMenu)).componentInstance as UiSortMenu;
+      expect(menu.value()).toBe(query === '' || query === '?sort=bogus' ? 'added' : query.slice('?sort='.length));
+      expect(menu.options().map((option) => option.key)).toEqual(['name', 'status', 'added']);
+    });
+  }
+
+  it('sort: a pick writes only ?sort= with replaceUrl, keeps it in the URL and sends no request', async () => {
+    const calls = setUp(() => Promise.resolve(ok(THREE)));
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    const navigate = vi.spyOn(router, 'navigate');
+    const http = TestBed.inject(HttpTestingController);
+    const { fixture, root } = await render();
+    const lists = calls.lists;
+    const menu = (): UiSortMenu => fixture.debugElement.query(By.directive(UiSortMenu)).componentInstance as UiSortMenu;
+
+    menu().choose.emit('status');
+    await settle(fixture);
+    expect(router.url).toBe('/?sort=status');
+    expect(navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ replaceUrl: true, queryParamsHandling: 'merge' }));
+    expect(slugs(root)).toEqual(['quay', 'pier', 'harbor']);
+
+    menu().choose.emit('name');
+    await settle(fixture);
+    expect(router.url).toBe('/?sort=name');
+    expect(slugs(root)).toEqual(['harbor', 'pier', 'quay']);
+
+    expect(calls.lists).toBe(lists);
+    expect(calls.adds).toEqual([]);
+    expect(calls.renames).toEqual([]);
+    expect(calls.writes).toEqual([]);
+    expect(http.match((request) => request.method !== 'GET')).toEqual([]);
+  });
+
+  it('sort: hidden in the empty state', async () => {
+    setUp(() => Promise.resolve(ok([])));
+    const { root } = await render();
+    expect(root.querySelector('ui-sort-menu')).toBeNull();
+  });
+});
+
+/** jsdom has no `showModal()` / `close()`: stubbed on the prototype the way a browser behaves (as dialog.spec.ts). */
+function stubDialogApi(): () => void {
+  const proto = HTMLDialogElement.prototype as unknown as Record<string, unknown>;
+  const before = { showModal: proto['showModal'], close: proto['close'] };
+  proto['showModal'] = function (this: HTMLDialogElement) {
+    this.setAttribute('open', '');
+  };
+  proto['close'] = function (this: HTMLDialogElement) {
+    if (!this.hasAttribute('open')) return;
+    this.removeAttribute('open');
+    this.dispatchEvent(new Event('close'));
+  };
+  return () => Object.assign(proto, before);
+}
+
+async function settle(fixture: ComponentFixture<SettingsWorkspacesPage>): Promise<void> {
+  await fixture.whenStable();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await fixture.whenStable();
+}
+
+function renameFrom(fixture: ComponentFixture<SettingsWorkspacesPage>, slug: string): void {
+  const row = fixture.debugElement.queryAll(By.directive(WorkspaceRow)).find((found) => (found.nativeElement as HTMLElement).dataset['wsRow'] === slug);
+  if (row === undefined) throw new Error(`no row ${slug}`);
+  const instance = row.componentInstance as WorkspaceRow;
+  instance.rename.emit(instance.entry());
+}
+
+describe('SettingsWorkspacesPage rename (spec 016, T16, ISC-305)', () => {
+  let restore: () => void;
+  beforeEach(() => (restore = stubDialogApi()));
+  afterEach(() => {
+    restore();
+  });
+
+  it('rename: opens the dialog from the row, prefilled, the slug an immutable line; Save sends the name only', async () => {
+    const summary: WorkspaceAdminSummary = {
+      slug: 'harbor',
+      name: 'Harbor Two',
+      pathTail: 'harbor',
+      readable: true,
+      counts: null,
+      status: 'ok',
+      images: { logo: null, screenshot: null },
+    };
+    const calls = setUp(undefined, undefined, () => Promise.resolve({ kind: 'ok', body: summary }));
+    const { fixture, root } = await render();
+    const before = calls.lists;
+    renameFrom(fixture, 'harbor');
+    await settle(fixture);
+
+    const dialog = one<HTMLDialogElement>(one(root, '[data-ws-rename-dialog]'), 'dialog');
+    expect(dialog.hasAttribute('open')).toBe(true);
+    const field = one<HTMLInputElement>(dialog, 'input[data-ws-rename-name]');
+    expect(field.value).toBe('Harbor');
+    const slug = one(dialog, '[data-ws-rename-slug]');
+    expect(slug.textContent).toContain('/w/harbor');
+    expect(dialog.querySelectorAll('input')).toHaveLength(1);
+
+    type(dialog, 'input[data-ws-rename-name]', '  Harbor Two ');
+    await fixture.whenStable();
+    one<HTMLFormElement>(dialog, 'form[data-ws-rename-form]').dispatchEvent(new Event('submit'));
+    await settle(fixture);
+
+    expect(calls.renames).toEqual([['harbor', 'Harbor Two']]);
+    expect(calls.writes).toEqual([]);
+    expect(calls.adds).toEqual([]);
+    expect(calls.lists).toBe(before + 1);
+    expect(dialog.hasAttribute('open')).toBe(false);
+  });
+
+  it('rename: shows invalid-name inline in the dialog and keeps it open', async () => {
+    const calls = setUp(undefined, undefined, () => Promise.resolve({ kind: 'refused', status: 400, body: { error: 'invalid-name' } }));
+    const { fixture, root } = await render();
+    renameFrom(fixture, 'harbor');
+    await settle(fixture);
+    const dialog = one<HTMLDialogElement>(one(root, '[data-ws-rename-dialog]'), 'dialog');
+
+    type(dialog, 'input[data-ws-rename-name]', 'x');
+    await fixture.whenStable();
+    one<HTMLFormElement>(dialog, 'form[data-ws-rename-form]').dispatchEvent(new Event('submit'));
+    await settle(fixture);
+
+    expect(calls.renames).toEqual([['harbor', 'x']]);
+    const field = one<HTMLInputElement>(dialog, 'input[data-ws-rename-name]');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(root.querySelector(`#${field.getAttribute('aria-describedby') ?? 'none'}`)?.textContent).toContain('Enter a name');
+    expect(dialog.hasAttribute('open')).toBe(true);
+
+    // A blank name is refused the same way, without a request.
+    type(dialog, 'input[data-ws-rename-name]', '   ');
+    await fixture.whenStable();
+    one<HTMLFormElement>(dialog, 'form[data-ws-rename-form]').dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(calls.renames).toHaveLength(1);
+    expect(one(dialog, '[data-ws-rename-error]').textContent).toContain('Enter a name');
+  });
+
+  it('rename: Esc and Cancel close the dialog and send nothing', async () => {
+    const calls = setUp();
+    const { fixture, root } = await render();
+    const dialog = (): HTMLDialogElement => one<HTMLDialogElement>(one(root, '[data-ws-rename-dialog]'), 'dialog');
+
+    renameFrom(fixture, 'harbor');
+    await settle(fixture);
+    type(dialog(), 'input[data-ws-rename-name]', 'Changed');
+    one(dialog(), 'input[data-ws-rename-name]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(dialog().hasAttribute('open')).toBe(false);
+
+    renameFrom(fixture, 'quay');
+    await settle(fixture);
+    expect(one<HTMLInputElement>(dialog(), 'input[data-ws-rename-name]').value).toBe('Quay');
+    one<HTMLButtonElement>(dialog(), 'button[data-ws-rename-cancel]').click();
+    await settle(fixture);
+    expect(dialog().hasAttribute('open')).toBe(false);
+
+    expect(calls.renames).toEqual([]);
+    expect(calls.writes).toEqual([]);
+  });
+
+  it('rename: e on a focused row opens the same dialog, unless single-key shortcuts are off', async () => {
+    setUp();
+    const { fixture, root } = await render();
+    const press = (target: Element): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true });
+      target.dispatchEvent(event);
+      return event;
+    };
+    const dialog = (): HTMLDialogElement => one<HTMLDialogElement>(one(root, '[data-ws-rename-dialog]'), 'dialog');
+
+    const settings = TestBed.inject(SettingsService);
+    void settings.update({ singleKeyShortcuts: false });
+    expect(press(one(root, '[data-ws-row="quay"] [data-ws-name]')).defaultPrevented).toBe(false);
+    await settle(fixture);
+    expect(dialog().hasAttribute('open')).toBe(false);
+
+    void settings.update({ singleKeyShortcuts: true });
+    expect(press(one(root, '[data-ws-row="quay"] [data-row-menu]')).defaultPrevented).toBe(true);
+    await settle(fixture);
+    expect(dialog().hasAttribute('open')).toBe(true);
+    expect(one<HTMLInputElement>(dialog(), 'input[data-ws-rename-name]').value).toBe('Quay');
   });
 });

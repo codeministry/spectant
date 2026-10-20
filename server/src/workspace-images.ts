@@ -12,10 +12,13 @@
  *   a new `imageUrl` and the browser reloads it. It is kept per file while size and mtime stand, so the list route does
  *   not hash every image on every poll.
  *
+ * - `remove` deletes the slug's folder as one entry of `<data>/workspaces/`: a planted symlink in its place is unlinked,
+ *   never followed, so nothing outside the data folder is ever deleted (ISC-307).
+ *
  * No answer built from here carries an absolute path: `imagesOf` returns loopback URLs only.
  */
 import { createHash } from "node:crypto";
-import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, sep } from "node:path";
 import {
   IMAGE_TYPES,
@@ -38,6 +41,8 @@ export interface WorkspaceImageStore {
   readonly read: (slug: string, kind: ImageKind) => StoredImage | null;
   /** Stores `bytes` of the sniffed `type` as the kind's one file and returns its version. */
   readonly write: (slug: string, kind: ImageKind, type: ImageTypeName, bytes: Uint8Array) => string;
+  /** Deletes the workspace's image folder with every file in it; nothing when there is none. */
+  readonly remove: (slug: string) => void;
 }
 
 const TYPE_NAMES = Object.keys(IMAGE_TYPES) as ImageTypeName[];
@@ -131,6 +136,21 @@ export function openImageStore(dataDir: string): WorkspaceImageStore {
       const path = join(folder, `${kind}.${IMAGE_TYPES[type].ext}`);
       writeFileSync(path, bytes, { flag: "wx", mode: 0o600 });
       return imageVersion(bytes);
+    },
+    remove(slug) {
+      const folder = folderOf(slug);
+      if (folder === null) return;
+      let stat: ReturnType<typeof lstatSync>;
+      try {
+        stat = lstatSync(folder);
+      } catch {
+        return;
+      }
+      // A link in the folder's place goes alone, its target stays; a folder goes whole, and `rmSync` never follows a
+      // link inside it.
+      if (stat.isDirectory()) rmSync(folder, { recursive: true, force: true });
+      else unlinkSync(folder);
+      for (const path of versions.keys()) if (path.startsWith(folder + sep)) versions.delete(path);
     },
   };
 }

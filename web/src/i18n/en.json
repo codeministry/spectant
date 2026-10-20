@@ -521,7 +521,17 @@
       "counts": "{{specs}} specs · {{active}} active",
       "countsOne": "{{specs}} spec · {{active}} active",
       "actions": "Actions for {{name}}",
-      "noCounts": "no counts"
+      "noCounts": "no counts",
+      "rescanning": "Re-reading…",
+      "rescanningShort": "re-reading…",
+      "rescanned": "{{name}} re-read: {{counts}}",
+      "rescanFailed": "{{name}} could not be re-read.",
+      "uploadScreenshotFor": "Upload screenshot for {{name}}",
+      "uploadedLogo": "Logo of {{name}} uploaded.",
+      "uploadedScreenshot": "Screenshot of {{name}} uploaded.",
+      "uploadTooLarge": "{{name}}: the image is larger than {{max}} MB; nothing was stored.",
+      "uploadUnsupported": "{{name}}: only PNG, JPEG or WebP images; nothing was stored.",
+      "uploadFailed": "The image for {{name}} could not be uploaded."
     },
     "menu": {
       "rename": "Rename…",
@@ -536,6 +546,24 @@
       "body": "Spectant forgets the workspace. The folder and its specs stay untouched.",
       "cancel": "Cancel",
       "confirm": "Remove"
+    },
+    "rename": {
+      "title": "Rename {{name}}",
+      "label": "Display name",
+      "slug": "Slug stays: /w/{{slug}}",
+      "cancel": "Cancel",
+      "save": "Save",
+      "busy": "Saving…",
+      "error": {
+        "invalidName": "Enter a name.",
+        "failed": "The workspace could not be renamed. Please try again."
+      }
+    },
+    "sort": {
+      "label": "Sort",
+      "name": "Name",
+      "status": "Status",
+      "added": "Added"
     },
     "foot": "Registry lives in the app's data directory · the CLI does the same:",
     "toolbar": {

@@ -52,6 +52,7 @@ import {
   LIVE_EVENT,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
+  SPEC_API_ROOT,
   SPEC_HASH_HEADER,
   TASKS_HASH_HEADER,
   type WorkspaceRouteResponses,
@@ -64,6 +65,7 @@ import {
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { tokensCommand } from "../server/src/tokens-cli.ts";
 import { WRITE_PATHS, WRITE_TABLE, runReleaseEvent, writePathsOf } from "../server/src/writes.contract.ts";
+import { IMAGE_MAX_BYTES, workspaceAdminRoutes } from "../server/src/workspace-admin.contract.ts";
 import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { BACKLOG_UI_SEQUENCE, EMPTY_BACKLOG_HASH } from "../web/e2e/backlog-ui-sequence.ts";
 import { BUILDER_WORKTREE, type PlantedWorktreeRepo, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
@@ -2109,5 +2111,67 @@ describe("ISC-235 steps: the step lines, the routes that carry them and the stre
       [...p.writes, ...p.removes, ...(p.creates === null ? [] : [p.creates])].filter((path) => path.startsWith(".spectant/")).map((path) => `${op}:${path}`),
     );
     expect(underSpectant).toEqual(["runRelease:.spectant/activity.jsonl"]);
+  });
+});
+
+// Spec 016 (T10, ISC-308): the settings page's writing routes write the registry and the app's data folder only, never
+// a file of the registered repository. A copy of the planted repository (`.git/` included, its index stat data stale,
+// so a careless `git status` would rewrite it) is registered, removed and added back through the routes, renamed,
+// re-scanned, given a logo and a screenshot, refused bad uploads, and removed again; its hash, every mtime included, is
+// the same before and after.
+describe("ISC-308 workspace admin: add, rename, re-scan, upload and remove change no byte of the registered repository", () => {
+  test("readonly admin: every admin route, accepted or refused, leaves the copy byte-identical, .git/ included", async () => {
+    const copy = join(root, "admin-copy");
+    cpSync(repo, copy, { recursive: true });
+    const slug = basename(copy);
+    const before = snapshot(copy);
+    const app = await serve(copy, "admin");
+    let dataDir = "";
+    try {
+      const send = async (path: string, init: RequestInit): Promise<[number, unknown]> => {
+        const res = await fetch(`${app.url}${path}`, init);
+        const text = await res.text();
+        return [res.status, text === "" ? null : (JSON.parse(text) as unknown)];
+      };
+      const body = (method: string, value: unknown): RequestInit => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) });
+      const image = (bytes: Uint8Array): RequestInit => ({ method: "PUT", headers: { "Content-Type": "image/png" }, body: bytes });
+      const png = new Uint8Array(64).fill(9);
+      png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+      const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+      const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>');
+      const big = new Uint8Array(IMAGE_MAX_BYTES + 1);
+      big.set(png.subarray(0, 8), 0);
+
+      // Remove the CLI's entry, then add the folder back through the route under a name.
+      expect((await send(workspaceAdminRoutes.remove(slug), { method: "DELETE" }))[0]).toBe(204);
+      const [addStatus, added] = await send(workspaceAdminRoutes.add(), body("POST", { path: copy, name: "Admin Copy" }));
+      expect([addStatus, (added as { slug: string }).slug]).toEqual([201, slug]);
+      expect((await send(workspaceAdminRoutes.add(), body("POST", { path: copy })))[0]).toBe(422);
+      expect((await send(workspaceAdminRoutes.rename(slug), body("PATCH", { name: "Renamed Copy" })))[0]).toBe(200);
+      expect((await send(workspaceAdminRoutes.rename(slug), body("PATCH", { name: "  " })))[0]).toBe(400);
+      expect((await send(workspaceAdminRoutes.rescan(slug), { method: "POST" }))[0]).toBe(200);
+      expect((await send(`${SPEC_API_ROOT}/${slug}/dashboard`, { method: "GET" }))[0]).toBe(200);
+      expect((await send(workspaceAdminRoutes.image(slug, "logo"), image(png)))[0]).toBe(200);
+      expect((await send(workspaceAdminRoutes.image(slug, "screenshot"), image(jpeg)))[0]).toBe(200);
+      expect((await send(workspaceAdminRoutes.image(slug, "logo"), image(svg)))[0]).toBe(415);
+      expect((await send(workspaceAdminRoutes.image(slug, "screenshot"), image(big)))[0]).toBe(413);
+      expect((await fetch(`${app.url}${workspaceAdminRoutes.image(slug, "logo")}`)).status).toBe(200);
+      // The images went to the app's data folder, not the repository.
+      const xdg = readdirSync(root).filter((name) => name.startsWith("xdg-admin-"));
+      expect(xdg.length).toBe(1);
+      dataDir = join(root, xdg[0] ?? "", "spectant");
+      expect(readdirSync(join(dataDir, "workspaces", slug)).sort()).toEqual(["logo.png", "screenshot.jpg"]);
+      expect((await send(workspaceAdminRoutes.remove(slug), { method: "DELETE" }))[0]).toBe(204);
+      expect((await send(workspaceAdminRoutes.remove(slug), { method: "DELETE" }))[0]).toBe(404);
+      expect((await send(SPEC_API_ROOT, { method: "GET" }))[1]).toEqual([]);
+    } finally {
+      await app.stop();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readdirSync(join(dataDir, "workspaces"))).toEqual([]);
   });
 });

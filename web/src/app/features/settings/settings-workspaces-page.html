@@ -56,7 +56,17 @@
 
     <div class="toolbar" data-ws-toolbar>
       <span class="meta">{{ (total() === 1 ? 'settingsWorkspaces.toolbar.one' : 'settingsWorkspaces.toolbar.other') | transloco: { count: total() } }}</span>
-      <!-- T20 places the sort control here, on the right. -->
+      <!-- T20 (ISC-313): writes only ?sort=; a popover from medium, a bottom sheet at compact. Not in the empty state. -->
+      @if (view() === 'list') {
+        <ui-sort-menu
+          data-ws-sort
+          [options]="sortOptions()"
+          [value]="sort()"
+          [label]="'settingsWorkspaces.sort.label' | transloco"
+          [tier]="tier()"
+          (choose)="setSort($event)"
+        />
+      }
     </div>
 
     @switch (view()) {
@@ -87,8 +97,8 @@
       @case ('list') {
         <ul class="ws-list" role="list">
           @for (entry of rows(); track entry.slug) {
-            <!-- T16 (rename), T17 (re-scan), T18/T19 (upload) wire the other outputs. -->
-            <li app-workspace-row [entry]="entry" (remove)="askRemove($event)"></li>
+            <!-- T17 (re-scan), T18/T19 (upload) wire the other outputs. -->
+            <li app-workspace-row [entry]="entry" (rename)="askRename($event)" (remove)="askRemove($event)"></li>
           }
         </ul>
       }
@@ -100,6 +110,46 @@
     </div>
   </ui-card>
 </div>
+
+<!-- T16 (ISC-305): one field, the slug as an unchangeable line; Save sends the name only, Esc and Cancel send nothing. -->
+<ui-dialog
+  [open]="renameOpen()"
+  (openChange)="setRenameOpen($event)"
+  [heading]="'settingsWorkspaces.rename.title' | transloco: { name: renaming()?.name ?? '' }"
+  data-ws-rename-dialog
+>
+  <form class="rename-form" data-ws-rename-form novalidate [attr.aria-busy]="renameBusy() ? 'true' : null" (submit)="saveRename($event)">
+    <label class="rename-field" [class.invalid]="renameError() !== null">
+      <span class="type-eyebrow">{{ 'settingsWorkspaces.rename.label' | transloco }}</span>
+      <input
+        #renameInput
+        name="name"
+        data-ws-rename-name
+        data-autofocus
+        autocomplete="off"
+        [attr.aria-invalid]="renameError() !== null ? 'true' : null"
+        [attr.aria-describedby]="renameError() !== null ? 'ws-rename-error' : 'ws-rename-slug'"
+        [value]="renameName()"
+        (input)="setRenameName(renameInput.value)"
+      />
+    </label>
+    <p class="slug-line mono" id="ws-rename-slug" data-ws-rename-slug>
+      {{ 'settingsWorkspaces.rename.slug' | transloco: { slug: renaming()?.slug ?? '' } }}
+    </p>
+    <div class="check-line" id="ws-rename-error" data-ws-rename-error aria-live="polite">
+      @if (renameError(); as error) {
+        <ui-icon name="triangle-alert" />
+        {{ 'settingsWorkspaces.rename.error.' + error | transloco }}
+      }
+    </div>
+    <div class="dlg-acts rename-acts">
+      <button ui-button type="button" data-ws-rename-cancel (click)="setRenameOpen(false)">{{ 'settingsWorkspaces.rename.cancel' | transloco }}</button>
+      <button ui-button variant="primary" type="submit" data-ws-rename-save [disabled]="renameBusy()">
+        {{ (renameBusy() ? 'settingsWorkspaces.rename.busy' : 'settingsWorkspaces.rename.save') | transloco }}
+      </button>
+    </div>
+  </form>
+</ui-dialog>
 
 <!-- Stub until T21: the confirm button closes without a request. -->
 <ui-dialog

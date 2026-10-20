@@ -29,7 +29,8 @@ ui-card { overflow: hidden; }
 }
 
 .path-field,
-.name-field {
+.name-field,
+.rename-field {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -44,11 +45,15 @@ ui-card { overflow: hidden; }
 .path-field { flex: 1 1 360px; }
 
 .path-field:focus-within,
-.name-field:focus-within { border-color: var(--color-primary); }
-.path-field.invalid { border-color: var(--color-error); }
+.name-field:focus-within,
+.rename-field:focus-within { border-color: var(--color-primary); }
+
+.path-field.invalid,
+.rename-field.invalid { border-color: var(--color-error); }
 
 .path-field input,
-.name-field input {
+.name-field input,
+.rename-field input {
   flex: 1;
   min-inline-size: 0;
   border: 0;
@@ -143,6 +148,26 @@ ui-card { overflow: hidden; }
   line-height: 20px;
 }
 
+/* Rename dialog (T16): the field, the slug line below it; full width at compact */
+@container shell (width < 640px) {
+  [data-ws-rename-dialog] { --ui-dialog-size: 100%; }
+  .rename-field { block-size: 44px; }
+}
+
+.rename-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.slug-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .dlg-acts {
   display: flex;
   flex-wrap: wrap;
@@ -150,3 +175,5 @@ ui-card { overflow: hidden; }
   gap: 8px;
   margin-block-start: 24px;
 }
+
+.rename-acts { margin-block-start: 16px; }

@@ -15,6 +15,11 @@
  *   from the contract's parser, then 404 `not-found` for an unknown slug.
  * - `POST /api/workspaces/:ws/rescan` (`rescan`, ISC-306): re-syncs the watch hub, so the workspace is watched as it
  *   now stands, reads its files fresh and answers 200 with that summary, then announces it. 404 for an unknown slug.
+ * - `DELETE /api/workspaces/:ws` (`remove`, ISC-307): takes the entry out of the registry, then deletes its image folder
+ *   `<data>/workspaces/<slug>/` through the store, answers 204 with no body and `Cache-Control: no-store` (as the e2e
+ *   stub), and announces the slug, so every open stream gets the list without it. The repository folder is never
+ *   touched; notes and settings keyed by the slug stay orphaned, as `spectant remove` leaves them. 404 for an unknown
+ *   slug.
  * - `PUT /api/workspaces/:ws/images/:kind` (`putImage`, ISC-310): stores the body as the kind's one file under
  *   `<data>/workspaces/<slug>/` (`workspace-images.ts`, the folder from the registry's slug, never the request), answers
  *   200 `{kind, url}` with the versioned `imageUrl` and announces the workspace. 404 unknown slug, then 413 `too-large`
@@ -54,7 +59,7 @@ import {
 import type { WorkspaceImageStore } from "./workspace-images.ts";
 
 export interface WorkspaceAdminApiOptions {
-  readonly registry: Pick<Registry, "add" | "list" | "get" | "rename">;
+  readonly registry: Pick<Registry, "add" | "list" | "get" | "rename" | "remove">;
   /** The summary of one workspace as the list route answers it (`workspaceSummaryReader` in `api.ts`). */
   readonly summaryOf: (workspace: Workspace) => Promise<WorkspaceListSummary>;
   /** The live stream's hub: announced after every registry write. Absent: nothing is pushed, the poll still shows it. */
@@ -64,7 +69,7 @@ export interface WorkspaceAdminApiOptions {
 }
 
 /** The admin routes this server answers; any other admin path passes on until its task lands. */
-const SERVED: ReadonlySet<WorkspaceAdminRouteName> = new Set(["add", "rename", "rescan", "putImage", "getImage"]);
+const SERVED: ReadonlySet<WorkspaceAdminRouteName> = new Set(["add", "rename", "rescan", "remove", "putImage", "getImage"]);
 
 /** The request body as JSON, or `undefined` when it is none; the contract's parser refuses that as `invalid-body`. */
 async function bodyOf(req: Request): Promise<unknown> {
@@ -134,6 +139,16 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
     return answer(req, 200, workspace);
   };
 
+  const remove = async (req: Request, ws: string): Promise<Response> => {
+    const workspace = registry.get(ws);
+    if (workspace === undefined) return json(req, 404, { error: "not-found" });
+    // The registry's own slug, never the request's, names the entry and the image folder.
+    if (!registry.remove(workspace.slug)) return json(req, 404, { error: "not-found" });
+    options.images?.remove(workspace.slug);
+    await announce(workspace.slug);
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  };
+
   const putImage = async (req: Request, { ws, kind }: WorkspaceAdminImageParams, store: WorkspaceImageStore): Promise<Response> => {
     const workspace = registry.get(ws);
     if (workspace === undefined) return json(req, 404, { error: "not-found" });
@@ -172,6 +187,8 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
         return rename(req, match.params.ws);
       case "rescan":
         return rescan(req, match.params.ws);
+      case "remove":
+        return remove(req, match.params.ws);
       case "putImage":
         return store === undefined ? null : putImage(req, match.params, store);
       case "getImage":

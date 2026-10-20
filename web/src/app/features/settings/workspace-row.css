@@ -12,12 +12,15 @@
 
 .mono { font-family: var(--font-mono); }
 
-/* The 16:10 thumb on the cover's look: the screenshot or the name pattern. */
+/* The 16:10 thumb (ui-ws-cover shape="thumb"), a button that opens the screenshot upload (T18) */
 .thumb {
+  display: block;
   inline-size: 64px;
-  aspect-ratio: 16 / 10;
-  border-block-start-width: 2px;
+  padding: 0;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
 }
 
 .body { display: contents; }
@@ -84,6 +87,14 @@
   white-space: nowrap;
 }
 
+/* T17: the re-scan's busy word, with the spinner in the counts cell from medium */
+.busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+
 .trigger { justify-self: end; }
 
 /* The menu, projected into ui-popover or ui-sheet */
@@ -114,6 +125,11 @@
 .item:hover,
 .item:focus-visible { background: var(--color-base-300); }
 .item.danger { color: var(--fail-text); }
+
+.item:disabled {
+  color: var(--muted);
+  cursor: default;
+}
 :host([data-tier='compact']) .item { min-block-size: 44px; }
 
 .sep {
