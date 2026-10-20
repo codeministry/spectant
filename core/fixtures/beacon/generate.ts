@@ -19,16 +19,16 @@
  *   row 1  idea           specs/ideas/uptime-badges.md (an open run on it: running), specs/ideas/digest-emails.md
  *                         (no run: open), specs/ideas/cert-expiry.md (a run open past 120 minutes: aborted)
  *   row 2  done           001-check-scheduler   feature, `phase: complete`, events.jsonl from creation to done
- *   row 3  plan           002-status-page       feature without plan.md, no reviewed mark
- *   row 4  tasks          003-alert-rules       feature with plan.md, three claims, no tasks.md
- *   row 5  review         004-incident-notes    feature with plan.md and tasks.md, reviewed mark stale
- *   row 6  build          005-probe-agents      feature, reviewed mark fresh, takeable claims (the live spec, below)
+ *   row 4  plan           002-status-page       feature without plan.md, no reviewed mark
+ *   row 5  tasks          003-alert-rules       feature with plan.md, three claims, no tasks.md
+ *   row 6  review         004-incident-notes    feature with plan.md and tasks.md, reviewed mark stale
+ *   row 7  build          005-probe-agents      feature, reviewed mark fresh, takeable claims (the live spec, below)
  *                         008-export-formats    spike, one of two claims open: the open sibling of 007 under F6
- *   row 7  done (chore)   010-renew-api-key     chore, every claim closed, reviewed mark fresh, `phase: building`
- *   row 8  close-pending  007-history-export    spike, every claim closed; F6 waits on 008
- *   row 9  code-review    006-retry-backoff     refactor, every claim closed, code-reviewed mark (stale: no tree id)
- *   row 10 close          009-timezone-labels   bug, every claim closed, `code_review: none`
- *   row 11 blocked        011-maintenance-windows  bug, reviewed mark fresh, both open claims wait on spec 002
+ *   row 8  done (chore)   010-renew-api-key     chore, every claim closed, reviewed mark fresh, `phase: building`
+ *   row 9  close-pending  007-history-export    spike, every claim closed; F6 waits on 008
+ *   row 10 code-review   006-retry-backoff     refactor, every claim closed, code-reviewed mark (stale: no tree id)
+ *   row 11 close          009-timezone-labels   bug, every claim closed, `code_review: none`
+ *   row 12 blocked        011-maintenance-windows  bug, reviewed mark fresh, both open claims wait on spec 002
  *                         (`(after: 002)`): "waits on 002"
  *
  * Marks: reviewed fresh on 001, 005, 006, 007, 008, 009, 010, 011; stale on 004; missing on 002 and 003. The one

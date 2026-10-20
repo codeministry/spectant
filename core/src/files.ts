@@ -644,7 +644,7 @@ export interface SpecPageInput {
   readonly read?: SpecRead;
   /** Commits touching the spec folder, for the Status tile's timeline count; absent means none were read. */
   readonly commits?: readonly CommitRecord[];
-  /** `specs/workflow.md` as read, as the dashboard gets it (row 7, the explicit stage); absent, the default table. */
+  /** `specs/workflow.md` as read, as the dashboard gets it (row 9, the explicit stage); absent, the default table. */
   readonly workflow?: Workflow;
   /** The merge state as the dashboard gets it (`DashboardInput.mergeState`, spec 025), for the row's `waits`. */
   readonly mergeState?: readonly MergeState[];

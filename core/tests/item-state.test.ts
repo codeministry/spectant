@@ -59,6 +59,9 @@ describe('item state', () => {
     expectGolden(goldenPath(tree, 'state'), goldenText(items), UPDATE_COMMAND);
   });
 
+  // Row 3 (spec 043, ISC-266): no fixture spec is claimless, so the goldens stay as they are; stage.test.ts covers it.
+  const fixtureRows = STAGE_RULES.map((_, i) => i + 1).filter((n) => n !== 3);
+
   test('every row of the stage table holds an item across the fixture trees', () => {
     const covered = new Set<number>();
     for (const tree of trees) {
@@ -70,20 +73,21 @@ describe('item state', () => {
       }
       if (items.some((i) => i.kind === 'idea')) covered.add(1);
     }
-    expect([...covered].sort((a, b) => a - b)).toEqual(STAGE_RULES.map((_, i) => i + 1));
+    expect([...covered].sort((a, b) => a - b)).toEqual(fixtureRows);
   });
 
   test('beacon alone covers every row of the stage table', () => {
     const input = stateInputAt(BEACON);
     const rows = new Set(input.dashboard.specs.map((row) => STAGE_RULES.indexOf(stageRuleOf(row)) + 1));
     if (input.dashboard.ideas.list.length > 0) rows.add(1);
-    expect([...rows].sort((a, b) => a - b)).toEqual(STAGE_RULES.map((_, i) => i + 1));
+    expect([...rows].sort((a, b) => a - b)).toEqual(fixtureRows);
   });
 
   test('every stage rule names the state it yields without a run (T8)', () => {
     expect(STAGE_RULES.map((r) => [r.stage, r.state])).toEqual([
       ['idea', 'open'],
       ['done', 'done'],
+      ['plan', 'open'],
       ['plan', 'open'],
       ['tasks', 'open'],
       ['review', 'open'],

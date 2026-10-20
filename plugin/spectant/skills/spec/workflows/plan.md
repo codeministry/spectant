@@ -8,6 +8,10 @@ acceptance criterion. For a spec with a user interface, an optional design pass 
 
 ## When to run
 
+First, before the type: a spec without claims (the total in `progress` from `spec-check status NNN --json` is 0) is
+refused with one line naming `/spec new NNN`, which mints its claims in its own folder, and nothing is written; every
+row of the plan's file table needs a claim ID. The run still opens and ends `ok`, as for every refusal by design.
+
 For the types `feature`, `infra` and `project`, after `spec.md` exists. Never for `bug` or `spike`: there the diff and
 the question are the how, and a plan would be ceremony. A spec of another type, a spec with `phase: complete`, or a
 spec that already has a `plan.md` the user did not ask to rewrite is refused with a one-line reason, and nothing is

@@ -1980,6 +1980,16 @@ var SPEC_RULES = [
     subject: "spec",
     stage: "plan",
     state: "open",
+    condition: "the spec has no claims",
+    when: (input) => countsOf(input).total === 0,
+    next: commandFor("new", SPEC_ARG),
+    reasons: ["no claims yet"],
+    explain: () => ({})
+  },
+  {
+    subject: "spec",
+    stage: "plan",
+    state: "open",
     condition: "the type needs `plan.md` and it is missing",
     when: (input) => needs(input, "plan") && !input.hasPlan,
     next: commandFor("plan", SPEC_ARG),
@@ -2064,19 +2074,22 @@ var SPEC_RULES = [
     subject: "spec",
     stage: "blocked",
     state: "waiting",
-    condition: "anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet",
+    condition: "anything else: all open work waits on an open spec edge, or open claims none of which is takeable",
     when: () => true,
     next: commandFor(null, SPEC_ARG),
-    reasons: ["{open}, none takeable", "no claims yet", "waits on {specs}"],
+    reasons: ["{open}, none takeable", "waits on {specs}"],
     explain: (input) => {
       const held = fullHoldOf(input);
       if (held.length > 0)
-        return { form: 2, values: { specs: held.join(", ") } };
-      const { open } = countsOf(input);
-      return open > 0 ? { form: 0, values: { open: plural(open, "open claim") } } : { form: 1 };
+        return { form: 1, values: { specs: held.join(", ") } };
+      return { form: 0, values: { open: plural(countsOf(input).open, "open claim") } };
     }
   }
 ];
+var CLAIMLESS_RULE = SPEC_RULES[1];
+function ownRuleOf(stage, withCommand = false) {
+  return SPEC_RULES.find((r) => r.stage === stage && r !== CLAIMLESS_RULE && (!withCommand || r.next !== null));
+}
 var STAGE_RULES = [STORY_RULE, ...SPEC_RULES];
 function ruleOf(input) {
   const rule = SPEC_RULES.find((r) => r.when(input));
@@ -2162,7 +2175,7 @@ function defaultStages(type) {
       return needs2.tasks;
     return codeReview !== "none" || !CODE_REVIEW_STAGES.has(stage);
   };
-  return [...SPEC_RULES.map((rule) => rule.stage).filter(keep), "done"];
+  return [...new Set(SPEC_RULES.map((rule) => rule.stage))].filter(keep).concat("done");
 }
 function defaultWorkflowRow(type) {
   return { type, stages: defaultStages(type), codeReview: defaultCodeReview(type) };
@@ -4385,14 +4398,14 @@ function moveAllowed(lane, from, to) {
   return to === "close-pending" && lane.codeReview === "feature" && listed(lane, from, "code-review");
 }
 function phrase(stage, input) {
-  const rule = SPEC_RULES.find((r) => r.stage === stage);
+  const rule = ownRuleOf(stage);
   if (!rule)
     throw new Error(`SPEC_RULES has no row ${stage}`);
   const { form = 0, values = {} } = rule.explain(input);
   return fillReason(rule.reasons[form] ?? "", values);
 }
 function commandOf(stage, number) {
-  const next = SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
+  const next = ownRuleOf(stage, true)?.next;
   return next === undefined || next === null ? null : commandWith(next, number);
 }
 var list = (ids) => ids.join(", ");

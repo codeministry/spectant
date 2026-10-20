@@ -1,5 +1,5 @@
 import type { SpecType, WorkflowStage } from '../../../../../core/src/files';
-import { STAGE_RULES, TYPE_NEEDS, WORKFLOW_TYPES } from '../../../../../core/src/stage';
+import { CLAIMLESS_RULE, STAGE_RULES, TYPE_NEEDS, WORKFLOW_TYPES } from '../../../../../core/src/stage';
 import {
   GROUP_CONTEXT,
   type Shortcut,
@@ -125,7 +125,7 @@ export interface LifecycleBand {
 }
 
 const commandOf = (stage: WorkflowStage): string | null =>
-  STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null)?.next ?? null;
+  STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null && rule !== CLAIMLESS_RULE)?.next ?? null;
 
 const node = (stage: WorkflowStage, file: string, tone: LifecycleTone, gate = false, optional = false): LifecycleNode => ({
   stage,

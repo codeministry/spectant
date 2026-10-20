@@ -6,20 +6,20 @@
 // words, command, reason templates) is a field, and core/tests/stage.test.ts compares each rule with its markdown row
 // verbatim (spec 002 T11, ISC-79). A reason is always one of its row's templates, filled by `fillReason`, and every surface
 // reads it through `reasonOf` (T58). Row 1, `idea`, is the story row (T54): a story file stands in it, its command takes
-// the slug where a spec row takes the number, and a spec folder is tried against SPEC_RULES, rows 2 to 11, only.
+// the slug where a spec row takes the number, and a spec folder is tried against SPEC_RULES, rows 2 to 12, only.
 //
 // Spec 008 adds the workflow's defaults and what derives from a row: the default table (T42, read by workflow.ts, which
 // imports it from here so the two modules form no import cycle), the allowed transitions (T45, ISC-29) and the explicit
 // stage, a frontmatter `stage:` that wins over the derived one when the last event agrees with it (T47, ISC-120), and
 // is one `stage-mismatch` diagnostic when it does not apply (T48). Spec 040 (T68, ISC-221.2): a confirmed `stage:` that
 // the derived stage has overtaken along the type's row yields to it without a diagnostic, unless the last event was a
-// step back, which holds; the allocation (`from: null`) is no step back. Row 8, `close-pending`, is the detour of
+// step back, which holds; the allocation (`from: null`) is no step back. Row 9, `close-pending`, is the detour of
 // `code_review: feature` (T49): a spec whose claims are all closed waits there while a sibling of its main feature is open.
 //
 // Spec 025 (T14, ISC-162.3): a spec whose whole open work hangs on open spec edges (`SpecWait.full`, spec-edges.ts) is
-// not on `build` even with a takeable claim; it falls through to row 11, `blocked`, with the reason `waits on {specs}`.
+// not on `build` even with a takeable claim; it falls through to row 12, `blocked`, with the reason `waits on {specs}`.
 // A spec with takeable work beside the held keeps its stage. A claim an open spec edge holds is not takeable
-// (`StageInput.edgeHeld`, ISC-162.2): when only such claims would be takeable, the spec stands in row 11 the same way.
+// (`StageInput.edgeHeld`, ISC-162.2): when only such claims would be takeable, the spec stands in row 12 the same way.
 //
 // Spec 040 (T8, ISC-221): every row names the item state it yields while no run is open (`StageRule.state`): `waiting`
 // for `close-pending` and `blocked`, `done` for both `done` rows, `open` with the row's command for every other row.
@@ -69,27 +69,27 @@ export interface StageInput {
   readonly lastEventFrom: WorkflowStage | null;
   /** The workspace's workflow; absent, the default table (FORMAT.md § workflow). Decides which stages are explicit. */
   readonly workflow?: Workflow;
-  /** How the spec type's code review is done: its row of `workflow` (`codeReviewOf`). Row 7 needs `feature`. */
+  /** How the spec type's code review is done: its row of `workflow` (`codeReviewOf`). Row 9 needs `feature`. */
   readonly codeReview: CodeReviewMode;
   /**
    * The spec's main feature, the first word of `isa_feature:` (`mainFeatureOf` in status.ts), e.g. `F6`; null when it
-   * names none. Row 7's `{feature}`.
+   * names none. Row 9's `{feature}`.
    */
   readonly mainFeature: string | null;
   /**
    * The ids (`NNN`) of the other specs of the main feature that are open: active (not archived, not `phase: complete`)
-   * and holding at least one open claim, in id order. Empty without a main feature. Row 7's `{siblings}`.
+   * and holding at least one open claim, in id order. Empty without a main feature. Row 9's `{siblings}`.
    */
   readonly featureSiblingsOpen: readonly string[];
   /**
    * What the spec waits on, its row of `resolveEdges(…).waits` (spec-edges.ts, spec 025); absent or null, nothing.
-   * When `full`, row 6 does not apply and row 11 names the blockers (ISC-162.3).
+   * When `full`, row 7 does not apply and row 12 names the blockers (ISC-162.3).
    */
   readonly waits?: SpecWait | null;
   /**
    * The specs (`NNN`, ascending) that open spec edges on would-be-takeable claims wait on; the caller has already
    * taken those claims out of `takeable` and `partition.takeable` (ISC-162.2). When that leaves nothing takeable, the
-   * spec's open takeable work all waits on spec edges: row 11 reads `waits on {specs}` with these (ISC-162.3).
+   * spec's open takeable work all waits on spec edges: row 12 reads `waits on {specs}` with these (ISC-162.3).
    * Absent or empty, no claim was held so.
    */
   readonly edgeHeld?: readonly string[];
@@ -152,7 +152,7 @@ function takeableIds(input: StageInput, count: number): string {
   return `${ids[0] ?? ''}, ${ids[1] ?? ''} and ${ids.length - 2} more`;
 }
 
-/** `{siblings}` of row 7: `spec 005`, `specs 005 and 006`, or `specs 005, 006 and 2 more`. */
+/** `{siblings}` of row 9: `spec 005`, `specs 005 and 006`, or `specs 005, 006 and 2 more`. */
 function siblingList(ids: readonly string[]): string {
   if (ids.length === 1) return `spec ${ids[0] ?? ''}`;
   if (ids.length === 2) return `specs ${ids[0] ?? ''} and ${ids[1] ?? ''}`;
@@ -324,7 +324,7 @@ export const STORY_RULE: StoryStageRule = {
   reasons: ['the story is shaped but has no spec'],
 };
 
-/** Rows 2 to 11, the rows a spec folder stands in, first match wins. `blocked` is the fallback. */
+/** Rows 2 to 12, the rows a spec folder stands in, first match wins. `blocked` is the fallback. */
 export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
@@ -334,6 +334,18 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     when: (input) => input.phase === 'complete',
     next: null,
     reasons: ['phase: complete'],
+    explain: () => ({}),
+  },
+  // Spec 043 (ISC-266): a spec without claims gets them through `/spec new NNN` in its existing folder, before plan.md
+  // or tasks.md, for every type; `/spec plan NNN` cannot write for it. The stage stays `plan`.
+  {
+    subject: 'spec',
+    stage: 'plan',
+    state: 'open',
+    condition: 'the spec has no claims',
+    when: (input) => countsOf(input).total === 0,
+    next: commandFor('new', SPEC_ARG),
+    reasons: ['no claims yet'],
     explain: () => ({}),
   },
   {
@@ -426,18 +438,25 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
     subject: 'spec',
     stage: 'blocked',
     state: 'waiting',
-    condition: 'anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet',
+    condition: 'anything else: all open work waits on an open spec edge, or open claims none of which is takeable',
     when: () => true,
     next: commandFor(null, SPEC_ARG),
-    reasons: ['{open}, none takeable', 'no claims yet', 'waits on {specs}'],
+    reasons: ['{open}, none takeable', 'waits on {specs}'],
     explain: (input): ReasonFill => {
       const held = fullHoldOf(input);
-      if (held.length > 0) return { form: 2, values: { specs: held.join(', ') } };
-      const { open } = countsOf(input);
-      return open > 0 ? { form: 0, values: { open: plural(open, 'open claim') } } : { form: 1 };
+      if (held.length > 0) return { form: 1, values: { specs: held.join(', ') } };
+      return { form: 0, values: { open: plural(countsOf(input).open, 'open claim') } };
     },
   },
 ];
+
+/** Row 3, the claimless row (spec 043, ISC-266): it shares the stage `plan` with row 4 and never stands for the stage. */
+export const CLAIMLESS_RULE: SpecStageRule = SPEC_RULES[1] as SpecStageRule;
+
+/** The row a stage stands for on its own (its command and phrase): the stage's first row, the claimless row left out. */
+export function ownRuleOf(stage: Stage, withCommand = false): SpecStageRule | undefined {
+  return SPEC_RULES.find((r) => r.stage === stage && r !== CLAIMLESS_RULE && (!withCommand || r.next !== null));
+}
 
 /** The status contract, FORMAT.md § "The stage table", in table order: the story row, then the spec rows. */
 export const STAGE_RULES: readonly StageRule[] = [STORY_RULE, ...SPEC_RULES];
@@ -637,9 +656,10 @@ const CODE_REVIEW_STAGES: ReadonlySet<WorkflowStage> = new Set(['code-review', '
 const DETOURS: ReadonlySet<WorkflowStage> = new Set(['blocked', 'close-pending']);
 
 /**
- * The default stages of a type: the stage table in its order, `done` last and the `blocked` detour left out, keeping
- * `plan` and `tasks` only where TYPE_NEEDS asks for the file and the code-review stages only where the type has a
- * review. A spec without a type needs neither file and has a review: `review · build · code-review · close · done`.
+ * The default stages of a type: the stage table in its order, each stage once (rows 3 and 4 are both `plan`), `done`
+ * last and the `blocked` detour left out, keeping `plan` and `tasks` only where TYPE_NEEDS asks for the file and the
+ * code-review stages only where the type has a review. A spec without a type needs neither file and has a review:
+ * `review · build · code-review · close · done`.
  */
 function defaultStages(type: SpecType | null): WorkflowStage[] {
   const needs = type === null ? { plan: false, tasks: false } : TYPE_NEEDS[type];
@@ -650,7 +670,7 @@ function defaultStages(type: SpecType | null): WorkflowStage[] {
     if (stage === 'tasks') return needs.tasks;
     return codeReview !== 'none' || !CODE_REVIEW_STAGES.has(stage);
   };
-  return [...SPEC_RULES.map((rule) => rule.stage).filter(keep), 'done'];
+  return [...new Set(SPEC_RULES.map((rule) => rule.stage))].filter(keep).concat('done');
 }
 
 /** A type's default row (FORMAT.md § workflow). */

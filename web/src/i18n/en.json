@@ -2708,7 +2708,8 @@
     "reason": {
       "stage": {
         "plan": {
-          "0": "Write the plan next: the spec needs one before it can be broken into tasks."
+          "0": "Write the plan next: the spec needs one before it can be broken into tasks.",
+          "1": "Write the claims next: the spec has none yet, and planning needs them."
         },
         "tasks": {
           "0": "Break the spec into tasks: its claims need a task list before building."

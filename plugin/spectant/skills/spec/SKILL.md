@@ -1,7 +1,7 @@
 ---
 name: spec
 description: "Spec-driven feature folders: specs/NNN-slug/ with spec.md, plan.md, tasks.md, one master ISA.md and one specs/constitution.md. Sets a repo up, shapes an idea into a spec, plans it, breaks it into tasks, reviews it, implements the tasks until each claim closes on its probe's evidence, closes and archives it, and reports status and drift. USE WHEN spec, spec idea, shape an idea, write a spec, new spec, plan the spec, plan.md, break into tasks, tasks.md, review the spec, implement the spec, work the tasks, spec done, close the spec, spec status, spec drift, specs/NNN, constitution, spec-driven."
-argument-hint: "[init | idea <sentences> | new <type> [notes] | plan|tasks|review|implement|done [NNN]]"
+argument-hint: "[init | idea <sentences> | new <type> [notes] | new NNN | plan|tasks|review|implement|done [NNN]]"
 ---
 
 # Spec
@@ -22,7 +22,7 @@ Arguments: `$ARGUMENTS`. The first word (`$0`) picks the row; the rest is passed
 | `/spec` | none, or `NNN` | `workflows/status.md` | help, status of every spec, drift against the master, sync of a spec with the master |
 | `init` | none | `workflows/init.md` | set the repo up: master `ISA.md`, `specs/constitution.md`, the first spec |
 | `idea` | `<sentences>` | `workflows/idea.md` | shape a rough idea: three shapes, a short question round, a filled template, then `new` on a yes |
-| `new` | `<type> [notes]` | `workflows/new.md` | allocate and write a spec of one of the six types from its template |
+| `new` | `<type> [notes]` or `NNN` | `workflows/new.md` | allocate and write a spec of one of the six types from its template; with `NNN`, mint the claims of an existing spec that has none, in its own folder |
 | `plan` | `[NNN]` | `workflows/plan.md` | write `plan.md`, the how, locked in one question; the design pass for a UI spec |
 | `tasks` | `[NNN]` | `workflows/tasks.md` | break the spec into `tasks.md`, atomic steps anchored to claim IDs |
 | `review` | `[NNN]` | `workflows/review.md` | review a spec before `implement` and set the review mark on a yes; the code review of a finished feature |
@@ -43,7 +43,8 @@ terminal sidebar preview (about 150 characters) all point at the same spec:
 ```
 
 - Several specs in one reply (status, drift): `📐 Spec 003 · 007 · 016 · status`. No spec yet (help, `init`, a
-  template before a folder exists): `📐 Spec · <subcommand>`. A new spec takes its number as soon as `allocate` gave it.
+  template before a folder exists): `📐 Spec · <subcommand>`. A new spec takes its number as soon as `allocate` gave it;
+  `/spec new NNN` carries it from the start.
 - A reply that spans steps (implement rounds, review, done) repeats the header at each visible status note.
 
 ## Prerequisites

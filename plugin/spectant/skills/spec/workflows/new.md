@@ -1,18 +1,21 @@
 # new — allocate and write a spec of one type
 
-`/spec new <type> [notes]`
+`/spec new <type> [notes]` · `/spec new NNN`
 
 Writes a numbered spec folder `specs/NNN-slug/` whose `spec.md` holds only claim IDs the master `ISA.md` already knows,
 scaled to the type of work. The type comes first and decides everything downstream; the six types and their templates
 are in `${CLAUDE_PLUGIN_ROOT}/skills/spec/templates/`, and `templates/README.md` holds the question budget and the
-required sections per type.
+required sections per type. With a number instead of a type, it mints the claims of an existing spec that has none,
+into that spec's own folder (§ An existing spec without claims, below).
 
 ## Done looks like this
 
-- `specs/NNN-slug/` exists with `spec.md`, `context.md` and `events.jsonl`, allocated by `spec-check allocate`.
+- `specs/NNN-slug/` exists with `spec.md`, `context.md` and `events.jsonl`, allocated by `spec-check allocate`; for
+  `/spec new NNN`, the same folder as before, and no other folder was created.
 - Every claim in `spec.md` was minted into the master first with `spec-check mint`, and each has its Test Strategy row.
 - `spec.md` holds the type's required sections filled in the repository's prose language, with no placeholder left.
-- `context.md` holds the confirmed goal, the user's own sentence verbatim and `## Round 1 — before the spec`.
+- `context.md` holds the confirmed goal, the user's own sentence verbatim and `## Round 1 — before the spec`; for
+  `/spec new NNN`, a new round appended after the earlier ones, which stay as they were.
 - `spec-check drift NNN` exits 0, and the reply says so.
 - No `plan.md` or `tasks.md` was written, and nothing was committed.
 
@@ -38,6 +41,29 @@ A non-zero exit from `spec-check` is never worked around: end the run with `erro
 message. Every reply starts with the output header `SKILL.md` defines: `📐 Spec · new: …` until the folder exists,
 `📐 Spec NNN · new: …` from then on.
 
+## An existing spec without claims — `/spec new NNN`
+
+When the first argument is a three-digit number or an existing `NNN-slug`, the spec exists and only its claims are
+missing, as for a story allocated through the app. The run's subject is `NNN` from the start, and its command is
+`/spec new NNN`. Resolve `specs/NNN-*/` and read `spec-check status NNN --json`:
+
+- **No such folder:** say so in one line, write nothing, end the run `ok`.
+- **The spec has claims** (the total in `progress` is above 0): say in one line that it has them and name the `next`
+  command `status` gives; write nothing, end the run `ok`.
+- **No claims** (`progress` `0/0`, `next` `/spec new NNN`, reason `no claims yet`): the workflow runs from step 1 with
+  these differences, and `allocate` is never called.
+  - **Type:** the spec's `spec_type:`; no type question (step 2).
+  - **Prompt:** none is shown (step 3). The stated goal and every field come from the spec's `## Goal` and its other
+    sections, and from `context.md`; a field neither answers is a gap for step 5.
+  - **Goal and gap questions:** step 4 and step 5 as usual, against the type's budget.
+  - **Mint:** step 7 runs `mint NNN` into exactly this folder, master first. The block is the spec's `isa_feature:`;
+    for a bug or a spike it exists, and for the other types `--feature-name` and `--why` are passed only when the
+    master lacks that block.
+  - **Prose, log, check:** steps 8 to 10. Step 8 fills what is still empty and keeps the prose already there unless
+    an answer changes it; the confirmed goal replaces `## Goal` when it differs. Step 9 appends the next round
+    (`## Round <n> — claims for the existing spec, <ISO-8601>`, with the stated and the confirmed goal) after the
+    earlier ones and never rewrites them. `spec-check drift NNN` exits 0.
+
 ## 1 — Read the ground
 
 What the repository answers is never a question. Read:
@@ -57,8 +83,9 @@ Then:
 
 ## 2 — The type
 
-`bug` · `spike` · `refactor` · `feature` · `infra` · `project`. Take it from the first argument. Missing or not one of
-the six: one `AskUserQuestion` with the six types, the one the notes suggest first and marked `(Recommended)`.
+`bug` · `spike` · `refactor` · `feature` · `infra` · `project`. Take it from the first argument; for `/spec new NNN`,
+from the spec's `spec_type:`. Missing or not one of the six: one `AskUserQuestion` with the six types, the one the
+notes suggest first and marked `(Recommended)`.
 
 | Type | Writes now | Offered next |
 |------|------------|--------------|
@@ -124,6 +151,8 @@ Keep each question as you ask it, in the form step 7 records it.
 
 ## 6 — Allocate
 
+Skipped for `/spec new NNN`: the folder exists, and `allocate` would refuse its slug with exit 1.
+
 ```bash
 spec-check allocate <type> <slug> --goal "<the confirmed goal>" --title "<title>" --feature F<n> --json
 ```
@@ -179,7 +208,8 @@ Write the claims as a JSON array to a temporary file outside the repository (for
 spec-check mint NNN --feature F<n> --feature-name "<name>" --why "<one line: why this feature exists>" --claims <file> --json
 ```
 
-`--feature-name` and `--why` open the new block in the master; leave both out for a bug or a spike, whose block exists.
+`--feature-name` and `--why` open the new block in the master; leave both out for a bug or a spike, whose block exists,
+and for `/spec new NNN` when the master already holds the spec's `isa_feature:` block.
 `mint` writes the claims into the master's block and its Test Strategy table first, recounts `progress:`, then projects
 the same IDs into `spec.md`. Delete the temporary file afterwards. Claims, rows and progress are never written by hand.
 
@@ -251,5 +281,6 @@ repository's `CLAUDE.md`, and without a rule there nothing is committed or pushe
 
 ## Report
 
-The number and folder, the type, the feature block, the minted IDs, the questions asked against the budget, the marks
-and fog lines left open, `spec-check drift NNN` and its exit code, and the next command offered.
+The number and folder (for `/spec new NNN`: the existing one, nothing allocated), the type, the feature block, the
+minted IDs, the questions asked against the budget, the marks and fog lines left open, `spec-check drift NNN` and its
+exit code, and the next command offered.

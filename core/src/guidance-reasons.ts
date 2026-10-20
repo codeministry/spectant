@@ -22,13 +22,24 @@ export const WAITING_TEMPLATES: Readonly<Record<WaitingItem['kind'], string>> = 
 
 const placeholdersOf = (template: string): string[] => [...new Set([...template.matchAll(/\{([a-zA-Z]+)\}/g)].map((m) => m[1] as string))];
 
+const OPEN_RULES = SPEC_RULES.filter((rule) => rule.state === 'open');
+
+/**
+ * Where a row's keys start within its stage: after the templates of the stage's later rows, so a row put in front of
+ * an existing one (spec 043: the claimless row 3 before `plan.md`'s row 4) adds keys and renames none.
+ */
+const offsetOf = (index: number): number =>
+  OPEN_RULES.slice(index + 1)
+    .filter((rule) => rule.stage === OPEN_RULES[index]?.stage)
+    .reduce((n, rule) => n + rule.reasons.length, 0);
+
 /**
  * Every reason key, generated: one `stage.<stage>.<i>` per template of each open spec row of the stage table, then the
  * three `waiting.*` keys. Never hand-maintained; a new stage template is a new key here.
  */
 export const GUIDANCE_REASONS: readonly GuidanceReasonTemplate[] = [
-  ...SPEC_RULES.filter((rule) => rule.state === 'open').flatMap((rule) =>
-    rule.reasons.map((template, i) => ({ key: `stage.${rule.stage}.${i}`, template, placeholders: placeholdersOf(template) })),
+  ...OPEN_RULES.flatMap((rule, index) =>
+    rule.reasons.map((template, i) => ({ key: `stage.${rule.stage}.${offsetOf(index) + i}`, template, placeholders: placeholdersOf(template) })),
   ),
   ...(Object.entries(WAITING_TEMPLATES) as Array<[WaitingItem['kind'], string]>).map(([kind, template]) => ({
     key: `waiting.${kind}`,

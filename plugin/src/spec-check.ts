@@ -555,7 +555,7 @@ function pluginCommand(command: string): string {
   return sub === undefined ? command : ['/spec', sub, ...rest].join(' ');
 }
 
-/** Whether an active spec holds its main feature open: not complete, one claim neither checked nor dropped (dashboard row 7). */
+/** Whether an active spec holds its main feature open: not complete, one claim neither checked nor dropped (dashboard row 9). */
 function holdsFeatureOpen(files: SpecFiles): boolean {
   const spec = files.texts.spec;
   if (spec === undefined) return false;

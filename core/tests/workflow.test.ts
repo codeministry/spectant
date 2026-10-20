@@ -31,7 +31,7 @@ describe('parseWorkflow: the default table', () => {
   });
 
   test('each default row is the stage table in its order, narrowed by TYPE_NEEDS and the code review', () => {
-    const tableOrder = STAGE_RULES.map((r) => r.stage).filter((s) => s !== 'blocked');
+    const tableOrder = [...new Set(STAGE_RULES.map((r) => r.stage))].filter((s) => s !== 'blocked');
     for (const row of DEFAULT_WORKFLOW) {
       const needs = TYPE_NEEDS[row.type];
       expect(row.codeReview).toBe(row.type === 'chore' ? 'none' : 'spec');

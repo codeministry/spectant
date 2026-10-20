@@ -174,7 +174,7 @@ describe('stage per fixture spec equals the old derivation', () => {
       stageSource: 'derived',
       command: '/spec implement 012',
       reason: 'ISC-334 is takeable',
-      row: 6,
+      row: 7,
     });
   });
 
@@ -216,10 +216,11 @@ const ALL_CLOSED: Partial<StageInput> = {
 };
 
 describe('STAGE_RULES is the status contract as data', () => {
-  test('eleven rows in table order, each with its command', () => {
+  test('twelve rows in table order, each with its command', () => {
     expect(STAGE_RULES.map((r) => [r.stage, r.next])).toEqual([
       ['idea', '/spec new <slug>'],
       ['done', null],
+      ['plan', '/spec new NNN'],
       ['plan', '/spec plan NNN'],
       ['tasks', '/spec tasks NNN'],
       ['review', '/spec review NNN'],
@@ -268,7 +269,7 @@ describe('one synthetic case per row', () => {
     ['code-review: all closed, code-reviewed mark stale', at({ ...ALL_CLOSED, codeReviewed: 'stale' }), 'code-review', '/spec review 007 code'],
     ['close: all closed and code-reviewed', at({ ...ALL_CLOSED, codeReviewed: 'fresh' }), 'close', '/spec done 007'],
     ['blocked: open claims, none takeable', at({ takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } }), 'blocked', '/spec 007'],
-    ['blocked: no claims at all falls through to status', at({ claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } }), 'blocked', '/spec 007'],
+    ['plan: no claims at all gets its claims through /spec new', at({ claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } }), 'plan', '/spec new 007'],
   ];
   for (const [name, input, stage, next] of rows) {
     test(name, () => {
@@ -276,6 +277,53 @@ describe('one synthetic case per row', () => {
       expect(nextCommand(input)).toBe(next);
     });
   }
+});
+
+// Spec 043 (ISC-266): a spec without claims gets them through `/spec new NNN` in its existing folder. Row 3 stands in
+// front of plan.md and tasks.md for every type, so a claimless feature is no longer sent to `/spec plan NNN`, which
+// cannot write; the stage stays `plan` and `phase: complete` (row 2) still wins.
+describe('claimless spec (spec 043, ISC-266)', () => {
+  const CLAIMLESS: Partial<StageInput> = {
+    claims: { closed: 0, total: 0 },
+    takeable: [],
+    partition: { takeable: 0, open: 0, closed: 0, dropped: 0 },
+  };
+  const types: readonly SpecType[] = ['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore'];
+  for (const type of types) {
+    test(`claimless ${type}: /spec new NNN, no claims yet, stage plan`, () => {
+      for (const files of [{ hasPlan: false, hasTasks: false }, { hasPlan: true, hasTasks: true }]) {
+        const got = nextCommandWithReason(at({ type, ...files, ...CLAIMLESS }));
+        expect(got).toEqual({ stage: 'plan', stageSource: 'derived', command: '/spec new 007', reason: 'no claims yet', row: 3 });
+      }
+    });
+  }
+
+  test('claimless and phase: complete stays done', () => {
+    expect(nextCommandWithReason(at({ phase: 'complete', hasPlan: false, ...CLAIMLESS }))).toEqual({
+      stage: 'done',
+      stageSource: 'derived',
+      command: null,
+      reason: 'phase: complete',
+      row: 2,
+    });
+  });
+
+  test('claimless rule is not hit by a feature with one claim and no plan.md', () => {
+    const one = at({ hasPlan: false, claims: { closed: 0, total: 1 }, takeable: ['ISC-1'], partition: { takeable: 1, open: 0, closed: 0, dropped: 0 } });
+    expect(nextCommandWithReason(one)).toEqual({
+      stage: 'plan',
+      stageSource: 'derived',
+      command: '/spec plan 007',
+      reason: 'a feature spec needs plan.md and it is missing',
+      row: 4,
+    });
+  });
+
+  test('claimless row sits in the stage table right after phase: complete', () => {
+    const row = STAGE_RULES[2];
+    expect([row?.stage, row?.state, row?.next, row?.reasons]).toEqual(['plan', 'open', '/spec new NNN', ['no claims yet']]);
+    expect(STAGE_RULES[3]?.next).toBe('/spec plan NNN');
+  });
 });
 
 // Spec 008 (ISC-117): a chore runs review → build → done. Done comes once every claim is closed, without a
@@ -290,7 +338,7 @@ describe('chore done', () => {
         stageSource: 'derived',
         command: null,
         reason: 'every claim of the chore is closed',
-        row: 7,
+        row: 8,
       });
     }
   });
@@ -312,7 +360,7 @@ describe('chore done', () => {
 });
 
 // Spec 028 (ISC-183): under `code_review: none` a spec of any type but chore goes from build to close once every
-// claim is closed, without a code-reviewed mark; row 9 (`code-review`) applies only where the type has a code review.
+// claim is closed, without a code-reviewed mark; row 10 (`code-review`) applies only where the type has a code review.
 describe('code_review none', () => {
   const NO_REVIEW_TYPES = WORKFLOW_TYPES.filter((type) => type !== 'chore');
 
@@ -323,7 +371,7 @@ describe('code_review none', () => {
         stageSource: 'derived',
         command: '/spec done 007',
         reason: 'every claim is closed and the workflow has no code review',
-        row: 10,
+        row: 11,
       });
     }
   });
@@ -331,7 +379,7 @@ describe('code_review none', () => {
   test('code_review none: the chore row still wins', () => {
     const chore = at({ type: 'chore', hasPlan: false, hasTasks: false, codeReview: 'none', ...ALL_CLOSED });
     expect(nextCommandWithReason(chore).stage).toBe('done');
-    expect(nextCommandWithReason(chore).row).toBe(7);
+    expect(nextCommandWithReason(chore).row).toBe(8);
   });
 
   test('code_review none: an open claim keeps the spec in build, a stale reviewed mark in review', () => {
@@ -514,8 +562,8 @@ describe('FORMAT.md holds STAGE_RULES verbatim', () => {
   // Every row has its rule: `idea` (row 1) since spec 008, T54, `close-pending` since T49. No row is pending.
   const body = table.slice(TABLE_HEAD.length);
 
-  test('one markdown row per rule, no more, no fewer: all eleven', () => {
-    expect(STAGE_RULES).toHaveLength(11);
+  test('one markdown row per rule, no more, no fewer: all twelve', () => {
+    expect(STAGE_RULES).toHaveLength(12);
     expect(body).toHaveLength(STAGE_RULES.length);
   });
 
@@ -573,7 +621,6 @@ describe('reasonOf: one phrase per waiting row (T58)', () => {
     ['review, missing', at({ reviewed: 'missing' })],
     ['review, stale', at({ reviewed: 'stale' })],
     ['blocked, open claims', at({ takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } })],
-    ['blocked, no claims', at({ claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } })],
     ['close-pending, one sibling', at({ ...ALL_CLOSED, codeReview: 'feature', featureSiblingsOpen: ['009'] })],
     ['close-pending, many siblings', at({ ...ALL_CLOSED, codeReview: 'feature', featureSiblingsOpen: ['009', '010', '011'] })],
     ['code-review, missing', at({ ...ALL_CLOSED })],
@@ -597,7 +644,7 @@ describe('reasonOf: one phrase per waiting row (T58)', () => {
       expect(WAITING_STAGES.has(rule.stage)).toBe(true);
       const { form = 0, values = {} } = rule.explain(input);
       expect(reasonOf(step)).toBe(fillReason(rule.reasons[form] ?? '', values));
-      // One phrase: exactly one template of all eleven rows fills it, so no row yields two phrases joined.
+      // One phrase: exactly one template of all twelve rows fills it, so no row yields two phrases joined.
       const matching = STAGE_RULES.flatMap((r) => r.reasons).filter((t) => fillsTemplate(t, reasonOf(step)));
       expect(matching).toEqual([rule.reasons[form] ?? '']);
     });
@@ -978,7 +1025,7 @@ describe('explicit stage (T47, ISC-120)', () => {
       stageSource: 'explicit',
       command: '/spec review 007',
       reason: 'the reviewed mark is stale',
-      row: 5,
+      row: 6,
     });
   });
 
@@ -1223,7 +1270,7 @@ describe('stale stage (T67, ISC-221.2)', () => {
   const demo = (stage: string, events: ReadonlyArray<readonly [WorkflowStage | null, WorkflowStage]>): SpecFiles => ({
     folder: '010-demo',
     texts: {
-      spec: `---\nslug: 010-demo\nspec_type: feature\nstage: ${stage}\n---\n# 010 — Demo\n\n- [ ] ISC-1: One claim\n`,
+      spec: `---\nslug: 010-demo\nspec_type: feature\nstage: ${stage}\n---\n# 010 — Demo\n\n## Features\n\n### F1 · Demo\n\n- [ ] ISC-1: One claim\n`,
       events: events.map(([from, to], i) => `${JSON.stringify({ ts: `2026-03-0${i + 1}T00:00:00Z`, from, to, command: '/spec-feature demo', actor: 'u:0123abcd' })}\n`).join(''),
       plan: '# Plan\n',
       tasks: '# Tasks\n',
@@ -1270,7 +1317,7 @@ describe('close-pending (T49, ISC-122.2)', () => {
       stageSource: 'derived',
       command: null,
       reason: 'every claim is closed and F6 waits on spec 009',
-      row: 8,
+      row: 9,
     });
     expect(nextCommandWithReason(pending({ featureSiblingsOpen: ['005', '006'] })).reason).toBe('every claim is closed and F6 waits on specs 005 and 006');
     expect(nextCommandWithReason(pending({ featureSiblingsOpen: ['005', '006', '010', '011'] })).reason).toBe(
@@ -1489,7 +1536,7 @@ describe('guidance: matchReason', () => {
 // the plugin's status row (status, drift and sync of one spec); the code review is `/spec review NNN code`.
 describe('plugin commands (spec 031, ISC-265)', () => {
   /** A command in plugin form: `/spec`, an optional subcommand, the argument, and `code` for the code review only. */
-  const PLUGIN_FORM = /^\/spec(?: (?:plan|tasks|implement|review|done))? (?:\d{3}|NNN)$|^\/spec review (?:\d{3}|NNN) code$/;
+  const PLUGIN_FORM = /^\/spec(?: (?:new|plan|tasks|implement|review|done))? (?:\d{3}|NNN)$|^\/spec review (?:\d{3}|NNN) code$/;
 
   test('plugin commands: commandFor names /spec <sub> NNN, /spec <sub> without an id, and the bare /spec', () => {
     expect(SPEC_SUBCOMMANDS).toEqual(['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done']);
@@ -1504,6 +1551,7 @@ describe('plugin commands (spec 031, ISC-265)', () => {
     expect(STAGE_RULES.map((r) => [r.stage, r.next])).toEqual([
       ['idea', '/spec new <slug>'],
       ['done', null],
+      ['plan', '/spec new NNN'],
       ['plan', '/spec plan NNN'],
       ['tasks', '/spec tasks NNN'],
       ['review', '/spec review NNN'],
