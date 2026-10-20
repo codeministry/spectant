@@ -8,6 +8,7 @@ import {
   isWorkspacePageId,
   LEGACY_TAB_IDS,
   SPEC_AREAS,
+  switchSpecLink,
   TAB_IDS,
   WORKSPACE_PAGES,
   workspaceLink,
@@ -101,5 +102,19 @@ describe('workspaceLink', () => {
     expect(workspaceLink('harbor', 'features')).toEqual(['/w', 'harbor', 'features']);
     expect(workspaceLink('harbor', 'milestones')).toEqual(['/w', 'harbor', 'milestones']);
     expect(workspaceLink('harbor', 'library')).toEqual(['/w', 'harbor', 'library']);
+  });
+});
+
+describe('switchSpecLink (spec 051)', () => {
+  const current = TAB_IDS.filter((tab) => !(LEGACY_TAB_IDS as readonly string[]).includes(tab));
+
+  it('keeps every current tab for the new spec (ISC-291)', () => {
+    expect(current).toEqual(['status', 'timeline', 'board', 'matrix', 'claims', 'tasks', 'library', 'notes']);
+    for (const tab of current) expect(switchSpecLink('harbor', '003', tab), tab).toEqual(['/w', 'harbor', 's', '003', tab]);
+  });
+
+  it('gives the new spec dashboard without a tab and for every former Docs or Evidence tab (ISC-292)', () => {
+    expect(switchSpecLink('harbor', '003', null)).toEqual(['/w', 'harbor', 's', '003']);
+    for (const tab of LEGACY_TAB_IDS) expect(switchSpecLink('harbor', '003', tab), tab).toEqual(['/w', 'harbor', 's', '003']);
   });
 });

@@ -1021,4 +1021,33 @@ test.describe('navigation', () => {
       }
     });
   });
+
+  // Spec 051 (ISC-294): the header's Spec select keeps the open area and tab, in the popover at 1440 and the bottom
+  // sheet at 390; the new address survives a reload.
+  for (const width of [1440, 390] as const) {
+    test.describe(`spec switch at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`spec select keeps tab at ${String(width)}`, async ({ page }) => {
+        const timeline = async (): Promise<void> => {
+          await expect(page.locator('app-tab-bar a[data-tab="timeline"]')).toHaveAttribute('aria-current', 'page');
+          await expect(page.locator('app-tab-bar a[data-tab="timeline"]')).toBeVisible();
+          await expect(page.locator('app-timeline-tab')).toBeVisible();
+        };
+        await page.goto('/w/harbor/s/002/timeline');
+        await timeline();
+        await menusReady(page);
+        await page.locator('header [data-control="spec"]').click();
+        const picker = page.locator('nav[data-picker="spec"]');
+        await expect(picker).toBeVisible();
+        await expect(picker.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);
+        await picker.locator('[data-spec="003"]').click();
+        await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/003/timeline');
+        await timeline();
+        await page.reload();
+        await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/003/timeline');
+        await timeline();
+      });
+    });
+  }
 });

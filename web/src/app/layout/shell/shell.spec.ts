@@ -12,7 +12,7 @@ import { KeyboardService } from '../../core/keyboard.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import { navigatesNatively } from './shell-nav';
 import type { LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
-import { AREA_IDS } from './areas';
+import { AREA_IDS, SPEC_AREAS } from './areas';
 import { tierFor } from './tier';
 
 /** Stands in for the browser's ResizeObserver: the test decides the shell container's width. */
@@ -651,7 +651,12 @@ describe('ShellComponent', () => {
       expect(list?.querySelector('.picker-all')?.textContent).toContain('Spec overview');
       const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
       expect(rows.map((row) => row.getAttribute('data-spec'))).toEqual(['004', '002', '003']);
-      expect(rows.map((row) => row.getAttribute('href'))).toEqual(['/w/harbor/s/004', '/w/harbor/s/002', '/w/harbor/s/003']);
+      // Spec 051 (ISC-291): every entry keeps the open tab, Claims.
+      expect(rows.map((row) => row.getAttribute('href'))).toEqual([
+        '/w/harbor/s/004/claims',
+        '/w/harbor/s/002/claims',
+        '/w/harbor/s/003/claims',
+      ]);
       expect(texts(list?.querySelectorAll('[data-spec] .entry-name') as NodeListOf<Element>)).toEqual([
         'Retention policies',
         'Web console',
@@ -663,7 +668,7 @@ describe('ShellComponent', () => {
 
       rows[2]?.click();
       await harness.fixture.whenStable();
-      expect(TestBed.inject(Router).url).toBe('/w/harbor/s/003');
+      expect(TestBed.inject(Router).url).toBe('/w/harbor/s/003/claims');
     });
 
     it('opens the pickers as bottom sheets at compact, focused on the current entry', async () => {
@@ -731,6 +736,79 @@ describe('ShellComponent', () => {
           { none: 'No agent source', activity: 'activity log', frontier: 'LifeOS frontier locks' }[source],
         );
       }
+    });
+
+    describe('spec select keeps the tab (spec 051)', () => {
+      const TABS = SPEC_AREAS.flatMap((area) => area.tabs);
+      const COMPACT = 390;
+      const WIDTHS = [
+        ['popover', undefined],
+        ['bottom sheet', COMPACT],
+      ] as const;
+      // The Live and Tasks views read their own routes; the catch-all answer is enough for the spec select.
+      const unserved = () => Promise.resolve({ kind: 'not-found', served: false } as const);
+      const VIEWS = { ...TWO, tasks: unserved, live: unserved, frames: unserved };
+
+      /** Opens `url` at `width`, opens the spec select and returns its entry for spec 003 (popover or bottom sheet). */
+      const entryOf = async (url: string, width?: number): Promise<{ entry: HTMLAnchorElement; harness: RouterTestingHarness }> => {
+        setUp(VIEWS);
+        const { root, harness } = await open(url, width);
+        click(control(root, 'spec'));
+        await harness.fixture.whenStable();
+        const scope = width === COMPACT ? 'ui-sheet[data-tier="compact"] dialog[open]' : 'ui-popover nav[data-picker="spec"]';
+        const entry = root.querySelector<HTMLAnchorElement>(`${scope} [data-spec="003"]`);
+        if (!entry) throw new Error(`entry 003 missing on ${url}`);
+        return { entry, harness };
+      };
+      /** The path, query and fragment an href names, resolved against the base href as the browser would. */
+      const resolved = (href: string | null): string => {
+        const url = new URL(href ?? '', document.baseURI);
+        return url.pathname + url.search + url.hash;
+      };
+
+      describe.each(WIDTHS)('in the %s', (_, width) => {
+        it.each(TABS)('leads from /w/harbor/s/002/%s to the same tab of spec 003 (ISC-291)', async (tab) => {
+          // Spec 051 (ISC-291): the entry's href and its click both name the open tab of the new spec.
+          const { entry, harness } = await entryOf(`/w/harbor/s/002/${tab}`, width);
+          expect(entry.getAttribute('href')).toBe(`/w/harbor/s/003/${tab}`);
+          entry.click();
+          await harness.fixture.whenStable();
+          expect(TestBed.inject(Router).url).toBe(`/w/harbor/s/003/${tab}`);
+        });
+
+        it.each(['/w/harbor/s/002', '/w/harbor'])('leads from %s to the dashboard of spec 003 (ISC-292)', async (url) => {
+          // Spec 051 (ISC-292): from the spec dashboard or a workspace page without a spec it stays the dashboard.
+          const { entry, harness } = await entryOf(url, width);
+          expect(entry.getAttribute('href')).toBe('/w/harbor/s/003');
+          entry.click();
+          await harness.fixture.whenStable();
+          expect(TestBed.inject(Router).url).toBe('/w/harbor/s/003');
+        });
+      });
+
+      it.each([
+        ['/w/harbor/s/002/notes/new', '/w/harbor/s/003/notes'],
+        ['/w/harbor/s/002/library?doc=plan', '/w/harbor/s/003/library'],
+        ['/w/harbor/s/002/claims#claim-ISC-74', '/w/harbor/s/003/claims'],
+      ])('drops what the old spec names under the tab: %s leads to %s (ISC-293)', async (url, target) => {
+        // Spec 051 (ISC-293): no note id, no query and no fragment of the old spec go along.
+        const { entry, harness } = await entryOf(url);
+        expect(entry.getAttribute('href')).toBe(target);
+        entry.click();
+        await harness.fixture.whenStable();
+        expect(TestBed.inject(Router).url).toBe(target);
+      });
+
+      it.each(TABS)('anti: from the %s tab the click lands where the href points, never on the dashboard (ISC-295)', async (tab) => {
+        // Spec 051 (ISC-295): opening the entry in a new tab and clicking it reach the same address, and that is not the dashboard.
+        const { entry, harness } = await entryOf(`/w/harbor/s/002/${tab}`);
+        const href = resolved(entry.getAttribute('href'));
+        entry.click();
+        await harness.fixture.whenStable();
+        const url = TestBed.inject(Router).url;
+        expect(url).toBe(href);
+        expect(url).not.toBe('/w/harbor/s/003');
+      });
     });
   });
 
