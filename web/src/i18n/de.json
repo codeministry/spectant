@@ -198,6 +198,8 @@
       "other": "{{count}} offene Fog-Einträge"
     },
     "agentWorking": "Agent {{session}} arbeitet",
+    "archivedChip": "Archiviert",
+    "archivedOn": "Archiviert am {{date}}",
     "moreName": "Mehr… {{id}} {{title}}",
     "lessName": "Weniger {{id}} {{title}}",
     "ideas": {

@@ -299,6 +299,27 @@ export function applyListQuery(rows: readonly SpecTableRow[], query: ListQuery):
 }
 
 /**
+ * Spec 050 (T5, ISC-288): the archived rows the panel shows under the active ones for `query` (design.md § Across
+ * viewports). None while the switch is off, under a phase or fog chip or with takeable on; the type filter reaches them.
+ * The block orders on its own, never interleaved with the active rows: Stage and Next by ID descending (the last
+ * archived at the boundary), ID ascending, Progress by claim ratio descending, ties by ID descending. An empty archive
+ * yields none, so `?archived=1` alone changes nothing.
+ */
+export function applyArchivedQuery(rows: readonly ArchiveRow[], query: ListQuery): SpecTableRow[] {
+  if (!query.archived || query.phase !== null || query.takeable) return [];
+  const kept = rows.map(archivedTableRow).filter((row) => query.type === null || row.type === query.type);
+  switch (query.sort) {
+    case 'stage':
+    case 'next':
+      return kept.sort((a, b) => byId(b, a));
+    case 'id':
+      return kept.sort(byId);
+    case 'progress':
+      return kept.sort((a, b) => ratio(b) - ratio(a) || byId(b, a));
+  }
+}
+
+/**
  * New specs never reflow under the reader (design.md § Live update, ISC-62.1): of the active rows, `shown` keeps the
  * ones in `seen` (every row while `seen` is null, the first load) in model order, and `pending` names the rest, which
  * wait behind the "n new specs · show" pill until the reader applies them.

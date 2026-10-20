@@ -11,7 +11,7 @@
   <!-- Without a description line (none, or compact density) the title line is the list's "more…" anchor. -->
   <span class="tline" [style.anchor-name]="description() ? null : '--desc-' + row().id">
     <ng-content />
-    @if (row().waits; as wait) {
+    @if (row().archived ? null : row().waits; as wait) {
       <ui-waits-chip class="rwaits" data-row-waits [wait]="wait" [ws]="ws()" [titles]="titles()" />
     }
   </span>
@@ -28,24 +28,34 @@
   }
 </span>
 <span class="rtrack">
-  <!-- Spec 021 (R1): the guidance mark sits in the row, "Waits on you" as the visible word or the Next ring; the reason
-       itself is the row link's description (the list's hidden `why-<id>`). -->
-  @if (mark() === 'waits') {
-    <ui-chip class="rmark" variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id">{{
-      'guidance.marker' | transloco
-    }}</ui-chip>
-  } @else if (mark() === 'next') {
-    <span class="rmark" data-next-mark><ui-glyph state="open" family="item" [size]="14" /></span>
-  }
-  <span class="ragent">
-    @if (row().agent) {
-      <span class="agent-dot" role="img" [attr.aria-label]="agentLabel()" [title]="agentLabel()"></span>
+  @if (row().archived; as archived) {
+    <!-- Spec 050 (T2, ISC-287): the archive date (from 640 px) and the archive chip where the phase chip stands. -->
+    @if (archived.on; as on) {
+      <ui-time class="rdate" [value]="on" form="day" />
     }
-  </span>
-  <ui-priority class="rprio" [value]="row().priority" />
-  <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [blocked]="stageBlocked()" [ariaLabel]="stageAria()" />
-  @if (row().phase; as phase) {
-    <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
+    <ui-chip class="rarchived" variant="plain" icon="archive" data-archived-chip [attr.title]="archivedTitle()">{{
+      'specs.archivedChip' | transloco
+    }}</ui-chip>
+  } @else {
+    <!-- Spec 021 (R1): the guidance mark sits in the row, "Waits on you" as the visible word or the Next ring; the reason
+         itself is the row link's description (the list's hidden `why-<id>`). -->
+    @if (mark() === 'waits') {
+      <ui-chip class="rmark" variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id">{{
+        'guidance.marker' | transloco
+      }}</ui-chip>
+    } @else if (mark() === 'next') {
+      <span class="rmark" data-next-mark><ui-glyph state="open" family="item" [size]="14" /></span>
+    }
+    <span class="ragent">
+      @if (row().agent) {
+        <span class="agent-dot" role="img" [attr.aria-label]="agentLabel()" [title]="agentLabel()"></span>
+      }
+    </span>
+    <ui-priority class="rprio" [value]="row().priority" />
+    <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [blocked]="stageBlocked()" [ariaLabel]="stageAria()" />
+    @if (row().phase; as phase) {
+      <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
+    }
   }
 </span>
 <span class="rmeter" role="img" [attr.aria-label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }">

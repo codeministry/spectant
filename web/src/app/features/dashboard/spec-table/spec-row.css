@@ -162,6 +162,57 @@
   text-align: end;
 }
 
+/*
+ * Spec 050 (T2, ISC-287): the archived row. Its track cell holds only the archive chip, flush right under the phase
+ * chips above; the chip is marked by its icon, word and dashed border, never by transparency. From 880 px (the desktop
+ * column; design.md keeps the tablet row without it) the archive date stands before it and the title drops to 400 (the
+ * list's link, projected into the title line).
+ */
+.rarchived {
+  flex: none;
+  border: 1px dashed var(--muted-ink);
+}
+
+.rdate {
+  flex: none;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+@container specs (width >= 640px) {
+  :host([data-archived]) .rtrack {
+    justify-content: end;
+  }
+}
+
+@container specs (width < 880px) {
+  .rdate {
+    display: none;
+  }
+}
+
+@container specs (width >= 880px) {
+  /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+  :host([data-archived]) .tline ::ng-deep .row-link {
+    font-weight: 400;
+  }
+}
+
+/* The boundary: the first archived row's top hairline is dashed; drawn over the last active row's solid one. */
+:host([data-archived-first])::before {
+  position: absolute;
+  inset-block-start: -1px;
+  inset-inline: 0;
+  block-size: 0;
+  border-block-start: 1px dashed var(--line);
+  background: var(--color-base-100);
+  content: '';
+  pointer-events: none;
+}
+
 /* Below 640 px of list: two lines (69 px with the hairline). Line 1 `id | title | a/b`, line 2 mark · phase · priority
    (without guidance phase · priority · description); the meter bar and the stage track leave (the stage stays in the phase
    chip and the a/b in the meter cell's name). */
@@ -209,7 +260,7 @@
     order: 2;
   }
 
-  :host :is(ui-stage-track, .meter) {
+  :host :is(ui-stage-track, .meter, .rdate) {
     display: none;
   }
 
@@ -225,6 +276,11 @@
 
   .agent-dot::after {
     display: none;
+  }
+
+  /* The archive chip keeps its dashed border (the chip's own forced-colors border is solid). */
+  .rarchived {
+    border-color: CanvasText;
   }
 }
 
