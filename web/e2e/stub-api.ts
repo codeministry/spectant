@@ -836,6 +836,7 @@ type Core = {
   readCatalog: (root: string) => Promise<LibraryCatalog>;
   renderDocsMarkdown: (markdown: string, options?: unknown) => DocsPage;
   techSectionHeads: (tech: string) => NonNullable<LibraryDocPage['techSections']>;
+  renderTechDocument: (tech: string, options?: unknown) => DocsPage;
   docsRenderOptions: (root: string, docPath: string, name: DocName) => unknown;
   levelTwoSection: (text: string, headings: readonly string[]) => string | null;
   firstParagraph: (section: string) => string | null;
@@ -852,7 +853,7 @@ function loadCore(): Core {
   const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
   const library = load(join(src, 'library.ts')) as Pick<Core, 'readCatalog'>;
   const archive = load(join(src, 'archive.ts')) as Pick<Core, 'levelTwoSection' | 'firstParagraph' | 'GOAL_HEADINGS'>;
-  const tech = load(join(src, 'tech.ts')) as Pick<Core, 'techSectionHeads'>;
+  const tech = load(join(src, 'tech.ts')) as Pick<Core, 'techSectionHeads' | 'renderTechDocument'>;
   return {
     resolveEvidencePath: evidence.resolveEvidencePath,
     mediaTypeOf: evidence.mediaTypeOf,
@@ -860,6 +861,7 @@ function loadCore(): Core {
     docsRenderOptions: evidence.docsRenderOptions,
     renderDocsMarkdown: docs.renderDocsMarkdown,
     techSectionHeads: tech.techSectionHeads,
+    renderTechDocument: tech.renderTechDocument,
     worstState: frames.worstState,
     parseWorkflow: workflow.parseWorkflow,
     boardStages: workflow.boardStages,
@@ -2840,7 +2842,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return doc === undefined ? null : renderDoc(stub, tree, doc, library);
   };
   const isReadable = (doc: LibraryDoc): boolean => doc.media === 'markdown' && doc.state !== 'missing';
-  // As the server: tech.md adds core's `techSectionHeads` over the same text (ISC-157.2), no other document does.
+  // As the server: tech.md renders through core's `renderTechDocument`, each marker's part marked (ISC-355), and adds
+  // core's `techSectionHeads` over the same text (ISC-157.2); no other document does either.
   const renderDoc = (stub: StubCatalog, tree: TreeGoldens, doc: LibraryDoc, library: StubLibraryState = 'catalog'): LibraryDocPage => {
     const differing = library === 'tech-heading' && doc.type === 'tech';
     const cached = differing ? undefined : stub.pages.get(doc.path);
@@ -2848,8 +2851,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const absolute = join(tree.root, 'specs', ...doc.path.split('/'));
     const own = stub.texts.get(doc.path) ?? readFileSync(absolute, 'utf8');
     const text = differing ? techHeadingText(own) : own;
-    const rendered = core.renderDocsMarkdown(text, core.docsRenderOptions(tree.root, absolute, docNameOf(doc.type)));
-    const page: LibraryDocPage = doc.type === 'tech' ? { ...rendered, techSections: core.techSectionHeads(text) } : rendered;
+    const options = core.docsRenderOptions(tree.root, absolute, docNameOf(doc.type));
+    const page: LibraryDocPage =
+      doc.type === 'tech' ? { ...core.renderTechDocument(text, options), techSections: core.techSectionHeads(text) } : core.renderDocsMarkdown(text, options);
     if (!differing) stub.pages.set(doc.path, page);
     return page;
   };

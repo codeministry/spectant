@@ -109,8 +109,9 @@
  *   renders it, `renderDocsMarkdown` with `docsRenderOptions` (the constitution's and the Design tab's own options by
  *   type, else a plain page), so relative images confined to the workspace and `.design/` assets resolve as on a Docs
  *   tab. 404 for any path the catalog does not list as such a document, never a read of the path. `tech.md` adds
- *   `techSections`, core's `techSectionHeads` over the same text, so the reader cuts its sections by core's markers
- *   (ISC-157.2).
+ *   `techSections`, core's `techSectionHeads` over the same text, and its page is core's `renderTechDocument`, each
+ *   marker's part a `<section data-tech-part="key">`, so the reader cuts its sections by core's markers, never at an
+ *   h2 (ISC-157.2, ISC-355).
  * - `librarySearch`, `GET …/library/search?q=`: the trimmed query, case-insensitive, over each document's rendered page
  *   as plain text, else its title; hits in catalog order, the snippet 40 characters before the first match and 60
  *   after with an ellipsis where cut, or the title for a title-only match. A blank `q` is `{query: '', hits: []}`,
@@ -146,7 +147,7 @@ import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { type RepoFileCopy, catalogSourceOf } from "../../core/src/library.ts";
 import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
-import { techSectionHeads } from "../../core/src/tech.ts";
+import { renderTechDocument, techSectionHeads } from "../../core/src/tech.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { ideaStateOf, withIdeaStates } from "../../core/src/item-state.ts";
 import { readLockSources } from "../../core/src/locks.ts";
@@ -607,9 +608,12 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical, source: from };
   };
 
-  /** A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`. */
+  /**
+   * A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`; tech.md
+   * through core's `renderTechDocument`, the same render with each marker's part marked (ISC-355).
+   */
   const renderCatalogDoc = (root: string, file: { doc: LibraryDoc; logical: string }, source: string): DocsPage =>
-    renderDocsMarkdown(source, docsRenderOptions(root, file.logical, docNameOf(file.doc.type)));
+    (file.doc.type === "tech" ? renderTechDocument : renderDocsMarkdown)(source, docsRenderOptions(root, file.logical, docNameOf(file.doc.type)));
 
   // One Markdown document of the catalog as a Docs page; 404 for anything the catalog does not list as one (header).
   const libraryDoc = async (req: Request, slug: string, search: string): Promise<Response> => {

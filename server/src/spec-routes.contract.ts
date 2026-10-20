@@ -591,9 +591,10 @@ export interface WorkspaceRouteResponses {
 /**
  * 200 of `GET …/library/doc?path=`: the document's `DocsPage`, and for `tech.md` (the catalog's `type: 'tech'`) alone
  * `techSections`, core's `techSectionHeads` over the same text: each of the four keys in contract order with the first
- * `##` heading inside its `<!-- section: key -->` marker, or null without one (spec 017, ISC-157.2). The rendered page
- * no longer carries the markers, so the reader selects its sections by these heads (each names a level-2 entry of the
- * page's `toc`) and never re-derives them from heading names. Absent on every other document.
+ * `##` heading inside its `<!-- section: key -->` marker, or null without one (spec 017, ISC-157.2). tech.md's page is
+ * core's `renderTechDocument`: the markers are gone, each marker's part a `<section data-tech-part="key">` in file
+ * order, and the reader cuts its sections at those parts, never at an h2 (spec 057, ISC-355); the heads name the
+ * contents entries. Absent on every other document.
  *
  * `LibraryTechSection` is core's `TechSectionHead` written out, because the web's stricter compile cannot walk
  * `core/src/tech.ts`'s imports; `tests/spec-routes.contract.test.ts` pins the two equal, so it is core's type all the same.

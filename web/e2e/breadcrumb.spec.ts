@@ -586,7 +586,8 @@ test.describe('pills', () => {
 /** Playwright's computed accessible name of a link or button, from its ARIA snapshot (`- button "Copy command"`). */
 async function accessibleName(target: Locator): Promise<string> {
   const snapshot = await target.ariaSnapshot();
-  const match = /^-\s+(?:link|button)\s+("(?:[^"\\]|\\.)*")/u.exec(snapshot.trim());
+  // A name with ": " makes the YAML line single-quoted (`- 'button "Copy … · waits on you: 006"'`).
+  const match = /^-\s+'?(?:link|button)\s+("(?:[^"\\]|\\.)*")/u.exec(snapshot.trim());
   return match?.[1] === undefined ? '' : (JSON.parse(match[1]) as string);
 }
 

@@ -2040,6 +2040,11 @@ repeated key appends its parts in file order, and text before the first marker b
   `##` heading inside its marker's section as the renderer's contents list names it, or null when the section has
   none or the marker is missing. The marker decides the key, never the heading's wording or position, so the Library
   reader selects sections by these heads instead of reading them again.
+- **Library page** (`renderTechDocument`, spec 057): the whole file rendered once as a Docs page, each marker's part
+  wrapped in `<section data-tech-part="<key>">` in file order, so the Library reader cuts the sections at the markers
+  as above, never at an h2: text before the first marker lies outside every part, a repeated key is one part per
+  marker, and a part without a heading is still a part. Should a marker not come out as its own block (one inside an
+  unclosed code fence), the page renders without parts.
 - **Images** are relative to `specs/` and only inside it: an absolute path, a backslash or a `..` that climbs above
   `specs/`, as written or decoded once, is a figure with `missing: true` and no `<img>`; inside `specs/`, the caller
   answers whether the file exists (`TechInput.assetExists`).

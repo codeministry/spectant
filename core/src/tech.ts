@@ -12,7 +12,7 @@ import type { DocsPage, FileDiagnostic, SpecFiles, TechInput, TechModel, TechSpe
 import { parseFrontmatter } from './frontmatter.ts';
 import { renderDocsMarkdown, type DocsOptions } from './markdown-docs.ts';
 import { specIdOf } from './spec-ref.ts';
-import { sectionsByMarker } from './tldr.ts';
+import { MARKER, sectionsByMarker } from './tldr.ts';
 
 /** The file from the repository root, as every diagnostic names it. */
 const TECH_FILE = 'specs/tech.md';
@@ -131,6 +131,36 @@ export function techSectionHeads(tech: string): readonly TechSectionHead[] {
     const head = text === '' ? undefined : renderDocsMarkdown(text).toc.find((entry) => entry.level === 2);
     return { key, heading: head?.text ?? null };
   });
+}
+
+/** The attribute of the `<section>` that holds one marker's part of tech.md in the library's page (spec 057, ISC-355). */
+export const TECH_PART_ATTRIBUTE = 'data-tech-part';
+
+/** What a marker becomes while the file renders: one paragraph of letters and digits that no tech.md writes. */
+const PART_TOKEN = 'spectanttechpart7f3c9e';
+
+/**
+ * tech.md as the library serves it (spec 057, ISC-355): the whole file rendered once, as `renderDocsMarkdown` renders
+ * it, with each marker's part wrapped in `<section data-tech-part="key">` in file order, so the reader takes its
+ * sections from the markers, as `readTech` reads them, and never from an h2: text before the first marker stays
+ * outside every part, a repeated key is two parts of the same key, and a part without a heading is still a part. Each
+ * marker renders as a token paragraph that is cut out again; the token closes the block before it, as the marker
+ * closes readTech's section. Should a token not come out as its own paragraph (a marker inside an unclosed code
+ * fence), the file renders as it is, without parts: the reader then shows no section rather than a wrong one.
+ */
+export function renderTechDocument(tech: string, options?: DocsOptions): DocsPage {
+  const body = parseFrontmatter(tech).body;
+  const plainPage = (): DocsPage => renderDocsMarkdown(tech, options);
+  if (!tech.endsWith(body)) return plainPage();
+  const keys: string[] = [];
+  const marked = body.replace(new RegExp(MARKER.source, 'g'), (_marker, key: string) => `\n\n${PART_TOKEN}${keys.push(key) - 1}\n\n`);
+  if (keys.length === 0) return plainPage();
+  const page = renderDocsMarkdown(tech.slice(0, tech.length - body.length) + marked, options);
+  const pieces = page.html.split(new RegExp(`<p>${PART_TOKEN}(\\d+)</p>`));
+  const order = pieces.filter((_, i) => i % 2 === 1);
+  if (order.length !== keys.length || order.some((n, i) => n !== String(i))) return plainPage();
+  const parts = keys.map((key, i) => `<section ${TECH_PART_ATTRIBUTE}="${key}">${pieces[2 * i + 2] ?? ''}</section>`);
+  return { ...page, html: (pieces[0] ?? '') + parts.join(''), wordCount: page.wordCount - keys.length };
 }
 
 /** A section's markdown as a document, or null when there is no prose to render. */

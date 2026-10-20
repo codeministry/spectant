@@ -12,7 +12,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { ItemRun } from '../../../../../../core/src/files';
 import { LanguageService } from '../../../core/language.service';
 import { UiIcon } from '../../icons/icon';
@@ -81,7 +81,7 @@ function highlightMs(doc: Document): number {
 @Component({
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiIcon, UiLiveRegion],
+  imports: [TranslocoPipe, UiIcon, UiLiveRegion],
   styles: `
     :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
     /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. A host may round it
@@ -116,7 +116,7 @@ function highlightMs(doc: Document): number {
           type="button"
           class="btn btn-ghost btn-xs btn-square copy"
           [attr.data-copied]="state() === 'copied' ? '' : null"
-          [attr.aria-label]="state() === 'copied' ? copiedLabel() : copyName()"
+          [attr.aria-label]="state() === 'copied' ? copiedLabel() : context() ? ('orientation.copyCommandFor' | transloco: { command: command(), context: context() }) : ('orientation.copyCommand' | transloco: { command: command() })"
           [title]="copyLabel()"
           (click)="copy()"
           (blur)="onBlur()"
@@ -173,14 +173,6 @@ export class UiCommandChip {
     const lang = this.lang();
     const locked = this.transloco.translate('itemState.locked.chip', { command: run.command ?? this.command(), actor: run.actor.id }, lang);
     return `${locked} · ${this.transloco.translate('itemState.since', { duration: this.duration() }, lang)}`;
-  });
-  /** The idle accessible name: the command, and what it stands for when the host says so (ISC-142, ISC-354). */
-  protected readonly copyName = computed(() => {
-    const command = this.command();
-    const context = this.context();
-    return context
-      ? this.transloco.translate('orientation.copyCommandFor', { command, context }, this.lang())
-      : this.transloco.translate('orientation.copyCommand', { command }, this.lang());
   });
   protected readonly lockedHint = computed(() => this.transloco.translate('itemState.locked.hint', { duration: this.duration() }, this.lang()));
 

@@ -1,0 +1,276 @@
+{
+  "cases": {
+    "prelude": {
+      "text": "# Prelude\n\n## Stack\n\nNotes that belong to no section.\n\n<!-- section: overview -->\nBeacon draws lighthouses.\n\n<!-- section: stack -->\n## Stack\n\nTypeScript.\n\n<!-- section: architecture -->\n## Architecture\n\nTiles.\n\n<!-- section: risks -->\n## Risks\n\nDisk.\n",
+      "sections": [
+        {
+          "key": "overview",
+          "text": "Beacon draws lighthouses."
+        },
+        {
+          "key": "stack",
+          "text": "Stack TypeScript."
+        },
+        {
+          "key": "architecture",
+          "text": "Architecture Tiles."
+        },
+        {
+          "key": "risks",
+          "text": "Risks Disk."
+        }
+      ],
+      "served": {
+        "frontmatter": null,
+        "html": "<h1 id=\"prelude\">Prelude</h1>\n<h2 id=\"stack\">Stack</h2>\n<p>Notes that belong to no section.</p>\n<section data-tech-part=\"overview\">\n<p>Beacon draws lighthouses.</p>\n</section><section data-tech-part=\"stack\">\n<h2 id=\"stack-2\">Stack</h2>\n<p>TypeScript.</p>\n</section><section data-tech-part=\"architecture\">\n<h2 id=\"architecture\">Architecture</h2>\n<p>Tiles.</p>\n</section><section data-tech-part=\"risks\">\n<h2 id=\"risks\">Risks</h2>\n<p>Disk.</p></section>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Stack",
+            "anchor": "stack"
+          },
+          {
+            "level": 2,
+            "text": "Stack",
+            "anchor": "stack-2"
+          },
+          {
+            "level": 2,
+            "text": "Architecture",
+            "anchor": "architecture"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "prelude",
+            "heading": "Prelude",
+            "level": 1
+          },
+          {
+            "id": "stack",
+            "heading": "Stack",
+            "level": 2
+          },
+          {
+            "id": "stack-2",
+            "heading": "Stack",
+            "level": 2
+          },
+          {
+            "id": "architecture",
+            "heading": "Architecture",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 17,
+        "techSections": [
+          {
+            "key": "overview",
+            "heading": null
+          },
+          {
+            "key": "stack",
+            "heading": "Stack"
+          },
+          {
+            "key": "architecture",
+            "heading": "Architecture"
+          },
+          {
+            "key": "risks",
+            "heading": "Risks"
+          }
+        ]
+      }
+    },
+    "duplicate": {
+      "text": "<!-- section: overview -->\n## Overview\n\nFirst part.\n\n<!-- section: stack -->\n## Stack\n\nTypeScript.\n\n<!-- section: overview -->\n## More overview\n\nSecond part.\n\n<!-- section: architecture -->\n## Architecture\n\nTiles.\n\n<!-- section: risks -->\n## Risks\n\nDisk.\n",
+      "sections": [
+        {
+          "key": "overview",
+          "text": "Overview First part. More overview Second part."
+        },
+        {
+          "key": "stack",
+          "text": "Stack TypeScript."
+        },
+        {
+          "key": "architecture",
+          "text": "Architecture Tiles."
+        },
+        {
+          "key": "risks",
+          "text": "Risks Disk."
+        }
+      ],
+      "served": {
+        "frontmatter": null,
+        "html": "<section data-tech-part=\"overview\">\n<h2 id=\"overview\">Overview</h2>\n<p>First part.</p>\n</section><section data-tech-part=\"stack\">\n<h2 id=\"stack\">Stack</h2>\n<p>TypeScript.</p>\n</section><section data-tech-part=\"overview\">\n<h2 id=\"more-overview\">More overview</h2>\n<p>Second part.</p>\n</section><section data-tech-part=\"architecture\">\n<h2 id=\"architecture\">Architecture</h2>\n<p>Tiles.</p>\n</section><section data-tech-part=\"risks\">\n<h2 id=\"risks\">Risks</h2>\n<p>Disk.</p></section>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Overview",
+            "anchor": "overview"
+          },
+          {
+            "level": 2,
+            "text": "Stack",
+            "anchor": "stack"
+          },
+          {
+            "level": 2,
+            "text": "More overview",
+            "anchor": "more-overview"
+          },
+          {
+            "level": 2,
+            "text": "Architecture",
+            "anchor": "architecture"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "overview",
+            "heading": "Overview",
+            "level": 2
+          },
+          {
+            "id": "stack",
+            "heading": "Stack",
+            "level": 2
+          },
+          {
+            "id": "more-overview",
+            "heading": "More overview",
+            "level": 2
+          },
+          {
+            "id": "architecture",
+            "heading": "Architecture",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 13,
+        "techSections": [
+          {
+            "key": "overview",
+            "heading": "Overview"
+          },
+          {
+            "key": "stack",
+            "heading": "Stack"
+          },
+          {
+            "key": "architecture",
+            "heading": "Architecture"
+          },
+          {
+            "key": "risks",
+            "heading": "Risks"
+          }
+        ]
+      }
+    },
+    "headless": {
+      "text": "<!-- section: overview -->\n## Overview\n\nOverview text.\n\n<!-- section: stack -->\nPlain TypeScript, no heading.\n\n<!-- section: architecture -->\n## Architecture\n\nTiles.\n\n<!-- section: risks -->\n## Risks\n\nDisk.\n",
+      "sections": [
+        {
+          "key": "overview",
+          "text": "Overview Overview text."
+        },
+        {
+          "key": "stack",
+          "text": "Plain TypeScript, no heading."
+        },
+        {
+          "key": "architecture",
+          "text": "Architecture Tiles."
+        },
+        {
+          "key": "risks",
+          "text": "Risks Disk."
+        }
+      ],
+      "served": {
+        "frontmatter": null,
+        "html": "<section data-tech-part=\"overview\">\n<h2 id=\"overview\">Overview</h2>\n<p>Overview text.</p>\n</section><section data-tech-part=\"stack\">\n<p>Plain TypeScript, no heading.</p>\n</section><section data-tech-part=\"architecture\">\n<h2 id=\"architecture\">Architecture</h2>\n<p>Tiles.</p>\n</section><section data-tech-part=\"risks\">\n<h2 id=\"risks\">Risks</h2>\n<p>Disk.</p></section>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Overview",
+            "anchor": "overview"
+          },
+          {
+            "level": 2,
+            "text": "Architecture",
+            "anchor": "architecture"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "overview",
+            "heading": "Overview",
+            "level": 2
+          },
+          {
+            "id": "architecture",
+            "heading": "Architecture",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 11,
+        "techSections": [
+          {
+            "key": "overview",
+            "heading": "Overview"
+          },
+          {
+            "key": "stack",
+            "heading": null
+          },
+          {
+            "key": "architecture",
+            "heading": "Architecture"
+          },
+          {
+            "key": "risks",
+            "heading": "Risks"
+          }
+        ]
+      }
+    }
+  }
+}

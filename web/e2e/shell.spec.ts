@@ -286,7 +286,12 @@ test.describe('header', () => {
         // The settings panel lives in the deferred menus; before they mount the button leads to /settings (its fallback),
         // so `headerControl` waits for them.
         await (await headerControl(page, 'settings')).click();
-        await expect(page.locator('[data-menu="settings"] [data-settings-link="help"]')).toHaveAttribute('href', '/help');
+        // An href alone does not prove the panel opened (spec 057, ISC-385): it must be visible and hold the focus.
+        const panel = page.locator('[data-menu="settings"]');
+        await expect(panel).toBeVisible();
+        await expect.poll(() => panel.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+        await expect(panel.locator('[data-settings-link="help"]')).toBeVisible();
+        await expect(panel.locator('[data-settings-link="help"]')).toHaveAttribute('href', '/help');
         await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
         await expect(page).toHaveURL(/\/settings\/workspaces$/);
         await page.goto('/settings');
@@ -492,5 +497,23 @@ test.describe('deferred header menus', () => {
     await settings.click();
     await expect(page.locator('[data-menu="settings"]')).toBeVisible();
     await expect(page).toHaveURL(/\/w\/harbor\/s\/002$/);
+  });
+
+  // Spec 057 (ISC-386): before the deferred menus have mounted, the settings gear still leads somewhere: the
+  // settings page, through the navigate fallback in `ShellNav.toggle`.
+  test('settings fallback before mount', async ({ page }) => {
+    const chunk = await holdMenusChunk(page);
+    await page.goto('/w/harbor/s/002');
+    await chunk.held;
+    // Clicked directly, not through `headerControl`, which would wait for the mount the test holds back.
+    const gear = page.locator('header [data-control="settings"]');
+    await expect(gear).toBeVisible();
+    await expect(page.locator('app-shell-menus')).toHaveCount(0);
+    try {
+      await gear.click();
+      await expect(page).toHaveURL(/\/settings$/);
+    } finally {
+      chunk.release();
+    }
   });
 });
