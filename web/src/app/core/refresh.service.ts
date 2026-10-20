@@ -102,8 +102,9 @@ export class RefreshService {
   /** The polite live-region text of the last refresh that changed something; null before one did. */
   readonly announcement = this.announcementState.asReadonly();
   /**
-   * When the shell's data was last read (epoch ms): app start, then every settled reload of the dashboard and every
-   * `refresh()`. The header's "Updated 12 s ago" (spec 024 T40) reads it.
+   * When the shell's data was last read (epoch ms): app start, then every settled reload of the dashboard, so a
+   * `refresh()` moves it only once its answer arrives (spec 057, ISC-370). The header's "Updated 12 s ago" (spec 024
+   * T40) reads it.
    */
   readonly lastRefresh = this.lastRefreshState.asReadonly();
   /**
@@ -145,6 +146,14 @@ export class RefreshService {
       });
     });
 
+    // With no workspace open the dashboard stays idle; the settled workspace list stamps the start page instead.
+    effect(() => {
+      if (this.data.workspaces.status() !== 'resolved') return;
+      untracked(() => {
+        if (this.data.dashboard.status() === 'idle') this.lastRefreshState.set(Date.now());
+      });
+    });
+
     const onVisibility = (): void => {
       if (this.document.visibilityState === 'visible') this.refresh();
     };
@@ -161,7 +170,7 @@ export class RefreshService {
     this.data.planning.reload();
     this.data.spec.reload();
     this.refreshesState.update((count) => count + 1);
-    this.lastRefreshState.set(Date.now());
+    // `lastRefresh` waits for the answer: the settled-dashboard effect stamps it (spec 057, ISC-370).
   }
 
   /**

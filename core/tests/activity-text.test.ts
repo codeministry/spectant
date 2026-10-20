@@ -220,6 +220,25 @@ describe('activity text: refused input', () => {
     refused(() => runEventLine({ event: 'patch', task: 'T1', session: 'a:claude:s', ts: run.ts }), 'bad-input');
     refused(() => questionLine({ task: 'T1', text: '  ', session: 'a:claude:s', ts: run.ts }), 'bad-input');
   });
+
+  test('a task id other than T<k> or C<k> is refused (spec 056)', () => {
+    for (const task of ['c1', 'C', 'X1', 'TC1', 'C1a']) {
+      refused(() => probeLine({ claim: 'ISC-1', task, result: 'red', session: 'a:claude:s', ts: run.ts }), 'bad-task');
+    }
+  });
+});
+
+describe('activity text: a frontier claim unit C<k> of a spec without tasks.md (spec 056, ISC-347)', () => {
+  const ts = '2026-03-08T12:00:00Z';
+  const session = 'a:claude:spec-056/C1';
+
+  test('every line that names a task takes C<k> like T<k>, from a sub-agent session on C<k>', () => {
+    expect(JSON.parse(probeLine({ claim: 'ISC-1', task: 'C1', result: 'red', session, ts }))).toMatchObject({ task: 'C1', session });
+    expect(JSON.parse(questionLine({ task: 'C1', text: 'Which unit?', session, ts }))).toMatchObject({ task: 'C1', session });
+    expect(JSON.parse(claimLine({ claim: 'ISC-1', task: 'C1', session, ts }))).toMatchObject({ task: 'C1', session });
+    expect(JSON.parse(releaseLine({ claim: 'ISC-1', task: 'C1', session, ts }))).toMatchObject({ task: 'C1', session });
+    expect(JSON.parse(runEventLine({ event: 'dispatch', task: 'C1', claim: 'ISC-1', session, ts }))).toMatchObject({ task: 'C1', session });
+  });
 });
 
 test('the planners ride the browser-safe barrel', () => {

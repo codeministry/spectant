@@ -382,3 +382,48 @@ describe('spec-check transition: the repository workflow (ISC-44)', () => {
     move(root, 'plan', 'review', '/spec plan 001');
   });
 });
+
+// Spec 055 (ISC-326): `plan` is the allocation entry of every type, also where the type's row does not list it. A
+// refactor (row tasks · review · build · …) with its claims and tasks.md moves plan → review with the one event the
+// `/spec tasks` command records; before the fix core refused it with exit 3 ("lists no move plan → review").
+describe('spec-check transition: the allocation entry plan of every type (spec 055, ISC-326)', () => {
+  function allocateTyped(root: string, type: string): void {
+    const r = run(root, 'allocate', type, 'digest', '--goal', 'A week of notes becomes one digest.', '--feature', 'F1');
+    expect({ code: r.code, err: r.err }).toEqual({ code: 0, err: '' });
+    expect(events(root)).toMatchObject([{ from: null, to: 'plan' }]);
+    expect(stageKey(root)).toBe('plan');
+    const claimsFile = join(root, '.claims.json');
+    writeFileSync(claimsFile, JSON.stringify(CLAIMS));
+    expect(run(root, 'mint', '001', '--feature', 'F1', '--claims', claimsFile).code).toBe(0);
+    expect(eventLines(root)).toHaveLength(1);
+  }
+
+  test('a refactor with three claims and tasks.md moves plan → review: exit 0, exactly one line, then "already there"', () => {
+    const root = repo();
+    allocateTyped(root, 'refactor');
+    writeFileSync(join(root, DIR, 'tasks.md'), TASKS);
+    move(root, 'plan', 'review', '/spec tasks 001');
+    expect(events(root).map((e) => `${e.from ?? 'null'}→${e.to}`)).toEqual(['null→plan', 'plan→review']);
+
+    const before = snapshot(root);
+    const again = run(root, 'transition', '001', 'review');
+    expect({ code: again.code, err: again.err }).toEqual({ code: 0, err: '' });
+    expect(again.out).toContain('already there');
+    expect(snapshot(root)).toEqual(before);
+  });
+
+  test('a bug with three claims moves plan → review without tasks.md: exit 0, exactly one line', () => {
+    const root = repo();
+    allocateTyped(root, 'bug');
+    // The bug row starts at review, so no row stage lies before it; the command is core's to name (moveCommandOf).
+    const r = run(root, 'transition', '001', 'review');
+    expect({ code: r.code, err: r.err }).toEqual({ code: 0, err: '' });
+    expect(eventLines(root)).toHaveLength(2);
+    expect(events(root).at(-1)).toMatchObject({ from: 'plan', to: 'review', actor: 'a:claude:spec-check' });
+    expect(events(root).at(-1)?.command).toStartWith('/spec ');
+    expect(stageKey(root)).toBe('review');
+    const before = snapshot(root);
+    expect(run(root, 'transition', '001', 'review').code).toBe(0);
+    expect(snapshot(root)).toEqual(before);
+  });
+});

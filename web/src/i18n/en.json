@@ -244,6 +244,8 @@
     "openFog": "Open fog · {{count}}",
     "empty": "No warnings",
     "icon": "Warning",
+    "link": "{{id}}, warning {{n}} of {{total}}",
+    "fogLink": "{{id}}, open fog",
     "overlap": {
       "lead": {
         "one": "shares 1 file with",
@@ -2706,6 +2708,13 @@
   "orientation": {
     "backToBoard": "Back to board",
     "copyCommand": "Copy {{command}}",
+    "copyCommandFor": "Copy {{command}} · {{context}}",
+    "chipContext": {
+      "nextUp": "next up for {{spec}}",
+      "waits": "waits on you: {{what}}",
+      "railGuide": "next step for {{spec}}",
+      "warning": "warning {{n}} of {{total}} on {{spec}}"
+    },
     "edgeAfter": "{{claim}} comes after {{target}}",
     "edgeBlockedBy": "{{claim}} is blocked by {{target}}"
   },

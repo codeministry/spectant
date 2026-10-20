@@ -20,7 +20,7 @@ const TICK_MS = 10_000;
     :host { display: inline-flex; min-inline-size: 0; max-inline-size: 100%; }
     /* spec 024: the prototype .agent: a pill on the lime tint, its dot pulsing; stale on the orange tint, the dot still. */
     .chip { display: inline-flex; flex-wrap: wrap; gap: 0 5px; align-items: center; min-inline-size: 0; padding: 1px 7px; border-radius: 999px; background: var(--clos-t); color: var(--clos-text); font-size: 11px; line-height: 16px; }
-    .dot { inline-size: 6px; block-size: 6px; flex: none; border-radius: 50%; background: var(--color-accent); animation: agent-pulse 1.6s var(--ease) infinite; }
+    .dot { inline-size: 6px; block-size: 6px; flex: none; border-radius: 50%; background: var(--color-accent); animation: agent-pulse var(--motion-duration-pulse) var(--motion-ease-standard) infinite; }
     @keyframes agent-pulse { 50% { opacity: .35; } }
     :host([data-stale]) .chip { background: var(--hover-t); color: var(--hover-text); }
     :host([data-stale]) .dot { background: var(--color-warning); animation: none; }

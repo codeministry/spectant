@@ -1227,6 +1227,37 @@ describe('stage-mismatch (T48, ISC-120.1)', () => {
     const row = model.specs.find((s) => s.slug === '002-web-console');
     expect([row?.stage, row?.stageSource]).toEqual(['build', 'derived']);
   });
+
+  /** A fresh allocation of spec 010 of `type` (spec 055): `stage: plan`, the one event null → plan, `claims` claim lines. */
+  const allocated = (type: SpecType, claims: number): SpecFiles => ({
+    folder: '010-demo',
+    texts: {
+      spec: `---\nslug: 010-demo\nspec_type: ${type}\nstage: plan\n---\n# 010 — Demo\n\n## Claims\n\n${Array.from({ length: claims }, (_, i) => `- [ ] ISC-${i + 1}: Claim ${i + 1}\n`).join('')}`,
+      events: `${JSON.stringify({ ts: '2026-03-01T00:00:00Z', from: null, to: 'plan', command: `/spec new demo`, actor: 'u:0123abcd' })}\n`,
+    },
+  });
+
+  test('mismatch: a fresh allocation (stage: plan, only null → plan) of every type, claimless or with claims, carries none (spec 055, ISC-327)', () => {
+    const tree = { ...readTree('harbor'), workflow: DEFAULT_WF };
+    const seen: string[] = [];
+    for (const type of WORKFLOW_TYPES) {
+      for (const claims of [0, 1, 3]) {
+        const model = buildDashboard({ ...tree, specs: [...tree.specs, allocated(type, claims)] });
+        expect([type, claims, mismatches(model, '010-demo')]).toEqual([type, claims, []]);
+        const input = explicit('plan', 'plan', { type, hasPlan: false, hasTasks: false, lastEventFrom: null, claims: { closed: 0, total: claims }, partition: { takeable: claims, open: 0, closed: 0, dropped: 0 } });
+        expect([type, claims, stageMismatchOf(input)]).toEqual([type, claims, null]);
+        seen.push(type);
+      }
+    }
+    expect(new Set(seen).size).toBe(7);
+  });
+
+  test('mismatch: a claimless fresh allocation of a type whose row lacks plan stands in the explicit plan (spec 055, ISC-327)', () => {
+    for (const type of ['refactor', 'bug', 'spike', 'chore'] as const) {
+      const got = nextCommandWithReason(explicit('plan', 'plan', { type, hasPlan: false, hasTasks: false, lastEventFrom: null, claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } }));
+      expect([type, got.stage, got.stageSource]).toEqual([type, 'plan', 'explicit']);
+    }
+  });
 });
 
 // ─── The stale explicit stage (spec 040, T67, ISC-221.2) ───────────────────────────────────────────────────────────

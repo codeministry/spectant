@@ -8,25 +8,23 @@
  */
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { run } from "./cli.ts";
+import { manifestFailure, manifestHint, type ManifestFailure } from "./manifest-load.ts";
 
-async function loadManifest(): Promise<EmbeddedManifest | undefined> {
+async function loadManifest(): Promise<EmbeddedManifest | ManifestFailure> {
   try {
     return (await import("../embedded.gen.ts")).default;
   } catch (error) {
-    // Only a missing manifest gets the hint; any other failure inside it is a real bug and propagates. Bun reports a
-    // failed resolution as a `ResolveMessage`, which is not an `Error` subclass, hence `String()`.
-    if (!/Cannot find module .*embedded\.gen\.ts/.test(String(error))) throw error;
-    return undefined;
+    // A missing manifest and a stale one (it imports a web file a later build replaced) each get their own hint; any
+    // other failure inside it is a real bug and propagates (`manifest-load.ts`).
+    const failure = manifestFailure(error);
+    if (failure === undefined) throw error;
+    return failure;
   }
 }
 
 const manifest = await loadManifest();
-if (manifest === undefined) {
-  console.error(
-    "spectant: server/embedded.gen.ts is missing; build the web app and embed it first:\n" +
-      "  bun run --cwd web build && bun scripts/embed.ts\n" +
-      "or build the binaries with `bun run build`.",
-  );
+if (typeof manifest === "string") {
+  console.error(manifestHint(manifest));
   process.exit(1);
 }
 process.exit(await run(process.argv.slice(2), manifest));

@@ -1,13 +1,14 @@
 /**
  * The one import every spec under `web/e2e/` uses instead of `@playwright/test` (T28 seam):
  *
- *   import { test, expect, atWidth, awaitReady, menusReady } from './fixtures';   // `../fixtures` from `browser/`
+ *   import { test, expect, atWidth, awaitReady, headerControl } from './fixtures';   // `../fixtures` from `browser/`
  *
  * - The clock is pinned to `FIXED_NOW` before every test (option `clockAt`; `null` opts out, e.g. for a refresh
  *   spec that installs its own fake timers with `page.clock.install()`).
  * - Readiness waits, never a timeout: `awaitReady(page)` once the app sets `data-ready="true"` on `<body>` (the first
- *   dashboard model rendered, fonts loaded); `menusReady(page)` before opening a header picker or the settings panel,
- *   which live in the deferred menus (before they mount, a click takes the control's fallback route).
+ *   dashboard model rendered, fonts loaded); `headerControl(page, name)` waits for the deferred menus (`menusReady`)
+ *   before it returns a header control (before they mount, a click on a picker or the settings button takes its
+ *   fallback route).
  * - `atWidth(width)` gives the `test.use` block for one of the baseline widths (390 / 820 / 1440) or any other.
  */
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
@@ -44,7 +45,10 @@ export function atWidth(width: number): { viewport: { width: number; height: num
 // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13): below 1120 px the area, zen, settings and help
 // controls are entries of the header's overflow menu `⋯` (`data-tool="more"`), each carrying the same hook. Opens the
 // menu there and returns the control (`data-control`, or `data-tool` for help and assistant), ready to click or check.
+// It waits for the deferred header menus first (`menusReady`, spec 057 ISC-384), so a click opens the menu rather than
+// taking the control's fallback route.
 export async function headerControl(page: Page, name: string): Promise<Locator> {
+  await menusReady(page);
   const hook = name === 'help' || name === 'assistant' ? 'data-tool' : 'data-control';
   const control = page.locator(`header [${hook}="${name}"]`);
   if ((page.viewportSize()?.width ?? 1440) < 1120 && ['area', 'zen', 'settings', 'help', 'assistant'].includes(name)) {
@@ -55,12 +59,13 @@ export async function headerControl(page: Page, name: string): Promise<Locator> 
 }
 
 /**
- * The header's menus (pickers, settings panel, area and PAGE menus) live in a deferred block; before it mounts a plain
- * click on a picker or the settings button takes its fallback route instead of opening the panel. A test that opens one
- * waits for the block first (the settings panel is part of it at every tier).
+ * The header's menus (pickers, settings panel, area, PAGE and overflow menus) live in a deferred block; before it mounts
+ * a plain click on a picker or the settings button takes its fallback route instead of opening the panel. This waits
+ * for the block's own mount signal (spec 057, ISC-382): `ShellNav` sets `data-menus-mounted` once its reference to the
+ * mounted menus resolves, the one its click handler reads. `headerControl` calls it, so a test never needs to.
  */
 export async function menusReady(page: Page): Promise<void> {
-  await page.locator('[data-menu="settings"]').first().waitFor({ state: 'attached' });
+  await page.locator('app-shell-nav[data-menus-mounted]').first().waitFor({ state: 'attached' });
 }
 
 export async function pinClock(page: Page, iso: string = FIXED_NOW): Promise<void> {

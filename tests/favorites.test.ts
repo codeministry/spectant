@@ -5,21 +5,28 @@
 // a favourite. A spec id outside `NNN-slug` is 400 `invalid-spec`; whether the workspace has the spec is not checked.
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dashboardApi } from "../server/src/api.ts";
 import { listFavorites, openDatabase } from "../server/src/db.ts";
+import { eventsApi } from "../server/src/events-route.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
+import { specRoutesApi } from "../server/src/spec-routes.ts";
 import {
+  EVENTS_PATH,
   JSON_ANSWER,
+  LIVE_EVENT,
+  SPEC_API_ROOT,
   WORKSPACE_ROUTE_TABLE,
   allowForWorkspace,
   isFavorites,
   matchWorkspacePath,
+  specRoutes,
   workspaceRoutes,
 } from "../server/src/spec-routes.contract.ts";
+import { type LiveChange, type LiveListener, type WatchHub, favoritesScan } from "../server/src/watch.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HOST = { Host: "127.0.0.1:7717" };
@@ -184,5 +191,110 @@ describe("GET /favorites, PUT and DELETE /favorites/:spec (spec 052 T4, ISC-296)
       const url = new URL(`http://127.0.0.1:7717${path}`);
       expect(bare(new Request(url.href, { method: "PUT", headers: HOST }), url)).toBeNull();
     }
+  });
+});
+
+// Spec 057 T1/T2 (ISC-352, ISC-353): a favourite whose spec the server's workspace scan no longer finds as an open spec
+// (archived under `specs/archive/` or gone) is pruned in the scan path, the live stream's build after a watcher change
+// (`eventsApi`'s `scan`, `favoritesScan`), never by a GET handler: a GET reads `spec_favorite` and writes nothing.
+describe("favourites of specs that are no longer open (spec 057 T1, T2)", () => {
+  /** Every row of `spec_favorite`, all columns, as one string: the table's bytes as the probe compares them. */
+  const dump = (): string => JSON.stringify(db.query("SELECT * FROM spec_favorite ORDER BY ws, spec").all());
+
+  /** A fake hub that hands the stream's listener to the test, so a watcher change can be raised by hand. */
+  function fakeHub(): { hub: WatchHub; raise: (change: LiveChange) => void } {
+    let listener: LiveListener | null = null;
+    const hub: WatchHub = {
+      subscribe(l) {
+        listener = l;
+        return () => {
+          listener = null;
+        };
+      },
+      sync: () => Promise.resolve(),
+      announce: () => Promise.resolve(),
+    };
+    return {
+      hub,
+      raise: (change) => {
+        if (listener === null) throw new Error("no stream is listening");
+        listener(change);
+      },
+    };
+  }
+
+  test("prune on scan: archived or gone specs lose their star at the scan, and a spec brought back has none", async () => {
+    const repo = join(root, "repo");
+    for (const name of ["001-alpha", "002-beta"]) {
+      mkdirSync(join(repo, "specs", name), { recursive: true });
+      writeFileSync(join(repo, "specs", name, "spec.md"), `# ${name}\n`);
+    }
+    mkdirSync(join(repo, "specs", "archive"));
+    const ws = registry.add(repo).slug;
+    expect((await set(ws, "001-alpha")).status).toBe(200);
+    expect((await set(ws, "002-beta")).status).toBe(200);
+
+    const { hub, raise } = fakeHub();
+    const events = eventsApi({ hub, reads: api, scan: favoritesScan({ db, registry }), heartbeatMs: 60_000 });
+    const url = new URL(`http://127.0.0.1:7717${EVENTS_PATH}`);
+    const controller = new AbortController();
+    const res = await events(new Request(url.href, { headers: HOST, signal: controller.signal }), url);
+    if (res?.body == null) throw new Error("no event stream");
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    /** Raises one watcher change and waits for the stream's live frame, which goes out after the scan. */
+    const scan = async (specIds: string[]): Promise<void> => {
+      raise({ ws, specIds });
+      let text = "";
+      while (!text.includes(`event: ${LIVE_EVENT}`)) {
+        const { value, done } = await reader.read();
+        if (done) throw new Error("stream closed before the live frame");
+        text += decoder.decode(value);
+      }
+    };
+    try {
+      renameSync(join(repo, "specs", "001-alpha"), join(repo, "specs", "archive", "001-alpha"));
+      await scan(["001"]);
+      expect(db.query("SELECT * FROM spec_favorite WHERE ws = ? AND spec = '001-alpha'").all(ws)).toHaveLength(0);
+      expect(listFavorites(db, ws)).toEqual(["002-beta"]);
+
+      renameSync(join(repo, "specs", "archive", "001-alpha"), join(repo, "specs", "001-alpha"));
+      await scan(["001"]);
+      expect(listFavorites(db, ws)).toEqual(["002-beta"]);
+
+      rmSync(join(repo, "specs", "002-beta"), { recursive: true });
+      await scan(["002"]);
+      expect(listFavorites(db, ws)).toEqual([]);
+
+      // A scan that cannot list `specs/` at all (mid-checkout, unmounted) prunes nothing.
+      expect((await set(ws, "001-alpha")).status).toBe(200);
+      renameSync(join(repo, "specs"), join(repo, "specs-away"));
+      await scan([]);
+      expect(listFavorites(db, ws)).toEqual(["001-alpha"]);
+    } finally {
+      await reader.cancel();
+      controller.abort();
+    }
+  });
+
+  test("no write on get: favourites, workspace and spec reads leave spec_favorite byte-identical", async () => {
+    const ws = registry.list()[0]?.slug ?? "";
+    expect((await set(ws, "999-ghost")).status).toBe(200);
+    const before = dump();
+    const specs = specRoutesApi({ registry });
+    const get = async (handler: ApiHandler, path: string): Promise<number> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const res = await handler(new Request(url.href, { headers: HOST }), url);
+      if (res === null) throw new Error(`declined ${path}`);
+      await res.arrayBuffer();
+      return res.status;
+    };
+    expect(await get(api, workspaceRoutes.favorites(ws))).toBe(200);
+    expect(await get(api, SPEC_API_ROOT)).toBe(200);
+    expect(await get(api, `${SPEC_API_ROOT}/${encodeURIComponent(ws)}/dashboard`)).toBe(200);
+    expect(await get(api, workspaceRoutes.planning(ws))).toBe(200);
+    expect(await get(specs, specRoutes.spec(ws, "002"))).toBe(200);
+    expect(dump()).toBe(before);
+    expect(listFavorites(db, ws)).toContain("999-ghost");
   });
 });

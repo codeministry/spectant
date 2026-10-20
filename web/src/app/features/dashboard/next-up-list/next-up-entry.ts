@@ -163,6 +163,7 @@ import type { NextUpForm } from './next-up-list';
           @if (entry.command; as command) {
             <ui-command-chip
               [command]="command"
+              [context]="'orientation.chipContext.nextUp' | transloco: { spec: row().id }"
               [copyLabel]="'common.copyCommand' | transloco"
               [copiedLabel]="'common.copied' | transloco: { command }"
               [manualHint]="'common.copyFallback' | transloco"
@@ -174,6 +175,7 @@ import type { NextUpForm } from './next-up-list';
       } @else if (row().nextCommand; as command) {
         <ui-command-chip
           [command]="command"
+          [context]="'orientation.chipContext.nextUp' | transloco: { spec: row().id }"
           [copyLabel]="'common.copyCommand' | transloco"
           [copiedLabel]="'common.copied' | transloco: { command }"
           [manualHint]="'common.copyFallback' | transloco"

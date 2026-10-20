@@ -1,7 +1,6 @@
 import { inject, type Type } from '@angular/core';
 import { type RedirectFunction, Router, type Routes } from '@angular/router';
 import { areaOfTab, LEGACY_TAB_IDS, type LegacyTabId, SPEC_AREAS, type ShellRouteData, TAB_IDS, type TabId } from '../../layout/shell/areas';
-import { NotFound } from '../../layout/not-found/not-found';
 import { AreaPlaceholder } from './area-placeholder';
 
 /**
@@ -95,5 +94,7 @@ export const SPEC_AREA_ROUTES: Routes = [
     redirectTo: area.tabs[0] ?? '',
     pathMatch: 'full' as const,
   })),
-  { path: '**', component: NotFound, data: data({ notFound: true }) },
+  // A lazy chunk (spec 057): `app.routes.ts` imports this file statically, so a static `NotFound` import here would
+  // put the page into the initial bundle.
+  { path: '**', loadComponent: () => import('../../layout/not-found/not-found').then((m) => m.NotFound), data: data({ notFound: true }) },
 ];

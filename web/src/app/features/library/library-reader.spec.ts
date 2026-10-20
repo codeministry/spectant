@@ -7,6 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
+import techContract from '../../../../../core/fixtures/tech-sections.contract.json';
 import type { LibraryDocPage } from '../../../../../server/src/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
@@ -182,6 +183,8 @@ describe('techReading (T36, ISC-157, ISC-157.2)', () => {
     wordCount: 1,
     ...(techSections === undefined ? {} : { techSections }),
   });
+  /** One marker's part as core's route wraps it (`renderTechDocument`, ISC-355). */
+  const part = (key: string, html: string): string => `<section data-tech-part="${key}">${html}</section>`;
   const keys = (html: string): string[] => {
     const template = document.createElement('template');
     template.innerHTML = html;
@@ -192,8 +195,11 @@ describe('techReading (T36, ISC-157, ISC-157.2)', () => {
     const reading = techReading(
       page(
         [['what-can-break', 'What can break'], ['how-it-is-built', 'How it is built'], ['in-short', 'In short'], ['stack', 'Stack'], ['glossary', 'Glossary']],
-        '<h1 id="harbor">Harbor</h1><p>Lead.</p><h2 id="what-can-break">What can break</h2><ul><li>R</li></ul><h2 id="how-it-is-built">How it is built</h2><h3 id="flow">Flow</h3><p>A</p>' +
-          '<h2 id="in-short">In short</h2><p>O</p><h2 id="stack">Stack</h2><table></table><h2 id="glossary">Glossary</h2><p>G</p>',
+        '<h1 id="harbor">Harbor</h1><p>Lead.</p>' +
+          part('risks', '<h2 id="what-can-break">What can break</h2><ul><li>R</li></ul>') +
+          part('architecture', '<h2 id="how-it-is-built">How it is built</h2><h3 id="flow">Flow</h3><p>A</p>') +
+          part('overview', '<h2 id="in-short">In short</h2><p>O</p>') +
+          part('stack', '<h2 id="stack">Stack</h2><table></table><h2 id="glossary">Glossary</h2><p>G</p>'),
         [
           { key: 'overview', heading: 'In short' },
           { key: 'stack', heading: 'Stack' },
@@ -221,7 +227,7 @@ describe('techReading (T36, ISC-157, ISC-157.2)', () => {
     const reading = techReading(
       page(
         [['risks', 'Risks'], ['architektur', 'Architektur']],
-        '<h2 id="risks">Risks</h2><p>O</p><h2 id="architektur">Architektur</h2><p>A</p>',
+        part('overview', '<h2 id="risks">Risks</h2><p>O</p><h2 id="architektur">Architektur</h2><p>A</p>'),
         [
           { key: 'overview', heading: 'Risks' },
           { key: 'stack', heading: null },
@@ -237,12 +243,42 @@ describe('techReading (T36, ISC-157, ISC-157.2)', () => {
     expect(reading.missing).toEqual(['stack', 'architecture', 'risks']);
   });
 
-  it('sections: without core\'s heads no h2 is a section, not even the first four in order', () => {
+  it('sections: without core\'s marked parts no h2 is a section, not even the first four in order', () => {
     const unnamed = techReading(page([['overview', 'Overview'], ['stack', 'Stack']], '<h2 id="overview">Overview</h2><p>1</p><h2 id="stack">Stack</h2><p>2</p>'));
     expect(keys(unnamed.page.html)).toEqual([]);
     expect(unnamed.present).toEqual([]);
     expect(unnamed.missing).toEqual(['overview', 'stack', 'architecture', 'risks']);
   });
+});
+
+// Spec 057 · ISC-355: the reader's sections of tech.md are the server's. The cases (text before the first marker, a
+// repeated key, a marker whose part has no h2) come from `core/fixtures/tech-sections.contract.json`: `served` is the
+// route's answer (core's `renderTechDocument` with `techSectionHeads`), `sections` readTech's list under contract
+// ISC-134, both pinned to core by `tests/library.test.ts -t "tech sections contract"`.
+describe('techReading tech sections contract (ISC-355)', () => {
+  const words = (node: { textContent: string | null }): string => (node.textContent ?? '').replace(/\s+/gu, ' ').trim();
+  const cases = Object.entries(techContract.cases as Record<string, { sections: Array<{ key: string; text: string }>; served: LibraryDocPage }>);
+
+  it('tech sections contract: the fixture holds the three cases', () => {
+    expect(cases.map(([name]) => name).sort()).toEqual(['duplicate', 'headless', 'prelude']);
+  });
+
+  for (const [name, { sections, served }] of cases) {
+    it(`tech sections contract: ${name}, the reader's sections equal the server's, each under its key's anchor`, () => {
+      const reading = techReading(served, document, (key) => `label ${key}`);
+      const template = document.createElement('template');
+      template.innerHTML = reading.page.html;
+      const drawn = [...template.content.querySelectorAll<HTMLElement>('[data-library-tech-section]')];
+      expect(drawn.map((el) => ({ key: el.getAttribute('data-library-tech-section') ?? '', text: words(el) }))).toEqual(sections);
+      expect(reading.present).toEqual(sections.map((s) => s.key));
+      // Each section's anchor is its key, on its first h2 or on the section itself when its part has none, and unique.
+      for (const el of drawn) expect((el.querySelector(':scope > h2') ?? el).id).toBe(el.getAttribute('data-library-tech-section'));
+      const ids = [...template.content.querySelectorAll('[id]')].map((el) => el.id);
+      expect(ids).toEqual([...new Set(ids)]);
+      const heads = served.techSections ?? [];
+      expect(reading.page.toc.map((t) => t.text)).toEqual(heads.filter((h) => reading.present.includes(h.key)).map((h) => h.heading ?? `label ${h.key}`));
+    });
+  }
 });
 
 describe('LibraryReader (T34, ISC-156.3)', () => {
@@ -585,9 +621,12 @@ describe('LibraryPage with the reader below 1120 px (T34)', () => {
 describe('LibraryPage on a former tech address (T42, ISC-157.1)', () => {
   const TECH = doc('tech.md', 'tech', 'Tech');
   const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0 };
-  // The route's answer for tech.md: core's section heads beside the toc the renderer lists (ISC-157.2).
+  // The route's answer for tech.md: each marker's part marked (ISC-355), core's section heads beside the toc the
+  // renderer lists (ISC-157.2).
   const TECH_PAGE: LibraryDocPage = {
-    html: ['Overview', 'Stack', 'Architecture', 'Risks'].map((name) => `<h2 id="${name.toLowerCase()}">${name}</h2><p>${name} text</p>`).join('\n'),
+    html: ['Overview', 'Stack', 'Architecture', 'Risks']
+      .map((name) => `<section data-tech-part="${name.toLowerCase()}"><h2 id="${name.toLowerCase()}">${name}</h2><p>${name} text</p></section>`)
+      .join(''),
     toc: ['Overview', 'Stack', 'Architecture', 'Risks'].map((name) => ({ level: 2, text: name, anchor: name.toLowerCase() })),
     techSections: (['overview', 'stack', 'architecture', 'risks'] as const).map((key) => ({ key, heading: key.charAt(0).toUpperCase() + key.slice(1) })),
     frontmatter: null,

@@ -10,9 +10,10 @@
 // from a linked worktree reads and writes the main checkout's `specs/`, `ISA.md` and `.spectant/`, as the app does. It
 // writes only under that root, reads nothing outside it but the claims file it is handed, and calls no network host.
 //
-// Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift or a gate open · 4 lock
-// lost. `--json` prints one JSON object on stdout, a refusal included (`{"error", "command", "detail"}`, a code from
-// `ERROR_CODES`; spec 010, T10, ISC-335); without it the output is for a person and a refusal goes to stderr.
+// Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift, a gate open or a run
+// lock (`gate reviewed` under another session's running run; nothing was written) · 4 lock lost. `--json` prints one
+// JSON object on stdout, a refusal included (`{"error", "command", "detail"}`, a code from `ERROR_CODES`; spec 010,
+// T10, ISC-335); without it the output is for a person and a refusal goes to stderr.
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import {
@@ -32,11 +33,12 @@ import { buildDashboard } from '../../core/src/dashboard.ts';
 import type { DashboardInput } from '../../core/src/dashboard.ts';
 import { parseEvents, validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
-import type { EventLine, LockReading, RunEvent, RunOutcome, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
+import type { EventLine, ItemRun, LockReading, RunEvent, RunOutcome, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
 import { SPEC_TYPES, parseFrontmatter } from '../../core/src/frontmatter.ts';
 import { REVIEWED_FILES, codeReviewedMarkText, gateState, hashForGate, readGateMark, reviewedGate, reviewedMarkText, treeIdOf } from '../../core/src/gates.ts';
 import type { GateCheck, ReviewedFile, TreeEntry, TreeEntryMode } from '../../core/src/gates.ts';
 import { nextSpecNumber, specNumbersOf } from '../../core/src/allocate.ts';
+import { runLockOf } from '../../core/src/item-state.ts';
 import { activityReading, readLockSources } from '../../core/src/locks.ts';
 import { PACK_LIMIT, PackError, buildPack, capPack } from '../../core/src/pack.ts';
 import type { Pack } from '../../core/src/pack.ts';
@@ -80,6 +82,7 @@ export const ERROR_CODES = [
   'gate-missing',
   'gate-stale',
   'refused',
+  'run-locked',
   'blocked',
   'lock-held',
   'lock-lost',
@@ -1288,6 +1291,17 @@ function gateCheck(ctx: Context, args: Args): number {
   return EXIT.ok;
 }
 
+/**
+ * The run that locks a write on the spec, as the app's write path decides it (spec 040, ISC-225; spec 056, ISC-350):
+ * the open runs of `.spectant/activity.jsonl` through core's `runLockOf`, at the default abort age, so an `aborted` run
+ * locks nothing. The caller's own runs (session equal to `actor`, the actor the write records) are left out first: the
+ * command runs inside the run of the subcommand that asked the user (ISC-351), and that run never locks its own write.
+ */
+function runLocked(ctx: Context, ref: SpecRef, actor: string): ItemRun | null {
+  const foreign = (activityReading(activityText(ctx)).openRuns ?? []).filter((r) => r.session !== actor);
+  return runLockOf(foreign, { spec: ref.slug }, { now: ctx.now });
+}
+
 const needsYes = (ctx: Context, ref: SpecRef, gate: Gate): CliError =>
   bad(`gate ${gate} needs --yes: it writes ${rel(ctx, gatePath(ref, gate))} and appends to events.jsonl; nothing written`);
 
@@ -1295,12 +1309,17 @@ const needsYes = (ctx: Context, ref: SpecRef, gate: Gate): CliError =>
  * `gate reviewed <spec> --yes`: the app's write path 1 without the app. The mark over the three files as they stand
  * (`reviewedMarkText`, the app's bytes), then exactly one event line for the move the mark makes, in the stage table's
  * names `review → build` (FORMAT.md, "Mark reviewed"), at the mark's time. The mark first: a failure between the two
- * leaves a mark without its event, never an event without a mark. No lock is read: the command runs inside the run of
- * the subcommand that asked the user.
+ * leaves a mark without its event, never an event without a mark. No claim lock is read, but the app's run lock is
+ * (`runLocked`, spec 056): a run of another session `running` on the spec refuses with exit 3 and writes nothing.
  */
 function gateReviewed(ctx: Context, args: Args, ref: SpecRef): number {
   if (!args.flags.has('yes')) throw needsYes(ctx, ref, 'reviewed');
   specText(ctx, ref);
+  const actor = args.values.get('actor') ?? CLI_SESSION;
+  const locked = runLocked(ctx, ref, actor);
+  if (locked !== null) {
+    throw new CliError(EXIT.drift, `${ref.slug}: run-locked by ${locked.run} (${locked.session}, ${locked.command ?? 'no command'}, since ${locked.since}); nothing written`, 'run-locked');
+  }
   const texts = specFiles(ref).texts;
   const textOf: Record<ReviewedFile, string | undefined> = { 'spec.md': texts.spec, 'plan.md': texts.plan, 'tasks.md': texts.tasks };
   const files = {} as Record<ReviewedFile, string | null>;
@@ -1309,7 +1328,7 @@ function gateReviewed(ctx: Context, args: Args, ref: SpecRef): number {
     files[f] = text === undefined ? null : hashForGate(f, text);
   }
   const at = ctx.now.toISOString();
-  const event: EventLine = { ts: at, from: 'review', to: 'build', command: args.values.get('command') ?? nextFor(ref, 'reviewed'), actor: args.values.get('actor') ?? CLI_SESSION };
+  const event: EventLine = { ts: at, from: 'review', to: 'build', command: args.values.get('command') ?? nextFor(ref, 'reviewed'), actor };
   const line = checkedEvent(event);
   const mark = reviewedMarkText(at, files);
   const gitignore = ensureGatesIgnored(ref);

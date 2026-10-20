@@ -30,11 +30,14 @@ master `ISA.md`; the CLI writes the marks and their events.
 3. **Ask once**, with one `AskUserQuestion`: "Approve spec NNN for `/spec implement`?", options **Approve**
    (recommended, listed first, when every required file exists and nothing blocks) and **Not yet** (listed first and
    recommended when something blocks, with the reason in its description).
-4. **Approve** → `CLI gate reviewed specs/NNN-slug --yes`. It writes `specs/NNN-slug/.gates/reviewed.json`, bound to
+4. **Approve** → `CLI gate reviewed specs/NNN-slug --yes --actor <actor>`, the same actor that opened the run
+   (its `--session`). It writes `specs/NNN-slug/.gates/reviewed.json`, bound to
    the sha256 of the normalised `spec.md`, `plan.md` and `tasks.md` (frontmatter, checkbox states, `~~` and the
    `## Not yet specified`, `## Decisions` and `## Verification` sections ignored), and appends exactly one `review → build`
-   line to the spec's `events.jsonl`. Without `--yes` it writes nothing and exits 1. **Not yet** → write nothing and say that
-   `/spec implement` stays closed until a fresh mark exists.
+   line to the spec's `events.jsonl`. Without `--yes` it writes nothing and exits 1. While a run of another session is
+   running on the spec, it writes nothing and exits 3 naming that run, as the app does; this run's own does not lock,
+   which is why `--actor` must match. On exit 3, say which run holds the spec and end the run. **Not yet** → write
+   nothing and say that `/spec implement` stays closed until a fresh mark exists.
 5. **Reply in one line:** spec, missing files, first-round preview, whether the review is recorded. Then
    `CLI run end <run-id> --outcome ok`.
 

@@ -39,6 +39,12 @@ export interface EventsApiOptions {
   readonly hub: WatchHub;
   /** The composed read handlers; the stream asks them as a poll would. */
   readonly reads: ApiHandler;
+  /**
+   * The server's workspace scan after a watcher change (spec 057 T1, ISC-352): run once per build, before the reads,
+   * so the frame already shows its result. The favourites' prune (`favoritesScan`) is the one today; a failure is
+   * swallowed and the frame still goes out.
+   */
+  readonly scan?: (change: LiveChange) => void | Promise<void>;
   readonly heartbeatMs?: number;
 }
 
@@ -84,6 +90,11 @@ export function eventsApi(options: EventsApiOptions): ApiHandler {
   };
 
   const build = async (change: LiveChange): Promise<void> => {
+    try {
+      await options.scan?.(change);
+    } catch {
+      // The scan is housekeeping; the live frame must not depend on it.
+    }
     const views = await Promise.all(livePathsOf(change).map((path) => read(path).catch(() => null)));
     const update: LiveUpdate = { ws: change.ws, views: views.filter((view): view is LiveView => view !== null) };
     if (streams.size > 0) send(`event: ${LIVE_EVENT}\ndata: ${JSON.stringify(update)}\n\n`);

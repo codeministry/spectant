@@ -14,7 +14,9 @@ import * as dash from "../core/src/dashboard.ts";
 import * as lib from "../core/src/library.ts";
 import { readCatalog } from "../core/src/library.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
-import { techSectionHeads } from "../core/src/tech.ts";
+import { parseFrontmatter } from "../core/src/frontmatter.ts";
+import { readTech, renderTechDocument, TECH_SECTION_KEYS, techSectionHeads } from "../core/src/tech.ts";
+import { sectionsByMarker } from "../core/src/tldr.ts";
 import { dashboardApi } from "../server/src/api.ts";
 import * as loader from "../server/src/workspace-loader.ts";
 import { loadCatalog } from "../server/src/workspace-loader.ts";
@@ -209,9 +211,10 @@ describe("GET /api/workspaces/:ws/library/doc", () => {
       expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
       const file = docFile(doc.path);
       const source = readFileSync(file, "utf8");
-      const rendered = renderDocsMarkdown(source, docsRenderOptions(shelf, file, nameOf(doc.type)));
-      // tech.md alone adds core's section heads (ISC-157.2); every other document is its plain Docs page.
-      const page = doc.type === "tech" ? { ...rendered, techSections: techSectionHeads(source) } : rendered;
+      const options = docsRenderOptions(shelf, file, nameOf(doc.type));
+      // tech.md alone is core's marked page (ISC-355) with its section heads (ISC-157.2); every other document is its
+      // plain Docs page.
+      const page = doc.type === "tech" ? { ...renderTechDocument(source, options), techSections: techSectionHeads(source) } : renderDocsMarkdown(source, options);
       expect({ path: doc.path, body: await res.text() }).toEqual({ path: doc.path, body: JSON.stringify(page) });
     }
     // The tech page's sections and image come through as on the former tech page: a TOC and a figure.
@@ -320,6 +323,60 @@ describe("GET /api/workspaces/:ws/library/doc sections: tech.md's sections from 
       const page = (await (await call(workspaceRoutes.libraryDoc("shelf", doc.path))).json()) as WorkspaceRouteResponses["libraryDoc"];
       expect({ path: doc.path, has: "techSections" in page }).toEqual({ path: doc.path, has: false });
     }
+  });
+});
+
+// ISC-355 (spec 057, T4): the library's sections of tech.md are readTech's (contract ISC-134), cut at the markers and
+// never at an h2: text before the first marker belongs to no section, a repeated key joins its parts, and a marker
+// whose part has no h2 still opens its section. The route marks each marker's part (`data-tech-part`), so the reader
+// needs no heading to find it. The three cases live in `core/fixtures/tech-sections.contract.json`, which the web's
+// reader spec reads too: this test pins it to core's output, so reader and server read one list.
+describe("GET /api/workspaces/:ws/library/doc sections: tech sections contract (ISC-355)", () => {
+  type Case = { text: string; sections: Array<{ key: string; text: string }>; served: WorkspaceRouteResponses["libraryDoc"] };
+  const CONTRACT = JSON.parse(readFileSync(join(import.meta.dir, "..", "core", "fixtures", "tech-sections.contract.json"), "utf8")) as {
+    cases: Record<string, Case>;
+  };
+  const CASES: Readonly<Record<string, string>> = Object.fromEntries(Object.entries(CONTRACT.cases).map(([name, c]) => [name, c.text]));
+  const plain = (html: string): string => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  /** The server's list: each key readTech reads a marker for, with its section's rendered text (repeated parts joined). */
+  const expected = (text: string): Array<{ key: string; text: string }> => {
+    const missing = new Set(readTech({ tech: text, specs: [] }).diagnostics.filter((d) => d.diagnostic.code === "tech-section").map((d) => d.diagnostic.subject));
+    const found = sectionsByMarker(parseFrontmatter(text).body);
+    return TECH_SECTION_KEYS.filter((key) => !missing.has(key)).map((key) => ({ key, text: plain(renderDocsMarkdown(found[key] ?? "").html) }));
+  };
+  /** The library's list: the route's marked parts per key, in contract order, a repeated key's parts joined. */
+  const served = (html: string): Array<{ key: string; text: string }> => {
+    const parts = [...html.matchAll(/<section data-tech-part="([\w-]+)">([\s\S]*?)<\/section>/g)];
+    return TECH_SECTION_KEYS.filter((key) => parts.some((p) => p[1] === key)).map((key) => ({
+      key,
+      text: plain(parts.filter((p) => p[1] === key).map((p) => p[2] ?? "").join(" ")),
+    }));
+  };
+
+  beforeAll(() => {
+    for (const [name, text] of Object.entries(CASES)) {
+      const dir = join(root, `tech-${name}`);
+      cpSync(LIBRARY, dir, { recursive: true });
+      writeFileSync(join(dir, "specs", "tech.md"), text);
+      registry.add(dir);
+    }
+  });
+
+  for (const name of Object.keys(CASES)) {
+    test(`tech sections contract: ${name}, the route's sections equal readTech's and its heads techSectionHeads`, async () => {
+      const text = CASES[name] ?? "";
+      const res = await call(workspaceRoutes.libraryDoc(`tech-${name}`, "tech.md"));
+      expect(res.status).toBe(200);
+      const page = (await res.json()) as WorkspaceRouteResponses["libraryDoc"];
+      expect(served(page.html)).toEqual(expected(text));
+      expect(page.techSections).toEqual(techSectionHeads(text));
+      // The fixture the web's reader spec draws from is core's own answer for this text, and its list readTech's.
+      expect(CONTRACT.cases[name]?.sections).toEqual(expected(text));
+      expect(CONTRACT.cases[name]?.served).toEqual({ ...renderTechDocument(text), techSections: techSectionHeads(text) });
+    });
+  }
+  test("tech sections contract: the fixture holds the three cases", () => {
+    expect(Object.keys(CONTRACT.cases).sort()).toEqual(["duplicate", "headless", "prelude"]);
   });
 });
 
@@ -776,7 +833,8 @@ describe("the reader and the search look up only what they answer (ISC-156.5)", 
   // Re-pinned for ISC-157.2: tech.md's answer adds core's `techSections`; every other answer is unchanged. Re-pinned for
   // ISC-187: the archived spec's documents are catalog entries now, so their reader answers and search hits join in.
   // Re-pinned for ISC-247: the fixture's tldr.md names `lang: de` and reads in German; only its answer changes.
-  const BEFORE_DIGEST = "471446479833e3e0b01bb47fff683194e1d6c62ce2286c67b33f68557d2155aa";
+  // Re-pinned for ISC-355: tech.md's page wraps each marker's part in `<section data-tech-part>`; only it changes.
+  const BEFORE_DIGEST = "f5409ce0920282f25952bf2f75e4c328f37c306cea530c9ce21ace1fff298f03";
   const BAD = "/api/workspaces/shelf/library/doc?path=%E0%A4%A";
   const QUERIES = ["lighthouse", "the", "plan", "Map ", "  TIDE  ", "zz-no-such-word", ""];
   const extraPaths = ["../README.md", "nope.md", "001-lighthouse-map/nope.md", "archive/005-old/spec.md", "001-lighthouse-map/report.html", "/etc/passwd"];

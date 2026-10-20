@@ -38,6 +38,7 @@ import type {
   Worktree,
 } from '../../core/src/files';
 import type { PlanningHolder, PlanningModel } from '../../core/src/planning';
+import { allowedEntryMove } from '../../core/src/transition';
 
 /** A stage a spec can stand in: every `WorkflowStage` but `idea`, which only a story holds. */
 export type SpecStage = NonNullable<PlanningHolder['stage']>;
@@ -221,12 +222,14 @@ export function rowFor(core: BoardCore, workflow: Workflow, type: SpecType | nul
  * Why the stub refuses `from → to` (the 422 `transition-refused` reason), or null when the row allows it. The stub
  * models the workflow's table only, with the phrases of core's `planTransition` for the same two refusals: the spec
  * already there, and a move the row does not list (the `close-pending` entry under `code_review: feature` included).
- * The fixed gates (a fresh reviewed mark, every claim closed, an open sibling) are not modelled.
+ * A move out of the allocation entry `plan` of a row without it, up to `review`, passes as core's `allowedEntryMove`
+ * lets it pass (spec 056, ISC-349), asked over a workflow of the one row the stub resolved. The fixed gates (a fresh reviewed mark, every claim closed, an open sibling) are not modelled.
  */
 export function refusalOf(core: BoardCore, row: WorkflowRow, type: SpecType | null, from: WorkflowStage, to: WorkflowStage): string | null {
   if (from === to) return `the spec already stands in ${to}`;
   const listed = (a: WorkflowStage, b: WorkflowStage): boolean => core.rowTransitions(row).some((p) => p.from === a && p.to === b);
-  const allowed = listed(from, to) || (to === 'close-pending' && row.codeReview === 'feature' && listed(from, 'code-review'));
+  const entry = allowedEntryMove(from, to, type ?? row.type, { rows: [row], source: 'default', diagnostics: [] });
+  const allowed = listed(from, to) || entry || (to === 'close-pending' && row.codeReview === 'feature' && listed(from, 'code-review'));
   return allowed ? null : `the ${type ?? 'untyped'} workflow lists no move ${from} → ${to}`;
 }
 

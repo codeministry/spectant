@@ -1,4 +1,4 @@
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, resource, signal } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { IdeaPage as IdeaPageBody } from '../../../../../server/src/spec-routes.contract';
@@ -290,8 +290,14 @@ export class IdeaPage {
       }
       if (current !== this.active()) this.active.set(current);
     };
-    addEventListener('scroll', onScroll, { passive: true, capture: true });
-    inject(DestroyRef).onDestroy(() => removeEventListener('scroll', onScroll, { capture: true }));
+    // Registered only while the story has a table of contents (spec 057): without one there is no section to mark,
+    // and every scroll in the window would still run the heading lookup. The cleanup runs when the TOC goes and on destroy.
+    const hasToc = computed(() => (this.story()?.page.toc.length ?? 0) > 0);
+    effect((onCleanup) => {
+      if (!hasToc()) return;
+      addEventListener('scroll', onScroll, { passive: true, capture: true });
+      onCleanup(() => removeEventListener('scroll', onScroll, { capture: true }));
+    });
     afterRenderEffect(() => {
       if (this.story() !== null && this.state.tier() === 'wide') onScroll();
     });

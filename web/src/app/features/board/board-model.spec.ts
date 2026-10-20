@@ -1,5 +1,6 @@
 import { type PlanningModel, buildPlanning } from '../../../../../core/src/planning';
-import { allowedTransition, reasonOf, storyStep } from '../../../../../core/src/stage';
+import type { SpecType, Workflow, WorkflowStage } from '../../../../../core/src/files';
+import { allowedTransition, DEFAULT_WORKFLOW, reasonOf, storyStep } from '../../../../../core/src/stage';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
 import ranksGolden from '../../../../../core/fixtures/backlog-ranks.planning.golden.json';
@@ -232,6 +233,26 @@ describe('buildBoard (T120, ISC-129)', () => {
       expect(card(model, 'console-audit-log')?.targets).toEqual(['plan']);
       const c = card(model, 'registry-webhooks');
       expect(c && dropTargetsOf(c, PLANNING.workflow, PLANNING.stages)).toEqual(['plan']);
+    });
+
+    // Spec 056 (ISC-349): the allocation writes `stage: plan` for every type; a card on that entry of a row without
+    // `plan` is offered every stage of its row up to and including `review`, none behind it (core's entry move, 055).
+    describe('out of the allocation entry plan (spec 056, ISC-349)', () => {
+      const DEFAULT_WF: Workflow = { rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] };
+      const STAGES: readonly WorkflowStage[] = ['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'close-pending', 'code-review', 'close', 'done'];
+      const onPlan = (type: SpecType) => dropTargetsOf({ kind: 'spec', type, stage: 'plan' }, DEFAULT_WF, STAGES);
+
+      it('a refactor on plan is offered tasks and review only', () => {
+        expect(onPlan('refactor')).toEqual(['tasks', 'review']);
+      });
+
+      it('a bug on plan is offered review only', () => {
+        expect(onPlan('bug')).toEqual(['review']);
+      });
+
+      it('a feature on plan keeps its listed move, tasks only', () => {
+        expect(onPlan('feature')).toEqual(['tasks']);
+      });
     });
   });
 });

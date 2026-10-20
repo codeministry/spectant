@@ -81,7 +81,7 @@ import { ShellState } from '../shell/shell-state.service';
       }
       <span class="zen-chips">
         @if (type(); as type) {
-          <ui-chip variant="plain" data-zen-part="type">{{ type }}</ui-chip>
+          <ui-chip variant="plain" data-zen-part="type">{{ 'types.' + type | transloco }}</ui-chip>
         }
         <ui-chip tone="primary" [dot]="true" data-zen-part="stage">{{ stageKey() | transloco }}</ui-chip>
       </span>

@@ -162,7 +162,7 @@ describe('WarningsPanel spec edges (T28, ISC-164.1, ISC-162.4)', () => {
     fixture.componentRef.setInput('kpis', HARBOR.kpis);
     await fixture.whenStable();
     const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('[data-overlap-edge] button') as HTMLButtonElement;
-    expect(button.getAttribute('aria-label')).toBe('Copy (after: 004)');
+    expect(button.getAttribute('aria-label')).toBe('Copy (after: 004) · warning 1 of 1 on 002');
     button.click();
     await fixture.whenStable();
     expect(writeText).toHaveBeenCalledWith('(after: 004)');

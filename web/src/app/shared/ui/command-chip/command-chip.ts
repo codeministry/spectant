@@ -66,7 +66,8 @@ function highlightMs(doc: Document): number {
  * copy path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
  *
  * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec implement 012"; ISC-142),
- * so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
+ * plus, through `context`, what it stands for there (`orientation.copyCommandFor`: "Copy /spec review 006 · next up for
+ * 006"; spec 057, ISC-354), so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
  *
  * `lockedBy` (spec 040, T47, ISC-225.1): while a run on the item is running the chip is locked. `lock` replaces
  * `copy`, the chip goes `--muted-ink` on `--color-base-300`, the button is `aria-disabled` but stays focusable, and its
@@ -115,7 +116,7 @@ function highlightMs(doc: Document): number {
           type="button"
           class="btn btn-ghost btn-xs btn-square copy"
           [attr.data-copied]="state() === 'copied' ? '' : null"
-          [attr.aria-label]="state() === 'copied' ? copiedLabel() : ('orientation.copyCommand' | transloco: { command: command() })"
+          [attr.aria-label]="state() === 'copied' ? copiedLabel() : context() ? ('orientation.copyCommandFor' | transloco: { command: command(), context: context() }) : ('orientation.copyCommand' | transloco: { command: command() })"
           [title]="copyLabel()"
           (click)="copy()"
           (blur)="onBlur()"
@@ -146,6 +147,12 @@ export class UiCommandChip {
   readonly copyLabel = input('Copy command');
   readonly copiedLabel = input('Copied');
   readonly manualHint = input('Select and press ⌘C');
+  /**
+   * What the command stands for on its surface (spec 057, ISC-354), already translated: "next up for 006", "waits on
+   * you: 002 ISC-77", "warning 2 of 2 on 006". It joins the command in the accessible name, so two chips with the same
+   * command on one page still differ; null keeps the bare "Copy {command}".
+   */
+  readonly context = input<string | null>(null);
   readonly copied = output<string>();
   /** The run that holds the item (spec 040, ISC-225.1): the chip is locked while it is set. */
   readonly lockedBy = input<ItemRun | null>(null);

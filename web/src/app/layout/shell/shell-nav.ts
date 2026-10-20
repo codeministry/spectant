@@ -52,6 +52,9 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-nav.html',
   styleUrl: './shell-nav.css',
+  // The mount signal of the deferred menus (spec 057): set once `menus` resolves, the same reference `toggle` reads, so
+  // the e2e helper `menusReady` waits on the block itself rather than on content inside one of its templates.
+  host: { '[attr.data-menus-mounted]': "menusMounted() ? '' : null" },
 })
 export class ShellNav {
   protected readonly state = inject(ShellState);
@@ -111,6 +114,8 @@ export class ShellNav {
   });
   protected readonly areaKey = computed(() => `shell.areas.${this.state.area() ?? 'dashboard'}`);
   readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);
+  /** The deferred menus have mounted and `toggle` opens them; before that a click takes its fallback. */
+  protected readonly menusMounted = computed(() => this.menus() !== undefined);
   /** From 1120 px (the wide tier) the full prototype header: the area pill sits on the rail. */
   protected readonly wide = computed(() => this.state.tier() === 'wide');
 

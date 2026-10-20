@@ -23,6 +23,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { chipIcon } from '../../shared/ui/chip/chip-icons';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
+import { toneOfPhase } from '../../shared/ui/phase-tone';
 import type { Tone } from '../../shared/ui/tone';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
@@ -75,8 +76,6 @@ const specCountOf = (counts: unknown): number | null => {
 
 const THEMES = ['system', 'light', 'dark'] as const;
 
-/** The phase tones of the dashboard's spec table (`PHASE_TONES`), for the spec picker's chip. */
-const PHASE_TONE: Readonly<Partial<Record<string, Tone>>> = { scoping: 'secondary', building: 'primary', climbing: 'warning', complete: 'accent' };
 const LANGS = ['en', 'de'] as const;
 
 /**
@@ -185,7 +184,7 @@ export class ShellMenus {
   private readonly announcer = viewChild(UiLiveRegion);
 
   /** The phase chip of a spec row (prototype `pop-specs`: `chip(phaseOf(s))`), its tone and icon. */
-  protected readonly phaseTone = (phase: string): Tone => PHASE_TONE[phase] ?? 'neutral';
+  protected readonly phaseTone = (phase: string): Tone => toneOfPhase(phase);
   protected readonly phaseIcon = chipIcon;
 
   /** Which menu's bottom sheet is open (compact only; the popovers keep their own state). */

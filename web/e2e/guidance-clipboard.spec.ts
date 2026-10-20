@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import type { APIRequestContext, BrowserContext, Locator, Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 import type { GuidanceView } from './guidance-sentence';
-import { WAITS_HEADER } from './stub-api';
+import { RESET_PATH, SESSION_HEADER, WAITS_HEADER } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as { common: { copied: string } };
@@ -128,4 +128,76 @@ test.describe('guidance clipboard', () => {
     const entry = page.locator(`app-next-up-list app-next-up-entry[data-next-entry="${first?.spec ?? ''}"] [data-next-guide] ui-command-chip`);
     await expectCopies(page, entry, nextUp, `Next up ${first?.spec ?? ''}`);
   });
+});
+
+/**
+ * Spec 057 (ISC-354) against the stub API: no two copy chips and no two warning links of one page share an accessible
+ * name: `bun run e2e -- guidance-clipboard.spec.ts -g "distinct names"`.
+ *
+ * Harbor as its golden stands: 006 waits on the principal (its stale review) and carries two warnings (drift and
+ * review), 002 waits three times with the same command, and 004 carries two warnings without a command. On the
+ * workspace dashboard (Next up, `#waiting`, the warnings panel) and on 006's spec page (rail guide, its waiting rows,
+ * the head), in English and in German, every copy chip's button and every warning link is collected with its
+ * accessible name; each name is unique on its page, and a chip of the four guidance surfaces (Next up, waits on you,
+ * the rail guide, the warnings) names its command and says more than the bare "Copy {command}".
+ */
+type Language = 'en' | 'de';
+type Catalogue = { readonly orientation: { readonly copyCommand: string } };
+
+const catalogue = (lang: Language): Catalogue =>
+  JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8')) as Catalogue;
+
+const PAGES = [
+  { name: 'workspace dashboard', path: '/w/harbor', minChips: 4, minLinks: 4 },
+  { name: 'spec page', path: '/w/harbor/s/006', minChips: 2, minLinks: 0 },
+] as const;
+
+/** Every copy-chip button and warning link of the page with its accessible name (aria-label, else its text). */
+async function names(page: Page): Promise<{ chips: Array<{ name: string; command: string; guided: boolean }>; links: string[] }> {
+  return page.evaluate(() => {
+    const nameOf = (el: Element): string => (el.getAttribute('aria-label') ?? el.textContent).replace(/\s+/gu, ' ').trim();
+    const chips = [...document.querySelectorAll('ui-command-chip')].flatMap((chip) => {
+      const button = chip.querySelector('button');
+      // The four guidance surfaces of ISC-354, whose chips must also say what they stand for.
+      const guided = chip.closest('app-next-up-entry, app-waiting-section, ui-waits-block, app-spec-rail-guide, app-warnings-panel') !== null || chip.matches('[data-warning-command]');
+      return button ? [{ name: nameOf(button), command: (chip.querySelector('code')?.textContent ?? '').trim(), guided }] : [];
+    });
+    const links = [...document.querySelectorAll('a[data-warning-link], a[data-overlap-other]')].map(nameOf);
+    return { chips, links };
+  });
+}
+
+function duplicates(list: readonly string[]): string[] {
+  return [...new Set(list.filter((name, i) => list.indexOf(name) !== i))];
+}
+
+test.describe('guidance names', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  for (const lang of ['en', 'de'] as const) {
+    test(`distinct names: copy chips and warning links per page (${lang})`, async ({ page }, info) => {
+      const headers = { [SESSION_HEADER]: `names-${lang}-${info.testId}` };
+      await page.context().setExtraHTTPHeaders(headers);
+      await page.request.post(RESET_PATH, { headers });
+      const saved = await page.request.put('/api/settings', { data: { language: lang }, headers });
+      expect(saved.ok()).toBe(true);
+      const bare = catalogue(lang).orientation.copyCommand;
+
+      for (const target of PAGES) {
+        await page.goto(target.path);
+        await expect(page.locator('html')).toHaveAttribute('lang', lang);
+        await expect.poll(async () => (await names(page)).chips.length, `${target.name}: chips render`).toBeGreaterThanOrEqual(target.minChips);
+        await expect.poll(async () => (await names(page)).links.length, `${target.name}: warning links render`).toBeGreaterThanOrEqual(target.minLinks);
+        const { chips, links } = await names(page);
+        const chipNames = chips.map((c) => c.name);
+        expect(duplicates(chipNames), `${target.name} (${lang}): copy chips sharing a name in ${JSON.stringify(chipNames)}`).toEqual([]);
+        expect(duplicates(links), `${target.name} (${lang}): warning links sharing a name in ${JSON.stringify(links)}`).toEqual([]);
+        for (const chip of chips.filter((c) => c.guided)) {
+          expect(chip.name, `${target.name} (${lang}): the chip names its command`).toContain(chip.command);
+          expect(chip.name, `${target.name} (${lang}): the chip says what it stands for`).not.toBe(bare.replace('{{command}}', chip.command));
+        }
+      }
+      await page.request.post(RESET_PATH, { headers });
+    });
+  }
 });

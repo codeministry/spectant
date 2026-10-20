@@ -6,7 +6,7 @@
  */
 import type { APIRequestContext, Page } from '@playwright/test';
 import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
-import { atWidth, expect, menusReady, test } from './fixtures';
+import { atWidth, expect, headerControl, test } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
@@ -86,9 +86,9 @@ for (const { width, tier, tabBar } of TIERS) {
 
       // A plain click opens the picker; its entries are the links.
       await page.goto('/w/harbor/s/002');
-      // The pickers open once the deferred menus have loaded (until then a plain click navigates, ShellNav).
-      await menusReady(page);
-      await control('workspace').click();
+      // The pickers open once the deferred menus have loaded (until then a plain click navigates, ShellNav);
+      // `headerControl` waits for them.
+      await (await headerControl(page, 'workspace')).click();
       await page.locator('[data-picker="workspace"] [data-workspace="harbor"]').click();
       await expect(page).toHaveURL(/\/w\/harbor$/);
 
@@ -127,9 +127,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
 
       // spec 024 T40/T52: settings opens the settings popover; its "Workspaces…" entry leads to /settings/workspaces
-      await menusReady(page);
-      await reveal(page, width, 'settings');
-      await control('settings').click();
+      await (await headerControl(page, 'settings')).click();
       await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
       await expect(page).toHaveURL(/\/settings\/workspaces$/);
       await expect(page.locator('[data-page="settings-workspaces"] h1')).toBeVisible();
@@ -141,9 +139,8 @@ for (const { width, tier, tabBar } of TIERS) {
       await starOnHarbor(page, request, session, ['002-web-console', '003-config-loader']);
       const control = (name: string) => page.locator(`header [data-control="${name}"]`);
       await page.goto('/w/harbor/s/002');
-      await menusReady(page);
 
-      const workspace = control('workspace');
+      const workspace = await headerControl(page, 'workspace');
       await workspace.click();
       await expect(workspace).toHaveAttribute('aria-expanded', 'true');
       const workspaces = page.locator('[data-picker="workspace"]');
@@ -174,9 +171,8 @@ for (const { width, tier, tabBar } of TIERS) {
 
     test('a modified click on a picker leaves the picker shut and keeps the href (T36)', async ({ page }) => {
       await page.goto('/w/harbor/s/002');
-      const workspace = page.locator('header [data-control="workspace"]');
+      const workspace = await headerControl(page, 'workspace');
       await expect(workspace).toHaveAttribute('href', '/w/harbor');
-      await menusReady(page);
       await workspace.click({ button: 'middle' });
       await expect(workspace).toHaveAttribute('aria-expanded', 'false');
     });
@@ -287,11 +283,15 @@ test.describe('header', () => {
         await page.goto('/w/harbor/s/002');
         // spec 024 T40/T52: the settings popover holds Help & guide (→ /help) and Workspaces… (→ /settings/workspaces);
         // the settings page itself, with its shortcuts action, is then opened at /settings.
-        // The settings panel lives in the deferred menus; before they mount the button leads to /settings (its fallback).
-        await menusReady(page);
-        await reveal(page, width, 'settings');
-        await page.locator('header [data-control="settings"]').click();
-        await expect(page.locator('[data-menu="settings"] [data-settings-link="help"]')).toHaveAttribute('href', '/help');
+        // The settings panel lives in the deferred menus; before they mount the button leads to /settings (its fallback),
+        // so `headerControl` waits for them.
+        await (await headerControl(page, 'settings')).click();
+        // An href alone does not prove the panel opened (spec 057, ISC-385): it must be visible and hold the focus.
+        const panel = page.locator('[data-menu="settings"]');
+        await expect(panel).toBeVisible();
+        await expect.poll(() => panel.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+        await expect(panel.locator('[data-settings-link="help"]')).toBeVisible();
+        await expect(panel.locator('[data-settings-link="help"]')).toHaveAttribute('href', '/help');
         await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
         await expect(page).toHaveURL(/\/settings\/workspaces$/);
         await page.goto('/settings');
@@ -441,5 +441,79 @@ test.describe('zen', () => {
       await expect(page.locator('app-spec-page .spec-head')).toBeVisible();
       await expect(footer).toHaveCount(0);
     });
+  });
+});
+
+/**
+ * Spec 057 (ISC-382): holds the lazy chunk of the deferred header menus (the one script that carries the settings
+ * panel) until `release` is called, so a test sees the header before the `@defer` block has mounted. `held` resolves
+ * once the browser has asked for the chunk.
+ */
+async function holdMenusChunk(page: Page): Promise<{ held: Promise<void>; release: () => void }> {
+  let release = (): void => undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let markHeld = (): void => undefined;
+  const held = new Promise<void>((resolve) => {
+    markHeld = resolve;
+  });
+  await page.route('**/*.js', async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (body.includes('settings-panel')) {
+      markHeld();
+      await released;
+    }
+    await route.fulfill({ response, body });
+  });
+  return { held, release };
+}
+
+test.describe('deferred header menus', () => {
+  test.use(atWidth(1440));
+
+  test('menus ready resolves only after the deferred menus have mounted', async ({ page }) => {
+    const chunk = await holdMenusChunk(page);
+    await page.goto('/w/harbor/s/002');
+    await chunk.held;
+    await expect(page.locator('header [data-control="settings"]')).toBeVisible();
+
+    // `headerControl` waits through the fixtures' menus-ready helper before it hands out a control.
+    let ready = false;
+    const waiting = headerControl(page, 'settings').then((control) => {
+      ready = true;
+      return control;
+    });
+    // Two frames with the chunk still held: the block has not mounted, so the helper must still be waiting.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await expect(page.locator('app-shell-menus')).toHaveCount(0);
+    expect(ready).toBe(false);
+
+    chunk.release();
+    const settings = await waiting;
+    // Resolved: the menus are mounted and the settings button opens their panel instead of its /settings fallback.
+    expect(await page.locator('app-shell-menus').count()).toBe(1);
+    await settings.click();
+    await expect(page.locator('[data-menu="settings"]')).toBeVisible();
+    await expect(page).toHaveURL(/\/w\/harbor\/s\/002$/);
+  });
+
+  // Spec 057 (ISC-386): before the deferred menus have mounted, the settings gear still leads somewhere: the
+  // settings page, through the navigate fallback in `ShellNav.toggle`.
+  test('settings fallback before mount', async ({ page }) => {
+    const chunk = await holdMenusChunk(page);
+    await page.goto('/w/harbor/s/002');
+    await chunk.held;
+    // Clicked directly, not through `headerControl`, which would wait for the mount the test holds back.
+    const gear = page.locator('header [data-control="settings"]');
+    await expect(gear).toBeVisible();
+    await expect(page.locator('app-shell-menus')).toHaveCount(0);
+    try {
+      await gear.click();
+      await expect(page).toHaveURL(/\/settings$/);
+    } finally {
+      chunk.release();
+    }
   });
 });

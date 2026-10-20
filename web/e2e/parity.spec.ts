@@ -103,7 +103,7 @@ import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
-import { atWidth, expect, headerControl, menusReady, test } from './fixtures';
+import { atWidth, expect, headerControl, test } from './fixtures';
 import { RESET_PATH, SESSION_HEADER, STUB_NOTES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -302,8 +302,7 @@ const click =
 const openPalette = click('header [data-control="palette"]');
 /** The settings button, once the deferred menus have mounted (before that it leads to /settings, its fallback). */
 const openSettings = async (page: Page): Promise<void> => {
-  await menusReady(page);
-  await click('header [data-control="settings"]')(page);
+  await (await headerControl(page, 'settings')).click();
 };
 /** The palette after one of its entries was chosen, so Recent has an entry. */
 const openPaletteWithRecent = async (page: Page): Promise<void> => {
@@ -659,7 +658,6 @@ const follow =
 const viaSettings =
   (entry: string) =>
   async (page: Page): Promise<void> => {
-    await menusReady(page);
     await (await headerControl(page, 'settings')).click();
     await follow(`[data-menu="settings"] [data-settings-link="${entry}"]`)(page);
   };
@@ -1042,8 +1040,7 @@ test.describe('navigation', () => {
         };
         await page.goto('/w/harbor/s/002/timeline');
         await timeline();
-        await menusReady(page);
-        await page.locator('header [data-control="spec"]').click();
+        await (await headerControl(page, 'spec')).click();
         const picker = page.locator('nav[data-picker="spec"]');
         await expect(picker).toBeVisible();
         await expect(picker.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);
@@ -1054,6 +1051,40 @@ test.describe('navigation', () => {
         await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/003/timeline');
         await timeline();
         await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+      });
+    });
+  }
+});
+
+/*
+ * Group `settings` (spec 057, ISC-383 and ISC-385, review 024 follow-up): the gear opens the settings panel at both
+ * header layouts. From 1120 px the gear stands in the header row; below it is an entry of the overflow menu `⋯`, which
+ * `openSettings` reaches through `headerControl`. A link's `href` alone proves nothing about the panel: the tests
+ * check that `[data-menu="settings"]` is visible inside its `ui-popover` and that focus moved into it.
+ */
+test.describe('settings', () => {
+  for (const width of [1440, 820] as const) {
+    test.describe(`gear at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`openSettings opens the settings popover at ${String(width)}`, async ({ page }) => {
+        await page.goto('/w/harbor');
+        await openSettings(page);
+        const panel = page.locator('[data-menu="settings"]');
+        await expect(panel).toBeVisible();
+        await expect(panel.locator('xpath=ancestor::ui-popover')).toHaveCount(1);
+        await expect(page).toHaveURL((url) => url.pathname === '/w/harbor');
+      });
+
+      test(`the gear leaves the settings panel open, visible and focused, at ${String(width)}`, async ({ page }) => {
+        await page.goto('/w/harbor/s/002');
+        await (await headerControl(page, 'settings')).click();
+        const panel = page.locator('[data-menu="settings"]');
+        await expect(panel).toBeVisible();
+        await expect(panel.locator('[data-setting="theme"]')).toBeVisible();
+        await expect(panel.locator('[data-settings-link="help"]')).toBeVisible();
+        await expect.poll(() => panel.evaluate((el) => el.contains(el.ownerDocument.activeElement))).toBe(true);
+        await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/002');
       });
     });
   }

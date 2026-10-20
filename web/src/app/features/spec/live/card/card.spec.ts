@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { CardState, FrameCard, FrameKind, TaskStep } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
+import { RefreshService } from '../../../../core/refresh.service';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { formatClock, formatClockSeconds } from '../../../../shared/time';
@@ -65,6 +66,7 @@ describe('BoardCard', () => {
       providers: [
         provideRouter([]),
         CardContext,
+        { provide: RefreshService, useValue: { refreshes: signal(0) } },
         { provide: ShellState, useValue: { ws: signal('harbor'), specId: signal('002'), tier } },
         {
           provide: ApiClient,

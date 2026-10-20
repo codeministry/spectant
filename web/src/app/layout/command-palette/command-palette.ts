@@ -17,6 +17,7 @@ import { formatDay, formatInstant, UiTime } from '../../shared/time';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
+import { toneOfPhase } from '../../shared/ui/phase-tone';
 import type { Tone } from '../../shared/ui/tone';
 import { ShellState } from '../shell/shell-state.service';
 import { follow, isCommitEnter } from './navigate';
@@ -49,8 +50,6 @@ interface PaletteOption {
   readonly showChip: boolean;
 }
 
-/** The phase tones of the dashboard's spec table (`PHASE_TONES`), for a spec row's chip. */
-const PHASE_TONE: Readonly<Partial<Record<string, Tone>>> = { scoping: 'secondary', building: 'primary', climbing: 'warning', complete: 'accent' };
 
 interface PaletteGroup {
   readonly id: string;
@@ -130,7 +129,7 @@ export class CommandPalette {
           idea: isIdea(entry),
           icon: leadIcon(source.id, entry),
           mono: MONO_GROUPS.has(source.id),
-          phase: hasPhase(entry) ? { label: entry.phaseLabel, tone: PHASE_TONE[entry.phase] ?? 'neutral', icon: chipIcon(entry.phase) } : null,
+          phase: hasPhase(entry) ? { label: entry.phaseLabel, tone: toneOfPhase(entry.phase), icon: chipIcon(entry.phase) } : null,
           showChip: source.id !== 'nextUp',
         };
       }),

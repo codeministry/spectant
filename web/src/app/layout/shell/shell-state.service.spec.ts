@@ -2,10 +2,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, type Routes } from '@angular/router';
+import { provideRouter, Router, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { ShellRouteData } from './areas';
-import { type ShellRoute, ShellState } from './shell-state.service';
+import { type ShellRouteData, switchSpecLink } from './areas';
+import { type ShellRoute, ShellState, stepSpec } from './shell-state.service';
 
 @Component({ selector: 'app-stub', template: '' })
 class Stub {}
@@ -87,5 +87,80 @@ describe('ShellState.lastWs (spec 008, T129)', () => {
     expect(state.lastWs()).toBe('harbor');
     await harness.navigateByUrl('/w/lantern');
     expect(state.lastWs()).toBe('lantern');
+  });
+});
+
+describe('stepSpec (spec 052, T27, ISC-331)', () => {
+  const order = ['001', '002', '003', '004', '005'];
+
+  it('without favourites steps through the whole order, as before', () => {
+    expect(stepSpec(order, [], '002', 1)).toBe('003');
+    expect(stepSpec(order, [], '002', -1)).toBe('001');
+    expect(stepSpec(order, [], '005', 1)).toBeUndefined();
+    expect(stepSpec(order, [], '001', -1)).toBeUndefined();
+  });
+
+  it('from a favourite goes to the next / previous favourite in list order', () => {
+    expect(stepSpec(order, ['002', '004'], '002', 1)).toBe('004');
+    expect(stepSpec(order, ['002', '004'], '004', -1)).toBe('002');
+  });
+
+  it('from a spec without a star goes to the nearest favourite in that direction', () => {
+    expect(stepSpec(order, ['002', '004'], '003', 1)).toBe('004');
+    expect(stepSpec(order, ['002', '004'], '003', -1)).toBe('002');
+    expect(stepSpec(order, ['002', '004'], '005', -1)).toBe('004');
+    expect(stepSpec(order, ['002', '004'], '001', 1)).toBe('002');
+  });
+
+  it('does not wrap: no favourite beyond the end in that direction is no step', () => {
+    expect(stepSpec(order, ['002', '004'], '004', 1)).toBeUndefined();
+    expect(stepSpec(order, ['002', '004'], '002', -1)).toBeUndefined();
+    expect(stepSpec(order, ['002', '004'], '005', 1)).toBeUndefined();
+  });
+
+  it('a spec outside the order is no step, with or without favourites', () => {
+    expect(stepSpec(order, ['002', '004'], '009', 1)).toBeUndefined();
+    expect(stepSpec(order, [], '009', -1)).toBeUndefined();
+  });
+});
+
+describe('ShellState.handleKey [ and ] with favourites (spec 052, T27, ISC-331)', () => {
+  const claims = { tab: 'claims' } as ShellRouteData;
+  const tabRoutes: Routes = [{ path: 'w/:ws/s/:id/claims', component: Stub, data: claims }, ...routes];
+  const order = ['001', '002', '003', '004', '005'];
+
+  async function at(url: string) {
+    TestBed.configureTestingModule({ providers: [provideRouter(tabRoutes), provideHttpClient(), provideHttpClientTesting()] });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(url);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const state = TestBed.inject(ShellState);
+    const press = (key: string, favorites: readonly string[]): boolean =>
+      state.handleKey(new KeyboardEvent('keydown', { key, cancelable: true }), order, favorites);
+    return { navigate, press };
+  }
+
+  it('] and [ from a favourite go to the next / previous favourite on the same tab', async () => {
+    const { navigate, press } = await at('/w/harbor/s/002/claims');
+    expect(press(']', ['002', '004'])).toBe(true);
+    expect(navigate).toHaveBeenLastCalledWith(switchSpecLink('harbor', '004', 'claims'));
+    expect(press('[', ['002', '004'])).toBe(false);
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('] and [ from a spec without a star go to the nearest favourite on the same tab', async () => {
+    const { navigate, press } = await at('/w/harbor/s/003/claims');
+    press(']', ['002', '005']);
+    expect(navigate).toHaveBeenLastCalledWith(switchSpecLink('harbor', '005', 'claims'));
+    press('[', ['002', '005']);
+    expect(navigate).toHaveBeenLastCalledWith(switchSpecLink('harbor', '002', 'claims'));
+  });
+
+  it('without favourites ] and [ still step through every open spec', async () => {
+    const { navigate, press } = await at('/w/harbor/s/003/claims');
+    press(']', []);
+    expect(navigate).toHaveBeenLastCalledWith(switchSpecLink('harbor', '004', 'claims'));
+    press('[', []);
+    expect(navigate).toHaveBeenLastCalledWith(switchSpecLink('harbor', '002', 'claims'));
   });
 });

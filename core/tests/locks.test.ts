@@ -243,6 +243,25 @@ describe('activity-events: dispatch, build, patch and apply per task (spec 027, 
     expect((await runStates(r, new Set())).map((run) => [run.task, run.state])).toEqual([['T5', 'building']]);
   });
 
+  test('unknown event: one activity-event-unknown warning, shown on every open dashboard row (spec 057, ISC-366)', async () => {
+    const reading = await readLockSources({
+      repoRoot: tempRepo([claimLine('ISC-53', 'a:claude:sess-2', '2026-03-06T09:00:00Z'), { ts: '2026-03-06T09:01:00Z', event: 'ponder', session: 'a:claude:sess-2' }]),
+      now: NOW,
+    });
+    const unknown = (reading.diagnostics ?? []).filter((d) => d.code === 'activity-event-unknown');
+    expect(unknown.map((d) => [d.severity, d.line])).toEqual([['warning', 2]]);
+    // The dashboard turns it into a `locks` warning naming the activity file and line on every open row.
+    const model = buildDashboard({ ...readTreeAt(HARBOR), locks: reading });
+    const open = model.specs.filter((s) => s.phase !== 'complete');
+    expect(open.length).toBeGreaterThan(0);
+    for (const row of open) {
+      const shown = row.warnings.filter((w) => w.kind === 'locks' && w.text.includes('"ponder"'));
+      expect(shown).toHaveLength(1);
+      expect(shown[0]?.text).toStartWith('.spectant/activity.jsonl line 2: ');
+      expect(shown[0]?.ref).toBe('.spectant/activity.jsonl');
+    }
+  });
+
   test('activity-events: a run event without task, session or worktree is malformed and skipped; a claim-only log has no runs', async () => {
     const without = (line: object, key: string) => Object.fromEntries(Object.entries(line).filter(([k]) => k !== key));
     const r = await readLockSources({

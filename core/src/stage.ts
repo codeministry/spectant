@@ -750,13 +750,23 @@ type ExplicitVerdict =
   | { readonly kind: 'overtaken'; readonly value: string };
 
 /**
+ * Whether `stage` is the allocation entry of a row that does not run it (spec 055, ISC-327): the allocation writes
+ * `stage: plan` for every type (stage table row 3), so `plan` stands just before the first stage of a row without it.
+ */
+export function isAllocationEntry(stage: string, row: readonly WorkflowStage[]): boolean {
+  return stage === 'plan' && !row.includes('plan');
+}
+
+/**
  * A stage's place along a workflow row (ISC-221.2): its index; the detours sit at `build` (`blocked`) or just past it
- * (`close-pending`, on the way to the code review); -1 for a stage the row does not run.
+ * (`close-pending`, on the way to the code review); the allocation entry `plan` of a row without it just before the
+ * row's first stage (spec 055); -1 for a stage the row does not run.
  */
 function placeOf(stage: Stage | WorkflowStage, row: readonly WorkflowStage[]): number {
   const build = row.indexOf('build');
   if (stage === 'blocked') return build;
   if (stage === 'close-pending') return build < 0 ? -1 : build + 0.5;
+  if (isAllocationEntry(stage, row)) return -0.5;
   return row.indexOf(stage);
 }
 
@@ -764,8 +774,9 @@ function explicitVerdict(input: StageInput): ExplicitVerdict {
   const value = input.explicitStage;
   if (value === null) return { kind: 'none' };
   const row = workflowStagesOf(input.type, input.workflow);
-  // A detour (`blocked`, `close-pending`), `idea` or an unknown word is in no row, so it is outside as well.
-  if (!isStage(value) || !row.some((s) => s === value)) return { kind: 'outside', value };
+  // A detour (`blocked`, `close-pending`), `idea` or an unknown word is in no row, so it is outside as well; the
+  // allocation entry `plan` holds for every type, whether its row lists it or not (spec 055, ISC-327).
+  if (!isStage(value) || !(row.some((s) => s === value) || isAllocationEntry(value, row))) return { kind: 'outside', value };
   if (value !== input.lastEventTo) return { kind: 'contradicted', value };
   // ISC-221.2: the files overtook the allocation or a forward move; only a step back holds against them.
   const stepBack = input.lastEventFrom !== null && placeOf(value, row) < placeOf(input.lastEventFrom, row);

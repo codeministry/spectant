@@ -19,6 +19,10 @@ interface Setup {
   readonly tab?: TabId | null;
   readonly singleKeys?: boolean;
   readonly fine?: boolean;
+  /** The dashboard's row order (`ShellData.specOrder`); default 001 to 003. */
+  readonly order?: readonly string[];
+  /** The ids of `ShellData.favoriteRows`, in list order (spec 052); default none. */
+  readonly favorites?: readonly string[];
 }
 
 /** A `MediaQueryList` the test drives, as in theme.service.spec.ts. */
@@ -60,7 +64,13 @@ function setup(options: Setup = {}) {
     providers: [
       { provide: Router, useValue: router },
       { provide: ShellState, useValue: state },
-      { provide: ShellData, useValue: { specOrder: signal(['001', '002', '003']) } },
+      {
+        provide: ShellData,
+        useValue: {
+          specOrder: signal(options.order ?? ['001', '002', '003']),
+          favoriteRows: signal((options.favorites ?? []).map((id) => ({ id }))),
+        },
+      },
       { provide: PaletteIndex, useValue: index },
       { provide: RefreshService, useValue: refresher },
       { provide: SettingsService, useValue: settings },
@@ -243,6 +253,27 @@ describe('KeyboardService', () => {
       press('Escape');
       expect(navigate).toHaveBeenCalledWith(['/w', 'harbor']);
     });
+
+    // Spec 057 (ISC-372, review 024): `f` and `o` (alone and after `g`) fire nothing while single keys are off.
+    it('single-key off: f and o fire no action, alone or after g, in a spec and on a workspace page', () => {
+      for (const where of [{}, { url: '/w/harbor', specId: null }]) {
+        const { press, navigate, state, toast, refresher, service } = setup({ ...where, singleKeys: false });
+        const main = document.body.appendChild(document.createElement('main'));
+        const search = main.appendChild(document.createElement('input'));
+        search.type = 'search';
+        const handled = [press('f'), press('o'), press('g'), press('o'), press('g'), press('f')].filter((event) => event.defaultPrevented);
+        expect(handled).toHaveLength(0);
+        expect(document.activeElement).not.toBe(search);
+        expect(navigate).not.toHaveBeenCalled();
+        expect(state.toggleZen).not.toHaveBeenCalled();
+        expect(toast.show).not.toHaveBeenCalled();
+        expect(refresher.refresh).not.toHaveBeenCalled();
+        expect(service.paletteOpen()).toBe(false);
+        expect(service.sheetOpen()).toBe(false);
+        document.body.replaceChildren();
+        TestBed.resetTestingModule();
+      }
+    });
   });
 
   describe('single keys', () => {
@@ -274,6 +305,44 @@ describe('KeyboardService', () => {
       const { press, navigate } = setup({ specId: '001' });
       expect(press('[').defaultPrevented).toBe(false);
       expect(navigate).not.toHaveBeenCalled();
+    });
+
+    describe('bracket keys with favourites (spec 052, T27, ISC-331)', () => {
+      const order = ['001', '002', '003', '004', '005'];
+      const favorites = ['002', '004'];
+
+      it('] and [ from a favourite go to the next / previous favourite on the same tab', () => {
+        const { press, navigate, state } = setup({ tab: 'claims', order, favorites, specId: '002' });
+        press(']');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '004', 'claims'));
+        state.specId.set('004');
+        press('[');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '002', 'claims'));
+      });
+
+      it('] and [ from a spec without a star go to the nearest favourite on the same tab', () => {
+        const { press, navigate } = setup({ tab: 'claims', order, favorites, specId: '003' });
+        press(']');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '004', 'claims'));
+        press('[');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '002', 'claims'));
+      });
+
+      it('no favourite beyond the last one in that direction is not handled, no wrap-around', () => {
+        const { press, navigate, state } = setup({ tab: 'claims', order, favorites, specId: '004' });
+        expect(press(']').defaultPrevented).toBe(false);
+        state.specId.set('002');
+        expect(press('[').defaultPrevented).toBe(false);
+        expect(navigate).not.toHaveBeenCalled();
+      });
+
+      it('without favourites ] and [ step through every open spec', () => {
+        const { press, navigate } = setup({ tab: 'claims', order, specId: '003' });
+        press(']');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '004', 'claims'));
+        press('[');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '002', 'claims'));
+      });
     });
 
     it('v toggles the view query param on the board only', () => {

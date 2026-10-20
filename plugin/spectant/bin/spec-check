@@ -7,7 +7,7 @@ import { basename, dirname as dirname2, join as join5, relative, resolve as reso
 
 // core/src/actor.ts
 var PERSON = /^u:[0-9a-f]{8}$/;
-var AGENT = /^(a:[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*)(?:\/(T[0-9]+))?$/;
+var AGENT = /^(a:[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*)(?:\/([TC][0-9]+))?$/;
 function parseActor(raw) {
   if (PERSON.test(raw))
     return { raw, kind: "person", id: raw, legacy: false };
@@ -60,7 +60,7 @@ class ActivityTextError extends Error {
   }
 }
 var CLAIM_ID = /^ISC-\d+(\.\d+)*$/u;
-var TASK_ID = /^T\d+$/u;
+var TASK_ID = /^[TC]\d+$/u;
 var IDEA_SLUG = /^[a-z0-9][a-z0-9-]*$/u;
 var INIT_TARGET = "init";
 var RUN_EVENTS = new Set(["dispatch", "build", "patch", "apply"]);
@@ -85,7 +85,7 @@ function checkTs(ts) {
 function checkSession(session) {
   oneLine(session, "the session", true);
   if (parseActor(session).legacy) {
-    throw new ActivityTextError("bad-session", `the session ${JSON.stringify(session)} is no actor: a:<kind>:<id>[/T<k>] or u:<8 hex>`);
+    throw new ActivityTextError("bad-session", `the session ${JSON.stringify(session)} is no actor: a:<kind>:<id>[/T<k>|/C<k>] or u:<8 hex>`);
   }
 }
 function checkClaim(claim, required) {
@@ -96,7 +96,7 @@ function checkClaim(claim, required) {
 function checkTask(task, required) {
   oneLine(task, "the task", required);
   if (task !== undefined && !TASK_ID.test(task))
-    throw new ActivityTextError("bad-task", `the task ${JSON.stringify(task)} is no T<k>`);
+    throw new ActivityTextError("bad-task", `the task ${JSON.stringify(task)} is no T<k> or C<k>`);
 }
 var lineOf = (entry) => `${JSON.stringify(entry)}
 `;
@@ -560,7 +560,7 @@ import { tmpdir } from "os";
 import { join as join3 } from "path";
 
 // plugin/src/marker.ts
-var LINE = /^spectant:[ \t]+spec=(\d{3})[ \t]+task=(T\d+)[ \t]+claim=(ISC-\d+(?:\.\d+)*)$/u;
+var LINE = /^spectant:[ \t]+spec=(\d{3})[ \t]+task=([TC]\d+)[ \t]+claim=(ISC-\d+(?:\.\d+)*)$/u;
 function parseMarker(prompt) {
   const first = prompt.trimStart().split(`
 `, 1)[0]?.trim() ?? "";
@@ -1949,6 +1949,8 @@ function fillReason(template, values) {
     return value;
   });
 }
+var SPEC_SUBCOMMANDS = ["init", "idea", "new", "plan", "tasks", "implement", "review", "done"];
+var isSubcommand = (word) => SPEC_SUBCOMMANDS.includes(word);
 function commandFor(sub, id, tail) {
   return ["/spec", sub, id, tail].filter((part) => typeof part === "string" && part !== "").join(" ");
 }
@@ -1956,6 +1958,48 @@ var SPEC_ARG = "NNN";
 var STORY_ARG = "<slug>";
 function commandWith(next, arg) {
   return next.split(" ").map((word) => word === SPEC_ARG || word === STORY_ARG ? arg : word).join(" ");
+}
+var OLD_KEYS = {
+  bootstrap: "init",
+  idea: "idea",
+  bug: "new",
+  spike: "new",
+  refactor: "new",
+  feature: "new",
+  infra: "new",
+  project: "new",
+  plan: "plan",
+  design: "plan",
+  tasks: "tasks",
+  implement: "implement",
+  review: "review",
+  "code-review": "review code",
+  complete: "done",
+  archive: "done"
+};
+function commandKey(command) {
+  const [head = "", ...rest] = command.trim().split(/\s+/);
+  const old = /^\/spec-([a-z-]+)$/.exec(head);
+  if (old)
+    return OLD_KEYS[old[1] ?? ""] ?? null;
+  if (head !== "/spec" && !head.endsWith(":spec"))
+    return null;
+  const sub = rest[0];
+  if (!isSubcommand(sub))
+    return null;
+  return sub === "review" && rest.includes("code") ? "review code" : sub;
+}
+function pluginCommand(command) {
+  const [head = "", ...args] = command.trim().split(/\s+/);
+  if (!/^\/spec-[a-z-]+$/.test(head))
+    return command;
+  const key = commandKey(command);
+  if (key === null)
+    return command;
+  const [id, ...tail] = args;
+  if (key === "review code")
+    return commandFor("review", id, "code");
+  return commandFor(key, id, tail.length > 0 ? tail.join(" ") : undefined);
 }
 var STORY_RULE = {
   subject: "story",
@@ -2212,12 +2256,17 @@ function transitionsOf(workflow) {
   return Object.fromEntries(WORKFLOW_TYPES.map((type) => [type, rowTransitions(rowOf(type, workflow))]));
 }
 var TRANSITIONS = transitionsOf(DEFAULT);
+function isAllocationEntry(stage, row) {
+  return stage === "plan" && !row.includes("plan");
+}
 function placeOf(stage, row) {
   const build2 = row.indexOf("build");
   if (stage === "blocked")
     return build2;
   if (stage === "close-pending")
     return build2 < 0 ? -1 : build2 + 0.5;
+  if (isAllocationEntry(stage, row))
+    return -0.5;
   return row.indexOf(stage);
 }
 function explicitVerdict(input) {
@@ -2225,7 +2274,7 @@ function explicitVerdict(input) {
   if (value === null)
     return { kind: "none" };
   const row = workflowStagesOf(input.type, input.workflow);
-  if (!isStage(value) || !row.some((s) => s === value))
+  if (!isStage(value) || !(row.some((s) => s === value) || isAllocationEntry(value, row)))
     return { kind: "outside", value };
   if (value !== input.lastEventTo)
     return { kind: "contradicted", value };
@@ -3982,6 +4031,61 @@ function nextSpecNumber(taken) {
   return highest + 1;
 }
 
+// core/src/item-state.ts
+var DEFAULT_ABORT_AFTER_MS = 120 * 60 * 1000;
+var DEFAULT_CLAIM_STALE_MS = 45 * 60 * 1000;
+var IN_FLIGHT = new Set(["dispatched", "building", "patched", "applied-open"]);
+var BEFORE_REVIEW = new Set(["plan", "tasks"]);
+var BEFORE_CODE_REVIEW = new Set(["plan", "tasks", "review", "build", "blocked", "close-pending"]);
+var missing = (code, message) => ({ severity: "warning", code, message });
+function runOf(runs, ctx) {
+  const newest = runs.reduce((a, b) => {
+    const ta = Date.parse(a.since);
+    const tb = Date.parse(b.since);
+    return tb > ta || tb === ta && b.line > a.line ? b : a;
+  });
+  const elapsed = ctx.now - Date.parse(newest.since);
+  const run = {
+    run: newest.run,
+    command: pluginCommand(newest.command),
+    session: newest.session,
+    actor: newest.actor,
+    since: newest.since,
+    elapsedMs: Number.isFinite(elapsed) ? elapsed : 0,
+    openRuns: runs.length,
+    source: "run"
+  };
+  return Number.isFinite(elapsed) ? { run } : { run, diagnostic: missing("item-state-run-time", `run ${newest.run} started at "${newest.since}", which is no time; its duration is unknown.`) };
+}
+function fromRuns(runs, ctx) {
+  if (runs.length === 0)
+    return null;
+  const aborted = (r) => ctx.now - Date.parse(r.since) > ctx.abortAfterMs;
+  const running = runs.filter((r) => !aborted(r));
+  const { run, diagnostic } = runOf(running.length > 0 ? running : runs, ctx);
+  return { state: running.length > 0 ? "running" : "aborted", run, ...diagnostic === undefined ? {} : { diagnostic } };
+}
+var specNumberOf = (ref) => specIdOf(ref) ?? ref;
+function runLockOf(openRuns, target, options) {
+  const runs = "spec" in target ? openRuns.filter((r) => r.spec !== undefined && specNumberOf(r.spec) === specNumberOf(target.spec)) : openRuns.filter((r) => r.idea === target.idea);
+  const live = fromRuns(runs, runContext(openRuns, options));
+  return live?.state === "running" && live.run !== undefined ? live.run : null;
+}
+function runContext(openRuns, options) {
+  return {
+    now: typeof options.now === "number" ? options.now : options.now.getTime(),
+    abortAfterMs: options.abortAfterMs ?? DEFAULT_ABORT_AFTER_MS,
+    staleAfterMs: DEFAULT_CLAIM_STALE_MS,
+    openRuns,
+    locks: [],
+    workflow: undefined,
+    constitution: null,
+    edges: new Map,
+    openByFeature: new Map,
+    taskRuns: {}
+  };
+}
+
 // core/src/pack.ts
 var PACK_LIMIT = 8192;
 
@@ -4100,9 +4204,9 @@ function resolveSpec(workspaceRoot, ref) {
   }
   return single(ref, specs.filter((s) => ref !== "" && specSlugOf(s.slug) === ref), "unknown-slug");
 }
-function single(ref, matches, missing) {
+function single(ref, matches, missing2) {
   if (matches.length === 0)
-    return notFound(ref, missing);
+    return notFound(ref, missing2);
   if (matches.length > 1)
     return notFound(ref, "ambiguous");
   return matches[0];
@@ -4532,8 +4636,14 @@ function listed(lane, from, to) {
   const row = { type: lane.type ?? "feature", stages: lane.stages, codeReview: lane.codeReview };
   return rowTransitions(row).some((p) => p.from === from && p.to === to);
 }
+function entryMoveAllowed(lane, from, to) {
+  if (!isAllocationEntry(from, lane.stages))
+    return false;
+  const at = lane.stages.indexOf(to);
+  return at >= 0 && at <= lane.stages.indexOf("review");
+}
 function moveAllowed(lane, from, to) {
-  if (listed(lane, from, to))
+  if (listed(lane, from, to) || entryMoveAllowed(lane, from, to))
     return true;
   return to === "close-pending" && lane.codeReview === "feature" && listed(lane, from, "code-review");
 }
@@ -4547,6 +4657,14 @@ function phrase(stage, input) {
 function commandOf(stage, number) {
   const next = ownRuleOf(stage, true)?.next;
   return next === undefined || next === null ? null : commandWith(next, number);
+}
+function moveCommandOf(lane, from, to, number) {
+  if (!isAllocationEntry(from, lane.stages))
+    return commandOf(from, number) ?? commandOf(to, number);
+  const before = lane.stages[lane.stages.indexOf(to) - 1];
+  if (before !== undefined)
+    return commandOf(before, number);
+  return CLAIMLESS_RULE.next === null ? null : commandWith(CLAIMLESS_RULE.next, number);
 }
 var list = (ids) => ids.join(", ");
 function gateRefusal(input, lane, from, stageInput, feature) {
@@ -4635,7 +4753,7 @@ function planTransition(input) {
   const specText = withStage(spec, to, fm);
   if (specText === null)
     return refuse("spec.md does not read back with the new stage: line; its frontmatter is left as it is");
-  const command = commandOf(from, number) ?? commandOf(to, number);
+  const command = moveCommandOf(lane, from, to, number);
   if (command === null)
     return refuse(`no stage table command makes the move ${from} \u2192 ${to}`);
   if (Number.isNaN(input.now.getTime()))
@@ -4683,7 +4801,7 @@ function planCatchUp(input) {
   const specText = withStage(spec, to, fm);
   if (specText === null)
     return refuse(last, "spec.md does not read back with the new stage: line; its frontmatter is left as it is");
-  const command = commandOf(last, number) ?? commandOf(to, number);
+  const command = moveCommandOf(lane, last, to, number);
   if (command === null)
     return refuse(last, `no stage table command makes the move ${last} \u2192 ${to}`);
   if (Number.isNaN(input.now.getTime()))
@@ -4719,9 +4837,9 @@ function gateViolation(stages) {
   const twice = stages.find((s, i) => stages.indexOf(s) !== i);
   if (twice !== undefined)
     return `list ${twice} twice`;
-  const missing = FIXED_GATES.find((gate) => !stages.includes(gate));
-  if (missing !== undefined)
-    return `leave out the fixed gate ${missing}`;
+  const missing2 = FIXED_GATES.find((gate) => !stages.includes(gate));
+  if (missing2 !== undefined)
+    return `leave out the fixed gate ${missing2}`;
   if (stages.indexOf("review") > stages.indexOf("build"))
     return "put the fixed gate review after build";
   const last = stages.at(-1) ?? "";
@@ -4819,6 +4937,7 @@ var ERROR_CODES = [
   "gate-missing",
   "gate-stale",
   "refused",
+  "run-locked",
   "blocked",
   "lock-held",
   "lock-lost",
@@ -5264,7 +5383,7 @@ var SUBCOMMAND_OF = {
   "/spec-code-review": "review",
   "/spec-complete": "done"
 };
-function pluginCommand(command) {
+function pluginCommand2(command) {
   const [head = "", ...rest] = command.split(" ");
   const sub = SUBCOMMAND_OF[head];
   return sub === undefined ? command : ["/spec", sub, ...rest].join(" ");
@@ -5310,7 +5429,7 @@ function transitionInput(ctx, ref, to, actor, locks) {
   };
 }
 function refusal(ref, plan) {
-  const next = plan.command === null ? "" : `; next: ${pluginCommand(plan.command)}`;
+  const next = plan.command === null ? "" : `; next: ${pluginCommand2(plan.command)}`;
   return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`, "refused");
 }
 async function transition(ctx, args) {
@@ -5337,7 +5456,7 @@ async function transition(ctx, args) {
     }
     plan = late;
   }
-  const event = { ...plan.event, command: args.values.get("command") ?? pluginCommand(plan.event.command) };
+  const event = { ...plan.event, command: args.values.get("command") ?? pluginCommand2(plan.event.command) };
   const line = checkedEvent(event);
   writeFileSync2(join5(ref.dir, "spec.md"), plan.specText);
   appendEventLine(ref.dir, line);
@@ -5838,11 +5957,20 @@ function gateCheck(ctx, args) {
   emit(ctx, args, value, [line]);
   return EXIT.ok;
 }
+function runLocked(ctx, ref, actor) {
+  const foreign = (activityReading(activityText(ctx)).openRuns ?? []).filter((r) => r.session !== actor);
+  return runLockOf(foreign, { spec: ref.slug }, { now: ctx.now });
+}
 var needsYes = (ctx, ref, gate) => bad(`gate ${gate} needs --yes: it writes ${rel(ctx, gatePath(ref, gate))} and appends to events.jsonl; nothing written`);
 function gateReviewed(ctx, args, ref) {
   if (!args.flags.has("yes"))
     throw needsYes(ctx, ref, "reviewed");
   specText(ctx, ref);
+  const actor = args.values.get("actor") ?? CLI_SESSION;
+  const locked = runLocked(ctx, ref, actor);
+  if (locked !== null) {
+    throw new CliError(EXIT.drift, `${ref.slug}: run-locked by ${locked.run} (${locked.session}, ${locked.command ?? "no command"}, since ${locked.since}); nothing written`, "run-locked");
+  }
   const texts = specFiles(ref).texts;
   const textOf2 = { "spec.md": texts.spec, "plan.md": texts.plan, "tasks.md": texts.tasks };
   const files = {};
@@ -5851,7 +5979,7 @@ function gateReviewed(ctx, args, ref) {
     files[f] = text2 === undefined ? null : hashForGate(f, text2);
   }
   const at = ctx.now.toISOString();
-  const event = { ts: at, from: "review", to: "build", command: args.values.get("command") ?? nextFor(ref, "reviewed"), actor: args.values.get("actor") ?? CLI_SESSION };
+  const event = { ts: at, from: "review", to: "build", command: args.values.get("command") ?? nextFor(ref, "reviewed"), actor };
   const line = checkedEvent(event);
   const mark = reviewedMarkText(at, files);
   const gitignore = ensureGatesIgnored(ref);

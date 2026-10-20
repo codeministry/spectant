@@ -214,59 +214,49 @@ export interface TechReading {
   readonly missing: readonly TechSection[];
 }
 
-interface TechChunk {
-  readonly heading: Element;
-  key: TechSection | null;
-  readonly nodes: Node[];
-}
+/** The attribute core wraps each marker's part of the served tech.md in (`TECH_PART_ATTRIBUTE`, `renderTechDocument`). */
+const TECH_PART = 'data-tech-part';
 
 /**
- * The served tech.md page (one `DocsPage` of the whole file, the markers gone) as its four sections (ISC-157): the
- * sections are core's (`techSections`, `techSectionHeads` over the file's `<!-- section: key -->` markers, ISC-157.2).
- * Each key's heading names a level-2 entry of the page's own toc, and that h2 (by its id) opens the section; any other
- * h2 stays in the section before it. Nothing is named from a heading's words, so a differing heading still opens its
- * section, and a page without core's heads has no section. Each section becomes `<section data-library-tech-section="key">` with its h2's id set to the key (the stable anchor),
- * in the order overview, stack, architecture, risks whatever the file's; prose before the first h2 stays in front,
- * without the h1 (the reader's head shows the title). The contents list holds exactly the present sections. Parsed in
+ * The served tech.md page as its four sections (ISC-157, ISC-355): the sections are core's, cut at the file's
+ * `<!-- section: key -->` markers as `readTech` reads them (contract ISC-134), never at an h2. Core's route renders
+ * the file once and wraps each marker's part in `<section data-tech-part="key">` (`renderTechDocument`); a repeated
+ * key's parts join in file order, a part of no contract key and the text before the first marker belong to no section
+ * and stay in front, without the h1 (the reader's head shows the title). Each key becomes
+ * `<section data-library-tech-section="key">`, in the order overview, stack, architecture, risks whatever the file's;
+ * its anchor is the key, on its first h2 or, when its part has none, on the section itself, and the contents list names
+ * it by that h2 (core's `techSectionHeads` heading) or by `label`. A page without core's parts has no section. Parsed in
  * an inert `template` and rebuilt from core's own nodes, so the output is as trusted as core's input.
  */
-export function techReading(page: LibraryDocPage, doc: Document = document): TechReading {
-  // Core's heads to the h2 ids of this page: each heading claims the first unclaimed level-2 toc entry of its text.
-  const keyOfId = new Map<string, TechSection>();
-  for (const head of page.techSections ?? []) {
-    const entry = page.toc.find((t) => t.level === 2 && t.text === head.heading && !keyOfId.has(t.anchor));
-    if (head.heading !== null && entry !== undefined) keyOfId.set(entry.anchor, head.key);
-  }
+export function techReading(page: LibraryDocPage, doc: Document = document, label: (key: TechSection) => string = (key) => key): TechReading {
   const template = doc.createElement('template');
   template.innerHTML = page.html;
   const lead: Node[] = [];
-  const chunks: TechChunk[] = [];
+  const sections = new Map<TechSection, Node[]>();
   for (const node of [...template.content.childNodes]) {
-    const tag = node instanceof Element ? node.tagName : '';
-    if (tag === 'H2' && node instanceof Element) chunks.push({ heading: node, key: keyOfId.get(node.id) ?? null, nodes: [node] });
-    else if (chunks.length > 0) chunks.at(-1)?.nodes.push(node);
-    else if (tag !== 'H1') lead.push(node);
-  }
-  const sections = new Map<TechSection, TechChunk>();
-  let last: Node[] = lead;
-  for (const chunk of chunks) {
-    if (chunk.key !== null && !sections.has(chunk.key)) {
-      sections.set(chunk.key, chunk);
-      last = chunk.nodes;
-    } else last.push(...chunk.nodes);
+    const part = node instanceof Element && node.tagName === 'SECTION' ? node.getAttribute(TECH_PART) : null;
+    if (part === null) {
+      if (!(node instanceof Element && node.tagName === 'H1')) lead.push(node);
+    } else if (isTechSection(part)) sections.set(part, [...(sections.get(part) ?? []), ...node.childNodes]);
+    else lead.push(...node.childNodes);
   }
   const out = doc.createElement('template');
   out.content.append(...lead);
   const present = TECH_SECTIONS.filter((key) => sections.has(key));
+  const anchors = new Set<Element>();
   const toc = present.map((key) => {
-    const chunk = sections.get(key) as TechChunk;
-    chunk.heading.id = key;
     const element = doc.createElement('section');
     element.setAttribute('data-library-tech-section', key);
-    element.append(...chunk.nodes);
+    element.append(...(sections.get(key) ?? []));
     out.content.append(element);
-    return { level: 2, text: chunk.heading.textContent.trim(), anchor: key };
+    const heading = element.querySelector(':scope > h2');
+    anchors.add(heading ?? element);
+    return { level: 2, text: heading?.textContent.trim() ?? label(key), anchor: key };
   });
+  // The key is the section's anchor alone: an element elsewhere whose own id core slugged to it (an h2 "Stack" before
+  // the first marker) gives the id up, so a jump to the key always lands on the section.
+  for (const element of out.content.querySelectorAll('[id]')) if (!anchors.has(element) && isTechSection(element.id) && present.includes(element.id)) element.removeAttribute('id');
+  for (const [i, anchor] of [...anchors].entries()) anchor.id = present[i] ?? anchor.id;
   return { page: { ...page, html: out.innerHTML, toc }, present, missing: TECH_SECTIONS.filter((key) => !sections.has(key)) };
 }
 
@@ -418,7 +408,10 @@ export class LibraryReader {
       xref: (path) => untracked(() => this.xrefHref(path)),
     };
     const page = { ...result.body, html: rewriteProse(result.body.html, links) };
-    return doc.type === 'tech' ? techReading(page) : { page, present: [], missing: [] };
+    if (doc.type !== 'tech') return { page, present: [], missing: [] };
+    // A section without its own h2 is named in the contents by its key's label, in the current language.
+    this.translation();
+    return techReading(page, document, (key) => this.transloco.translate(`library.tech.sections.${key}`));
   });
   protected readonly prose = computed<DocsPage | null>(() => this.reading()?.page ?? null);
 
@@ -527,7 +520,7 @@ export class LibraryReader {
         const heading =
           section === DECISIONS_SECTION
             ? decisionsHeading(this.host)
-            : this.host.querySelector<HTMLElement>(`section[data-library-tech-section="${section}"] > h2`);
+            : this.host.querySelector<HTMLElement>(`section[data-library-tech-section="${section}"] > h2, section[data-library-tech-section="${section}"][id]`);
         if (heading === null) return;
         this.jumped = key;
         heading.setAttribute('tabindex', '-1');

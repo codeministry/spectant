@@ -159,7 +159,7 @@ describe('workflows/implement.md Step 5: the dispatch brief carries the pack', (
   const lines = block.split('\n');
 
   test('the brief opens with the marker line, then the PACK line, and never asks to read the whole spec', () => {
-    expect(lines[0]).toBe('spectant: spec=<NNN> task=T<k> claim=ISC-N');
+    expect(lines[0]).toBe('spectant: spec=<NNN> task=T<k>|C<k> claim=ISC-N');
     expect(lines[1]).toMatch(/^PACK: {6}.*spec-check pack/u);
     expect(block).not.toMatch(/\(read it[;,]/u);
     expect(block).not.toMatch(/^(?:GOAL|CLAIM|PROBE):/mu);

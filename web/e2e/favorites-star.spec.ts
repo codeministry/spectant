@@ -9,12 +9,16 @@
  * - unstar-in-select: the star of a select row is a target of its own beside the link; unstarring navigates nowhere,
  *   keeps the select open and drops the row, focus moves to the star of the row that moves up; the last one leaves
  *   the open select in its empty state.
+ * - bracket keys (T28, ISC-331; `bun run e2e -- favorites -g "bracket keys"`), at 1440 only: with two favourites that
+ *   are no neighbours in harbor's row order, `]` / `[` from a favourite and from a spec without a star go to the
+ *   nearest favourite that way, on the same tab; without favourites they step to the neighbouring row as
+ *   `keyboard.spec.ts` does. The targets come from the dashboard's real order, never from hard-coded ids.
  *
  * Favourites are spec folder names (`003-config-loader`), the select and the dashboard key their rows by the id.
  */
-import type { Locator, Page } from '@playwright/test';
-import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
-import { atWidth, expect, menusReady, test, WIDTHS } from './fixtures';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import { SPEC_API_ROOT, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const WS = 'harbor';
@@ -31,8 +35,7 @@ const headStar = (page: Page): Locator => page.locator('[data-head-actions] butt
 const rowStar = (page: Page, id: string): Locator => page.locator(`app-spec-row:has([data-spec-row="${id}"]) button[ui-star-toggle]`);
 
 async function openSelect(page: Page): Promise<Locator> {
-  await menusReady(page);
-  await page.locator('header [data-control="spec"]').click();
+  await (await headerControl(page, 'spec')).click();
   await expect(picker(page)).toBeVisible();
   return picker(page);
 }
@@ -143,3 +146,96 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
     });
   });
 }
+
+/** A dashboard spec row: the id the URL takes and the folder name a favourite stores. */
+interface Row {
+  readonly id: string;
+  readonly slug: string;
+}
+
+/** Harbor's active spec rows in the dashboard's row order, the order `[` / `]` walk. */
+async function harborRows(request: APIRequestContext): Promise<Row[]> {
+  const answer = await request.get(`${SPEC_API_ROOT}/${WS}/dashboard`, { headers: { [SESSION_HEADER]: session } });
+  expect(answer.status()).toBe(200);
+  const body = (await answer.json()) as { specs?: Array<{ id: string; slug?: string }> };
+  return (body.specs ?? []).map((spec) => ({ id: spec.id, slug: spec.slug ?? spec.id }));
+}
+
+/** Opens a harbor spec route and waits until the shell holds the dashboard order and the favourite set. */
+async function openSpec(page: Page, path: string): Promise<void> {
+  const loaded = (route: string) => page.waitForResponse((response) => response.url().endsWith(`/${WS}/${route}`) && response.ok());
+  const both = Promise.all([loaded('dashboard'), loaded('favorites')]);
+  await page.goto(path);
+  await both;
+  await expect(page.locator('#spec-title')).toBeVisible();
+}
+
+const onTab = (id: string): RegExp => new RegExp(`/w/${WS}/s/${id}/claims$`);
+
+test.describe(`favorites star: bracket keys at ${WIDTHS.desktop}`, () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  /**
+   * Two favourites that are no neighbours in the row order: `before` precedes both, `mid` and `mid2` stand between
+   * them, so a favourite step lands elsewhere than a plain step to the neighbouring row.
+   */
+  async function seed(request: APIRequestContext) {
+    const rows = await harborRows(request);
+    expect(rows.length).toBeGreaterThanOrEqual(5);
+    const [before, a, mid, mid2, b] = rows as [Row, Row, Row, Row, Row];
+    for (const folder of [a.slug, b.slug]) {
+      const put = await request.put(workspaceRoutes.favorite(WS, folder), { headers: { [SESSION_HEADER]: session } });
+      expect(put.status()).toBe(200);
+    }
+    return { before, a, mid, mid2, b };
+  }
+
+  test('] and [ from a favourite step to the next and previous favourite on the same tab (T28, ISC-331)', async ({ page, request }) => {
+    const { a, b } = await seed(request);
+    await openSpec(page, `/w/${WS}/s/${a.id}/claims`);
+    await expect(headStar(page)).toHaveAttribute('aria-pressed', 'true');
+
+    await page.keyboard.press(']');
+    await expect(page).toHaveURL(onTab(b.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+    await expect(headStar(page)).toHaveAttribute('aria-pressed', 'true');
+
+    await page.keyboard.press('[');
+    await expect(page).toHaveURL(onTab(a.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+  });
+
+  test('] and [ from a spec without a star step to the nearest favourite that way on the same tab (T28, ISC-331)', async ({ page, request }) => {
+    const { before, a, mid, mid2, b } = await seed(request);
+
+    await openSpec(page, `/w/${WS}/s/${mid.id}/claims`);
+    await expect(headStar(page)).toHaveAttribute('aria-pressed', 'false');
+    await page.keyboard.press(']');
+    await expect(page).toHaveURL(onTab(b.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+
+    await openSpec(page, `/w/${WS}/s/${mid2.id}/claims`);
+    await expect(headStar(page)).toHaveAttribute('aria-pressed', 'false');
+    await page.keyboard.press('[');
+    await expect(page).toHaveURL(onTab(a.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+
+    await openSpec(page, `/w/${WS}/s/${before.id}/claims`);
+    await page.keyboard.press(']');
+    await expect(page).toHaveURL(onTab(a.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+  });
+
+  test('without favourites ] and [ step to the neighbouring spec row on the same tab, as before (T28, ISC-331)', async ({ page, request }) => {
+    const [, , mid, mid2] = (await harborRows(request)) as [Row, Row, Row, Row];
+    await openSpec(page, `/w/${WS}/s/${mid.id}/claims`);
+
+    await page.keyboard.press(']');
+    await expect(page).toHaveURL(onTab(mid2.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+
+    await page.keyboard.press('[');
+    await expect(page).toHaveURL(onTab(mid.id));
+    await expect(page.locator('#spec-title')).toBeVisible();
+  });
+});

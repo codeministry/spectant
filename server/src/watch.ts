@@ -19,11 +19,44 @@
  *
  * Read-only: `fs.watch` opens the directories for reading and writes nothing (`tests/readonly.test.ts -t live`).
  */
+import type { Database } from "bun:sqlite";
 import { type FSWatcher, existsSync, watch } from "node:fs";
 import { join } from "node:path";
-import { specIdOfPath } from "../../core/src/resolve.ts";
+import { listSpecs, specIdOfPath } from "../../core/src/resolve.ts";
+import { pruneFavorites } from "./db.ts";
 import type { Registry } from "./registry.ts";
 import { readWorktreeView } from "./workspace-loader.ts";
+
+/**
+ * The favourites' share of the workspace scan (spec 057 T1, ISC-352): after a watcher change of workspace `ws`, every
+ * `spec_favorite` row whose spec the main checkout no longer has as an open folder under `specs/` (archived under
+ * `specs/archive/`, or gone) and no live spec worktree carries as its own folder (`readWorktreeView`'s `worktreeOnly`,
+ * spec 039) is deleted, so a spec brought back from the archive carries no old star. The live stream runs it before
+ * each build (`eventsApi`'s `scan`); no GET handler calls it (ISC-353). A workspace whose `specs/` cannot be listed
+ * (not there, mid-checkout, unmounted) prunes nothing: an unreadable tree is no proof a spec left.
+ */
+export function favoritesScan(options: {
+  readonly db: Database;
+  readonly registry: Pick<Registry, "get">;
+}): (change: LiveChange) => Promise<void> {
+  return async (change) => {
+    const workspace = options.registry.get(change.ws);
+    if (workspace === undefined) return;
+    const specsDir = join(workspace.path, "specs");
+    if (!existsSync(specsDir)) return;
+    let open: string[];
+    try {
+      const listed = listSpecs(workspace.path);
+      const { worktreeOnly } = await readWorktreeView(workspace.path, listed);
+      open = [...listed.flatMap((ref) => (ref.archived ? [] : [ref.slug])), ...worktreeOnly.map((ref) => ref.slug)];
+    } catch {
+      return;
+    }
+    // `listSpecs` reads a missing `specs/` as no specs at all; one removed during the read must not empty the set.
+    if (!existsSync(specsDir)) return;
+    pruneFavorites(options.db, change.ws, open);
+  };
+}
 
 /** How long a workspace's changes are collected before they go out as one `LiveChange`. */
 export const SETTLE_MS = 150;

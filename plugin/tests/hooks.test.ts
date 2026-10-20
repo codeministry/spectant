@@ -141,6 +141,26 @@ describe('handleHook: a background builder', () => {
     for (const line of lines(root)) expect(line.claim).toBe('ISC-1');
   });
 
+  test('a claim unit C2 of a spec without tasks.md: claim, dispatch, build and release, like a task T<n> (spec 056, ISC-346)', () => {
+    const { root, run } = setup();
+    const prompt = 'spectant: spec=056 task=C2 claim=ISC-346\n\nBuild claim unit C2 of spec 056 in this worktree.';
+    const unit = (name: string): Payload => {
+      const payload = fixture(name);
+      if (name.startsWith('pre-') || name.startsWith('post-')) payload.tool_input = { ...(payload.tool_input as Payload), prompt };
+      if (name.startsWith('post-')) payload.tool_response = { ...(payload.tool_response as Payload), prompt };
+      return payload;
+    };
+    expect(run(unit('pre-tool-use-agent'))).toHaveLength(2);
+    expect(run(unit('post-tool-use-agent-async'))).toHaveLength(1);
+    expect(run(fixture('subagent-stop'))).toHaveLength(1);
+    expect(events(root)).toEqual([
+      `claim ISC-346 C2 ${ACTOR}`,
+      `dispatch ISC-346 C2 ${ACTOR}`,
+      `build ISC-346 C2 ${ACTOR}`,
+      `release ISC-346 C2 ${ACTOR}`,
+    ]);
+  });
+
   test('a SubagentStop of a builder that was never mapped writes nothing', () => {
     const { root, run } = setup();
     run(fixture('pre-tool-use-agent'));

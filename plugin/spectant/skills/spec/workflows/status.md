@@ -22,8 +22,8 @@ Print the output header from `SKILL.md`, then this block as it stands. It follow
 | Start | `/spec idea <sentences>` | shape a rough idea: shapes to choose from, a short question round, a filled template, the spec on your yes |
 | | `/spec new <type> [notes]` | a new spec from a template: `bug`, `spike`, `refactor`, `feature`, `infra`, `project` |
 | | `/spec new <NNN>` | the claims of an existing spec that has none, minted into its own folder |
-| Shape | `/spec plan <NNN>` | write `plan.md`; a UI spec gets its design pass here |
-| | `/spec tasks <NNN>` | write `tasks.md`: atomic steps, one claim each |
+| Shape | `/spec plan <NNN>` | `feature`, `infra`, `project`: write `plan.md`; a UI spec gets its design pass here |
+| | `/spec tasks <NNN>` | `refactor`, `feature`, `project` from three claims: write `tasks.md`, atomic steps, one claim each |
 | | `/spec review [NNN]` | a summary in the chat, the reviewed mark on your yes, the code review as its later step |
 | Build | `/spec implement <NNN>` | work the tasks until the claims close on their probes |
 | Close | `/spec done <NNN> [archive]` | check every close condition, set `phase: complete`; `archive` moves it to `specs/archive/` |

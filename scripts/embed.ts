@@ -97,6 +97,22 @@ export function renderManifest(assets: EmbeddedAsset[], generatedAt: string): st
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * Whether the manifest under `root` can load: `missing` without the file, `stale` when one of its file imports names
+ * a file that no longer exists (a later web build replaced the hashed chunks), else `current`. Only the imports are
+ * checked, not whether the manifest lists every file of the output; `--check` does that.
+ */
+export function manifestStatus(root: string): "missing" | "stale" | "current" {
+  const target = join(root, EMBED_MANIFEST_PATH);
+  if (!existsSync(target)) return "missing";
+  const source = readFileSync(target, "utf8");
+  for (const match of source.matchAll(/^import \w+ from ("[^"\n]+") with \{ type: "file" \};$/gm)) {
+    const specifier = JSON.parse(match[1] ?? '""') as string;
+    if (!existsSync(resolve(dirname(target), specifier))) return "stale";
+  }
+  return "current";
+}
+
 /** The `generatedAt` value of an existing manifest's source, if it has one. */
 function generatedAtOf(source: string): string | undefined {
   const match = /^ {2}generatedAt: "([^"]+)",$/m.exec(source);
