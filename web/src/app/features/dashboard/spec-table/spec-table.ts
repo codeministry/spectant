@@ -33,7 +33,6 @@ import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { toneMark } from '../../../shared/ui/tone';
-import { specSlugOf } from '../../../../../../core/src/spec-ref';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { SpecRow } from './spec-row';
@@ -65,7 +64,10 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
  * 362-400, app.js specTable): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
  * picker land on, the phase chips (plus type chips from two types and the takeable flag) and the sort menu (a
  * `ui-popover`, a bottom `ui-sheet` at compact), the 8 px phase strip (one segment per active spec), the rows as one
- * roving list (↓ ↑ j k Home End, one tab stop, no wrap) and the archived footer under `#archive`.
+ * roving list (↓ ↑ j k Home End, one tab stop, no wrap).
+ *
+ * Spec 050 (T8, ISC-289): the archived footer under `#archive` is gone; the archived specs list as rows behind the
+ * head's toggle, and with no active spec and the toggle off the panel says "No active spec · K archived".
  *
  * Filter, sort and takeable are the page's query state: the panel renders `query` and asks for a new one through
  * `queryChange`, it never holds them itself. The selection is the roving list's tab stop, exposed as `selectedId`
@@ -357,11 +359,6 @@ export class SpecTable {
 
   protected clearFilter(): void {
     this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false });
-  }
-
-  /** The footer's name for an archived spec: its slug without the number (prototype "001 manifest-sync"). */
-  protected archivedName(spec: ArchiveRow): string {
-    return specSlugOf(spec.slug);
   }
 
   private chip(option: ListOption, key: string | null, toned: boolean): FilterOption {

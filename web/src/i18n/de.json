@@ -197,6 +197,10 @@
     "parseError": "Lesefehler",
     "changed": "Seit der letzten Aktualisierung geändert",
     "empty": "Noch keine Specs",
+    "emptyActive": {
+      "one": "Keine aktive Spec · {{count}} archiviert",
+      "other": "Keine aktive Spec · {{count}} archiviert"
+    },
     "noMatch": "Keine Spec in {{phase}}",
     "clearFilter": "Filter zurücksetzen",
     "fogCount": {

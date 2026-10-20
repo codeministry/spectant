@@ -197,6 +197,10 @@
     "parseError": "parse error",
     "changed": "Changed since the last refresh",
     "empty": "No specs yet",
+    "emptyActive": {
+      "one": "No active spec · {{count}} archived",
+      "other": "No active spec · {{count}} archived"
+    },
     "noMatch": "No spec in {{phase}}",
     "clearFilter": "Clear filter",
     "fogCount": {

@@ -209,16 +209,6 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(rows[0]?.hasAttribute('data-selected')).toBe(true);
   });
 
-  it('closes with the archived footer "1 archived spec 001 manifest-sync" under #archive', async () => {
-    const { host } = await render();
-    const foot = host.querySelector('#archive');
-    expect(foot?.classList.contains('t-foot')).toBe(true);
-    // The parts sit in a flex row with an 8 px gap, so the text nodes carry no spaces between them.
-    expect(text(foot?.querySelector(':scope > span'))).toBe('1 archived spec');
-    expect(text(foot?.querySelector('a[data-archived-row="001"]'))).toBe('001 manifest-sync');
-    expect(foot?.querySelector('a[data-archived-row="001"]')?.getAttribute('href')).toBe('/w/harbor/s/001');
-  });
-
   describe('live update marks (design.md § Live update, ISC-62.1)', () => {
     it('dots a changed row and keeps the dot across a refresh that changed nothing, until the row is hovered', async () => {
       const { fixture, host } = await render(DEFAULT_QUERY, { changed: new Set(['003']) });
@@ -873,5 +863,153 @@ describe('archived toggle (spec 050, ISC-287)', () => {
     await fixture.whenStable();
     expect(link()?.getAttribute('data-selected')).toBe('row');
     expect(link()?.getAttribute('href')).toBe('/w/harbor/s/001');
+  });
+});
+
+describe('archived rows under filters and the fold (spec 050, ISC-288)', () => {
+  const pad = (n: number): string => String(n).padStart(3, '0');
+  const PHASES = [
+    { phase: 'building', stageGroup: 'building', stage: 'build' },
+    { phase: 'scoping', stageGroup: 'scoping', stage: 'review' },
+    { phase: 'complete', stageGroup: 'complete', stage: 'done' },
+  ];
+  // 22 active specs on the even IDs 002–044: phases in turn, every third a bug, fog and takeable on some, mixed ratios.
+  const ACTIVE = Array.from({ length: 22 }, (_, i) =>
+    wire(pad(2 * (i + 1)), {
+      ...PHASES[i % 3],
+      type: i % 3 === 0 ? 'bug' : 'feature',
+      progress: { closed: i % 4, total: 4 },
+      fog: i % 5 === 0 ? 1 : 0,
+      takeable: i % 4 === 1 ? ['ISC-1'] : [],
+    }),
+  );
+  // 17 archived specs on the odd IDs 001–033, out of order, so an ID sort over both blocks would interleave them.
+  const ARCHIVED_IDS = [17, 5, 29, 1, 23, 11, 33, 9, 21, 3, 27, 15, 31, 7, 19, 25, 13];
+  const ARCHIVE = ARCHIVED_IDS.map((n, i) => ({
+    id: pad(n),
+    slug: `${pad(n)}-old`,
+    title: `Old ${pad(n)}`,
+    type: i % 4 === 0 ? 'bug' : 'feature',
+    claims: { closed: i % 5, total: 4 },
+    goal: '',
+    archived: '2026-09-01',
+  }));
+  const BODY_050 = { specs: ACTIVE, archive: ARCHIVE };
+  const ON: ListQuery = { ...DEFAULT_QUERY, archived: true };
+
+  const ids = (rows: ReadonlyArray<Record<string, unknown>>): string[] => rows.map((row) => String(row['id']));
+  const activeOf = (keep: (row: Record<string, unknown>) => boolean): string[] => ids(ACTIVE.filter(keep));
+  const ratioOf = (row: (typeof ARCHIVE)[number]): number => row.claims.closed / row.claims.total;
+  const archivedDesc = (rows = ARCHIVE): string[] => ids([...rows].sort((a, b) => b.id.localeCompare(a.id)));
+  const archivedBugs = archivedDesc(ARCHIVE.filter((row) => row.type === 'bug'));
+  const activeBugs = activeOf((row) => row['type'] === 'bug');
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  /** Renders the table under `query`; `?open=specs` (the default) opens the fold so every listed row is in the DOM. */
+  async function render(query: ListQuery, url = '/?open=specs') {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(BODY_050));
+    fixture.componentRef.setInput('archive', readArchiveRows(BODY_050));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const rowIds = () => [...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow'] ?? '');
+    const archivedIds = () => [...host.querySelectorAll<HTMLElement>('.row-link[data-archived-row]')].map((link) => link.dataset['archivedRow'] ?? '');
+    const fold = () => host.querySelector<HTMLElement>('ui-disclosure[data-fold="specs"]');
+    const summary = () => host.querySelector<HTMLElement>('[data-show-all]');
+    const suffix = () => host.querySelector<HTMLElement>('[data-fold-archived]');
+    return { fixture, rowIds, archivedIds, fold, summary, suffix };
+  }
+
+  it('the type filter reaches the archived rows: only the bugs of both blocks, the archived ones after the active', async () => {
+    const { rowIds, archivedIds } = await render({ ...ON, type: 'bug' });
+    expect(activeBugs).toHaveLength(8);
+    expect(archivedBugs).toEqual(['031', '023', '021', '017', '013']);
+    expect(rowIds()).toEqual([...activeBugs, ...archivedBugs]);
+    expect(archivedIds()).toEqual(archivedBugs);
+  });
+
+  it('every phase chip, fog and takeable hide every archived row and leave the active rows they match', async () => {
+    const cases: Array<{ query: ListQuery; active: string[] }> = [
+      ...['scoping', 'building', 'complete'].map((phase) => ({ query: { ...ON, phase }, active: activeOf((row) => row['stageGroup'] === phase) })),
+      { query: { ...ON, phase: 'fog' }, active: activeOf((row) => Number(row['fog']) > 0) },
+      { query: { ...ON, takeable: true }, active: activeOf((row) => Array.isArray(row['takeable']) && row['takeable'].length > 0) },
+    ];
+    for (const { query, active } of cases) {
+      const { rowIds, archivedIds, suffix } = await render(query);
+      expect(active.length).toBeGreaterThan(0);
+      expect(rowIds()).toEqual(active);
+      expect(archivedIds()).toEqual([]);
+      expect(suffix()).toBeNull();
+    }
+  });
+
+  it('the sort orders the archive block on its own, always after every active row', async () => {
+    const activeIds = ids(ACTIVE);
+    const byId = await render({ ...ON, sort: 'id' });
+    expect(byId.rowIds()).toEqual([...activeIds, ...ids([...ARCHIVE].sort((a, b) => a.id.localeCompare(b.id)))]);
+    expect(byId.archivedIds().slice(0, 3)).toEqual(['001', '003', '005']);
+
+    const byStage = await render({ ...ON, sort: 'stage' });
+    expect(byStage.rowIds()).toEqual([...activeIds, ...archivedDesc()]);
+    expect(byStage.archivedIds().slice(0, 3)).toEqual(['033', '031', '029']);
+
+    const byProgress = await render({ ...ON, sort: 'progress' });
+    const closedOf = (row: Record<string, unknown>): number => (row['progress'] as { closed: number }).closed;
+    const activeByRatio = ids([...ACTIVE].sort((a, b) => closedOf(b) - closedOf(a)));
+    const archivedByRatio = ids([...ARCHIVE].sort((a, b) => ratioOf(b) - ratioOf(a) || b.id.localeCompare(a.id)));
+    expect(byProgress.rowIds()).toEqual([...activeByRatio, ...archivedByRatio]);
+    // The three 4/4 specs lead the block, their tie broken by ID descending.
+    expect(byProgress.archivedIds().slice(0, 3)).toEqual(['023', '019', '003']);
+  });
+
+  it('the fold counts the archived rows: 10 before it, the other 29 inside, "Show all 39 specs · 17 archived"', async () => {
+    const closed = await render(ON, '/');
+    expect(closed.rowIds()).toEqual(ids(ACTIVE.slice(0, 10)));
+    expect(text(closed.summary())).toBe('Show all 39 specs · 17 archived');
+    expect(text(closed.suffix())).toBe('· 17 archived');
+
+    const open = await render(ON);
+    expect(open.rowIds()).toHaveLength(39);
+    expect(open.fold()?.querySelectorAll('.row-link[data-spec-row]')).toHaveLength(29);
+    expect(open.fold()?.querySelectorAll('.row-link[data-archived-row]')).toHaveLength(17);
+  });
+
+  it('under a type filter that leaves fewer than 10 active rows, archived rows move up into the first 10', async () => {
+    const { rowIds, archivedIds, summary, suffix } = await render({ ...ON, type: 'bug' }, '/');
+    expect(rowIds()).toEqual([...activeBugs, '031', '023']);
+    expect(archivedIds()).toEqual(['031', '023']);
+    expect(text(summary())).toBe('Show all 13 specs · 5 archived');
+    expect(text(suffix())).toBe('· 5 archived');
+  });
+
+  it('with the switch off the fold counts the active rows only and names no archive', async () => {
+    const { rowIds, archivedIds, summary, suffix } = await render(DEFAULT_QUERY, '/');
+    expect(rowIds()).toHaveLength(10);
+    expect(archivedIds()).toEqual([]);
+    expect(text(summary())).toBe('Show all 22 specs');
+    expect(suffix()).toBeNull();
+  });
+
+  it('reads the fold in German: "Alle 39 Specs zeigen · 17 archiviert"', async () => {
+    const { fixture, summary } = await render(ON, '/');
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(summary())).toBe('Alle 39 Specs zeigen · 17 archiviert');
   });
 });

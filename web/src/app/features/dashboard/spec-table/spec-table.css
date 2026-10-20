@@ -245,38 +245,6 @@
   color: var(--muted-ink);
 }
 
-.t-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  min-block-size: 44px;
-  padding: 0 16px;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.archived-link {
-  display: inline-flex;
-  gap: 8px;
-  align-items: baseline;
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  text-decoration: none;
-}
-
-.archived-link:hover {
-  color: var(--color-base-content);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.archived-id {
-  color: var(--disp-text);
-  font-variant-numeric: tabular-nums;
-}
-
 /* The sort menu, in the popover and the sheet (prototype `.pop-item`). The prototype popover is at least 240 px wide; the panel's 8 px padding is part of that. */
 .sort-menu {
   display: grid;

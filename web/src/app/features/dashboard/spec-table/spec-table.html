@@ -176,25 +176,18 @@
         </li>
       </ng-template>
     </div>
-  } @else if (rows().length === 0) {
+  } @else if (rows().length === 0 && archive().length === 0) {
     <p class="empty">{{ 'specs.empty' | transloco }}</p>
+  } @else if (rows().length === 0 && !query().archived) {
+    <!-- Spec 050 (T8, ISC-289): no active spec and the archive hidden; the toggle in the head is the action. -->
+    <p class="empty" data-empty="active">
+      {{ (archive().length === 1 ? 'specs.emptyActive.one' : 'specs.emptyActive.other') | transloco: { count: archive().length } }}
+    </p>
   } @else {
     <p class="empty">
       {{ 'specs.noMatch' | transloco: { phase: noMatchPhase() } }}
       <button type="button" class="btn btn-sm btn-ghost" (click)="clearFilter()">{{ 'specs.clearFilter' | transloco }}</button>
     </p>
-  }
-
-  @if (archive().length > 0) {
-    <div id="archive" class="t-foot" data-fold="archive" tabindex="-1">
-      <ui-icon name="layers" [size]="16" />
-      <span>{{ (archive().length === 1 ? 'specs.archived.one' : 'specs.archived.other') | transloco: { count: archive().length } }}</span>
-      @for (spec of archive(); track spec.id) {
-        <a class="archived-link" [routerLink]="['/w', ws(), 's', spec.id]" [attr.data-archived-row]="spec.id" [title]="spec.title">
-          <span class="archived-id">{{ spec.id }}</span> {{ archivedName(spec) }}
-        </a>
-      }
-    </div>
   }
 </ui-card>
 
