@@ -66,6 +66,24 @@ function overlayOpen(): boolean {
 }
 
 /**
+ * The spec `[` (`delta` -1) or `]` (+1) opens from spec `id`, the one rule both key paths share (spec 052, ISC-331).
+ * `order` is the dashboard's row order, `favorites` the ids of the workspace's favourite rows in that order. With
+ * favourites, the step goes to the nearest favourite after (before) `id`'s place in `order`, so a spec without a star
+ * steps too; without, to the neighbouring row. No wrap-around: undefined when nothing lies that way or `id` is not in
+ * `order`.
+ */
+export function stepSpec(order: readonly string[], favorites: readonly string[], id: string, delta: -1 | 1): string | undefined {
+  const index = order.indexOf(id);
+  if (index < 0) return undefined;
+  if (favorites.length === 0) return order[index + delta];
+  const starred = new Set(favorites);
+  for (let at = index + delta; at >= 0 && at < order.length; at += delta) {
+    if (starred.has(order[at])) return order[at];
+  }
+  return undefined;
+}
+
+/**
  * The shell's state (plan 002 § Client shell contract): the container tier the shell measures, zen and the rail
  * toggle, where the tab bar goes, and the current workspace / spec / area / tab from the router. Router-driven: the
  * route is re-read on every `NavigationEnd`, never held elsewhere, so reload and back land on the same screen.
@@ -126,9 +144,10 @@ export class ShellState {
   /**
    * The shell's keys until T102's `KeyboardService` takes over (no `g` sequences here): Esc leaves a spec for its
    * workspace, `[` / `]` open the previous / next spec in the dashboard's row `order` on the same tab (single-key
-   * shortcuts only). Returns whether the key was handled.
+   * shortcuts only), or the previous / next of the `favorites` when the workspace has any (`stepSpec`, spec 052).
+   * Returns whether the key was handled.
    */
-  handleKey(event: KeyboardEvent, order: readonly string[]): boolean {
+  handleKey(event: KeyboardEvent, order: readonly string[], favorites: readonly string[]): boolean {
     if (event.defaultPrevented || ((event.ctrlKey || event.metaKey || event.altKey) && !altTyped(event))) return false;
     if (event.target instanceof Element && event.target.closest(TYPING)) return false;
     const ws = this.ws();
@@ -142,8 +161,7 @@ export class ShellState {
       return true;
     }
     if ((event.key === '[' || event.key === ']') && this.settings.settings().singleKeyShortcuts) {
-      const index = order.indexOf(id);
-      const next = index < 0 ? undefined : order[index + (event.key === ']' ? 1 : -1)];
+      const next = stepSpec(order, favorites, id, event.key === ']' ? 1 : -1);
       if (next === undefined) return false;
       event.preventDefault();
       // Spec 051 (ISC-291): the same switch rule as the header's spec select.

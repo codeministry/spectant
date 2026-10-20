@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import { areaById, areaPath, specLink, workspaceLink } from '../layout/shell/areas';
 import { ShellData } from '../layout/shell/shell-data.service';
-import { ShellState } from '../layout/shell/shell-state.service';
+import { ShellState, stepSpec } from '../layout/shell/shell-state.service';
 import { PaletteIndex } from '../layout/command-palette/palette-index';
 import { writeClipboard } from '../shared/ui/command-chip/command-chip';
 import { ToastService } from '../shared/ui/toast/toast';
@@ -309,9 +309,9 @@ export class KeyboardService {
         void this.router.navigate(['/w', ws]);
         return true;
       case 'step-spec': {
-        const order = this.data.specOrder();
-        const index = order.indexOf(id);
-        const next = index < 0 ? undefined : order[index + action.delta];
+        // Spec 052 (ISC-331): with favourites the step walks them only, from a starred spec or not.
+        const favorites = this.data.favoriteRows().map((row) => row.id);
+        const next = stepSpec(this.data.specOrder(), favorites, id, action.delta);
         if (next === undefined) return false;
         void this.router.navigate(specLink(ws, next, this.state.tab() ?? ''));
         return true;
