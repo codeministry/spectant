@@ -15,6 +15,7 @@
 // `PackError` with its code; the CLI maps the code to its JSON error.
 import { GOAL_HEADINGS, levelTwoSection } from './archive.ts';
 import { parseClaims } from './claims.ts';
+import type { ClaimKind } from './files.ts';
 import { type LaneProfile, laneProfileOf, parseTaskLines } from './tasks.ts';
 
 /** The cap of a pack in UTF-8 bytes of its compact JSON. */
@@ -33,7 +34,10 @@ export interface PackTask {
 
 export interface PackClaim {
   readonly id: string;
-  /** The claim text as written, without its kind prefix, trailing edge and trailing marks. */
+  /**
+   * The claim text as written, its kind prefix kept (`Anti: …`, `Antecedent: …`), without its trailing edge and
+   * trailing marks. Without the prefix a builder reads an Anti claim as its opposite.
+   */
   readonly text: string;
   /** Claim IDs from the claim's trailing `(after: …)`. */
   readonly after: readonly string[];
@@ -101,6 +105,9 @@ export class PackError extends Error {
 
 const unticked = (cell: string): string => cell.replace(/`/g, '').trim();
 
+/** The prefix claims.ts strips for a claim's kind, put back so the pack reads as spec.md does. */
+const KIND_PREFIX: Readonly<Record<ClaimKind, string>> = { normal: '', anti: 'Anti: ', antecedent: 'Antecedent: ' };
+
 /** The pack of `input.task`: keys in the fixed order, `decisions` empty and `truncated` 0 until T15 and T18. */
 export function buildPack(input: PackInput): Pack {
   const tab = parseTaskLines({ tasks: input.tasks, ...(input.constitution === null ? {} : { constitution: input.constitution }) });
@@ -119,7 +126,7 @@ export function buildPack(input: PackInput): Pack {
     spec: input.slug,
     goal: (levelTwoSection(input.spec, GOAL_HEADINGS) ?? '').trim(),
     task: { id: row.id, lane, text: row.text, paths: [...row.paths] },
-    claim: { id: claim.id, text: claim.text, after: [...claim.after] },
+    claim: { id: claim.id, text: `${KIND_PREFIX[claim.kind]}${claim.text}`, after: [...claim.after] },
     probe: strategy === undefined ? null : { type: strategy.type, check: strategy.check, threshold: strategy.threshold, tool: strategy.tool },
     lane: lane === null || input.constitution === null ? null : laneProfileOf(input.constitution, lane),
     decisions: [],

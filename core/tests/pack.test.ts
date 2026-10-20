@@ -22,6 +22,8 @@ instead of the whole \`spec.md\`.
 
 - [ ] ISC-1: The pack holds the goal verbatim, \`a | b\` kept.
 - [ ] ISC-2: The pack names the lane profile. (after: ISC-1)
+- [ ] ISC-3: Anti: the pack reads an Anti claim as its opposite. (after: ISC-2)
+- [ ] ISC-4: Antecedent: the lane table is written.
 
 ## Test Strategy
 
@@ -35,6 +37,8 @@ const TASKS = `# Tasks
 
 - [ ] T1 · ISC-1 · [seam] · core — Pack type with fixed keys · \`core/src/pack.ts\`
 - [ ] T2 · ISC-2 · [P] · server — Lane profile next to lanesOf (after: T1) · \`core/src/tasks.ts\`, \`core/src/index.ts\`
+- [ ] T3 · ISC-3 · core — Kind prefix kept in the claim text · \`core/src/pack.ts\`
+- [ ] T4 · ISC-4 · core — Lane table first · \`specs/constitution.md\`
 `;
 
 const CONSTITUTION = `# Constitution
@@ -98,6 +102,11 @@ describe('buildPack', () => {
     expect(pack.task).toEqual({ id: 'T2', lane: 'server', text: 'Lane profile next to lanesOf', paths: ['core/src/tasks.ts', 'core/src/index.ts'] });
     expect(pack.claim).toEqual({ id: 'ISC-2', text: 'The pack names the lane profile.', after: ['ISC-1'] });
     expect(pack.lane).toEqual({ name: 'server', context: ['server/CLAUDE.md'], probe: 'bun test tests/' });
+  });
+
+  test('an Anti: or Antecedent: claim keeps its kind prefix, so a builder never reads it as its opposite', () => {
+    expect(buildPack(input('T3')).claim).toEqual({ id: 'ISC-3', text: 'Anti: the pack reads an Anti claim as its opposite.', after: ['ISC-2'] });
+    expect(buildPack(input('T4')).claim).toEqual({ id: 'ISC-4', text: 'Antecedent: the lane table is written.', after: [] });
   });
 
   test('without a constitution the lane profile is null; without a Test Strategy row the probe is null', () => {

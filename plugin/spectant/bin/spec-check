@@ -2854,11 +2854,23 @@ function section2(lines, heading) {
     out.push({ text: lines[i] ?? "", line: i + 1 });
   return out;
 }
-function lanesOf(constitution) {
+function laneRows(constitution) {
   const rows = section2(constitution.replace(/\r\n?/g, `
 `).split(`
 `), /^## Lanes\s*$/).filter((l) => l.text.trim().startsWith("|"));
-  return rows.slice(1).filter((row) => !SEPARATOR_ROW.test(row.text.trim())).map((row) => (cells(row.text)[0] ?? "").replace(/`/g, "").trim()).filter((name) => name !== "");
+  return rows.slice(1).filter((row) => !SEPARATOR_ROW.test(row.text.trim())).map((row) => cells(row.text));
+}
+var unticked = (cell) => (cell ?? "").replace(/`/g, "").trim();
+function lanesOf(constitution) {
+  return laneRows(constitution).map((row) => unticked(row[0])).filter((name) => name !== "");
+}
+function laneProfileOf(constitution, lane) {
+  const row = laneRows(constitution).find((r) => unticked(r[0]) === lane);
+  if (row === undefined)
+    return null;
+  const context = (row[2] ?? "").split(", ").map(unticked).filter((c) => c !== "");
+  const probe = unticked(row[3]);
+  return { name: lane, context, probe: probe === "" ? null : probe };
 }
 function parseBody(rest, warn) {
   const body = rest.replace(/^\s*\u00B7\s*/, "");
@@ -3939,6 +3951,41 @@ function nextSpecNumber(taken) {
     if (Number.isInteger(n) && n > highest)
       highest = n;
   return highest + 1;
+}
+
+// core/src/pack.ts
+class PackError extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "PackError";
+    this.code = code;
+  }
+}
+var unticked2 = (cell) => cell.replace(/`/g, "").trim();
+var KIND_PREFIX2 = { normal: "", anti: "Anti: ", antecedent: "Antecedent: " };
+function buildPack(input) {
+  const tab = parseTaskLines({ tasks: input.tasks, ...input.constitution === null ? {} : { constitution: input.constitution } });
+  const row = tab.tasks.find((t) => t.id === input.task);
+  if (row === undefined)
+    throw new PackError("unknown-task", `${input.task} is no task line of ${input.slug}/tasks.md.`);
+  const doc = parseClaims(input.spec);
+  const claim = row.claim === "" ? undefined : doc.claims.find((c) => c.id === row.claim);
+  if (claim === undefined) {
+    throw new PackError("no-claim", `${input.task} names ${row.claim === "" ? "no claim" : row.claim}, which ${input.slug}/spec.md does not carry.`);
+  }
+  const strategy = doc.testStrategy.find((r) => unticked2(r.isc) === claim.id);
+  const lane = row.lane === "" ? null : row.lane;
+  return {
+    spec: input.slug,
+    goal: (levelTwoSection(input.spec, GOAL_HEADINGS) ?? "").trim(),
+    task: { id: row.id, lane, text: row.text, paths: [...row.paths] },
+    claim: { id: claim.id, text: `${KIND_PREFIX2[claim.kind]}${claim.text}`, after: [...claim.after] },
+    probe: strategy === undefined ? null : { type: strategy.type, check: strategy.check, threshold: strategy.threshold, tool: strategy.tool },
+    lane: lane === null || input.constitution === null ? null : laneProfileOf(input.constitution, lane),
+    decisions: [],
+    truncated: 0
+  };
 }
 
 // core/src/resolve.ts
@@ -5914,6 +5961,44 @@ function archiveRestore(ctx, args, refs2, dry) {
   emit(ctx, args, { dryRun: dry, restored }, restored.map((r) => `${dry ? "would restore" : "restored"} ${r.from} \u2192 ${r.to}${r.archived === null ? "" : ` (archived ${r.archived}${r.archivedReason === null ? "" : `: ${r.archivedReason}`})`}`));
   return EXIT.ok;
 }
+function packLines(pack) {
+  const { task, claim, probe, lane } = pack;
+  const after = claim.after.length === 0 ? "" : ` (after: ${claim.after.join(", ")})`;
+  return [
+    `${pack.spec} ${task.id} \xB7 ${task.lane ?? "no lane"} \u2014 ${task.text}${task.paths.length === 0 ? "" : ` \xB7 ${task.paths.join(", ")}`}`,
+    `  ${claim.id}: ${claim.text}${after}`,
+    `  probe: ${probe === null ? "no Test Strategy row" : `${probe.type} | ${probe.check} | ${probe.threshold} | ${probe.tool}`}`,
+    `  lane: ${lane === null ? "no lane profile" : `${lane.name} \u2014 load ${lane.context.join(", ") || "nothing"} \u2014 probe ${lane.probe ?? "none"}`}`,
+    `  goal: ${pack.goal.split(`
+`)[0] ?? ""}`,
+    ...pack.decisions.map((d) => `  decision (${d.source}): ${d.text}`)
+  ];
+}
+function pack(ctx, args) {
+  const ref = specRef(ctx.root, required(args, 0, "spec"));
+  const task = required(args, 1, "task (T<k>)");
+  const tasks = readIfExists2(join5(ref.dir, "tasks.md"));
+  if (tasks === null)
+    throw bad(`${rel(ctx, ref.dir)} has no tasks.md`);
+  let value;
+  try {
+    value = buildPack({
+      slug: ref.slug,
+      spec: specText(ctx, ref),
+      tasks,
+      plan: readIfExists2(join5(ref.dir, "plan.md")),
+      constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
+      task
+    });
+  } catch (error) {
+    if (error instanceof PackError)
+      throw bad(`${error.message} (${error.code})`);
+    throw error;
+  }
+  ctx.out(args.flags.has("json") ? JSON.stringify(value) : packLines(value).join(`
+`));
+  return EXIT.ok;
+}
 var COMMANDS = {
   allocate: {
     usage: 'allocate <type> <slug> [--goal "<one sentence>"] [--title "<title>"] [--feature F<n>] [--actor <actor>] [--json]',
@@ -5951,6 +6036,11 @@ var COMMANDS = {
     usage: "frontier <spec> [--json]",
     summary: "takeable claims and tasks of one spec, with what holds the rest",
     run: frontier
+  },
+  pack: {
+    usage: "pack <spec> T<k> [--json]",
+    summary: "the context pack of one task: the goal, the task line, its claim, its Test Strategy row, its lane profile from the constitution and its decisions; --json prints one compact line. Writes nothing; an unknown task exits 1",
+    run: pack
   },
   claim: {
     usage: "claim <ISC-N> [--task T<k>] --session <actor> [--worktree <path>] [--json]",

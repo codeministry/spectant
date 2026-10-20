@@ -25,7 +25,9 @@
 //   its id from `input.itemStates` as `itemState` (item-state.ts `itemStates`, or the live frame's cards), because
 //   item-state.ts parses task lines through this module. `status` with question, concerns and fail stays the row's own.
 //
-// Pure: text in, model out. No file system, no Bun API; never throws.
+// - `tickTaskText` (spec 010, T7/T8, ISC-334) plans `spec-check tick`: one box set to `[x]`, every other byte kept.
+//
+// Pure: text in, model out. No file system, no Bun API; never throws, except `tickTaskText` on an unknown task.
 import { splitSpecEdges } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import type { CardState, FrameCard, ProbeMappingRow, TaskCount, TaskParseInput, TaskRow, TaskStatus, TasksTab } from './files.ts';
@@ -428,6 +430,47 @@ function laneCounts(tasks: readonly TaskRow[], tableLanes: readonly string[]): T
   for (const t of tasks) if (t.lane !== '' && t.lane !== OPERATOR && !order.includes(t.lane)) order.push(t.lane);
   order.push(OPERATOR);
   return order.map((name) => ({ name, count: tasks.filter((t) => t.lane === name).length })).filter((c) => c.count > 0);
+}
+
+// ── tick ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+export type TaskTextErrorCode = 'unknown-task';
+
+/** A refused tick (spec 010, T7, ISC-334): no box line carries the task id. Nothing was planned. */
+export class TaskTextError extends Error {
+  readonly code: TaskTextErrorCode;
+
+  constructor(code: TaskTextErrorCode, message: string) {
+    super(message);
+    this.name = 'TaskTextError';
+    this.code = code;
+  }
+}
+
+/**
+ * `tasks.md` with the box of task `id` set to `[x]` (T7 seam, T8): the first box line `parseTaskLines` reads with that
+ * id, fenced lines skipped, and only its box character changes; line ends, a BOM and a missing final newline stay as
+ * they were. A box already `[x]` or `[X]` returns the text unchanged with `changed` false. No box line with the id
+ * (a struck bullet has no box) throws `TaskTextError('unknown-task')`: the one throw in this module.
+ */
+export function tickTaskText(text: string, id: string): { text: string; changed: boolean } {
+  // Lines at even indexes, their line ends at odd ones, so joining them back gives the text byte for byte.
+  const parts = text.split(/(\r\n|\n|\r)/);
+  let fenced = false;
+  for (let i = 0; i < parts.length; i += 2) {
+    const raw = parts[i] ?? '';
+    if (FENCE.test(raw)) {
+      fenced = !fenced;
+      continue;
+    }
+    const box = fenced ? null : BOX_LINE.exec(raw);
+    if (box?.[2] !== id) continue;
+    if (box[1] !== ' ') return { text, changed: false };
+    const at = raw.indexOf('- [') + 3;
+    parts[i] = `${raw.slice(0, at)}x${raw.slice(at + 1)}`;
+    return { text: parts.join(''), changed: true };
+  }
+  throw new TaskTextError('unknown-task', `${id}: no task line with a checkbox carries this id.`);
 }
 
 /** `## Probe Mapping`: one row per table line, plus the diagnostics that tie it to the task list. */

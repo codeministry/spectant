@@ -37,6 +37,8 @@ import { REVIEWED_FILES, codeReviewedMarkText, gateState, hashForGate, readGateM
 import type { GateCheck, ReviewedFile, TreeEntry, TreeEntryMode } from '../../core/src/gates.ts';
 import { nextSpecNumber, specNumbersOf } from '../../core/src/allocate.ts';
 import { activityReading, readLockSources } from '../../core/src/locks.ts';
+import { PackError, buildPack } from '../../core/src/pack.ts';
+import type { Pack } from '../../core/src/pack.ts';
 import { listSpecs, resolveSpec } from '../../core/src/resolve.ts';
 import type { SpecRef } from '../../core/src/resolve.ts';
 import { resolveEdges } from '../../core/src/spec-edges.ts';
@@ -1531,6 +1533,50 @@ function archiveRestore(ctx: Context, args: Args, refs: readonly SpecRef[], dry:
   return EXIT.ok;
 }
 
+// ── pack ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The pack for a person: the task, its claim and probe, the lane, the goal's first line. */
+function packLines(pack: Pack): string[] {
+  const { task, claim, probe, lane } = pack;
+  const after = claim.after.length === 0 ? '' : ` (after: ${claim.after.join(', ')})`;
+  return [
+    `${pack.spec} ${task.id} · ${task.lane ?? 'no lane'} — ${task.text}${task.paths.length === 0 ? '' : ` · ${task.paths.join(', ')}`}`,
+    `  ${claim.id}: ${claim.text}${after}`,
+    `  probe: ${probe === null ? 'no Test Strategy row' : `${probe.type} | ${probe.check} | ${probe.threshold} | ${probe.tool}`}`,
+    `  lane: ${lane === null ? 'no lane profile' : `${lane.name} — load ${lane.context.join(', ') || 'nothing'} — probe ${lane.probe ?? 'none'}`}`,
+    `  goal: ${pack.goal.split('\n')[0] ?? ''}`,
+    ...pack.decisions.map((d) => `  decision (${d.source}): ${d.text}`),
+  ];
+}
+
+/**
+ * `pack <spec> T<k>` (spec 010, T5, ISC-333): the task's context pack from spec.md, tasks.md, plan.md and the
+ * constitution, built by core's `buildPack`. Writes nothing. `--json` prints `JSON.stringify(pack)` on one line: the
+ * pack's size is defined on the compact form, so it never goes through `emit`'s pretty print.
+ */
+function pack(ctx: Context, args: Args): number {
+  const ref = specRef(ctx.root, required(args, 0, 'spec'));
+  const task = required(args, 1, 'task (T<k>)');
+  const tasks = readIfExists(join(ref.dir, 'tasks.md'));
+  if (tasks === null) throw bad(`${rel(ctx, ref.dir)} has no tasks.md`);
+  let value: Pack;
+  try {
+    value = buildPack({
+      slug: ref.slug,
+      spec: specText(ctx, ref),
+      tasks,
+      plan: readIfExists(join(ref.dir, 'plan.md')),
+      constitution: readIfExists(join(ctx.root, 'specs', 'constitution.md')),
+      task,
+    });
+  } catch (error) {
+    if (error instanceof PackError) throw bad(`${error.message} (${error.code})`);
+    throw error;
+  }
+  ctx.out(args.flags.has('json') ? JSON.stringify(value) : packLines(value).join('\n'));
+  return EXIT.ok;
+}
+
 // ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface Command {
@@ -1578,6 +1624,12 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     usage: 'frontier <spec> [--json]',
     summary: 'takeable claims and tasks of one spec, with what holds the rest',
     run: frontier,
+  },
+  pack: {
+    usage: 'pack <spec> T<k> [--json]',
+    summary:
+      'the context pack of one task: the goal, the task line, its claim, its Test Strategy row, its lane profile from the constitution and its decisions; --json prints one compact line. Writes nothing; an unknown task exits 1',
+    run: pack,
   },
   claim: {
     usage: 'claim <ISC-N> [--task T<k>] --session <actor> [--worktree <path>] [--json]',

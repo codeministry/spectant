@@ -1,0 +1,35 @@
+{
+  "spec": "001-digest",
+  "goal": "A week of notes becomes one digest page\nthat fits on one screen and keeps every note title, `a | b` included.",
+  "task": {
+    "id": "T3",
+    "lane": "plugin",
+    "text": "Repeated titles kept as two lines",
+    "paths": [
+      "plugin/src/digest-cli.ts",
+      "plugin/tests/digest.test.ts"
+    ]
+  },
+  "claim": {
+    "id": "ISC-3",
+    "text": "Anti: the digest drops a note whose title repeats an earlier one.",
+    "after": [
+      "ISC-2"
+    ]
+  },
+  "probe": {
+    "type": "bun-test",
+    "check": "digest: repeated title",
+    "threshold": "both notes listed",
+    "tool": "`bun test plugin/ -t \"repeat\"`"
+  },
+  "lane": {
+    "name": "plugin",
+    "context": [
+      "plugin/CLAUDE.md"
+    ],
+    "probe": "bun test plugin/"
+  },
+  "decisions": [],
+  "truncated": 0
+}

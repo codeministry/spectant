@@ -330,6 +330,7 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
       git(root, 'worktree', 'add', '-q', tree, '-b', 'feature/001-digest');
       const board = cli(root, [0], 'frontier', '001', '--json');
       expect(() => JSON.parse(board) as unknown).not.toThrow();
+      cli(root, [0], 'pack', '001', 'T1', '--json');
       cli(root, [0], 'claim', 'ISC-1', '--task', 'T1', '--session', BUILDER, '--worktree', '.worktrees/001-digest');
       const step = (event: string, ...extra: string[]): string => cli(root, [0], 'activity', event, '--task', 'T1', '--claim', 'ISC-1', ...extra);
       step('dispatch', '--session', MAIN);
