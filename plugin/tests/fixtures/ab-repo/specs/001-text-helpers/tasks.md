@@ -14,6 +14,7 @@ nothing, it decomposes.
 - [ ] T1 · ISC-1 · [P] · lib — `slugify` with its test · `src/slugify.ts`, `src/slugify.test.ts`
 - [ ] T2 · ISC-2 · [P] · lib — `truncate` with its test · `src/truncate.ts`, `src/truncate.test.ts`
 - [ ] T3 · ISC-3 · [P] · lib — `titleCase` with its test · `src/titlecase.ts`, `src/titlecase.test.ts`
+- [ ] T4 · ISC-4 · [P] · lib — `wordCount` with its test · `src/wordcount.ts`, `src/wordcount.test.ts`
 
 ## Probe Mapping
 
@@ -22,3 +23,4 @@ nothing, it decomposes.
 | T1 | ISC-1 | `bun test src/slugify.test.ts` |
 | T2 | ISC-2 | `bun test src/truncate.test.ts` |
 | T3 | ISC-3 | `bun test src/titlecase.test.ts` |
+| T4 | ISC-4 | `bun test src/wordcount.test.ts` |

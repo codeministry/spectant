@@ -1,7 +1,7 @@
 ---
 spec: 001-text-helpers
-created: 2026-10-20T17:57:57.663Z
-updated: 2026-10-20T17:57:57.663Z
+created: 2026-10-20T18:12:14.861Z
+updated: 2026-10-20T18:12:14.861Z
 rounds: 0
 ---
 
@@ -10,6 +10,6 @@ rounds: 0
 
 # Context 001 — Text helpers
 
-## Goal — confirmed 2026-10-20T17:57:57.663Z
+## Goal — confirmed 2026-10-20T18:12:14.861Z
 
-Three text helpers (slugify, truncate, titleCase) behave as specified on every input, each proven by its own test.
+Four text helpers (slugify, truncate, titleCase, wordCount) follow every rule this spec writes down, each proven by its own test.

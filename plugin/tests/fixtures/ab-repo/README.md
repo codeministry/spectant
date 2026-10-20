@@ -1,7 +1,7 @@
 # ab-repo — the measuring fixture of spec 010 (ISC-344)
 
-A throwaway repository template for an A/B implement round: one reviewed feature spec (`specs/001-text-helpers/`, three
-parallel tasks, about 6 KB of spec prose and twenty Decisions rows) over an empty `src/`.
+A throwaway repository template for an A/B implement round: one reviewed feature spec (`specs/001-text-helpers/`, four
+parallel tasks, about 10 KB of spec prose and 48 Decisions rows, six per claim naming its claim or task and the rest naming neither) over an empty `src/`. A builder without the pack finds its rules only in `spec.md`.
 
 Run it twice, once per plugin build, each in its own copy (the transcripts land in separate project folders):
 
