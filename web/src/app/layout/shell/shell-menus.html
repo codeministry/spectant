@@ -53,22 +53,41 @@
   </nav>
 </ng-template>
 
+<!--
+  Spec 052 (T19 to T21): the spec select lists the workspace's favourites only, each row the link plus its own star;
+  without a favourite it shows how to star one. Unstarring keeps the select open; the sheet's height stays as it opened.
+-->
 <ng-template #specList>
-  <nav class="picker" data-picker="spec" [attr.aria-label]="'shell.spec.menu' | transloco">
+  <nav
+    #specNav
+    class="picker"
+    data-picker="spec"
+    [class.picker-sheet]="compact()"
+    [style.min-block-size.px]="compact() ? sheetHeight() : null"
+    [attr.aria-label]="'shell.spec.menu' | transloco"
+  >
     @if (workspaceName(); as name) {
-      <p class="menu-head" aria-hidden="true">{{ 'shell.spec.head' | transloco: { workspace: name } }}</p>
+      <p class="menu-head" aria-hidden="true">{{ 'shell.spec.headFavorites' | transloco: { workspace: name } }}</p>
+    }
+    @let rows = data.favoriteRows();
+    @if (rows.length === 0) {
+      <p class="picker-empty">
+        <ui-icon name="star" aria-hidden="true" [size]="14" />
+        {{ 'shell.spec.favoritesEmpty' | transloco }}
+      </p>
     }
     <ul uiRovingList [singleKeys]="singleKeys()">
-      @for (spec of data.specRows(); track spec.id) {
+      @for (spec of rows; track spec.id; let first = $first) {
         @let current = specOpen() && spec.id === state.specId();
-        <li>
+        <li class="fav-row">
           <a
+            #link="uiRovingItem"
             uiRovingItem
             class="entry picker-entry"
             [attr.data-spec]="spec.id"
             [routerLink]="specEntryLink(spec.id)"
             [attr.aria-current]="current ? 'true' : null"
-            [attr.data-autofocus]="current ? '' : null"
+            [attr.data-autofocus]="current || (first && !openIsFavorite()) ? '' : null"
             (click)="close('spec')"
           >
             <span class="entry-id">{{ spec.id }}</span>
@@ -82,6 +101,14 @@
               <ui-icon class="entry-check" name="check" [size]="16" />
             }
           </a>
+          <button
+            ui-star-toggle
+            [uiRovingCompanion]="link"
+            [pressed]="true"
+            [label]="'favorites.toggle' | transloco: { id: spec.id, title: spec.title }"
+            [attr.data-star]="spec.id"
+            (click)="unstar(spec, $event)"
+          ></button>
         </li>
       }
       @if (state.ws(); as ws) {
@@ -92,7 +119,7 @@
             class="entry picker-entry picker-all"
             fragment="specs"
             [routerLink]="['/w', ws]"
-            [attr.data-autofocus]="specOpen() ? null : ''"
+            [attr.data-autofocus]="rows.length === 0 ? '' : null"
             (click)="close('spec')"
           >
             <ui-icon name="list" [size]="16" />
@@ -104,6 +131,7 @@
         </li>
       }
     </ul>
+    <ui-live-region data-favorites-announcer />
   </nav>
 </ng-template>
 
@@ -123,7 +151,7 @@
   <ui-popover #workspacePopover class="picker-popover" placement="start" [label]="'shell.workspace.menu' | transloco">
     <ng-container [ngTemplateOutlet]="workspaceList" />
   </ui-popover>
-  <ui-popover #specPopover class="picker-popover" placement="start" [label]="'shell.spec.menu' | transloco">
+  <ui-popover #specPopover class="picker-popover spec-popover" placement="start" [label]="'shell.spec.menu' | transloco">
     <ng-container [ngTemplateOutlet]="specList" />
   </ui-popover>
 }

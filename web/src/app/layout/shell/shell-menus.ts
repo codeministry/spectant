@@ -1,5 +1,16 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, signal, viewChild } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  type ElementRef,
+  inject,
+  Injector,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -15,13 +26,15 @@ import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import type { Tone } from '../../shared/ui/tone';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
-import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
+import { UiLiveRegion } from '../../shared/ui/live-region/live-region';
+import { UiRovingCompanion, UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
+import { UiStarToggle } from '../../shared/ui/star-toggle/star-toggle';
 import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { AreaMenu } from '../area-menu/area-menu';
 import { AssistantDot } from '../assistant/assistant.service';
 import { Mascot } from '../assistant/mascot';
 import { switchSpecLink } from './areas';
-import { ShellData } from './shell-data.service';
+import { ShellData, type SpecRowView } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
 /**
@@ -100,6 +113,9 @@ const LANGS = ['en', 'de'] as const;
     UiSheet,
     UiRovingItem,
     UiRovingList,
+    UiRovingCompanion,
+    UiStarToggle,
+    UiLiveRegion,
     UiSegmented,
     AreaMenu,
     Mascot,
@@ -152,6 +168,21 @@ export class ShellMenus {
     return THEMES.map((key) => ({ key, label: this.transloco.translate(`settings.theme.${key}`) }));
   });
   protected readonly langOptions: readonly SegmentedOption[] = LANGS.map((key) => ({ key, label: key.toUpperCase() }));
+
+  /** Spec 052 (T19): whether the open spec is a favourite row; the select's focus lands on it, else on the first row. */
+  protected readonly openIsFavorite = computed(() => {
+    const id = this.state.specId();
+    return this.specOpen() && this.data.favoriteRows().some((row) => row.id === id);
+  });
+
+  /**
+   * Spec 052 (T21): the spec sheet's height as it opened, in px, held as its `min-block-size` while it stays open.
+   * The sheet is anchored to the bottom: without it every unstarred row would shrink it and pull the row above under
+   * the finger. Null in the popover and until the open sheet has been measured.
+   */
+  protected readonly sheetHeight = signal<number | null>(null);
+  private readonly specNav = viewChild<ElementRef<HTMLElement>>('specNav');
+  private readonly announcer = viewChild(UiLiveRegion);
 
   /** The phase chip of a spec row (prototype `pop-specs`: `chip(phaseOf(s))`), its tone and icon. */
   protected readonly phaseTone = (phase: string): Tone => PHASE_TONE[phase] ?? 'neutral';
@@ -270,6 +301,31 @@ export class ShellMenus {
     return switchSpecLink(this.state.ws() ?? '', id, this.state.tab());
   }
 
+  /**
+   * Spec 052 (T21, ISC-301): the star of a row in the spec select unsets that favourite and nothing else: no
+   * navigation, the select stays open and the row leaves it (the last one leaves the empty state). Focus moves to the
+   * star of the row that moves up, else the row above, else "all specs"; the removal is announced. The second click of
+   * a double click is ignored: the next star slides under the pointer and would lose its favourite too.
+   */
+  protected unstar(spec: SpecRowView, event: MouseEvent): void {
+    if (event.detail > 1) return;
+    const nav = this.specNav()?.nativeElement;
+    if (this.compact() && !this.sheetHeight() && nav) this.sheetHeight.set(nav.getBoundingClientRect().height);
+    const rows = this.data.favoriteRows();
+    const index = rows.findIndex((row) => row.id === spec.id);
+    // `at()` because index 0 must not wrap to the last row: the row above the first is "all specs".
+    const next = rows.at(index + 1) ?? (index > 0 ? rows.at(index - 1) : undefined);
+    void this.data.toggleFavorite(spec.slug ?? spec.id);
+    this.announcer()?.announce(this.transloco.translate('favorites.removed', { id: spec.id }));
+    afterNextRender(
+      () => {
+        const target = next ? nav?.querySelector(`[data-star="${next.id}"]`) : nav?.querySelector('.picker-all');
+        if (target instanceof HTMLElement) target.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
   private show(kind: MenuKind, trigger: HTMLElement, retry = true): void {
     // WebKit does not focus a clicked link; the popover and the sheet return focus to whatever had it on open.
     trigger.focus();
@@ -285,11 +341,24 @@ export class ShellMenus {
     }
     if (this.compact()) {
       this.sheet.set(kind);
+      if (kind === 'spec') this.freezeSheet();
       return;
     }
     const popover = this.popover(kind);
     if (popover) popover.show(trigger);
     else later();
+  }
+
+  /** Spec 052 (T21): measures the spec sheet once it has opened; each open starts from its own height. */
+  private freezeSheet(): void {
+    this.sheetHeight.set(null);
+    afterNextRender(
+      () => {
+        const nav = this.specNav()?.nativeElement;
+        if (nav && this.sheet() === 'spec') this.sheetHeight.set(nav.getBoundingClientRect().height);
+      },
+      { injector: this.injector },
+    );
   }
 
   private menuOf(kind: 'area' | 'page'): AreaMenu | undefined {

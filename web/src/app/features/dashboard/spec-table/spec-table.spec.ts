@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { convertToParamMap, provideRouter, Router } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
@@ -9,6 +10,7 @@ import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { ShellData } from '../../../layout/shell/shell-data.service';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, parseListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
@@ -44,6 +46,30 @@ const BODY = {
 };
 
 const text = (el: Element | null | undefined): string => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
+
+/**
+ * The open workspace's favourites as the list reads them (spec 052, T18): the folder set behind `isFavorite`, flipped
+ * by `toggleFavorite`, which records each call. Every block of this file gets it, since each row now asks `ShellData`
+ * for its star; the real service has its own spec and the e2e group `toggle` runs both together.
+ */
+class FakeShellData {
+  readonly favoriteIds = signal<ReadonlySet<string>>(new Set());
+  readonly toggled: string[] = [];
+  isFavorite(spec: string): boolean {
+    return this.favoriteIds().has(spec);
+  }
+  toggleFavorite(spec: string): Promise<boolean> {
+    this.toggled.push(spec);
+    const ids = new Set(this.favoriteIds());
+    if (!ids.delete(spec)) ids.add(spec);
+    this.favoriteIds.set(ids);
+    return Promise.resolve(true);
+  }
+}
+
+beforeEach(() => {
+  TestBed.configureTestingModule({ providers: [{ provide: ShellData, useClass: FakeShellData }] });
+});
 
 describe('SpecTable (prototype port, T89)', () => {
   beforeEach(() => {
@@ -148,7 +174,8 @@ describe('SpecTable (prototype port, T89)', () => {
     const { host } = await render();
     const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
     const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
-    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rtrack', 'rmeter']);
+    // Spec 052 (T17): the favorite star's cell closes the row.
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rtrack', 'rmeter', 'rstar']);
     expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
     expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
     expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ragent', 'rprio', 'ui-stage-track', 'phase']);
@@ -672,7 +699,8 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
           preloadLangs: true,
         }),
       ],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      // The fake again: a test that resets the module mid-way loses the file's `beforeEach` provider (spec 052, T18).
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ShellData, useClass: FakeShellData }],
     });
     const http = TestBed.inject(HttpTestingController);
     const settings = TestBed.inject(SettingsService);
@@ -1109,5 +1137,100 @@ describe('toggle off shows no archived spec (spec 050, ISC-289)', () => {
     expect(text(host.querySelector('p.empty'))).toBe('No specs yet');
     expect(host.querySelector('[data-empty="active"]')).toBeNull();
     expect(text(host.querySelector('[data-count="archived"]'))).toBe('0 archived specs');
+  });
+});
+
+describe('favorite stars in the spec list (spec 052, T18, ISC-300)', () => {
+  const STARRED = {
+    specs: [wire('002', { slug: '002-web-console', title: 'Web console' }), wire('003'), wire('005')],
+    archive: [{ id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature' }],
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderStars(url = '/', query: ListQuery = DEFAULT_QUERY, body: Record<string, unknown> = STARRED) {
+    await TestBed.inject(Router).navigateByUrl(url);
+    const shell = TestBed.inject(ShellData) as unknown as FakeShellData;
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('archive', readArchiveRows(body));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const item = (id: string) => host.querySelector<HTMLElement>(`.row-link[data-spec-row="${id}"]`)?.closest('li') ?? null;
+    const star = (id: string) => item(id)?.querySelector<HTMLButtonElement>('button[ui-star-toggle]') ?? null;
+    const link = (id: string) => host.querySelector<HTMLAnchorElement>(`.row-link[data-spec-row="${id}"]`);
+    const starredRows = () =>
+      [...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].filter((row) => star(row.dataset['specRow'] ?? '') !== null).map((row) => row.dataset['specRow']);
+    return { fixture, host, shell, star, link, starredRows };
+  }
+
+  it('gives every active row one star named by its id and title, and no archived row one', async () => {
+    const { host, star, starredRows } = await renderStars('/', { ...DEFAULT_QUERY, archived: true });
+    expect(host.querySelectorAll('.row-link[data-spec-row]')).toHaveLength(4);
+    expect(starredRows()).toEqual(['002', '003', '005']);
+    expect(host.querySelectorAll('button[ui-star-toggle]')).toHaveLength(3);
+    expect(star('001')).toBeNull();
+    expect(star('002')?.getAttribute('aria-label')).toBe('Favorite: 002 Web console');
+    expect(star('003')?.getAttribute('aria-label')).toBe('Favorite: 003 Spec 003');
+    // Outside the row link: a control inside a link is a nested interactive element.
+    expect(star('002')?.closest('a')).toBeNull();
+  });
+
+  it('presses the star of a favourite folder and follows the set without a re-render of the rows', async () => {
+    const { fixture, shell, star } = await renderStars();
+    expect(['002', '003', '005'].map((id) => star(id)?.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false']);
+    // The folder name, never the row id: a stored `002` stars nothing.
+    shell.favoriteIds.set(new Set(['002', '003-slug']));
+    await fixture.whenStable();
+    expect(['002', '003', '005'].map((id) => star(id)?.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(star('003')?.getAttribute('title')).toBe('Remove from favorites');
+    expect(star('002')?.getAttribute('title')).toBe('Add to favorites');
+  });
+
+  it("a click toggles the row's spec folder through ShellData and shows the new state", async () => {
+    const { fixture, shell, star } = await renderStars();
+    star('002')?.click();
+    await fixture.whenStable();
+    expect(shell.toggled).toEqual(['002-web-console']);
+    expect(star('002')?.getAttribute('aria-pressed')).toBe('true');
+    star('002')?.click();
+    await fixture.whenStable();
+    expect(shell.toggled).toEqual(['002-web-console', '002-web-console']);
+    expect(star('002')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it("keeps one tab stop per row: the star mirrors its row link's tabindex, and focusing it makes its row active", async () => {
+    const { fixture, star, link } = await renderStars();
+    expect(['002', '003', '005'].map((id) => star(id)?.tabIndex)).toEqual([0, -1, -1]);
+    link('003')?.focus();
+    await fixture.whenStable();
+    expect(['002', '003', '005'].map((id) => star(id)?.tabIndex)).toEqual([-1, 0, -1]);
+    star('005')?.focus();
+    await fixture.whenStable();
+    expect(['002', '003', '005'].map((id) => link(id)?.tabIndex)).toEqual([-1, -1, 0]);
+    expect(fixture.componentInstance.selectedId()).toBe('005');
+  });
+
+  it('stars the rows behind "Show all N" once the fold is open', async () => {
+    const many = { specs: Array.from({ length: 12 }, (_, i) => wire(String(i + 2).padStart(3, '0'))), archive: [] };
+    const { fixture, shell, star, starredRows } = await renderStars('/?open=specs', DEFAULT_QUERY, many);
+    expect(starredRows()).toHaveLength(12);
+    star('013')?.click();
+    await fixture.whenStable();
+    expect(shell.toggled).toEqual(['013-slug']);
+    expect(star('013')?.getAttribute('aria-pressed')).toBe('true');
   });
 });

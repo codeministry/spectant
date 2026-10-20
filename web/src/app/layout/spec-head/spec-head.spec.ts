@@ -12,6 +12,7 @@ import specGolden from '../../../../../core/fixtures/harbor.spec.golden.json';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import type { ShellRouteData } from '../shell/areas';
+import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
 import { SpecHead } from './spec-head';
@@ -100,6 +101,7 @@ function setUp(
   planning: ApiResult<PlanningBody> = ok(PLAN),
   spec: () => ApiResult<unknown> = () => unserved,
   dashboard: unknown = HARBOR,
+  favorites: readonly string[] = [],
 ): void {
   const api = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
@@ -107,6 +109,10 @@ function setUp(
     planning: () => Promise.resolve(planning),
     spec: () => Promise.resolve(spec()),
     reviewedHashes: () => null,
+    // Spec 052 (T16): the favourites route answers the stored set; a write answers the set it leaves.
+    favorites: () => Promise.resolve(ok({ specs: favorites })),
+    putFavorite: (_ws: string, id: string) => Promise.resolve(ok({ specs: [...favorites, id].sort() })),
+    deleteFavorite: (_ws: string, id: string) => Promise.resolve(ok({ specs: favorites.filter((other) => other !== id) })),
   };
   TestBed.configureTestingModule({
     imports: [
@@ -731,13 +737,14 @@ describe('SpecHead details at compact (T67, ISC-250)', () => {
 
   // Spec 021 T70 (ISC-250): the title row's one action at compact is the gate button, icon only beside the title; its
   // label stays its accessible name, so it never wraps under the title. Medium and wide keep the 32 px inline button.
+  // Spec 052 T16 (ISC-300): the favourite star stands before it, the title row's only other action at compact.
   it('keeps the gate button beside the title at compact, icon only, its label as its name', async () => {
     setUp(unserved, with002);
     const root = await open('/w/harbor/s/002/status', 'compact');
     const row = root.querySelector<HTMLElement>('[data-title-row]');
     const gate = row?.querySelector<HTMLElement>('[data-head-actions] app-gate-button');
     expect(gate?.getAttribute('data-size')).toBe('icon');
-    expect(row?.querySelectorAll('[data-head-actions] > *')).toHaveLength(1);
+    expect([...(row?.querySelectorAll('[data-head-actions] > *') ?? [])].map((el) => el.localName)).toEqual(['button', 'app-gate-button']);
     expect(text(gate?.querySelector('[data-gate-action] .gate-label') ?? null)).toBe('Re-mark');
     expect(details(root)?.querySelector('app-gate-button')).toBeNull();
   });
@@ -768,4 +775,57 @@ describe('SpecHead details at compact (T67, ISC-250)', () => {
       expect(root.querySelector('.meta-row > [data-meta]')).not.toBeNull();
     });
   }
+});
+
+// Spec 052, T16 · ISC-300 (design.md § Mobile, Tablet, Desktop: spec head): the favourite star is the first child of the
+// title row's actions on every tier, a 28 px box beside the gate icon at compact and the 32 px quiet box at medium and
+// wide; it never moves into "Details of NNN". Its pressed state is `ShellData.isFavorite` of the open spec's folder, a
+// click hands that folder (never the bare id) to `ShellData.toggleFavorite`, and an archived spec shows no star.
+describe('SpecHead favourite star (T16, ISC-300)', () => {
+  type Body = { head: Record<string, unknown> };
+  const GOLDEN = specGolden as unknown as Record<string, Body>;
+  const with002 = () => ok(GOLDEN['specs/002-web-console']);
+  const star = (root: HTMLElement): HTMLButtonElement | null =>
+    root.querySelector<HTMLButtonElement>('[data-title-row] [data-head-actions] > button[ui-star-toggle]');
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const SIZES = { compact: 'head', medium: 'sm', wide: 'sm' } as const;
+
+  for (const tier of ['compact', 'medium', 'wide'] as const) {
+    it(`puts the star first in the title row's actions, sized ${SIZES[tier]}, named for the spec (${tier})`, async () => {
+      setUp(unserved, with002);
+      const root = await open('/w/harbor/s/002/status', tier);
+      const actions = root.querySelector<HTMLElement>('[data-title-row] [data-head-actions]');
+      expect(star(root)).not.toBeNull();
+      expect(actions?.firstElementChild).toBe(star(root));
+      expect(star(root)?.getAttribute('data-size')).toBe(SIZES[tier]);
+      expect(star(root)?.getAttribute('aria-label')).toBe('Favorite: 002 Web console');
+      expect(star(root)?.getAttribute('aria-pressed')).toBe('false');
+      expect(root.querySelector('ui-disclosure[data-head-details] [ui-star-toggle]')).toBeNull();
+    });
+  }
+
+  it('reads pressed from ShellData.isFavorite of the folder slug', async () => {
+    setUp(unserved, with002, HARBOR, ['002-web-console']);
+    const root = await open('/w/harbor/s/002/status');
+    expect(TestBed.inject(ShellData).isFavorite('002-web-console')).toBe(true);
+    expect(star(root)?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('hands the folder slug to ShellData.toggleFavorite on a click and shows the new state', async () => {
+    setUp(unserved, with002);
+    const root = await open('/w/harbor/s/002/status');
+    const toggle = vi.spyOn(TestBed.inject(ShellData), 'toggleFavorite');
+    star(root)?.click();
+    await settle();
+    await settle();
+    expect(toggle).toHaveBeenCalledExactlyOnceWith('002-web-console');
+    expect(star(root)?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('shows no star on an archived spec', async () => {
+    setUp(ok(PLAN), () => unserved, HARBOR, ['001-manifest-sync']);
+    const root = await open('/w/harbor/s/001');
+    expect(crumb(root, 'spec')?.querySelector('ui-icon[name="archive"]')).not.toBeNull();
+    expect(root.querySelector('[ui-star-toggle]')).toBeNull();
+  });
 });

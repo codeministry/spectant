@@ -45,7 +45,16 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'library'>;
+/**
+ * Every harbor spec is a favourite by default (spec 052), so the header spec select lists all three as before. These
+ * rows carry no folder slug, so `ShellData.favoriteRows` matches them by id.
+ */
+const ALL_FAVORITES = ['002', '003', '004'];
+
+type FakeApi = Pick<
+  ApiClient,
+  'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'library' | 'favorites' | 'putFavorite' | 'deleteFavorite'
+>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
@@ -60,6 +69,9 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
     library: () => Promise.resolve({ kind: 'not-found', served: false }),
+    favorites: () => Promise.resolve(ok({ specs: ALL_FAVORITES })),
+    putFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
+    deleteFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
     ...overrides,
   };
 }
@@ -808,6 +820,139 @@ describe('ShellComponent', () => {
         const url = TestBed.inject(Router).url;
         expect(url).toBe(href);
         expect(url).not.toBe('/w/harbor/s/003');
+      });
+    });
+
+    describe('spec select lists the favourites (spec 052)', () => {
+      const COMPACT = 390;
+      const WIDTHS = [
+        ['popover', 1440, 'ui-popover nav[data-picker="spec"]'],
+        ['bottom sheet', COMPACT, 'ui-sheet[data-tier="compact"] dialog[open] nav[data-picker="spec"]'],
+      ] as const;
+      const SLUGS: Readonly<Record<string, string>> = { '002': '002-web-console', '003': '003-config-loader', '004': '004-retention-policies' };
+
+      /** A workspace whose stored favourites start as `initial`; DELETE answers the remaining set, as the server does. */
+      const withFavorites = (initial: readonly string[]) => {
+        let stored = [...initial];
+        const deleteFavorite = vi.fn((_ws: string, spec: string) => {
+          stored = stored.filter((id) => id !== spec);
+          return Promise.resolve({ kind: 'ok' as const, body: { specs: [...stored] } });
+        });
+        // The rows carry their folders here: a favourite is stored and unset by folder name, never by the bare id.
+        const slugged = { ...HARBOR, specs: HARBOR.specs.map((spec) => ({ ...spec, slug: SLUGS[spec.id] })) };
+        const api = fakeApi({
+          ...TWO,
+          dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(slugged) : { kind: 'not-found', served: true }),
+          favorites: () => Promise.resolve(ok({ specs: [...stored] })),
+          deleteFavorite,
+        });
+        return { api, deleteFavorite };
+      };
+
+      /** Opens `url` at `width`, opens the spec select and returns its nav (in the popover or the bottom sheet). */
+      const openSelect = async (api: FakeApi, url: string, width: number, scope: string) => {
+        setUp(api);
+        const { root, harness } = await open(url, width);
+        const picker = control(root, 'spec');
+        click(picker);
+        await harness.fixture.whenStable();
+        const nav = root.querySelector<HTMLElement>(scope);
+        if (!nav) throw new Error(`spec select missing at ${width}`);
+        return { root, harness, picker, nav };
+      };
+      const ids = (nav: HTMLElement) => [...nav.querySelectorAll('a[data-spec]')].map((row) => row.getAttribute('data-spec'));
+
+      describe.each(WIDTHS)('in the %s', (_, width, scope) => {
+        it('lists exactly the favourites in dashboard order, not the open spec without a star, then all specs (ISC-298)', async () => {
+          const { api } = withFavorites(['003-config-loader', '004-retention-policies']);
+          const { nav } = await openSelect(api, '/w/harbor/s/002/claims', width, scope);
+          expect(nav.querySelector('.menu-head')?.textContent.trim()).toBe('Favorites · harbor');
+          // Dashboard order (004 before 003), and the open spec 002 has no star, so it is no row.
+          expect(ids(nav)).toEqual(['004', '003']);
+          expect(nav.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
+          expect(nav.querySelector('.picker-empty')).toBeNull();
+          // Each row is the unchanged link plus its own star, a sibling of the link, never inside it.
+          const stars = [...nav.querySelectorAll<HTMLButtonElement>('li > button[ui-star-toggle]')];
+          expect(stars.map((star) => star.getAttribute('aria-pressed'))).toEqual(['true', 'true']);
+          expect(stars.map((star) => star.getAttribute('aria-label'))).toEqual(['Favorite: 004 Retention policies', 'Favorite: 003 Config loader']);
+          expect(nav.querySelector('a[data-spec] button')).toBeNull();
+          // The roving list keeps one tab stop: the first row's link and its star.
+          expect(stars.map((star) => star.tabIndex)).toEqual([0, -1]);
+          // The open spec is no favourite: focus lands on the first favourite row.
+          expect(document.activeElement?.getAttribute('data-spec')).toBe('004');
+        });
+
+        it('focuses the open spec when it is a favourite (ISC-298)', async () => {
+          const { api } = withFavorites(['002-web-console', '003-config-loader']);
+          const { nav } = await openSelect(api, '/w/harbor/s/002', width, scope);
+          expect(ids(nav)).toEqual(['002', '003']);
+          expect(document.activeElement?.getAttribute('data-spec')).toBe('002');
+          expect(document.activeElement?.getAttribute('aria-current')).toBe('true');
+        });
+
+        it('shows no spec row but the star hint and all specs without favourites (ISC-299)', async () => {
+          const { api } = withFavorites([]);
+          const { nav } = await openSelect(api, '/w/harbor/s/002', width, scope);
+          expect(nav.querySelector('.menu-head')?.textContent.trim()).toBe('Favorites · harbor');
+          expect(ids(nav)).toEqual([]);
+          const hint = nav.querySelector('p.picker-empty');
+          expect(hint?.textContent.trim()).toBe('No favorites yet. Star a spec on its page or in the spec list to see it here.');
+          expect(hint?.querySelector('ui-icon')?.getAttribute('aria-hidden')).toBe('true');
+          const all = nav.querySelector<HTMLAnchorElement>('.picker-all');
+          expect(all?.getAttribute('href')).toBe('/w/harbor#specs');
+          expect(document.activeElement).toBe(all);
+        });
+
+        it('unstars a row without navigating, keeps the select open, then shows the empty state (ISC-301)', async () => {
+          const { api, deleteFavorite } = withFavorites(['003-config-loader', '004-retention-policies']);
+          const { root, harness, picker, nav } = await openSelect(api, '/w/harbor/s/002/claims', width, scope);
+          const router = TestBed.inject(Router);
+          const starOf = (id: string) => nav.querySelector<HTMLButtonElement>(`li:has(> a[data-spec="${id}"]) > button[ui-star-toggle]`);
+
+          // A double click's second click lands on the next star, which slides under the pointer: it is ignored.
+          click(starOf('004') as HTMLElement, { detail: 2 });
+          await harness.fixture.whenStable();
+          expect(deleteFavorite).not.toHaveBeenCalled();
+
+          click(starOf('004') as HTMLElement, { detail: 1 });
+          await harness.fixture.whenStable();
+          expect(deleteFavorite).toHaveBeenCalledWith('harbor', '004-retention-policies');
+          expect(router.url).toBe('/w/harbor/s/002/claims');
+          expect(picker.getAttribute('aria-expanded')).toBe('true');
+          expect(nav.isConnected).toBe(true);
+          expect(ids(nav)).toEqual(['003']);
+          // Focus moves to the star of the row that moved up; the removal is announced.
+          expect(document.activeElement).toBe(starOf('003'));
+          expect(nav.querySelector('ui-live-region')?.textContent.trim()).toBe('004 removed from favorites');
+
+          click(starOf('003') as HTMLElement);
+          await harness.fixture.whenStable();
+          expect(router.url).toBe('/w/harbor/s/002/claims');
+          expect(picker.getAttribute('aria-expanded')).toBe('true');
+          expect(ids(nav)).toEqual([]);
+          expect(nav.querySelector('p.picker-empty')).not.toBeNull();
+          // No row left: focus falls back to "all specs".
+          expect(document.activeElement).toBe(nav.querySelector('.picker-all'));
+          expect(root.querySelector(scope)).toBe(nav);
+        });
+      });
+
+      it('moves focus to the previous star when the last row is unstarred (ISC-301)', async () => {
+        const { api } = withFavorites(['002-web-console', '003-config-loader', '004-retention-policies']);
+        const { harness, nav } = await openSelect(api, '/w/harbor', 1440, WIDTHS[0][2]);
+        click(nav.querySelector('li:has(> a[data-spec="003"]) > button[ui-star-toggle]') as HTMLElement);
+        await harness.fixture.whenStable();
+        expect(ids(nav)).toEqual(['004', '002']);
+        expect(document.activeElement).toBe(nav.querySelector('li:has(> a[data-spec="002"]) > button[ui-star-toggle]'));
+      });
+
+      it('freezes the bottom sheet height while rows are unstarred, so it does not jump (ISC-301)', async () => {
+        const { api } = withFavorites(['003-config-loader', '004-retention-policies']);
+        const { harness, nav } = await openSelect(api, '/w/harbor/s/002', COMPACT, WIDTHS[1][2]);
+        expect(nav.style.minBlockSize).not.toBe('');
+        click(nav.querySelector('li:has(> a[data-spec="004"]) > button[ui-star-toggle]') as HTMLElement);
+        await harness.fixture.whenStable();
+        expect(nav.style.minBlockSize).not.toBe('');
       });
     });
   });
