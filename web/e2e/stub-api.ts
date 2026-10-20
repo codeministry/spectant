@@ -675,8 +675,8 @@ export const STUB_ADMIN = {
   directories: { '/stub/new-workspace': 'empty-master', '/stub/beacon': 'beacon' } as Readonly<Record<string, string>>,
 } as const;
 
-// The workspace admin contract (`server/src/workspace-admin.contract.ts`), loaded by a computed path like core below:
-// it imports core's dashboard types, whose graph `tsc -p web/e2e` must not walk. Its shapes are restated here.
+// The workspace admin contract (`server/src/workspace-admin.contract.ts`), imported statically above so Playwright loads
+// it under Node as it loads spec-routes.contract; its shapes are restated here for the stub's own types.
 type ImageKind = 'logo' | 'screenshot';
 type ImageTypeName = 'png' | 'jpeg' | 'webp';
 type WorkspaceStatus = 'ok' | 'empty' | 'missing';

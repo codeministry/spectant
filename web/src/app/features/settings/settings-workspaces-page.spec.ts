@@ -6,6 +6,7 @@ import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { WorkspaceAdminSummary } from '../../../../../server/src/workspace-admin.contract';
 import { ApiClient, type ApiResult, type WorkspaceAdminResult, type WorkspaceListEntry } from '../../core/api.service';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { DemoData } from '../../shared/demo/demo-data';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { SettingsService } from '../../core/settings.service';
@@ -74,7 +75,8 @@ function setUp(
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
+    // '**' lets a probe navigate away from the page's URL and back (ISC-313); the page itself is not routed here.
+    providers: [provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
   return calls;
 }
@@ -100,22 +102,95 @@ function type(root: HTMLElement, selector: string, value: string): void {
   input.dispatchEvent(new Event('input'));
 }
 
-describe('SettingsWorkspacesPage (spec 016, T14, ISC-312)', () => {
-  it('renders the rows from the API stub, no [data-demo], no DemoData', async () => {
-    setUp();
-    const demo = TestBed.inject(DemoData);
-    const read = vi.spyOn(demo, 'workspaces');
+/**
+ * Resolutions of `DemoData` while the page renders: the stand-in counts every resolution and throws on any read, so
+ * the page neither injects the demo service nor reads from it (ISC-312).
+ */
+function guardDemoData(): { resolved: number } {
+  const seen = { resolved: 0 };
+  TestBed.overrideProvider(DemoData, {
+    useFactory: () => {
+      seen.resolved += 1;
+      return new Proxy(
+        {},
+        {
+          // Only the demo service's own members throw: Angular's injector reads `constructor` and `ngOnDestroy`.
+          get: (_target, key) => {
+            if (key === 'constructor' || !(key in DemoData.prototype)) return undefined;
+            throw new Error(`DemoData.${String(key)} read by the workspaces page`);
+          },
+        },
+      );
+    },
+  });
+  return seen;
+}
+
+describe('SettingsWorkspacesPage (spec 016, T14, T22, ISC-312)', () => {
+  it('ISC-312: renders exactly the stub\'s two rows, no [data-demo] and never resolves DemoData', async () => {
+    const calls = setUp();
+    const demo = guardDemoData();
     const { root } = await render();
 
+    expect(calls.lists).toBeGreaterThanOrEqual(1);
     const rows = [...root.querySelectorAll<HTMLElement>('[data-ws-row]')];
     expect(rows.map((row) => row.dataset['wsRow'])).toEqual(['harbor', 'quay']);
-    expect(rows[0]?.textContent).toContain('Harbor');
+    expect(rows.map((row) => row.querySelector('[data-ws-name] .ws-label')?.textContent.trim())).toEqual(['Harbor', 'Quay']);
     expect(rows[1]?.querySelector('[data-status]')?.getAttribute('data-status')).toBe('missing');
     expect(root.matches('[data-demo]') || root.querySelector('[data-demo]') !== null).toBe(false);
     expect(root.querySelector('[data-demo-chip]')).toBeNull();
-    expect(read).not.toHaveBeenCalled();
+    expect(demo.resolved).toBe(0);
     expect(root.querySelector('[data-ws-toolbar]')?.textContent).toContain('2');
     for (const gone of ['.path-pop', '.upload-off', '.grip', '.reveal', '[data-ws-fab]', 'ui-kbd']) expect(root.querySelector(gone)).toBeNull();
+  });
+
+  it('ISC-312: add, row menu, upload entries and the remove dialog\'s Confirm are active and reach the API', async () => {
+    const restore = stubDialogApi();
+    try {
+      const calls = setUp();
+      const demo = guardDemoData();
+      const { fixture, root } = await render();
+      const enabled = (element: Element | null): boolean =>
+        element !== null && !element.hasAttribute('disabled') && element.getAttribute('aria-disabled') !== 'true';
+
+      // Add: the submit button is enabled and a submit with a path reaches `addWorkspace`.
+      expect(enabled(root.querySelector('form[data-ws-add-row] button[type="submit"][data-ws-add]'))).toBe(true);
+      type(root, '[data-ws-add-path]', '/x/pier');
+      await fixture.whenStable();
+      one<HTMLFormElement>(root, 'form[data-ws-add-row]').dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      expect(calls.adds).toEqual([{ path: '/x/pier' }]);
+
+      for (const slug of ['harbor', 'quay']) {
+        const row = one<HTMLElement>(root, `[data-ws-row="${slug}"]`);
+        // The row menu's trigger and both upload entries are enabled, each with its file input.
+        expect(enabled(row.querySelector('[data-row-menu]'))).toBe(true);
+        for (const act of ['uploadLogo', 'uploadScreenshot']) expect(enabled(row.querySelector(`[data-row-act="${act}"]`))).toBe(true);
+        for (const kind of ['logo', 'screenshot']) expect(enabled(row.querySelector(`input[type="file"][data-row-upload="${kind}"]`))).toBe(true);
+      }
+
+      // An upload entry opens the file chooser of its kind.
+      const harbor = one<HTMLElement>(root, '[data-ws-row="harbor"]');
+      const chooser = vi.spyOn(one<HTMLInputElement>(harbor, 'input[data-row-upload="logo"]'), 'click').mockImplementation(() => undefined);
+      one<HTMLButtonElement>(harbor, '[data-row-act="uploadLogo"]').click();
+      expect(chooser).toHaveBeenCalledTimes(1);
+
+      // Remove from the row menu opens the dialog; its Confirm is enabled and sends the remove.
+      one<HTMLButtonElement>(harbor, '[data-row-act="remove"]').click();
+      await settle(fixture);
+      const dialog = one<HTMLDialogElement>(one(root, '[data-ws-remove-dialog]'), 'dialog');
+      expect(dialog.hasAttribute('open')).toBe(true);
+      const confirm = one<HTMLButtonElement>(dialog, 'button[data-ws-remove-confirm]');
+      expect(enabled(confirm)).toBe(true);
+      confirm.click();
+      await settle(fixture);
+      expect(calls.writes).toEqual(['remove harbor']);
+
+      expect(root.querySelector('[data-demo], [data-demo-chip]')).toBeNull();
+      expect(demo.resolved).toBe(0);
+    } finally {
+      restore();
+    }
   });
 
   it('refuses an empty path inline without a request', async () => {
@@ -227,51 +302,108 @@ function slugs(root: HTMLElement): Array<string | undefined> {
   return [...root.querySelectorAll<HTMLElement>('[data-ws-row]')].map((row) => row.dataset['wsRow']);
 }
 
-describe('SettingsWorkspacesPage sort (spec 016, T20, ISC-313)', () => {
-  for (const [query, order] of [
-    ['', ['harbor', 'quay', 'pier']],
-    ['?sort=added', ['harbor', 'quay', 'pier']],
-    ['?sort=bogus', ['harbor', 'quay', 'pier']],
-    ['?sort=name', ['harbor', 'pier', 'quay']],
-    ['?sort=status', ['quay', 'pier', 'harbor']],
+/** The admin methods on `ShellData`, spied so a probe can show sorting calls none of them (ISC-313). */
+const ADMIN = ['addWorkspace', 'renameWorkspace', 'rescanWorkspace', 'removeWorkspace', 'uploadWorkspaceImage'] as const;
+
+function spyAdmin(): () => string[] {
+  const data = TestBed.inject(ShellData);
+  const spies = ADMIN.map((method) => [method, vi.spyOn(data, method)] as const);
+  return () => spies.filter(([, spy]) => spy.mock.calls.length > 0).map(([method]) => method);
+}
+
+/** Every writing request the HTTP backend saw; the API stub sends none, so any here came from around it. */
+function writesSent(http: HttpTestingController): string[] {
+  return http.match((request) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)).map(({ request }) => `${request.method} ${request.url}`);
+}
+
+function menuOf(fixture: ComponentFixture<SettingsWorkspacesPage>): UiSortMenu {
+  return fixture.debugElement.query(By.directive(UiSortMenu)).componentInstance as UiSortMenu;
+}
+
+const ORDER = {
+  added: ['harbor', 'quay', 'pier'],
+  name: ['harbor', 'pier', 'quay'],
+  status: ['quay', 'pier', 'harbor'],
+} as const;
+
+describe('SettingsWorkspacesPage sort (spec 016, T20, T23, ISC-313)', () => {
+  for (const [query, key] of [
+    ['', 'added'],
+    ['?sort=added', 'added'],
+    ['?sort=bogus', 'added'],
+    ['?sort=name', 'name'],
+    ['?sort=status', 'status'],
   ] as const) {
-    it(`sort: orders the rows for "${query || 'no query'}" and the menu names that key`, async () => {
-      setUp(() => Promise.resolve(ok(THREE)));
+    it(`ISC-313: orders the rows for "${query || 'no query'}" by ${key}, the menu names that key, and nothing is written`, async () => {
+      const calls = setUp(() => Promise.resolve(ok(THREE)));
+      const admin = spyAdmin();
+      const http = TestBed.inject(HttpTestingController);
       await TestBed.inject(Router).navigateByUrl(`/${query}`);
       const { fixture, root } = await render();
-      expect(slugs(root)).toEqual(order);
-      const menu = fixture.debugElement.query(By.directive(UiSortMenu)).componentInstance as UiSortMenu;
-      expect(menu.value()).toBe(query === '' || query === '?sort=bogus' ? 'added' : query.slice('?sort='.length));
+      expect(slugs(root)).toEqual(ORDER[key]);
+      const menu = menuOf(fixture);
+      expect(menu.value()).toBe(key);
       expect(menu.options().map((option) => option.key)).toEqual(['name', 'status', 'added']);
+      expect([calls.adds, calls.renames, calls.writes, admin(), writesSent(http)]).toEqual([[], [], [], [], []]);
     });
   }
 
-  it('sort: a pick writes only ?sort= with replaceUrl, keeps it in the URL and sends no request', async () => {
+  it('ISC-313: a pick writes only ?sort= with replaceUrl, re-reads nothing and sends no POST, PUT, PATCH or DELETE', async () => {
     const calls = setUp(() => Promise.resolve(ok(THREE)));
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/');
     const navigate = vi.spyOn(router, 'navigate');
+    const admin = spyAdmin();
     const http = TestBed.inject(HttpTestingController);
     const { fixture, root } = await render();
     const lists = calls.lists;
-    const menu = (): UiSortMenu => fixture.debugElement.query(By.directive(UiSortMenu)).componentInstance as UiSortMenu;
 
-    menu().choose.emit('status');
+    menuOf(fixture).choose.emit('status');
     await settle(fixture);
     expect(router.url).toBe('/?sort=status');
     expect(navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ replaceUrl: true, queryParamsHandling: 'merge' }));
-    expect(slugs(root)).toEqual(['quay', 'pier', 'harbor']);
+    expect(slugs(root)).toEqual(ORDER.status);
 
-    menu().choose.emit('name');
+    menuOf(fixture).choose.emit('name');
     await settle(fixture);
     expect(router.url).toBe('/?sort=name');
-    expect(slugs(root)).toEqual(['harbor', 'pier', 'quay']);
+    expect(slugs(root)).toEqual(ORDER.name);
+
+    menuOf(fixture).choose.emit('added');
+    await settle(fixture);
+    expect(router.url).toBe('/');
+    expect(slugs(root)).toEqual(ORDER.added);
 
     expect(calls.lists).toBe(lists);
-    expect(calls.adds).toEqual([]);
-    expect(calls.renames).toEqual([]);
-    expect(calls.writes).toEqual([]);
-    expect(http.match((request) => request.method !== 'GET')).toEqual([]);
+    expect([calls.adds, calls.renames, calls.writes, admin(), writesSent(http)]).toEqual([[], [], [], [], []]);
+  });
+
+  it('ISC-313: the sort survives a reload and a navigation away and back to the same URL', async () => {
+    const calls = setUp(() => Promise.resolve(ok(THREE)));
+    const router = TestBed.inject(Router);
+    const admin = spyAdmin();
+    const http = TestBed.inject(HttpTestingController);
+    await router.navigateByUrl('/?sort=status');
+    const first = await render();
+    expect(slugs(first.root)).toEqual(ORDER.status);
+
+    // Reload: the page is created anew on the same URL.
+    first.fixture.destroy();
+    const { fixture, root } = await render();
+    expect(slugs(root)).toEqual(ORDER.status);
+    expect(menuOf(fixture).value()).toBe('status');
+
+    // Away, then back: the order follows the URL, so the same URL brings the same order back.
+    await router.navigateByUrl('/elsewhere');
+    await settle(fixture);
+    expect(slugs(root)).toEqual(ORDER.added);
+    await router.navigateByUrl('/?sort=status');
+    await settle(fixture);
+    expect(router.url).toBe('/?sort=status');
+    expect(slugs(root)).toEqual(ORDER.status);
+    expect(menuOf(fixture).value()).toBe('status');
+
+    expect([calls.adds, calls.renames, calls.writes, admin(), writesSent(http)]).toEqual([[], [], [], [], []]);
   });
 
   it('sort: hidden in the empty state', async () => {
