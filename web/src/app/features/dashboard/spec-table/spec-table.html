@@ -6,20 +6,6 @@
       <ui-chip variant="plain" data-count="active">{{ (rows().length === 1 ? 'specs.count.one' : 'specs.count.other') | transloco: { count: rows().length } }}</ui-chip>
       <ui-chip variant="plain" data-count="archived">{{ (archivedTotal() === 1 ? 'specs.archived.one' : 'specs.archived.other') | transloco: { count: archivedTotal() } }}</ui-chip>
     </div>
-    <!-- Spec 050 (T3, ISC-287): "Show archived", only with an archive, between the counters and the sort (focus order
-         counters, toggle, sort, phase, type); the label stays the same in both states, aria-pressed carries the state. -->
-    @if (archive().length > 0) {
-      <button
-        type="button"
-        class="btn btn-sm btn-ghost archived-toggle"
-        data-control="archived"
-        [attr.aria-pressed]="query().archived"
-        (click)="toggleArchived()"
-      >
-        <ui-icon name="archive" [size]="16" />
-        <span>{{ 'specs.showArchived' | transloco }}</span>
-      </button>
-    }
     <!-- Spec 021 (T80): the sort control follows the counters in the DOM, so focus reaches it before the filter chips. -->
     @if (compact()) {
       <button
@@ -55,6 +41,21 @@
         [label]="'specs.filter.typeLabel' | transloco"
         (valueChange)="setType($event)"
       />
+    }
+    <!-- Spec 050 (T3, ISC-287): "Show archived", only with an archive, the last of the filters (focus order counters,
+         sort, phase, type, toggle), so the head's first line keeps the phase chips (P3); the label stays the same in both
+         states, aria-pressed carries the state. -->
+    @if (archive().length > 0) {
+      <button
+        type="button"
+        class="btn btn-sm btn-ghost archived-toggle"
+        data-control="archived"
+        [attr.aria-pressed]="query().archived"
+        (click)="toggleArchived()"
+      >
+        <ui-icon name="archive" [size]="16" />
+        <span>{{ 'specs.showArchived' | transloco }}</span>
+      </button>
     }
     @if (query().takeable) {
       <button type="button" class="btn btn-sm btn-ghost takeable-flag" data-filter="takeable" aria-pressed="true" (click)="clearTakeable()">

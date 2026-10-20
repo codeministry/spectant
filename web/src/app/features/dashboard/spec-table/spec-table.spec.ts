@@ -165,11 +165,13 @@ describe('SpecTable (prototype port, T89)', () => {
     const { host } = await render();
     const head = host.querySelector('.t-head') as HTMLElement;
     const sort = head.querySelector('[data-control="sort"]') as HTMLElement;
-    // Spec 050 (T3): with an archive, "Show archived" stands between the counters and the sort.
-    expect(sort.previousElementSibling?.getAttribute('data-control')).toBe('archived');
-    expect(sort.previousElementSibling?.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
+    expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
     const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
     expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Spec 050: "Show archived" is the last of the filters, after the type chips, so the phase chips keep head line 1.
+    const toggle = head.querySelector('[data-control="archived"]') as HTMLElement;
+    const lastFilter = [...head.querySelectorAll('ui-filter-chips')].at(-1) as HTMLElement;
+    expect(lastFilter.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {

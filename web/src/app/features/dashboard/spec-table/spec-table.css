@@ -54,8 +54,8 @@
 
 /*
  * Spec 050 (T3): "Show archived", shaped like `.sort`, muted while off; pressed, the planning tree's flat primary
- * underline. From medium it leads the view cluster (the auto margin moves onto it); at compact it opens head line 2
- * at the start, the sort keeps the end. Under `pointer: coarse` a pseudo-element widens the target to 44 px.
+ * underline. It follows the filter chips, so the sort keeps its place and the phase chips stay on the head's first line
+ * (spec 021, P3). Under `pointer: coarse` a pseudo-element widens the target to 44 px.
  */
 .archived-toggle {
   --btn-bg: var(--color-base-100);
@@ -64,7 +64,6 @@
 
   position: relative;
   gap: 8px;
-  margin-inline-start: auto;
   border-radius: var(--radius-field);
   border-width: 1px;
   border-style: solid;
@@ -75,20 +74,6 @@
   --btn-fg: var(--color-base-content);
 
   box-shadow: inset 0 -2px 0 var(--color-primary);
-}
-
-.archived-toggle + .sort {
-  margin-inline-start: 0;
-}
-
-@container shell (width < 640px) {
-  .archived-toggle {
-    margin-inline-start: 0;
-  }
-
-  .archived-toggle + .sort {
-    margin-inline-start: auto;
-  }
 }
 
 @media (pointer: coarse) {
