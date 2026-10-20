@@ -204,6 +204,14 @@
   }
 }
 
+/* Spec 052: below 900 px the mini stage track leaves the one-line row, so the star's column does not starve the title;
+   the stage stays in the phase chip, as in the two-line row. */
+@container specs (width < 900px) {
+  :host ui-stage-track {
+    display: none;
+  }
+}
+
 @container specs (width >= 880px) {
   /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
   :host([data-archived]) .tline ::ng-deep .row-link {

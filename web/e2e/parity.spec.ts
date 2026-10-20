@@ -98,14 +98,15 @@
  *   `ui-segmented[data-control="view"]`, `[data-ui="command-palette"]`, `[data-settings-link]`.
  */
 import { readFileSync } from 'node:fs';
-import type { BrowserContext, Locator, Page } from '@playwright/test';
+import type { APIRequestContext, BrowserContext, Locator, Page } from '@playwright/test';
 import type { SpecPageModel } from '../../core/src/files.ts';
+import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
 import { DEMO_WORKSPACES } from '../src/app/shared/demo/fixtures/workspaces.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
 import { atWidth, expect, headerControl, menusReady, test } from './fixtures';
-import { STUB_NOTES } from './stub-api';
+import { RESET_PATH, SESSION_HEADER, STUB_NOTES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const read = (file: string): unknown => JSON.parse(readFileSync(new URL(`../../core/fixtures/${file}`, import.meta.url), 'utf8'));
@@ -1022,13 +1023,27 @@ test.describe('navigation', () => {
     });
   });
 
+  /**
+   * Spec 052 (T19): the Spec select lists only the workspace's favourites, so each switch test stars the spec it leaves
+   * and the one it picks on harbor in its own stub session; `RESET_PATH` under the same session drops them again.
+   */
+  const starOnHarbor = async (page: Page, request: APIRequestContext, session: string, folders: readonly string[]): Promise<void> => {
+    await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
+    await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+    for (const folder of folders) {
+      expect((await request.put(workspaceRoutes.favorite('harbor', folder), { headers: { [SESSION_HEADER]: session } })).ok()).toBe(true);
+    }
+  };
+
   // Spec 051 (ISC-294): the header's Spec select keeps the open area and tab, in the popover at 1440 and the bottom
   // sheet at 390; the new address survives a reload.
   for (const width of [1440, 390] as const) {
     test.describe(`spec switch at ${String(width)}`, () => {
       test.use(atWidth(width));
 
-      test(`spec select keeps tab at ${String(width)}`, async ({ page }) => {
+      test(`spec select keeps tab at ${String(width)}`, async ({ page, request }, info) => {
+        const session = `parity-switch-${info.testId}`;
+        await starOnHarbor(page, request, session, ['002-web-console', '003-config-loader']);
         const timeline = async (): Promise<void> => {
           await expect(page.locator('app-tab-bar a[data-tab="timeline"]')).toHaveAttribute('aria-current', 'page');
           await expect(page.locator('app-tab-bar a[data-tab="timeline"]')).toBeVisible();
@@ -1047,6 +1062,7 @@ test.describe('navigation', () => {
         await page.reload();
         await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/003/timeline');
         await timeline();
+        await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
       });
     });
   }
