@@ -316,9 +316,10 @@ const openPaletteWithRecent = async (page: Page): Promise<void> => {
 
 /**
  * Icons the design names for a place the prototype drew without a key: Zen's focus corners (spec 024 design.md) and
- * the Library's fog line (spec 017 design.md), the mark of Waits on you (spec 020 design.md).
+ * the Library's fog line (spec 017 design.md), the mark of Waits on you (spec 020 design.md), the spec list's Show
+ * archived toggle (spec 050 design.md).
  */
-const DESIGN_ICONS: readonly IconName[] = ['scan', 'cloud-fog', 'user-round'];
+const DESIGN_ICONS: readonly IconName[] = ['scan', 'cloud-fog', 'user-round', 'archive'];
 
 const SHELL = 'Gemeinsam · Shell';
 const WORKSPACE_VIEW = 'workspace.html';
@@ -341,7 +342,9 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: SHELL, place: 'settings popover help', route: '/w/harbor', open: openSettings, at: '[data-menu="settings"] [data-settings-link="help"]', icon: 'circle-help' },
 
   // Workspace dashboard: spec table, warnings list, palette (the prototype's Inspector rows)
-  { section: WORKSPACE_VIEW, place: 'spec table foot', route: '/w/harbor', at: '[data-panel="specs"] [data-fold="archive"]', icon: 'layers' },
+  // Spec 050 (T10, ISC-289): the archived link footer `[data-fold="archive"]` (`layers`) is gone; its pin moved to the
+  // list head's Show archived toggle, marked `archive` (design.md 050). Harbor has an archived spec, so it renders.
+  { section: WORKSPACE_VIEW, place: 'spec table archived toggle', route: '/w/harbor', at: '[data-panel="specs"] [data-control="archived"]', icon: 'archive' },
   { section: WORKSPACE_VIEW, place: 'warnings list line', route: '/w/harbor', at: '[data-warnings-list] [data-warning-spec] [data-warning-kind]', icon: 'triangle-alert' },
   { section: WORKSPACE_VIEW, place: 'warnings list empty', route: '/w/lantern', at: '[data-warnings-list] [data-warnings-empty]', icon: 'circle-check' },
   { section: WORKSPACE_VIEW, place: 'palette input', route: '/w/harbor', open: openPalette, at: '[data-ui="command-palette"] .p-input', icon: 'search' },

@@ -1013,3 +1013,99 @@ describe('archived rows under filters and the fold (spec 050, ISC-288)', () => {
     expect(text(summary())).toBe('Alle 39 Specs zeigen · 17 archiviert');
   });
 });
+
+describe('toggle off shows no archived spec (spec 050, ISC-289)', () => {
+  const ACTIVE = [
+    wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.' }),
+    wire('003', { type: 'bug' }),
+  ];
+  const ARCHIVE = [
+    { id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature', claims: { closed: 6, total: 6 }, goal: 'Syncs the manifest.', archived: '2026-09-12' },
+    { id: '004', slug: '004-old-export', title: 'Old export', type: 'bug', claims: { closed: 3, total: 4 }, goal: '', archived: null },
+  ];
+  const ARCHIVED_IDS = ARCHIVE.map((row) => row.id);
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  /** Renders the table with the fold open (`?open=specs`), so a row behind it would be in the DOM too. */
+  async function render(query: ListQuery = DEFAULT_QUERY, body: Record<string, unknown> = { specs: ACTIVE, archive: ARCHIVE }) {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?open=specs');
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('archive', readArchiveRows(body));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    return { fixture, host: fixture.nativeElement as HTMLElement };
+  }
+
+  /** Every forbidden trace of an archived spec in the panel: a list row, a row host, the old footer, a link to its page. */
+  function expectNoArchived(host: HTMLElement): void {
+    expect(host.querySelectorAll('.row-link[data-archived-row]')).toHaveLength(0);
+    expect(host.querySelectorAll('app-spec-row[data-archived]')).toHaveLength(0);
+    expect(host.querySelectorAll('[data-archived-chip]')).toHaveLength(0);
+    expect(host.querySelectorAll('[data-fold="archive"]')).toHaveLength(0);
+    expect(host.querySelectorAll('#archive, .t-foot')).toHaveLength(0);
+    for (const id of ARCHIVED_IDS) {
+      expect(host.querySelectorAll(`a[href*="/s/${id}"], a[href*="spec:${id}"], [data-spec-row="${id}"], [data-ref="spec:${id}"]`)).toHaveLength(0);
+    }
+  }
+
+  it('the default query lists the active rows only, names no archived spec anywhere and keeps "2 archived specs" in the head', async () => {
+    const { host } = await render();
+    expect(DEFAULT_QUERY.archived).toBe(false);
+    expectNoArchived(host);
+    expect([...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow'])).toEqual(['002', '003']);
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('2 archived specs');
+    expect(host.querySelector('button[data-control="archived"]')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('stays without archived rows under every sort and under a type filter that an archived spec matches', async () => {
+    const queries: ListQuery[] = [
+      ...(['id', 'stage', 'next', 'progress'] as const).map((sort) => ({ ...DEFAULT_QUERY, sort })),
+      { ...DEFAULT_QUERY, type: 'feature' },
+      { ...DEFAULT_QUERY, type: 'bug', sort: 'id' },
+    ];
+    for (const query of queries) {
+      const { host } = await render(query);
+      expectNoArchived(host);
+      expect(host.querySelectorAll('.row-link[data-spec-row]').length).toBeGreaterThan(0);
+      expect(text(host.querySelector('[data-count="archived"]'))).toBe('2 archived specs');
+    }
+  });
+
+  it('the singular counter reads "1 archived spec"', async () => {
+    const { host } = await render(DEFAULT_QUERY, { specs: ACTIVE, archive: ARCHIVE.slice(0, 1) });
+    expectNoArchived(host);
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('1 archived spec');
+  });
+
+  it('no active spec, an archive and the switch off: "No active spec · K archived", no row and no footer', async () => {
+    for (const archive of [ARCHIVE, ARCHIVE.slice(0, 1)]) {
+      const { host } = await render(DEFAULT_QUERY, { specs: [], archive });
+      expectNoArchived(host);
+      expect(host.querySelectorAll('.row-link')).toHaveLength(0);
+      expect(text(host.querySelector('p.empty[data-empty="active"]'))).toBe(`No active spec · ${archive.length} archived`);
+      expect(text(host.querySelector('[data-count="archived"]'))).toBe(archive.length === 1 ? '1 archived spec' : `${archive.length} archived specs`);
+    }
+  });
+
+  it('no active spec and no archive: the old "No specs yet", no active-empty line', async () => {
+    const { host } = await render(DEFAULT_QUERY, { specs: [], archive: [] });
+    expect(text(host.querySelector('p.empty'))).toBe('No specs yet');
+    expect(host.querySelector('[data-empty="active"]')).toBeNull();
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('0 archived specs');
+  });
+});
