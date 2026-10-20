@@ -66,6 +66,18 @@
  *   `event: update` (`LIVE_EVENT`) frame whose `data:` is a `LiveUpdate` per `POST /api/__stub/bump` of the stream's
  *   session (below). 403 `{error: "forbidden"}` for a foreign `Host` or a cross-site `Origin`, 405 with
  *   `Allow: GET` (`EVENTS_ALLOW`) for any other method, HEAD included. Open streams are held in memory per session.
+ * - The workspace admin routes (spec 016, T25, ISC-315), every route of the contract's `WORKSPACE_ADMIN_ROUTE_TABLE`
+ *   matched with `matchWorkspaceAdminRoute`, per `X-Spectant-Stub-Session` in memory over the request's variant, and
+ *   dropped by `POST /api/__stub/reset`: 403 the guard, 405 with `workspaceAdminAllowFor` (the list path now
+ *   `GET, HEAD, POST`, a workspace path `PATCH, DELETE`); `POST /api/workspaces` 400 (`parseAddWorkspaceRequest`) →
+ *   422 `not-a-directory` → 422 `duplicate-path` with the holder's slug → 201 the summary, listed last; `PATCH …/:ws`
+ *   400 (`parseRenameWorkspaceRequest`) → 404 → 200, slug kept; `POST …/:ws/rescan` 404 → 200 the summary as listed;
+ *   `DELETE …/:ws` 404 → 204, its routes 404 and its images gone; `PUT …/:ws/images/:kind` 404 → 413 `too-large` →
+ *   415 `unsupported-type` (`sniffImageType`, the upload's own header ignored) → 200 `{kind, url}` (`imageUrl` with a
+ *   content version); `GET|HEAD …/images/:kind` 404 without an image, else the bytes with the type's fixed
+ *   `Content-Type`, a strong ETag over the bytes and 304. Which paths are directories: `STUB_ADMIN`. Every list entry
+ *   carries `status` (`workspaceStatusOf`) and `images` (null, or the session's versioned URL), no `addedAt`: an add
+ *   is listed last, the registry's order is the "added" sort. The 409 summary carries neither field.
  * - Any other `/api` path is the server's JSON 404, `{error: "not found"}`.
  *
  * Test controls, which the real server does not have (web/e2e/README.md § The stub API), each chosen per request so
@@ -252,6 +264,7 @@ import {
   type WorkspaceRouteName,
   type LibraryDocPage,
 } from '../../server/src/spec-routes.contract';
+import * as AdminContractModule from '../../server/src/workspace-admin.contract';
 import {
   type Note,
   type NoteCounts,
@@ -635,10 +648,84 @@ type Summary = {
   readable: boolean;
   error?: 'missing';
   counts: unknown;
+  // The fields of the contract's `WorkspaceSummaryAdded` (spec 016), after `counts` as `api.ts` appends them.
+  status: WorkspaceStatus;
+  images: WorkspaceImages;
+};
+/** `WorkspaceSummary` as it is: the 409 body, which carries no list field of spec 016. */
+type PlainSummary = Omit<Summary, 'status' | 'images'>;
+
+/**
+ * The workspace admin routes (spec 016, T25, ISC-315; `server/src/workspace-admin.contract.ts`). The stub has no file
+ * system, so `POST /api/workspaces` knows exactly these paths as directories, each read as a fixture tree:
+ *
+ * - `/stub/<pathTail>` of every listed workspace (`/stub/harbor`, `/stub/lantern`): registered from the start, so an
+ *   add is 422 `{error: "duplicate-path", slug}`; after that session removed it, the add registers it again (last,
+ *   with its golden).
+ * - `paths.empty`, `/stub/new-workspace`: a directory without a spec (the `empty-master` fixture tree), status `empty`,
+ *   slug and name `new-workspace`.
+ * - `paths.fixture`, `/stub/beacon`: the `beacon` fixture tree, status `ok`, slug and name `beacon`.
+ *
+ * Every other path, `paths.file` (`/stub/README.md`, a file) included, names no directory: 422
+ * `{error: "not-a-directory"}`. A trailing `/` is dropped first, as the registry's real path does.
+ */
+export const STUB_ADMIN = {
+  paths: { empty: '/stub/new-workspace', fixture: '/stub/beacon', file: '/stub/README.md' },
+  /** The fixture tree each stub-only directory reads as. */
+  directories: { '/stub/new-workspace': 'empty-master', '/stub/beacon': 'beacon' } as Readonly<Record<string, string>>,
+} as const;
+
+// The workspace admin contract (`server/src/workspace-admin.contract.ts`), imported statically above so Playwright loads
+// it under Node as it loads spec-routes.contract; its shapes are restated here for the stub's own types.
+type ImageKind = 'logo' | 'screenshot';
+type ImageTypeName = 'png' | 'jpeg' | 'webp';
+type WorkspaceStatus = 'ok' | 'empty' | 'missing';
+type WorkspaceImages = Readonly<Record<ImageKind, string | null>>;
+type AdminParsed<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: string };
+type AdminRouteMatch =
+  | { readonly route: 'add'; readonly params: Record<string, never> }
+  | { readonly route: 'rename' | 'rescan' | 'remove'; readonly params: { readonly ws: string } }
+  | { readonly route: 'putImage' | 'getImage'; readonly params: { readonly ws: string; readonly kind: ImageKind } };
+export type WorkspaceAdminContract = {
+  IMAGE_MAX_BYTES: number;
+  IMAGE_TYPES: Readonly<Record<ImageTypeName, { readonly contentType: string }>>;
+  matchWorkspaceAdminRoute: (pathname: string, method: string) => AdminRouteMatch | null;
+  workspaceAdminAllowFor: (pathname: string) => string | null;
+  parseAddWorkspaceRequest: (body: unknown) => AdminParsed<{ path: string; name: string | null }>;
+  parseRenameWorkspaceRequest: (body: unknown) => AdminParsed<{ name: string }>;
+  sniffImageType: (bytes: Uint8Array) => ImageTypeName | null;
+  workspaceStatusOf: (readable: boolean, specCount: number | null) => WorkspaceStatus;
+  workspaceAdminRoutes: {
+    add: () => string;
+    rename: (ws: string) => string;
+    rescan: (ws: string) => string;
+    remove: (ws: string) => string;
+    image: (ws: string, kind: ImageKind) => string;
+    imageUrl: (ws: string, kind: ImageKind, version: string) => string;
+  };
+};
+/** The contract's runtime values, the one source of the admin routes for the stub and its test. */
+export const ADMIN_CONTRACT: WorkspaceAdminContract = AdminContractModule;
+const {
+  IMAGE_MAX_BYTES,
+  IMAGE_TYPES,
+  matchWorkspaceAdminRoute,
+  parseAddWorkspaceRequest,
+  parseRenameWorkspaceRequest,
+  sniffImageType,
+  workspaceAdminAllowFor,
+  workspaceAdminRoutes,
+  workspaceStatusOf,
+} = ADMIN_CONTRACT;
+
+const NO_IMAGES: WorkspaceImages = { logo: null, screenshot: null };
+const specCountOf = (kpis: unknown): number | null => {
+  const specs = (kpis as { specs?: unknown } | null)?.specs;
+  return typeof specs === 'number' ? specs : null;
 };
 
 /** What one state answers: the list and, per slug, the workspace's goldens or the 409 summary. */
-type StateView = { list: Summary[]; workspaces: Map<string, { tree: TreeGoldens } | { unreadable: Summary }> };
+type StateView = { list: Summary[]; workspaces: Map<string, { tree: TreeGoldens } | { unreadable: PlainSummary }> };
 
 // ---- the shared HTTP rules of server/src/http.ts, api.ts and settings.ts ----------------------------------------
 
@@ -2241,11 +2328,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       const tree = (src?.trees ?? (on ? treesOn : trees)).get(w.slug);
       if (!dashboard || !tree) continue;
       if (state === 'unreadable' && w.slug === unreadableSlug) {
-        const summary: Summary = { ...base, readable: false, error: 'missing', counts: null };
-        list.push(summary);
+        const summary: PlainSummary = { ...base, readable: false, error: 'missing', counts: null };
+        list.push({ ...summary, status: workspaceStatusOf(false, null), images: NO_IMAGES });
         byslug.set(w.slug, { unreadable: summary });
       } else {
-        list.push({ ...base, readable: true, counts: dashboard.kpis });
+        list.push({ ...base, readable: true, counts: dashboard.kpis, status: workspaceStatusOf(true, specCountOf(dashboard.kpis)), images: NO_IMAGES });
         byslug.set(w.slug, { tree });
       }
     }
@@ -2267,7 +2354,154 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     return found;
   };
-  const viewOf = (req: Request, state: StubState): StateView => {
+  // ---- the workspace admin routes (spec 016, T25): the session's registry edits over the request's variant ----
+
+  type AdminEntry = { slug: string; name: string; path: string; pathTail: string; golden: string };
+  type AdminImage = { bytes: Uint8Array<ArrayBuffer>; type: ImageTypeName; version: string };
+  /** One session's edits: listed workspaces removed, names changed, workspaces added (in order), images stored. */
+  type AdminSession = { removed: Set<string>; names: Map<string, string>; added: AdminEntry[]; images: Map<string, AdminImage> };
+  const admins = new Map<string, AdminSession>();
+  const adminFor = (req: Request): AdminSession => {
+    const id = sessionOf(req);
+    let found = admins.get(id);
+    if (found === undefined) {
+      found = { removed: new Set(), names: new Map(), added: [], images: new Map() };
+      admins.set(id, found);
+    }
+    return found;
+  };
+  /** The fixture tree each stub path reads as (`STUB_ADMIN`): the listed workspaces' `/stub/<pathTail>` and the stub-only ones. */
+  const stubDirectories = new Map<string, string>([
+    ...workspaces.map((w): [string, string] => [`/stub/${w.pathTail ?? w.golden}`, w.golden]),
+    ...Object.entries(STUB_ADMIN.directories),
+  ]);
+  const stubPathOf = (path: string): string => (path.length > 1 ? path.replace(/\/+$/, '') || '/' : path);
+  const adminGoldens = new Map<string, { dashboard: { model: unknown; kpis: unknown }; tree: TreeGoldens; planning: PlanningModel }>();
+  const adminGoldenOf = (golden: string): { dashboard: { model: unknown; kpis: unknown }; tree: TreeGoldens; planning: PlanningModel } => {
+    let found = adminGoldens.get(golden);
+    if (found === undefined) {
+      found = { dashboard: readDashboard(dir, golden), tree: readTree(core, dir, golden), planning: readPlanning(dir, golden) };
+      adminGoldens.set(golden, found);
+    }
+    return found;
+  };
+  /** The workspace this session added under `slug`, if any. */
+  const addedOf = (req: Request, slug: string): AdminEntry | undefined => admins.get(sessionOf(req))?.added.find((a) => a.slug === slug);
+  const imageKey = (slug: string, kind: ImageKind): string => `${slug}\0${kind}`;
+  const imagesOf = (admin: AdminSession, slug: string): WorkspaceImages => {
+    const url = (kind: ImageKind): string | null => {
+      const image = admin.images.get(imageKey(slug, kind));
+      return image ? workspaceAdminRoutes.imageUrl(slug, kind, image.version) : null;
+    };
+    return { logo: url('logo'), screenshot: url('screenshot') };
+  };
+  /**
+   * The request's view with its session's registry edits: removed workspaces left out, names and images replaced,
+   * added workspaces listed last with their fixture tree. A session without an edit gets the variant's view as it is.
+   */
+  const adminView = (req: Request, base: StateView): StateView => {
+    const admin = admins.get(sessionOf(req));
+    if (admin === undefined) return base;
+    const shown = (summary: Summary): Summary => ({ ...summary, name: admin.names.get(summary.slug) ?? summary.name, images: imagesOf(admin, summary.slug) });
+    const list: Summary[] = [];
+    const byslug: StateView['workspaces'] = new Map();
+    const addedSlugs = new Set(admin.added.map((a) => a.slug));
+    for (const summary of base.list) {
+      const found = base.workspaces.get(summary.slug);
+      if (found === undefined || admin.removed.has(summary.slug) || addedSlugs.has(summary.slug)) continue;
+      const own = shown(summary);
+      list.push(own);
+      byslug.set(own.slug, 'unreadable' in found ? { unreadable: { ...found.unreadable, name: own.name } } : found);
+    }
+    for (const a of admin.added) {
+      const { dashboard, tree } = adminGoldenOf(a.golden);
+      const status = workspaceStatusOf(true, specCountOf(dashboard.kpis));
+      const own = shown({ slug: a.slug, name: a.name, pathTail: a.pathTail, readable: true, counts: dashboard.kpis, status, images: NO_IMAGES });
+      list.push(own);
+      byslug.set(own.slug, { tree });
+    }
+    return { list, workspaces: byslug };
+  };
+  const adminJson = (req: Request, status: number, value: unknown, extra: Record<string, string> = {}): Response => workspaceJson(req, status, value, extra);
+  const readBody = async (req: Request): Promise<unknown> => {
+    try {
+      return (await req.json()) as unknown;
+    } catch {
+      return undefined;
+    }
+  };
+  /**
+   * Every route of `WORKSPACE_ADMIN_ROUTE_TABLE`, per session in memory, with the contract's parsers and statuses:
+   * 403 the guard; 405 with `workspaceAdminAllowFor` for a method the path does not take; then per route 400 (the
+   * parser), 404 (no such workspace in the request's view), 422 (`not-a-directory`, then `duplicate-path`), 413
+   * (over `IMAGE_MAX_BYTES`), 415 (`sniffImageType` found nothing) and the 2xx.
+   */
+  const adminRoute = async (req: Request, state: StubState, pathname: string): Promise<Response> => {
+    if (!guarded(req)) return adminJson(req, 403, { error: 'forbidden' });
+    const match = matchWorkspaceAdminRoute(pathname, req.method);
+    if (match === null) return adminJson(req, 405, { error: 'method-not-allowed' }, { Allow: workspaceAdminAllowFor(pathname) ?? '' });
+    const summaryOf = (slug: string): Summary | undefined => viewOf(req, state).list.find((s) => s.slug === slug);
+    if (match.route === 'add') {
+      const parsed = parseAddWorkspaceRequest(await readBody(req));
+      if (!parsed.ok) return adminJson(req, 400, { error: parsed.error });
+      const path = stubPathOf(parsed.value.path);
+      const golden = stubDirectories.get(path);
+      if (golden === undefined) return adminJson(req, 422, { error: 'not-a-directory' });
+      const listed = viewOf(req, state).list;
+      const pathOf = (summary: Summary): string => addedOf(req, summary.slug)?.path ?? `/stub/${summary.pathTail}`;
+      const holder = listed.find((summary) => pathOf(summary) === path);
+      if (holder) return adminJson(req, 422, { error: 'duplicate-path', slug: holder.slug });
+      const tail = basename(path);
+      const taken = new Set(listed.map((s) => s.slug));
+      let slug = tail;
+      for (let n = 2; taken.has(slug); n++) slug = `${tail}-${n}`;
+      const admin = adminFor(req);
+      admin.added.push({ slug, name: parsed.value.name ?? tail, path, pathTail: tail, golden });
+      return adminJson(req, 201, summaryOf(slug));
+    }
+    const { ws } = match.params;
+    if (match.route === 'rename') {
+      const parsed = parseRenameWorkspaceRequest(await readBody(req));
+      if (!parsed.ok) return adminJson(req, 400, { error: parsed.error });
+      if (summaryOf(ws) === undefined) return adminJson(req, 404, { error: 'not-found' });
+      adminFor(req).names.set(ws, parsed.value.name);
+      return adminJson(req, 200, summaryOf(ws));
+    }
+    const current = summaryOf(ws);
+    if (current === undefined) return adminJson(req, 404, { error: 'not-found' });
+    switch (match.route) {
+      case 'rescan':
+        return adminJson(req, 200, current);
+      case 'remove': {
+        const admin = adminFor(req);
+        const index = admin.added.findIndex((a) => a.slug === ws);
+        if (index >= 0) admin.added.splice(index, 1);
+        else admin.removed.add(ws);
+        admin.names.delete(ws);
+        for (const kind of ['logo', 'screenshot'] as const) admin.images.delete(imageKey(ws, kind));
+        return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+      }
+      case 'putImage': {
+        const bytes = new Uint8Array(await req.arrayBuffer());
+        if (bytes.length > IMAGE_MAX_BYTES) return adminJson(req, 413, { error: 'too-large', maxBytes: IMAGE_MAX_BYTES });
+        const type = sniffImageType(bytes);
+        if (type === null) return adminJson(req, 415, { error: 'unsupported-type' });
+        const version = new Bun.CryptoHasher('sha256').update(bytes).digest('hex').slice(0, 16);
+        adminFor(req).images.set(imageKey(ws, match.params.kind), { bytes, type, version });
+        return adminJson(req, 200, { kind: match.params.kind, url: workspaceAdminRoutes.imageUrl(ws, match.params.kind, version) });
+      }
+      case 'getImage': {
+        const image = admins.get(sessionOf(req))?.images.get(imageKey(ws, match.params.kind));
+        if (image === undefined) return adminJson(req, 404, { error: 'not-found' });
+        const headers = { 'Content-Type': IMAGE_TYPES[image.type].contentType, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', ETag: strongEtag(image.bytes) };
+        if (matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) return new Response(null, { status: 304, headers });
+        return new Response(req.method === 'HEAD' ? null : image.bytes, { status: 200, headers });
+      }
+    }
+  };
+
+  const viewOf = (req: Request, state: StubState): StateView => adminView(req, variantViewOf(req, state));
+  const variantViewOf = (req: Request, state: StubState): StateView => {
     const dense = denseViewOf(req);
     if (dense) return dense.views.get(state) ?? view(state, false, dense, [STUB_DENSE.workspace]);
     const waited = waitsViewOf(req);
@@ -2487,7 +2721,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
    * when one was sent (the counts stay the tree's: the specs' stages are not re-derived).
    */
   const planningOf = (req: Request, slug: string): PlanningModel | undefined => {
-    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? ((denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug);
+    const added = addedOf(req, slug);
+    const model =
+      boards.get(sessionOf(req))?.planning.get(slug) ??
+      (added ? adminGoldenOf(added.golden).planning : ((denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug));
     const workflow = workflows.get(sessionOf(req))?.get(slug);
     return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
   };
@@ -2530,7 +2767,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const source = (denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
-    return workspaceJson(req, 200, bumpDashboard(source.get(slug)?.model, bumpsOf(req, slug)), activityHash);
+    const added = addedOf(req, slug);
+    const model = added ? adminGoldenOf(added.golden).dashboard.model : source.get(slug)?.model;
+    return workspaceJson(req, 200, bumpDashboard(model, bumpsOf(req, slug)), activityHash);
   };
 
   /**
@@ -3294,6 +3533,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       workflows.delete(sessionOf(req));
       backlogs.delete(sessionOf(req));
       releases.delete(sessionOf(req));
+      admins.delete(sessionOf(req));
       for (const stream of [...streams]) if (stream.session === sessionOf(req)) stream.close();
       return new Response(null, { status: 204 });
     }
@@ -3349,6 +3589,13 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       const state = req.headers.get(STATE_HEADER) ?? defaultState;
       if (!isOneOf(STUB_STATES, state)) return settingsError(400, { error: 'unknown-stub-state', state, states: [...STUB_STATES] });
       return notesRoute(req, url, state);
+    }
+    // The workspace admin routes (spec 016, T25): every method on an admin path but the list's own GET and HEAD.
+    const listRead = pathname === WORKSPACES_PATH && (req.method === 'GET' || req.method === 'HEAD');
+    if (!listRead && workspaceAdminAllowFor(pathname) !== null) {
+      const state = req.headers.get(STATE_HEADER) ?? defaultState;
+      if (!isOneOf(STUB_STATES, state)) return settingsError(400, { error: 'unknown-stub-state', state, states: [...STUB_STATES] });
+      return adminRoute(req, state, pathname);
     }
     const dashboard = DASHBOARD_PATH.exec(pathname);
     const spec = pathname.startsWith(`${WORKSPACES_PATH}/`) && !dashboard;

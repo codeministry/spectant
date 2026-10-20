@@ -11,17 +11,28 @@ export const TOAST_MS = 4000;
 @Injectable({ providedIn: 'root' })
 export class ToastService {
   private readonly current = signal<{ readonly text: string; readonly seq: number } | null>(null);
+  private readonly said = signal<{ readonly text: string; readonly seq: number } | null>(null);
   private timer: ReturnType<typeof setTimeout> | undefined;
   private seq = 0;
 
   readonly message = computed(() => this.current()?.text ?? null);
   /** Changes on every `show()`, so a repeated text is announced again. */
   readonly entry = this.current.asReadonly();
+  /** The last spoken-only text (`announce()`); changes on every call, so a repeated text is announced again. */
+  readonly spoken = this.said.asReadonly();
 
   show(text: string): void {
     clearTimeout(this.timer);
     this.current.set({ text, seq: ++this.seq });
     this.timer = setTimeout(() => this.dismiss(), TOAST_MS);
+  }
+
+  /**
+   * Speaks `text` through the one live region without a visible toast (spec 016: a re-scan or upload result, where
+   * design.md allows no toast). Callers pass translated text.
+   */
+  announce(text: string): void {
+    this.said.set({ text, seq: ++this.seq });
   }
 
   dismiss(): void {
@@ -62,6 +73,10 @@ export class UiToast {
     effect(() => {
       const entry = this.toasts.entry();
       if (entry) untracked(() => this.region().announce(entry.text));
+    });
+    effect(() => {
+      const spoken = this.toasts.spoken();
+      if (spoken) untracked(() => this.region().announce(spoken.text));
     });
   }
 }

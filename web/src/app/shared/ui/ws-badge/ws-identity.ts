@@ -66,3 +66,16 @@ export function wsPattern(name: string): WsPattern {
   const [dx, dy] = at(a);
   return { arc: `M${x1} ${y1} A${String(r)} ${String(r)} 0 1 1 ${x2} ${y2}`, dot: { cx: dx, cy: dy } };
 }
+
+/**
+ * A same-origin image path the badge and the cover may load, or null: a bundled asset (`assets/…`) or the loopback
+ * image route with its cache-bust (`/api/workspaces/<ws>/images/<kind>?v=<hex>`, spec 016 T18). Anything with a
+ * scheme (`https:`, `data:`, `javascript:`) or a protocol-relative start (`//`, `/\`) is remote and refused, so no
+ * image request leaves the machine.
+ */
+export function wsLocalImage(src: string | null): string | null {
+  if (src === null) return null;
+  const trimmed = src.trim();
+  if (trimmed === '' || /^(?:[a-z][a-z\d+.-]*:|[/\\]{2})/iu.test(trimmed)) return null;
+  return trimmed;
+}

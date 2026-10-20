@@ -191,7 +191,9 @@ describe('SpecTable (prototype port, T89)', () => {
   it('puts the sort control right behind the counter chips, before the filter chips (T80)', async () => {
     const { host } = await render();
     const head = host.querySelector('.t-head') as HTMLElement;
-    const sort = head.querySelector('[data-control="sort"]') as HTMLElement;
+    // The host follows the counters; its trigger button alone carries `data-control="sort"` (one hook for e2e).
+    const sort = head.querySelector('ui-sort-menu.sort') as HTMLElement;
+    expect(sort.querySelectorAll('[data-control="sort"]')).toHaveLength(1);
     expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
     const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
     expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

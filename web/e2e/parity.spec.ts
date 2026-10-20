@@ -64,14 +64,13 @@
  *                                        `header [data-control="page"]`, whose menu lists Library (spec 024 T80,
  *                                        ISC-150.2, principal 2026-10-13).
  *
- *   Settings · Workspaces `/settings/workspaces` (T50, T52; prototype `workspaces.html`)
- *   - `[data-page="settings-workspaces"]` the page root, itself `[data-demo]`; its h1 row is the `[data-demo-head]`.
- *   - `[data-ws-row]`                    one row per registered workspace, value = the fixture's `name`, in
- *                                        `DEMO_WORKSPACES` order; the rows never change (the mock writes nothing).
- *   - `[data-ws-add-path]`, `[data-ws-add]`  the add row's path field and its Add button (a no-op, or disabled).
- *   - `[data-identity-upload]`           the identity image upload control: disabled, inside a `[data-demo]`.
- *   - Reached in the app from the settings popover's `[data-settings-link="workspaces"]` (today it points at
- *     `/settings`) and from the Settings page's card link `main a[href="/settings/workspaces"]`.
+ *   Settings · Workspaces `/settings/workspaces` (T50, T52; prototype `workspaces.html`): no mock since spec 016
+ *   renders the registry from `GET /api/workspaces`; it is a real page (`REAL_ONLY`) with no `[data-demo]` and no chip.
+ *   - `[data-page="settings-workspaces"]` the page root.
+ *   - `[data-ws-row]`                    one row per registered workspace, value = its slug, in the API's order
+ *                                        (the stub's `harbor`, `lantern`).
+ *   - Reached in the app from the settings popover's `[data-settings-link="workspaces"]` and from the Settings
+ *     page's card link `main a[href="/settings/workspaces"]` (group `routes`).
  *
  *   Assistant dot (T53; prototype `assistant.js`)
  *   - The trigger `header [data-tool="assistant"]` (an overflow-menu entry below 1120, see `headerControl`) opens it;
@@ -102,7 +101,6 @@ import type { APIRequestContext, BrowserContext, Locator, Page } from '@playwrig
 import type { SpecPageModel } from '../../core/src/files.ts';
 import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
-import { DEMO_WORKSPACES } from '../src/app/shared/demo/fixtures/workspaces.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
 import { atWidth, expect, headerControl, menusReady, test } from './fixtures';
@@ -544,22 +542,6 @@ const useAssistant = async (page: Page): Promise<void> => {
 };
 
 const MOCK_HOSTS: readonly MockHost[] = [
-  {
-    name: 'Settings · Workspaces',
-    route: '/settings/workspaces',
-    root: '[data-page="settings-workspaces"][data-demo]',
-    use: async (page) => {
-      const names = (): Promise<Array<string | null>> => page.locator('[data-ws-row]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-ws-row')));
-      expect(await names()).toEqual(DEMO_WORKSPACES.map((row) => row.name));
-      const upload = page.locator('[data-identity-upload]').first();
-      await expect(upload).toBeDisabled();
-      expect(await upload.evaluate((el) => el.closest('[data-demo]') !== null)).toBe(true);
-      await page.locator('[data-ws-add-path]').fill('oss/new-repo');
-      const add = page.locator('[data-ws-add]');
-      if (await add.isEnabled()) await add.click();
-      expect(await names()).toEqual(DEMO_WORKSPACES.map((row) => row.name));
-    },
-  },
   { name: 'assistant dot', route: '/w/harbor/s/002', open: openAssistant, root: '[data-assistant][data-demo]', use: useAssistant },
   { name: 'assistant dot', route: '/w/harbor/s/002', width: 390, open: openAssistant, root: '[data-assistant][data-demo]', use: useAssistant },
   {
@@ -586,6 +568,7 @@ const SAMPLE_PAGES: ReadonlyArray<{ readonly route: string; readonly ready: stri
 const REAL_ONLY: ReadonlyArray<{ readonly route: string; readonly ready: string }> = [
   { route: '/w/harbor/s/002', ready: '[data-spec-context]' },
   { route: '/w/harbor/s/002/status', ready: 'app-status-tab' },
+  { route: '/settings/workspaces', ready: '[data-page="settings-workspaces"] [data-ws-row]' },
 ];
 
 test.describe('demo', () => {
@@ -626,6 +609,15 @@ test.describe('demo', () => {
       expect(await chipDefects(page)).toEqual([]);
     });
   }
+
+  test('/settings/workspaces lists the registry from the API, not the demo fixture', async ({ page }) => {
+    await page.goto('/settings/workspaces');
+    const rows = page.locator('[data-page="settings-workspaces"] [data-ws-row]');
+    await expect(rows).toHaveCount(2);
+    expect(await rows.evaluateAll((all) => all.map((row) => row.getAttribute('data-ws-row')))).toEqual(['harbor', 'lantern']);
+    await expect(page.locator('[data-ws-add-path]')).toBeEnabled();
+    await expect(page.locator('[data-identity-upload]')).toHaveCount(0);
+  });
 
   for (const { route, ready } of REAL_ONLY) {
     test(`${route}: real data only, no mock and no chip`, async ({ page }) => {

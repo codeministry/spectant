@@ -7,25 +7,15 @@
       <ui-chip variant="plain" data-count="archived">{{ (archivedTotal() === 1 ? 'specs.archived.one' : 'specs.archived.other') | transloco: { count: archivedTotal() } }}</ui-chip>
     </div>
     <!-- Spec 021 (T80): the sort control follows the counters in the DOM, so focus reaches it before the filter chips. -->
-    @if (compact()) {
-      <button
-        type="button"
-        class="btn btn-sm btn-ghost sort"
-        data-control="sort"
-        aria-haspopup="dialog"
-        [attr.aria-label]="sortLabel()"
-        [attr.aria-expanded]="sortSheetOpen()"
-        (click)="sortSheetOpen.set(true)"
-      >
-        <ui-icon name="arrow-up-down" [size]="16" />
-        <span>{{ 'specs.sort.' + query().sort | transloco }}</span>
-      </button>
-    } @else {
-      <button type="button" class="btn btn-sm btn-ghost sort" data-control="sort" [attr.aria-label]="sortLabel()" [uiPopoverTrigger]="sortPopover">
-        <ui-icon name="arrow-up-down" [size]="16" />
-        <span>{{ 'specs.sort.' + query().sort | transloco }}</span>
-      </button>
-    }
+    <!-- Spec 016 (T12): the shared `ui-sort-menu`, a popover from medium and a bottom sheet at compact. -->
+    <ui-sort-menu
+      class="sort"
+      [options]="sortOptions()"
+      [value]="query().sort"
+      [label]="'specs.sort.label' | transloco"
+      [tier]="shell.tier()"
+      (choose)="setSort($event)"
+    />
     <ui-filter-chips
       data-filter="phase"
       [options]="phaseChips()"
@@ -205,29 +195,3 @@
     </p>
   }
 </ui-card>
-
-<ng-template #sortMenu>
-  <div class="sort-menu" role="group" [attr.aria-label]="'specs.sort.label' | transloco">
-    @for (key of sortMenuKeys; track key) {
-      <button
-        type="button"
-        class="pop-item"
-        [attr.data-sort]="key"
-        [attr.aria-pressed]="key === query().sort"
-        [attr.data-autofocus]="key === query().sort ? '' : null"
-        (click)="setSort(key)"
-      >
-        {{ 'specs.sort.' + key | transloco }}
-      </button>
-    }
-  </div>
-</ng-template>
-
-<ui-popover #sortPopover class="sort-popover" placement="end" [label]="'specs.sort.label' | transloco">
-  <ng-container [ngTemplateOutlet]="sortMenu" />
-</ui-popover>
-@if (compact()) {
-  <ui-sheet tier="compact" [(open)]="sortSheetOpen" [label]="'specs.sort.label' | transloco">
-    <ng-container [ngTemplateOutlet]="sortMenu" />
-  </ui-sheet>
-}

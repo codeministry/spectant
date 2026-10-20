@@ -1,0 +1,80 @@
+@let ws = entry();
+@let label = 'settingsWorkspaces.row.actions' | transloco: { name: ws.name };
+
+<button
+  type="button"
+  class="thumb"
+  data-row-thumb
+  [attr.aria-label]="'settingsWorkspaces.row.uploadScreenshotFor' | transloco: { name: ws.name }"
+  (click)="pick('screenshot')"
+>
+  <ui-ws-cover shape="thumb" [name]="ws.name" [image]="screenshot()" />
+</button>
+<input #logoInput type="file" hidden data-row-upload="logo" [accept]="accept" (change)="upload('logo')" />
+<input #screenshotInput type="file" hidden data-row-upload="screenshot" [accept]="accept" (change)="upload('screenshot')" />
+
+<div class="body">
+  <a class="name" data-ws-name [routerLink]="link()" [attr.title]="ws.name">
+    <ui-ws-badge [name]="ws.name" [logo]="logo()" />
+    <span class="ws-label">{{ ws.name }}</span>
+  </a>
+  <span class="path mono" data-ws-path>{{ ws.pathTail }}</span>
+  <span class="ws-status" [attr.data-status]="status()">
+    @if (busy() && compact()) {
+      <span class="busy" data-row-busy>{{ 'settingsWorkspaces.row.rescanning' | transloco }}</span>
+    } @else {
+      <span class="sdot" aria-hidden="true"></span>{{ 'settingsWorkspaces.status.' + status() | transloco }}
+    }
+  </span>
+  <span class="counts mono" data-ws-counts>
+    @let n = specs();
+    @if (busy() && !compact()) {
+      <span class="busy" data-row-busy
+        ><span class="loading loading-spinner loading-xs" aria-hidden="true"></span>{{ 'settingsWorkspaces.row.rescanningShort' | transloco }}</span
+      >
+    } @else if (n !== null) {
+      {{ (n === 1 ? 'settingsWorkspaces.row.countsOne' : 'settingsWorkspaces.row.counts') | transloco: { specs: n, active: active() } }}
+    } @else {
+      {{ 'settingsWorkspaces.row.noCounts' | transloco }}
+    }
+  </span>
+</div>
+
+<ng-template #entries>
+  <button type="button" class="item" data-row-act="rename" data-autofocus (click)="act('rename')">{{ 'settingsWorkspaces.menu.rename' | transloco }}</button>
+  <button type="button" class="item" data-row-act="rescan" [disabled]="busy()" (click)="act('rescan')">{{ 'settingsWorkspaces.menu.rescan' | transloco }}</button>
+  <a class="item" data-row-act="open" [routerLink]="link()" (click)="close()">{{ 'settingsWorkspaces.menu.open' | transloco }}</a>
+  <button type="button" class="item" data-row-act="uploadLogo" (click)="act('uploadLogo')">{{ 'settingsWorkspaces.menu.uploadLogo' | transloco }}</button>
+  <button type="button" class="item" data-row-act="uploadScreenshot" (click)="act('uploadScreenshot')">
+    {{ 'settingsWorkspaces.menu.uploadScreenshot' | transloco }}
+  </button>
+  <div class="sep" role="presentation"></div>
+  <button type="button" class="item danger" data-row-act="remove" (click)="act('remove')">{{ 'settingsWorkspaces.menu.remove' | transloco }}</button>
+</ng-template>
+
+@if (compact()) {
+  <button ui-icon-button icon="ellipsis" size="sm" class="trigger" data-row-menu [label]="label" (click)="sheetOpen.set(true)"></button>
+  <ui-sheet tier="compact" [heading]="ws.name" [(open)]="sheetOpen">
+    <div class="ws-menu"><ng-container [ngTemplateOutlet]="entries" /></div>
+  </ui-sheet>
+} @else {
+  <button ui-icon-button icon="ellipsis" size="sm" class="trigger" data-row-menu [label]="label" [uiPopoverTrigger]="menu"></button>
+  <ui-popover #menu placement="end" class="pop" [label]="label">
+    <div class="ws-menu"><ng-container [ngTemplateOutlet]="entries" /></div>
+  </ui-popover>
+}
+
+@if (notice(); as n) {
+  <ui-notice tone="error" class="notice" data-row-notice [attr.data-kind]="n.kind" [attr.data-reason]="n.reason">
+    {{ 'settingsWorkspaces.row.refused.' + n.reason | transloco: { kind: ('settingsWorkspaces.row.kind.' + n.kind | transloco), max: n.max } }}
+    <button
+      action
+      ui-icon-button
+      icon="x"
+      size="sm"
+      data-row-notice-dismiss
+      [label]="'settingsWorkspaces.row.dismissNotice' | transloco"
+      (click)="notice.set(null)"
+    ></button>
+  </ui-notice>
+}

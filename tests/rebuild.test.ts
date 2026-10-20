@@ -28,6 +28,7 @@ import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.co
 import { run } from "../server/src/cli.ts";
 import { dataDir, dbPath } from "../server/src/paths.ts";
 import { DEFAULT_SETTINGS } from "../server/src/settings.ts";
+import { IMAGE_KINDS, type WorkspaceImages, workspaceAdminRoutes } from "../server/src/workspace-admin.contract.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const NAMES = ["harbor", "lantern"] as const;
@@ -242,5 +243,49 @@ describe("ISC-7: the data directory deleted, the view rebuilt by a re-add", () =
     expect(after.list).not.toBe(before.list);
     expect(entries(after.list)).toEqual([...entries(before.list)].reverse());
     for (const name of NAMES) expect({ name, body: after.dashboards[name] }).toEqual({ name, body: before.dashboards[name] });
+  }, 30_000);
+
+  // Spec 016 (T11, ISC-310; Decisions 2026-10-20): a workspace's logo and screenshot count to the registry. They live
+  // under `<data>/workspaces/<slug>/`, so deleting the data directory drops them with the entry, and a re-add of the
+  // same folder under the same slug serves none of them.
+  test("an uploaded image goes with the data directory: the image route answers 404 and the list names no image, also after a re-add", async () => {
+    const { env, dir } = environment();
+    await add(env, "harbor");
+    let server = await serve(env);
+    const logo = new Uint8Array(64).fill(7);
+    logo.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    for (const kind of IMAGE_KINDS) {
+      const put = await fetch(`${server.url}${workspaceAdminRoutes.image("harbor", kind)}`, { method: "PUT", body: logo });
+      expect({ kind, status: put.status }).toEqual({ kind, status: 200 });
+    }
+    const imagesOf = async (url: string): Promise<WorkspaceImages[]> =>
+      ((await (await fetch(`${url}/api/workspaces`)).json()) as Array<{ images: WorkspaceImages }>).map((w) => w.images);
+    const [stored] = await imagesOf(server.url);
+    for (const kind of IMAGE_KINDS) {
+      expect(stored?.[kind]).not.toBeNull();
+      expect((await fetch(`${server.url}${workspaceAdminRoutes.image("harbor", kind)}`)).status).toBe(200);
+    }
+    expect(existsSync(join(dir, "workspaces", "harbor"))).toBe(true);
+    expect(await server.stop()).toBe(0);
+
+    rmSync(dir, { recursive: true });
+    expect(existsSync(dir)).toBe(false);
+
+    // Served again: no entry, no image.
+    server = await serve(env);
+    expect(await imagesOf(server.url)).toEqual([]);
+    for (const kind of IMAGE_KINDS) expect((await fetch(`${server.url}${workspaceAdminRoutes.image("harbor", kind)}`)).status).toBe(404);
+    expect(await server.stop()).toBe(0);
+
+    // Re-added under the same slug: the entry is back, its images are not.
+    await add(env, "harbor");
+    server = await serve(env);
+    expect(await imagesOf(server.url)).toEqual([{ logo: null, screenshot: null }]);
+    for (const kind of IMAGE_KINDS) {
+      const res = await fetch(`${server.url}${workspaceAdminRoutes.image("harbor", kind)}`);
+      expect({ kind, status: res.status }).toEqual({ kind, status: 404 });
+    }
+    expect(existsSync(join(dir, "workspaces"))).toBe(false);
+    expect(await server.stop()).toBe(0);
   }, 30_000);
 });

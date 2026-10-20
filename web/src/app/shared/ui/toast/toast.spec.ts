@@ -34,6 +34,18 @@ describe('UiToast', () => {
     expect(host.querySelector('.toast')?.textContent.trim()).toBe('Copied /spec implement 012');
   });
 
+  it('announces a spoken-only text through the same live region without a visible toast (spec 016 T17)', async () => {
+    const { host, settle, toasts } = await render();
+
+    toasts.announce('Harbor re-read: 5 specs · 2 active');
+    await settle();
+
+    expect(host.querySelectorAll('[aria-live]')).toHaveLength(1);
+    expect(host.querySelector('ui-live-region')?.textContent).toBe('Harbor re-read: 5 specs · 2 active');
+    expect(host.querySelector('.toast')).toBeNull();
+    expect(toasts.message()).toBeNull();
+  });
+
   it('dismisses itself after 4 s, and a new toast restarts the clock', async () => {
     const { host, settle, toasts } = await render();
 

@@ -491,10 +491,6 @@
   },
   "settingsWorkspaces": {
     "title": "Workspaces",
-    "registered": {
-      "one": "· {{count}} registered",
-      "other": "· {{count}} registered"
-    },
     "add": {
       "path": "Repository path",
       "pathPlaceholder": "~/code/my-repo",
@@ -502,17 +498,14 @@
       "nameLabel": "Display name",
       "namePlaceholder": "my-repo",
       "button": "Add",
-      "fab": "Add workspace",
-      "completions": "Matching folders",
-      "hint": "Paste a path to fill the name.",
-      "completes": "completes,",
-      "expands": "expands.",
-      "nothing": "Demo: nothing was added, the registry stays as it is."
-    },
-    "upload": {
-      "text": "Identity images (screenshot and logo) are picked in the app; the upload is disabled in this mock.",
-      "button": "Upload screenshot",
-      "off": "Screenshot upload is disabled in the mock"
+      "hint": "Paste the path of a repository folder; the name is optional.",
+      "busy": "Adding…",
+      "error": {
+        "empty": "Enter the path of a repository folder.",
+        "notADirectory": "No folder exists at this path.",
+        "duplicatePath": "This folder is registered already as {{name}}.",
+        "failed": "The workspace could not be added. Please try again."
+      }
     },
     "status": {
       "ok": "readable",
@@ -520,25 +513,83 @@
       "missing": "folder not found"
     },
     "row": {
-      "reveal": "Reveal",
-      "relocate": "Relocate…",
       "counts": "{{specs}} specs · {{active}} active",
       "countsOne": "{{specs}} spec · {{active}} active",
-      "actions": "Actions for {{name}}"
+      "actions": "Actions for {{name}}",
+      "noCounts": "no counts",
+      "rescanning": "Re-reading…",
+      "rescanningShort": "re-reading…",
+      "rescanned": "{{name}} re-read: {{counts}}",
+      "rescanFailed": "{{name}} could not be re-read.",
+      "uploadScreenshotFor": "Upload screenshot for {{name}}",
+      "uploadedLogo": "Logo of {{name}} uploaded.",
+      "uploadedScreenshot": "Screenshot of {{name}} uploaded.",
+      "uploadTooLarge": "{{name}}: the image is larger than {{max}} MB; nothing was stored.",
+      "uploadUnsupported": "{{name}}: only PNG, JPEG or WebP images; nothing was stored.",
+      "uploadFailed": "The image for {{name}} could not be uploaded.",
+      "kind": {
+        "logo": "Logo",
+        "screenshot": "Screenshot"
+      },
+      "refused": {
+        "type": "{{kind}} not taken: only PNG, JPEG or WebP up to {{max}} MB",
+        "size": "{{kind}} not taken: the file is larger than {{max}} MB",
+        "failed": "{{kind}} not taken: the upload failed. Please try again."
+      },
+      "dismissNotice": "Dismiss notice"
     },
     "menu": {
-      "rename": "Rename",
+      "rename": "Rename…",
       "rescan": "Re-scan",
       "open": "Open dashboard",
+      "uploadLogo": "Upload logo…",
+      "uploadScreenshot": "Upload screenshot…",
       "remove": "Remove…"
     },
     "remove": {
       "title": "Remove {{name}}?",
-      "body": "Spectant forgets the workspace. The folder and its specs stay untouched.",
+      "body": "The workspace leaves the list, and its logo and screenshot are deleted from the app's data folder. The repository folder stays on disk, specs included.",
       "cancel": "Cancel",
-      "confirm": "Remove"
+      "confirm": "Remove",
+      "busy": "Removing…",
+      "removed": "Removed {{name}}",
+      "error": {
+        "notFound": "{{name}} was not removed: the registry no longer has it (404).",
+        "failed": "{{name}} was not removed (status {{status}}).",
+        "noAnswer": "{{name}} was not removed: the server did not answer."
+      }
     },
-    "foot": "Registry lives in the app's data directory · the CLI does the same:"
+    "rename": {
+      "title": "Rename {{name}}",
+      "label": "Display name",
+      "slug": "Slug stays: /w/{{slug}}",
+      "cancel": "Cancel",
+      "save": "Save",
+      "busy": "Saving…",
+      "error": {
+        "invalidName": "Enter a name.",
+        "failed": "The workspace could not be renamed. Please try again."
+      }
+    },
+    "sort": {
+      "label": "Sort",
+      "name": "Name",
+      "status": "Status",
+      "added": "Added"
+    },
+    "foot": "Registry lives in the app's data directory · the CLI does the same:",
+    "toolbar": {
+      "one": "{{count}} workspace registered",
+      "other": "{{count}} workspaces registered"
+    },
+    "load": {
+      "error": "The workspace list could not be loaded.",
+      "retry": "Retry"
+    },
+    "empty": {
+      "heading": "No workspace registered yet",
+      "body": "Enter a repository path above, or register one from the terminal:"
+    }
   },
   "states": {
     "unreachable": "Can't reach spectant on {{host}}",

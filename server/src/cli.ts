@@ -31,7 +31,7 @@
  */
 import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { actorsApi, composeApi, dashboardApi } from "./api.ts";
+import { actorsApi, composeApi, dashboardApi, workspaceSummaryReader } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { exportNotesCommand, importNotesCommand, rollbackCommand } from "./cli-notes.ts";
 import { FEATURE_ARG, featureGateCommand } from "./feature-gate.ts";
@@ -50,6 +50,8 @@ import { openSettings, settingsApi } from "./settings.ts";
 import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
 import { createWatchHub } from "./watch.ts";
+import { workspaceAdminApi } from "./workspace-admin-route.ts";
+import { openImageStore } from "./workspace-images.ts";
 
 const USAGE = `Usage: spectant [command] [options]
 
@@ -229,6 +231,8 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const lifeos = detectLifeos(options.env ?? process.env);
     // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
     const notes = openNotes(db);
+    // The workspace images (spec 016, ISC-310) live in the data folder beside the database, never in a repository.
+    const images = openImageStore(dataDir(options.env ?? process.env));
     const settings = openSettings(db);
     // The run lock's abort age (spec 040, ISC-225), read per write so a changed `runAbortMinutes` applies at once.
     const abortAfterMs = (): number => settings.get().runAbortMinutes * 60_000;
@@ -239,13 +243,17 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
       settingsApi(settings),
       actorsApi(db),
       lifeosApi(lifeos),
-      dashboardApi({ registry, lifeos, db, abortAfterMs, staleAfterMs }),
+      dashboardApi({ registry, lifeos, db, abortAfterMs, staleAfterMs, imagesOf: images.imagesOf }),
       notesApi({ store: notes, registry }),
       specs,
       prototypeApi({ registry }),
     );
     // The live update stream (spec 030, ISC-28) answers its views through the same read handlers a poll reaches.
-    const api = composeApi(eventsApi({ hub: createWatchHub({ registry }), reads }), reads);
+    const hub = createWatchHub({ registry });
+    // The writing workspace routes (spec 016) come before the list route of `dashboardApi`, which answers 405 for
+    // every write on its path, and announce each registry write on the same hub, so open streams show it at once.
+    const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos, imagesOf: images.imagesOf }), hub, images });
+    const api = composeApi(eventsApi({ hub, reads }), admin, reads);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();

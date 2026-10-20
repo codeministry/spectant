@@ -11,6 +11,7 @@ import { wsAccent, wsMonogram, wsPattern } from './ws-identity';
     <ui-ws-badge name="spectant" monogram="SP" accent="violet" [logo]="logo()" />
     <ui-ws-cover [name]="name()" />
     <ui-ws-cover name="spectant" image="assets/ws/spectant.jpg" alt="Screenshot of spectant" />
+    <ui-ws-cover name="quay" shape="thumb" [image]="logo()" />
   `,
 })
 class Host {
@@ -19,6 +20,32 @@ class Host {
 }
 
 describe('workspace identity (spec 024 T54)', () => {
+  it('takes a same-origin image (bundled or the loopback /api route with its cache-bust) and refuses a remote one (spec 016 T18)', async () => {
+    const fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const given = root.querySelectorAll<HTMLElement>('ui-ws-badge')[1];
+    const thumb = root.querySelectorAll<HTMLElement>('ui-ws-cover')[2];
+    expect(thumb.getAttribute('data-shape')).toBe('thumb');
+    expect(root.querySelectorAll('ui-ws-cover')[0].getAttribute('data-shape')).toBe('card');
+
+    const loopback = '/api/workspaces/quay/images/logo?v=0123456789abcdef';
+    fixture.componentInstance.logo.set(loopback);
+    await fixture.whenStable();
+    expect(given.querySelector('img')?.getAttribute('src')).toBe(loopback);
+    expect(thumb.querySelector('img')?.getAttribute('src')).toBe(loopback);
+
+    for (const remote of ['https://cdn.example/logo.png', '//cdn.example/logo.png', '/\\cdn.example/logo.png', 'data:image/png;base64,AA==', ' http://cdn.example/x.png']) {
+      fixture.componentInstance.logo.set(remote);
+      await fixture.whenStable();
+      expect(given.querySelector('img')).toBeNull();
+      expect(given.textContent.trim()).toBe('SP');
+      expect(given.hasAttribute('data-logo')).toBe(false);
+      expect(thumb.querySelector('img')).toBeNull();
+      expect(thumb.querySelector('svg[data-icon-exempt]')).not.toBeNull();
+    }
+  });
+
   it('derives the prototype monogram, a hash accent among the first five tokens and a stable pattern', () => {
     expect(wsMonogram('harbor')).toBe('HA');
     expect(wsMonogram('example-app')).toBe('EA');

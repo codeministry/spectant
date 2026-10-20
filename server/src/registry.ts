@@ -48,6 +48,12 @@ export type Registry = {
   /** Every workspace in overview (position) order. */
   list(): Workspace[];
   get(slug: string): Workspace | undefined;
+  /**
+   * Sets the display name of the workspace under `slug` (spec 016, ISC-305) and returns the entry as it now stands, or
+   * undefined when no workspace has that slug. Slug, path, position and registration time stay, so `/w/<slug>`, the
+   * notes and the settings keyed by the slug keep their workspace. The caller passes a trimmed, non-blank name.
+   */
+  rename(slug: string, name: string): Workspace | undefined;
   /** Unregisters by slug, or else by path. Returns false when nothing matched. Never touches the repository. */
   remove(ref: string): boolean;
   close(): void;
@@ -93,6 +99,7 @@ export function openRegistry(dataDir: string): Registry {
   const insert = db.query<null, [string, string, string, string, number]>(
     `INSERT INTO workspace (${COLUMNS}) VALUES (?, ?, ?, ?, ?)`,
   );
+  const updateName = db.query<null, [string, string]>("UPDATE workspace SET name = ? WHERE slug = ?");
   const deleteSlug = db.query<null, [string]>("DELETE FROM workspace WHERE slug = ?");
   const deletePath = db.query<null, [string]>("DELETE FROM workspace WHERE path = ?");
 
@@ -130,6 +137,11 @@ export function openRegistry(dataDir: string): Registry {
     add: (path) => add.immediate(path),
     list: () => all.all().map(toWorkspace),
     get: (slug) => {
+      const row = bySlug.get(slug);
+      return row ? toWorkspace(row) : undefined;
+    },
+    rename: (slug, name) => {
+      if (updateName.run(name, slug).changes === 0) return undefined;
       const row = bySlug.get(slug);
       return row ? toWorkspace(row) : undefined;
     },

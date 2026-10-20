@@ -528,7 +528,7 @@ describe('ShellComponent', () => {
       await harness.fixture.whenStable();
       expect(TestBed.inject(Router).url).toBe('/settings/workspaces');
       const page = root.querySelector('[data-page="settings-workspaces"]');
-      expect(page?.hasAttribute('data-demo')).toBe(true);
+      expect(page?.hasAttribute('data-demo')).toBe(false); // spec 016 T14: the page reads the registry, no longer a mock
       expect(page?.querySelector('h1')?.textContent).toContain('Workspaces');
 
       // The Settings page itself, with its card links to help and the workspace management (T52).
