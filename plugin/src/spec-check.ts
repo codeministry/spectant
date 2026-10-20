@@ -29,7 +29,7 @@ import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
 import { buildDashboard } from '../../core/src/dashboard.ts';
 import type { DashboardInput } from '../../core/src/dashboard.ts';
-import { validateEventLine } from '../../core/src/events.ts';
+import { parseEvents, validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
 import type { EventLine, LockReading, RunEvent, RunOutcome, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
 import { SPEC_TYPES, parseFrontmatter } from '../../core/src/frontmatter.ts';
@@ -432,16 +432,28 @@ function partitionView(p: ClaimPartition): Record<string, unknown> {
   return { closed: p.closed, open: p.open, takeable: p.takeable, gated: p.gated, blocked: p.blocked, taken: p.taken, dropped: p.dropped };
 }
 
-/** The dashboard's input over every spec folder of the root, as the app builds it, without a worktree tree id. */
+/**
+ * The tree id a code-reviewed mark is checked against: the current checkout's, computed exactly as `gate check
+ * code-reviewed` computes it (`checkoutOf`), so `status`, a transition and the gate check cannot disagree on whether a
+ * mark is fresh (spec 044). Hashing the checkout costs a pass over every file, so it is skipped (null) when no spec
+ * carries a code-reviewed mark: without a mark the tree decides nothing.
+ */
+function worktreeTreeOf(ctx: Context, specs: readonly SpecFiles[]): string | null {
+  if (!specs.some((f) => f.texts.gateCodeReviewed !== undefined)) return null;
+  return checkoutOf(ctx.cwd)?.tree ?? null;
+}
+
+/** The dashboard's input over every spec folder of the root, as the app builds it, with the checkout's tree id. */
 function dashboardInput(ctx: Context, locks: LockReading): DashboardInput {
   const listed = listSpecs(ctx.root);
+  const specs = listed.filter((s) => !s.archived).map(specFiles);
   return {
     master: readIfExists(masterPath(ctx)),
     constitution: readIfExists(join(ctx.root, 'specs', 'constitution.md')),
     tldr: readIfExists(join(ctx.root, 'specs', 'tldr.md')),
-    specs: listed.filter((s) => !s.archived).map(specFiles),
+    specs,
     archived: listed.filter((s) => s.archived).map(specFiles),
-    worktreeTree: null,
+    worktreeTree: worktreeTreeOf(ctx, specs),
     locks,
     workflow: parseWorkflow(readIfExists(join(ctx.root, 'specs', 'workflow.md'))),
   };
@@ -553,8 +565,9 @@ function holdsFeatureOpen(files: SpecFiles): boolean {
 /**
  * `planTransition`'s input for one spec, built the way the app's stage write builds it (`server/src/writes.ts`
  * `transitionInput`): the reviewed mark's state, the claim partition under the lock reading counted as the dashboard
- * counts it, the open siblings of the main feature and the spec edges. The CLI has no worktree tree id and no branch
- * merge state, as `status` has none: the code-reviewed mark is read without a tree and the edges without merges.
+ * counts it, the open siblings of the main feature and the spec edges. The code-reviewed mark is read against the
+ * checkout's tree id, as `status` and `gate check` read it (`worktreeTreeOf`); the CLI has no branch merge state, so
+ * the edges are read without merges.
  */
 function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: string, locks: LockReading): TransitionInput {
   const listed = listSpecs(ctx.root);
@@ -588,7 +601,7 @@ function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: s
     actor,
     now: ctx.now,
     reviewed,
-    codeReviewed: gateState('code-reviewed', codeMark, { worktreeTree: null }).state,
+    codeReviewed: gateState('code-reviewed', codeMark, { worktreeTree: worktreeTreeOf(ctx, [files]) }).state,
     partition: {
       takeable: takeable.length,
       open: partition.open.length - takeable.length,
@@ -1260,7 +1273,8 @@ function countValue(args: Args, name: string): number {
  * `gate code-reviewed <spec> --yes --code N --security N [--note "…"]`: the per-spec code-review mark, without `scope`
  * (the feature-scope mark is the app's own CLI). When the spec stands in `code-review`, one `code-review → close` line
  * first, so the tree the mark names holds it; then the tree id of the current checkout, computed in memory, and the
- * mark (`codeReviewedMarkText`).
+ * mark (`codeReviewedMarkText`). Idempotent on the event (spec 044): when the last recorded event already entered
+ * `close`, a renewed mark appends nothing, so `code-review → close` stands once however often the mark is set.
  */
 async function gateCodeReviewed(ctx: Context, args: Args, ref: SpecRef): Promise<number> {
   if (!args.flags.has('yes')) throw needsYes(ctx, ref, 'code-reviewed');
@@ -1271,8 +1285,10 @@ async function gateCodeReviewed(ctx: Context, args: Args, ref: SpecRef): Promise
   const at = ctx.now.toISOString();
   const actor = args.values.get('actor') ?? CLI_SESSION;
   const row = buildDashboard(dashboardInput(ctx, await locksOf(ctx))).specs.find((r) => r.slug === ref.slug);
+  const eventsText = specFiles(ref).texts.events;
+  const inClose = eventsText !== undefined && parseEvents(eventsText).events.at(-1)?.to === 'close';
   const event: EventLine | null =
-    row?.stage === 'code-review' ? { ts: at, from: 'code-review', to: 'close', command: args.values.get('command') ?? nextFor(ref, 'code-reviewed'), actor } : null;
+    row?.stage === 'code-review' && !inClose ? { ts: at, from: 'code-review', to: 'close', command: args.values.get('command') ?? nextFor(ref, 'code-reviewed'), actor } : null;
   const line = event === null ? null : checkedEvent(event);
   const gitignore = ensureGatesIgnored(ref);
   if (line !== null) appendEventLine(ref.dir, line);

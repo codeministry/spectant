@@ -4973,15 +4973,21 @@ function drift(ctx, args) {
 function partitionView(p) {
   return { closed: p.closed, open: p.open, takeable: p.takeable, gated: p.gated, blocked: p.blocked, taken: p.taken, dropped: p.dropped };
 }
+function worktreeTreeOf(ctx, specs) {
+  if (!specs.some((f) => f.texts.gateCodeReviewed !== undefined))
+    return null;
+  return checkoutOf(ctx.cwd)?.tree ?? null;
+}
 function dashboardInput(ctx, locks) {
   const listed2 = listSpecs(ctx.root);
+  const specs = listed2.filter((s) => !s.archived).map(specFiles);
   return {
     master: readIfExists2(masterPath(ctx)),
     constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
     tldr: readIfExists2(join5(ctx.root, "specs", "tldr.md")),
-    specs: listed2.filter((s) => !s.archived).map(specFiles),
+    specs,
     archived: listed2.filter((s) => s.archived).map(specFiles),
-    worktreeTree: null,
+    worktreeTree: worktreeTreeOf(ctx, specs),
     locks,
     workflow: parseWorkflow(readIfExists2(join5(ctx.root, "specs", "workflow.md")))
   };
@@ -5098,7 +5104,7 @@ function transitionInput(ctx, ref, to, actor, locks) {
     actor,
     now: ctx.now,
     reviewed,
-    codeReviewed: gateState("code-reviewed", codeMark, { worktreeTree: null }).state,
+    codeReviewed: gateState("code-reviewed", codeMark, { worktreeTree: worktreeTreeOf(ctx, [files]) }).state,
     partition: {
       takeable: takeable.length,
       open: partition.open.length - takeable.length,
@@ -5679,7 +5685,9 @@ async function gateCodeReviewed(ctx, args, ref) {
   const at = ctx.now.toISOString();
   const actor = args.values.get("actor") ?? CLI_SESSION;
   const row = buildDashboard(dashboardInput(ctx, await locksOf(ctx))).specs.find((r) => r.slug === ref.slug);
-  const event = row?.stage === "code-review" ? { ts: at, from: "code-review", to: "close", command: args.values.get("command") ?? nextFor(ref, "code-reviewed"), actor } : null;
+  const eventsText = specFiles(ref).texts.events;
+  const inClose = eventsText !== undefined && parseEvents(eventsText).events.at(-1)?.to === "close";
+  const event = row?.stage === "code-review" && !inClose ? { ts: at, from: "code-review", to: "close", command: args.values.get("command") ?? nextFor(ref, "code-reviewed"), actor } : null;
   const line = event === null ? null : checkedEvent(event);
   const gitignore = ensureGatesIgnored(ref);
   if (line !== null)
