@@ -1,7 +1,9 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { TranslocoTestingModule } from '@jsverse/transloco';
 import { ApiClient, type ApiResult, type WorkspaceAdminResult, type WorkspaceListEntry } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
+import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
@@ -28,6 +30,14 @@ function setUp(write: () => Promise<WorkspaceAdminResult<'add'>>) {
     uploadWorkspaceImage: () => Promise.resolve({ kind: 'ok', body: { kind: 'logo', url: '/x' } }),
   };
   TestBed.configureTestingModule({
+    // ShellData reads Transloco for its favourite toast (spec 052).
+    imports: [
+      TranslocoTestingModule.forRoot({
+        langs: CATALOGUES,
+        translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' },
+        preloadLangs: true,
+      }),
+    ],
     providers: [
       { provide: ApiClient, useValue: api },
       { provide: ShellState, useValue: { ws: signal<string | null>(null), specId: signal<string | null>(null) } },
