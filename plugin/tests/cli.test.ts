@@ -3,7 +3,7 @@
 // chain the claim names: `allocate` a feature spec, `mint` two claims (master first, then the spec), `verify` one,
 // `decide`, `drift` clean, `status --json` lists the spec, `frontier` names the open claim takeable.
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseClaims } from '../../core/src/claims.ts';
@@ -221,6 +221,48 @@ describe('spec-check: without a master', () => {
     expect(existsSync(join(root, 'ISA.md'))).toBe(false);
     expect(parseClaims(read(root, 'specs/001-digest/spec.md')).claims.map((c) => c.id)).toEqual(['ISC-1', 'ISC-2']);
     expect(run(root, 'drift').code).toBe(0);
+  });
+});
+
+describe('spec-check: a claimless spec (spec 043)', () => {
+  type NextRow = { id: string; slug: string; stage: string; next: string | null; reason: string | null };
+
+  test('status sends a freshly allocated feature spec without claims to /spec new NNN, never plan or tasks (ISC-267)', () => {
+    const root = repo();
+    expect(run(root, 'allocate', 'feature', 'digest', '--goal', 'One digest.', '--feature', 'F1', '--json').code).toBe(0);
+    const status = json(run(root, 'status', '--json')) as { specs: NextRow[] };
+    expect(status.specs).toHaveLength(1);
+    const row = status.specs[0] as NextRow;
+    expect(row).toMatchObject({ id: '001', slug: '001-digest', next: '/spec new 001', reason: 'no claims yet' });
+    expect(row.next?.startsWith('/spec plan')).toBe(false);
+    expect(row.next?.startsWith('/spec tasks')).toBe(false);
+    const one = json(run(root, 'status', '001', '--json')) as { specs: NextRow[] };
+    expect(one.specs.map((s) => s.next)).toEqual(['/spec new 001']);
+  });
+
+  test('mint into the existing claimless folder keeps its number, drift exits 0, status names /spec plan again (ISC-268)', () => {
+    const root = repo();
+    const alloc = json(run(root, 'allocate', 'feature', 'digest', '--goal', 'One digest.', '--feature', 'F1', '--json')) as { dir: string; number: number };
+    expect(alloc).toMatchObject({ dir: 'specs/001-digest', number: 1 });
+    const before = json(run(root, 'status', '001', '--json')) as { specs: NextRow[] };
+    expect(before.specs.map((s) => s.next)).toEqual(['/spec new 001']);
+
+    const minted = run(root, 'mint', '001', '--feature', 'F1', '--claims', writeClaims(root), '--json');
+    expect(minted.err).toBe('');
+    expect(minted.code).toBe(0);
+    expect(json(minted) as { ids: string[] }).toMatchObject({ ids: ['ISC-1', 'ISC-2'] });
+
+    const folders = readdirSync(join(root, 'specs'), { withFileTypes: true }).filter((e) => e.isDirectory() && /^\d{3}-/.test(e.name));
+    expect(folders.map((e) => e.name)).toEqual(['001-digest']);
+    expect(parseClaims(read(root, 'specs/001-digest/spec.md')).claims.map((c) => c.id)).toEqual(['ISC-1', 'ISC-2']);
+
+    const drift = run(root, 'drift', '001');
+    expect(drift.err).toBe('');
+    expect(drift.code).toBe(0);
+
+    const after = json(run(root, 'status', '001', '--json')) as { specs: NextRow[] };
+    expect(after.specs).toHaveLength(1);
+    expect(after.specs[0]).toMatchObject({ id: '001', slug: '001-digest', next: '/spec plan 001' });
   });
 });
 
