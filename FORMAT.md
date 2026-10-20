@@ -64,11 +64,14 @@ Paths are relative to the spec folder, as `FILE_KINDS` holds them. Legend: **R**
 **S** the stage table stops at this file until it exists, **S3** the same from three claims on, **G** a gate the stage
 table waits on until it is fresh, **O** optional, read when present, **—** not part of the type: no stage waits on it
 and the type's workflow never asks for it. A spec with an unknown or missing `spec_type` needs neither plan nor tasks.
+`plan.md` belongs to `feature`, `project` and `infra` only (`TYPE_NEEDS` in `stage.ts`): `/spec plan` writes it for
+those three types and refuses every other one, so the other columns mark it **—**. A `plan.md` that exists anyway is
+still read, as any file is: its hash enters the reviewed mark (`REVIEWED_FILES` in `gates.ts`), and it stops no stage.
 
 | Kind | Path | Read as | feature | project | infra | refactor | bug | spike | chore |
 |------|------|---------|---------|---------|-------|----------|-----|-------|-------|
 | `spec` | `spec.md` | frontmatter, claims, sections | R | R | R | R | R | R | R |
-| `plan` | `plan.md` | existence, mermaid fence, hash | S | S | S | O | O | O | — |
+| `plan` | `plan.md` | existence, mermaid fence, hash | S | S | S | — | — | — | — |
 | `tasks` | `tasks.md` | task lines, hash | S3 | S3 | O | S3 | O | O | — |
 | `context` | `context.md` | goal lock, rounds, questions | O | O | O | O | O | O | O |
 | `design` | `design.md` | Markdown, rendered | O | O | O | O | O | O | — |
@@ -122,7 +125,7 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
 | `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; a name other than the `Milestone:` line of the spec's main feature (the first word of `isa_feature`) warns `milestone-mismatch` on the spec (`master`, below); without the key the spec belongs to no milestone |
 | `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); read from spec 008, T39 on (`SpecFrontmatter.priority`, `SpecHead.priority`), on the dashboard row from T67 (`DashboardSpecRow.priority`, the head's value) |
-| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`, except where the files have overtaken it, not a step back (spec 040, below); a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; T48 adds the diagnostic (`stageMismatchOf` in `stage.ts`): a value outside the type's row, or one the last event's `to` contradicts (a file without any event included, since nothing enters the value), is exactly one `warning` `stage-mismatch` on `spec.md`, at the key's line, `subject` the value as written; spec 040 (T68, ISC-221.2) adds the exception overtaken, not a step back: a value the last event confirms yields to the derived stage when that stage lies further along the type's row (`blocked` counts as `build`, `close-pending` just past it) and the last event is no step back, its `to` not before its `from` in the row; the allocation (`from: null`) is no step back; the derived stage then applies, `stageSource: derived`, without a `stage-mismatch`, so the allocation's `plan` and a forward move that `plan.md`, `tasks.md` or a mark has since overtaken show the stage the files give, while a deliberate step back on the board holds (`StageInput.lastEventFrom`, the last line's `from`) |
+| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`, except where the files have overtaken it, not a step back (spec 040, below); a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; T48 adds the diagnostic (`stageMismatchOf` in `stage.ts`): a value outside the type's row, or one the last event's `to` contradicts (a file without any event included, since nothing enters the value), is exactly one `warning` `stage-mismatch` on `spec.md`, at the key's line, `subject` the value as written; spec 040 (T68, ISC-221.2) adds the exception overtaken, not a step back: a value the last event confirms yields to the derived stage when that stage lies further along the type's row (`blocked` counts as `build`, `close-pending` just past it) and the last event is no step back, its `to` not before its `from` in the row; the allocation (`from: null`) is no step back; the derived stage then applies, `stageSource: derived`, without a `stage-mismatch`, so the allocation's `plan` and a forward move that `plan.md`, `tasks.md` or a mark has since overtaken show the stage the files give, while a deliberate step back on the board holds (`StageInput.lastEventFrom`, the last line's `from`); spec 055 (ISC-327) adds the allocation entry: `plan`, the stage the allocation writes for every type, is a valid value for every type, also one whose row does not list `plan` (`refactor`, `bug`, `spike` and `chore` in the default table), and is never outside the row (`isAllocationEntry` in `stage.ts`); in such a row it stands just before the row's first stage (`placeOf`), so a claimless fresh allocation stands on its explicit `plan`, and once the files move on, claims minted or `tasks.md` written, `plan` reads as overtaken, the derived stage applies and no `stage-mismatch` is raised |
 
 Every other key is kept as written (`rest`) and read by nobody.
 
@@ -132,14 +135,20 @@ replaces the `stage:` line of `spec.md`, leaves the rest of the file byte-identi
 memory and writes nothing (spec 008, T71 for ISC-121, T72 for ISC-31); `server/src/writes.ts` writes the plan. `from` is
 the spec's stage as above, explicit or derived, with the spec edges the dashboard row reads (spec 025: a claim an open
 spec edge holds is not takeable, and a spec whose open work all waits on open spec edges stands on `blocked`), so a
-move starts from the stage the row shows. The move must be one the type's row lists (§ workflow, Derived), or,
-under `code_review: feature`, the entry into `close-pending` in place of `code-review`; then the fixed gates apply: a
-stage past `review` in the row, and either detour, needs a fresh reviewed mark; `done`, `close` and `close-pending`
-need no open claim; `close-pending` needs an open sibling of the spec's main feature, and `code-review` under
-`code_review: feature` (or out of `close-pending`) needs none. An accepted plan carries the new text, the last `stage:`
-line of the block replaced or, without one, a `stage:` line inserted as the block's last key, each with its
-neighbour's line ending, and one event `{ts, from, to, command, actor}` that passes `validateEventLine`, its `command`
-the stage table's command for `from` (`/spec review NNN` for `review → build`). A refused plan carries
+move starts from the stage the row shows. The move must be one the type's row lists (§ workflow, Derived), or a
+move out of the allocation entry, or, under `code_review: feature`, the entry into `close-pending` in place of
+`code-review`. Out of the allocation entry `plan` of a row that does not list it (spec 055, ISC-328,
+`entryMoveAllowed` in `transition.ts`), the move may go to any stage of the row up to and including `review`, and to
+none behind it: `plan → review` for a `bug`, `plan → tasks` or `plan → review` for a `refactor`; `review → build`
+stays the reviewed mark's own move. Then the fixed gates apply: a stage past `review` in the row, and either detour,
+needs a fresh reviewed mark; `done`, `close` and `close-pending` need no open claim; `close-pending` needs an open
+sibling of the spec's main feature, and `code-review` under `code_review: feature` (or out of `close-pending`) needs
+none. An accepted plan carries the new text, the last `stage:` line of the block replaced or, without one, a `stage:`
+line inserted as the block's last key, each with its neighbour's line ending, and one event
+`{ts, from, to, command, actor}` that passes `validateEventLine`, its `command` the stage table's command for `from`
+(`/spec review NNN` for `review → build`); out of the allocation entry, the command of the row's stage before `to`
+(`/spec tasks NNN` for `plan → review` in a `refactor`), or, onto the row's first stage, the claimless row's
+`/spec new NNN` (`moveCommandOf` in `transition.ts`). A refused plan carries
 `{from, to, reason, command}` and neither text nor event: the reason names what the move needs and, where one fits,
 ends in the stage table's phrase (`build needs a fresh reviewed mark: the reviewed mark is stale`); the command is the
 stage table's next command for the spec as it stands. Until spec 008, T49 brings `close-pending` into the stage
@@ -492,6 +501,11 @@ string, `ts` ISO 8601. When the file exists its transitions win in the timeline;
 stage derived from the files, marked as derived (ISC-36). `from` and `to` are the workflow's stage names (below, one
 vocabulary for timeline and stage: the stage table's, `close-pending` among them, and a story's `idea`, spec 008,
 T62; `EVENT_STAGES` in `events.ts`); `from` is null only on the creation, the file's first line.
+The creation is the allocation line `{from: null, to: "plan"}` for every type: `plan` is the allocation entry, valid
+also for a type whose row does not list `plan` (spec 055). It stands just before the row's first stage, reads as
+overtaken once the files move on, without a `stage-mismatch`, and a transition may move from it to any stage of the
+row up to and including `review`; `review → build` stays the reviewed mark's own move (§ `spec`, the `stage` key and
+"A transition writes `stage:`").
 The last line's `from` and `to` decide whether an explicit `stage:` holds against files that have overtaken it: only a
 step back (`to` before `from` in the type's row) does (spec 040, ISC-221.2; § `spec`, the `stage` key).
 
@@ -948,7 +962,7 @@ ISC-130.2):
 - `context.md` carries `spec`, `created`, `updated` and `rounds: 1`, and `## Round 0 — the story, <ts>` holds the
   story's text after its frontmatter verbatim, a `## Shaping record` included;
 - the creation event, the first line of `events.jsonl`, is `{ts, from: null, to: "plan", command: "/spec new <slug>",
-  actor}`.
+  actor}`, for every type: `plan` is the allocation entry also of a type whose row does not list it (§ `events`).
 
 A story that belongs to the feature block F2 and names `Harbor 2.0`, a milestone the master does not list (the
 `unknown-milestone` case); the index names it, while the second harbor story, `registry-webhooks`, is missing from the
@@ -1366,6 +1380,11 @@ A row of `specs/workflow.md` replaces its type's default row, and the same rule 
 before its tasks, allows `plan → review`, `review → tasks` and `tasks → build` in place of `plan → tasks`,
 `tasks → review` and `review → build`; the detours follow the same rule. A type the file leaves out, or a row the
 reader rejects, keeps the pairs above.
+
+The transition itself (`planTransition`, `planCatchUp` in `transition.ts`) also takes the moves out of the allocation
+entry `plan` of a row that does not list it, to every stage of the row up to and including `review` (spec 055;
+§ `spec`, "A transition writes `stage:`"). They are no pairs of a row, so `TRANSITIONS`, `allowedTransition` and the
+table above list none of them.
 
 ## The state table
 

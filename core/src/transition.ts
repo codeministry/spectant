@@ -25,7 +25,7 @@ import type { CodeReviewMode, EventLine, MarkState, SpecFiles, SpecType, SpecWai
 import { parseFrontmatter, type FrontmatterResult } from './frontmatter.ts';
 import { specIdOf } from './spec-ref.ts';
 import { mainFeatureOf } from './status.ts';
-import { type ClaimCounts, codeReviewOf, commandWith, defaultWorkflowRow, fillReason, isWorkflowStage, nextCommandWithReason, ownRuleOf, rowTransitions, type Stage, type StageInput, stageOf, workflowStagesOf } from './stage.ts';
+import { CLAIMLESS_RULE, type ClaimCounts, codeReviewOf, commandWith, defaultWorkflowRow, fillReason, isAllocationEntry, isWorkflowStage, nextCommandWithReason, ownRuleOf, rowTransitions, type Stage, type StageInput, stageOf, workflowStagesOf } from './stage.ts';
 
 export interface TransitionInput {
   readonly files: SpecFiles;
@@ -73,9 +73,22 @@ function listed(lane: Lane, from: WorkflowStage, to: WorkflowStage): boolean {
   return rowTransitions(row).some((p) => p.from === from && p.to === to);
 }
 
-/** The listed moves plus, under `code_review: feature`, the entry into `close-pending` in place of `code-review`. */
+/**
+ * The moves out of the allocation entry (spec 055, ISC-328): from `plan` in a row that does not run it, every stage of
+ * the row up to and including `review`, none behind it; `review → build` stays the reviewed mark's own write.
+ */
+function entryMoveAllowed(lane: Lane, from: WorkflowStage, to: WorkflowStage): boolean {
+  if (!isAllocationEntry(from, lane.stages)) return false;
+  const at = lane.stages.indexOf(to);
+  return at >= 0 && at <= lane.stages.indexOf('review');
+}
+
+/**
+ * The listed moves, the moves out of the allocation entry, plus, under `code_review: feature`, the entry into
+ * `close-pending` in place of `code-review`.
+ */
 function moveAllowed(lane: Lane, from: WorkflowStage, to: WorkflowStage): boolean {
-  if (listed(lane, from, to)) return true;
+  if (listed(lane, from, to) || entryMoveAllowed(lane, from, to)) return true;
   return to === 'close-pending' && lane.codeReview === 'feature' && listed(lane, from, 'code-review');
 }
 
@@ -91,6 +104,18 @@ function phrase(stage: Stage, input: StageInput): string {
 function commandOf(stage: WorkflowStage, number: string): string | null {
   const next = ownRuleOf(stage as Stage, true)?.next;
   return next === undefined || next === null ? null : commandWith(next, number);
+}
+
+/**
+ * The command that makes the move `from → to` (spec 055): out of the allocation entry `plan` of a row without it, the
+ * command of the row's stage before `to` (`/spec tasks` before `review`), or, onto the row's first stage, the claimless
+ * row's (`/spec new NNN` gives the spec its claims); otherwise the stage table's for `from`, else for `to`.
+ */
+function moveCommandOf(lane: Lane, from: WorkflowStage, to: WorkflowStage, number: string): string | null {
+  if (!isAllocationEntry(from, lane.stages)) return commandOf(from, number) ?? commandOf(to, number);
+  const before = lane.stages[lane.stages.indexOf(to) - 1];
+  if (before !== undefined) return commandOf(before, number);
+  return CLAIMLESS_RULE.next === null ? null : commandWith(CLAIMLESS_RULE.next, number);
 }
 
 const list = (ids: readonly string[]): string => ids.join(', ');
@@ -186,7 +211,7 @@ export function planTransition(input: TransitionInput): TransitionPlan {
   if (specText === null) return refuse('spec.md does not read back with the new stage: line; its frontmatter is left as it is');
   // The command that makes the move is the one the stage table names for `from`; the detour out of close-pending,
   // which names none, is made by the feature's code review.
-  const command = commandOf(from, number) ?? commandOf(to, number);
+  const command = moveCommandOf(lane, from, to, number);
   if (command === null) return refuse(`no stage table command makes the move ${from} → ${to}`);
   if (Number.isNaN(input.now.getTime())) return refuse('the event time is not a valid date');
   const event: EventLine = { ts: input.now.toISOString(), from, to, command, actor: input.actor };
@@ -259,7 +284,7 @@ export function planCatchUp(input: TransitionInput): CatchUpPlan {
 
   const specText = withStage(spec, to, fm);
   if (specText === null) return refuse(last, 'spec.md does not read back with the new stage: line; its frontmatter is left as it is');
-  const command = commandOf(last, number) ?? commandOf(to, number);
+  const command = moveCommandOf(lane, last, to, number);
   if (command === null) return refuse(last, `no stage table command makes the move ${last} → ${to}`);
   if (Number.isNaN(input.now.getTime())) return refuse(last, 'the event time is not a valid date');
   const event: EventLine = { ts: input.now.toISOString(), from: last, to, command, actor: input.actor };

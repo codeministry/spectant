@@ -8,9 +8,10 @@ import { join } from 'node:path';
 
 import { parseClaims } from '../src/claims.ts';
 import { validateEventLine } from '../src/events.ts';
-import type { MarkState, SpecFiles, TransitionPlan, Workflow, WorkflowStage } from '../src/files.ts';
-import type { ClaimCounts } from '../src/stage.ts';
-import { planTransition, type TransitionInput } from '../src/transition.ts';
+import type { MarkState, SpecFiles, SpecType, TransitionPlan, Workflow, WorkflowStage } from '../src/files.ts';
+import { parseFrontmatter } from '../src/frontmatter.ts';
+import { type ClaimCounts, defaultWorkflowRow, WORKFLOW_TYPES } from '../src/stage.ts';
+import { type CatchUpPlan, planCatchUp, planTransition, type TransitionInput } from '../src/transition.ts';
 import { parseWorkflow } from '../src/workflow.ts';
 import { FIXTURES, folders } from './helpers/read-tree.ts';
 
@@ -257,5 +258,85 @@ describe('planTransition: a refused move (T71, T72, ISC-31)', () => {
     expect(refused(plan({ folder: '010-demo', texts: {} }, 'build')).reason).toContain('spec.md');
     const bare = { folder: '010-demo', texts: { spec: '# 010 — Demo\n- [ ] ISC-1: one\n' } };
     expect(refused(plan(bare, 'build', { workflow: DEFAULT_WF })).reason).toContain('frontmatter');
+  });
+});
+
+// ─── The allocation entry plan (spec 055, T2, ISC-328) ──────────────────────────────────────────────────────────────
+//
+// The allocation writes `stage: plan` and the one event null → plan for every type. From that last recorded `plan`
+// the move goes to every stage of the type's row up to and including `review`, none behind it: `review → build` stays
+// the reviewed mark's own write. A row that lists `plan` (feature, project, infra) keeps its own moves.
+
+describe('the allocation entry plan (spec 055, ISC-328)', () => {
+  /** Spec 010 of `type` as allocated: `stage: plan`, the one event null → plan, `claims` claim lines, the files named. */
+  const allocated = (type: SpecType, claims: number, files: { plan?: boolean; tasks?: boolean } = {}): SpecFiles => ({
+    folder: '010-demo',
+    texts: {
+      spec: `---\nslug: 010-demo\nspec_type: ${type}\nstage: plan\n---\n# 010 — Demo\n\n## Claims\n\n${Array.from({ length: claims }, (_, i) => `- [ ] ISC-${i + 1}: Claim ${i + 1}\n`).join('')}`,
+      events: `${JSON.stringify({ ts: '2026-03-01T00:00:00Z', from: null, to: 'plan', command: '/spec new demo', actor: ACTOR })}\n`,
+      ...(files.plan ? { plan: '# Plan\n' } : {}),
+      ...(files.tasks ? { tasks: '# Tasks\n' } : {}),
+    },
+  });
+  const input = (files: SpecFiles, to: WorkflowStage, reviewed: MarkState = 'missing'): TransitionInput => ({
+    files,
+    workflow: DEFAULT_WF,
+    to,
+    actor: ACTOR,
+    now: NOW,
+    reviewed,
+    partition: partitionOf(files.texts.spec ?? ''),
+    featureSiblingsOpen: [],
+  });
+  const caughtUp = (p: CatchUpPlan): Extract<CatchUpPlan, { kind: 'catch-up' }> => {
+    if (p.kind !== 'catch-up') throw new Error(`expected a catch-up, got ${JSON.stringify(p)}`);
+    return p;
+  };
+  const ENTRY_TYPES: readonly SpecType[] = ['refactor', 'bug', 'spike', 'chore'];
+
+  test('entry: a refactor with three claims catches up plan → tasks, and after tasks.md plan → review, one event each', () => {
+    const toTasks = caughtUp(planCatchUp(input(allocated('refactor', 3), 'tasks')));
+    expect([toTasks.from, toTasks.to, toTasks.event.from, toTasks.event.to]).toEqual(['plan', 'tasks', 'plan', 'tasks']);
+    const toReview = caughtUp(planCatchUp(input(allocated('refactor', 3, { tasks: true }), 'review')));
+    expect([toReview.event.from, toReview.event.to, toReview.event.command]).toEqual(['plan', 'review', '/spec tasks 010']);
+    expect(parseFrontmatter(toReview.specText).data.stage).toBe('review');
+    expect(validateEventLine(JSON.stringify(toReview.event)).ok).toBe(true);
+  });
+
+  test('entry: a bug, a spike and a chore with claims catch up plan → review', () => {
+    for (const type of ['bug', 'spike', 'chore'] as const) {
+      const p = caughtUp(planCatchUp(input(allocated(type, 1), 'review')));
+      expect([type, p.event.from, p.event.to]).toEqual([type, 'plan', 'review']);
+    }
+  });
+
+  test('entry: a claimless spec of a row without plan moves from plan to every stage of its row up to review', () => {
+    for (const type of ENTRY_TYPES) {
+      const stages = defaultWorkflowRow(type).stages;
+      for (const to of stages.slice(0, stages.indexOf('review') + 1)) {
+        const p = accepted(planTransition(input(allocated(type, 0), to)));
+        expect([type, p.from, p.to, p.event.from, p.event.to]).toEqual([type, 'plan', to, 'plan', to]);
+      }
+    }
+  });
+
+  test('entry: plan → build is refused for every type, by planTransition and by the catch-up', () => {
+    for (const type of WORKFLOW_TYPES) {
+      const moved = refused(planTransition(input(allocated(type, 0), 'build', 'fresh')));
+      expect([type, moved.from, moved.reason]).toEqual([type, 'plan', `the ${type} workflow lists no move plan → build`]);
+      // Reviewed, every file there, open claims: the files derive build, and the last recorded stage is still plan.
+      const late = planCatchUp(input(allocated(type, 3, { plan: true, tasks: true }), 'build', 'fresh'));
+      expect([type, late.kind, late.kind === 'refused' ? late.reason : '']).toEqual([
+        type,
+        'refused',
+        `the files carry the spec to build, but the ${type} workflow lists no move plan → build from the last recorded stage`,
+      ]);
+    }
+  });
+
+  test('entry: a feature keeps its own row: plan → tasks, plan → review refused', () => {
+    const p = caughtUp(planCatchUp(input(allocated('feature', 3, { plan: true }), 'tasks')));
+    expect([p.event.from, p.event.to, p.event.command]).toEqual(['plan', 'tasks', '/spec plan 010']);
+    expect(refused(planTransition(input(allocated('feature', 0), 'review'))).reason).toBe('the feature workflow lists no move plan → review');
   });
 });
