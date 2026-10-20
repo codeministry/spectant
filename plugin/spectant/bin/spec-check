@@ -2212,12 +2212,17 @@ function transitionsOf(workflow) {
   return Object.fromEntries(WORKFLOW_TYPES.map((type) => [type, rowTransitions(rowOf(type, workflow))]));
 }
 var TRANSITIONS = transitionsOf(DEFAULT);
+function isAllocationEntry(stage, row) {
+  return stage === "plan" && !row.includes("plan");
+}
 function placeOf(stage, row) {
   const build2 = row.indexOf("build");
   if (stage === "blocked")
     return build2;
   if (stage === "close-pending")
     return build2 < 0 ? -1 : build2 + 0.5;
+  if (isAllocationEntry(stage, row))
+    return -0.5;
   return row.indexOf(stage);
 }
 function explicitVerdict(input) {
@@ -2225,7 +2230,7 @@ function explicitVerdict(input) {
   if (value === null)
     return { kind: "none" };
   const row = workflowStagesOf(input.type, input.workflow);
-  if (!isStage(value) || !row.some((s) => s === value))
+  if (!isStage(value) || !(row.some((s) => s === value) || isAllocationEntry(value, row)))
     return { kind: "outside", value };
   if (value !== input.lastEventTo)
     return { kind: "contradicted", value };
@@ -4392,8 +4397,14 @@ function listed(lane, from, to) {
   const row = { type: lane.type ?? "feature", stages: lane.stages, codeReview: lane.codeReview };
   return rowTransitions(row).some((p) => p.from === from && p.to === to);
 }
+function entryMoveAllowed(lane, from, to) {
+  if (!isAllocationEntry(from, lane.stages))
+    return false;
+  const at = lane.stages.indexOf(to);
+  return at >= 0 && at <= lane.stages.indexOf("review");
+}
 function moveAllowed(lane, from, to) {
-  if (listed(lane, from, to))
+  if (listed(lane, from, to) || entryMoveAllowed(lane, from, to))
     return true;
   return to === "close-pending" && lane.codeReview === "feature" && listed(lane, from, "code-review");
 }
@@ -4407,6 +4418,14 @@ function phrase(stage, input) {
 function commandOf(stage, number) {
   const next = ownRuleOf(stage, true)?.next;
   return next === undefined || next === null ? null : commandWith(next, number);
+}
+function moveCommandOf(lane, from, to, number) {
+  if (!isAllocationEntry(from, lane.stages))
+    return commandOf(from, number) ?? commandOf(to, number);
+  const before = lane.stages[lane.stages.indexOf(to) - 1];
+  if (before !== undefined)
+    return commandOf(before, number);
+  return CLAIMLESS_RULE.next === null ? null : commandWith(CLAIMLESS_RULE.next, number);
 }
 var list = (ids) => ids.join(", ");
 function gateRefusal(input, lane, from, stageInput, feature) {
@@ -4495,7 +4514,7 @@ function planTransition(input) {
   const specText = withStage(spec, to, fm);
   if (specText === null)
     return refuse("spec.md does not read back with the new stage: line; its frontmatter is left as it is");
-  const command = commandOf(from, number) ?? commandOf(to, number);
+  const command = moveCommandOf(lane, from, to, number);
   if (command === null)
     return refuse(`no stage table command makes the move ${from} \u2192 ${to}`);
   if (Number.isNaN(input.now.getTime()))
@@ -4543,7 +4562,7 @@ function planCatchUp(input) {
   const specText = withStage(spec, to, fm);
   if (specText === null)
     return refuse(last, "spec.md does not read back with the new stage: line; its frontmatter is left as it is");
-  const command = commandOf(last, number) ?? commandOf(to, number);
+  const command = moveCommandOf(lane, last, to, number);
   if (command === null)
     return refuse(last, `no stage table command makes the move ${last} \u2192 ${to}`);
   if (Number.isNaN(input.now.getTime()))
