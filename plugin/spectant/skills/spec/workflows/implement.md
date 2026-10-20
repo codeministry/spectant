@@ -66,7 +66,8 @@ edge added mid-run makes the mark stale on purpose.
   in the round report.
 - **The actor.** Every line carries an actor in the grammar `FORMAT.md` defines. The parent's own lines (`patch`,
   `apply`) carry `a:<kind>:<id>` (for example `a:claude:spec-NNN`; lower case, letters, digits, `-` and `_`), each
-  builder's `<parent actor>/T<k>`. The lock and launch lines the plugin's hooks write carry the session's own actor,
+  builder's `<parent actor>/T<k>`, or `<parent actor>/C<k>` for a claim unit of a spec without `tasks.md` (Step 3).
+  The lock and launch lines the plugin's hooks write carry the session's own actor,
   `a:claude:<first 8 characters of the session id>`. Strings such as `spec-NNN-ISC-7` are not actors; the reader flags
   them as legacy.
 - **The CLI path for builders.** Resolve `${CLAUDE_PLUGIN_ROOT}/bin/spec-check` to its absolute path once and put
@@ -81,8 +82,10 @@ spec-check frontier specs/NNN-slug --json > <scratch>/round-N.frontier.json
 ```
 
 `frontier` returns the takeable claims and tasks and, for the rest, what holds them: an open edge, an open seam, a lock
-another session holds. Without `tasks.md` the claim is the unit of work. From the takeable tasks the parent builds the
-round plan and saves it as `<scratch>/round-N.plan.json`:
+another session holds. Without `tasks.md` the claim is the unit of work: `frontier` names those units `C1`, `C2`, …
+in the order of the open claims, and a `C<k>` stands wherever this workflow names a task id `T<k>` (the round plan,
+the brief, the actor and every activity line). From the takeable tasks the parent builds the round plan and saves it
+as `<scratch>/round-N.plan.json`:
 
 ```json
 { "dispatch": [{ "id": "T4", "claim": "ISC-7", "lane": "core", "text": "…", "path": "core/src/x.ts", "after": ["T2"] }],
@@ -118,20 +121,20 @@ round plan and saves it as `<scratch>/round-N.plan.json`:
 *(output format — every builder gets this shape, nothing less)*
 
 ```
-spectant: spec=<NNN> task=T<k> claim=ISC-N
+spectant: spec=<NNN> task=T<k>|C<k> claim=ISC-N
 SPEC:      <absolute path>/specs/NNN-slug/spec.md   (read it; you are closing one claim of it)
 GOAL:      "<the spec's goal, byte for byte>"
 CLAIM:     ISC-N — <claim text verbatim>
 PROBE:     <the Test Strategy row for ISC-N, verbatim: type | check | threshold | tool>
-TASK:      T<k> · <lane> — <task text> · <path column>
+TASK:      T<k>|C<k> · <lane> — <task text> · <path column>
 LANE:      <lane> — load: <files from specs/constitution.md § Lanes> — lane probe: <command>
 SEAM:      <the contract from plan.md this task builds against, or "none">
 STEPS:     after EVERY run of your probe, before anything else:
-             bun "<cli>" activity probe --result <red if exit≠0, else green> --task T<k> --claim ISC-N
-                 --session <parent actor>/T<k>
+             bun "<cli>" activity probe --result <red if exit≠0, else green> --task T<k>|C<k> --claim ISC-N
+                 --session <parent actor>/T<k>|C<k>
            before you return kind=question:
-             bun "<cli>" activity question --text "<the question, one line>" --task T<k> --claim ISC-N
-                 --session <parent actor>/T<k>
+             bun "<cli>" activity question --text "<the question, one line>" --task T<k>|C<k> --claim ISC-N
+                 --session <parent actor>/T<k>|C<k>
 ISOLATION: you run in your own git worktree; never commit, never switch branches, never touch files outside your
            path column unless the probe forces it, and then list them in files touched.
 RETURN:    result | question — the shapes under "What a builder returns". A question only when a wrong choice
@@ -141,8 +144,9 @@ DONE:      the probe named above ran red before your change and green after, in 
 
 The first line is the marker, exactly this shape and always first, before `SPEC:`: the plugin's hooks read it from
 the Agent tool's prompt to write the task's `claim`, `dispatch`, `build` and `release` lines, and a brief without it
-is no task to them. `<NNN>` is the spec's three-digit number, `T<k>` and `ISC-N` the task and claim of this brief. The
-parent writes none of these four lines itself.
+is no task to them. `<NNN>` is the spec's three-digit number, `ISC-N` the claim of this brief, and its task either
+`T<k>` from `tasks.md` or, for a spec without `tasks.md`, the claim unit `C<k>` that `frontier` named (Step 3): write
+the one that applies wherever the template says `T<k>|C<k>`. The parent writes none of these four lines itself.
 
 `STEPS` is how Spectant sees what a builder does inside its run: the builder writes `probe` and `question` itself, from
 inside its worktree, and the CLI puts the line into the repository root's `.spectant/activity.jsonl`. The parent never

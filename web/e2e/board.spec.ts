@@ -23,6 +23,7 @@ import type { CardState, Frame, LiveFrame, SpecType, Workflow, WorkflowStage } f
 import type { APIRequestContext, Locator, Page, Request, Response as PlaywrightResponse } from '@playwright/test';
 import { assigneeOf } from '../../core/src/assignee.ts';
 import { allowedTransition, workflowStagesOf } from '../../core/src/stage.ts';
+import { allowedEntryMove } from '../../core/src/transition.ts';
 import { DEFAULT_WORKFLOW, FIXED_GATES, boardStages } from '../../core/src/workflow.ts';
 import { writePathsOf } from '../../server/src/writes.contract.ts';
 import type { PlanningModel } from '../../core/src/planning.ts';
@@ -1338,9 +1339,11 @@ function movable(id: string): MovableSpec {
   if (holder.stage === null || type === null) throw new Error(`harbor ${id} has no stage or no type`);
   return { id, slug: holder.slug, key: `spec:${holder.slug}`, stage: holder.stage as WorkflowStage, type };
 }
-/** The columns core's table admits from the spec's stage, in board order (the board's `dropTargetsOf`). */
+/** The columns core's table admits from the spec's stage, the allocation entry's moves included, in board order (the board's `dropTargetsOf`). */
 const targetsOf = (spec: MovableSpec): WorkflowStage[] =>
-  HARBOR_STAGES.filter((s) => s !== spec.stage && allowedTransition(spec.stage, s, spec.type, HARBOR_WORKFLOW));
+  HARBOR_STAGES.filter(
+    (s) => s !== spec.stage && (allowedTransition(spec.stage, s, spec.type, HARBOR_WORKFLOW) || allowedEntryMove(spec.stage, s, spec.type, HARBOR_WORKFLOW)),
+  );
 /** The hint the design gives a column for the lifted card: current, allowed, a fixed gate, or not next. */
 const hintOf = (spec: MovableSpec, stage: WorkflowStage): string =>
   stage === spec.stage ? 'current' : targetsOf(spec).includes(stage) ? 'allowed' : FIXED_GATES.includes(stage) ? 'gate' : 'not-next';

@@ -535,10 +535,12 @@ neutral id, never a name or an e-mail address:
 |------|---------|---------|-------|
 | person | `u:[0-9a-f]{8}` | `u:3f9a0c7e` | a person: the first eight hex digits of sha256 over the trimmed, lower-cased git `user.email` of the repository |
 | agent | `a:<kind>:<id>` | `a:claude:sess-7` | an agent session of the given kind |
-| sub-agent | `a:<kind>:<id>/<task>` | `a:claude:sess-7/T12` | a sub-agent of that session working one task |
+| sub-agent | `a:<kind>:<id>/<task>` | `a:claude:sess-7/T12`, `a:claude:sess-7/C2` | a sub-agent of that session working one task or claim unit |
 
 `<kind>` and `<id>` are each `[a-z0-9][a-z0-9_-]*` (lower case, so neither can hold a `:` or `/`), `<task>` is a task
-id `T[0-9]+` as in `tasks.md`, and the whole value must match with nothing around it.
+id `T[0-9]+` as in `tasks.md` or a claim unit `C[0-9]+`, and the whole value must match with nothing around it. A
+claim unit is the unit of work `spec-check frontier` names for a spec without `tasks.md`: its open claims numbered
+`C1`, `C2`, … in written order (`takeable.ts`, spec 056). `tasks.md` itself knows only `T<n>`.
 
 The person id is unsalted, so two machines with the same `user.email` agree on one person without any exchange.
 `core/` derives the `u:` id from the repository's git configuration (spec 008, T59 for the derivation, T77 for reading
@@ -1731,10 +1733,11 @@ the work:
 - **The hooks** (`spec-check hook`, wired in `plugin/spectant/hooks/hooks.json`) write `claim`, `dispatch`, `build`
   and `release` for a builder whose brief opens with the marker line `spectant: spec=<NNN> task=<Tn> claim=<ISC-N>`
   (`plugin/src/marker.ts`), which the plugin's implement command writes as the first line of every builder brief: no
-  hook field names a task or a claim. `claim` and `dispatch` at `PreToolUse(Agent)` (`dispatch` alone when the session
-  holds the claim already), `build` at `PostToolUse(Agent)` when the builder launched in the background or completed in
-  the foreground, `release` at `SubagentStop` of the last running builder of that claim (or at that foreground
-  completion). Each line's `session` is the parent session, `a:claude:<first 8 characters of its session id>`. A brief
+  hook field names a task or a claim. Its `task` is `T<n>` from `tasks.md` or, for a spec without `tasks.md`, the claim
+  unit `C<n>` that `spec-check frontier` names (spec 056); the hooks take both alike. `claim` and `dispatch` at
+  `PreToolUse(Agent)` (`dispatch` alone when the session holds the claim already), `build` at `PostToolUse(Agent)`
+  when the builder launched in the background or completed in the foreground, `release` at `SubagentStop` of the last
+  running builder of that claim (or at that foreground completion). Each line's `session` is the parent session, `a:claude:<first 8 characters of its session id>`. A brief
   without the marker line gets no line: a foreign subagent is no task.
 - **The activity tool** (`spec-check activity <event>`): the parent of an implement round writes `patch` and `apply`,
   and a builder its step events `probe` and `question` (below). The parent writes no `claim`, `release`, `dispatch` or
@@ -1748,12 +1751,14 @@ skill's activity writer and the app use (the reader ignores key order): `ts`, `e
 (`result` or `text` after `session`, `worktree` last), and `run`, `command`, `session`, the target and `outcome` for
 the run lifecycle events. A planner refuses input the reader would skip or read as legacy (a session outside the actor
 grammar, a bad claim or task id, a time that is no date, a field with a line break, an unknown outcome) and plans
-nothing.
+nothing. A task id is `T<k>`, a task of `tasks.md`, or `C<k>`, a claim unit of a spec without `tasks.md` (the actor
+grammar, above; spec 056); every line that carries `task` takes either.
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
-for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
-`u:` id for a person who holds a claim by hand. A `session` in another form, such as the `spec-002-ISC-75` of the
-frontier lock below, is legacy: read, marked `legacy`, never rejected; harbor carries the new forms only (spec 008, T28).
+for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`) or
+on a claim unit (`a:claude:sess-7/C2`, with `task: "C2"`), a `u:` id for a person who holds a claim by hand. A
+`session` in another form, such as the `spec-002-ISC-75` of the frontier lock below, is legacy: read, marked `legacy`,
+never rejected; harbor carries the new forms only (spec 008, T28).
 Every lock carries its `session` parsed as `actor` (`ClaimLock.actor`, spec 008, T63), and a legacy session raises the
 `actor-legacy` warning of the `events` section once per file: once for `.spectant/activity.jsonl`, at its first legacy
 claim or release line and that line's claim, and once per frontier lock file of this ISA (a lock skipped as foreign
