@@ -107,7 +107,7 @@ export interface RunIdInput {
 }
 
 const CLAIM_ID = /^ISC-\d+(\.\d+)*$/u;
-const TASK_ID = /^T\d+$/u;
+const TASK_ID = /^[TC]\d+$/u; // a tasks.md task `T<k>` or a frontier claim unit `C<k>` of a spec without tasks.md (spec 056)
 const IDEA_SLUG = /^[a-z0-9][a-z0-9-]*$/u;
 const INIT_TARGET = 'init';
 const RUN_EVENTS: ReadonlySet<string> = new Set<RunEvent>(['dispatch', 'build', 'patch', 'apply']);
@@ -133,7 +133,7 @@ function checkTs(ts: string): void {
 function checkSession(session: string): void {
   oneLine(session, 'the session', true);
   if (parseActor(session).legacy) {
-    throw new ActivityTextError('bad-session', `the session ${JSON.stringify(session)} is no actor: a:<kind>:<id>[/T<k>] or u:<8 hex>`);
+    throw new ActivityTextError('bad-session', `the session ${JSON.stringify(session)} is no actor: a:<kind>:<id>[/T<k>|/C<k>] or u:<8 hex>`);
   }
 }
 
@@ -144,7 +144,7 @@ function checkClaim(claim: string | undefined, required: boolean): void {
 
 function checkTask(task: string | undefined, required: boolean): void {
   oneLine(task, 'the task', required);
-  if (task !== undefined && !TASK_ID.test(task)) throw new ActivityTextError('bad-task', `the task ${JSON.stringify(task)} is no T<k>`);
+  if (task !== undefined && !TASK_ID.test(task)) throw new ActivityTextError('bad-task', `the task ${JSON.stringify(task)} is no T<k> or C<k>`);
 }
 
 /** The line's text: one JSON object and its newline. */

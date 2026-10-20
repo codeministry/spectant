@@ -2147,7 +2147,7 @@ export interface ActorRef {
   readonly kind: ActorKind;
   /** `u:0123abcd`, `a:claude:sess-7`; a legacy value is its own id. */
   readonly id: string;
-  /** The task of a sub-agent, `T12` in `a:claude:sess-7/T12`. */
+  /** The task of a sub-agent, `T12` in `a:claude:sess-7/T12`, or a frontier claim unit, `C2` in `a:claude:spec-056/C2`. */
   readonly task?: string;
   /** True for every value outside the grammar: read and flagged, never rejected. */
   readonly legacy: boolean;

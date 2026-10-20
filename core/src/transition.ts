@@ -84,6 +84,14 @@ function entryMoveAllowed(lane: Lane, from: WorkflowStage, to: WorkflowStage): b
 }
 
 /**
+ * Whether a spec of `type` may leave the allocation entry `from` for `to` under `workflow` (spec 056, ISC-349): the
+ * entry moves `planTransition` accepts beside the listed ones, in `allowedTransition`'s signature for the board.
+ */
+export function allowedEntryMove(from: WorkflowStage, to: WorkflowStage, type: SpecType, workflow: Workflow): boolean {
+  return entryMoveAllowed(laneOf(type, workflow), from, to);
+}
+
+/**
  * The listed moves, the moves out of the allocation entry, plus, under `code_review: feature`, the entry into
  * `close-pending` in place of `code-review`.
  */

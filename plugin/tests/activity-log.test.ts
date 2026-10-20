@@ -137,3 +137,50 @@ describe('appendRunEvent', () => {
     expect(() => activityReading(text)).not.toThrow();
   });
 });
+
+// Spec 056, ISC-347: a spec without tasks.md has the frontier units `C<n>` instead of `T<n>`; `spec-check activity
+// probe|question --task C<n>` writes its one line like `--task T<n>`, from a builder session `a:<kind>:<id>/C<n>`.
+describe('spec-check activity with a C<n> unit (ISC-347)', () => {
+  const CLI = join(import.meta.dir, '..', 'src', 'spec-check.ts');
+  const C_SESSION = 'a:claude:spec-056/C1';
+
+  const cli = (cwd: string, ...args: string[]): { code: number; err: string } => {
+    const r = Bun.spawnSync(['bun', CLI, ...args], { cwd, stdout: 'pipe', stderr: 'pipe' });
+    return { code: r.exitCode, err: r.stderr.toString() };
+  };
+  const logLines = (root: string): Array<Record<string, string>> =>
+    existsSync(join(root, LOG))
+      ? readFileSync(join(root, LOG), 'utf8')
+          .split('\n')
+          .filter((l) => l.trim() !== '')
+          .map((l) => JSON.parse(l) as Record<string, string>)
+      : [];
+
+  test('activity probe --task C1 writes exactly one probe line, exit 0', () => {
+    const root = gitRepo();
+    const r = cli(root, 'activity', 'probe', '--task', 'C1', '--claim', 'ISC-1', '--session', C_SESSION, '--result', 'red');
+    expect(r.err).toBe('');
+    expect(r.code).toBe(0);
+    const lines = logLines(root);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ event: 'probe', task: 'C1', claim: 'ISC-1', session: C_SESSION, result: 'red' });
+  });
+
+  test('activity question --task C1 writes exactly one question line, exit 0', () => {
+    const root = gitRepo();
+    const r = cli(root, 'activity', 'question', '--task', 'C1', '--claim', 'ISC-1', '--session', C_SESSION, '--text', 'Which unit?');
+    expect(r.err).toBe('');
+    expect(r.code).toBe(0);
+    const lines = logLines(root);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ event: 'question', task: 'C1', claim: 'ISC-1', session: C_SESSION, text: 'Which unit?' });
+  });
+
+  test("core's reader keeps the C1 step beside a T1 step", () => {
+    const root = gitRepo();
+    expect(cli(root, 'activity', 'probe', '--task', 'C1', '--claim', 'ISC-1', '--session', C_SESSION, '--result', 'green').code).toBe(0);
+    expect(cli(root, 'activity', 'probe', '--task', 'T1', '--claim', 'ISC-2', '--session', SESSION, '--result', 'green').code).toBe(0);
+    const reading = activityReading(readFileSync(join(root, LOG), 'utf8'));
+    expect(reading.steps?.map((s) => s.task)).toEqual(['C1', 'T1']);
+  });
+});

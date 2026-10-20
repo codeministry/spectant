@@ -7,14 +7,15 @@
 //
 // The parser is lenient about whitespace (blank lines before the marker, runs of spaces or tabs, a trailing `\r`) and
 // strict about the keys: exactly `spec`, `task` and `claim`, in that order, with a three-digit spec number, a task id
-// `T<n>` and a claim id `ISC-<n>` with optional `.<n>` parts, the ids core's activity lines accept. The module imports
-// nothing, so the hook stays cheap to bundle.
+// `T<n>` (a task of tasks.md) or `C<n>` (frontier's claim unit of a spec without tasks.md, spec 056) and a claim id
+// `ISC-<n>` with optional `.<n>` parts, the ids core's activity lines accept. The module imports nothing, so the hook
+// stays cheap to bundle.
 
 /** The task a builder brief names. */
 export interface Marker {
   /** The spec number, three digits (`032`). */
   spec: string;
-  /** The task id (`T2`). */
+  /** The task id (`T2`), or the claim unit of a spec without tasks.md (`C2`). */
   task: string;
   /** The claim id (`ISC-33`, `ISC-33.1`). */
   claim: string;
@@ -29,14 +30,14 @@ export class MarkerError extends Error {
 }
 
 const SPEC = /^\d{3}$/u;
-const TASK = /^T\d+$/u;
+const TASK = /^[TC]\d+$/u;
 const CLAIM = /^ISC-\d+(?:\.\d+)*$/u; // single-core: allow — the marker line of a brief, not the spec format
-const LINE = /^spectant:[ \t]+spec=(\d{3})[ \t]+task=(T\d+)[ \t]+claim=(ISC-\d+(?:\.\d+)*)$/u; // single-core: allow — the marker line of a brief
+const LINE = /^spectant:[ \t]+spec=(\d{3})[ \t]+task=([TC]\d+)[ \t]+claim=(ISC-\d+(?:\.\d+)*)$/u; // single-core: allow — the marker line of a brief
 
 /** The marker line for one task, without a line break. Throws `MarkerError` on a field `parseMarker` would reject. */
 export function markerLine(marker: Marker): string {
   if (!SPEC.test(marker.spec)) throw new MarkerError(`spec must be three digits, got "${marker.spec}"`);
-  if (!TASK.test(marker.task)) throw new MarkerError(`task must be T<n>, got "${marker.task}"`);
+  if (!TASK.test(marker.task)) throw new MarkerError(`task must be T<n> or C<n>, got "${marker.task}"`);
   if (!CLAIM.test(marker.claim)) throw new MarkerError(`claim must be ISC-<n>[.<n>], got "${marker.claim}"`);
   return `spectant: spec=${marker.spec} task=${marker.task} claim=${marker.claim}`;
 }
