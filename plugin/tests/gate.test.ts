@@ -169,3 +169,95 @@ describe('spec-check gate code-reviewed (T22, T24)', () => {
     expect(stale.text).toContain('notes.ts');
   });
 });
+
+// Spec 044 (ISC-270): a code-reviewed mark the plugin writes reads fresh at once (`status` judges its tree the way
+// `gate check code-reviewed` does), and `code-review → close` stands in events.jsonl exactly once, however often the
+// mark is set.
+describe('spec-check gate code-reviewed: fresh at once, one event (ISC-270)', () => {
+  const MASTER = [
+    '---',
+    'project: quill',
+    'progress: 0/0',
+    '---',
+    '',
+    '# Quill',
+    '',
+    '## Features',
+    '',
+    '### F1 · Digest',
+    'Why: the notes of a week become one page.',
+    '',
+    '## Test Strategy',
+    '',
+    '| isc | type | check | threshold | tool | anchors_to | severity |',
+    '|-----|------|-------|-----------|------|------------|----------|',
+    '',
+    '## Decisions',
+    '',
+    '## Verification',
+    '',
+  ].join('\n');
+  const TASKS = ['# 001 — Tasks', '', '- [ ] T1 · ISC-1 · core — the digest fits on one screen', '- [ ] T2 · ISC-2 · core — every note appears', '- [ ] T3 · ISC-3 · core — each note links its source', ''].join('\n');
+  const claim = (text: string): unknown => ({ text, row: { type: 'test', check: 'the digest', threshold: 'all', tool: 'bun test', anchorsTo: 'goal' } });
+
+  const ok = (r: Run): void => expect({ code: r.code, text: r.code === 0 ? '' : r.text }).toEqual({ code: 0, text: '' });
+  const closeEvents = (root: string): number =>
+    read(root, `${DIR}/events.jsonl`)
+      .split('\n')
+      .filter((l) => l.trim() !== '')
+      .map((l) => JSON.parse(l) as { from: string | null; to: string })
+      .filter((e) => e.from === 'code-review' && e.to === 'close').length;
+  const statusOf = (root: string): { stage: string; reason: string | null } => {
+    const r = Bun.spawnSync(['bun', CLI, 'status', '001', '--json'], { cwd: root, stdout: 'pipe', stderr: 'pipe' });
+    const specs = (JSON.parse(r.stdout.toString()) as { specs: Array<{ stage: string; reason: string | null }> }).specs;
+    return specs[0] ?? { stage: '', reason: null };
+  };
+
+  /** The fixture chain of the 031 probe run: allocate, mint, plan, tasks, the reviewed mark, every claim verified, code-review. */
+  function repoInCodeReview(): string {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'spec-check-code-reviewed-')));
+    dirs.push(root);
+    git(root, 'init', '-q', '-b', 'main');
+    git(root, 'config', 'user.email', 'builder@example.invalid');
+    git(root, 'config', 'user.name', 'Builder');
+    git(root, 'commit', '-q', '--allow-empty', '-m', 'init');
+    writeFileSync(join(root, 'ISA.md'), MASTER);
+    ok(run(root, 'allocate', 'feature', 'digest', '--goal', 'A week of notes becomes one digest.', '--feature', 'F1'));
+    writeFileSync(join(root, '.claims.json'), JSON.stringify([claim('The digest fits on one screen.'), claim('Every note appears.'), claim('Each note links its source.')]));
+    ok(run(root, 'mint', '001', '--feature', 'F1', '--claims', '.claims.json'));
+    writeFileSync(join(root, DIR, 'plan.md'), PLAN);
+    ok(run(root, 'transition', '001', 'tasks'));
+    writeFileSync(join(root, DIR, 'tasks.md'), TASKS);
+    ok(run(root, 'transition', '001', 'review'));
+    ok(run(root, 'gate', 'reviewed', '001', '--yes'));
+    for (const id of ['ISC-1', 'ISC-2', 'ISC-3']) ok(run(root, 'verify', '001', id, 'test', `bun test digest.test.ts — ${id} pass`));
+    ok(run(root, 'transition', '001', 'code-review'));
+    expect(statusOf(root).stage).toBe('code-review');
+    return root;
+  }
+
+  test('code-reviewed once: status reads the mark fresh and the stage close; a second call appends no event', () => {
+    const root = repoInCodeReview();
+    ok(run(root, 'gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0'));
+    expect(run(root, 'gate', 'check', 'code-reviewed', '001').code).toBe(0);
+    const first = statusOf(root);
+    expect(first.reason ?? '').not.toContain('stale');
+    expect(first.stage).toBe('close');
+    expect(closeEvents(root)).toBe(1);
+
+    ok(run(root, 'gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0'));
+    expect(closeEvents(root)).toBe(1);
+    expect(run(root, 'gate', 'check', 'code-reviewed', '001').code).toBe(0);
+    const second = statusOf(root);
+    expect(second.reason ?? '').not.toContain('stale');
+    expect(second.stage).toBe('close');
+
+    // An edit after the review makes the mark stale and reads the spec back in code-review; the renewed mark still
+    // appends no second event, because the last one already entered close.
+    writeFileSync(join(root, 'notes.ts'), 'export const week = 7;\n');
+    expect(run(root, 'gate', 'check', 'code-reviewed', '001').code).toBe(3);
+    ok(run(root, 'gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0'));
+    expect(closeEvents(root)).toBe(1);
+    expect(statusOf(root).stage).toBe('close');
+  });
+});
