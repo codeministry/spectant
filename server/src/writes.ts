@@ -224,7 +224,7 @@ function workspaceEdgesOf(files: SpecFiles, ctx: WorkspaceContext): ResolvedSpec
 }
 
 /**
- * Whether an active spec holds its main feature's code review back, as `dashboard.ts` decides it for row 7 (T49):
+ * Whether an active spec holds its main feature's code review back, as `dashboard.ts` decides it for row 9 (T49):
  * not `phase: complete` and at least one claim neither checked nor dropped. Core keeps this predicate private
  * (`holdsFeatureOpen`), so it is restated here over core's parsed claims; nothing of the format is parsed in server/.
  */
@@ -234,7 +234,7 @@ function holdsFeatureOpen(files: SpecFiles): boolean {
   return parseFrontmatter(spec).data.phase !== "complete" && parseClaims(spec).claims.some((c) => !c.checked && !c.dropped);
 }
 
-/** The ids of the active specs of `feature` that still hold it open, in folder order, `self` left out (dashboard row 7). */
+/** The ids of the active specs of `feature` that still hold it open, in folder order, `self` left out (dashboard row 9). */
 function featureSiblingsOpenOf(feature: string | null, self: string, specs: readonly SpecFiles[]): string[] {
   if (feature === null) return [];
   return [...specs]

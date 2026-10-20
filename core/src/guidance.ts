@@ -20,8 +20,8 @@ import { parseClaims } from './claims.ts';
 import type { DashboardInput, DashboardModel, DashboardSpecRow } from './dashboard.ts';
 import { parseEvents } from './events.ts';
 import type { Guidance, GuidanceEntry, GuidanceItem, GuidanceReason, ItemStateInfo, SpecFiles, WaitingItem } from './files.ts';
-import { WAITING_TEMPLATES } from './guidance-reasons.ts';
-import { matchReason, PRINCIPAL_STAGES } from './stage.ts';
+import { GUIDANCE_REASONS, WAITING_TEMPLATES } from './guidance-reasons.ts';
+import { fillsTemplate, matchReason, PRINCIPAL_STAGES } from './stage.ts';
 import type { Stage } from './stage.ts';
 import { parseTaskLines } from './tasks.ts';
 
@@ -106,7 +106,8 @@ const fill = (template: string, values: Readonly<Record<string, string>>): strin
 /** A spec entry's reason: the stage template its phrase fills, else the fallback key `phrase` with no values. */
 function specReason(stage: string, phrase: string): GuidanceReason {
   const match = matchReason(stage as Stage, phrase);
-  return match === null ? { key: 'phrase', values: {}, phrase } : { key: `stage.${stage}.${match.form}`, values: match.values, phrase };
+  const key = GUIDANCE_REASONS.find((r) => r.key.startsWith(`stage.${stage}.`) && fillsTemplate(r.template, phrase))?.key;
+  return match === null || key === undefined ? { key: 'phrase', values: {}, phrase } : { key, values: match.values, phrase };
 }
 
 function waitingReason(kind: WaitingItem['kind'], ref: string): GuidanceReason {

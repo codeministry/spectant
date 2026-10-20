@@ -216,7 +216,7 @@ export function reviewedGate(texts: Readonly<Partial<Record<TextFileKind, string
 
 /**
  * The spec folders (`NNN-slug`, folder order) that receive the code-reviewed mark when the one code review of feature
- * `F<n>` is done (`/spec review F<n> code`, `code_review: feature`, FORMAT.md row 8): every active spec whose main
+ * `F<n>` is done (`/spec review F<n> code`, `code_review: feature`, FORMAT.md row 9): every active spec whose main
  * feature is the block (`PlanningHolder.main`) and whose live claims are all closed, across every block it holds
  * claims of. Archived specs are excluded, a spec holding no live claim is no target, and an unknown feature gives an
  * empty list. Read from the planning tree (the master's checkboxes, as `buildPlanning` resolves them); pure, writes

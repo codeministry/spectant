@@ -40,7 +40,7 @@ import { appendInPlace, ensureGatesDir, writeInPlace } from "./writes.ts";
 /** `F<n>`, the master's feature block id: the only argument the subcommand takes. */
 export const FEATURE_ARG = /^F\d+$/;
 
-/** The stage every target moves to: the stage table's row 10, every claim closed and the code-reviewed mark fresh. */
+/** The stage every target moves to: the stage table's row 11, every claim closed and the code-reviewed mark fresh. */
 export const FEATURE_GATE_TO: Stage = "close";
 
 /** The repository-relative mark path of one target folder, from `WRITE_PATHS.codeReviewFeature`. */

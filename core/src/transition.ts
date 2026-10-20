@@ -25,21 +25,7 @@ import type { CodeReviewMode, EventLine, MarkState, SpecFiles, SpecType, SpecWai
 import { parseFrontmatter, type FrontmatterResult } from './frontmatter.ts';
 import { specIdOf } from './spec-ref.ts';
 import { mainFeatureOf } from './status.ts';
-import {
-  SPEC_RULES,
-  codeReviewOf,
-  commandWith,
-  defaultWorkflowRow,
-  fillReason,
-  isWorkflowStage,
-  nextCommandWithReason,
-  rowTransitions,
-  stageOf,
-  workflowStagesOf,
-  type ClaimCounts,
-  type Stage,
-  type StageInput,
-} from './stage.ts';
+import { type ClaimCounts, codeReviewOf, commandWith, defaultWorkflowRow, fillReason, isWorkflowStage, nextCommandWithReason, ownRuleOf, rowTransitions, type Stage, type StageInput, stageOf, workflowStagesOf } from './stage.ts';
 
 export interface TransitionInput {
   readonly files: SpecFiles;
@@ -62,7 +48,7 @@ export interface TransitionInput {
   readonly edgeHeld?: readonly string[];
 }
 
-/** FORMAT.md's stage table, row 7 (`close-pending`); `STAGE_RULES` gains the row with spec 008, T49. */
+/** FORMAT.md's stage table, row 9 (`close-pending`); `STAGE_RULES` gains the row with spec 008, T49. */
 const CLOSE_PENDING_REASON = 'every claim is closed and {feature} waits on {siblings}';
 
 /** A top-level `stage:` key line starts so, as `parseFrontmatter` reads a key: no indentation, the key, a colon. */
@@ -95,7 +81,7 @@ function moveAllowed(lane: Lane, from: WorkflowStage, to: WorkflowStage): boolea
 
 /** The filled reason of the stage table row for `stage`, for the spec as it stands. */
 function phrase(stage: Stage, input: StageInput): string {
-  const rule = SPEC_RULES.find((r) => r.stage === stage);
+  const rule = ownRuleOf(stage);
   if (!rule) throw new Error(`SPEC_RULES has no row ${stage}`);
   const { form = 0, values = {} } = rule.explain(input);
   return fillReason(rule.reasons[form] ?? '', values);
@@ -103,7 +89,7 @@ function phrase(stage: Stage, input: StageInput): string {
 
 /** The stage table's command for a stage, with the spec number; null where the row names none. */
 function commandOf(stage: WorkflowStage, number: string): string | null {
-  const next = SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
+  const next = ownRuleOf(stage as Stage, true)?.next;
   return next === undefined || next === null ? null : commandWith(next, number);
 }
 

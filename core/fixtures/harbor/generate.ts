@@ -1474,7 +1474,7 @@ function generate() {
     g(S004, "reviewed", reviewedMark(join(ROOT, "specs", S004.dir), "2026-03-04T10:00:00Z", PERSON));
     g(S004, "code-reviewed", codeReviewedMark("harbor 004", "2026-03-08T11:00:00Z", "a:claude:sess-4", "feature/004-retention-policies", "one finding fixed; tree changed since"));
     g(S006, "reviewed", staleReviewedMark("harbor 006", "2026-03-08T12:00:00Z", PERSON));
-    // the chore is reviewed like every type; with both claims closed it derives `done` (row 6, spec 008, T50)
+    // the chore is reviewed like every type; with both claims closed it derives `done` (row 8, spec 008, T50)
     g(S007, "reviewed", reviewedMark(join(ROOT, "specs", S007.dir), "2026-03-09T09:00:00Z", PERSON));
     g(S008, "reviewed", reviewedMark(join(ROOT, "specs", S008.dir), "2026-03-08T14:00:00Z", PERSON));
     g(S009, "reviewed", reviewedMark(join(ROOT, "specs", S009.dir), "2026-03-08T14:10:00Z", PERSON));

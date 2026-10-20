@@ -173,7 +173,7 @@ describe('planTransition: the fixed gates (T71, ISC-121)', () => {
   });
 
   test('the chore reaches done once every claim is closed', () => {
-    // With every claim closed the chore derives done (row 6); an explicit build, its event agreeing, stands before it
+    // With every claim closed the chore derives done (row 8); an explicit build, its event agreeing, stands before it
     // only after a step back (ISC-221.2): a forward move into build would yield to the derived done.
     const base = harbor('007-rotate-mirror-token');
     const spec = (base.texts.spec ?? '').replace('\nphase:', '\nstage: build\nphase:');

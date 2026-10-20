@@ -84,7 +84,7 @@ and the type's workflow never asks for it. A spec with an unknown or missing `sp
 The seven types are `feature`, `project`, `infra`, `refactor`, `bug`, `spike` and `chore`. A **chore** is a small fix
 that is its own small spec, never a task collected in a sidelane spec: it carries `spec.md` only and runs review →
 build → done. Its claims wait on a fresh reviewed mark like every type's, and once every claim is closed it is done
-without a code-reviewed mark and without an edit to `phase: complete` (row 7 of the stage table, below).
+without a code-reviewed mark and without an edit to `phase: complete` (row 8 of the stage table, below).
 `frontmatter.ts` reads `spec_type: chore` like the other six types (spec 008, T38).
 
 Diagrams: a `feature`, `infra` or `project` spec needs a fence whose info string is exactly `mermaid` in both
@@ -689,7 +689,7 @@ appends one event per target to `events.jsonl` (`from` the spec's stage, normall
 `command` `spectant gate code-reviewed F<n>`, the viewer's `u:` id or `a:spectant:app`), then computes the tree id
 over the worktree as it now stands and writes the same mark, `code: 0` and `security: 0`, with that tree, `head` and
 `branch`, into every target folder; with `.gates/` outside the tree, as for every mark, it reads fresh, and the
-specs stand in `close` (row 10). A
+specs stand in `close` (row 11). A
 mark without `scope` is a per-spec mark, as every mark before T74, and reads as before (`CodeReviewedMark.scope`
 null); a `scope` that is no `F<n>` reads the same way, with one `gate-scope-invalid` warning. `scope` plays no part in
 freshness: the tree id alone decides it. Harbor's spike pair 008/009 (F6) shows the targets: while 009 holds `ISC-131`
@@ -1013,8 +1013,8 @@ The file holds one Markdown table `| type | stages | code_review |`, one row per
   `build`, `code-review`, `close`, `done`; `blocked` and `close-pending` are detours every type has and no row lists;
 - `code_review` is `spec` (one code-reviewed mark per spec, as today), `feature` (one code review for every spec of the
   spec's main feature: a spec whose claims are all closed waits in the intermediate stage `close-pending` while a sibling
-  of that feature is still open, row 8 of the stage table) or `none` (no code-reviewed mark at all: the row lists no
-  `code-review`, and a spec whose claims are all closed stands on `close` with `/spec done`, row 10 of the stage
+  of that feature is still open, row 9 of the stage table) or `none` (no code-reviewed mark at all: the row lists no
+  `code-review`, and a spec whose claims are all closed stands on `close` with `/spec done`, row 11 of the stage
   table; a mark set anyway changes neither its stage nor its reason);
 - a type the file has no row for runs its default row; without the file every type runs the default table.
 
@@ -1249,14 +1249,15 @@ From `core/fixtures/backlog-ranks/specs/backlog.events.jsonl`:
 
 Stage and next command per spec (`stage.ts`, `STAGE_RULES`), derived from the files on every read. The rows are
 tried in order and the first match wins; row 1 is a story's `idea`, the stage before its spec folder exists (§ `idea`
-above), `phase:` decides row 2 and nothing else, row 7 is the chore's own `done`, and row 8 is the `close-pending`
-detour of `code_review: feature` (spec 008, T22). "Closed" counts checked claims; the three-claim threshold counts
+above), `phase:` decides row 2 and nothing else, row 3 sends a spec without claims to `/spec new NNN` in its existing
+folder ahead of `plan.md` and `tasks.md`, for every type, its stage still `plan` (spec 043), row 8 is the chore's own
+`done`, and row 9 is the `close-pending` detour of `code_review: feature` (spec 008, T22). "Closed" counts checked claims; the three-claim threshold counts
 every claim line, tombstones included; "every claim closed" means none is open.
 Every next command carries its reason, one phrase the matching row names in its Reason column, never free text; the
 dashboard row shows it and the spec page leads its reasons with it (spec 002, ISC-79). `STAGE_RULES` holds every
 column of this table as data, and `core/tests/stage.test.ts` compares each rule with its row here, verbatim, all
-eleven. Row 1 is the story row (`STORY_RULE`, spec 008, T54): every story file stands in it, and `storyStep(slug)`
-gives its command and reason; a spec folder is tried against rows 2 to 11 only (`SPEC_RULES`). The `close-pending`
+twelve. Row 1 is the story row (`STORY_RULE`, spec 008, T54): every story file stands in it, and `storyStep(slug)`
+gives its command and reason; a spec folder is tried against rows 2 to 12 only (`SPEC_RULES`). The `close-pending`
 row has its rule since T49.
 Each step carries its row's number, and every surface reads its reason through `reasonOf(step)` (T58, ISC-122.3): the
 dashboard row's `nextReason`, the spec head's `nextReason` and the first entry of the spec page's `next.reasons` are
@@ -1270,15 +1271,16 @@ its state, which § The state table below derives from this table's row and the 
 |---|-------|-----------|--------------|--------|
 | 1 | `idea` | a story file under `specs/ideas/`, no folder yet | `/spec new <slug>` | `the story is shaped but has no spec` |
 | 2 | `done` | `phase: complete` | — | `phase: complete` |
-| 3 | `plan` | the type needs `plan.md` and it is missing | `/spec plan NNN` | `a {type} spec needs plan.md and it is missing` |
-| 4 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec tasks NNN` | `{claims} and no tasks.md` |
-| 5 | `review` | the reviewed mark is not fresh | `/spec review NNN` | `the reviewed mark is {state}` |
-| 6 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec implement NNN` | `{ids} {is} takeable` |
-| 7 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
-| 8 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
-| 9 | `code-review` | every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh | `/spec review NNN code` | `every claim is closed and the code-reviewed mark is {state}` |
-| 10 | `close` | every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none` | `/spec done NNN` | `every claim is closed and code-reviewed` or `every claim is closed and the workflow has no code review` |
-| 11 | `blocked` | anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet | `/spec NNN` | `{open}, none takeable` or `no claims yet` or `waits on {specs}` |
+| 3 | `plan` | the spec has no claims | `/spec new NNN` | `no claims yet` |
+| 4 | `plan` | the type needs `plan.md` and it is missing | `/spec plan NNN` | `a {type} spec needs plan.md and it is missing` |
+| 5 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec tasks NNN` | `{claims} and no tasks.md` |
+| 6 | `review` | the reviewed mark is not fresh | `/spec review NNN` | `the reviewed mark is {state}` |
+| 7 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec implement NNN` | `{ids} {is} takeable` |
+| 8 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
+| 9 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
+| 10 | `code-review` | every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh | `/spec review NNN code` | `every claim is closed and the code-reviewed mark is {state}` |
+| 11 | `close` | every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none` | `/spec done NNN` | `every claim is closed and code-reviewed` or `every claim is closed and the workflow has no code review` |
+| 12 | `blocked` | anything else: all open work waits on an open spec edge, or open claims none of which is takeable | `/spec NNN` | `{open}, none takeable` or `waits on {specs}` |
 
 The Next command column writes `NNN` for the spec's number. A story has no number yet, so row 1 writes `<slug>`, the
 story's file name without `.md`; the command allocates the number (§ `idea`, Allocation). Every command is in the Spec
@@ -1291,33 +1293,33 @@ The placeholders of the Reason column:
 
 - `{type}`: the spec's `type:`, e.g. `feature`.
 - `{claims}`: every claim line counted, with its noun, e.g. `13 claims`.
-- `{state}`: the mark's state, `missing` or `stale` (the reviewed mark in row 5, the code-reviewed mark in row 9).
+- `{state}`: the mark's state, `missing` or `stale` (the reviewed mark in row 6, the code-reviewed mark in row 10).
 - `{ids}`: the takeable claim IDs: one (`ISC-334`), two joined by "and" (`ISC-7 and ISC-9`), or the first two and the
   rest as a count (`ISC-74, ISC-75 and 2 more`); a count with its noun (`2 claims`) when the caller passes no IDs.
 - `{is}`: `is` for one takeable claim, `are` for more.
 - `{open}`: the open claims counted, with their noun, e.g. `3 open claims`.
 - `{feature}`: the spec's main feature, the first word of its `isa_feature:` (`mainFeatureOf` in `status.ts`, as for
-  `missing_in_spec`), e.g. `F2` (row 8).
+  `missing_in_spec`), e.g. `F2` (row 9).
 - `{siblings}`: the other open specs of that feature by number: one (`spec 005`), two joined by "and" (`specs 005 and
-  006`), or the first two and the rest as a count (`specs 005, 006 and 2 more`) (row 8).
+  006`), or the first two and the rest as a count (`specs 005, 006 and 2 more`) (row 9).
 - `{specs}`: the spec numbers the open spec edges wait on, ascending, joined by a comma, e.g. `002` or `002, 042`
-  (row 11).
+  (row 12).
 
 **All open work waits on an open spec edge** (spec 025, ISC-162.3) when the spec has open tasks and every one carries
 an open spec edge, on itself or on its claim, or, with no open task, when it has open claims and every one carries an
-open spec edge (`SpecWait.full`, `resolveEdges` in `spec-edges.ts`). Such a spec skips row 6 even with a takeable
-claim and stands in row 11 with `waits on {specs}`; a spec with takeable work beside the held stays where it is. A claim
+open spec edge (`SpecWait.full`, `resolveEdges` in `spec-edges.ts`). Such a spec skips row 7 even with a takeable
+claim and stands in row 12 with `waits on {specs}`; a spec with takeable work beside the held stays where it is. A claim
 an open spec edge holds is never takeable: the dashboard row counts it where the Claims tab shows it, `blocked`, so the
 row's takeable claims are the tab's (ISC-72). When that leaves a spec no takeable claim, its takeable work all waits on
-spec edges and it stands in row 11 with `waits on {specs}`, naming the specs those claims wait on. An edge
+spec edges and it stands in row 12 with `waits on {specs}`, naming the specs those claims wait on. An edge
 on a number no spec carries stays open and holds. The takeable set holds every task of such an edge with the same
 phrase, `waits on 002` (`takeable.ts`), ahead of every other hold reason. The dashboard resolves the edges against the
 merge state the server reads from git (`DashboardInput.mergeState`); without it, each target's frontmatter and the
 archive decide.
 
-In row 8 a sibling is **open** while it is active (not archived, not `phase: complete`) and holds at least one open
-claim; a sibling whose claims are all closed waits in row 8 itself and does not hold the others back, so the last
-sibling to close its claims moves every spec of the feature past row 8 at once. Row 8 has no next command: nothing is
+In row 9 a sibling is **open** while it is active (not archived, not `phase: complete`) and holds at least one open
+claim; a sibling whose claims are all closed waits in row 9 itself and does not hold the others back, so the last
+sibling to close its claims moves every spec of the feature past row 9 at once. Row 9 has no next command: nothing is
 to be done on the spec itself while a sibling is open. The one code review of the feature, `/spec review F<n> code`,
 belongs to the feature-level mark (`scope: "F<n>"`, § `gateCodeReviewed`, spec 008, T74), written into every folder
 `featureCodeReviewTargets` names, and appears only when the last sibling closes. The dashboard finds

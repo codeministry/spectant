@@ -345,7 +345,7 @@ interface Context {
   readonly constitution: string | null;
   /** Every resolved spec edge each active spec carries, by number. */
   readonly edges: ReadonlyMap<string, readonly SpecEdge[]>;
-  /** Main feature → its active specs that still hold it open (row 7's siblings), as the dashboard counts them. */
+  /** Main feature → its active specs that still hold it open (row 9's siblings), as the dashboard counts them. */
   readonly openByFeature: ReadonlyMap<string, readonly string[]>;
   readonly taskRuns: Readonly<Record<string, readonly TaskRun[]>>;
 }
@@ -592,7 +592,7 @@ function specByRule(row: DashboardSpecRow, rule: SpecStageRule, files: SpecFiles
   return { state: 'done', ...doneOf(moved ?? (row.phase === 'complete' ? row.updated : null), `spec ${row.id}`) };
 }
 
-/** The open specs of the spec's main feature beside it (row 7's siblings). */
+/** The open specs of the spec's main feature beside it (row 9's siblings). */
 function siblingsOf(row: DashboardSpecRow, files: SpecFiles, ctx: Context): string[] {
   const feature = mainFeatureOf(parseFrontmatter(files.texts.spec ?? '').data.isaFeature);
   return feature === null ? [] : (ctx.openByFeature.get(feature) ?? []).filter((id) => id !== row.id);

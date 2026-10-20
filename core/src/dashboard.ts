@@ -360,7 +360,7 @@ export interface DashboardInput {
   readonly services?: readonly LocalService[];
   /**
    * `specs/workflow.md` as `parseWorkflow` read it (the server's loader, T78); absent, the default table. It decides
-   * each spec's code review (row 7, `close-pending`, T49) and which stages may stand explicitly (T47).
+   * each spec's code review (row 9, `close-pending`, T49) and which stages may stand explicitly (T47).
    */
   readonly workflow?: Workflow;
   /** The story folder `specs/ideas/` as `readIdeas` takes it (file name to text); absent or empty without stories. */
@@ -378,7 +378,7 @@ const STAGES: readonly Stage[] = ['plan', 'tasks', 'review', 'build', 'blocked',
 
 /**
  * The order the lists show specs in: the action they need, nearest to done first, done last (old ACTION_ORDER).
- * `close-pending` needs no action on the spec itself (row 7 names no command), so it sits with done, just before it.
+ * `close-pending` needs no action on the spec itself (row 9 names no command), so it sits with done, just before it.
  */
 export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review', 'build', 'blocked', 'tasks', 'plan', 'close-pending', 'done'];
 
@@ -535,7 +535,7 @@ interface SpecContext {
   /** The `worktree-branch-mismatch` diagnostics, routed to the row their `subject` names. */
   readonly worktreeDiagnostics: readonly Diagnostic[];
   readonly workflow: Workflow | undefined;
-  /** Main feature → the ids of its open active specs (row 7's siblings), in folder order. */
+  /** Main feature → the ids of its open active specs (row 9's siblings), in folder order. */
   readonly openByFeature: ReadonlyMap<string, readonly string[]>;
   /** What each active spec waits on, by number (`resolveEdges`, spec 025): the stage reads its full hold (ISC-162.3). */
   readonly waits: ReadonlyMap<string, SpecWait>;
@@ -543,7 +543,7 @@ interface SpecContext {
   readonly specEdges: ReadonlyMap<string, readonly SpecEdge[]>;
 }
 
-/** Whether an active spec holds a feature's code review back (row 7): not `phase: complete`, at least one open claim. */
+/** Whether an active spec holds a feature's code review back (row 9): not `phase: complete`, at least one open claim. */
 function holdsFeatureOpen(phase: string | null, doc: ClaimsDocument): boolean {
   return phase !== 'complete' && doc.claims.some((c) => !c.checked && !c.dropped);
 }
@@ -623,7 +623,7 @@ function stageBasisOf(f: SpecFiles, spec: string, id: string, ctx: SpecContext, 
   // Its `from` tells a step back from a forward move or the allocation (ISC-221.2).
   const lastFrom = events.at(-1)?.from ?? null;
   const lastEventFrom: WorkflowStage | null = lastFrom !== null && isWorkflowStage(lastFrom) ? lastFrom : null;
-  // Row 7 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
+  // Row 9 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
   const mainFeature = mainFeatureOf(fm.data.isaFeature);
   const featureSiblingsOpen = mainFeature === null ? [] : (ctx.openByFeature.get(mainFeature) ?? []).filter((other) => other !== id);
   const input: StageInput = {
@@ -713,7 +713,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     if (diagrams.level === 'fail' && missing.length > 0) {
       warnings.push({ kind: 'diagrams', text: `diagram missing in ${missing.join(', ')}`, ref: missing.join(', ') });
     }
-    // Only while the stage table still names a command: a chore done by row 6 and a spec waiting in row 7
+    // Only while the stage table still names a command: a chore done by row 8 and a spec waiting in row 9
     // (`close-pending`) have every claim closed and nothing left to do on the spec itself (T49, T50).
     if (doc.counted.total > 0 && doc.counted.closed === doc.counted.total && next.command !== null) {
       warnings.push({ kind: 'closed', text: 'every claim closed, phase not complete' });
@@ -998,7 +998,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   const active = [...input.specs].sort(byFolder);
   const archived = [...input.archived].sort(byFolder);
   const idsByFolder = new Map<string, ReadonlySet<string>>();
-  // Row 7's siblings: the active specs of each main feature that still hold it open; an archived one never does.
+  // Row 9's siblings: the active specs of each main feature that still hold it open; an archived one never does.
   const openByFeature = new Map<string, string[]>();
   for (const f of [...active, ...archived]) {
     if (f.texts.spec === undefined) continue;

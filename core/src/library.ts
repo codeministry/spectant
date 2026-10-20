@@ -49,7 +49,7 @@ import { parseFrontmatter } from './frontmatter.ts';
 import { readLockSources } from './locks.ts';
 import { listSpecs } from './resolve.ts';
 import type { Stage, StageInput } from './stage.ts';
-import { SPEC_RULES } from './stage.ts';
+import { CLAIMLESS_RULE, SPEC_RULES } from './stage.ts';
 import { techSourcesOf } from './tech.ts';
 import { parseWorkflow } from './workflow.ts';
 import { WORKTREE_COPY_KINDS } from './worktrees.ts';
@@ -454,7 +454,7 @@ function judgeStale(d: LibraryDoc, source: number | null): LibraryDoc {
 const NEEDED: ReadonlyArray<'plan' | 'tasks'> = ['plan', 'tasks'];
 
 /** Whether any row of the stage table for `stage` matches `input`, each row's condition taken on its own. */
-const rowMatches = (stage: Stage, input: StageInput): boolean => SPEC_RULES.some((rule) => rule.stage === stage && rule.when(input));
+const rowMatches = (stage: Stage, input: StageInput): boolean => SPEC_RULES.some((rule) => rule.stage === stage && rule !== CLAIMLESS_RULE && rule.when(input));
 
 /**
  * The documents one active spec lacks (ISC-155.2), as `missing` entries: none for a spec without `spec.md` or a done

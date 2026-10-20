@@ -6,7 +6,7 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import type { Workflow } from '../../../../../core/src/files';
-import { DEFAULT_WORKFLOW, STAGE_RULES, WORKFLOW_TYPES } from '../../../../../core/src/stage';
+import { CLAIMLESS_RULE, DEFAULT_WORKFLOW, STAGE_RULES, WORKFLOW_TYPES } from '../../../../../core/src/stage';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { keyLabel, SHORTCUTS } from '../../core/keyboard-bindings';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
@@ -17,7 +17,8 @@ import { HelpPage } from './help-page';
 import { HELP_COMMAND_ROWS, HELP_COMMANDS, HELP_SECTIONS, LEGEND, LIFECYCLE, STAGE_CHAIN } from './help-sections';
 
 /** The command core's stage table names for a stage (`STAGE_RULES[].next`); the help shows it as it is. */
-const nextOf = (stage: string): string => STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null)?.next ?? `no command for ${stage}`;
+const nextOf = (stage: string): string =>
+  STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null && rule !== CLAIMLESS_RULE)?.next ?? `no command for ${stage}`;
 
 @Component({ selector: 'app-stub', template: '' })
 class Stub {}
@@ -210,6 +211,8 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
         nextOf('code-review'),
         nextOf('close'),
         '/spec done NNN archive',
+        // Spec 043: the claimless row's `/spec new NNN`, after the lifecycle's own steps.
+        CLAIMLESS_RULE.next ?? '',
         nextOf('blocked'),
       ]),
     ];

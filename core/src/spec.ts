@@ -145,7 +145,7 @@ function tldrOf(text: string | null | undefined, row: DashboardSpecRow): SpecTld
 /**
  * The dashboard row of this folder, built by the dashboard itself, so no shared counter is computed twice. The other
  * folders go in as the dashboard sees them, active or archived (an archived spec carries `archived:`, FORMAT.md § The
- * archive rule), so row 7's open siblings (T49) and the lock routing match the dashboard row.
+ * archive rule), so row 9's open siblings (T49) and the lock routing match the dashboard row.
  */
 function rowOf(input: SpecPageInput): DashboardSpecRow {
   const { texts } = input.files;

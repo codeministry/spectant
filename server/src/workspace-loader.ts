@@ -75,7 +75,7 @@ export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied"
 /**
  * A readable workspace: the model's input, the workflow table (T78, ISC-122; the default table when `specs/workflow.md`
  * is missing) and the reading's own findings, each under its repository-relative file name. The input carries the
- * same workflow (`DashboardInput.workflow`), which decides row 7 of the stage table (`close-pending`, spec 008 T49).
+ * same workflow (`DashboardInput.workflow`), which decides row 9 of the stage table (`close-pending`, spec 008 T49).
  * `ideas` is the story folder for `buildPlanning` (T79; `DashboardInput` has no field for it, so it rides beside the
  * input as `workflow` does); `viewer` is the viewer's `u:` id, null without a configured git address (T80). `copies`
  * names, per active spec read from its worktree's copy (spec 027, ISC-181), the absolute folder of that copy, so the

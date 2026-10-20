@@ -2708,7 +2708,8 @@
     "reason": {
       "stage": {
         "plan": {
-          "0": "Schreiben Sie als Nächstes den Plan: Die Spec braucht ihn vor den Tasks."
+          "0": "Schreiben Sie als Nächstes den Plan: Die Spec braucht ihn vor den Tasks.",
+          "1": "Schreiben Sie als Nächstes die Claims: Die Spec hat noch keine, und der Plan braucht sie."
         },
         "tasks": {
           "0": "Zerlegen Sie die Spec in Tasks: Ihre Claims brauchen vor der Umsetzung eine Taskliste."
