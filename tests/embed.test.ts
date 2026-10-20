@@ -6,7 +6,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { ensureEmbedded } from "../scripts/dev.ts";
+import { manifestStatus } from "../scripts/embed.ts";
 import { EMBED_MANIFEST_PATH, WEB_OUTPUT_DIR, type EmbeddedManifest } from "../server/src/assets.contract.ts";
+import { manifestFailure, manifestHint } from "../server/src/manifest-load.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "scripts", "embed.ts");
 
@@ -148,5 +151,79 @@ describe("scripts/embed.ts", () => {
     const run = embed(["--frobnicate"]);
     expect(run.exit).toBe(1);
     expect(run.stderr).toContain("--frobnicate");
+  });
+});
+
+// Dev start after an e2e run (spec 057): the e2e build replaces the hashed chunks under `web/dist/browser`, so the
+// gitignored manifest from an earlier embed imports files that no longer exist. `scripts/dev.ts` treats such a stale
+// manifest like a missing one, and `server/src/main.ts` tells the two cases apart in its hint.
+describe("stale manifest after a web rebuild", () => {
+  /** A dev step that skips the web build (the fixture output stands in for it) and runs the real embed. */
+  function fakeStep(ran: string[][]) {
+    return (cmd: string[], cwd: string): Promise<void> => {
+      ran.push(cmd);
+      if (cmd.includes("build")) return Promise.resolve();
+      const proc = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
+      expect(proc.stderr.toString()).toBe("");
+      expect(proc.exitCode).toBe(0);
+      return Promise.resolve();
+    };
+  }
+
+  test("stale manifest: an import of a missing chunk is re-embedded like a missing manifest, and the start succeeds", async () => {
+    const root = fixtureRoot();
+    expect(manifestStatus(root)).toBe("missing");
+    expect(embed(["--root", root]).exit).toBe(0);
+    expect(manifestStatus(root)).toBe("current");
+
+    // What `ng build` in the e2e web server does: the hashed chunk the manifest names is replaced by a new one.
+    rmSync(join(root, WEB_OUTPUT_DIR, "main-ABCDEFGH.js"));
+    writeFileSync(join(root, WEB_OUTPUT_DIR, "main-IJKLMNOP.js"), "console.log('rebuilt');");
+    expect(manifestStatus(root)).toBe("stale");
+
+    const ran: string[][] = [];
+    expect(await ensureEmbedded(root, fakeStep(ran))).toBe("stale");
+    expect(ran.length).toBe(2);
+    expect(ran[0]).toContain("build");
+    expect(ran[1]).toContain("--root");
+    expect(manifestStatus(root)).toBe("current");
+
+    const mod = (await import(join(root, EMBED_MANIFEST_PATH))) as { default: EmbeddedManifest };
+    const paths = mod.default.assets.map((a) => a.path);
+    expect(paths).toContain("/main-IJKLMNOP.js");
+    expect(paths).not.toContain("/main-ABCDEFGH.js");
+  });
+
+  test("stale manifest check leaves a current manifest alone", async () => {
+    const root = fixtureRoot();
+    expect(embed(["--root", root]).exit).toBe(0);
+    const before = manifestOf(root);
+    const ran: string[][] = [];
+    expect(await ensureEmbedded(root, fakeStep(ran))).toBe("current");
+    expect(ran).toEqual([]);
+    expect(manifestOf(root)).toBe(before);
+  });
+
+  test("stale message: a missing manifest and a missing chunk get two different messages", async () => {
+    const root = fixtureRoot();
+    // A real resolution failure for each case, as bun hands it to `main.ts`.
+    const target = join(root, EMBED_MANIFEST_PATH);
+    const missing: unknown = await import(target).catch((error: unknown) => error);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, 'import a0 from "../web/dist/browser/chunk-GONE1234.js" with { type: "file" };\nexport default { a0 };\n');
+    const stale: unknown = await import(target).catch((error: unknown) => error);
+
+    expect(manifestFailure(missing)).toBe("missing");
+    expect(manifestFailure(stale)).toBe("stale");
+    expect(manifestFailure(new Error("SyntaxError in embedded.gen.ts"))).toBeUndefined();
+    expect(manifestFailure("Cannot find module 'left-pad' from '/x/server/src/cli.ts'")).toBeUndefined();
+
+    const missingText = manifestHint("missing");
+    const staleText = manifestHint("stale");
+    expect(missingText).not.toBe(staleText);
+    expect(missingText).toContain("embedded.gen.ts is missing");
+    expect(staleText).not.toContain("is missing");
+    expect(staleText).toContain("out of date");
+    expect(staleText).toContain("bun run --cwd web build && bun scripts/embed.ts");
   });
 });

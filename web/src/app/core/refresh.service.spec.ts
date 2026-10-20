@@ -37,6 +37,7 @@ describe('diffDashboards', () => {
 describe('RefreshService', () => {
   const dashboardValue = signal<unknown>(undefined);
   const dashboardStatus = signal<'idle' | 'loading' | 'reloading' | 'resolved'>('resolved');
+  const workspacesStatus = signal<'idle' | 'loading' | 'reloading' | 'resolved'>('resolved');
   const reloads = { workspaces: vi.fn(), dashboard: vi.fn(), planning: vi.fn(), spec: vi.fn() };
   const connected = signal(false);
   const listeners = new Set<(update: LiveUpdate) => void>();
@@ -56,6 +57,7 @@ describe('RefreshService', () => {
     prime.mockClear();
     dashboardValue.set({ kind: 'ok', body: body(55, [{ id: '001', stage: 'plan' }]) });
     dashboardStatus.set('resolved');
+    workspacesStatus.set('resolved');
     connected.set(false);
     listeners.clear();
     ws.set('harbor');
@@ -69,7 +71,7 @@ describe('RefreshService', () => {
         {
           provide: ShellData,
           useValue: {
-            workspaces: { reload: reloads.workspaces },
+            workspaces: { reload: reloads.workspaces, status: workspacesStatus },
             dashboard: { reload: reloads.dashboard, value: dashboardValue, status: dashboardStatus },
             planning: { reload: reloads.planning },
             spec: { reload: reloads.spec },
@@ -145,6 +147,40 @@ describe('RefreshService', () => {
     expect(service.announcement()).toBe(first);
   });
 
+  it('sets lastRefresh after response, never when the refresh starts (spec 057, ISC-370)', () => {
+    const service = TestBed.inject(RefreshService);
+    TestBed.tick();
+    vi.advanceTimersByTime(5_000);
+    const before = service.lastRefresh();
+    service.refresh();
+    dashboardStatus.set('reloading');
+    TestBed.tick();
+    vi.advanceTimersByTime(3_000);
+    TestBed.tick();
+    expect(service.lastRefresh()).toBe(before);
+    const answered = Date.now();
+    dashboardValue.set({ kind: 'ok', body: body(56, [{ id: '001', stage: 'plan' }]) });
+    dashboardStatus.set('resolved');
+    TestBed.tick();
+    expect(service.lastRefresh()).toBe(answered);
+  });
+
+  it('sets lastRefresh after response on the start page, where the dashboard stays idle (spec 057, ISC-370)', () => {
+    dashboardStatus.set('idle');
+    const service = TestBed.inject(RefreshService);
+    TestBed.tick();
+    vi.advanceTimersByTime(5_000);
+    const before = service.lastRefresh();
+    service.refresh();
+    workspacesStatus.set('reloading');
+    TestBed.tick();
+    expect(service.lastRefresh()).toBe(before);
+    const answered = Date.now();
+    workspacesStatus.set('resolved');
+    TestBed.tick();
+    expect(service.lastRefresh()).toBe(answered);
+  });
+
   // ─── Spec 030 (T15, ISC-28): the live update stream is the primary path, the poll the fallback ──────────────────
 
   describe('on the live update stream (spec 030, T15, ISC-28)', () => {
@@ -172,6 +208,9 @@ describe('RefreshService', () => {
       vi.advanceTimersByTime(5_000);
       const before = service.lastRefresh();
       push(frame('harbor', OPEN));
+      dashboardStatus.set('reloading');
+      TestBed.tick();
+      dashboardStatus.set('resolved');
       TestBed.tick();
       expect(reloads.workspaces).toHaveBeenCalledTimes(1);
       expect(reloads.dashboard).toHaveBeenCalledTimes(1);

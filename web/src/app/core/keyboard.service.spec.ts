@@ -253,6 +253,27 @@ describe('KeyboardService', () => {
       press('Escape');
       expect(navigate).toHaveBeenCalledWith(['/w', 'harbor']);
     });
+
+    // Spec 057 (ISC-372, review 024): `f` and `o` (alone and after `g`) fire nothing while single keys are off.
+    it('single-key off: f and o fire no action, alone or after g, in a spec and on a workspace page', () => {
+      for (const where of [{}, { url: '/w/harbor', specId: null }]) {
+        const { press, navigate, state, toast, refresher, service } = setup({ ...where, singleKeys: false });
+        const main = document.body.appendChild(document.createElement('main'));
+        const search = main.appendChild(document.createElement('input'));
+        search.type = 'search';
+        const handled = [press('f'), press('o'), press('g'), press('o'), press('g'), press('f')].filter((event) => event.defaultPrevented);
+        expect(handled).toHaveLength(0);
+        expect(document.activeElement).not.toBe(search);
+        expect(navigate).not.toHaveBeenCalled();
+        expect(state.toggleZen).not.toHaveBeenCalled();
+        expect(toast.show).not.toHaveBeenCalled();
+        expect(refresher.refresh).not.toHaveBeenCalled();
+        expect(service.paletteOpen()).toBe(false);
+        expect(service.sheetOpen()).toBe(false);
+        document.body.replaceChildren();
+        TestBed.resetTestingModule();
+      }
+    });
   });
 
   describe('single keys', () => {

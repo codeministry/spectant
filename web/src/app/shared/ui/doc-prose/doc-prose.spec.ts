@@ -130,6 +130,42 @@ describe('UiDocProse mermaid width', () => {
   });
 });
 
+// Spec 057, ISC-381: the full screen view draws under the page's mermaid configuration; only drawMermaid sets it.
+describe('UiDocProse full screen diagram', () => {
+  const initialize = vi.fn();
+  const draw = vi.fn(() => Promise.resolve({ svg: SVG }));
+
+  beforeEach(() => {
+    initialize.mockClear();
+    draw.mockClear();
+    containerWidth = 1000;
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    const loader: () => Promise<MermaidApi> = () => Promise.resolve({ initialize, render: draw });
+    TestBed.configureTestingModule({
+      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: MERMAID_LOADER, useValue: loader }],
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('fullscreen no initialize: opening a diagram full screen draws it again without calling mermaid.initialize', async () => {
+    const root = await render();
+    expect(initialize).toHaveBeenCalledTimes(1); // the page's own draw
+    expect(draw).toHaveBeenCalledTimes(1);
+    const tools = root.querySelectorAll<HTMLButtonElement>('figure[data-rendered] ui-diagram-toolbar button.diagram-tool');
+    const toggle = tools.item(tools.length - 1);
+    expect(toggle.getAttribute('aria-label')).toBe('Full screen');
+    toggle.click();
+    for (let i = 0; i < 4; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(draw).toHaveBeenCalledTimes(2); // the full screen draw ran
+    expect(initialize).toHaveBeenCalledTimes(1);
+  });
+});
+
 // T68 · ISC-251: a document drawn as several proses (the library reader's sections) numbers its tables across them.
 describe('UiDocProse table regions', () => {
   const TABLE = '<div class="mdtable"><table><thead><tr><th>a</th></tr></thead><tbody></tbody></table></div>';

@@ -81,6 +81,7 @@ export const WAITING_SHOWN = 0;
               @if (entry.command; as cmd) {
                 <ui-command-chip
                   [command]="cmd"
+                  [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
                   [copyLabel]="'common.copyCommand' | transloco"
                   [copiedLabel]="'common.copied' | transloco: { command: cmd }"
                   [manualHint]="'common.copyFallback' | transloco"

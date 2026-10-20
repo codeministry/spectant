@@ -84,6 +84,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
             @if (first.command; as cmd) {
               <ui-command-chip
                 [command]="cmd"
+                [context]="'orientation.chipContext.waits' | transloco: { what: first.ref ? first.spec + ' ' + first.ref : first.spec }"
                 [copyLabel]="'common.copyCommand' | transloco"
                 [copiedLabel]="'common.copied' | transloco: { command: cmd }"
                 [manualHint]="'common.copyFallback' | transloco"
@@ -113,6 +114,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
                 @if (chips() && entry.command; as cmd) {
                   <ui-command-chip
                     [command]="cmd"
+                    [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
                     [copyLabel]="'common.copyCommand' | transloco"
                     [copiedLabel]="'common.copied' | transloco: { command: cmd }"
                     [manualHint]="'common.copyFallback' | transloco"

@@ -28,6 +28,7 @@ import { CardDetail } from '../card/card-detail';
 import { cardHistory } from '../card/card-history';
 import { FlowView } from '../flow/flow-view';
 import { taskActorsOf } from '../live-frame';
+import { LiveSource } from '../live-source';
 import { TaskActors } from '../task-actors/task-actors';
 import { FrameBar } from '../this-frame/frame-bar';
 import { NeedsYou } from '../this-frame/needs-you';
@@ -64,6 +65,19 @@ type BarTab = 'frame' | 'needs';
 
 /** How long a played frame stays on screen before the next one. */
 const PLAY_STEP_MS = 1200;
+
+/**
+ * The FLIP's timing from the motion tokens of `motion.css` (spec 057, ISC-377): the duration in ms and the easing, read
+ * from the root as computed, so the one token source (and its reduced-motion 0ms) holds for the Web Animations call
+ * too. A token that does not resolve reads as no motion.
+ */
+function flipTiming(el: Element): { duration: number; easing: string } {
+  const root = getComputedStyle(el.ownerDocument.documentElement);
+  const raw = root.getPropertyValue('--motion-duration-base').trim();
+  const value = Number.parseFloat(raw);
+  const duration = Number.isFinite(value) ? (raw.endsWith('ms') ? value : value * 1000) : 0;
+  return { duration, easing: root.getPropertyValue('--motion-ease-standard').trim() || 'linear' };
+}
 
 /**
  * The Board tab (T81, ISC-87 to ISC-93): core's frames (`…/frames`) and live frame (`…/live`) behind the scrubber,
@@ -129,7 +143,8 @@ export class BoardTab {
     return ws === null || id === null ? undefined : { ws, id };
   });
   readonly framesResult = resource({ params: () => this.params(), loader: ({ params }) => this.api.frames(params.ws, params.id) });
-  readonly liveResult = resource({ params: () => this.params(), loader: ({ params }) => this.api.live(params.ws, params.id) });
+  /** The live frame, one shared read per refresh tick for the board, its cards' detail and the matrix (ISC-371). */
+  readonly liveResult = inject(LiveSource).attach();
 
   private readonly query = toSignal(this.route.queryParamMap, { requireSync: true });
   /** The prototype lane-quiet hint names the next command for this spec (spec 024: `next /spec implement 002`, the plugin's form since spec 031). */
@@ -316,18 +331,10 @@ export class BoardTab {
   private readonly collapsedLanes = signal<ReadonlySet<string>>(new Set());
 
   constructor() {
-    // The Live label's clock, and the live frame re-read on every refresh (ETag: a 304 costs no body), so "updated
-    // n s ago" names when this board was last read.
+    // The Live label's clock; `LiveSource` re-reads the live frame on every refresh (ETag: a 304 costs no body), so
+    // "updated n s ago" names when this board was last read.
     const clock = setInterval(() => this.now.set(Date.now()), 10_000);
     inject(DestroyRef).onDestroy(() => clearInterval(clock));
-    // The refresh count, not its clock (spec 015, ISC-233): two refreshes in one millisecond, or under a pinned clock,
-    // leave `lastRefresh` unchanged and would skip the read of a streamed step.
-    let firstRefresh = true;
-    effect(() => {
-      this.refresher.refreshes();
-      if (firstRefresh) firstRefresh = false;
-      else untracked(() => this.liveResult.reload());
-    });
 
     // spec 027 (ISC-179.1): one polite announcement per refresh that moved a run chip ("T3: patch ready; T5:
     // building"), never one per chip, none on the first read.
@@ -354,7 +361,7 @@ export class BoardTab {
     });
 
     // spec 024 (prototype board.js render): the frame label for the card detail, the .changed tint for the cards whose
-    // state changed with a frame change, and a 240 ms FLIP of the Lanes view's cards (none under reduced motion).
+    // state changed with a frame change, and a FLIP of the Lanes view's cards over `--motion-duration-base` (none under reduced motion).
     const context = inject(CardContext);
     const host = inject<ElementRef<HTMLElement>>(ElementRef);
     let shownIndex: number | null = null;
@@ -385,14 +392,15 @@ export class BoardTab {
       // Only a one-frame step animates (the scrubber, ← →): the first load lands on the live frame from frame 0, and a
       // jump across many frames would fly cards across lanes (and widen a lane while it runs).
       const move = placedIndex !== null && Math.abs(placedIndex - index) === 1 && !prefersReducedMotion();
-      if (move) {
+      const timing = move ? flipTiming(host.nativeElement) : null;
+      if (timing !== null && timing.duration > 0) {
         for (const el of els) {
           const before = places.get(el.dataset['card'] ?? '');
           const after = next.get(el.dataset['card'] ?? '');
           if (before === undefined || after === undefined) continue;
           const dx = before.left - after.left;
           const dy = before.top - after.top;
-          if (dx !== 0 || dy !== 0) el.animate([{ transform: `translate(${String(dx)}px, ${String(dy)}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,0,0,1)' });
+          if (dx !== 0 || dy !== 0) el.animate([{ transform: `translate(${String(dx)}px, ${String(dy)}px)` }, { transform: 'none' }], timing);
         }
       }
       places = next;

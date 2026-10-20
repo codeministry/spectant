@@ -163,6 +163,10 @@ differ, `spectant tokens --yes` included (`-t tokens`).
   composed handlers a poll reaches and sent to every stream as one `update` frame (`LiveUpdate`). Reason: the bytes
   and ETags equal a GET's, so the client primes its cache and revalidates to 304s, and nothing is modelled twice.
 - One build per workspace at a time; a change during a build is folded into one follow-up.
+- Before each build the stream runs its `scan` hook (spec 057, ISC-352): `favoritesScan` deletes the `spec_favorite`
+  rows of specs neither the main checkout (open, not archived) nor a live spec worktree carries. No GET handler prunes
+  (ISC-353). Reason: a favourite of an archived spec must not come back when the spec is restored, and a read must
+  never write.
 - A `: ping` comment every `HEARTBEAT_MS` (5 s) keeps the stream under Bun's 10 s idle timeout and re-syncs the
   watchers with the registry and the worktrees.
 - Watchers exist only while a stream is open, and they only read: `tests/readonly.test.ts -t "readonly: live"`

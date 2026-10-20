@@ -13,7 +13,7 @@
  */
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
-import { atWidth, expect, menusReady, test } from './fixtures';
+import { atWidth, expect, headerControl, test } from './fixtures';
 
 const SESSION_HEADER = 'X-Spectant-Stub-Session';
 const PAGE = '[data-page="settings-workspaces"]';
@@ -128,8 +128,7 @@ test.describe('flow', () => {
     // Open: the menu entry leads to the workspace under its slug, and the header's picker lists it.
     await rowAction(page, slug, 'open');
     await expect(page).toHaveURL(new RegExp(`/w/${slug}$`, 'u'));
-    await menusReady(page);
-    await page.locator('header [data-control="workspace"]').click();
+    await (await headerControl(page, 'workspace')).click();
     await expect(page.locator(`[data-picker="workspace"] [data-workspace="${slug}"]`)).toBeVisible();
     await page.keyboard.press('Escape');
 

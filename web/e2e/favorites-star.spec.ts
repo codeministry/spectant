@@ -18,7 +18,7 @@
  */
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 import { SPEC_API_ROOT, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
-import { atWidth, expect, menusReady, test, WIDTHS } from './fixtures';
+import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const WS = 'harbor';
@@ -35,8 +35,7 @@ const headStar = (page: Page): Locator => page.locator('[data-head-actions] butt
 const rowStar = (page: Page, id: string): Locator => page.locator(`app-spec-row:has([data-spec-row="${id}"]) button[ui-star-toggle]`);
 
 async function openSelect(page: Page): Promise<Locator> {
-  await menusReady(page);
-  await page.locator('header [data-control="spec"]').click();
+  await (await headerControl(page, 'spec')).click();
   await expect(picker(page)).toBeVisible();
   return picker(page);
 }

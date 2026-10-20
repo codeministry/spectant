@@ -47,7 +47,8 @@ export interface TldrState {
   readonly unnamedSpecs: readonly string[];
 }
 
-const MARKER = /<!--\s*section:\s*([\w-]+)\s*-->/;
+/** One `<!-- section: key -->` marker, the key captured; `tech.ts` marks the same markers for the library (ISC-355). */
+export const MARKER = /<!--\s*section:\s*([\w-]+)\s*-->/;
 
 /** The text names the spec number as a word of its own (`002`, not `1002`). */
 function names(text: string, number: string): boolean {

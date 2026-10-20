@@ -11,6 +11,7 @@ import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { UiTime } from '../../../../shared/time';
 import { toneMark } from '../../../../shared/ui/tone';
 import { agentOfCard } from '../live-frame';
+import { LiveSource } from '../live-source';
 import { runOf } from '../board/board-model';
 import { absentNote } from '../recut';
 import { lookOf } from '../steps/step-timeline';
@@ -119,7 +120,7 @@ export class RunChip {
     @container shell (width < 1120px) { :host([data-flow-card]) .lane-chip { display: none; } }
     /* spec 024: the prototype .tcard.sel (2 px cyan outline) and .tcard.changed (a 1200 ms cyan tint after a frame change). */
     article[data-sel] { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-    article[data-changed] { animation: card-tint 1200ms var(--ease); }
+    article[data-changed] { animation: card-tint var(--motion-duration-highlight) var(--motion-ease-standard); }
     @keyframes card-tint { from { background: var(--disp-t); } }
     @media (prefers-reduced-motion: reduce) { article[data-changed] { animation: none; } }
     .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
@@ -130,12 +131,12 @@ export class RunChip {
     :host([data-run]) article { grid-template-columns: minmax(0, 1fr) auto; }
     :host([data-run]) .r1 { grid-area: 1 / 1; }
     :host([data-run]) .run-state { grid-area: 1 / 2; align-self: center; }
-    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .step, :host([data-run]) .r3 { grid-column: 1 / -1; }
+    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .latest-step, :host([data-run]) .r3 { grid-column: 1 / -1; }
     /* spec 015: the latest agent step, a text line and no chip; a new step swaps it with a fade (0 ms under reduce). */
-    .step { display: flex; gap: 6px; align-items: center; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; white-space: nowrap; animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard); }
-    .step .sw { overflow: hidden; font-weight: 600; text-overflow: ellipsis; }
-    .step ui-icon, .step .st { flex: none; }
-    .step .st { font: 11px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
+    .latest-step { display: flex; gap: 6px; align-items: center; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; white-space: nowrap; animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard); }
+    .latest-step .sw { overflow: hidden; font-weight: 600; text-overflow: ellipsis; }
+    .latest-step ui-icon, .latest-step .st { flex: none; }
+    .latest-step .st { font: 11px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
     @keyframes step-in { from { opacity: 0; } }
     @container live-card (width < 320px) {
       :host([data-run]) .run-state { grid-area: auto / 1 / auto / -1; justify-self: start; }
@@ -183,7 +184,7 @@ export class RunChip {
         <app-run-chip small class="run-state" [run]="run.state" />
       }
       @for (l of latestStep(); track l.key) {
-        <p class="step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
+        <p class="latest-step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
           <ui-icon [name]="l.icon" [size]="12" [style.color]="l.color" /><span class="sw" data-step-word>{{ 'steps.kind.' + l.word | transloco }}</span><span aria-hidden="true">·</span><ui-time class="st" data-step-time [value]="l.step.ts" form="clock" />
         </p>
       }
@@ -247,20 +248,29 @@ export class BoardCard {
     return 'stale' in c && c.stale === true;
   });
 
-  /** Every frame on the scrubber, history then live, read only while the detail is open. */
-  private readonly frames = resource({
+  /** The live frame the board and the matrix read too: one shared read per refresh tick (ISC-371). */
+  private readonly live = inject(LiveSource).attach(() => this.detailOpen());
+  /** The history frames, read only while the detail is open; the live frame comes from `LiveSource`. */
+  private readonly historyFrames = resource({
     params: () => {
       const ws = this.shell.ws();
       const id = this.shell.specId();
       return this.detailOpen() && ws !== null && id !== null ? { ws, id } : undefined;
     },
     loader: async ({ params }): Promise<readonly HistoryFrame[]> => {
-      const [history, live] = await Promise.all([this.api.frames(params.ws, params.id), this.api.live(params.ws, params.id)]);
-      return [...(history.kind === 'ok' ? history.body : []), ...(live.kind === 'ok' ? [live.body] : [])];
+      const history = await this.api.frames(params.ws, params.id);
+      return history.kind === 'ok' ? history.body : [];
     },
   });
+  /** Every frame on the scrubber, history then live, once the detail's history is read. */
+  private readonly frames = computed<readonly HistoryFrame[] | undefined>(() => {
+    const history = this.historyFrames.value();
+    if (history === undefined) return undefined;
+    const live = this.live.value();
+    return [...history, ...(live?.kind === 'ok' ? [live.body] : [])];
+  });
   protected readonly history = computed(() => {
-    const frames = this.frames.value();
+    const frames = this.frames();
     return frames === undefined ? null : cardHistory(frames, this.card());
   });
 }

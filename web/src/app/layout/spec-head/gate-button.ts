@@ -65,7 +65,7 @@ type WriteState =
     /* The primary fill of ui-button (light #007e9a, principal 2026-10-13 "Sichere Werte behalten"), not daisyUI's raw primary. */
     .btn-primary { --btn-color: var(--primary-fill); --btn-fg: var(--primary-fill-ink); }
     /* stale: prototype orange (--orange edge, --orange-t fill, --orange-text ink). */
-    .gate-button.stale { --btn-bg: var(--hover-t); --btn-border: var(--hover); --btn-fg: var(--hover-ink); }
+    .gate-button.stale { --btn-bg: var(--hover-t); --btn-border: var(--color-warning); --btn-fg: var(--hover-ink); }
     /* done: the prototype's muted "Re-mark". */
     .gate-button.done { --btn-fg: var(--muted-ink); font-weight: 500; }
     .gate-hint { color: var(--muted-ink); font-size: 11px; line-height: 16px; overflow-wrap: anywhere; text-align: end; }

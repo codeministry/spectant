@@ -52,9 +52,9 @@
 
 .step-item[data-tone="disp"] .mark { color: var(--disp-text); }
 .step-item[data-tone="fail"] .mark { color: var(--fail-text); }
-.step-item[data-tone="lime"] .mark { color: var(--lime-text); }
+.step-item[data-tone="lime"] .mark { color: var(--clos-text); }
 .step-item[data-tone="ques"] .mark { color: var(--ques-text); }
-.step-item[data-tone="cyan"] .mark { color: var(--cyan-text); }
+.step-item[data-tone="cyan"] .mark { color: var(--disp-text); }
 .step-item[data-tone="done"] .mark { color: var(--done-text); }
 
 /* The newest step: a ring around its icon marks it without colour. */

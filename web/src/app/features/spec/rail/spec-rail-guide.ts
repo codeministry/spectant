@@ -54,6 +54,7 @@ import { UiWaitsBlock } from '../../../shared/ui/guidance/waits-block';
           <ui-command-chip
             data-rail-next
             [command]="command"
+            [context]="'orientation.chipContext.railGuide' | transloco: { spec: specId() }"
             [copyLabel]="'common.copyCommand' | transloco"
             [copiedLabel]="'common.copied' | transloco: { command }"
             [manualHint]="'common.copyFallback' | transloco"
@@ -91,6 +92,8 @@ export class SpecRailGuide {
   });
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
+  /** The open spec's id: the rail guide's chip says whose next step it copies (spec 057, ISC-354). */
+  protected readonly specId = computed(() => this.model()?.head.id ?? this.state.specId() ?? '');
   /** "+n more" leads to the spec dashboard, whose `#waiting` lists every waiting entry of the spec. */
   protected readonly dashboardLink = computed(() => specLink(this.ws(), this.model()?.head.id ?? this.state.specId() ?? '').join('/'));
 }

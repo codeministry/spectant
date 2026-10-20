@@ -58,10 +58,10 @@
         @for (warning of textLines(spec); track $index) {
           <div class="line" [attr.data-warning-kind]="warning.kind">
             <ui-icon class="warn-icon" data-icon="triangle-alert" name="triangle-alert" [size]="16" [label]="'warnings.icon' | transloco" />
-            <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
+            <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec, n: $index + 1, count: $count }" />
             <div class="line-body">
               @if (overlapOf(warning); as overlap) {
-                <ng-container [ngTemplateOutlet]="overlapBody" [ngTemplateOutletContext]="{ $implicit: overlap, spec: spec.id }" />
+                <ng-container [ngTemplateOutlet]="overlapBody" [ngTemplateOutletContext]="{ $implicit: overlap, spec: spec.id, n: $index + 1, lines: $count }" />
               } @else if (edgeDiagnostic(warning); as diag) {
                 <p class="text" data-warning-text data-edge-text>
                   @if (diag.kind === 'unknown') {
@@ -85,6 +85,7 @@
               @if (warning.command; as command) {
                 <ui-command-chip
                   [command]="command"
+                  [context]="'orientation.chipContext.warning' | transloco: { n: $index + 1, total: $count, spec: spec.id }"
                   [copyLabel]="'common.copyCommand' | transloco"
                   [copiedLabel]="'common.copied' | transloco: { command }"
                   [manualHint]="'common.copyFallback' | transloco"
@@ -96,7 +97,7 @@
         @if (spec.fog > 0) {
           <div class="line fog-line" [attr.data-fog-line]="spec.id">
             <ui-icon class="cloud" data-icon="cloud" name="cloud" [size]="16" />
-            <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
+            <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec, fog: true }" />
             <span class="text">{{ (spec.fog === 1 ? 'specs.fogCount.one' : 'specs.fogCount.other') | transloco: { count: spec.fog } }}</span>
           </div>
         }
@@ -110,7 +111,7 @@
   paths as their shortest unique suffix (full path in the title, all of them behind "+n more"), then the edge the
   waiting spec could carry, with copy.
 -->
-<ng-template #overlapBody let-overlap let-spec="spec">
+<ng-template #overlapBody let-overlap let-spec="spec" let-line="n" let-lines="lines">
   @let other = overlap.specs[0] === spec ? overlap.specs[1] : overlap.specs[0];
   @let count = overlap.paths.length;
   @let shown = suffixes(overlap.paths);
@@ -137,6 +138,7 @@
     <ui-command-chip
       data-overlap-edge
       [command]="overlap.edge"
+      [context]="'orientation.chipContext.warning' | transloco: { n: line, total: lines, spec }"
       [copyLabel]="'warnings.overlap.copyTitle' | transloco"
       [copiedLabel]="'common.copied' | transloco: { command: overlap.edge }"
       [manualHint]="'common.copyFallback' | transloco"
@@ -145,10 +147,13 @@
   </div>
 </ng-template>
 
-<ng-template #specLink let-spec>
+<!-- Each link names its line (spec 057, ISC-354): "006, warning 2 of 2", or "006, open fog" on the fog line, so two
+     links of one spec never share a name; the position, not the kind, keeps two warnings of one kind apart. -->
+<ng-template #specLink let-spec let-n="n" let-count="count" let-fog="fog">
   <a
     class="spec"
     data-warning-link
+    [attr.aria-label]="fog ? ('warnings.fogLink' | transloco: { id: spec.id }) : ('warnings.link' | transloco: { id: spec.id, n, total: count })"
     [title]="spec.title"
     [routerLink]="[]"
     [queryParams]="{ sel: 'spec:' + spec.id }"

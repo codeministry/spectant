@@ -15,7 +15,7 @@
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
-import { atWidth, expect, menusReady, test, WIDTHS } from './fixtures';
+import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -60,8 +60,7 @@ async function seed(request: APIRequestContext, folders: readonly string[], lang
 
 /** Opens the header's spec select on the open page; a popover from 640 px, the bottom sheet below. */
 async function openSelect(page: Page, width: number): Promise<Locator> {
-  await menusReady(page);
-  await page.locator('header [data-control="spec"]').click();
+  await (await headerControl(page, 'spec')).click();
   const picker = page.locator('nav[data-picker="spec"]');
   await expect(picker).toBeVisible();
   await expect(picker.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);

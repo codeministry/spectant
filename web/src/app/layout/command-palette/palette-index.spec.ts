@@ -5,7 +5,7 @@ import { ApiClient, type ApiResult, type DashboardBody } from '../../core/api.se
 import { RefreshService } from '../../core/refresh.service';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
-import { CLAIM_LOAD_CONCURRENCY, PaletteIndex } from './palette-index';
+import { CLAIM_LOAD_CONCURRENCY, OTHERS_WAIT_MS, PaletteIndex } from './palette-index';
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const claim = (id: string, text: string, state: ClaimGlyphState): ClaimView => ({ id, text, state }) as unknown as ClaimView;
@@ -28,7 +28,8 @@ const CLAIMS: Readonly<Partial<Record<string, readonly ClaimView[]>>> = {
   'lantern/000': [],
 };
 
-function setUp(open: string | null = 'harbor') {
+/** `extra` adds readable workspaces after lantern; a dashboard read of a `held` one waits for `releaseDashboards()`. */
+function setUp(open: string | null = 'harbor', options: { extra?: readonly string[]; held?: readonly string[] } = {}) {
   const ws = signal<string | null>(open);
   const current = signal<ApiResult<DashboardBody> | undefined>(ok(dashboard(1)));
   const calls: string[] = [];
@@ -36,8 +37,12 @@ function setUp(open: string | null = 'harbor') {
   let peak = 0;
   const pending: Array<() => void> = [];
   let hold = false;
+  const heldDashboards: Array<() => void> = [];
   const api = {
-    dashboard: (slug: string) => Promise.resolve(ok(dashboard(slug === 'lantern' ? 5 : 1))),
+    dashboard: async (slug: string): Promise<ApiResult<DashboardBody>> => {
+      if (options.held?.includes(slug) === true) await new Promise<void>((resolve) => heldDashboards.push(resolve));
+      return ok(dashboard(slug === 'lantern' ? 5 : 1));
+    },
     claims: async (slug: string, id: string): Promise<ApiResult<ClaimViewModel>> => {
       calls.push(`${slug}/${id}`);
       inFlight++;
@@ -50,11 +55,12 @@ function setUp(open: string | null = 'harbor') {
     },
   };
   const data = {
-    dashboard: { value: current },
-    workspaceList: signal([
-      { slug: 'harbor', name: 'harbor', readable: true },
-      { slug: 'lantern', name: 'lantern', readable: true },
-    ]),
+    workspaces: { hasValue: () => true, status: () => 'resolved' },
+    planning: { hasValue: () => true, status: () => 'resolved' },
+    dashboard: { value: current, hasValue: () => current() !== undefined, status: () => 'resolved' },
+    workspaceList: signal(
+      ['harbor', 'lantern', ...(options.extra ?? [])].map((slug) => ({ slug, name: slug, readable: true })),
+    ),
     workspaceName: (slug: string) => slug,
   };
   TestBed.configureTestingModule({
@@ -72,6 +78,7 @@ function setUp(open: string | null = 'harbor') {
     peak: () => peak,
     holdReads: (on: boolean) => (hold = on),
     release: () => pending.splice(0).forEach((resolve) => resolve()),
+    releaseDashboards: () => heldDashboards.splice(0).forEach((resolve) => resolve()),
   };
 }
 
@@ -156,5 +163,45 @@ describe('PaletteIndex.claimsFor (T3 · ISC-139)', () => {
     expect(count()).toBe(4);
     expect(calls).toHaveLength(15);
     expect(peak()).toBe(CLAIM_LOAD_CONCURRENCY);
+  });
+});
+
+/** Spec 057 (ISC-373, review 024): one workspace that does not answer holds back no other workspace's entries. */
+describe('PaletteIndex.workspaces and settled (spec 057 · ISC-373)', () => {
+  const slugs = (index: PaletteIndex): string[] => index.workspaces().map((ws) => ws.slug);
+  const waitOut = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, OTHERS_WAIT_MS + 20));
+  // The template reads `settled` on every change, which starts the claim loads it waits on; a test reads it, then lets
+  // them land.
+  const drawn = async (index: PaletteIndex): Promise<boolean> => {
+    index.settled();
+    await settle();
+    return index.settled();
+  };
+
+  it('palette progressive: of two other workspaces, the answering one is listed and drawn while the other never answers', async () => {
+    const { index, releaseDashboards } = setUp('harbor', { extra: ['beacon'], held: ['beacon'] });
+    index.want();
+    await settle();
+    expect(slugs(index)).toEqual(['harbor', 'lantern']);
+    expect(index.workspaces()[1]?.specs.map((row) => row.id)).toEqual(['001', '002']);
+
+    await waitOut();
+    expect(await drawn(index)).toBe(true);
+    expect(index.claimsFor('lantern')()).toEqual([{ ws: 'lantern', specId: '001', isc: 'ISC-40', text: 'lantern claim', status: 'blocked' }]);
+
+    // The late one joins the list in list order when it answers, and the drawn list stays drawn.
+    releaseDashboards();
+    await settle();
+    expect(slugs(index)).toEqual(['harbor', 'lantern', 'beacon']);
+    expect(index.settled()).toBe(true);
+  });
+
+  it('palette progressive: when every workspace answers at once the list is drawn complete, before the wait runs out', async () => {
+    const { index } = setUp('harbor', { extra: ['beacon'] });
+    expect(index.settled()).toBe(false);
+    index.want();
+    await settle();
+    expect(slugs(index)).toEqual(['harbor', 'lantern', 'beacon']);
+    expect(await drawn(index)).toBe(true);
   });
 });

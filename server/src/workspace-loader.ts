@@ -728,8 +728,8 @@ function copyFiles(mainDir: string, copyDir: string, folder: string): SpecFiles 
  * (`trackedSpecPaths`): with `worktree` the copy kinds come from `<worktree>/specs/<folder>/` and `main` rides beside
  * them in `read.main`; a copy without a `spec.md` stays on main, so a spec never vanishes from the board (ISC-181). The
  * code-reviewed mark of the files so read compares with the tree id computed in that worktree, `read.tree` (ISC-176);
- * without a mark no tree is computed, nor with `withTree` false (the library's reader needs the copy alone). A spec
- * without such a worktree has no `read` and keeps the workspace's defaults.
+ * without a mark no tree is computed, nor with `withTree` false (the library's reader and `readSpecSource` need the copy
+ * alone). A spec without such a worktree has no `read` and keeps the workspace's defaults.
  */
 async function specSourceFor(
   root: string,
@@ -757,13 +757,15 @@ async function specSourceFor(
  * One spec's files from its read source, for the routes that read a single spec (the spec page's tabs): the same
  * decision `readWorkspaceInput` makes per spec, so a tab never reads another copy than the row and the head (ISC-181).
  * `dir` is the folder the copy kinds were read from (the worktree copy's, or the main checkout's `ref.dir`). `reading` is the
- * caller's `readWorktreeView`, read anew when absent.
+ * caller's `readWorktreeView`, read anew when absent. No tree id is computed: the answer carries none, so hashing the
+ * worktree here would only be dropped (spec 057, ISC-359); a route that shows the tree takes it from the one
+ * `readWorkspaceInput` it reads.
  */
 export async function readSpecSource(root: string, ref: SpecRef, reading?: WorktreeReading): Promise<{ files: SpecFiles; dir: string }> {
   const main = specFiles(ref.dir, ref.slug);
   if (ref.archived) return { files: main, dir: ref.dir };
   const { view } = reading ?? (await readWorktreeView(root));
-  const source = await specSourceFor(root, ref, main, view);
+  const source = await specSourceFor(root, ref, main, view, false);
   return { files: source.files, dir: source.copy ?? ref.dir };
 }
 

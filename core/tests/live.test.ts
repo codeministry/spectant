@@ -475,6 +475,15 @@ describe('claimless run lines (spec 041, ISC-213)', () => {
     expect(runOf('042-beta', 42)).toEqual({ task: 'T3', state: 'building', session: 'a:claude:sess-9/T3', worktree: '.worktrees/042-beta', ts: '2026-03-10T10:01:00Z' });
   });
 
+  test('run without claim: two specs share T3, a claimless line for the first is 0 hits in the second (spec 057, ISC-361)', () => {
+    // Only line 1, which names spec 041 by its session ref; spec 042 has a task T3 of its own and must not fold it in.
+    const first: LockReading = { ...CLAIMLESS, runs: (CLAIMLESS.runs ?? []).filter((r) => r.session === 'a:claude:spec-041/T3') };
+    expect(first.runs).toHaveLength(1);
+    const frameFor = (folder: string, n: number) => buildLiveFrame({ files: specWithT3(folder, n), locks: first, now });
+    expect(card(frameFor('041-alpha', 41), 'T3').run?.state).toBe('dispatched');
+    expect(frameFor('042-beta', 42).cards.filter((c) => c.run !== undefined)).toHaveLength(0);
+  });
+
   test('a line naming neither a spec session nor a spec worktree counts for no spec', () => {
     // A third spec with the same task id sees nothing: line 1 and 2 name other specs, line 3 names none.
     expect(runOf('043-gamma', 43)).toBeUndefined();

@@ -13,9 +13,10 @@ import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { UiSheet } from '../../../../shared/ui/overlay/sheet';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
-import { frameEvents, needsYouOf, recutMarkers, scrubberStops } from '../board/board-model';
+import { frameEvents, LANE_COLORS, needsYouOf, recutMarkers, scrubberStops } from '../board/board-model';
 import { CardDetail } from '../card/card-detail';
 import { cardHistory } from '../card/card-history';
+import { LiveSource } from '../live-source';
 import { FrameBar } from '../this-frame/frame-bar';
 import { NeedsYou } from '../this-frame/needs-you';
 import { ThisFrame } from '../this-frame/this-frame';
@@ -53,7 +54,8 @@ export class MatrixTab {
     return ws === null || id === null ? undefined : { ws, id };
   });
   readonly framesResult = resource({ params: () => this.params(), loader: ({ params }) => this.api.frames(params.ws, params.id) });
-  readonly liveResult = resource({ params: () => this.params(), loader: ({ params }) => this.api.live(params.ws, params.id) });
+  /** The live frame, shared with the board and its cards' detail: one read per refresh tick (ISC-371). */
+  readonly liveResult = inject(LiveSource).attach();
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   /** Every frame on the scrubber: the history, then the live frame. */
@@ -62,7 +64,7 @@ export class MatrixTab {
     const live = this.liveResult.value();
     return [...(history?.kind === 'ok' ? history.body : []), ...(live?.kind === 'ok' ? [live.body] : [])];
   });
-  protected readonly loading = computed(() => this.framesResult.isLoading() || this.liveResult.isLoading());
+  protected readonly loading = computed(() => this.framesResult.isLoading() || this.liveResult.status() === 'loading');
   protected readonly failed = computed(() => {
     const history = this.framesResult.value();
     const live = this.liveResult.value();
@@ -174,7 +176,7 @@ export class MatrixTab {
 
   /** The lane dot of a lane group: the board's lane colours in constitution order. */
   protected laneDot(i: number): string {
-    return ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'][i % 5] ?? 'var(--color-primary)';
+    return LANE_COLORS[i % LANE_COLORS.length] ?? 'var(--color-primary)';
   }
 
   protected setFrame(index: number): void {
