@@ -317,6 +317,11 @@ export type WorkspaceListSummary = WorkspaceSummary & WorkspaceSummaryAdded;
 export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;
   /**
+   * The image URLs each list entry carries (spec 016 T7, the image store under the data folder); absent, every entry
+   * lists `NO_IMAGES`.
+   */
+  imagesOf?: ImagesOf;
+  /**
    * Reads one workspace; `loadDashboard` by default. Tests inject another loader. The dashboard route passes `clock`
    * (spec 040, ISC-224): `now` and the `runAbortMinutes` abort age the rows' and stories' item states are derived at.
    */
@@ -415,8 +420,13 @@ export function json(req: Request, status: number, value: unknown, extra: Record
   return new Response(req.method === "HEAD" ? null : body, { status, headers });
 }
 
-/** No stored images yet: the image store and its versioned URLs land with spec 016 T7. */
+/** A workspace without a stored image, and every workspace when no image store is wired (`imagesOf` absent). */
 export const NO_IMAGES: WorkspaceImages = { logo: null, screenshot: null };
+
+/** The image URLs of a workspace by slug (`workspace-images.ts` `imagesOf`, spec 016 T7). */
+export type ImagesOf = (slug: string) => WorkspaceImages;
+
+const noImages: ImagesOf = () => NO_IMAGES;
 
 function summary(workspace: Workspace, load: DashboardLoad): WorkspaceSummary {
   const base = { slug: workspace.slug, name: workspace.name, pathTail: pathTail(workspace.path) };
@@ -426,9 +436,9 @@ function summary(workspace: Workspace, load: DashboardLoad): WorkspaceSummary {
 }
 
 /** The list's entry: the summary, its status from the same read, the registration time and the image URLs. */
-function listSummary(workspace: Workspace, load: DashboardLoad): WorkspaceListSummary {
+function listSummary(workspace: Workspace, load: DashboardLoad, imagesOf: ImagesOf): WorkspaceListSummary {
   const status = workspaceStatusOf(load.readable, load.readable ? load.model.kpis.specs : null);
-  return { ...summary(workspace, load), status, images: NO_IMAGES };
+  return { ...summary(workspace, load), status, images: imagesOf(workspace.slug) };
 }
 
 /**
@@ -436,11 +446,12 @@ function listSummary(workspace: Workspace, load: DashboardLoad): WorkspaceListSu
  * `workspace-admin-route.ts`) answer with it, so the row a write returns equals the row the list shows.
  */
 export function workspaceSummaryReader(
-  options: Pick<DashboardApiOptions, "loadWorkspace" | "lifeos">,
+  options: Pick<DashboardApiOptions, "loadWorkspace" | "lifeos" | "imagesOf">,
 ): (workspace: Workspace) => Promise<WorkspaceListSummary> {
   const load = options.loadWorkspace ?? loadDashboard;
   const stateDir = options.lifeos?.stateDir ?? null;
-  return async (workspace) => listSummary(workspace, await load(workspace.path, null, stateDir));
+  const imagesOf = options.imagesOf ?? noImages;
+  return async (workspace) => listSummary(workspace, await load(workspace.path, null, stateDir), imagesOf);
 }
 
 /**
@@ -502,7 +513,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();
     const loads = await Promise.all(workspaces.map((w) => load(w.path, null, stateDir)));
-    return json(req, 200, workspaces.map((w, i) => listSummary(w, loads[i] ?? { readable: false, error: "unreadable" })));
+    const imagesOf = options.imagesOf ?? noImages;
+    return json(req, 200, workspaces.map((w, i) => listSummary(w, loads[i] ?? { readable: false, error: "unreadable" }, imagesOf)));
   };
 
   const dashboard = async (req: Request, slug: string): Promise<Response> => {

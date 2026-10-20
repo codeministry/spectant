@@ -524,9 +524,11 @@
       "noCounts": "no counts"
     },
     "menu": {
-      "rename": "Rename",
+      "rename": "Rename…",
       "rescan": "Re-scan",
       "open": "Open dashboard",
+      "uploadLogo": "Upload logo…",
+      "uploadScreenshot": "Upload screenshot…",
       "remove": "Remove…"
     },
     "remove": {

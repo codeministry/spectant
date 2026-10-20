@@ -1,0 +1,154 @@
+/* One workspace row (spec 016, T15, design.md § Zeile): thumb, badge and name, path tail, status, counts, menu. */
+:host {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 0.9fr) auto 44px;
+  gap: 12px;
+  align-items: center;
+  min-block-size: 56px;
+  padding: 8px 16px;
+  border-block-end: 1px solid var(--line);
+}
+:host(:hover) { background: var(--lane); }
+
+.mono { font-family: var(--font-mono); }
+
+/* The 16:10 thumb on the cover's look: the screenshot or the name pattern. */
+.thumb {
+  inline-size: 64px;
+  aspect-ratio: 16 / 10;
+  border-block-start-width: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.body { display: contents; }
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+  color: var(--color-base-content);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+  text-decoration: none;
+}
+
+.ws-label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.name:hover .ws-label { text-decoration: underline; }
+
+.path {
+  display: -webkit-box;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.ws-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sdot {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.ws-status[data-status='ok'] { color: var(--clos-text); }
+.ws-status[data-status='ok'] .sdot { background: var(--color-accent); }
+.ws-status[data-status='missing'] { color: var(--fail-text); }
+.ws-status[data-status='missing'] .sdot { background: var(--color-error); }
+
+.counts {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trigger { justify-self: end; }
+
+/* The menu, projected into ui-popover or ui-sheet */
+.pop { --ui-popover-width: 220px; }
+
+.ws-menu {
+  display: grid;
+  gap: 2px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding-inline: 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-base-content);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  text-decoration: none;
+}
+
+.item:hover,
+.item:focus-visible { background: var(--color-base-300); }
+.item.danger { color: var(--fail-text); }
+:host([data-tier='compact']) .item { min-block-size: 44px; }
+
+.sep {
+  block-size: 1px;
+  margin-block: 4px;
+  background: var(--line);
+}
+
+@container shell (width >= 1120px) {
+  :host { grid-template-columns: 64px minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 0.9fr) auto 32px; }
+}
+
+@media (pointer: coarse) {
+  :host { grid-template-columns: 64px minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 0.9fr) auto 44px; }
+  .item { min-block-size: 44px; }
+}
+
+/* compact: thumb | body | ⋯, the body stacking name, path tail, then status · counts */
+@container shell (width < 640px) {
+  :host {
+    grid-template-columns: 64px minmax(0, 1fr) 44px;
+    align-items: start;
+  }
+
+  .body {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 8px;
+    align-items: center;
+    min-inline-size: 0;
+  }
+  .name, .path { grid-column: 1 / -1; }
+  .counts { white-space: normal; }
+}
+
+@media (forced-colors: active) {
+  .sdot { border: 1px solid CanvasText; }
+}

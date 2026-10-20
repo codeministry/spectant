@@ -51,6 +51,7 @@ import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
 import { createWatchHub } from "./watch.ts";
 import { workspaceAdminApi } from "./workspace-admin-route.ts";
+import { openImageStore } from "./workspace-images.ts";
 
 const USAGE = `Usage: spectant [command] [options]
 
@@ -230,6 +231,8 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const lifeos = detectLifeos(options.env ?? process.env);
     // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
     const notes = openNotes(db);
+    // The workspace images (spec 016, ISC-310) live in the data folder beside the database, never in a repository.
+    const images = openImageStore(dataDir(options.env ?? process.env));
     const settings = openSettings(db);
     // The run lock's abort age (spec 040, ISC-225), read per write so a changed `runAbortMinutes` applies at once.
     const abortAfterMs = (): number => settings.get().runAbortMinutes * 60_000;
@@ -240,7 +243,7 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
       settingsApi(settings),
       actorsApi(db),
       lifeosApi(lifeos),
-      dashboardApi({ registry, lifeos, db, abortAfterMs, staleAfterMs }),
+      dashboardApi({ registry, lifeos, db, abortAfterMs, staleAfterMs, imagesOf: images.imagesOf }),
       notesApi({ store: notes, registry }),
       specs,
       prototypeApi({ registry }),
@@ -249,7 +252,7 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const hub = createWatchHub({ registry });
     // The writing workspace routes (spec 016) come before the list route of `dashboardApi`, which answers 405 for
     // every write on its path, and announce each registry write on the same hub, so open streams show it at once.
-    const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos }), hub });
+    const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos, imagesOf: images.imagesOf }), hub, images });
     const api = composeApi(eventsApi({ hub, reads }), admin, reads);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {

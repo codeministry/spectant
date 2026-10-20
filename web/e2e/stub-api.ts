@@ -264,6 +264,7 @@ import {
   type WorkspaceRouteName,
   type LibraryDocPage,
 } from '../../server/src/spec-routes.contract';
+import * as AdminContractModule from '../../server/src/workspace-admin.contract';
 import {
   type Note,
   type NoteCounts,
@@ -704,9 +705,7 @@ export type WorkspaceAdminContract = {
   };
 };
 /** The contract's runtime values, the one source of the admin routes for the stub and its test. */
-export const ADMIN_CONTRACT = createRequire(import.meta.url)(
-  join(import.meta.dir, '..', '..', 'server', 'src', 'workspace-admin.contract.ts'),
-) as WorkspaceAdminContract;
+export const ADMIN_CONTRACT: WorkspaceAdminContract = AdminContractModule;
 const {
   IMAGE_MAX_BYTES,
   IMAGE_TYPES,

@@ -86,52 +86,9 @@
       }
       @case ('list') {
         <ul class="ws-list" role="list">
-          @for (row of rows(); track row.entry.slug; let i = $index) {
-            @let tone = accent(i);
-            <li class="ws-row" [attr.data-ws-row]="row.entry.slug" [style.--ws]="tone.color" [style.--ws-text]="tone.text">
-              <div class="ws-id">
-                <span class="ws-shot" aria-hidden="true"></span>
-                <span class="ws-name"
-                  ><span class="ws-initials" aria-hidden="true">{{ initials(row.entry.name) }}</span
-                  ><span class="ws-label">{{ row.entry.name }}</span></span
-                >
-              </div>
-              <span class="mono path-tail">{{ row.entry.pathTail }}</span>
-              <div class="ws-status" [attr.data-status]="row.status">
-                <span class="sdot" aria-hidden="true"></span>{{ 'settingsWorkspaces.status.' + row.status | transloco }}
-              </div>
-              <div class="ws-counts mono">
-                @if (row.specs !== null) {
-                  {{ (row.specs === 1 ? 'settingsWorkspaces.row.countsOne' : 'settingsWorkspaces.row.counts') | transloco: { specs: row.specs, active: row.active ?? 0 } }}
-                } @else {
-                  {{ 'settingsWorkspaces.row.noCounts' | transloco }}
-                }
-              </div>
-              <button
-                ui-icon-button
-                icon="ellipsis"
-                size="sm"
-                class="row-menu"
-                [label]="'settingsWorkspaces.row.actions' | transloco: { name: row.entry.name }"
-                [uiPopoverTrigger]="menu"
-              ></button>
-              <!-- Stub until T16 (rename), T17 (re-scan), T18/T19 (upload) and T21 (remove): the entries only close. -->
-              <ui-popover #menu placement="end" class="row-pop" [label]="'settingsWorkspaces.row.actions' | transloco: { name: row.entry.name }">
-                <button type="button" class="pop-item" data-row-act="rename" (click)="menu.close()">
-                  <span class="grow">{{ 'settingsWorkspaces.menu.rename' | transloco }}</span>
-                </button>
-                <button type="button" class="pop-item" data-row-act="rescan" (click)="menu.close()">
-                  <span class="grow">{{ 'settingsWorkspaces.menu.rescan' | transloco }}</span>
-                </button>
-                <button type="button" class="pop-item" data-row-act="open" (click)="menu.close()">
-                  <span class="grow">{{ 'settingsWorkspaces.menu.open' | transloco }}</span>
-                </button>
-                <div class="pop-sep" role="presentation"></div>
-                <button type="button" class="pop-item danger" data-row-act="remove" (click)="askRemove(row.entry, menu)">
-                  <span class="grow">{{ 'settingsWorkspaces.menu.remove' | transloco }}</span>
-                </button>
-              </ui-popover>
-            </li>
+          @for (entry of rows(); track entry.slug) {
+            <!-- T16 (rename), T17 (re-scan), T18/T19 (upload) wire the other outputs. -->
+            <li app-workspace-row [entry]="entry" (remove)="askRemove($event)"></li>
           }
         </ul>
       }

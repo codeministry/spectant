@@ -524,9 +524,11 @@
       "noCounts": "keine Zählung"
     },
     "menu": {
-      "rename": "Umbenennen",
+      "rename": "Umbenennen…",
       "rescan": "Neu einlesen",
       "open": "Dashboard öffnen",
+      "uploadLogo": "Logo hochladen…",
+      "uploadScreenshot": "Screenshot hochladen…",
       "remove": "Entfernen…"
     },
     "remove": {
