@@ -26,14 +26,13 @@ import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
-import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
 import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
-import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingCompanion, UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import { ShellData } from '../../../layout/shell/shell-data.service';
+import { type SortOption, UiSortMenu } from '../../../shared/ui/sort-menu/sort-menu';
 import { toneMark } from '../../../shared/ui/tone';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
@@ -49,7 +48,6 @@ import {
   PHASE_TONES,
   phaseOptions,
   SORT_MENU,
-  type SortKey,
   type SpecListCounts,
   type SpecTableRow,
   typeOptions,
@@ -64,8 +62,8 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
 /**
  * The Specs panel of the workspace dashboard (T63, ISC-61), ported from the prototype's `spec-table` (T89; styles.css
  * 362-400, app.js specTable): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
- * picker land on, the phase chips (plus type chips from two types and the takeable flag) and the sort menu (a
- * `ui-popover`, a bottom `ui-sheet` at compact), the 8 px phase strip (one segment per active spec), the rows as one
+ * picker land on, the phase chips (plus type chips from two types and the takeable flag) and the sort menu
+ * (`ui-sort-menu`: a popover, a bottom sheet at compact), the 8 px phase strip (one segment per active spec), the rows as one
  * roving list (↓ ↑ j k Home End, one tab stop, no wrap).
  *
  * Spec 050 (T8, ISC-289): the archived footer under `#archive` is gone; the archived specs list as rows behind the
@@ -93,14 +91,12 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
     UiDisclosure,
     UiFilterChips,
     UiIcon,
-    UiPopover,
-    UiPopoverTrigger,
     GuidanceReasonPipe,
     UiRovingCompanion,
     UiRovingItem,
     UiRovingList,
-    UiSheet,
     UiStarToggle,
+    UiSortMenu,
     SpecRow,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -111,7 +107,7 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
 export class SpecTable {
   private readonly transloco = inject(TranslocoService);
   private readonly settings = inject(SettingsService);
-  private readonly shell = inject(ShellState);
+  protected readonly shell = inject(ShellState);
   private readonly params = toSignal(inject(ActivatedRoute).queryParamMap, { requireSync: true });
   /**
    * The rows' density (spec 021, ISC-254): `?density=` for this view, else the stored setting, as on the board; an
@@ -215,8 +211,6 @@ export class SpecTable {
     );
   }
 
-  protected readonly sortMenuKeys = SORT_MENU;
-  protected readonly compact = computed(() => this.shell.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
   /**
    * The listed rows: the active ones filtered and sorted, then the archived ones under `?archived=1` (spec 050, T3,
@@ -243,7 +237,6 @@ export class SpecTable {
       return this.transloco.translate(`specs.archivedShown.${count === 1 ? 'one' : 'other'}`, { count });
     },
   });
-  protected readonly sortSheetOpen = signal(false);
 
   private readonly openState = inject(OpenState);
   /**
@@ -278,7 +271,6 @@ export class SpecTable {
     event.stopPropagation();
   }
 
-  private readonly sortPopover = viewChild(UiPopover);
   private readonly roving = viewChild(UiRovingList);
   /** The selected spec: the roving list's tab stop, the first visible row until the user moves. */
   readonly selectedId = computed(() => this.roving()?.activeItem()?.element.getAttribute('data-spec-row') ?? null);
@@ -321,9 +313,10 @@ export class SpecTable {
     return TRACK_STAGES.map((stage) => this.transloco.translate(`stages.${stage}`));
   });
 
-  protected readonly sortLabel = computed(() => {
+  /** The sort menu's keys with their labels (`specs.sort.*`), in `SORT_MENU` order. */
+  protected readonly sortOptions = computed<SortOption[]>(() => {
     this.lang();
-    return `${this.transloco.translate('specs.sort.label')}: ${this.transloco.translate(`specs.sort.${this.query().sort}`)}`;
+    return SORT_MENU.map((key) => ({ key, label: this.transloco.translate(`specs.sort.${key}`) }));
   });
 
   protected readonly phaseChips = computed<FilterOption[]>(() => {
@@ -361,10 +354,10 @@ export class SpecTable {
     this.queryChange.emit({ ...this.query(), type: key === undefined || key === ALL ? null : key });
   }
 
-  protected setSort(sort: SortKey): void {
-    this.sortPopover()?.close();
-    this.sortSheetOpen.set(false);
-    if (sort !== this.query().sort) this.queryChange.emit({ ...this.query(), sort });
+  /** A pick from `ui-sort-menu`, which has already closed itself; a key outside `SORT_MENU` or the current one changes nothing. */
+  protected setSort(key: string): void {
+    const sort = SORT_MENU.find((menuKey) => menuKey === key);
+    if (sort !== undefined && sort !== this.query().sort) this.queryChange.emit({ ...this.query(), sort });
   }
 
   /** The "Show archived" toggle (spec 050, T3, ISC-287): the page turns the flipped flag into `?archived=1` or nothing. */

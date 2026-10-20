@@ -50,6 +50,7 @@ export { type ScrubberFrame, type ScrubberMarker, UiScrubber } from './scrubber/
 export { UiSectionHeader } from './section-header/section-header';
 export { type SegmentedOption, UiSegmented } from './segmented/segmented';
 export { UiSkeleton } from './skeleton/skeleton';
+export { type SortOption, UiSortMenu } from './sort-menu/sort-menu';
 export { UiSourceChip } from './source-chip/source-chip';
 export { type StageState, UiStageTrack } from './stage-track/stage-track';
 export { type StarToggleSize, UiStarToggle } from './star-toggle/star-toggle';

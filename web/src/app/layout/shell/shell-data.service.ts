@@ -3,7 +3,15 @@ import { TranslocoService } from '@jsverse/transloco';
 import type { Priority } from '../../../../../core/src/files';
 import { specRefMatches } from '../../../../../core/src/spec-ref';
 import { type ActorMapping, type BoardQuery, isFavoriteSpec } from '../../../../../server/src/spec-routes.contract';
-import { ApiClient, type PlanningBody, type PutResult, type WorkspaceListEntry } from '../../core/api.service';
+import type { AddWorkspaceRequest, ImageKind } from '../../../../../server/src/workspace-admin.contract';
+import {
+  ApiClient,
+  type PlanningBody,
+  type PutResult,
+  type WorkspaceAdminResult,
+  type WorkspaceAdminWrite,
+  type WorkspaceListEntry,
+} from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { ShellState } from './shell-state.service';
@@ -241,6 +249,37 @@ export class ShellData {
   /** A local value of the `favorites` resource; the client's ETag cache for the route stays as the last read left it. */
   private setFavorites(specs: readonly string[]): void {
     this.favorites.set({ kind: 'ok', body: { specs }, etag: null, notModified: false });
+  }
+
+  /**
+   * Spec 016 (T13, ISC-303): the workspace admin writes. Each accepted one reloads `workspaces`, the one resource the
+   * header's workspace menu, the overview and `/settings/workspaces` read, so a new, renamed or removed entry shows
+   * everywhere without a restart; a refused or failed write leaves it as it is.
+   */
+  addWorkspace(request: AddWorkspaceRequest): Promise<WorkspaceAdminResult<'add'>> {
+    return this.reloading(this.api.addWorkspace(request));
+  }
+
+  renameWorkspace(ws: string, name: string): Promise<WorkspaceAdminResult<'rename'>> {
+    return this.reloading(this.api.renameWorkspace(ws, name));
+  }
+
+  rescanWorkspace(ws: string): Promise<WorkspaceAdminResult<'rescan'>> {
+    return this.reloading(this.api.rescanWorkspace(ws));
+  }
+
+  removeWorkspace(ws: string): Promise<WorkspaceAdminResult<'remove'>> {
+    return this.reloading(this.api.removeWorkspace(ws));
+  }
+
+  uploadWorkspaceImage(ws: string, kind: ImageKind, file: Blob): Promise<WorkspaceAdminResult<'putImage'>> {
+    return this.reloading(this.api.uploadWorkspaceImage(ws, kind, file));
+  }
+
+  private async reloading<R extends WorkspaceAdminWrite>(write: Promise<WorkspaceAdminResult<R>>): Promise<WorkspaceAdminResult<R>> {
+    const result = await write;
+    if (result.kind === 'ok') this.workspaces.reload();
+    return result;
   }
 
   /** `PUT /api/actors` with the whole list; on an accepted answer the `actors` resource reloads. */

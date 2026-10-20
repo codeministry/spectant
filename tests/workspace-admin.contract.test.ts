@@ -122,13 +122,13 @@ describe("status", () => {
 });
 
 describe("sort", () => {
-  type Row = Pick<WorkspaceAdminSummary, "slug" | "name" | "status" | "addedAt">;
+  type Row = Pick<WorkspaceAdminSummary, "slug" | "name" | "status">;
   const rows: Row[] = [
-    { slug: "delta", name: "delta", status: "ok", addedAt: "2026-10-01T10:00:00.000Z" },
-    { slug: "alpha", name: "Alpha", status: "empty", addedAt: "2026-10-03T10:00:00.000Z" },
-    { slug: "charlie", name: "charlie", status: "missing", addedAt: "2026-10-02T10:00:00.000Z" },
-    { slug: "bravo", name: "Bravo", status: "ok", addedAt: "2026-10-04T10:00:00.000Z" },
-    { slug: "echo", name: "echo", status: "missing", addedAt: "2026-10-05T10:00:00.000Z" },
+    { slug: "delta", name: "delta", status: "ok" },
+    { slug: "alpha", name: "Alpha", status: "empty" },
+    { slug: "charlie", name: "charlie", status: "missing" },
+    { slug: "bravo", name: "Bravo", status: "ok" },
+    { slug: "echo", name: "echo", status: "missing" },
   ];
   const order = (key: (typeof WORKSPACE_SORT_KEYS)[number]): string[] => [...rows].sort(compareWorkspaces(key)).map((r) => r.slug);
 
@@ -140,9 +140,9 @@ describe("sort", () => {
     expect(workspaceSortKeyOf(null)).toBe("added");
   });
 
-  test("name ignores case, added runs oldest first, status runs missing, empty, ok with ties by name", () => {
+  test("name ignores case, added keeps the registry order, status runs missing, empty, ok with ties by name", () => {
     expect(order("name")).toEqual(["alpha", "bravo", "charlie", "delta", "echo"]);
-    expect(order("added")).toEqual(["delta", "charlie", "alpha", "bravo", "echo"]);
+    expect(order("added")).toEqual(["delta", "alpha", "charlie", "bravo", "echo"]);
     expect(order("status")).toEqual(["charlie", "echo", "alpha", "bravo", "delta"]);
   });
 });

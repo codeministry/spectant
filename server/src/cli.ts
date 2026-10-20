@@ -31,7 +31,7 @@
  */
 import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { actorsApi, composeApi, dashboardApi } from "./api.ts";
+import { actorsApi, composeApi, dashboardApi, workspaceSummaryReader } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { exportNotesCommand, importNotesCommand, rollbackCommand } from "./cli-notes.ts";
 import { FEATURE_ARG, featureGateCommand } from "./feature-gate.ts";
@@ -50,6 +50,7 @@ import { openSettings, settingsApi } from "./settings.ts";
 import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
 import { createWatchHub } from "./watch.ts";
+import { workspaceAdminApi } from "./workspace-admin-route.ts";
 
 const USAGE = `Usage: spectant [command] [options]
 
@@ -245,7 +246,11 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
       prototypeApi({ registry }),
     );
     // The live update stream (spec 030, ISC-28) answers its views through the same read handlers a poll reaches.
-    const api = composeApi(eventsApi({ hub: createWatchHub({ registry }), reads }), reads);
+    const hub = createWatchHub({ registry });
+    // The writing workspace routes (spec 016) come before the list route of `dashboardApi`, which answers 405 for
+    // every write on its path, and announce each registry write on the same hub, so open streams show it at once.
+    const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos }), hub });
+    const api = composeApi(eventsApi({ hub, reads }), admin, reads);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();

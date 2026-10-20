@@ -1,21 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { ShellState } from '../../layout/shell/shell-state.service';
-import { DemoData, type DemoWorkspaceRow } from '../../shared/demo/demo-data';
+import { type WorkspaceStatus, workspaceStatusOf } from '../../../../../server/src/workspace-admin.contract';
+import type { WorkspaceListEntry } from '../../core/api.service';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
-import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
-import { UiKbd } from '../../shared/ui/kbd/kbd';
+import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
+import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
-import { UiRelativeTime } from '../../shared/ui/relative-time/relative-time';
-
-/** The row's status word and tone (prototype `pages.js` `statusTxt`): readable, no specs yet, folder not found. */
-type RowStatus = 'ok' | 'empty' | 'missing';
+import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 
 /** The prototype's workspace accents in row order (`--cyan`, `--lime`, `--violet`, `--orange`), as app tokens. */
 const ACCENTS: ReadonlyArray<{ readonly color: string; readonly text: string }> = [
@@ -25,12 +23,37 @@ const ACCENTS: ReadonlyArray<{ readonly color: string; readonly text: string }> 
   { color: 'var(--color-warning)', text: 'var(--hover-text)' },
 ];
 
+/** How long the list may load before the skeleton rows show (design.md § Zustände), so a fast answer never flashes. */
+const SKELETON_DELAY_MS = 150;
+
+/** An add refusal shown inline under the path field, keyed like `settingsWorkspaces.add.error.*`. */
+type AddError =
+  | { readonly key: 'empty' | 'notADirectory' | 'failed' }
+  | { readonly key: 'duplicatePath'; readonly name: string };
+
+/** What a row shows: the registry entry, its status word and the two counts of its dashboard KPIs (null without). */
+interface RowView {
+  readonly entry: WorkspaceListEntry;
+  readonly status: WorkspaceStatus;
+  readonly specs: number | null;
+  readonly active: number | null;
+}
+
+const count = (counts: unknown, key: string): number | null => {
+  if (typeof counts !== 'object' || counts === null) return null;
+  const value: unknown = (counts as Readonly<Record<string, unknown>>)[key];
+  return typeof value === 'number' ? value : null;
+};
+
 /**
- * `/settings/workspaces`, the workspace management (spec 024, T52; prototype `workspaces.html`), a mock until the
- * registry's own spec delivers it: the page root is `[data-demo]` with the demo chip in its h1, and every row comes
- * from `DemoData.workspaces`. Nothing here writes: the add row, the row menu (Rename, Re-scan, Open dashboard,
- * Remove…) and the remove dialog only show what the real page will do, and the identity upload is disabled inside a
- * `[data-demo]` of its own. No request, no storage (ISC-149.1, `parity.spec.ts` group `demo`).
+ * `/settings/workspaces` (spec 016, T14, ISC-312): the registry's entries from `GET /api/workspaces` through
+ * `ShellData.workspaces`, the resource the header's workspace menu reads too. The add form posts through
+ * `ShellData.addWorkspace`, which reloads that resource, so a new entry shows here and in the header without a
+ * restart (ISC-303). Loading shows three skeleton rows after 150 ms, an empty registry the empty state with the CLI
+ * command, a failed read an error notice with Retry; the form stays usable in every state.
+ *
+ * Later tasks of spec 016 own the rest: the row component (T15), rename (T16), re-scan (T17), upload (T18, T19), the
+ * sort control (T20) and the remove write (T21). Until then the row menu and the remove dialog only open and close.
  */
 @Component({
   selector: 'app-settings-workspaces-page',
@@ -38,60 +61,63 @@ const ACCENTS: ReadonlyArray<{ readonly color: string; readonly text: string }> 
     TranslocoPipe,
     UiButton,
     UiCard,
-    UiChip,
     UiCommandChip,
     UiDialog,
+    UiEmptyState,
     UiIcon,
     UiIconButton,
-    UiKbd,
+    UiNotice,
     UiPageHead,
     UiPopover,
     UiPopoverTrigger,
-    UiRelativeTime,
+    UiSkeleton,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-page': 'settings-workspaces', 'data-demo': '' },
+  host: { 'data-page': 'settings-workspaces' },
   templateUrl: './settings-workspaces-page.html',
   styleUrl: './settings-workspaces-page.css',
 })
 export class SettingsWorkspacesPage {
-  private readonly demo = inject(DemoData);
-  protected readonly rows = this.demo.workspaces;
-  /** Below 640 the add action is the floating button (prototype `.fab.only-compact`). */
-  private readonly shell = inject(ShellState);
-  protected readonly compact = computed(() => this.shell.tier() === 'compact');
-  protected readonly count = computed(() => this.rows().length);
+  private readonly data = inject(ShellData);
 
-  /** What the add row's path and name fields hold; local to the page, never stored. */
+  /** The list read as served: undefined while the first read runs, else the `ApiResult`. */
+  private readonly result = computed(() => (this.data.workspaces.hasValue() ? this.data.workspaces.value() : undefined));
+  protected readonly view = computed<'loading' | 'error' | 'empty' | 'list'>(() => {
+    const result = this.result();
+    if (result === undefined) return this.data.workspaces.error() === undefined && this.data.workspaces.isLoading() ? 'loading' : 'error';
+    if (result.kind !== 'ok') return 'error';
+    return result.body.length === 0 ? 'empty' : 'list';
+  });
+  protected readonly rows = computed<readonly RowView[]>(() => {
+    const result = this.result();
+    if (result?.kind !== 'ok') return [];
+    return result.body.map((entry) => {
+      const specs = count(entry.counts, 'specs');
+      return { entry, specs, active: count(entry.counts, 'building'), status: entry.status ?? workspaceStatusOf(entry.readable, specs) };
+    });
+  });
+  protected readonly total = computed(() => this.rows().length);
+
+  /** Set once the first read has run longer than `SKELETON_DELAY_MS`. */
+  protected readonly slow = signal(false);
+  protected readonly skeletons = [0, 1, 2];
+
+  /** What the add form's fields hold; local to the page, never stored. */
   protected readonly path = signal('');
   protected readonly name = signal('');
-  /** The path completion (prototype `.path-pop`): open while the field has focus, the highlighted option or -1. */
-  readonly popOpen = signal(false);
-  protected readonly sel = signal(-1);
-  /** Up to six demo folders under the typed segment, other than the typed path itself (prototype `complete()`). */
-  protected readonly completions = computed(() => {
-    const value = this.path();
-    const head = value.slice(0, value.lastIndexOf('/') + 1);
-    return this.demo
-      .folders()
-      .filter((folder) => folder.startsWith(head) && folder !== value)
-      .slice(0, 6)
-      .map((folder) => ({ path: folder, head, tail: folder.slice(head.length) }));
-  });
-  protected readonly popShown = computed(() => this.popOpen() && this.completions().length > 0);
+  protected readonly busy = signal(false);
+  protected readonly addError = signal<AddError | null>(null);
 
-  /** Set once Add was pressed: the check line says the mock adds nothing. */
-  protected readonly tried = signal(false);
-
-  /** The row the remove dialog asks about; the dialog changes nothing either way. */
-  protected readonly removing = signal<DemoWorkspaceRow | null>(null);
+  /** The row the remove dialog asks about; the dialog changes nothing until T21 wires the write. */
+  protected readonly removing = signal<WorkspaceListEntry | null>(null);
   protected readonly removeOpen = signal(false);
 
   protected readonly command = 'spectant add | list | remove';
+  protected readonly addCommand = 'spectant add <path>';
 
-  protected status(row: DemoWorkspaceRow): RowStatus {
-    if (row.state === 'missing') return 'missing';
-    return row.specs === 0 ? 'empty' : 'ok';
+  constructor() {
+    const timer = setTimeout(() => this.slow.set(true), SKELETON_DELAY_MS);
+    inject(DestroyRef).onDestroy(() => clearTimeout(timer));
   }
 
   protected accent(index: number): { readonly color: string; readonly text: string } {
@@ -102,49 +128,60 @@ export class SettingsWorkspacesPage {
     return name.replace(/[^a-z0-9]/giu, '').slice(0, 2).toUpperCase();
   }
 
-  /** The path field fills an empty name with the path's last segment, as the prototype does. */
   protected setPath(value: string): void {
     this.path.set(value);
-    this.sel.set(-1);
-    this.tried.set(false);
-    const tail = value.split('/').filter(Boolean).pop() ?? '';
-    this.name.set(tail);
+    this.addError.set(null);
   }
 
-  /** ↓ ↑ move through the completions, Enter takes the highlighted one or adds, Esc closes the list. */
-  protected onPathKey(event: KeyboardEvent): void {
-    const count = this.completions().length;
-    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && count > 0) {
-      event.preventDefault();
-      this.popOpen.set(true);
-      this.sel.update((sel) => (sel + (event.key === 'ArrowDown' ? 1 : -1) + count + (sel < 0 && event.key === 'ArrowUp' ? 1 : 0)) % count);
-    } else if (event.key === 'Enter') {
-      const item = this.popShown() ? this.completions()[this.sel()] : undefined;
-      if (item) {
-        event.preventDefault();
-        this.pick(item.path);
-      } else this.add();
-    } else if (event.key === 'Escape' && this.popShown()) {
-      event.preventDefault();
-      this.popOpen.set(false);
+  protected retry(): void {
+    this.data.workspaces.reload();
+  }
+
+  /**
+   * The form's submit: an empty path is refused here without a request; otherwise `POST /api/workspaces` with the
+   * path as typed and the name only when one is given. A refusal shows inline under the path field; an accepted add
+   * empties the form, and `ShellData` reloads the list the page and the header read. No toast.
+   */
+  protected async add(event?: Event): Promise<void> {
+    event?.preventDefault();
+    if (this.busy()) return;
+    const path = this.path().trim();
+    if (path === '') {
+      this.addError.set({ key: 'empty' });
+      return;
+    }
+    const name = this.name().trim();
+    this.busy.set(true);
+    this.addError.set(null);
+    try {
+      const result = await this.data.addWorkspace(name === '' ? { path: this.path() } : { path: this.path(), name });
+      if (result.kind === 'ok') {
+        this.path.set('');
+        this.name.set('');
+      } else this.addError.set(this.errorOf(result));
+    } finally {
+      this.busy.set(false);
     }
   }
 
-  /** A completion taken: the path and the name follow it, the list shows what lies below it. */
-  protected pick(folder: string): void {
-    this.setPath(folder);
-    this.sel.set(-1);
-    this.popOpen.set(true);
+  private errorOf(result: Exclude<Awaited<ReturnType<ShellData['addWorkspace']>>, { readonly kind: 'ok' }>): AddError {
+    if (result.kind !== 'refused') return { key: 'failed' };
+    const body = result.body;
+    switch (body.error) {
+      case 'invalid-path':
+        return { key: 'empty' };
+      case 'not-a-directory':
+        return { key: 'notADirectory' };
+      case 'duplicate-path':
+        return { key: 'duplicatePath', name: this.data.workspaceName(body.slug) };
+      default:
+        return { key: 'failed' };
+    }
   }
 
-  /** The mock's Add: it says it added nothing, and the rows stay as they are. */
-  protected add(): void {
-    this.tried.set(true);
-  }
-
-  protected askRemove(row: DemoWorkspaceRow, menu: UiPopover): void {
+  protected askRemove(entry: WorkspaceListEntry, menu: UiPopover): void {
     menu.close();
-    this.removing.set(row);
+    this.removing.set(entry);
     this.removeOpen.set(true);
   }
 }

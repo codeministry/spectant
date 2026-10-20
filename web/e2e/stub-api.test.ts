@@ -77,6 +77,8 @@ import {
   MIDNIGHT_STATES,
   RESET_PATH,
   RUN_HEADER,
+  ADMIN_CONTRACT,
+  STUB_ADMIN,
   STUB_EDGES,
   STUB_PERSON,
   STUB_RUN,
@@ -120,6 +122,9 @@ type Handler = (req: Request, url: URL) => Response | Promise<Response> | null;
 
 const goldenText = (name: string): string => readFileSync(join(FIXTURES, `${name}.golden.json`), 'utf8');
 const golden = (name: string): Json => JSON.parse(goldenText(name)) as Json;
+/** The fields spec 016 adds to every list entry (`WorkspaceSummaryAdded`), as the stub lists its fixture workspaces. */
+const ADDED_OK = { status: 'ok', images: { logo: null, screenshot: null } };
+const ADDED_MISSING = { ...ADDED_OK, status: 'missing' };
 
 function request(path: string, init: RequestInit & { state?: StubState; session?: string } = {}): Request {
   const headers = new Headers(init.headers);
@@ -143,8 +148,8 @@ describe('stub API: GET /api/workspaces per state', () => {
     const res = await ask('/api/workspaces');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([
-      { slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: golden('harbor')['kpis'] },
-      { slug: 'lantern', name: 'lantern', pathTail: 'lantern', readable: true, counts: golden('lantern')['kpis'] },
+      { slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: golden('harbor')['kpis'], ...ADDED_OK },
+      { slug: 'lantern', name: 'lantern', pathTail: 'lantern', readable: true, counts: golden('lantern')['kpis'], ...ADDED_OK },
     ]);
   });
 
@@ -162,10 +167,10 @@ describe('stub API: GET /api/workspaces per state', () => {
   test('"unreadable" keeps the order and marks the last workspace missing, with no error key on the readable one', async () => {
     const list = (await (await ask('/api/workspaces', { state: 'unreadable' })).json()) as Json[];
     expect(list).toEqual([
-      { slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: golden('harbor')['kpis'] },
-      { slug: 'lantern', name: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', counts: null },
+      { slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: golden('harbor')['kpis'], ...ADDED_OK },
+      { slug: 'lantern', name: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', counts: null, ...ADDED_MISSING },
     ]);
-    expect(Object.keys(list[1] ?? {})).toEqual(['slug', 'name', 'pathTail', 'readable', 'error', 'counts']);
+    expect(Object.keys(list[1] ?? {})).toEqual(['slug', 'name', 'pathTail', 'readable', 'error', 'counts', 'status', 'images']);
     expect(Object.keys(list[0] ?? {})).not.toContain('error');
   });
 
@@ -261,11 +266,11 @@ describe('stub API: GET /api/workspaces/:slug/dashboard', () => {
     expect((await ask('/api/workspaces/harbor/dashboard', { state: 'unreadable' })).status).toBe(200);
   });
 
-  test('any method but GET or HEAD is 405 with Allow: GET, HEAD', async () => {
-    for (const path of ['/api/workspaces', '/api/workspaces/harbor/dashboard']) {
-      const res = await ask(path, { method: 'POST', body: '{}' });
+  test('any method the path does not take is 405 with its Allow (the list also takes POST, spec 016)', async () => {
+    for (const [path, method, allow] of [['/api/workspaces', 'PUT', 'GET, HEAD, POST'], ['/api/workspaces/harbor/dashboard', 'POST', 'GET, HEAD']] as const) {
+      const res = await ask(path, { method, body: '{}' });
       expect(res.status).toBe(405);
-      expect(res.headers.get('Allow')).toBe('GET, HEAD');
+      expect(res.headers.get('Allow')).toBe(allow);
       expect(await res.json()).toEqual({ error: 'method-not-allowed' });
     }
   });
@@ -2793,7 +2798,7 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
   test('runs: beacon is listed after the default workspaces; without runs it is no workspace', async () => {
     const list = await read<Json[]>('/api/workspaces', as());
     expect(list.map((w) => w['slug'])).toEqual(['harbor', 'lantern', WS]);
-    expect(list.at(-1)).toEqual({ slug: WS, name: WS, pathTail: WS, readable: true, counts: golden(WS)['kpis'] });
+    expect(list.at(-1)).toEqual({ slug: WS, name: WS, pathTail: WS, readable: true, counts: golden(WS)['kpis'], ...ADDED_OK });
     expect((await ask(`/api/workspaces/${WS}/dashboard`)).status).toBe(404);
     expect((await ask(workspaceRoutes.planning(WS))).status).toBe(404);
   });
@@ -3156,5 +3161,168 @@ describe('stub API: steps and the open question via X-Spectant-Stub-Question (sp
     expect((await get('tasks', '002', WS, 'open')).steps).toEqual(live.steps);
     expect(await get('live', '002', WS, 'other')).toEqual(goldenFor('live') as WithSteps);
     expect(await get('live', '003', WS, 'open')).toEqual(withSteps(familyValue(WS, 'live', 'specs/003-config-loader'), WS, 'specs/003-config-loader') as WithSteps);
+  });
+});
+
+describe('stub API: the workspace admin routes per session (spec 016, T25, ISC-315)', () => {
+  const { IMAGE_MAX_BYTES, workspaceAdminRoutes } = ADMIN_CONTRACT;
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+  const SVG = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+  const NO_IMAGES = { logo: null, screenshot: null };
+  const send = (path: string, method: string, session: string, body?: unknown, headers?: Record<string, string>): Promise<Response> =>
+    ask(path, { method, session, headers, body: body === undefined ? undefined : body instanceof Uint8Array ? (body as Uint8Array<ArrayBuffer>) : JSON.stringify(body) });
+  const list = async (session: string, state?: StubState): Promise<Json[]> => (await (await ask('/api/workspaces', { session, state })).json()) as Json[];
+
+  test('admin: every list entry carries status and images after counts, no addedAt; the 409 summary neither', async () => {
+    const plain = await list('t016-plain');
+    expect(plain.map((w) => [w['slug'], w['status'], w['images']])).toEqual([
+      ['harbor', 'ok', NO_IMAGES],
+      ['lantern', 'ok', NO_IMAGES],
+    ]);
+    const unreadable = await list('t016-plain', 'unreadable');
+    expect(Object.keys(unreadable[1] ?? {})).toEqual(['slug', 'name', 'pathTail', 'readable', 'error', 'counts', 'status', 'images']);
+    expect(unreadable[1]?.['status']).toBe('missing');
+    const conflict = (await (await ask('/api/workspaces/lantern/dashboard', { session: 't016-plain', state: 'unreadable' })).json()) as Json;
+    expect(Object.keys(conflict)).toEqual(['slug', 'name', 'pathTail', 'readable', 'error', 'counts']);
+  });
+
+  test('admin add: a stub directory is 201 with its summary, listed last for that session only, its dashboard readable', async () => {
+    const session = 't016-add';
+    const res = await send(workspaceAdminRoutes.add(), 'POST', session, { path: STUB_ADMIN.paths.empty });
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({
+      slug: 'new-workspace', name: 'new-workspace', pathTail: 'new-workspace', readable: true, counts: golden('empty-master')['kpis'],
+      status: 'empty', images: NO_IMAGES,
+    });
+    expect((await list(session)).map((w) => w['slug'])).toEqual(['harbor', 'lantern', 'new-workspace']);
+    expect((await list('t016-other')).map((w) => w['slug'])).toEqual(['harbor', 'lantern']);
+    const dashboard = await ask('/api/workspaces/new-workspace/dashboard', { session });
+    expect(dashboard.status).toBe(200);
+    expect(await dashboard.json()).toEqual(golden('empty-master'));
+    expect((await ask('/api/workspaces/new-workspace/dashboard', { session: 't016-other' })).status).toBe(404);
+    const named = (await (await send(workspaceAdminRoutes.add(), 'POST', session, { path: STUB_ADMIN.paths.fixture, name: '  Beacon ' })).json()) as Json;
+    expect([named['slug'], named['name'], named['status']]).toEqual(['beacon', 'Beacon', 'ok']);
+    expect((await ask('/api/workspaces/beacon/planning', { session })).status).toBe(200);
+  });
+
+  test('admin add: 400 for a body the parser refuses, 422 for no directory or a registered path, 403, 405', async () => {
+    const session = 't016-add-refused';
+    const add = (body: unknown): Promise<Response> => send(workspaceAdminRoutes.add(), 'POST', session, body);
+    const invalid: Array<[unknown, string]> = [[{}, 'invalid-body'], [[], 'invalid-body'], [{ path: 1 }, 'invalid-body'], [{ path: '/stub/x', name: 2 }, 'invalid-body'], [{ path: '  ' }, 'invalid-path']];
+    for (const [body, error] of invalid) {
+      const res = await add(body);
+      expect([res.status, await res.json()]).toEqual([400, { error }]);
+    }
+    for (const path of [STUB_ADMIN.paths.file, '/stub/nowhere']) {
+      const res = await add({ path });
+      expect([res.status, await res.json()]).toEqual([422, { error: 'not-a-directory' }]);
+    }
+    for (const path of ['/stub/harbor', '/stub/harbor/', '/stub/lantern']) {
+      const res = await add({ path });
+      expect([res.status, await res.json()]).toEqual([422, { error: 'duplicate-path', slug: path.includes('harbor') ? 'harbor' : 'lantern' }]);
+    }
+    const broken = await ask('/api/workspaces', { method: 'POST', session, body: '{' });
+    expect([broken.status, await broken.json()]).toEqual([400, { error: 'invalid-body' }]);
+    const foreign = await send(workspaceAdminRoutes.add(), 'POST', session, { path: STUB_ADMIN.paths.empty }, { Origin: 'https://evil.example' });
+    expect([foreign.status, await foreign.json()]).toEqual([403, { error: 'forbidden' }]);
+    const wrong = await send('/api/workspaces', 'DELETE', session);
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'GET, HEAD, POST']);
+    expect((await list(session)).map((w) => w['slug'])).toEqual(['harbor', 'lantern']);
+  });
+
+  test('admin rename: 200 with the new name, slug and dashboard kept; 400, 404, 405', async () => {
+    const session = 't016-rename';
+    const res = await send(workspaceAdminRoutes.rename('harbor'), 'PATCH', session, { name: ' Harbor Docs ' });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as Json)['name']).toBe('Harbor Docs');
+    expect((await list(session))[0]).toMatchObject({ slug: 'harbor', name: 'Harbor Docs', status: 'ok' });
+    expect((await list('t016-other'))[0]?.['name']).toBe('harbor');
+    expect((await ask('/api/workspaces/harbor/dashboard', { session })).status).toBe(200);
+    const invalid: Array<[unknown, string]> = [[{ name: ' ' }, 'invalid-name'], [{}, 'invalid-body'], [{ name: 3 }, 'invalid-body']];
+    for (const [body, error] of invalid) {
+      const refused = await send(workspaceAdminRoutes.rename('harbor'), 'PATCH', session, body);
+      expect([refused.status, await refused.json()]).toEqual([400, { error }]);
+    }
+    const unknown = await send(workspaceAdminRoutes.rename('nope'), 'PATCH', session, { name: 'x' });
+    expect([unknown.status, await unknown.json()]).toEqual([404, { error: 'not-found' }]);
+    const get = await ask('/api/workspaces/harbor', { session });
+    expect([get.status, get.headers.get('Allow')]).toEqual([405, 'PATCH, DELETE']);
+    const missing = await send(workspaceAdminRoutes.rename('lantern'), 'PATCH', session, { name: 'Lantern' }, { [STATE_HEADER]: 'unreadable' });
+    expect(await missing.json()).toMatchObject({ slug: 'lantern', name: 'Lantern', readable: false, status: 'missing' });
+  });
+
+  test('admin rescan: 200 with the summary the list holds; 404; 405', async () => {
+    const session = 't016-rescan';
+    const res = await send(workspaceAdminRoutes.rescan('lantern'), 'POST', session);
+    expect([res.status, await res.json()]).toEqual([200, (await list(session))[1]]);
+    expect((await send(workspaceAdminRoutes.rescan('nope'), 'POST', session)).status).toBe(404);
+    const wrong = await send(workspaceAdminRoutes.rescan('lantern'), 'GET', session);
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'POST']);
+  });
+
+  test('admin remove: 204 without a body, gone from the list and its routes; a second remove 404; its path adds again', async () => {
+    const session = 't016-remove';
+    const res = await send(workspaceAdminRoutes.remove('lantern'), 'DELETE', session);
+    expect([res.status, await res.text()]).toEqual([204, '']);
+    expect((await list(session)).map((w) => w['slug'])).toEqual(['harbor']);
+    expect((await ask('/api/workspaces/lantern/dashboard', { session })).status).toBe(404);
+    expect((await send(workspaceAdminRoutes.remove('lantern'), 'DELETE', session)).status).toBe(404);
+    const again = await send(workspaceAdminRoutes.add(), 'POST', session, { path: '/stub/lantern' });
+    expect(await again.json()).toMatchObject({ slug: 'lantern', name: 'lantern', status: 'ok' });
+    expect((await list(session)).map((w) => w['slug'])).toEqual(['harbor', 'lantern']);
+    expect((await ask('/api/workspaces/lantern/dashboard', { session })).status).toBe(200);
+  });
+
+  test('admin images: PUT stores by magic bytes, GET serves the bytes with type, strong ETag and 304; 413, 415, 404', async () => {
+    const session = 't016-images';
+    const put = await send(workspaceAdminRoutes.image('harbor', 'logo'), 'PUT', session, PNG, { 'Content-Type': 'image/svg+xml' });
+    expect(put.status).toBe(200);
+    const stored = (await put.json()) as { kind: string; url: string };
+    expect(stored.kind).toBe('logo');
+    expect(stored.url.startsWith(`${workspaceAdminRoutes.image('harbor', 'logo')}?v=`)).toBe(true);
+    expect((await list(session))[0]?.['images']).toEqual({ logo: stored.url, screenshot: null });
+    expect((await list('t016-other'))[0]?.['images']).toEqual(NO_IMAGES);
+    const get = await ask(stored.url, { session });
+    expect([get.status, get.headers.get('Content-Type')]).toEqual([200, 'image/png']);
+    expect(new Uint8Array(await get.arrayBuffer())).toEqual(PNG);
+    const etag = get.headers.get('ETag') ?? '';
+    expect(etag).toMatch(/^"[^"]+"$/);
+    expect((await ask(stored.url, { session, headers: { 'If-None-Match': etag } })).status).toBe(304);
+    const head = await ask(stored.url, { session, method: 'HEAD' });
+    expect([head.status, await head.text(), head.headers.get('ETag')]).toEqual([200, '', etag]);
+    const big = new Uint8Array(IMAGE_MAX_BYTES + 1);
+    big.set(PNG);
+    const tooLarge = await send(workspaceAdminRoutes.image('harbor', 'screenshot'), 'PUT', session, big);
+    expect([tooLarge.status, await tooLarge.json()]).toEqual([413, { error: 'too-large', maxBytes: IMAGE_MAX_BYTES }]);
+    const svg = await send(workspaceAdminRoutes.image('harbor', 'screenshot'), 'PUT', session, SVG, { 'Content-Type': 'image/png' });
+    expect([svg.status, await svg.json()]).toEqual([415, { error: 'unsupported-type' }]);
+    expect((await ask(workspaceAdminRoutes.image('harbor', 'screenshot'), { session })).status).toBe(404);
+    expect((await send(workspaceAdminRoutes.image('nope', 'logo'), 'PUT', session, PNG)).status).toBe(404);
+    expect((await ask(workspaceAdminRoutes.image('harbor', 'logo'), { session: 't016-other' })).status).toBe(404);
+    const wrong = await send(workspaceAdminRoutes.image('harbor', 'logo'), 'POST', session, PNG);
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'GET, HEAD, PUT']);
+    expect(await (await send('/api/workspaces/harbor/images/icon', 'PUT', session, PNG)).json()).toEqual({ error: 'not found' });
+    // A second upload changes the URL's version; a remove takes the images with it.
+    const jpeg = await send(workspaceAdminRoutes.image('harbor', 'logo'), 'PUT', session, new Uint8Array([0xff, 0xd8, 0xff, 0xe0]));
+    expect(((await jpeg.json()) as { url: string }).url).not.toBe(stored.url);
+    expect((await ask(workspaceAdminRoutes.image('harbor', 'logo'), { session })).headers.get('Content-Type')).toBe('image/jpeg');
+    await send(workspaceAdminRoutes.remove('harbor'), 'DELETE', session);
+    await send(workspaceAdminRoutes.add(), 'POST', session, { path: '/stub/harbor' });
+    expect((await ask(workspaceAdminRoutes.image('harbor', 'logo'), { session })).status).toBe(404);
+  });
+
+  test('admin reset: POST /api/__stub/reset restores the registry of that session only', async () => {
+    const [mine, theirs] = ['t016-reset-a', 't016-reset-b'];
+    for (const session of [mine, theirs]) {
+      await send(workspaceAdminRoutes.remove('harbor'), 'DELETE', session);
+      await send(workspaceAdminRoutes.add(), 'POST', session, { path: STUB_ADMIN.paths.empty });
+      await send(workspaceAdminRoutes.image('lantern', 'logo'), 'PUT', session, PNG);
+    }
+    expect((await ask(RESET_PATH, { method: 'POST', session: mine })).status).toBe(204);
+    expect(await list(mine)).toEqual(await list('t016-fresh'));
+    expect((await list(theirs)).map((w) => w['slug'])).toEqual(['lantern', 'new-workspace']);
+    // After a reset the path adds again, under the same slug.
+    const again = await send(workspaceAdminRoutes.add(), 'POST', mine, { path: STUB_ADMIN.paths.empty });
+    expect([again.status, ((await again.json()) as Json)['slug']]).toEqual([201, 'new-workspace']);
   });
 });

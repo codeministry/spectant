@@ -49,6 +49,12 @@ export interface WatchHub {
   subscribe(listener: LiveListener): () => void;
   /** Re-reads the registry and the spec worktrees and arms or closes watchers to match; a no-op without listeners. */
   sync(): Promise<void>;
+  /**
+   * Syncs now and reports `ws` as changed to every listener at once, without a settle window and without a spec id:
+   * after a registry write (spec 016) the stream sends the workspace list without waiting for a heartbeat or a file
+   * change. A no-op without listeners.
+   */
+  announce(ws: string): Promise<void>;
 }
 
 export interface WatchHubOptions {
@@ -177,6 +183,11 @@ export function createWatchHub(options: WatchHubOptions): WatchHub {
       });
       syncing = next;
       return next;
+    },
+    async announce(ws) {
+      await hub.sync();
+      const change: LiveChange = { ws, specIds: [] };
+      for (const listener of listeners) listener(change);
     },
   };
   return hub;

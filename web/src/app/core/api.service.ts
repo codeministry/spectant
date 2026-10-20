@@ -42,6 +42,40 @@ import {
 import { type RunLocked, type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
 import type { Priority, WorkflowStage } from '../../../../core/src/files';
 import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
+import {
+  type AddWorkspaceRequest,
+  type ImageKind,
+  type RenameWorkspaceRequest,
+  type WorkspaceAdminErrors,
+  type WorkspaceAdminResponses,
+  type WorkspaceAdminRouteName,
+  workspaceAdminRoutes,
+  type WorkspaceSummaryAdded,
+} from '../../../../server/src/workspace-admin.contract';
+
+/** The admin writes of spec 016 (every route of the workspace admin contract but the image read). */
+export type WorkspaceAdminWrite = Exclude<WorkspaceAdminRouteName, 'getImage'>;
+
+/**
+ * What an admin write answers (spec 016, T13, ISC-303), never a thrown exception:
+ *
+ * - `ok`: the route's 2xx body (`WorkspaceAdminResponses`; `null` for the 204 of `remove`).
+ * - `refused`: a 4xx whose body is one of the route's contract errors (`WorkspaceAdminErrors`), by its kebab-case code;
+ *   `duplicate-path` only with the existing entry's `slug`. The page maps the code to its inline text.
+ * - `error`: anything else (a 5xx, a body that fits no contract error), status 0 when no answer came.
+ */
+export type WorkspaceAdminResult<R extends WorkspaceAdminWrite> =
+  | { readonly kind: 'ok'; readonly body: WorkspaceAdminResponses[R] }
+  | { readonly kind: 'refused'; readonly status: number; readonly body: WorkspaceAdminErrors[R] }
+  | { readonly kind: 'error'; readonly status: number };
+
+/** A 4xx body the contract names: an object with a string `error`, and `duplicate-path` with its `slug`. */
+const isAdminRefusal = (status: number, body: unknown): boolean => {
+  if (status < 400 || status >= 500 || typeof body !== 'object' || body === null) return false;
+  const { error, slug } = body as { readonly error?: unknown; readonly slug?: unknown };
+  if (typeof error !== 'string') return false;
+  return error !== 'duplicate-path' || typeof slug === 'string';
+};
 
 /**
  * What a spec 008 write answers (T111, ISC-130), never a thrown exception: the contract's `WriteAnswer` when the body
@@ -126,7 +160,7 @@ const isContractError = (body: unknown, error: string): boolean =>
  * browser bundle. `counts` is core's `DashboardKpis`; typed `unknown` until the dashboard types move to a browser-safe
  * module (see `DashboardBody`).
  */
-export interface WorkspaceListEntry {
+export interface WorkspaceListEntry extends Partial<WorkspaceSummaryAdded> {
   readonly slug: string;
   readonly name: string;
   readonly pathTail: string;
@@ -265,6 +299,44 @@ export class ApiClient {
 
   workspaces(): Promise<ApiResult<readonly WorkspaceListEntry[]>> {
     return this.get(WORKSPACES_URL);
+  }
+
+  /**
+   * Spec 016 (T13, ISC-303): `POST /api/workspaces` with the directory and an optional display name, as sent (the
+   * server trims and refuses a blank path). 201 the new `WorkspaceAdminSummary`; 400 `invalid-path`, 422
+   * `not-a-directory` or `duplicate-path` (with the existing slug) are `refused`. Never cached, never retried.
+   */
+  addWorkspace(request: AddWorkspaceRequest): Promise<WorkspaceAdminResult<'add'>> {
+    return this.admin('add', 'POST', workspaceAdminRoutes.add(), request);
+  }
+
+  /** `PATCH /api/workspaces/:ws` with the new name only; slug, `/w/<slug>`, notes and settings stay (ISC-305). */
+  renameWorkspace(ws: string, name: string): Promise<WorkspaceAdminResult<'rename'>> {
+    const body: RenameWorkspaceRequest = { name };
+    return this.admin('rename', 'PATCH', workspaceAdminRoutes.rename(ws), body);
+  }
+
+  /** `POST /api/workspaces/:ws/rescan`, no body: the workspace read afresh, its summary with the new counts (ISC-306). */
+  rescanWorkspace(ws: string): Promise<WorkspaceAdminResult<'rescan'>> {
+    return this.admin('rescan', 'POST', workspaceAdminRoutes.rescan(ws), null);
+  }
+
+  /** `DELETE /api/workspaces/:ws`: 204, the registry entry and its images gone, the repository untouched (ISC-307). */
+  removeWorkspace(ws: string): Promise<WorkspaceAdminResult<'remove'>> {
+    return this.admin('remove', 'DELETE', workspaceAdminRoutes.remove(ws), null);
+  }
+
+  /**
+   * `PUT /api/workspaces/:ws/images/:kind` with the file's raw bytes (ISC-310, ISC-311): 200 `ImageStored`; 413
+   * `too-large` and 415 `unsupported-type` are `refused`. The server decides the type by magic bytes alone.
+   */
+  uploadWorkspaceImage(ws: string, kind: ImageKind, file: Blob): Promise<WorkspaceAdminResult<'putImage'>> {
+    return this.admin('putImage', 'PUT', workspaceAdminRoutes.image(ws, kind), file);
+  }
+
+  /** The loopback URL of a stored image with its version (the contract's `imageUrl`); a URL, not a read. */
+  workspaceImageUrl(ws: string, kind: ImageKind, version: string): string {
+    return workspaceAdminRoutes.imageUrl(ws, kind, version);
   }
 
   dashboard(ws: string): Promise<ApiResult<DashboardBody>> {
@@ -580,6 +652,24 @@ export class ApiClient {
     if (typed !== null) return { kind: 'answer', answer: typed };
     if (status === 423 && route !== 'backlog' && route !== 'runRelease' && isRunLocked(answer)) return { kind: 'run-locked', body: answer } as WriteResult<R>;
     return { kind: 'error', status };
+  }
+
+  /** One admin write (spec 016): a 2xx is `ok` with its body, a contract 4xx `refused`, anything else `error`. */
+  private async admin<R extends WorkspaceAdminWrite>(
+    _route: R,
+    method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+    url: string,
+    body: unknown,
+  ): Promise<WorkspaceAdminResult<R>> {
+    try {
+      const response = await firstValueFrom(this.http.request<unknown>(method, url, { body, observe: 'response' }));
+      return { kind: 'ok', body: (response.body ?? null) as WorkspaceAdminResponses[R] };
+    } catch (failure: unknown) {
+      if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0 };
+      const answer: unknown = failure.error;
+      if (isAdminRefusal(failure.status, answer)) return { kind: 'refused', status: failure.status, body: answer as WorkspaceAdminErrors[R] };
+      return { kind: 'error', status: failure.status };
+    }
   }
 
   /**

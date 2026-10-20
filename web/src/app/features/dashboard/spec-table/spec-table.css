@@ -39,17 +39,9 @@
   min-inline-size: 0;
 }
 
-/* Prototype `.t-head .sort`: a bordered `.btn` (32 px, --border, --radius, --card) with `arrow-up-down`. */
+/* The sort control (`ui-sort-menu`, which draws the prototype's bordered `.t-head .sort` button) sits at the inline end. */
 .sort {
-  --btn-bg: var(--color-base-100);
-  --btn-border: var(--line);
-  --btn-fg: var(--color-base-content);
-
-  gap: 8px;
   margin-inline-start: auto;
-  border-radius: var(--radius-field);
-  border-width: 1px;
-  border-style: solid;
 }
 
 /*
@@ -228,35 +220,6 @@
   padding: 16px;
   border-block-start: 1px solid var(--line);
   color: var(--muted-ink);
-}
-
-/* The sort menu, in the popover and the sheet (prototype `.pop-item`). The prototype popover is at least 240 px wide; the panel's 8 px padding is part of that. */
-.sort-menu {
-  display: grid;
-  gap: 2px;
-  min-inline-size: 222px;
-}
-
-.pop-item {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  inline-size: 100%;
-  min-block-size: 36px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  color: var(--color-base-content);
-  font-size: 13px;
-  text-align: start;
-}
-
-.pop-item:hover,
-.pop-item[aria-pressed='true'] {
-  background: var(--color-base-300);
-}
-
-.pop-item[aria-pressed='true'] {
-  font-weight: 600;
 }
 
 @media (forced-colors: active) {

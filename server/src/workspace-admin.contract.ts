@@ -34,7 +34,7 @@
  *
  * Browser-safe: no Bun or Node import; the only value import is `spec-routes.contract.ts`, the rest is `import type`.
  */
-import type { DashboardKpis } from '../../core/src/dashboard.ts';
+import type { DashboardKpis } from '../../core/src/dashboard-kpis.ts';
 import {
   SPEC_API_ROOT,
   type Forbidden,
@@ -120,13 +120,12 @@ export function workspaceStatusOf(readable: boolean, specCount: number | null): 
 export type WorkspaceImages = Readonly<Record<ImageKind, string | null>>;
 
 /**
- * The fields spec 016 adds to `WorkspaceSummary` in `api.ts` (T4, T7). Declared here so the server, the stub and the
- * web type them from one place; `api.ts` stays unchanged until those tasks extend its type with this one.
+ * The fields spec 016 adds to the list entries of `GET /api/workspaces` (T4, T7). Declared here so the server, the stub
+ * and the web type them from one place. No `addedAt`: a re-add would change the list bytes and ETag, which the ISC-7
+ * rebuild pin holds equal; the list is already in registry order, which is the order of adding.
  */
 export interface WorkspaceSummaryAdded {
   readonly status: WorkspaceStatus;
-  /** When the workspace was registered, ISO 8601 (the registry's `added_at`). */
-  readonly addedAt: string;
   readonly images: WorkspaceImages;
 }
 
@@ -161,7 +160,7 @@ export function workspaceSortKeyOf(value: string | null | undefined): WorkspaceS
 const STATUS_ORDER: Readonly<Record<WorkspaceStatus, number>> = { missing: 0, empty: 1, ok: 2 };
 const NAME_COLLATOR = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
 
-type Sortable = Pick<WorkspaceAdminSummary, 'slug' | 'name' | 'status' | 'addedAt'>;
+type Sortable = Pick<WorkspaceAdminSummary, 'slug' | 'name' | 'status'>;
 
 /** Name order without regard to case, then by slug so equal names keep one stable order on every machine. */
 function byName(a: Sortable, b: Sortable): number {
@@ -169,8 +168,9 @@ function byName(a: Sortable, b: Sortable): number {
 }
 
 /**
- * The comparator for one sort key: `name` by name; `status` missing → empty → ok, ties by name; `added` oldest first
- * (the registry's own order), ties by name. Pure; the same order in the browser, the stub and a test.
+ * The comparator for one sort key: `name` by name; `status` missing → empty → ok, ties by name; `added` keeps the
+ * list as it came, the registry's order of adding (`Array.prototype.sort` is stable). Pure; the same order in the
+ * browser, the stub and a test.
  */
 export function compareWorkspaces(key: WorkspaceSortKey): (a: Sortable, b: Sortable) => number {
   switch (key) {
@@ -179,7 +179,7 @@ export function compareWorkspaces(key: WorkspaceSortKey): (a: Sortable, b: Sorta
     case 'status':
       return (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || byName(a, b);
     case 'added':
-      return (a, b) => (a.addedAt < b.addedAt ? -1 : a.addedAt > b.addedAt ? 1 : 0) || byName(a, b);
+      return () => 0;
   }
 }
 
@@ -346,17 +346,21 @@ const isRecord = (body: unknown): body is Record<string, unknown> => typeof body
  * `invalid-path` when `path` is blank. `path` passes on as sent; a blank `name` counts as absent (`null`).
  */
 export function parseAddWorkspaceRequest(body: unknown): Parsed<{ path: string; name: string | null }, AddWorkspaceInvalid['error']> {
-  if (!isRecord(body) || typeof body.path !== 'string') return { ok: false, error: 'invalid-body' };
-  if (body.name !== undefined && typeof body.name !== 'string') return { ok: false, error: 'invalid-body' };
-  if (body.path.trim() === '') return { ok: false, error: 'invalid-path' };
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
-  return { ok: true, value: { path: body.path, name: name === '' ? null : name } };
+  if (!isRecord(body)) return { ok: false, error: 'invalid-body' };
+  const { path, name: rawName } = body;
+  if (typeof path !== 'string') return { ok: false, error: 'invalid-body' };
+  if (rawName !== undefined && typeof rawName !== 'string') return { ok: false, error: 'invalid-body' };
+  if (path.trim() === '') return { ok: false, error: 'invalid-path' };
+  const name = typeof rawName === 'string' ? rawName.trim() : '';
+  return { ok: true, value: { path, name: name === '' ? null : name } };
 }
 
 /** Admits a rename body: `invalid-body` when it is no object or `name` is no string; `invalid-name` when it is blank. The name is trimmed. */
 export function parseRenameWorkspaceRequest(body: unknown): Parsed<{ name: string }, RenameWorkspaceInvalid['error']> {
-  if (!isRecord(body) || typeof body.name !== 'string') return { ok: false, error: 'invalid-body' };
-  const name = body.name.trim();
+  if (!isRecord(body)) return { ok: false, error: 'invalid-body' };
+  const { name: rawName } = body;
+  if (typeof rawName !== 'string') return { ok: false, error: 'invalid-body' };
+  const name = rawName.trim();
   return name === '' ? { ok: false, error: 'invalid-name' } : { ok: true, value: { name } };
 }
 

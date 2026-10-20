@@ -15,7 +15,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type DashboardModel, buildDashboard } from "../core/src/dashboard.ts";
 import type { SpecPageModel, Worktree } from "../core/src/files.ts";
-import { WORKSPACES_PATH, composeApi, dashboardApi } from "../server/src/api.ts";
+import { NO_IMAGES, WORKSPACES_PATH, composeApi, dashboardApi } from "../server/src/api.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
 import { openDatabase } from "../server/src/db.ts";
@@ -42,7 +42,7 @@ const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const NAMES = ["harbor", "lantern"] as const;
 
 type Name = (typeof NAMES)[number];
-type ListEntry = { slug: string; name: string; pathTail: string; readable: boolean; error?: string; counts: unknown };
+type ListEntry = { slug: string; name: string; pathTail: string; readable: boolean; error?: string; counts: unknown; status?: string; images?: unknown };
 
 const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXTURES, `${name}.golden.json`), "utf8")) as DashboardModel;
 
@@ -169,7 +169,7 @@ describe("the two routes over two registered workspaces", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
     const list = (await res.json()) as ListEntry[];
     expect(list).toEqual(
-      NAMES.map((name) => ({ slug: name, name, pathTail: name, readable: true, counts: expected(name).kpis })),
+      NAMES.map((name) => ({ slug: name, name, pathTail: name, readable: true, counts: expected(name).kpis, status: "ok", images: NO_IMAGES })),
     );
     // The list builds counts without a services probe: lsof stays off the polled overview route.
     expect(probed).toEqual([]);
@@ -235,9 +235,10 @@ describe("the two routes over two registered workspaces", () => {
       expect({ path, status: res.status }).toEqual({ path, status: 404 });
       await res.body?.cancel();
     }
-    const post = await fetch(`${server.url}api/workspaces`, { method: "POST" });
+    // The list path takes spec 016's POST in the composed server, so its 405 names it.
+    const post = await fetch(`${server.url}api/workspaces`, { method: "DELETE" });
     expect(post.status).toBe(405);
-    expect(post.headers.get("allow")).toBe("GET, HEAD");
+    expect(post.headers.get("allow")).toBe("GET, HEAD, POST");
     const head = await fetch(`${server.url}api/workspaces/harbor/dashboard`, { method: "HEAD" });
     expect(head.status).toBe(200);
     expect(head.headers.get("etag")).toMatch(/^"/);
@@ -266,13 +267,14 @@ describe("an unreadable workspace", () => {
 
     const list = (await (await get(server, WORKSPACES_PATH)).json()) as ListEntry[];
     expect(list.map((w) => w.slug)).toEqual(["harbor", "gone"]);
-    expect(list[1]).toEqual({ slug: "gone", name: "gone", pathTail: "gone", readable: false, error: "missing", counts: null });
+    expect(list[1]).toEqual({ slug: "gone", name: "gone", pathTail: "gone", readable: false, error: "missing", counts: null, status: "missing", images: NO_IMAGES });
 
     const res = await get(server, "/api/workspaces/gone/dashboard");
     expect(res.status).toBe(409);
     expect(res.headers.get("etag")).toMatch(/^"/);
     const body = await res.json();
-    expect(body).toEqual(list[1]);
+    // The 409 body is the plain summary: the list adds spec 016.s `status` and `images` (ISC-309, ISC-310).
+    expect(body).toEqual({ slug: "gone", name: "gone", pathTail: "gone", readable: false, error: "missing", counts: null });
     expect(strings([list, body]).filter(hasAbsolutePath)).toEqual([]);
   });
 
@@ -285,7 +287,7 @@ describe("an unreadable workspace", () => {
     try {
       const server = start(registry);
       const list = (await (await get(server, WORKSPACES_PATH)).json()) as ListEntry[];
-      expect(list).toEqual([{ slug: "locked", name: "locked", pathTail: "locked", readable: false, error: "permission-denied", counts: null }]);
+      expect(list).toEqual([{ slug: "locked", name: "locked", pathTail: "locked", readable: false, error: "permission-denied", counts: null, status: "missing", images: NO_IMAGES }]);
       expect((await get(server, "/api/workspaces/locked/dashboard")).status).toBe(409);
     } finally {
       chmodSync(locked, 0o700);

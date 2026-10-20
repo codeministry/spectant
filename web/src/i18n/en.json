@@ -496,10 +496,6 @@
   },
   "settingsWorkspaces": {
     "title": "Workspaces",
-    "registered": {
-      "one": "· {{count}} registered",
-      "other": "· {{count}} registered"
-    },
     "add": {
       "path": "Repository path",
       "pathPlaceholder": "~/code/my-repo",
@@ -507,17 +503,14 @@
       "nameLabel": "Display name",
       "namePlaceholder": "my-repo",
       "button": "Add",
-      "fab": "Add workspace",
-      "completions": "Matching folders",
-      "hint": "Paste a path to fill the name.",
-      "completes": "completes,",
-      "expands": "expands.",
-      "nothing": "Demo: nothing was added, the registry stays as it is."
-    },
-    "upload": {
-      "text": "Identity images (screenshot and logo) are picked in the app; the upload is disabled in this mock.",
-      "button": "Upload screenshot",
-      "off": "Screenshot upload is disabled in the mock"
+      "hint": "Paste the path of a repository folder; the name is optional.",
+      "busy": "Adding…",
+      "error": {
+        "empty": "Enter the path of a repository folder.",
+        "notADirectory": "No folder exists at this path.",
+        "duplicatePath": "This folder is registered already as {{name}}.",
+        "failed": "The workspace could not be added. Please try again."
+      }
     },
     "status": {
       "ok": "readable",
@@ -525,11 +518,10 @@
       "missing": "folder not found"
     },
     "row": {
-      "reveal": "Reveal",
-      "relocate": "Relocate…",
       "counts": "{{specs}} specs · {{active}} active",
       "countsOne": "{{specs}} spec · {{active}} active",
-      "actions": "Actions for {{name}}"
+      "actions": "Actions for {{name}}",
+      "noCounts": "no counts"
     },
     "menu": {
       "rename": "Rename",
@@ -543,7 +535,19 @@
       "cancel": "Cancel",
       "confirm": "Remove"
     },
-    "foot": "Registry lives in the app's data directory · the CLI does the same:"
+    "foot": "Registry lives in the app's data directory · the CLI does the same:",
+    "toolbar": {
+      "one": "{{count}} workspace registered",
+      "other": "{{count}} workspaces registered"
+    },
+    "load": {
+      "error": "The workspace list could not be loaded.",
+      "retry": "Retry"
+    },
+    "empty": {
+      "heading": "No workspace registered yet",
+      "body": "Enter a repository path above, or register one from the terminal:"
+    }
   },
   "states": {
     "unreachable": "Can't reach spectant on {{host}}",

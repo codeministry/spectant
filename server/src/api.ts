@@ -2,7 +2,9 @@
  * The workspace routes (T47, ISC-16; plan 001 § Interfaces "HTTP"), read-only over the registry and the files of the
  * registered repositories:
  *
- * - `GET /api/workspaces` → `WorkspaceSummary[]` in registry order: `{slug, name, pathTail, readable, error?, counts}`.
+ * - `GET /api/workspaces` → `WorkspaceSummary[]` in registry order: `{slug, name, pathTail, readable, error?, counts,
+ *   status, images}` (spec 016: `status` is `ok`, `empty` or `missing` from the read; no `addedAt`, so a re-add keeps the
+ *   list bytes, ISC-7).
  *   `counts` is the workspace's `DashboardKpis`, built without a services probe; `null` when unreadable.
  * - `GET /api/workspaces/:slug/dashboard` → the `DashboardModel` of `core/src/dashboard.ts`, unchanged, its `services`
  *   from the local-listener probe labelled with the constitution's `dev_services:`. Its `guidance` is the workspace-wide
@@ -18,7 +20,8 @@
  *   workspace exists, its files do not answer. The same entry appears in the list, so the client shows one notice for
  *   both, and a 2xx dashboard answer is always a model.
  * - 403 `{error: "forbidden"}` for a non-loopback `Host` or a cross-site `Origin`, the guard of `settingsApi`.
- * - 405 `{error: "method-not-allowed"}` with `Allow: GET, HEAD` for any other method.
+ * - 405 `{error: "method-not-allowed"}` with `Allow: GET, HEAD` for any other method; on the list path `GET, HEAD,
+ *   POST`, since it also takes spec 016's add route.
  * - any other `/api/workspaces…` path is `null`, so the server's JSON 404 applies.
  *
  * The planning route (spec 003 T19, ISC-103): `GET /api/workspaces/:ws/planning` → the `PlanningModel` of
@@ -194,6 +197,7 @@ import {
   unreadableCode,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
+import { type WorkspaceImages, type WorkspaceSummaryAdded, workspaceAdminAllowFor, workspaceStatusOf } from "./workspace-admin.contract.ts";
 import { ACTIVITY_PATH } from "./writes.contract.ts";
 import { rawSha256 } from "./writes.ts";
 
@@ -286,7 +290,10 @@ const SEARCH_READS = 16;
 /** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
 type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };
 
-/** One entry of `GET /api/workspaces`, and the body of a 409 dashboard answer. */
+/**
+ * The body of a 409 workspace answer (`Unavailable`), and the base of each `GET /api/workspaces` entry
+ * (`WorkspaceListSummary`).
+ */
 export type WorkspaceSummary = {
   slug: string;
   name: string;
@@ -298,6 +305,14 @@ export type WorkspaceSummary = {
   /** The workspace's key numbers; null when it cannot be read. */
   counts: DashboardKpis | null;
 };
+
+/**
+ * One entry of `GET /api/workspaces` and the answer of the writing workspace routes: the summary plus the fields spec
+ * 016 adds (`WorkspaceSummaryAdded` in `workspace-admin.contract.ts`): `status` from the read (ISC-309) and `images`;
+ * no `addedAt`, so a re-add keeps the list bytes (ISC-7). The 409 body keeps the plain `WorkspaceSummary`, as
+ * `Unavailable` pins it.
+ */
+export type WorkspaceListSummary = WorkspaceSummary & WorkspaceSummaryAdded;
 
 export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;
@@ -400,11 +415,32 @@ export function json(req: Request, status: number, value: unknown, extra: Record
   return new Response(req.method === "HEAD" ? null : body, { status, headers });
 }
 
+/** No stored images yet: the image store and its versioned URLs land with spec 016 T7. */
+export const NO_IMAGES: WorkspaceImages = { logo: null, screenshot: null };
+
 function summary(workspace: Workspace, load: DashboardLoad): WorkspaceSummary {
   const base = { slug: workspace.slug, name: workspace.name, pathTail: pathTail(workspace.path) };
   return load.readable
     ? { ...base, readable: true, counts: load.model.kpis }
     : { ...base, readable: false, error: load.error, counts: null };
+}
+
+/** The list's entry: the summary, its status from the same read, the registration time and the image URLs. */
+function listSummary(workspace: Workspace, load: DashboardLoad): WorkspaceListSummary {
+  const status = workspaceStatusOf(load.readable, load.readable ? load.model.kpis.specs : null);
+  return { ...summary(workspace, load), status, images: NO_IMAGES };
+}
+
+/**
+ * The summary of one workspace as `GET /api/workspaces` lists it, read now: the writing workspace routes (spec 016,
+ * `workspace-admin-route.ts`) answer with it, so the row a write returns equals the row the list shows.
+ */
+export function workspaceSummaryReader(
+  options: Pick<DashboardApiOptions, "loadWorkspace" | "lifeos">,
+): (workspace: Workspace) => Promise<WorkspaceListSummary> {
+  const load = options.loadWorkspace ?? loadDashboard;
+  const stateDir = options.lifeos?.stateDir ?? null;
+  return async (workspace) => listSummary(workspace, await load(workspace.path, null, stateDir));
 }
 
 /**
@@ -466,7 +502,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();
     const loads = await Promise.all(workspaces.map((w) => load(w.path, null, stateDir)));
-    return json(req, 200, workspaces.map((w, i) => summary(w, loads[i] ?? { readable: false, error: "unreadable" })));
+    return json(req, 200, workspaces.map((w, i) => listSummary(w, loads[i] ?? { readable: false, error: "unreadable" })));
   };
 
   const dashboard = async (req: Request, slug: string): Promise<Response> => {
@@ -852,7 +888,9 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       return runRelease(req, workspaceRoute.params.ws, workspaceRoute.params.run);
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
-      const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : ALLOW;
+      // The list path also takes the admin route's POST (spec 016), so its 405 names it as the composed server does.
+      const list = pathname === WORKSPACES_PATH ? workspaceAdminAllowFor(pathname) : null;
+      const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : (list ?? ALLOW);
       return json(req, 405, { error: "method-not-allowed" }, { Allow: allow });
     }
     if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
