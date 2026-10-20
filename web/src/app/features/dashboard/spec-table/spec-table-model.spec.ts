@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyListQuery,
+  archivedTableRow,
   DEFAULT_QUERY,
   holdNewRows,
   type ListQuery,
@@ -48,7 +49,9 @@ const BODY = {
     wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, takeable: ['ISC-1', 'ISC-2'] }),
     wire('003', { type: 'refactor', phase: 'climbing', stageGroup: 'complete', stage: 'tasks', progress: { closed: 0, total: 13 }, nextCommand: null }),
   ],
-  archive: [{ id: '001', slug: '001-first', title: 'First', type: 'feature' }],
+  archive: [
+    { id: '001', slug: '001-first', title: 'First', type: 'feature', archived: '2026-09-01', archivedReason: null, claims: { closed: 5, total: 6 }, tasks: { landed: 3, total: 3 }, goal: 'Starts the workspace.' },
+  ],
   kpis: { specs: 4, stageGroups: { scoping: 1, building: 2, complete: 1 }, specsWithFog: 1, byType: { feature: 2, bug: 1, refactor: 1 } },
 };
 
@@ -78,34 +81,88 @@ describe('readSpecRows', () => {
     expect(ids(readSpecRows({ specs: [{ title: 'x' }, wire('007')] }))).toEqual(['007']);
   });
 
-  it('reads the archive rows', () => {
-    expect(readArchiveRows(BODY)).toEqual([{ id: '001', slug: '001-first', title: 'First', type: 'feature' }]);
+  it('reads the archive rows with their claims, goal and archive date (spec 050, ISC-287)', () => {
+    expect(readArchiveRows(BODY)).toEqual([
+      { id: '001', slug: '001-first', title: 'First', type: 'feature', closed: 5, total: 6, goal: 'Starts the workspace.', archived: '2026-09-01' },
+    ]);
+  });
+
+  it('reads an archive row without claims, goal or date as zero claims, no goal and no date', () => {
+    expect(readArchiveRows({ archive: [{ id: '007', slug: '007-old', title: 'Old', type: null, claims: 'no', goal: 3 }, { title: 'x' }] })).toEqual([
+      { id: '007', slug: '007-old', title: 'Old', type: null, closed: 0, total: 0, goal: '', archived: null },
+    ]);
+  });
+});
+
+describe('archivedTableRow (spec 050, ISC-287)', () => {
+  const [archived] = readArchiveRows(BODY);
+
+  it('builds a done row with the archive mark and no priority, stage group, phase or next step', () => {
+    expect(archivedTableRow(archived)).toEqual({
+      id: '001',
+      title: 'First',
+      type: 'feature',
+      priority: null,
+      phase: null,
+      stage: 'done',
+      stageGroup: null,
+      closed: 5,
+      total: 6,
+      nextCommand: null,
+      nextReason: '',
+      takeable: [],
+      warnings: 0,
+      fog: 0,
+      description: 'Starts the workspace.',
+      agent: null,
+      waits: null,
+      archived: { on: '2026-09-01' },
+    });
+  });
+
+  it('drops a goal that repeats the title and keeps a missing date as null', () => {
+    const row = archivedTableRow({ id: '008', slug: '008-same', title: 'Same', type: null, closed: 0, total: 0, goal: 'Same.', archived: null });
+    expect(row).toMatchObject({ description: null, archived: { on: null } });
+  });
+
+  it('leaves every active row without the archive mark', () => {
+    expect(readSpecRows(BODY).every((row) => row.archived === undefined)).toBe(true);
   });
 });
 
 describe('parseListQuery and listQueryParams', () => {
-  it('reads the four query params and falls back to the defaults', () => {
+  it('reads the five query params and falls back to the defaults', () => {
     expect(parseListQuery(params({}))).toEqual(DEFAULT_QUERY);
-    expect(parseListQuery(params({ phase: 'building', type: 'bug', sort: 'id', takeable: '1' }))).toEqual({
+    expect(parseListQuery(params({ phase: 'building', type: 'bug', sort: 'id', takeable: '1', archived: '1' }))).toEqual({
       phase: 'building',
       type: 'bug',
       sort: 'id',
       takeable: true,
+      archived: true,
     });
-    expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes' }))).toEqual(DEFAULT_QUERY);
+    expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes', archived: 'yes' }))).toEqual(DEFAULT_QUERY);
     // The phase chips filter by stage group (ISC-255): an old frontmatter value such as `climbing` reads as all.
     expect(parseListQuery(params({ phase: 'climbing' }))).toEqual(DEFAULT_QUERY);
     expect(parseListQuery(params({ phase: 'complete' })).phase).toBe('complete');
     expect(parseListQuery(params({ phase: 'fog' })).phase).toBe('fog');
   });
 
+  it('starts with the archived specs hidden and reads ?archived=1 as shown (spec 050, ISC-287)', () => {
+    expect(DEFAULT_QUERY.archived).toBe(false);
+    expect(parseListQuery(params({ archived: '1' }))).toEqual({ ...DEFAULT_QUERY, archived: true });
+    expect(parseListQuery(params({ archived: '0' })).archived).toBe(false);
+    expect(listQueryParams(query({ archived: true })).archived).toBe('1');
+    expect(listQueryParams(DEFAULT_QUERY).archived).toBeNull();
+  });
+
   it('writes defaults as null, so the URL only carries what differs', () => {
-    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null });
+    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, archived: null });
     expect(listQueryParams(query({ phase: 'fog', sort: 'next', takeable: true }))).toEqual({
       phase: 'fog',
       type: null,
       sort: 'next',
       takeable: '1',
+      archived: null,
     });
   });
 });

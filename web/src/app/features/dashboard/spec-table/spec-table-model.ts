@@ -5,7 +5,7 @@ import type { Tone } from '../../../shared/ui/tone';
  * The Specs panel's view of the dashboard model (T63, ISC-61). Nothing here counts or derives a spec's state: every
  * field is read from the rows `core/src/dashboard.ts` built (the body stays `unknown` in web until core's dashboard
  * types move to a browser-safe module, see `DashboardBody`), and the helpers only filter and order those rows by the
- * query state the URL carries (`?phase=&type=&sort=&takeable=`, design.md § Routes and state).
+ * query state the URL carries (`?phase=&type=&sort=&takeable=&archived=`, design.md § Routes and state).
  */
 
 /** One active spec as the panel renders it: the fields of `DashboardSpecRow` the row shows. */
@@ -39,15 +39,28 @@ export interface SpecTableRow {
   readonly agent: string | null;
   /** What the spec waits on, the row's `waits` (spec 025, T24, ISC-163); null when no open spec edge holds its work. */
   readonly waits: SpecWait | null;
+  /**
+   * Spec 050 (T1, ISC-287): the archive mark. Absent on every active row; present on a row built from the archive
+   * (`archivedTableRow`), carrying the archive date (`YYYY-MM-DD`, null when the folder records none).
+   */
+  readonly archived?: { readonly on: string | null };
 }
 
-/** One archived spec, as the archive fold lists it. */
+/** One archived spec, as the model's `archive` part carries it (`ArchivedSpec` in `core/src/archive.ts`). */
 export interface ArchiveRow {
   readonly id: string;
-  /** `NNN-slug`; the footer shows it without the number, as the prototype does. */
+  /** `NNN-slug`. */
   readonly slug: string;
   readonly title: string;
   readonly type: string | null;
+  /** Spec 050 (T1, ISC-287): the live claims closed, from the wire's `claims`. */
+  readonly closed: number;
+  /** Spec 050 (T1, ISC-287): the live claims in total, from the wire's `claims`. */
+  readonly total: number;
+  /** Spec 050 (T1, ISC-287): the `## Goal` line as core gives it, trimmed; empty when there is none. */
+  readonly goal: string;
+  /** Spec 050 (T1, ISC-287): frontmatter `archived:` (`YYYY-MM-DD`); null when the folder carries none. */
+  readonly archived: string | null;
 }
 
 export const SORT_KEYS = ['stage', 'next', 'id', 'progress'] as const;
@@ -64,9 +77,11 @@ export interface ListQuery {
   readonly type: string | null;
   readonly sort: SortKey;
   readonly takeable: boolean;
+  /** Spec 050 (T1, ISC-287): the archived specs show under the active ones (`?archived=1`); off by default. */
+  readonly archived: boolean;
 }
 
-export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage', takeable: false };
+export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage', takeable: false, archived: false };
 
 /** The filter chip key for "every phase" and for "has open fog". */
 export const ALL = 'all';
@@ -166,11 +181,53 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
   });
 }
 
+/** The archive rows in model order, with their claims, goal and archive date (spec 050, T1, ISC-287). */
 export function readArchiveRows(body: unknown): ArchiveRow[] {
   return listOf(body, 'archive').flatMap((row): ArchiveRow[] => {
     const id = text(row['id']);
-    return id === null ? [] : [{ id, slug: text(row['slug']) ?? id, title: text(row['title']) ?? id, type: text(row['type']) }];
+    if (id === null) return [];
+    const claims = isLoose(row['claims']) ? row['claims'] : {};
+    return [
+      {
+        id,
+        slug: text(row['slug']) ?? id,
+        title: text(row['title']) ?? id,
+        type: text(row['type']),
+        closed: count(claims['closed']),
+        total: count(claims['total']),
+        goal: text(row['goal'])?.trim() ?? '',
+        archived: text(row['archived']),
+      },
+    ];
   });
+}
+
+/**
+ * Spec 050 (T1, ISC-287): an archived spec as a row of the list. It is done and carries no priority, stage group,
+ * phase, next step, lock or wait; its meter reads the live claims and its description the goal (ISC-249), and the
+ * archive mark sets it apart from every active row.
+ */
+export function archivedTableRow(row: ArchiveRow): SpecTableRow {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    priority: null,
+    phase: null,
+    stage: 'done',
+    stageGroup: null,
+    closed: row.closed,
+    total: row.total,
+    nextCommand: null,
+    nextReason: '',
+    takeable: [],
+    warnings: 0,
+    fog: 0,
+    description: descriptionOf(row.goal, row.title),
+    agent: null,
+    waits: null,
+    archived: { on: row.archived },
+  };
 }
 
 /** The chip counts from the model's `kpis`, passed through; null when the body carries none. */
@@ -197,16 +254,18 @@ export function parseListQuery(params: { get(name: string): string | null }): Li
     type: type === null || type === '' || type === ALL ? null : type,
     sort: SORT_KEYS.find((key) => key === sort) ?? DEFAULT_QUERY.sort,
     takeable: params.get('takeable') === '1',
+    archived: params.get('archived') === '1',
   };
 }
 
 /** The query params for `query`; a default is null, so the URL carries only what differs. */
-export function listQueryParams(query: ListQuery): Record<'phase' | 'type' | 'sort' | 'takeable', string | null> {
+export function listQueryParams(query: ListQuery): Record<'phase' | 'type' | 'sort' | 'takeable', string | null> & { readonly archived: '1' | null } {
   return {
     phase: query.phase,
     type: query.type,
     sort: query.sort === DEFAULT_QUERY.sort ? null : query.sort,
     takeable: query.takeable ? '1' : null,
+    archived: query.archived ? '1' : null,
   };
 }
 
