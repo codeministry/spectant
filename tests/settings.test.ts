@@ -70,11 +70,11 @@ function put(server: RunningServer, body: unknown, headers: Record<string, strin
 
 describe("SettingsSchema", () => {
   test("holds exactly the plan's four keys, each default passing its own validator", () => {
-    expect(Object.keys(SettingsSchema).sort()).toEqual(["density", "language", "notesImportDismissed", "railCollapsed", "refreshSeconds", "runAbortMinutes", "singleKeyShortcuts", "staleMinutes", "theme"]);
+    expect(Object.keys(SettingsSchema).sort()).toEqual(["density", "language", "notesImportDismissed", "railCollapsed", "runAbortMinutes", "singleKeyShortcuts", "staleMinutes", "theme"]);
     for (const [key, spec] of Object.entries(SettingsSchema)) {
       expect({ key, valid: spec.validate(spec.default) }).toEqual({ key, valid: true });
     }
-    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", density: "comfortable", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45 });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", density: "comfortable", singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45 });
   });
 
   test("the validators accept the plan's values and refuse everything else", () => {
@@ -82,10 +82,6 @@ describe("SettingsSchema", () => {
     for (const theme of ["", "Dark", "auto", 1, null, undefined]) expect(SettingsSchema.theme.validate(theme)).toBe(false);
     for (const language of ["en", "de"]) expect(SettingsSchema.language.validate(language)).toBe(true);
     for (const language of ["fr", "EN", "de-DE", 0]) expect(SettingsSchema.language.validate(language)).toBe(false);
-    for (const seconds of [5, 30, 3600]) expect(SettingsSchema.refreshSeconds.validate(seconds)).toBe(true);
-    for (const seconds of [0, 4, 3601, 1.5, -30, Number.NaN, "30", null]) {
-      expect(SettingsSchema.refreshSeconds.validate(seconds)).toBe(false);
-    }
     for (const flag of [true, false]) expect(SettingsSchema.singleKeyShortcuts.validate(flag)).toBe(true);
     for (const flag of ["true", 1, 0, null]) expect(SettingsSchema.singleKeyShortcuts.validate(flag)).toBe(false);
     for (const flag of [true, false]) expect(SettingsSchema.railCollapsed.validate(flag)).toBe(true);
@@ -124,14 +120,14 @@ describe("openSettings", () => {
     const settings = openSettings(database);
     const next = settings.set({ theme: "dark" });
     expect(next).toEqual({ ...DEFAULT_SETTINGS, theme: "dark" });
-    expect(settings.set({ refreshSeconds: 60, language: "de" })).toEqual({
+    expect(settings.set({ staleMinutes: 60, language: "de" })).toEqual({
       ...DEFAULT_SETTINGS,
       theme: "dark",
-      refreshSeconds: 60,
+      staleMinutes: 60,
       language: "de",
     });
     const rows = database.query<{ key: string }, []>("SELECT key FROM setting WHERE key <> 'schema_version' ORDER BY key").all();
-    expect(rows.map((row) => row.key)).toEqual(["language", "refreshSeconds", "theme"]);
+    expect(rows.map((row) => row.key)).toEqual(["language", "staleMinutes", "theme"]);
   });
 
   test("the stored values survive closing and reopening the database", () => {
@@ -157,7 +153,7 @@ describe("openSettings", () => {
   test("a bad value is refused with `invalid-value` and the whole update is rolled back", () => {
     const settings = openSettings(openDb());
     settings.set({ theme: "light" });
-    expect(() => settings.set({ theme: "dark", refreshSeconds: 0 })).toThrow(SettingsError);
+    expect(() => settings.set({ theme: "dark", staleMinutes: 0 })).toThrow(SettingsError);
     try {
       settings.set({ theme: "dark", language: "fr" });
     } catch (error) {
@@ -180,8 +176,26 @@ describe("openSettings", () => {
 
   test("a corrupt or out-of-range stored value falls back to its default", () => {
     const database = openDb();
-    database.run("INSERT INTO setting (key, value) VALUES ('theme', 'not json'), ('refreshSeconds', '0'), ('language', '\"de\"')");
+    database.run("INSERT INTO setting (key, value) VALUES ('theme', 'not json'), ('staleMinutes', '0'), ('language', '\"de\"')");
     expect(openSettings(database).get()).toEqual({ ...DEFAULT_SETTINGS, language: "de" });
+  });
+
+  test("a legacy refreshSeconds row is ignored: get never returns it and a set naming it is unknown-key (spec 053, ISC-323)", () => {
+    const database = openDb();
+    database.run("INSERT INTO setting (key, value) VALUES ('refreshSeconds', '60'), ('theme', '\"dark\"')");
+    const settings = openSettings(database);
+    expect(settings.get()).toEqual({ ...DEFAULT_SETTINGS, theme: "dark" });
+    expect(Object.keys(settings.get())).not.toContain("refreshSeconds");
+    let error: unknown;
+    try {
+      settings.set({ refreshSeconds: 30 });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(SettingsError);
+    expect({ code: (error as SettingsError).code, key: (error as SettingsError).key }).toEqual({ code: "unknown-key", key: "refreshSeconds" });
+    const row = database.query<{ value: string }, []>("SELECT value FROM setting WHERE key = 'refreshSeconds'").get();
+    expect(row?.value).toBe("60");
   });
 });
 
@@ -215,15 +229,31 @@ describe("/api/settings", () => {
   test("PUT with an invalid value answers 400 {error, key} and leaves the stored settings unchanged", async () => {
     const server = start(openDb());
     await put(server, { theme: "light" });
-    const bad = await put(server, { theme: "dark", refreshSeconds: "fast" });
+    const bad = await put(server, { theme: "dark", staleMinutes: "fast" });
     expect(bad.status).toBe(400);
-    expect(await bad.json()).toEqual({ error: "invalid-value", key: "refreshSeconds" });
+    expect(await bad.json()).toEqual({ error: "invalid-value", key: "staleMinutes" });
 
     const unknown = await put(server, { theme: "dark", schema_version: 7 });
     expect(unknown.status).toBe(400);
     expect(await unknown.json()).toEqual({ error: "unknown-key", key: "schema_version" });
 
     expect(await (await fetch(`${server.url}api/settings`)).json()).toEqual({ ...DEFAULT_SETTINGS, theme: "light" });
+  });
+
+  test("a database with a legacy refreshSeconds row: GET omits the key and a PUT naming it answers unknown-key (spec 053, ISC-323)", async () => {
+    const database = openDb();
+    database.run("INSERT INTO setting (key, value) VALUES ('refreshSeconds', '60')");
+    const server = start(database);
+    const res = await fetch(`${server.url}api/settings`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toEqual(DEFAULT_SETTINGS);
+    expect(Object.hasOwn(body, "refreshSeconds")).toBe(false);
+
+    const refused = await put(server, { theme: "dark", refreshSeconds: 60 });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: "unknown-key", key: "refreshSeconds" });
+    expect(await (await fetch(`${server.url}api/settings`)).json()).toEqual(DEFAULT_SETTINGS);
   });
 
   test("PUT with malformed JSON or a non-object body answers 400 invalid-body", async () => {

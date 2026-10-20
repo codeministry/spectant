@@ -694,7 +694,7 @@ describe('stub API: the library (spec 017, T3)', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', density: 'comfortable', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45 };
+  const DEFAULTS = { theme: 'system', language: 'en', density: 'comfortable', singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45 };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 
@@ -716,12 +716,12 @@ describe('stub API: /api/settings', () => {
   });
 
   test('POST /api/__stub/reset restores the defaults of that session only', async () => {
-    await put({ refreshSeconds: 60 }, 'reset-me');
-    await put({ refreshSeconds: 90 }, 'keep-me');
+    await put({ staleMinutes: 60 }, 'reset-me');
+    await put({ staleMinutes: 90 }, 'keep-me');
     const reset = await ask('/api/__stub/reset', { method: 'POST', session: 'reset-me' });
     expect(reset.status).toBe(204);
     expect(await (await ask('/api/settings', { session: 'reset-me' })).json()).toEqual(DEFAULTS);
-    expect(((await (await ask('/api/settings', { session: 'keep-me' })).json()) as Json)['refreshSeconds']).toBe(90);
+    expect(((await (await ask('/api/settings', { session: 'keep-me' })).json()) as Json)['staleMinutes']).toBe(90);
     expect((await ask('/api/__stub/reset')).status).toBe(405);
   });
 
@@ -731,9 +731,9 @@ describe('stub API: /api/settings', () => {
       [{ theme: 'sepia' }, { error: 'invalid-value', key: 'theme' }],
       [{ language: 'fr' }, { error: 'invalid-value', key: 'language' }],
       [{ density: 'cozy' }, { error: 'invalid-value', key: 'density' }],
-      [{ refreshSeconds: 4 }, { error: 'invalid-value', key: 'refreshSeconds' }],
-      [{ refreshSeconds: 3601 }, { error: 'invalid-value', key: 'refreshSeconds' }],
-      [{ refreshSeconds: 30.5 }, { error: 'invalid-value', key: 'refreshSeconds' }],
+      [{ staleMinutes: 4 }, { error: 'invalid-value', key: 'staleMinutes' }],
+      [{ staleMinutes: 1441 }, { error: 'invalid-value', key: 'staleMinutes' }],
+      [{ staleMinutes: 30.5 }, { error: 'invalid-value', key: 'staleMinutes' }],
       [{ singleKeyShortcuts: 'yes' }, { error: 'invalid-value', key: 'singleKeyShortcuts' }],
       [[], { error: 'invalid-body' }],
       [null, { error: 'invalid-body' }],
@@ -1388,7 +1388,7 @@ describe('stub API matches the real server handlers byte for byte', () => {
     const steps: RequestInit[] = [
       {},
       { method: 'HEAD' },
-      { method: 'PUT', body: JSON.stringify({ theme: 'dark', refreshSeconds: 60 }) },
+      { method: 'PUT', body: JSON.stringify({ theme: 'dark', staleMinutes: 60 }) },
       {},
       { method: 'PUT', body: JSON.stringify({ language: 'fr' }) },
       { method: 'PUT', body: JSON.stringify({ nope: 1 }) },

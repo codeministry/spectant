@@ -9,8 +9,7 @@ import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
 import { ApiClient, dashboardUrl, planningUrl, WORKSPACES_URL } from './api.service';
 import { LiveStreamService } from './live-stream.service';
-import { diffDashboards, RefreshService } from './refresh.service';
-import { DEFAULT_SETTINGS, SettingsService } from './settings.service';
+import { diffDashboards, FALLBACK_POLL_MS, RefreshService } from './refresh.service';
 
 const body = (closed: number, specs: ReadonlyArray<{ id: string; stage: string }>): unknown => ({
   kpis: { specs: specs.length, claims: { closed, total: 78 } },
@@ -39,7 +38,6 @@ describe('RefreshService', () => {
   const dashboardValue = signal<unknown>(undefined);
   const dashboardStatus = signal<'idle' | 'loading' | 'reloading' | 'resolved'>('resolved');
   const reloads = { workspaces: vi.fn(), dashboard: vi.fn(), planning: vi.fn(), spec: vi.fn() };
-  const settings = signal({ ...DEFAULT_SETTINGS, refreshSeconds: 10 });
   const connected = signal(false);
   const listeners = new Set<(update: LiveUpdate) => void>();
   const push = (update: LiveUpdate): void => listeners.forEach((listener) => listener(update));
@@ -67,7 +65,6 @@ describe('RefreshService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: DOCUMENT, useValue: document },
-        { provide: SettingsService, useValue: { settings } },
         { provide: TranslocoService, useValue: { translate: (key: string, params?: object) => `${key} ${JSON.stringify(params ?? {})}` } },
         {
           provide: ShellData,
@@ -91,10 +88,13 @@ describe('RefreshService', () => {
     vi.restoreAllMocks();
   });
 
-  it('reloads every shell resource in place when the interval of settings.refreshSeconds elapses', () => {
+  it('polls as the fallback every 60 s while the stream is disconnected and the page is visible, not at 59 s (spec 053, ISC-317)', () => {
+    expect(FALLBACK_POLL_MS).toBe(60_000);
     TestBed.inject(RefreshService);
     TestBed.tick();
-    vi.advanceTimersByTime(9_999);
+    vi.advanceTimersByTime(59_000);
+    expect(reloads.dashboard).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(999);
     expect(reloads.dashboard).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(reloads.workspaces).toHaveBeenCalledTimes(1);
@@ -112,7 +112,7 @@ describe('RefreshService', () => {
     dashboardStatus.set('resolved');
     TestBed.tick();
     expect(service.refreshes()).toBe(0);
-    vi.advanceTimersByTime(10_000);
+    vi.advanceTimersByTime(60_000);
     expect(service.refreshes()).toBe(1);
     service.refresh();
     expect(service.refreshes()).toBe(2);
@@ -122,7 +122,7 @@ describe('RefreshService', () => {
     TestBed.inject(RefreshService);
     TestBed.tick();
     visibility = 'hidden';
-    vi.advanceTimersByTime(10_000);
+    vi.advanceTimersByTime(60_000);
     expect(reloads.dashboard).not.toHaveBeenCalled();
     visibility = 'visible';
     document.dispatchEvent(new Event('visibilitychange'));
@@ -218,15 +218,17 @@ describe('RefreshService', () => {
       expect(service.refreshes()).toBe(0);
     });
 
-    it('rests the interval timer while the stream is connected and runs it again once it drops', () => {
+    it('rests the interval timer while the stream is connected, even 10 min long, and runs it again once it drops (spec 053, ISC-318)', () => {
       connected.set(true);
       TestBed.inject(RefreshService);
       TestBed.tick();
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(10 * 60_000);
       expect(reloads.dashboard).not.toHaveBeenCalled();
       connected.set(false);
       TestBed.tick();
-      vi.advanceTimersByTime(10_000);
+      vi.advanceTimersByTime(FALLBACK_POLL_MS - 1);
+      expect(reloads.dashboard).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
       expect(reloads.dashboard).toHaveBeenCalledTimes(1);
     });
 
@@ -268,7 +270,6 @@ describe('RefreshService over the real ShellData and ApiClient (spec 030, T15, I
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: SettingsService, useValue: { settings: signal({ ...DEFAULT_SETTINGS, refreshSeconds: 10 }) } },
         { provide: TranslocoService, useValue: { translate: (key: string) => key } },
         { provide: ShellState, useValue: { ws, specId } },
         { provide: LiveStreamService, useValue: { connected, onUpdate } },

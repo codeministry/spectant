@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting, type TestRequest } fro
 import { TestBed } from '@angular/core/testing';
 import { DEFAULT_SETTINGS, type Settings, SETTINGS_URL, SettingsService } from './settings.service';
 
-const stored: Settings = { theme: 'dark', language: 'de', refreshSeconds: 60, singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90, staleMinutes: 30, density: 'compact' };
+const stored: Settings = { theme: 'dark', language: 'de', singleKeyShortcuts: false, railCollapsed: true, notesImportDismissed: true, runAbortMinutes: 90, staleMinutes: 30, density: 'compact' };
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -28,7 +28,7 @@ describe('SettingsService', () => {
   });
 
   it('exposes the schema defaults until the server answers', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45, density: 'comfortable' });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: 'system', language: 'en', singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false, runAbortMinutes: 120, staleMinutes: 45, density: 'comfortable' });
     expect(service.settings()).toEqual(DEFAULT_SETTINGS);
   });
 
@@ -53,9 +53,9 @@ describe('SettingsService', () => {
     expect(service.settings()).toEqual(DEFAULT_SETTINGS);
   });
 
-  it('reads a malformed field as its default and keeps the valid ones', async () => {
+  it('reads a malformed field as its default, drops an unknown key and keeps the valid ones', async () => {
     const loading = service.load();
-    http.expectOne(SETTINGS_URL).flush({ theme: 'sepia', language: 'de', refreshSeconds: '10', extra: 1 });
+    http.expectOne(SETTINGS_URL).flush({ theme: 'sepia', language: 'de', runAbortMinutes: '10', extra: 1 });
     await loading;
 
     expect(service.settings()).toEqual({ ...DEFAULT_SETTINGS, language: 'de' });
@@ -82,10 +82,10 @@ describe('SettingsService', () => {
     expect(service.settings().theme).toBe('light'); // optimistic
     const request = http.expectOne({ method: 'PUT', url: SETTINGS_URL });
     expect(request.request.body).toEqual({ theme: 'light' });
-    request.flush({ ...DEFAULT_SETTINGS, theme: 'light', refreshSeconds: 45 });
+    request.flush({ ...DEFAULT_SETTINGS, theme: 'light', staleMinutes: 30 });
 
     await expect(saving).resolves.toBe(true);
-    expect(service.settings()).toEqual({ ...DEFAULT_SETTINGS, theme: 'light', refreshSeconds: 45 });
+    expect(service.settings()).toEqual({ ...DEFAULT_SETTINGS, theme: 'light', staleMinutes: 30 });
   });
 
   it('rolls a refused update back and resolves false', async () => {

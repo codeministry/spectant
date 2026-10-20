@@ -1,6 +1,6 @@
 /**
  * ISC-62 (T68): the auto-refresh against the stub API. The stub's bump hook (`POST /api/__stub/bump?ws=`) changes a
- * number of harbor's dashboard between two polls; Playwright's clock fires the refresh timer, and the node that held
+ * number of harbor's dashboard between two polls; Playwright's clock fires the fallback poll, and the node that held
  * the number shows the new one, with no navigation. `bun run e2e -- refresh -g in-place`.
  */
 import { readFileSync } from 'node:fs';
@@ -15,8 +15,13 @@ const HARBOR = JSON.parse(readFileSync(new URL('../../core/fixtures/harbor.golde
 /** The claims tile before and after one bump: the stub's `bumpDashboard` raises `kpis.claims.closed` by 1. */
 const BEFORE = String(HARBOR.kpis.claims.closed);
 const AFTER = String(HARBOR.kpis.claims.closed + 1);
-/** `DEFAULT_SETTINGS.refreshSeconds` in `src/app/core/settings.service.ts`, plus a second of slack. */
-const PAST_ONE_POLL_MS = 31_000;
+/**
+ * One fallback poll: `FALLBACK_POLL_MS` (60 s) in `src/app/core/refresh.service.ts`, plus a second of slack. Written out,
+ * not imported: that module brings Angular's injector into Playwright's loader.
+ */
+const PAST_ONE_POLL_MS = 61_000;
+/** The live update stream (`EVENTS_PATH`, `server/src/spec-routes.contract.ts`). */
+const EVENTS = '/api/events';
 
 test.describe('refresh', () => {
   // The spec installs its own fake timers, so the fixture's pinned clock is off.
@@ -27,6 +32,9 @@ test.describe('refresh', () => {
     const headers = { [SESSION]: session };
     await page.setExtraHTTPHeaders(headers);
     await request.post('/api/__stub/reset', { headers });
+    // The bump pushes down the live stream too, and the app polls only while that stream is down (spec 030); refused
+    // before the first load, only the fallback poll can move the page (spec 042).
+    await page.route(`**${EVENTS}`, (route) => route.fulfill({ status: 204 }));
     await page.clock.install({ time: new Date(FIXED_NOW) });
 
     await page.goto('/w/harbor');
@@ -51,19 +59,15 @@ test.describe('refresh', () => {
 
 /** The open workspace's dashboard read, the one `RefreshService` revalidates against the primed ETag cache. */
 const DASHBOARD = '/api/workspaces/harbor/dashboard';
-/** The live update stream (`EVENTS_PATH`, `server/src/spec-routes.contract.ts`). */
-const EVENTS = '/api/events';
 /** ISC-28: a change reaches an open page within 2 s. */
 const LIVE_BUDGET_MS = 2_000;
-/** The poll interval for the live cases: far beyond the budget, so no poll can explain a change inside it. */
-const POLL_SECONDS = 60;
 
 /** One read the page sent after the bump: its path, the ETag it revalidated with, and the answer's status. */
 type Read = { path: string; ifNoneMatch: string | undefined; status: number };
 
 /**
- * ISC-28 (spec 030, T19): the live update stream at browser level. The poll interval is 60 s and no clock is faked, so
- * only the push can move a page inside 2 s. Each case opens one page of harbor, waits for its `GET /api/events`, sets a
+ * ISC-28 (spec 030, T19): the live update stream at browser level. The fallback poll is a fixed 60 s and no clock is
+ * faked, so only the push can move a page inside 2 s. Each case opens one page of harbor, waits for its `GET /api/events`, sets a
  * marker on `window`, bumps harbor for its session and measures until the page holds the bumped dashboard: the
  * dashboard shows the new KPI value in the same DOM node; the board and the spec page show no KPI, so there the proof
  * is the shell's dashboard read revalidating with the bumped ETag (primed from the frame) and answered 304, beside the
@@ -85,8 +89,6 @@ test.describe('refresh live', () => {
       const headers = { [SESSION]: session };
       await page.setExtraHTTPHeaders(headers);
       await request.post('/api/__stub/reset', { headers });
-      const saved = await request.put('/api/settings', { data: { refreshSeconds: POLL_SECONDS }, headers });
-      expect(saved.ok()).toBe(true);
 
       const stream = page.waitForResponse((res) => new URL(res.url()).pathname === EVENTS && res.status() === 200);
       await page.goto(url);

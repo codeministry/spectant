@@ -27,7 +27,7 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
 - Router-driven, never in-memory: `/` all workspaces, `/w/:ws` a dashboard, `/w/:ws/s/:id` a spec open. Filters, sort
   and flags are query params (`?phase=building&sort=next&takeable=1`). Reason: reload, back and the cmux web view land
   on the same screen.
-- Settings (theme mode, language, refresh interval, single-key shortcuts) come from `/api/settings`. Reason: they must
+- Settings (theme mode, language, single-key shortcuts) come from `/api/settings`. Reason: they must
   survive a port change, which per-origin browser storage does not (ISC-18.3).
 - "Recent" palette entries are the only `localStorage` use, every access wrapped in try/catch. Reason: a per-viewer
   convenience that may be empty or throw in a private window or a web view.

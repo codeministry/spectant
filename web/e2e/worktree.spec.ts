@@ -156,8 +156,8 @@ test.describe('chip', () => {
 const RUN_WORDS = { T28: 'applied, open', T27: 'patch ready', T29: 'building', T32: 'dispatched' } as const;
 const BOARD_002 = `${SPEC_002}/board`;
 const TASKS_002 = `${SPEC_002}/tasks`;
-/** `DEFAULT_SETTINGS.refreshSeconds` plus a second of slack, as `refresh.spec.ts`. */
-const PAST_ONE_POLL_MS = 31_000;
+/** `FALLBACK_POLL_MS` (60 s) in `src/app/core/refresh.service.ts`, plus a second of slack, as `refresh.spec.ts`. */
+const PAST_ONE_POLL_MS = 61_000;
 
 const liveCard = (page: Page, task: string): Locator => page.locator(`[data-lanes] app-board-card:has(> article[data-card="${task}"])`);
 const taskRow = (page: Page, task: string): Locator => page.locator(`app-tasks-tab [data-task-row]#task-${task}`);
