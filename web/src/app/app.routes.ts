@@ -16,6 +16,8 @@ const toTree =
     const sel = anchorRef(page, fragment);
     return inject(Router).createUrlTree(planningTreeLink(String(params['ws'])), sel === null ? {} : { queryParams: { sel } });
   };
+const dashboardPage: ShellRouteData = { page: 'dashboard' };
+const specsPage: ShellRouteData = { page: 'specs' };
 const boardPage: ShellRouteData = { page: 'board' };
 const ideaPage: ShellRouteData = { page: 'idea' };
 const libraryPage: ShellRouteData = { page: 'library' };
@@ -72,7 +74,18 @@ export const routes: Routes = [
       // Spec 008 (ISC-116): help is global like settings, inside the shell and outside any workspace; lazy, its own chunk.
       { path: 'help', loadComponent: () => import('./features/help/help-page').then((m) => m.HelpPage) },
       // Spec 024: the workspace dashboard is a lazy chunk too, which keeps the initial bundle clear of its 1 MB budget.
-      { path: 'w/:ws', loadComponent: () => import('./features/dashboard/dashboard-page').then((m) => m.DashboardPage) },
+      // Spec 058 (ISC-390): the route names its page, so the side menu marks the dashboard, not the Specs page.
+      {
+        path: 'w/:ws',
+        loadComponent: () => import('./features/dashboard/dashboard-page').then((m) => m.DashboardPage),
+        data: dashboardPage,
+      },
+      // Spec 058 (ISC-391): the workspace's Specs page, the spec list with the backlog; lazy, its own chunk.
+      {
+        path: 'w/:ws/specs',
+        loadComponent: () => import('./features/specs-page/specs-page').then((m) => m.SpecsPage),
+        data: specsPage,
+      },
       // Spec 008 (ISC-129, ISC-124.2): the workspace board, a sibling of the planning pages, and a story's read-only
       // page, reached from a board card, the palette or an idea chip; an unknown slug renders not-found in the page.
       {

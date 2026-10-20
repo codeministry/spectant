@@ -165,8 +165,8 @@ describe('SpecHead breadcrumb (T39, ISC-105; T36, ISC-149)', () => {
       expect(crumbs(root)).toEqual(['workspace', 'spec', 'area']);
       expect(seps(root)).toEqual([null, 'scope', 'dot']);
       const ws = crumb(root, 'workspace');
-      // Spec 058: `workspaceLink(ws, 'specs')` is the spec list at `/w/<ws>/specs` now; the crumb's target is a later task's.
-      expect(ws?.getAttribute('href')).toBe('/w/harbor/specs');
+      // Spec 058 (ISC-395): the Workspace crumb means the workspace, its dashboard at `/w/<ws>`.
+      expect(ws?.getAttribute('href')).toBe('/w/harbor');
       expect(text(ws)).toBe('harbor');
       expect(ws?.querySelector('ui-icon[name="arrow-left"]')).not.toBeNull();
       expect(ws?.querySelector('.ws-badge')?.getAttribute('data-mono')).toBe('HA');

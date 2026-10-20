@@ -126,11 +126,16 @@ export class AreaMenu {
       ? []
       : WORKSPACE_PAGES.filter((page) => page.id !== 'milestones' || this.data.hasMilestones()),
   );
-  /** The open workspace page; a story page counts as the board it is reached from, a spec page as Specs. */
+  /**
+   * The open workspace page; a story page counts as the board it is reached from, a spec page as Specs (the list it is
+   * opened from). The root is the dashboard (spec 058, ISC-394): a workspace route without page data reads as it, never
+   * as Specs.
+   */
   protected readonly currentPage = computed(() => {
-    const id = this.state.specId() === null ? this.state.route().wsPage : null;
+    if (this.state.specId() !== null) return 'specs';
+    const id = this.state.route().wsPage;
     // Spec 026: the Features and Milestones routes left the menu; until T30 redirects them they read as Planning.
-    return id === 'idea' ? 'board' : id === 'features' || id === 'milestones' ? 'planning' : (id ?? 'specs');
+    return id === 'idea' ? 'board' : id === 'features' || id === 'milestones' ? 'planning' : (id ?? 'dashboard');
   });
 
   /** The page menu has been opened once: only then does it read the catalog for Library's line. */
@@ -151,8 +156,7 @@ export class AreaMenu {
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
   private readonly summaryParams = computed<Record<Exclude<WorkspaceMenuPageId, 'milestones'>, SummaryParams>>(() => ({
-    // Spec 058 (ISC-394): the workspace dashboard's line comes from the dashboard model (T22); none until then.
-    dashboard: null,
+    dashboard: this.dashboardSummary(),
     specs:
       this.data.dashboard.value()?.kind === 'ok'
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
@@ -231,6 +235,18 @@ export class AreaMenu {
   /** `/w/:ws` or `/w/:ws/<page>`; rendered only at workspace scope, where the workspace is set. */
   protected pageLink(page: WorkspaceMenuPageId): string[] {
     return workspaceLink(this.state.ws() ?? '', page);
+  }
+
+  /**
+   * Dashboard (spec 058, ISC-394): what waits on you (`guidance.waits`, none when the model carries no guidance) and the
+   * warnings KPI the dashboard's Warnings block counts; null until the dashboard answered with its KPI block.
+   */
+  private dashboardSummary(): SummaryParams {
+    const result = this.data.dashboard.value();
+    if (result?.kind !== 'ok') return null;
+    const { kpis, guidance } = result.body as { kpis?: { warnings?: unknown }; guidance?: { waits?: unknown } };
+    if (typeof kpis?.warnings !== 'number') return null;
+    return { waits: Array.isArray(guidance?.waits) ? guidance.waits.length : 0, warnings: kpis.warnings };
   }
 
   /**

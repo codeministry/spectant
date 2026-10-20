@@ -20,7 +20,9 @@ class Blank {}
 
 /** The shell's route shapes, reduced to the data `ShellState` reads (the real table loads every view). */
 const ROUTES: Routes = [
-  { path: 'w/:ws', component: Blank },
+  // Spec 058: the root carries its page, as the app's route does; the list lives on /specs.
+  { path: 'w/:ws', component: Blank, data: { page: 'dashboard' } },
+  { path: 'w/:ws/specs', component: Blank, data: { page: 'specs' } },
   { path: 'w/:ws/planning/tree', component: Blank, data: { page: 'planning', tab: 'tree' } },
   { path: 'w/:ws/planning/graph', component: Blank, data: { page: 'planning', tab: 'graph' } },
   { path: 'w/:ws/features', component: Blank, data: { page: 'features' } },
@@ -237,8 +239,9 @@ describe('AreaMenu', () => {
     it('marks the current page with aria-current and gives it focus on open', async () => {
       setUp(ok(WITH_MILESTONES));
       const cases: Array<[string, Array<string | null>]> = [
-        // Spec 058: the root still reads as Specs until the area menu's `currentPage` learns the dashboard (T22).
-        ['/w/harbor', [null, 'page', null, null, null]],
+        // Spec 058 (ISC-394): the root is the dashboard, the list its own page.
+        ['/w/harbor', ['page', null, null, null, null]],
+        ['/w/harbor/specs', [null, 'page', null, null, null]],
         ['/w/harbor/planning/tree', [null, null, null, 'page', null]],
         ['/w/harbor/planning/graph', [null, null, null, 'page', null]],
         ['/w/harbor/library', [null, null, null, null, 'page']],
@@ -263,14 +266,33 @@ describe('AreaMenu', () => {
     it('renders the summaries from the dashboard rows, the planning model and, once opened, the catalog', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor', 'wide', true));
-      // Spec 058: the dashboard's line comes from the dashboard model in T22; none until then.
+      // Spec 058 (ISC-394): the dashboard's line from the dashboard model (no guidance served: nothing waits).
       expect(entries.map(sub)).toEqual([
-        null,
+        '0 waiting on you · 2 warnings',
         '3 active · 1 archived',
         '0 stages · 0 cards · 0 wait on you',
         '2 milestones · 2 features',
         '52 documents · 3 outdated · 5 missing',
       ]);
+    });
+
+    it("counts the Dashboard line from the dashboard model: what waits on you and the warnings KPI, in both languages (spec 058, ISC-394)", async () => {
+      const waits = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+      setUp(ok(WITH_MILESTONES), { ...DASHBOARD, guidance: { waits, next: [] } });
+      expect(pages(await render('/w/harbor')).map(sub)[0]).toBe('3 waiting on you · 2 warnings');
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      const de = TestBed.inject(TranslocoService).translate('shell.pages.summary.dashboard', { waits: 3, warnings: 2 });
+      expect(pages(await render('/w/harbor')).map(sub)[0]).toBe(de);
+      expect(de).not.toBe('3 waiting on you · 2 warnings');
+    });
+
+    it('reads a spec page as Specs in the page menu, not as the dashboard (spec 058, ISC-394)', async () => {
+      setUp(ok(WITH_MILESTONES));
+      await TestBed.inject(Router).navigateByUrl('/w/harbor/s/004');
+      const fixture = TestBed.createComponent(AreaMenu);
+      fixture.componentRef.setInput('scope', 'page');
+      await fixture.whenStable();
+      expect(attr(pages(fixture.nativeElement as HTMLElement), 'aria-current')).toEqual([null, 'page', null, null, null]);
     });
 
     it('counts the Library line from the catalog in German too (spec 017 T41, ISC-157.1)', async () => {
@@ -342,7 +364,10 @@ describe('AreaMenu', () => {
       TestBed.overrideProvider(ApiClient, {
         useValue: { ...fakeApi(ok(WITH_MILESTONES), DASHBOARD), dashboard: () => Promise.resolve({ kind: 'unavailable' }) },
       });
-      expect(pages(await render('/w/harbor')).map(sub)[2]).toBeNull();
+      const entries = pages(await render('/w/harbor'));
+      expect(entries.map(sub)[2]).toBeNull();
+      // Spec 058 (ISC-394): nor does the Dashboard line stand before its model answered.
+      expect(entries.map(sub)[0]).toBeNull();
     });
 
     it('counts an undated milestone in the Planning line (spec 026)', async () => {
@@ -361,7 +386,7 @@ describe('AreaMenu', () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
       expect(attr(entries, 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
-      expect(entries.map(sub)).toEqual([null, '3 active · 1 archived', null, null, 'Every document, artifact and prototype']);
+      expect(entries.map(sub)).toEqual(['0 waiting on you · 2 warnings', '3 active · 1 archived', null, null, 'Every document, artifact and prototype']);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 

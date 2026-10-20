@@ -102,6 +102,35 @@ describe('spec 008 palette entries (T117, ISC-124.2)', () => {
   });
 });
 
+// 058 T23 · ISC-394: the Pages group leads with the workspace's Dashboard, then its Specs list, each line naming the
+// workspace so the dashboard is never taken for the spec area "Dashboard".
+describe('spec 058 Pages group (T23, ISC-394)', () => {
+  // The app's `/w/:ws/specs` route is another task's (spec 058 routing); every workspace page lists the same two entries.
+  it.each(['/w/harbor', '/w/harbor/library'])('lists Dashboard before Specs on %s, leading to /w/<ws> and /w/<ws>/specs', async (url) => {
+    const sources = await open(url);
+    const group = byId(sources, 'pages');
+    const entries = group.entries();
+    expect(entries.map((entry) => entry.id)).toEqual(['page/harbor/dashboard', 'page/harbor/specs']);
+    expect(entries.map((entry) => entry.label)).toEqual(['Dashboard', 'Specs']);
+    expect(entries.map((entry) => entry.link)).toEqual([['/w', 'harbor'], ['/w', 'harbor', 'specs']]);
+    expect(entries.map((entry) => entry.meta)).toEqual(['harbor', 'harbor']);
+    expect(entries.some((entry) => 'run' in entry)).toBe(false);
+    // Before the workspaces and specs, under a catalogued heading.
+    expect(group.order).toBeLessThan(byId(sources, 'workspaces').order);
+    expect(group.labelKey).toBe('shell.area.pageMenu');
+  });
+
+  it('has no Pages entries outside a workspace', async () => {
+    expect(byId(await open('/'), 'pages').entries()).toEqual([]);
+  });
+
+  it('finds the dashboard by "dashboard" and by the workspace name', async () => {
+    const group = byId(await open('/w/harbor'), 'pages');
+    expect(rankEntries(group.entries(), 'dashboard')[0]?.entry.id).toBe('page/harbor/dashboard');
+    expect(group.entries().every((entry) => entry.keywords.includes('harbor'))).toBe(true);
+  });
+});
+
 // 017 T43 · ISC-157.1: spec 023's Tech group went into the Library; the palette lists Library and no Tech entry.
 describe('spec 017 palette entries (T43, ISC-157.1)', () => {
   for (const url of ['/', '/w/harbor']) {

@@ -3,7 +3,9 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { type ActivatedRouteSnapshot, NavigationStart, provideRouter, Router } from '@angular/router';
 import { routes, TECH_REDIRECTS } from './app.routes';
+import { DashboardPage } from './features/dashboard/dashboard-page';
 import { LibraryPage } from './features/library/library-page';
+import { SpecsPage } from './features/specs-page/specs-page';
 import { NotFound } from './layout/not-found/not-found';
 import { ShellState } from './layout/shell/shell-state.service';
 
@@ -81,5 +83,30 @@ describe('the former tech routes redirect to the Library (spec 017, T42, ISC-157
   it('keeps the spec status tab a spec tab', async () => {
     const { route } = await at('/w/harbor/s/002/status');
     expect(route.tab).toBe('status');
+  });
+});
+
+describe('the workspace dashboard and the Specs page are two routes (spec 058, T3, T7)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const children = routes.find((route) => route.path === '')?.children ?? [];
+  const child = (path: string) => children.find((route) => route.path === path);
+
+  it('marks /w/:ws as the dashboard page (ISC-390)', async () => {
+    expect(child('w/:ws')?.data).toEqual({ page: 'dashboard' });
+    const { component } = await at('/w/harbor');
+    expect(component).toBe(DashboardPage);
+  });
+
+  it('routes /w/:ws/specs to the lazy Specs page, before the catch-all (ISC-391)', async () => {
+    const specs = child('w/:ws/specs');
+    expect(specs?.data).toEqual({ page: 'specs' });
+    expect(specs?.loadComponent).toBeTypeOf('function');
+    expect(specs === undefined ? -1 : children.indexOf(specs)).toBeLessThan(children.findIndex((route) => route.path === '**'));
+    const { url, route, component } = await at('/w/harbor/specs?phase=building');
+    expect(url).toBe('/w/harbor/specs?phase=building');
+    expect(component).toBe(SpecsPage);
+    expect(route.ws).toBe('harbor');
+    expect(route.notFound).toBe(false);
   });
 });

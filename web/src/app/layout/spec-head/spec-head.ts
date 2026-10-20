@@ -472,7 +472,7 @@ export class SpecHead {
   });
   /** The workspace badge's monogram, drawn as generated content so the crumb's text stays the workspace name. */
   protected readonly workspaceMono = computed(() => monogram(this.workspaceName()));
-  protected readonly workspaceLink = computed(() => workspaceLink(this.state.ws() ?? '', 'specs'));
+  protected readonly workspaceLink = computed(() => workspaceLink(this.state.ws() ?? '', 'dashboard'));
   protected readonly specHome = computed(() => specLink(this.state.ws() ?? '', this.id()));
 
   // ─── Breadcrumb and planning chips ──────────────────────────────────────────────────────────────────────────
