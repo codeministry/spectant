@@ -80,6 +80,9 @@ beforeEach(() => {
           workspaceUnavailable: () => false,
           workspaceList: () => [],
           dashboard: { value: () => ({ kind: 'ok', body: body() }) },
+          // The spec list's stars (spec 052, T18) ask for the favourites; none here.
+          isFavorite: () => false,
+          toggleFavorite: () => Promise.resolve(false),
         },
       },
       { provide: RefreshService, useValue: { changedKpis: signal(new Set()), changedRows: signal(new Set()) } },

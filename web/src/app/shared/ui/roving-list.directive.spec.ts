@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { type RovingActive, UiRovingItem, UiRovingList } from './roving-list.directive';
+import { type RovingActive, UiRovingCompanion, UiRovingItem, UiRovingList } from './roving-list.directive';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -135,5 +135,117 @@ describe('UiRovingList', () => {
     await fixture.whenStable();
     expect(active()).toBe('a');
     expect(tabIndexes()).toEqual([-1, 0]);
+  });
+
+  it('leaves → and ← alone when the list has no companions, as before spec 052', async () => {
+    const right = await press('ArrowRight');
+    const left = await press('ArrowLeft');
+    expect(right.defaultPrevented).toBe(false);
+    expect(left.defaultPrevented).toBe(false);
+    expect(active()).toBe('a');
+  });
+});
+
+/** Spec 052 T15: each row is a link (the roving item) and a star beside it (its companion), as in the spec select. */
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [UiRovingList, UiRovingItem, UiRovingCompanion],
+  template: `
+    <ul uiRovingList (activeChange)="changes.push($event)">
+      @for (item of items(); track item) {
+        <li>
+          <a uiRovingItem #link="uiRovingItem" href="#{{ item }}">{{ item }}</a>
+          <button type="button" class="star" [uiRovingCompanion]="link">{{ item }}</button>
+        </li>
+      }
+    </ul>
+  `,
+})
+class CompanionHost {
+  readonly items = signal(['a', 'b', 'c', 'd']);
+  readonly changes: RovingActive[] = [];
+}
+
+describe('UiRovingCompanion', () => {
+  let fixture: ComponentFixture<CompanionHost>;
+  let host: HTMLElement;
+
+  const links = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>('[uiRovingItem]')];
+  const stars = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>('.star')];
+  const star = (name: string): HTMLElement => {
+    const found = stars().find((s) => s.textContent.trim() === name);
+    if (!found) throw new Error(`no star ${name}`);
+    return found;
+  };
+  /** Every element holding a tab stop, as `TAG:row`. */
+  const tabStops = (): string[] =>
+    [...links(), ...stars()].filter((e) => e.tabIndex === 0).map((e) => `${e.tagName}:${e.textContent.trim()}`);
+
+  async function press(key: string, target: HTMLElement): Promise<KeyboardEvent> {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    await fixture.whenStable();
+    return event;
+  }
+
+  beforeEach(async () => {
+    fixture = TestBed.createComponent(CompanionHost);
+    host = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+  });
+
+  it('mirrors its row item: one tab stop per active row, on the link and its star', async () => {
+    expect(stars().map((s) => s.tabIndex)).toEqual([0, -1, -1, -1]);
+    expect(tabStops()).toEqual(['A:a', 'BUTTON:a']);
+    await press('ArrowDown', links()[0]);
+    expect(stars().map((s) => s.tabIndex)).toEqual([-1, 0, -1, -1]);
+    expect(tabStops()).toEqual(['A:b', 'BUTTON:b']);
+  });
+
+  it('moves → from the item to its companion and ← back, without changing the active row', async () => {
+    await press('ArrowDown', links()[0]); // b
+    const right = await press('ArrowRight', links()[1]);
+    expect(right.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(star('b'));
+    const left = await press('ArrowLeft', star('b'));
+    expect(left.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(links()[1]);
+    expect(fixture.componentInstance.changes.map((c) => c.index)).toEqual([1]);
+  });
+
+  it('leaves → on a companion and ← on an item alone', async () => {
+    const right = await press('ArrowRight', star('a'));
+    const left = await press('ArrowLeft', links()[0]);
+    expect(right.defaultPrevented).toBe(false);
+    expect(left.defaultPrevented).toBe(false);
+  });
+
+  it('makes a focused companion its row the active one, and ↓ from it moves to the next item', async () => {
+    star('c').focus();
+    await fixture.whenStable();
+    expect(tabStops()).toEqual(['A:c', 'BUTTON:c']);
+    expect(fixture.componentInstance.changes.at(-1)).toEqual({ index: 2, element: links()[2] });
+
+    await press('ArrowDown', star('c'));
+    expect(document.activeElement).toBe(links()[3]);
+    expect(tabStops()).toEqual(['A:d', 'BUTTON:d']);
+  });
+
+  it('keeps the position when the row of the focused companion goes away, clamped to the new end', async () => {
+    star('b').focus();
+    await fixture.whenStable();
+    fixture.componentInstance.items.set(['a', 'c', 'd']);
+    await fixture.whenStable();
+    expect(tabStops()).toEqual(['A:c', 'BUTTON:c']);
+
+    star('d').focus();
+    await fixture.whenStable();
+    fixture.componentInstance.items.set(['a', 'c']);
+    await fixture.whenStable();
+    expect(tabStops()).toEqual(['A:c', 'BUTTON:c']);
+
+    fixture.componentInstance.items.set([]);
+    await fixture.whenStable();
+    expect(tabStops()).toEqual([]);
   });
 });

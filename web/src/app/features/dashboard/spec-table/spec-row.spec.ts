@@ -1,7 +1,9 @@
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import { SpecRow } from './spec-row';
 import { archivedTableRow, type SpecTableRow } from './spec-table-model';
 
@@ -118,5 +120,49 @@ describe('SpecRow archive branch (spec 050, T2, ISC-287)', () => {
     expect(host.getAttribute('data-mark')).toBe('next');
     expect(host.hasAttribute('data-archived')).toBe(false);
     expect(host.querySelector('.frac')?.textContent.trim()).toBe('25/30');
+  });
+});
+
+/** The list's projection as spec-table writes it: the row link, then the star as its own button (spec 052 T17). */
+@Component({
+  imports: [SpecRow, UiStarToggle],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <app-spec-row [row]="row()" [stageLabels]="labels">
+      <a class="row-link" href="#">{{ row().title }}</a>
+      <button ui-star-toggle [label]="'Favorite: ' + row().id + ' ' + row().title"></button>
+    </app-spec-row>
+  `,
+})
+class ProjectingHost {
+  readonly row = signal<SpecTableRow>(ACTIVE);
+  readonly labels = LABELS;
+}
+
+async function renderProjected(row: SpecTableRow) {
+  TestBed.inject(TranslocoService).setActiveLang('en');
+  const fixture = TestBed.createComponent(ProjectingHost);
+  fixture.componentInstance.row.set(row);
+  await fixture.whenStable();
+  return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('app-spec-row') as HTMLElement;
+}
+
+describe('SpecRow star slot (spec 052, T17, ISC-300)', () => {
+  it('projects the star button into its own cell, a sibling of the row link and never inside it', async () => {
+    const host = await renderProjected(ACTIVE);
+    const star = host.querySelector<HTMLElement>('button[ui-star-toggle]');
+    expect(star).not.toBeNull();
+    expect(star?.closest('a')).toBeNull();
+    expect(star?.parentElement?.classList.contains('rstar')).toBe(true);
+    expect(host.querySelector('.tline button[ui-star-toggle]')).toBeNull();
+    expect(host.querySelector('.tline > a.row-link')).not.toBeNull();
+    expect(star?.getAttribute('aria-label')).toBe('Favorite: 002 Dashboard');
+  });
+
+  it('an archived row shows no star, but keeps its empty cell so the columns line up', async () => {
+    const host = await renderProjected(ARCHIVED);
+    expect(host.querySelector('button[ui-star-toggle]')).toBeNull();
+    expect(host.querySelector('.rstar')).not.toBeNull();
+    expect(host.querySelector('.tline > a.row-link')).not.toBeNull();
   });
 });

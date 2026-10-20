@@ -4,8 +4,10 @@
  * `bun run e2e -- shell` (`-g header` for the claim's probe). Against the stub API: a known spec renders its tab's view and
  * an unknown one the not-found page, decided from the dashboard.
  */
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
+import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { atWidth, expect, menusReady, test } from './fixtures';
+import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
 // spec 024: PAGE select (principal 2026-10-13); spec 048 (ISC-280): Workspace · Page · Area · Spec, the Area select only on a spec route
@@ -23,6 +25,17 @@ const OVERFLOW = new Set<string>(['area', 'zen', 'settings']);
 const reveal = async (page: Page, width: number, name: string): Promise<void> => {
   if (width < 1120 && OVERFLOW.has(name)) await page.locator('header [data-tool="more"]').click();
 };
+/**
+ * Spec 052 (T19): the header spec select lists only the workspace's favourites, so a test that picks from it stars
+ * `folders` on harbor in its own stub session first; `RESET_PATH` under the same session drops them again.
+ */
+async function starOnHarbor(page: Page, request: APIRequestContext, session: string, folders: readonly string[]): Promise<void> {
+  await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
+  await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+  for (const folder of folders) {
+    expect((await request.put(workspaceRoutes.favorite('harbor', folder), { headers: { [SESSION_HEADER]: session } })).ok()).toBe(true);
+  }
+}
 const TIERS = [
   // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
   { width: 390, tier: 'compact', tabBar: 'main' },
@@ -123,7 +136,9 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page.locator('header')).toHaveCount(1);
     });
 
-    test('header pickers open real lists: choose a workspace, then a spec (T36)', async ({ page }) => {
+    test('header pickers open real lists: choose a workspace, then a spec (T36)', async ({ page, request }, info) => {
+      const session = `shell-pickers-${info.testId}`;
+      await starOnHarbor(page, request, session, ['002-web-console', '003-config-loader']);
       const control = (name: string) => page.locator(`header [data-control="${name}"]`);
       await page.goto('/w/harbor/s/002');
       await menusReady(page);
@@ -154,6 +169,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await other.click();
       await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${otherId ?? ''}$`));
       await expect(specs).toBeHidden();
+      await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
     });
 
     test('a modified click on a picker leaves the picker shut and keeps the href (T36)', async ({ page }) => {

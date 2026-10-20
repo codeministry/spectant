@@ -1,0 +1,80 @@
+/*
+ * Spec 052 T14: the favorite toggle (design.md § Across viewports). A quiet icon box like `ui-icon-button size="sm"`
+ * (button.css): no chrome, radius 6, an 8 % tint of the text colour on hover. Its own stylesheet keeps the three
+ * consumers' sheets under the 8 kB component budget.
+ */
+:host {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  inline-size: 32px;
+  block-size: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--muted-ink);
+  cursor: pointer;
+
+  /* Colour only, at the instant token: the state changes at once, nothing moves. */
+  transition-property: color, background-color;
+  transition-duration: var(--motion-duration-instant);
+  transition-timing-function: var(--motion-ease-standard);
+}
+
+/* The compact spec head: 28 px, level with the gate icon beside it. */
+:host([data-size="head"]) {
+  inline-size: 28px;
+  block-size: 28px;
+}
+
+/*
+ * On: outline and fill in the concern ink. The shape carries the state, the gold only adds to it. `ui-icon` draws
+ * with `fill="none"`, so the fill is set on its svg here; the svg lives in `ui-icon`'s view, hence `::ng-deep` under
+ * this host.
+ */
+:host([aria-pressed="true"]) {
+  color: var(--conc-ink);
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host([aria-pressed="true"]) ::ng-deep svg {
+  fill: currentcolor;
+}
+
+@media (hover: hover) {
+  :host(:hover) {
+    background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+  }
+
+  :host([aria-pressed="false"]:hover) {
+    color: var(--color-base-content);
+  }
+}
+
+@media (forced-colors: active) {
+  :host,
+  :host([aria-pressed="true"]) {
+    color: ButtonText;
+  }
+}
+
+/*
+ * WCAG 2.5.8, as button.css: under a coarse pointer an invisible `::before` grows the hit area to at least 44 × 44
+ * around the visual box, which stays 28 / 32 px. Fine pointers keep the visual box as the target.
+ */
+@media (pointer: coarse) {
+  :host {
+    position: relative;
+  }
+
+  :host::before {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    inline-size: max(100%, 44px);
+    block-size: max(100%, 44px);
+  }
+}

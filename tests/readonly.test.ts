@@ -514,6 +514,57 @@ describe("ISC-132: the board's reads, the database routes and a refused drop lea
   });
 });
 
+// The favourites (spec 052 T7, ISC-297) under the same guard, through the served app on its own copy, `.git/`
+// included: the list read, revalidated and HEAD, a favourite set (twice, the second a no-op), listed, unset (twice)
+// and the refusals (a malformed spec id, an unknown workspace, a method the route does not take). Both routes touch
+// only the `spec_favorite` table in the app database, so the copy stays byte-identical, every mtime and `.git/index`
+// kept.
+describe("ISC-297: setting and unsetting a favorite leaves the repository byte-identical", () => {
+  test("readonly: favorite GET, HEAD, PUT and DELETE change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "favorite-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+
+    const app = await serve(copy, "favorite");
+    try {
+      const list = `${app.url}${workspaceRoutes.favorites(SLUG)}`;
+      const one = `${app.url}${workspaceRoutes.favorite(SLUG, MARKED_SPEC)}`;
+
+      // The list: empty, revalidated to a 304 and HEAD.
+      const first = await fetch(list);
+      expect(await first.json()).toEqual({ specs: [] });
+      expect((await fetch(list, { headers: { "If-None-Match": first.headers.get("etag") ?? "" } })).status).toBe(304);
+      expect((await fetch(list, { method: "HEAD" })).status).toBe(200);
+
+      // Set it twice (one row), list it, unset it twice (the second removes nothing).
+      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [MARKED_SPEC] });
+      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [MARKED_SPEC] });
+      expect(await (await fetch(list)).json()).toEqual({ specs: [MARKED_SPEC] });
+      expect((await fetch(list, { method: "HEAD" })).status).toBe(200);
+      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [] });
+      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [] });
+      expect(await (await fetch(list)).json()).toEqual({ specs: [] });
+
+      // The refusals: a malformed spec id, an unknown workspace, a method neither route takes.
+      expect((await fetch(`${app.url}${workspaceRoutes.favorite(SLUG, "retention")}`, { method: "PUT" })).status).toBe(400);
+      expect((await fetch(`${app.url}${workspaceRoutes.favorite("nowhere", MARKED_SPEC)}`, { method: "PUT" })).status).toBe(404);
+      expect((await fetch(`${app.url}${workspaceRoutes.favorite("nowhere", MARKED_SPEC)}`, { method: "DELETE" })).status).toBe(404);
+      expect((await fetch(`${app.url}${workspaceRoutes.favorites("nowhere")}`)).status).toBe(404);
+      expect((await fetch(one, { method: "POST" })).status).toBe(405);
+      expect((await fetch(list, { method: "PUT" })).status).toBe(405);
+    } finally {
+      await app.stop();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+  });
+});
+
 // The unified planning page (spec 026 T36, ISC-173) under the same guard, through the served app on its own copy,
 // `.git/` included: the planning route with its relation index (`relations`, the milestones' `featureIds`,
 // `unassignedFeatures`) read, revalidated and HEAD; every other read the three lenses, the redirects and the detail

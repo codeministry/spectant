@@ -43,6 +43,10 @@ const AGENT_KEY = 'specs.agentWorking';
  * archive chip (icon `archive`, the word, a dashed border) where the phase chip stands, from 640 px behind the archive
  * date as `<time datetime>`; no priority, stage track, agent dot, waits chip, Next mark or ring. Its meter reads the
  * live claims. The list sets `archivedFirst` on the first archived row, whose top hairline is then dashed.
+ *
+ * Spec 052 (T17, ISC-300): a second slot takes the list's favorite star (`button[ui-star-toggle]`), a sibling of the
+ * row link in its own cell above the link's stretch: from 640 px an end column of 32 px, below it line 2 under the
+ * type glyph. The row only places it; the state and the click belong to the list. An archived row projects none.
  */
 @Component({
   selector: 'app-spec-row',

@@ -640,6 +640,8 @@
       "menu": "Specs",
       "none": "Open a workspace to pick a spec",
       "head": "Specs · {{workspace}}",
+      "headFavorites": "Favorites · {{workspace}}",
+      "favoritesEmpty": "No favorites yet. Star a spec on its page or in the spec list to see it here.",
       "overview": "Spec overview"
     },
     "area": {
@@ -2793,5 +2795,13 @@
       "answerIn": "Answer in the session {{session}}",
       "announce": "New question from {{task}}: {{text}}"
     }
+  },
+  "favorites": {
+    "toggle": "Favorite: {{id}} {{title}}",
+    "add": "Add to favorites",
+    "remove": "Remove from favorites",
+    "added": "{{id}} added to favorites",
+    "removed": "{{id}} removed from favorites",
+    "failed": "Could not save the favorite."
   }
 }

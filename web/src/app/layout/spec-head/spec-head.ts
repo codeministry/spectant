@@ -17,6 +17,7 @@ import { UiDisclosure } from '../../shared/ui/overlay/disclosure';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiPriority } from '../../shared/ui/priority/priority';
+import { UiStarToggle } from '../../shared/ui/star-toggle/star-toggle';
 import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
 import type { Tone } from '../../shared/ui/tone';
 import { TYPE_GLYPHS } from '../../shared/ui/type-glyph/type-glyph';
@@ -108,6 +109,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
     UiPopover,
     UiPopoverTrigger,
     UiPriority,
+    UiStarToggle,
     UiWaitsChip,
     UiWorktreeChip,
   ],
@@ -222,6 +224,16 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
           }
         </h1>
         <div class="actions" data-head-actions>
+          <!-- Spec 052 T16 (ISC-300): the favourite star first, on every tier, never folded into the details. -->
+          @if (favoriteSlug(); as slug) {
+            <button
+              ui-star-toggle
+              [size]="compact() ? 'head' : 'sm'"
+              [pressed]="data.isFavorite(slug)"
+              [label]="'favorites.toggle' | transloco: { id: id(), title: title() ?? '' }"
+              (toggled)="data.toggleFavorite(slug)"
+            ></button>
+          }
           @if (!compact()) {
             <ng-container [ngTemplateOutlet]="commandTpl" />
           }
@@ -387,7 +399,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
 })
 export class SpecHead {
   protected readonly state = inject(ShellState);
-  private readonly data = inject(ShellData);
+  protected readonly data = inject(ShellData);
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -492,6 +504,14 @@ export class SpecHead {
     const id = this.id();
     return this.data.archiveRows().some((row) => row.id === id) || (this.holder()?.archived ?? false);
   });
+  /**
+   * Spec 052 T16 (ISC-300): the folder (`NNN-slug`) the head's star stars, the key favourites are stored under: the
+   * model's, else the dashboard row's, else the planning holder's. Null for an archived spec, which carries no star
+   * (as its dashboard row), and while no source names the folder.
+   */
+  protected readonly favoriteSlug = computed(() =>
+    this.archived() ? null : (this.body()?.head.slug ?? this.row()?.slug ?? this.holder()?.slug ?? null),
+  );
   protected readonly specArchivedName = computed(() => {
     // `translate` reads no signal: the language is read here so the name follows a language switch.
     const lang = this.lang();

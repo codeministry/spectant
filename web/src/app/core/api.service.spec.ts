@@ -521,3 +521,84 @@ describe('ApiClient.prime (spec 030, T11, ISC-28)', () => {
     expect(http.expectOne('/api/workspaces/quay/dashboard').request.headers.has('If-None-Match')).toBe(false);
   });
 });
+
+// Spec 052, T9 · ISC-300: the favourites of a workspace. Every answer is the whole set (`{specs}`), validated with the
+// contract's `isFavorites`; the writes are a `PUT` and a `DELETE` on the one spec, without a body.
+describe('ApiClient favourites (spec 052, T9, ISC-300)', () => {
+  let api: ApiClient;
+  let http: HttpTestingController;
+  const URL = '/api/workspaces/harbor/favorites';
+  const ONE = `${URL}/004-retention-policies`;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    api = TestBed.inject(ApiClient);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('GETs the set of the workspace with its ETag, and answers a 304 from the cache', async () => {
+    const first = api.favorites('harbor');
+    const request = http.expectOne(URL);
+    expect(request.request.method).toBe('GET');
+    request.flush({ specs: ['004-retention-policies'] }, { headers: { ETag: '"f1"' } });
+    expect(await first).toEqual({ kind: 'ok', body: { specs: ['004-retention-policies'] }, etag: '"f1"', notModified: false });
+
+    const again = api.favorites('harbor');
+    const conditional = http.expectOne(URL);
+    expect(conditional.request.headers.get('If-None-Match')).toBe('"f1"');
+    conditional.flush(null, { status: 304, statusText: 'Not Modified' });
+    expect(await again).toEqual({ kind: 'ok', body: { specs: ['004-retention-policies'] }, etag: '"f1"', notModified: true });
+  });
+
+  it('answers a 404 as not-found and a body the contract does not fit as an error', async () => {
+    const missing = api.favorites('nowhere');
+    http.expectOne('/api/workspaces/nowhere/favorites').flush({ error: 'not-found' }, { status: 404, statusText: 'Not Found' });
+    expect(await missing).toEqual({ kind: 'not-found', served: true });
+
+    const unfit = api.favorites('harbor');
+    http.expectOne(URL).flush({ specs: ['004'] });
+    expect(await unfit).toEqual({ kind: 'error', status: 200 });
+  });
+
+  it('PUTs one spec without a body and answers the whole set as stored', async () => {
+    const saved = api.putFavorite('harbor', '004-retention-policies');
+    const request = http.expectOne(ONE);
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toBeNull();
+    request.flush({ specs: ['002-web-console', '004-retention-policies'] });
+    expect(await saved).toEqual({ kind: 'ok', body: { specs: ['002-web-console', '004-retention-policies'] } });
+  });
+
+  it('DELETEs one spec and answers the whole set as stored', async () => {
+    const removed = api.deleteFavorite('harbor', '004-retention-policies');
+    const request = http.expectOne(ONE);
+    expect(request.request.method).toBe('DELETE');
+    request.flush({ specs: [] });
+    expect(await removed).toEqual({ kind: 'ok', body: { specs: [] } });
+  });
+
+  it('answers a 400 invalid-spec, a 500, an unfit 200 and no answer as errors', async () => {
+    const invalid = api.putFavorite('harbor', 'nope');
+    http.expectOne(`${URL}/nope`).flush({ error: 'invalid-spec' }, { status: 400, statusText: 'Bad Request' });
+    expect(await invalid).toEqual({ kind: 'error', status: 400, error: 'invalid-spec' });
+
+    const broken = api.deleteFavorite('harbor', '004-retention-policies');
+    http.expectOne(ONE).flush('boom', { status: 500, statusText: 'Server Error' });
+    expect(await broken).toEqual({ kind: 'error', status: 500, error: null });
+
+    const unfit = api.putFavorite('harbor', '004-retention-policies');
+    http.expectOne(ONE).flush({ specs: ['004-retention-policies'], extra: 1 });
+    expect(await unfit).toEqual({ kind: 'error', status: 200, error: null });
+
+    const offline = api.deleteFavorite('harbor', '004-retention-policies');
+    http.expectOne(ONE).error(new ProgressEvent('error'));
+    expect(await offline).toEqual({ kind: 'error', status: 0, error: null });
+  });
+
+  it('encodes the workspace and the spec through the contract builder', () => {
+    void api.putFavorite('my ws', '004-retention-policies');
+    http.expectOne('/api/workspaces/my%20ws/favorites/004-retention-policies').flush({ specs: [] });
+  });
+});

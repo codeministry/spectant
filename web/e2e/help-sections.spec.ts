@@ -56,6 +56,8 @@ const COMMANDS = [
   '/spec review NNN code',
   '/spec done NNN',
   '/spec done NNN archive',
+  // Spec 043: the claimless row's `/spec new NNN`, after the lifecycle's own steps (as the unit spec lists it).
+  '/spec new NNN',
   '/spec NNN',
 ];
 // Every command the stage table names stands in the list.

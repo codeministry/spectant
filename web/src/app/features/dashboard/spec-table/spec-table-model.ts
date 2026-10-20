@@ -11,6 +11,11 @@ import type { Tone } from '../../../shared/ui/tone';
 /** One active spec as the panel renders it: the fields of `DashboardSpecRow` the row shows. */
 export interface SpecTableRow {
   readonly id: string;
+  /**
+   * The folder name (`NNN-slug`), the key a favourite is stored under (spec 052, T18, ISC-300). Optional so hand-built
+   * rows in specs need not name it, as `SpecRowView.slug`.
+   */
+  readonly slug?: string;
   readonly title: string;
   readonly type: string | null;
   /** Frontmatter `priority:` as core reads it (`P3` when absent or invalid); null only when the row carries none. */
@@ -157,9 +162,11 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
     const goal = text(row['goal'])?.trim() ?? '';
     const holder = Array.isArray(row['taken']) ? row['taken'].find(isLoose) : undefined;
     const title = text(row['title']) ?? id;
+    const slug = text(row['slug']);
     return [
       {
         id,
+        ...(slug !== null ? { slug } : {}),
         title,
         type: text(row['type']),
         priority: priorityOf(row['priority']),

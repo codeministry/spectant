@@ -132,6 +132,7 @@
           >
             <a
               uiRovingItem
+              #link="uiRovingItem"
               class="row-link"
               [id]="'rl-' + row.id"
               [routerLink]="row.id === preview() ? ['/w', ws(), 's', row.id] : []"
@@ -153,6 +154,19 @@
               (pointerenter)="clearDot(row.id)"
               (focusin)="clearDot(row.id)"
             ></a>
+            <!-- Spec 052 (T18, ISC-300): the favorite star, projected into the row's own cell beside the link. It is
+                 declared here, in the template under `uiRovingList`, so the list's content query sees it as the link's
+                 companion: one tab stop per row, → and ← between the two. An archived row gets none, and the guard
+                 sits here too, so no detached star of an archived row joins the list's companions. -->
+            @if (!row.archived) {
+              <button
+                ui-star-toggle
+                [uiRovingCompanion]="link"
+                [pressed]="isFavorite(row)"
+                [label]="'favorites.toggle' | transloco: { id: row.id, title: row.title }"
+                (toggled)="toggleFavorite(row)"
+              ></button>
+            }
           </app-spec-row>
           <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). -->
           @if (overflowing().has(row.id)) {

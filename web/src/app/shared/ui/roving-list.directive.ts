@@ -24,12 +24,31 @@ const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable=
  */
 @Directive({
   selector: '[uiRovingItem]',
+  exportAs: 'uiRovingItem',
   host: { '[tabIndex]': 'tabIndex()', '(focus)': 'list.activate(this)' },
 })
 export class UiRovingItem {
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   protected readonly list = inject(UiRovingList);
   protected readonly tabIndex = computed(() => (this.list.activeItem() === this ? 0 : -1));
+}
+
+/**
+ * A focusable control beside a roving item in the same row, never inside it: the star next to a spec link (spec 052
+ * T15, design.md § Tab-Stopp-Disziplin). It names its item through a template reference,
+ * `<a uiRovingItem #link="uiRovingItem">` and `<button [uiRovingCompanion]="link">`, and mirrors that item's roving
+ * `tabindex`, so a list keeps one tab stop per active row instead of one per control; focusing it makes its row's item
+ * the active one. → on the item moves to the companion, ← on the companion back (the list handles both keys).
+ */
+@Directive({
+  selector: '[uiRovingCompanion]',
+  host: { '[tabIndex]': 'tabIndex()', '(focus)': 'list.activate(item())' },
+})
+export class UiRovingCompanion {
+  readonly item = input.required<UiRovingItem>({ alias: 'uiRovingCompanion' });
+  readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  protected readonly list = inject(UiRovingList);
+  protected readonly tabIndex = computed(() => (this.list.activeItem() === this.item() ? 0 : -1));
 }
 
 /**
@@ -41,6 +60,10 @@ export class UiRovingItem {
  * Items are found with a `contentChildren` signal query, so rows added or removed by `@for` are picked up without a
  * MutationObserver or a re-scan; the active item is tracked by identity, so it stays active when rows around it come
  * and go, and when it disappears itself the selection keeps its position, clamped to the new end.
+ *
+ * Rows with a `uiRovingCompanion` (spec 052 T15) also take → (item to companion) and ← (companion to item); a list
+ * without companions leaves both keys alone. ↑ / ↓ from a companion move between items as from its item, because
+ * focusing the companion made that row active; when that row goes away, the same clamp keeps the position.
  */
 @Directive({
   selector: '[uiRovingList]',
@@ -52,6 +75,7 @@ export class UiRovingList {
   readonly activeChange = output<RovingActive>();
 
   readonly items = contentChildren(UiRovingItem, { descendants: true });
+  private readonly companions = contentChildren(UiRovingCompanion, { descendants: true });
 
   private readonly activeIndex = linkedSignal<readonly UiRovingItem[], number>({
     source: this.items,
@@ -79,6 +103,13 @@ export class UiRovingList {
     const count = this.items().length;
     if (count === 0) return;
 
+    const across = this.across(event);
+    if (across) {
+      event.preventDefault();
+      across.focus();
+      return;
+    }
+
     const step = STEP[event.key];
     let next: number;
     if (step && (!step.singleKey || this.singleKeys())) {
@@ -95,5 +126,17 @@ export class UiRovingList {
     const item = this.items()[next];
     this.activate(item);
     item.element.focus();
+  }
+
+  /** Where → or ← leads within a row: from an item to its companion, from a companion to its item; else nothing. */
+  private across(event: KeyboardEvent): HTMLElement | undefined {
+    const companions = this.companions();
+    if (event.key === 'ArrowRight') {
+      return companions.find((c) => c.item().element === event.target)?.element;
+    }
+    if (event.key === 'ArrowLeft') {
+      return companions.find((c) => c.element === event.target)?.item().element;
+    }
+    return undefined;
   }
 }

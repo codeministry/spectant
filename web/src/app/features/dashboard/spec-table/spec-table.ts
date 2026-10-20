@@ -31,7 +31,9 @@ import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
-import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
+import { UiRovingCompanion, UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
+import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
+import { ShellData } from '../../../layout/shell/shell-data.service';
 import { toneMark } from '../../../shared/ui/tone';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
@@ -94,9 +96,11 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
     UiPopover,
     UiPopoverTrigger,
     GuidanceReasonPipe,
+    UiRovingCompanion,
     UiRovingItem,
     UiRovingList,
     UiSheet,
+    UiStarToggle,
     SpecRow,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -177,6 +181,21 @@ export class SpecTable {
 
   protected toggleMore(id: string): void {
     this.moreOpen.update((ids) => (ids.has(id) ? new Set([...ids].filter((other) => other !== id)) : new Set([...ids, id])));
+  }
+
+  /**
+   * The favourites of the open workspace (spec 052, T18, ISC-300): `ShellData` holds the one set the spec head, this
+   * list and the header's spec select read, so a click in one place shows in all three without a reload. A favourite
+   * is the spec's folder name; a row without one (a hand-built row) falls back to its id, which the set never holds.
+   */
+  private readonly shellData = inject(ShellData);
+
+  protected isFavorite(row: SpecTableRow): boolean {
+    return this.shellData.isFavorite(row.slug ?? row.id);
+  }
+
+  protected toggleFavorite(row: SpecTableRow): void {
+    void this.shellData.toggleFavorite(row.slug ?? row.id);
   }
 
   protected clearDot(id: string): void {

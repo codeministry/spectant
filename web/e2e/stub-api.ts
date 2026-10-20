@@ -55,7 +55,8 @@
  *   session's tree (the golden until a board write); `GET|HEAD …/ideas/:slug` the `IdeaPage` (the tree's `IdeaRef`,
  *   core's `renderDocsMarkdown` over the fixture's story file, its raw sha256); `GET|HEAD|PUT …/board-query` and
  *   `GET|HEAD|PUT /api/actors` in memory with the server's validation (`isBoardQuery`, `isActorMappings` plus persons
- *   only); `GET …/specs/:id` adds `X-Spectant-Spec-Hash`, the holder's hash. The two board writes answer by the request:
+ *   only), and so the favourites (spec 052 T8): `GET|HEAD …/favorites` and `PUT|DELETE …/favorites/:spec`, `{specs}`
+ *   sorted, empty per session until a PUT (`isFavoriteSpec` → 400 `invalid-spec`);`GET …/specs/:id` adds `X-Spectant-Spec-Hash`, the holder's hash. The two board writes answer by the request:
  *   `POST …/specs/:id/transition` 400 → 409 (hash not the holder's, or `stale`) → 423 (a lock of the fixture on the
  *   spec, or `locked`) → 422 (a move the workflow row does not list) → 200 (the holder moved); `POST …/ideas/:slug/
  *   allocate` 400 → 404 → 409 (hash not the story file's, or `stale`) → 423 (`locked` only) → 422 (`not-in-index`
@@ -206,12 +207,14 @@ import {
   isAllocateRequest,
   isBacklogRequest,
   isBoardQuery,
+  isFavoriteSpec,
   isTransitionRequest,
   runReleaseRequestFromHeader,
   type ActorMapping,
   type AllocateRefused,
   type BacklogRefused,
   type BoardQuery,
+  type Favorites,
   type IdeaAllocated,
   type IdeaPage,
   type TransitionRefused,
@@ -2497,6 +2500,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   };
   const actorLists = new Map<string, ActorMapping[]>();
   const boardQueries = new Map<string, Map<string, string>>();
+  /** Favourites (spec 052 T8) per session, then per workspace slug: the set of spec ids, empty until a PUT. */
+  const favoriteSets = new Map<string, Map<string, Set<string>>>();
 
   const notebooks = new Map<string, { notes: Note[]; writes: number }>();
   const notebookOf = (req: Request): { notes: Note[]; writes: number } => {
@@ -2786,6 +2791,33 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     own.set(ws, body.query);
     boardQueries.set(sessionOf(req), own);
     return workspaceJson(req, 200, { query: body.query } satisfies BoardQuery);
+  };
+
+  /**
+   * `GET|HEAD …/favorites` and `PUT|DELETE …/favorites/:spec` (`api.ts` `favorites`, `favorite`; spec 052 T8): per
+   * session and workspace, in memory, empty until a PUT. The server's order: 405 before the slug, 404 for a workspace
+   * the state does not list, then 400 `invalid-spec` for an id `isFavoriteSpec` refuses; whether the workspace has the
+   * spec is not checked. Every answer is the whole set, sorted as the table's `ORDER BY spec`; no 409, the database is
+   * not the workspace's files.
+   */
+  const favoritesRoute = (req: Request, state: StubState, ws: string, spec?: string): Response => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    const reads = req.method === 'GET' || req.method === 'HEAD';
+    const writes = req.method === 'PUT' || req.method === 'DELETE';
+    if (spec === undefined ? !reads : !writes) {
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace(spec === undefined ? 'favorites' : 'favorite') });
+    }
+    if (!(viewOf(req, state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
+    const own = favoriteSets.get(sessionOf(req)) ?? new Map<string, Set<string>>();
+    const set = own.get(ws) ?? new Set<string>();
+    if (spec !== undefined) {
+      if (!isFavoriteSpec(spec)) return workspaceJson(req, 400, { error: 'invalid-spec' });
+      if (req.method === 'PUT') set.add(spec);
+      else set.delete(spec);
+      own.set(ws, set);
+      favoriteSets.set(sessionOf(req), own);
+    }
+    return workspaceJson(req, 200, { specs: [...set].sort() } satisfies Favorites);
   };
 
   /** `GET|HEAD|PUT /api/actors` (`api.ts` `actorsApi`): the session's list ordered by id, replaced whole by a PUT of persons. */
@@ -3260,6 +3292,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       boards.delete(sessionOf(req));
       actorLists.delete(sessionOf(req));
       boardQueries.delete(sessionOf(req));
+      favoriteSets.delete(sessionOf(req));
       workflows.delete(sessionOf(req));
       backlogs.delete(sessionOf(req));
       releases.delete(sessionOf(req));
@@ -3338,6 +3371,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     if (family?.route === 'idea') return ideaRoute(req, requested, family);
     if (family?.route === 'boardQuery') return boardQueryRoute(req, requested, family.params.ws);
+    if (family?.route === 'favorites') return favoritesRoute(req, requested, family.params.ws);
+    if (family?.route === 'favorite') return favoritesRoute(req, requested, family.params.ws, family.params.spec);
     const write = req.headers.get(WRITE_HEADER) ?? 'ok';
     if (!isOneOf(WRITE_OUTCOMES, write)) {
       return settingsError(400, { error: 'unknown-stub-write', write, outcomes: [...WRITE_OUTCOMES] });
