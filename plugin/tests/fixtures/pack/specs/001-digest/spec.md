@@ -41,5 +41,11 @@ that fits on one screen and keeps every note title, `a | b` included.
 
 - 2026-03-03: The digest is Markdown, not HTML.
 - 2026-03-04: ISC-3 counts a repeated title as two notes; T3 keeps both lines.
+- 2026-03-04: ISC-3.1 splits off a title that repeats across two weeks.
+- 2026-03-04: ISC-30 is a later claim; ISC-1 and ISC-2 stay as written.
+- 2026-03-05: The digest renders as one page,
+  its title order kept line by line as
+  T3 writes it.
+- 2026-03-05: T30 and T3x are other tasks.
 
 ## Verification

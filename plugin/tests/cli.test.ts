@@ -175,9 +175,58 @@ describe('spec-check: the new-spec chain (ISC-41)', () => {
     writeFileSync(join(root, 'ISA.md'), read(root, 'ISA.md').replace('- [x] ISC-1', '- [ ] ISC-1')); // single-core: allow — the test reopens a claim to cause drift; it parses nothing
     const drift = run(root, 'drift', '--json');
     expect(drift.code).toBe(3);
-    const report = json(drift) as { drift: boolean; specs: Array<{ report: { state_mismatch: unknown[] } }> };
-    expect(report.drift).toBe(true);
-    expect(report.specs[0]?.report.state_mismatch).toHaveLength(1);
+    // Exit 3 under --json is the one error object; the report stands in its detail (ISC-335).
+    const answer = json(drift) as { error: string; command: string; detail: { drift: boolean; specs: Array<{ report: { state_mismatch: unknown[] } }> } };
+    expect(answer).toMatchObject({ error: 'drift', command: 'drift' });
+    expect(answer.detail.drift).toBe(true);
+    expect(answer.detail.specs[0]?.report.state_mismatch).toHaveLength(1);
+  });
+});
+
+describe('spec-check --json: compact errors', () => {
+  /** The fixed error codes `spec-check --help` names on its `Error codes` line. */
+  const helpCodes = (root: string): string[] => {
+    const line = run(root, '--help').out.split('\n').find((l) => l.startsWith('Error codes')) ?? '';
+    return line
+      .slice(line.indexOf(':') + 1)
+      .split(',')
+      .map((c) => c.trim().replace(/\.$/u, ''))
+      .filter((c) => c !== '');
+  };
+
+  test('compact: an unknown spec under --json is one error object on stdout and nothing on stderr', () => {
+    const root = repo();
+    const codes = helpCodes(root);
+    for (const args of [['frontier', '999'], ['pack', '999', 'T1'], ['tick', 'nope', 'T1']]) {
+      const r = run(root, ...args, '--json');
+      expect({ code: r.code, err: r.err }).toEqual({ code: 1, err: '' });
+      expect(r.out.trimEnd().split('\n')).toHaveLength(1);
+      const answer = JSON.parse(r.out) as Record<string, unknown>;
+      expect(Object.keys(answer)).toEqual(['error', 'command', 'detail']);
+      expect(answer).toMatchObject({ error: 'unknown-spec', command: args[0] });
+      expect(String(answer.detail)).toContain('no spec folder matches');
+      expect(codes).toContain(String(answer.error));
+    }
+  });
+
+  test('compact: without --json the unknown spec stays one line on stderr and stdout stays empty', () => {
+    const root = repo();
+    const r = run(root, 'frontier', '999');
+    expect(r.code).toBe(1);
+    expect(r.out).toBe('');
+    expect(r.err).toMatch(/^spec-check: frontier: no spec folder matches "999"/u);
+  });
+
+  test('compact: an unknown command and a bad option under --json answer with their own codes', () => {
+    const root = repo();
+    const unknown = run(root, 'nope', '--json');
+    expect({ code: unknown.code, err: unknown.err }).toEqual({ code: 1, err: '' });
+    expect(JSON.parse(unknown.out)).toEqual({ error: 'unknown-command', command: 'nope', detail: 'unknown command "nope"' });
+    const option = run(root, 'status', '--bogus', '--json');
+    expect({ code: option.code, err: option.err }).toEqual({ code: 1, err: '' });
+    expect(JSON.parse(option.out)).toEqual({ error: 'bad-args', command: 'status', detail: 'unknown option --bogus' });
+    const codes = helpCodes(root);
+    for (const code of ['unknown-command', 'bad-args', 'unknown-spec', 'drift', 'unknown-task']) expect(codes).toContain(code);
   });
 });
 

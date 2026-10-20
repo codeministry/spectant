@@ -1117,13 +1117,21 @@ tokenisation of our own. Every API request counts once, however many transcript 
   baseline lines are kept, even when their transcripts are gone, and a run over the same state adds none. The state
   is `measured_through`: when a kept line carries the same one, the kept line stays and the new one is dropped, even
   if their numbers differ, since a later run over the same newest turn can only have lost transcripts.
+- `plugin` in a baseline entry (spec 010, T13): an entry of a plugin-form command (`/spec`, `/spec <subcommand>`)
+  carries, after `mean`, the plugin versions of the invocations it measured, sorted and each once. A version is the
+  segment the `/spec` skill's base directory names in the plugin cache,
+  `…/plugins/cache/<marketplace>/<plugin>/<version>/skills/spec`; only that segment is kept, never the path. An
+  invocation whose window loads the skill from no plugin cache (a checkout, `--plugin-dir`) counts as `unknown`. An
+  entry of the old skill's `/spec-<name>` form carries no `plugin`, and a baseline line of an earlier run without the
+  field is kept as it is: reading it back and serialising it again gives the same bytes, and recomputing never adds
+  the field to it.
 - `invocation`: one `/spec` command up to the next slash command of any kind (`/clear`, `/model`, another `/spec…`)
   or the end of its session; prose prompts, task notifications, local-command output and tool results in between
   belong to it, and so do the sub-agents started from a tool call in that window. A slash command that is no `/spec`
   command ends the window and opens none. `id` is
   `a:claude:<session>#<n>`, `command` the command name only (its arguments are never stored; for the plugin's bare
-  `/spec` its subcommand word counts as part of the name, `/spec implement`), `spec` the slug the
-  number in its arguments names, or `null`; `ts` its first turn; `subagents` the sub-agent transcripts attributed to it.
+  `/spec` its subcommand word counts as part of the name, `/spec implement`, and the plugin-qualified call
+  `/<plugin>:spec implement` counts as `/spec implement` too), `spec` the slug the number in its arguments names, or `null`; `ts` its first turn; `subagents` the sub-agent transcripts attributed to it.
 - `spec`, `stage` and `round`: the sums per spec, per spec and stage (the stage the spec stood in at the turn), and per
   spec and implement round (`/spec implement` only).
 - `unassigned`: every request outside a `/spec` invocation, in exactly one line.
@@ -1165,6 +1173,16 @@ From `core/fixtures/harbor/specs/tokens.jsonl`:
 {"v":1,"kind":"round","spec":"002-web-console","round":1,"requests":4,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
 {"v":1,"kind":"round","spec":"002-web-console","round":2,"requests":2,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
 {"v":1,"kind":"unassigned","requests":2,"input":14,"output":220,"cache_read":18000,"cache_write":1800}
+```
+
+The baseline line of the plugin transcript fixture (spec 010, T13): two `/spec implement` invocations under two plugin
+versions, one `/spec plan` whose skill names no version and so counts as `unknown`, and one `/spec-review` of the old
+form without the field. `core/tests/tokens.test.ts` holds the measurement over that fixture to its golden.
+
+From `core/tests/fixtures/transcripts-plugin/tokens.golden.jsonl`:
+
+```jsonl
+{"v":1,"kind":"baseline","measured_through":"2026-10-20T11:00:06.000Z","claude_code":["2.1.80","2.1.81"],"commands":{"/spec implement":{"count":2,"input":36,"output":660,"cache_read":26500,"cache_write":2000,"mean":{"input":18,"output":330,"cache_read":13250,"cache_write":1000},"plugin":["0.1.0","0.2.0"]},"/spec plan":{"count":1,"input":4,"output":300,"cache_read":3000,"cache_write":800,"mean":{"input":4,"output":300,"cache_read":3000,"cache_write":800},"plugin":["unknown"]},"/spec-review":{"count":1,"input":3,"output":80,"cache_read":2000,"cache_write":50,"mean":{"input":3,"output":80,"cache_read":2000,"cache_write":50}}}}
 ```
 
 ## `backlog` — `../backlog.md`, at `specs/backlog.md`

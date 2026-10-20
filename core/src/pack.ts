@@ -8,8 +8,8 @@
 //   through tasks.ts `laneProfileOf`. No claim, checkbox or table grammar lives here.
 // - The goal is the whole `## Goal` (or `## Ziel`) section body, trimmed, its lines kept as written.
 // - The size of a pack is the UTF-8 byte length of `JSON.stringify(pack)`; `capPack` holds it under `PACK_LIMIT`.
-// - `decisions` (the plan's and the spec's Decisions rows that name the task or its claim) is T15; until then it is
-//   empty. `capPack` is T18; until then it throws.
+// - `decisions` (T15, ISC-337) are the `## Decisions` bullets of spec.md, then plan.md, that name the task or its
+//   claim as a whole token (`decisionRows`, `mentions`). `capPack` is T18; until then it throws.
 //
 // Pure: text in, model out. No file system, no Bun API. An unknown task or a task whose claim spec.md lacks throws a
 // `PackError` with its code; the CLI maps the code to its JSON error.
@@ -108,7 +108,62 @@ const unticked = (cell: string): string => cell.replace(/`/g, '').trim();
 /** The prefix claims.ts strips for a claim's kind, put back so the pack reads as spec.md does. */
 const KIND_PREFIX: Readonly<Record<ClaimKind, string>> = { normal: '', anti: 'Anti: ', antecedent: 'Antecedent: ' };
 
-/** The pack of `input.task`: keys in the fixed order, `decisions` empty and `truncated` 0 until T15 and T18. */
+/** A top-level bullet line: `- `, `* ` or `+ ` at the start of the line, its text after the marker. */
+const BULLET = /^[-*+]\s+(.*)$/;
+
+/**
+ * The bullets under `## Decisions` (T15, ISC-337), each with its continuation lines as one row, in file order. The
+ * text is kept as written, without the leading `- `; a continuation line keeps its indentation, trailing spaces
+ * trimmed. A non-blank line under a bullet that is no new top-level bullet (a nested bullet included) continues it;
+ * after a blank line only an indented line does, and blank lines inside a row are dropped. Prose outside a bullet is
+ * no row. No section, no rows.
+ */
+export function decisionRows(text: string): string[] {
+  const section = levelTwoSection(text, ['Decisions']);
+  if (section === null) return [];
+  const rows: string[][] = [];
+  let row: string[] | null = null;
+  let gap = false;
+  for (const line of section.split('\n').map((l) => l.trimEnd())) {
+    const bullet = BULLET.exec(line);
+    if (bullet !== null) {
+      row = [bullet[1] ?? ''];
+      rows.push(row);
+      gap = false;
+    } else if (line === '') {
+      gap = row !== null;
+    } else if (row !== null && (!gap || /^\s/.test(line))) {
+      row.push(line);
+      gap = false;
+    } else {
+      row = null;
+    }
+  }
+  return rows.map((r) => r.join('\n'));
+}
+
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Whether a Decisions row names the claim or the task as a whole token (T15, ISC-337). No letter, digit, `_` or `-`
+ * stands right before the ID and no letter, digit or `_` right after it: `ISC-12` hits `ISC-12` and its sub-claim
+ * `ISC-12.1`, never `ISC-120`; `ISC-1` never hits `ISC-12`; `T3` hits `T3`, never `T30` or `T3x`.
+ */
+export function mentions(row: string, claimId: string, taskId: string): boolean {
+  return [claimId, taskId].some((id) => id !== '' && new RegExp(String.raw`(?<![\w-])${escapeRegExp(id)}(?!\w)`).test(row));
+}
+
+/** The Decisions rows of one file that name the claim or the task, in file order, tagged with their source. */
+function decisionsOf(source: PackDecision['source'], text: string, claimId: string, taskId: string): PackDecision[] {
+  return decisionRows(text)
+    .filter((r) => mentions(r, claimId, taskId))
+    .map((r) => ({ source, text: r }));
+}
+
+/**
+ * The pack of `input.task`: keys in the fixed order, the decisions of spec.md first, then plan.md's (T15), and
+ * `truncated` 0 until T18. Only this spec's two texts are read, so no other spec's Decisions can enter.
+ */
 export function buildPack(input: PackInput): Pack {
   const tab = parseTaskLines({ tasks: input.tasks, ...(input.constitution === null ? {} : { constitution: input.constitution }) });
   const row = tab.tasks.find((t) => t.id === input.task);
@@ -129,7 +184,10 @@ export function buildPack(input: PackInput): Pack {
     claim: { id: claim.id, text: `${KIND_PREFIX[claim.kind]}${claim.text}`, after: [...claim.after] },
     probe: strategy === undefined ? null : { type: strategy.type, check: strategy.check, threshold: strategy.threshold, tool: strategy.tool },
     lane: lane === null || input.constitution === null ? null : laneProfileOf(input.constitution, lane),
-    decisions: [],
+    decisions: [
+      ...decisionsOf('spec.md', input.spec, claim.id, row.id),
+      ...(input.plan === null ? [] : decisionsOf('plan.md', input.plan, claim.id, row.id)),
+    ],
     truncated: 0,
   };
 }

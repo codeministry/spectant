@@ -5,7 +5,7 @@
 // repository (plugin/tests/pack.test.ts) pins the CLI output; this file pins the core model it prints.
 import { describe, expect, test } from 'bun:test';
 
-import { buildPack, PACK_LIMIT, PackError, type PackInput } from '../src/pack.ts';
+import { buildPack, decisionRows, mentions, PACK_LIMIT, PackError, type PackInput } from '../src/pack.ts';
 import { laneProfileOf } from '../src/tasks.ts';
 
 const SPEC = `---
@@ -136,5 +136,66 @@ describe('buildPack', () => {
   test('the pack of the fixture is far under the limit', () => {
     expect(PACK_LIMIT).toBe(8192);
     expect(new TextEncoder().encode(JSON.stringify(buildPack(input('T1')))).length).toBeLessThan(PACK_LIMIT);
+  });
+});
+
+// T15, ISC-337: the Decisions rows with their continuation lines, and the ID as a whole token.
+describe('pack decisions', () => {
+  const DECISIONS = `# 900
+
+## Decisions
+
+Some prose before the first bullet is no row.
+
+- 2026-03-01: ISC-12 keeps the title.
+- 2026-03-02: ISC-12.1 splits it
+  over two lines, as written.
+  - a nested bullet continues the row
+- 2026-03-03: ISC-120 is another claim.
+
+  An indented paragraph still belongs to ISC-120's row.
+
+Unindented prose after a blank line closes the row.
+* 2026-03-04: T3 reads no file.
++ 2026-03-05: T30 and T3x are other tasks; XISC-12 and ISC-1 are no hit for ISC-12.
+
+## Verification
+
+- ISC-12 under another heading is no row.
+`;
+
+  test('decisionRows: the bullets under ## Decisions, continuation lines joined as written, prose left out', () => {
+    expect(decisionRows(DECISIONS)).toEqual([
+      '2026-03-01: ISC-12 keeps the title.',
+      '2026-03-02: ISC-12.1 splits it\n  over two lines, as written.\n  - a nested bullet continues the row',
+      "2026-03-03: ISC-120 is another claim.\n  An indented paragraph still belongs to ISC-120's row.",
+      '2026-03-04: T3 reads no file.',
+      '2026-03-05: T30 and T3x are other tasks; XISC-12 and ISC-1 are no hit for ISC-12.',
+    ]);
+    expect(decisionRows('# 900\n\n## Goal\n\n- not a decision\n')).toEqual([]);
+  });
+
+  test('mentions: ISC-12 hits ISC-12 and ISC-12.1, never ISC-120; T3 hits T3, never T30 or T3x', () => {
+    expect(mentions('ISC-12 keeps the title.', 'ISC-12', 'T9')).toBe(true);
+    expect(mentions('(ISC-12) at the end: ISC-12.', 'ISC-12', 'T9')).toBe(true);
+    expect(mentions('ISC-12.1 splits it', 'ISC-12', 'T9')).toBe(true);
+    expect(mentions('ISC-120 is another claim', 'ISC-12', 'T9')).toBe(false);
+    expect(mentions('ISC-12 only', 'ISC-1', 'T9')).toBe(false);
+    expect(mentions('XISC-12 and SISC-12', 'ISC-12', 'T9')).toBe(false);
+    expect(mentions('T3 reads no file.', 'ISC-12', 'T3')).toBe(true);
+    expect(mentions('`T3`, then T4', 'ISC-12', 'T3')).toBe(true);
+    expect(mentions('T30 and T3x and ST3', 'ISC-12', 'T3')).toBe(false);
+    expect(mentions('no reference at all', 'ISC-12', 'T3')).toBe(false);
+  });
+
+  test('buildPack: exactly the hits, spec.md first, then plan.md, in file order; no plan, no plan rows', () => {
+    const spec = `${SPEC}\n## Decisions\n\n- 2026-03-01: ISC-3 is an Anti claim.\n- 2026-03-02: ISC-30 and T30 are others.\n- 2026-03-03: No reference.\n`;
+    const plan = '# Plan\n\n## Decisions\n\n- 2026-03-04: T3 strips nothing\n  from the prefix.\n- 2026-03-05: ISC-3.1 is a sub-claim.\n- 2026-03-06: T1 is another task.\n';
+    expect(buildPack(input('T3', { spec, plan })).decisions).toEqual([
+      { source: 'spec.md', text: '2026-03-01: ISC-3 is an Anti claim.' },
+      { source: 'plan.md', text: '2026-03-04: T3 strips nothing\n  from the prefix.' },
+      { source: 'plan.md', text: '2026-03-05: ISC-3.1 is a sub-claim.' },
+    ]);
+    expect(buildPack(input('T3', { spec })).decisions).toEqual([{ source: 'spec.md', text: '2026-03-01: ISC-3 is an Anti claim.' }]);
   });
 });

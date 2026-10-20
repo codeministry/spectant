@@ -11,7 +11,8 @@
 // writes only under that root, reads nothing outside it but the claims file it is handed, and calls no network host.
 //
 // Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift or a gate open · 4 lock
-// lost. `--json` prints one JSON object on stdout; without it the output is for a person.
+// lost. `--json` prints one JSON object on stdout, a refusal included (`{"error", "command", "detail"}`, a code from
+// `ERROR_CODES`; spec 010, T10, ISC-335); without it the output is for a person and a refusal goes to stderr.
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import {
@@ -56,7 +57,7 @@ import type { SpecTextClaim, SpecTextRow, SpecTextType } from '../../core/src/sp
 import { driftReport, hasDrift, mainFeatureOf, masterProgressMismatch, partitionClaims, specEdgeHolds } from '../../core/src/status.ts';
 import type { ClaimPartition, DriftReport } from '../../core/src/status.ts';
 import { takeableSet } from '../../core/src/takeable.ts';
-import { parseTaskLines } from '../../core/src/tasks.ts';
+import { TaskTextError, parseTaskLines, tickTaskText } from '../../core/src/tasks.ts';
 import { roundLines } from '../../core/src/timeline.ts';
 import { planCatchUp, planTransition } from '../../core/src/transition.ts';
 import type { TransitionInput } from '../../core/src/transition.ts';
@@ -64,18 +65,58 @@ import { parseWorkflow } from '../../core/src/workflow.ts';
 
 export const EXIT = { ok: 0, badArgs: 1, drift: 3, lockLost: 4 } as const;
 
-/** A refusal with its exit code; the message goes to stderr. */
+/**
+ * Every code a refusal answers with (spec 010, T10, ISC-335), one fixed list `help()` names: the CLI's own codes first,
+ * then the codes of the core plans and the log writer it calls (`SpecTextError`, `ActivityTextError`,
+ * `ActivityLogError`, `PackError`, `TaskTextError`), collected once. `main()` types each caught code as `ErrorCode`, so
+ * a code added to one of those classes and not here fails `tsc`.
+ */
+export const ERROR_CODES = [
+  'bad-args',
+  'unknown-command',
+  'unknown-spec',
+  'missing-file',
+  'drift',
+  'gate-missing',
+  'gate-stale',
+  'refused',
+  'blocked',
+  'lock-held',
+  'lock-lost',
+  'bad-input',
+  'multi-line',
+  'unknown-id',
+  'dropped-claim',
+  'duplicate-id',
+  'unknown-feature',
+  'no-claim-section',
+  'bad-session',
+  'bad-claim',
+  'bad-task',
+  'bad-ts',
+  'bad-target',
+  'bad-outcome',
+  'claim-required',
+  'unknown-task',
+  'no-claim',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/** A refusal with its exit code and error code; the message goes to stderr, or into `detail` under `--json`. */
 class CliError extends Error {
   readonly exit: number;
+  readonly code: ErrorCode;
 
-  constructor(exit: number, message: string) {
+  constructor(exit: number, message: string, code: ErrorCode = 'bad-args') {
     super(message);
     this.name = 'CliError';
     this.exit = exit;
+    this.code = code;
   }
 }
 
-const bad = (message: string): CliError => new CliError(EXIT.badArgs, message);
+const bad = (message: string, code: ErrorCode = 'bad-args'): CliError => new CliError(EXIT.badArgs, message, code);
 
 // ── arguments ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -131,6 +172,8 @@ interface Context {
   readonly cwd: string;
   readonly root: string;
   readonly now: Date;
+  /** The command's name as called (`gate`, `run`, …): the `command` key of an error answer. */
+  readonly command: string;
   out(text: string): void;
 }
 
@@ -166,7 +209,7 @@ function specFiles(ref: Pick<SpecRef, 'dir' | 'slug'>): SpecFiles {
 function specRef(root: string, arg: string): SpecRef {
   const name = basename(arg.replace(/[\\/]+$/u, ''));
   const ref = resolveSpec(root, name);
-  if (ref.kind === 'not_found') throw bad(`no spec folder matches "${arg}" (${ref.reason})`);
+  if (ref.kind === 'not_found') throw bad(`no spec folder matches "${arg}" (${ref.reason})`, 'unknown-spec');
   return ref;
 }
 
@@ -174,7 +217,7 @@ const rel = (ctx: Context, path: string): string => relative(ctx.root, path).spl
 
 function specText(ctx: Context, ref: SpecRef): string {
   const text = readIfExists(join(ref.dir, 'spec.md'));
-  if (text === null) throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
+  if (text === null) throw bad(`${rel(ctx, ref.dir)} has no spec.md`, 'missing-file');
   return text;
 }
 
@@ -187,6 +230,15 @@ async function locksOf(ctx: Context): Promise<LockReading> {
 /** `--json`: one object; else the lines for a person. */
 function emit(ctx: Context, args: Args, value: unknown, lines: readonly string[]): void {
   ctx.out(args.flags.has('json') ? JSON.stringify(value, null, 2) : lines.join('\n'));
+}
+
+/**
+ * A refusal that carries a report (drift, a gate check, a blocked archive; spec 010, T10, ISC-335): `--json` answers
+ * with the one error object, the report as its `detail`; a person reads the report's lines on stdout as before.
+ */
+function refuse(ctx: Context, args: Args, exit: number, code: ErrorCode, value: unknown, lines: readonly string[]): number {
+  ctx.out(args.flags.has('json') ? JSON.stringify({ error: code, command: ctx.command, detail: value }) : lines.join('\n'));
+  return exit;
 }
 
 // ── allocate ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -353,7 +405,7 @@ function verify(ctx: Context, args: Args): number {
   let nextMaster: string | null = null;
   if (master !== null) {
     if (!parseClaims(master).claims.some((c) => c.id === id)) {
-      throw new CliError(EXIT.drift, `the master ISA.md holds no ${id}; nothing written — run spec-check drift`);
+      throw new CliError(EXIT.drift, `the master ISA.md holds no ${id}; nothing written — run spec-check drift`, 'drift');
     }
     nextMaster = appendVerificationText(master, id, type, stub, ctx.now);
   }
@@ -424,8 +476,10 @@ function drift(ctx: Context, args: Args): number {
   const lines = specs.flatMap((s) => driftLines(s.slug, s.report));
   if (masterProgress !== null) lines.push(`ISA.md: progress ${masterProgress.declared ?? 'missing'}, counted ${masterProgress.counted}`);
   if (master === null) lines.push('no master ISA.md: claim IDs are not checked against a master');
-  emit(ctx, args, { drift: any, master: master !== null, masterProgress, specs }, any ? lines : [`drift: none (${specs.length} spec${specs.length === 1 ? '' : 's'})`, ...lines]);
-  return any ? EXIT.drift : EXIT.ok;
+  const value = { drift: any, master: master !== null, masterProgress, specs };
+  if (any) return refuse(ctx, args, EXIT.drift, 'drift', value, lines);
+  emit(ctx, args, value, [`drift: none (${specs.length} spec${specs.length === 1 ? '' : 's'})`, ...lines]);
+  return EXIT.ok;
 }
 
 // ── status, frontier ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -619,7 +673,7 @@ function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: s
 /** The refusal of a planned move: exit 3 with core's reason and next command; nothing is written. */
 function refusal(ref: SpecRef, plan: { readonly from: string; readonly reason: string; readonly command: string | null }): CliError {
   const next = plan.command === null ? '' : `; next: ${pluginCommand(plan.command)}`;
-  return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`);
+  return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`, 'refused');
 }
 
 /**
@@ -745,7 +799,7 @@ function lockInput(ctx: Context, args: Args): { claim: string; session: string; 
 function lockClaim(ctx: Context, args: Args): number {
   const input = lockInput(ctx, args);
   const outcome = appendClaim(ctx.root, input);
-  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`);
+  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`, 'lock-held');
   if (outcome.done === 'held') {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
@@ -762,7 +816,7 @@ function lockRelease(ctx: Context, args: Args): number {
     emit(ctx, args, { claim: input.claim, session: input.session, released: false }, [`${input.claim}: not held; nothing written`]);
     return EXIT.ok;
   }
-  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`);
+  if (outcome.done === 'other') throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`, 'lock-lost');
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
@@ -1226,8 +1280,10 @@ function gateCheck(ctx: Context, args: Args): number {
     const why = check.changed.length > 0 ? `changed since: ${check.changed.join(', ')}` : problems.join('; ') || 'the working tree changed';
     line = `${ref.slug}: the ${gate} mark is stale, ${why}`;
   }
-  emit(ctx, args, { spec: ref.slug, gate, state: check.state, at: check.at, changed: check.changed, problems, next }, next === null ? [line] : [line, `next: ${next}`]);
-  return check.state === 'fresh' ? EXIT.ok : EXIT.drift;
+  const value = { spec: ref.slug, gate, state: check.state, at: check.at, changed: check.changed, problems, next };
+  if (next !== null) return refuse(ctx, args, EXIT.drift, check.state === 'missing' ? 'gate-missing' : 'gate-stale', value, [line, `next: ${next}`]);
+  emit(ctx, args, value, [line]);
+  return EXIT.ok;
 }
 
 const needsYes = (ctx: Context, ref: SpecRef, gate: Gate): CliError =>
@@ -1487,11 +1543,10 @@ async function archive(ctx: Context, args: Args): Promise<number> {
   const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: v.to, ok: v.ok, blockers: v.blockers }));
   const refused = verdicts.filter((v) => !v.ok);
   if (refused.length > 0) {
-    emit(ctx, args, { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
+    return refuse(ctx, args, EXIT.drift, 'blocked', { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
       ...verdictLines,
       `nothing moved: ${refused.length} spec${refused.length === 1 ? '' : 's'} blocked`,
     ]);
-    return EXIT.drift;
   }
 
   // Plan every text first: a stamp that does not read back refuses the whole call before anything moves.
@@ -1558,7 +1613,7 @@ function pack(ctx: Context, args: Args): number {
   const ref = specRef(ctx.root, required(args, 0, 'spec'));
   const task = required(args, 1, 'task (T<k>)');
   const tasks = readIfExists(join(ref.dir, 'tasks.md'));
-  if (tasks === null) throw bad(`${rel(ctx, ref.dir)} has no tasks.md`);
+  if (tasks === null) throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, 'missing-file');
   let value: Pack;
   try {
     value = buildPack({
@@ -1570,10 +1625,31 @@ function pack(ctx: Context, args: Args): number {
       task,
     });
   } catch (error) {
-    if (error instanceof PackError) throw bad(`${error.message} (${error.code})`);
+    if (error instanceof PackError) throw bad(`${error.message} (${error.code})`, error.code);
     throw error;
   }
   ctx.out(args.flags.has('json') ? JSON.stringify(value) : packLines(value).join('\n'));
+  return EXIT.ok;
+}
+
+// ── tick ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `tick <spec> T<k>` (spec 010, T9, ISC-334): the box of task T<k> in tasks.md set to `[x]`. Core's `tickTaskText`
+ * plans the text and this writes it whole, so exactly that one line changes and every other byte stays. A box already
+ * ticked exits 0 with "already ticked" and writes nothing; no box line with the id is core's `TaskTextError`
+ * (`unknown-task`), exit 1, nothing written. tasks.md is the only file it writes. `--json`: `{spec, task, result}`.
+ */
+function tick(ctx: Context, args: Args): number {
+  const ref = specRef(ctx.root, required(args, 0, 'spec'));
+  const task = required(args, 1, 'task (T<k>)');
+  const path = join(ref.dir, 'tasks.md');
+  const text = readIfExists(path);
+  if (text === null) throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, 'missing-file');
+  const planned = tickTaskText(text, task);
+  if (planned.changed) writeFileSync(path, planned.text);
+  const result = planned.changed ? 'ticked' : 'already-ticked';
+  emit(ctx, args, { spec: ref.slug, task, result }, [`${planned.changed ? 'ticked' : 'already ticked'} ${task}`]);
   return EXIT.ok;
 }
 
@@ -1630,6 +1706,12 @@ const COMMANDS: Readonly<Record<string, Command>> = {
     summary:
       'the context pack of one task: the goal, the task line, its claim, its Test Strategy row, its lane profile from the constitution and its decisions; --json prints one compact line. Writes nothing; an unknown task exits 1',
     run: pack,
+  },
+  tick: {
+    usage: 'tick <spec> T<k> [--json]',
+    summary:
+      'set the box of one task in tasks.md to [x]: exactly that line changes, tasks.md is the only file written. A task already ticked exits 0, "already ticked", nothing written; an unknown task exits 1, nothing written',
+    run: tick,
   },
   claim: {
     usage: 'claim <ISC-N> [--task T<k>] --session <actor> [--worktree <path>] [--json]',
@@ -1706,34 +1788,44 @@ function help(): string {
     ...Object.entries(COMMANDS).map(([name, c]) => `  ${name.padEnd(width)}  ${c.summary}`),
     '',
     'spec-check <command> --help shows one command. Exit: 0 ok, 1 bad arguments, 3 drift or gate open, 4 lock lost.',
+    'With --json a refusal (exit 1, 3 or 4) is one object {"error": <code>, "command": <name>, "detail": …} on stdout, nothing on stderr.',
+    `Error codes: ${ERROR_CODES.join(', ')}.`,
   ].join('\n');
 }
 
+/**
+ * The router. A refusal goes to stderr as one `spec-check: <command>: <message>` line; with `--json` (spec 010, T10,
+ * ISC-335) it is instead exactly one compact object `{"error", "command", "detail"}` on stdout with a code from
+ * `ERROR_CODES`, and stderr stays empty. `hook` never refuses: it prints nothing and exits 0.
+ */
 export async function main(argv: readonly string[], cwd = process.cwd(), now = new Date()): Promise<number> {
   const out = (text: string) => process.stdout.write(`${text}\n`);
-  const fail = (code: number, message: string) => {
-    process.stderr.write(`spec-check: ${message}\n`);
-    return code;
-  };
   const [name, ...rest] = argv;
+  const json = rest.includes('--json');
+  const fail = (exit: number, code: ErrorCode, detail: string, message = detail): number => {
+    if (json) out(JSON.stringify({ error: code, command: name, detail }));
+    else process.stderr.write(`spec-check: ${message}\n`);
+    return exit;
+  };
   if (name === undefined || name === '--help' || name === '-h' || name === 'help') {
     out(help());
     return name === undefined ? EXIT.badArgs : EXIT.ok;
   }
   const command = COMMANDS[name];
-  if (command === undefined) return fail(EXIT.badArgs, `unknown command "${name}"\n\n${help()}`);
+  if (command === undefined) return fail(EXIT.badArgs, 'unknown-command', `unknown command "${name}"`, `unknown command "${name}"\n\n${help()}`);
   if (rest.includes('--help') || rest.includes('-h')) {
     out(`spec-check ${command.usage}\n\n${command.summary}`);
     return EXIT.ok;
   }
   try {
     const args = parseArgs(rest, command.values ?? [], command.flags ?? []);
-    return await command.run({ cwd, root: repoRoot(cwd), now, out }, args);
+    return await command.run({ cwd, root: repoRoot(cwd), now, command: name, out }, args);
   } catch (error) {
-    if (error instanceof CliError) return fail(error.exit, `${name}: ${error.message}`);
-    if (error instanceof SpecTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
-    if (error instanceof ActivityTextError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
-    if (error instanceof ActivityLogError) return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
+    if (error instanceof CliError) return fail(error.exit, error.code, error.message, `${name}: ${error.message}`);
+    if (error instanceof SpecTextError || error instanceof ActivityTextError || error instanceof TaskTextError) {
+      return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); nothing written`);
+    }
+    if (error instanceof ActivityLogError) return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
     throw error;
   }
 }
