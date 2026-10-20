@@ -640,6 +640,8 @@
       "menu": "Specs",
       "none": "Öffnen Sie einen Workspace, um eine Spec zu wählen",
       "head": "Specs · {{workspace}}",
+      "headFavorites": "Favoriten · {{workspace}}",
+      "favoritesEmpty": "Noch keine Favoriten. Markieren Sie eine Spec auf ihrer Seite oder in der Spec-Liste mit dem Stern, dann erscheint sie hier.",
       "overview": "Spec-Übersicht"
     },
     "area": {
@@ -2793,5 +2795,13 @@
       "answerIn": "Antworten Sie in der Session {{session}}",
       "announce": "Neue Frage von {{task}}: {{text}}"
     }
+  },
+  "favorites": {
+    "toggle": "Favorit: {{id}} {{title}}",
+    "add": "Zu den Favoriten hinzufügen",
+    "remove": "Aus den Favoriten entfernen",
+    "added": "{{id}} zu den Favoriten hinzugefügt",
+    "removed": "{{id}} aus den Favoriten entfernt",
+    "failed": "Der Favorit konnte nicht gespeichert werden."
   }
 }

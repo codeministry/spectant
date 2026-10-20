@@ -151,4 +151,6 @@ export const ICON_NAMES = [
   'circle-x',
   'message-circle-question',
   'file-diff',
+  // Spec 052: the favorite toggle (outline off, filled on) and the empty favourites list.
+  'star',
 ] as const;

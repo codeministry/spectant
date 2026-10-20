@@ -45,7 +45,7 @@ export { DEFAULT_PRIORITY, PRIORITY_LOOK, type PriorityLook, UiPriority } from '
 export { UiReason } from './reason/reason';
 export { type RelativeFormat, type RelativeUnit, relativeParts, UiRelativeTime } from './relative-time/relative-time';
 export { UiRing } from './ring/ring';
-export { type RovingActive, UiRovingItem, UiRovingList } from './roving-list.directive';
+export { type RovingActive, UiRovingCompanion, UiRovingItem, UiRovingList } from './roving-list.directive';
 export { type ScrubberFrame, type ScrubberMarker, UiScrubber } from './scrubber/scrubber';
 export { UiSectionHeader } from './section-header/section-header';
 export { type SegmentedOption, UiSegmented } from './segmented/segmented';

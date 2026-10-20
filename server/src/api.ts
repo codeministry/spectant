@@ -56,6 +56,14 @@
  * (`GET, HEAD, PUT`), 404 for an unknown workspace, then the body. No 409: the workspace's files are not read.
  * Without `options.db` the route is declined, so the server's JSON 404 applies.
  *
+ * The favourites (spec 052 T4, ISC-296): `GET`/`HEAD /api/workspaces/:ws/favorites` and `PUT`/`DELETE
+ * /api/workspaces/:ws/favorites/:spec` → `Favorites`, matched by the same `matchWorkspacePath`, answered from the
+ * `spec_favorite` table alone (`options.db`), never a repository file. Every answer is `{specs}`, the workspace's whole
+ * set, sorted, so the web takes the server's state after a write. `PUT` sets and `DELETE` unsets, both idempotent; the
+ * spec need not exist in the workspace (plan 052). Guard order: 403, 405 with `allowForWorkspace` (`GET, HEAD` or
+ * `PUT, DELETE`), 404 for an unknown workspace, 400 `invalid-spec` for an id the contract's `isFavoriteSpec` refuses.
+ * No 409. Without `options.db` both routes are declined, like the board query.
+ *
  * The actor names (spec 008 T91, ISC-119.2): `actorsApi` serves `GET`/`HEAD`/`PUT /api/actors` (`ACTORS_PATH`), a
  * route of its own like `/api/settings`, under the same loopback guard. GET lists the `actor` table's rows as
  * `ActorMapping[]` ordered by id; an id without a row is never invented, so the web shows an unmapped id raw. PUT
@@ -143,7 +151,7 @@ import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
-import { getBoardQuery, listActors, replaceActors, setBoardQuery } from "./db.ts";
+import { addFavorite, getBoardQuery, listActors, listFavorites, removeFavorite, replaceActors, setBoardQuery } from "./db.ts";
 import { evidenceFileResponse } from "./evidence.ts";
 import { mapBounded } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
@@ -162,6 +170,7 @@ import {
   evidencePathQuery,
   isActorMappings,
   isBoardQuery,
+  isFavoriteSpec,
   matchWorkspacePath,
   ACTIVITY_HASH_HEADER,
 } from "./spec-routes.contract.ts";
@@ -742,6 +751,28 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     return json(req, 200, stored);
   };
 
+  // The favourites (spec 052 T4): the database alone like the board query, so no 409; every answer is the whole set.
+  const favorites = (req: Request, slug: string, db: Database): Response => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("favorites") });
+    }
+    if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
+    const body: WorkspaceRouteResponses["favorites"] = { specs: listFavorites(db, slug) };
+    return json(req, 200, body);
+  };
+
+  const favorite = (req: Request, slug: string, spec: string, db: Database): Response => {
+    if (req.method !== "PUT" && req.method !== "DELETE") {
+      return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("favorite") });
+    }
+    if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
+    if (!isFavoriteSpec(spec)) return json(req, 400, { error: "invalid-spec" });
+    if (req.method === "PUT") addFavorite(db, slug, spec, new Date().toISOString());
+    else removeFavorite(db, slug, spec);
+    const body: WorkspaceRouteResponses["favorite"] = { specs: listFavorites(db, slug) };
+    return json(req, 200, body);
+  };
+
   // The one write of the family (T87): the route layer's 404 and 409 here, everything else in `allocate-route.ts`.
   const allocate = async (req: Request, slug: string, story: string): Promise<Response> => {
     const workspace = registry.get(slug);
@@ -798,11 +829,16 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const workspaceRoute = matchWorkspacePath(pathname);
     if (pathname !== WORKSPACES_PATH && !match && !workspaceRoute) return null;
     const { db } = options;
-    if (workspaceRoute?.route === "boardQuery" && db === undefined) return null;
+    const dbRoute = workspaceRoute?.route === "boardQuery" || workspaceRoute?.route === "favorites" || workspaceRoute?.route === "favorite";
+    if (dbRoute && db === undefined) return null;
     if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
       return json(req, 403, { error: "forbidden" });
     }
     if (workspaceRoute?.route === "boardQuery" && db !== undefined) return boardQuery(req, workspaceRoute.params.ws, db);
+    if (workspaceRoute?.route === "favorites" && db !== undefined) return favorites(req, workspaceRoute.params.ws, db);
+    if (workspaceRoute?.route === "favorite" && db !== undefined) {
+      return favorite(req, workspaceRoute.params.ws, workspaceRoute.params.spec, db);
+    }
     if (workspaceRoute?.route === "allocate") {
       if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("allocate") });
       return allocate(req, workspaceRoute.params.ws, workspaceRoute.params.slug);

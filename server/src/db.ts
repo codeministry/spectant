@@ -1,7 +1,7 @@
 /**
  * The SQLite connection and its schema migrations (T42, T94). `spectant.db` lives in the data directory from
- * `paths.ts` (ISC-21) and holds the workspace registry, the settings, the developer's notes, the actor names and the
- * board queries, never anything a repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except
+ * `paths.ts` (ISC-21) and holds the workspace registry, the settings, the developer's notes, the actor names, the
+ * board queries and the favourite specs, never anything a repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except
  * the notes, which live here and nowhere else, never in a registered repository (ISC-94, ISC-15).
  *
  * The schema version is the `schema_version` row of the `setting` table. `migrate` walks it forward one step at a
@@ -28,8 +28,15 @@
  * it, and a re-added workspace keeps its board. Losing it loses the remembered filter, nothing a repository holds
  * (ISC-7). `BoardQueryRow` and its accessors are below.
  *
+ * Migration 6 (spec 052, T2, ISC-296) is expand-only: it creates `spec_favorite` (CREATE TABLE IF NOT EXISTS, adopted
+ * like migration 2's), one row per workspace slug and spec folder name (`NNN-slug`) the developer marked as a
+ * favourite, with the time it was first set; the pair is the primary key, so setting it twice keeps one row. No foreign
+ * key, like `board_query`: a re-added workspace keeps its favourites, and a favourite on a spec the workspace no longer
+ * lists stays until it is unset. Losing it loses the marks, nothing a repository holds (ISC-7). Its accessors are below.
+ *
  * No down migration runs on open. The documented reversals are `REVERSALS`, applied only by `rollback` (the CLI's
- * `spectant db rollback <version> --yes`, T98), newest first: 5 → 4 is `DROP TABLE board_query` (loses every
+ * `spectant db rollback <version> --yes`, T98), newest first: 6 → 5 is `DROP TABLE spec_favorite` (loses every
+ * favourite; the header's spec select shows its empty state), 5 → 4 is `DROP TABLE board_query` (loses every
  * remembered board query; the board opens unfiltered), 4 → 3 is `DROP TABLE actor` (loses every display name;
  * the ids come back from git config), 3 → 2 is `ALTER TABLE note DROP COLUMN pinned` (loses
  * every pin), 2 → 1 is `DROP INDEX note_workspace_anchor; DROP TABLE note;` (loses every note not exported first with
@@ -40,7 +47,7 @@ import { Database } from "bun:sqlite";
 import { dbPath, ensureDataDir } from "./paths.ts";
 
 /** The schema version this build writes. A database from a newer build is refused rather than downgraded. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** Opens (creating on first use) `spectant.db` in `dir`, in WAL mode with foreign keys on, migrated to the latest schema. */
 export function openDatabase(dir: string): Database {
@@ -135,6 +142,14 @@ export function migrate(db: Database): void {
             updated_at TEXT NOT NULL
           )`);
           break;
+        case 5:
+          db.run(`CREATE TABLE IF NOT EXISTS spec_favorite (
+            ws         TEXT NOT NULL,
+            spec       TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (ws, spec)
+          )`);
+          break;
       }
       version++;
       db.run("INSERT INTO setting (key, value) VALUES ('schema_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [
@@ -146,6 +161,7 @@ export function migrate(db: Database): void {
 
 /** Each migration's documented reversal, keyed by the version it undoes. Every statement drops what that step made. */
 const REVERSALS: Readonly<Record<number, readonly string[]>> = {
+  6: ["DROP TABLE IF EXISTS spec_favorite"],
   5: ["DROP TABLE IF EXISTS board_query"],
   4: ["DROP TABLE IF EXISTS actor"],
   3: ["ALTER TABLE note DROP COLUMN pinned"],
@@ -256,4 +272,24 @@ export function setBoardQuery(db: Database, ws: string, query: string, updatedAt
      ON CONFLICT (ws) DO UPDATE SET query = excluded.query, updated_at = excluded.updated_at`,
     [ws, query, updatedAt],
   );
+}
+
+// ── the spec_favorite table (migration 6, spec 052 T2, ISC-296) ──────────────────────────────────────────────────────
+
+/** The favourite specs of workspace `ws`: their folder names, sorted, each once. */
+export function listFavorites(db: Database, ws: string): string[] {
+  return db
+    .query<{ spec: string }, [string]>("SELECT spec FROM spec_favorite WHERE ws = ? ORDER BY spec")
+    .all(ws)
+    .map((row) => row.spec);
+}
+
+/** Marks `spec` a favourite of workspace `ws`; a second set keeps the row and its first `createdAt` (idempotent). */
+export function addFavorite(db: Database, ws: string, spec: string, createdAt: string): void {
+  db.run("INSERT INTO spec_favorite (ws, spec, created_at) VALUES (?, ?, ?) ON CONFLICT (ws, spec) DO NOTHING", [ws, spec, createdAt]);
+}
+
+/** Unsets `spec` as a favourite of workspace `ws`; one never set is no error (idempotent). */
+export function removeFavorite(db: Database, ws: string, spec: string): void {
+  db.run("DELETE FROM spec_favorite WHERE ws = ? AND spec = ?", [ws, spec]);
 }

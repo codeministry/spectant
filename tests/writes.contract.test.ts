@@ -467,6 +467,7 @@ describe("the writes contract is browser-safe", () => {
       "core/src/actor.ts",
       "core/src/events.ts",
       "core/src/files.ts",
+      "core/src/spec-ref.ts",
       "server/src/assets.contract.ts",
       "server/src/spec-routes.contract.ts",
       "server/src/writes.contract.ts",

@@ -10,8 +10,8 @@
  * 3. The web client (T35+) builds every URL with `specRoutes` and types every answer with `SpecRouteResponses`.
  *
  * Every body type is a `core/src/files.ts` type, imported by `import type` and never re-declared, so the three cannot
- * drift from the parser. The module is browser-safe: no Bun or Node import, and its only value import is
- * `assets.contract.ts` and `core/src/files.ts`, both pure.
+ * drift from the parser. The module is browser-safe: no Bun or Node import, and its only value imports are
+ * `assets.contract.ts`, `core/src/files.ts` and `core/src/spec-ref.ts`, all pure.
  *
  * Params: `:ws` is the workspace slug, `:id` the spec ref as `core/src/resolve.ts` `resolveSpec` reads it (`002`,
  * `002-web-console` or `web-console`; the web uses the dashboard row's `id`, `NNN`), `:tid` a task id (`T12`). Builders percent-encode each segment once; `matchSpecPath` decodes each segment once, so `%2541` arrives
@@ -45,12 +45,18 @@
  * metadata only), `libraryDoc` (one Markdown document of the catalog as a `DocsPage`), `librarySearch` (title and
  * full text) and `libraryAsset` (one image below `specs/`). The library replaces the tech page's routes `tech` and
  * `techAsset` (T51) and the spec routes `evidence` (the listing) and `docs/:name` (T53); `evidenceFile` stays.
+ *
+ * The favourites (spec 052, T1, ISC-296; plan 052 § Interfaces): `favorites` reads the favourite specs of a workspace
+ * and `favorite` sets (`PUT`) or unsets (`DELETE`) one, both answered from the app database alone, never a
+ * repository file. `favorite` is the family's one route whose methods are both writes, so `WorkspaceRouteEntry` takes
+ * `PUT` as a `method` and `DELETE` as its `write`.
  * Beside them `prototype`, `/proto/:ws/:spec/:folder/*`, deliberately outside
  * `/api/` so the relative links of a prototype's HTML (`styles.css`, `fonts/…`) resolve without rewriting; it is a
  * family of its own (§ Prototype route), not a workspace route, because its tail is a path of any depth.
  */
 import { API_PREFIX } from './assets.contract.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
+import { SPEC_FOLDER } from '../../core/src/spec-ref.ts';
 import type { BacklogEvent } from '../../core/src/backlog.ts';
 import type { PlanningModel } from '../../core/src/planning.ts';
 import type {
@@ -170,6 +176,13 @@ const RUN_RELEASE_WRITE = [200, 400, 403, 404, 405, 409, 422] as const;
  * board query's 404 is the unknown workspace; the actors route names none.
  */
 const BOARD_QUERY_STATUSES = [200, 304, 400, 403, 404, 405] as const;
+/**
+ * The favourites (spec 052, T1): the database alone, like the board query, so no 409. The read has no body to refuse,
+ * so no 400; the set and the unset refuse a spec id outside `NNN-slug` with 400 `invalid-spec` and never answer 304.
+ * 404 is the unknown workspace; neither checks whether the spec exists in it (plan 052 § Interfaces).
+ */
+const FAVORITES_READ = [200, 304, 403, 404, 405] as const;
+const FAVORITE_WRITE = [200, 400, 403, 404, 405] as const;
 export const ACTORS_STATUSES = [200, 304, 400, 403, 405] as const;
 const P =`${SPEC_API_ROOT}/:ws/specs/:id`;
 
@@ -270,6 +283,8 @@ export type WorkspaceRouteName =
   | 'planning'
   | 'idea'
   | 'boardQuery'
+  | 'favorites'
+  | 'favorite'
   | 'allocate'
   | 'backlog'
   | 'runRelease'
@@ -292,11 +307,18 @@ export interface RunParams extends WorkspaceParams {
   readonly run: string;
 }
 
+/** The workspace slug and a spec folder name, `NNN-slug`, as a favourite names it (spec 052, T1). */
+export interface FavoriteParams extends WorkspaceParams {
+  readonly spec: string;
+}
+
 /** The decoded params of each workspace route. */
 export interface WorkspaceRouteParams {
   planning: WorkspaceParams;
   idea: StoryParams;
   boardQuery: WorkspaceParams;
+  favorites: WorkspaceParams;
+  favorite: FavoriteParams;
   allocate: StoryParams;
   backlog: WorkspaceParams;
   runRelease: RunParams;
@@ -319,6 +341,9 @@ export const workspaceRoutes = {
   planning: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/planning`,
   idea: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}`,
   boardQuery: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/board-query`,
+  favorites: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/favorites`,
+  /** `spec` is the spec's folder name, `NNN-slug` (`isFavoriteSpec`). */
+  favorite: (ws: string, spec: string): string => `${SPEC_API_ROOT}/${enc(ws)}/favorites/${enc(spec)}`,
   allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
   backlog: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/backlog`,
   runRelease: (ws: string, run: string): string => `${SPEC_API_ROOT}/${enc(ws)}/runs/${enc(run)}/release`,
@@ -333,14 +358,18 @@ export const workspaceRoutes = {
 /**
  * `SpecRouteEntry` for a workspace route: the reads are `GET` (and `HEAD`) with the read statuses; the board query
  * (T92) also takes a `PUT` (`write`, `request`) and answers its own statuses; `allocate` (T87) and `backlog` (spec 036)
- * are the `POST`s, with the statuses of a refusable write (`backlog` without the 423: it reads no lock).
+ * are the `POST`s, with the statuses of a refusable write (`backlog` without the 423: it reads no lock). `favorite`
+ * (spec 052) is the `PUT` route with `DELETE` as its `write`; it takes no body, the spec id is its path.
  */
 export interface WorkspaceRouteEntry {
   readonly route: WorkspaceRouteName;
   /** `GET` routes also answer `HEAD` (same headers, no body). */
-  readonly method: 'GET' | 'POST';
-  /** The write method a GET route answers beside `GET`, after `HEAD` in `Allow`; absent on a read-only or POST route. */
-  readonly write?: 'PUT';
+  readonly method: 'GET' | 'POST' | 'PUT';
+  /**
+   * The write method the route answers beside `method`: `PUT` on a GET route, after `HEAD` in `Allow`; `DELETE` on the
+   * PUT route, after `PUT`. Absent on a read-only or POST route.
+   */
+  readonly write?: 'PUT' | 'DELETE';
   /** The body the write takes, by type name; absent on a read-only route. */
   readonly request?: string;
   /** The path pattern; `:ws` is a param of every route, `:slug` of `idea`. */
@@ -359,6 +388,8 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'planning', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/planning`, statuses: READ, response: 'PlanningModel' },
   { route: 'idea', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug`, statuses: READ, response: 'IdeaPage' },
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
+  { route: 'favorites', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/favorites`, statuses: FAVORITES_READ, response: 'Favorites' },
+  { route: 'favorite', method: 'PUT', write: 'DELETE', pattern: `${SPEC_API_ROOT}/:ws/favorites/:spec`, statuses: FAVORITE_WRITE, response: 'Favorites' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
   { route: 'backlog', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/backlog`, statuses: BACKLOG_WRITE, request: 'BacklogRequest', response: 'BacklogWritten' },
   { route: 'runRelease', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/runs/:run/release`, statuses: RUN_RELEASE_WRITE, request: 'RunReleaseRequest', response: 'RunReleased' },
@@ -370,11 +401,14 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
 
 const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry]));
 
-/** The `Allow` header of a workspace route's 405: `GET, HEAD` for a read (plus its write method if it has one), `POST` for `allocate` and `backlog`. */
+/**
+ * The `Allow` header of a workspace route's 405: `GET, HEAD` for a read (plus its write method if it has one), `POST`
+ * for `allocate` and `backlog`, `PUT, DELETE` for `favorite`.
+ */
 export function allowForWorkspace(route: WorkspaceRouteName): string {
   const entry = WORKSPACE_ENTRIES.get(route);
   if (entry === undefined) return '';
-  if (entry.method !== 'GET') return entry.method;
+  if (entry.method !== 'GET') return entry.write === undefined ? entry.method : `${entry.method}, ${entry.write}`;
   return entry.write === undefined ? 'GET, HEAD' : `GET, HEAD, ${entry.write}`;
 }
 
@@ -535,6 +569,10 @@ export interface WorkspaceRouteResponses {
   idea: IdeaPage;
   /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */
   boardQuery: BoardQuery;
+  /** The database's favourites of the workspace, never a file; `{specs: []}` when none is stored. */
+  favorites: Favorites;
+  /** The whole set after the write, so the web takes the server's state rather than its own (plan 052). */
+  favorite: Favorites;
   allocate: IdeaAllocated;
   backlog: BacklogWritten;
   runRelease: RunReleased;
@@ -639,6 +677,7 @@ export const API_ERRORS = [
   'forbidden',
   'method-not-allowed',
   'invalid-body',
+  'invalid-spec',
   'hash-mismatch',
   'locked',
   'run-locked',
@@ -667,6 +706,11 @@ export interface MethodNotAllowed {
 /** 400 on a write whose body is not JSON or fails `isGateReviewedRequest` / `isTaskCheckRequest`. */
 export interface InvalidBody {
   readonly error: 'invalid-body';
+}
+
+/** 400 on a favourite's set or unset whose spec id is not a spec folder name, `NNN-slug` (`isFavoriteSpec`, spec 052). */
+export interface InvalidSpec {
+  readonly error: 'invalid-spec';
 }
 
 /** 409 on a write: the file changed since it was rendered. `expected` is what the files hash to now; nothing was written. */
@@ -711,7 +755,8 @@ export type SpecRouteError<R extends SpecRouteName> =
 /**
  * The error body a workspace route may send: 404 unknown slug, 403 guard, 405 wrong method, 409 unreadable workspace
  * (the same `Unavailable` summary the dashboard sends). The board query (T92) reads the database alone: no 409, and
- * its `PUT` adds 400 `invalid-body`. The allocation (T87) adds its write answers: 400, the 409 `hash-mismatch` of the
+ * its `PUT` adds 400 `invalid-body`. The favourites (spec 052) read the database alone too: no 409, and the set and
+ * the unset add 400 `invalid-spec`. The allocation (T87) adds its write answers: 400, the 409 `hash-mismatch` of the
  * story, the 422 `allocate-refused` and the 423 the contract keeps (unreachable for a story, `writes.ts` `writeAllocate`).
  * Without a route named, the union of the file reads.
  */
@@ -719,7 +764,7 @@ export type WorkspaceRouteError<R extends WorkspaceRouteName = 'planning' | 'ide
   | NotFound
   | Forbidden
   | MethodNotAllowed
-  | ([R] extends ['boardQuery'] ? InvalidBody : Unavailable)
+  | ([R] extends ['boardQuery'] ? InvalidBody : [R] extends ['favorites'] ? never : [R] extends ['favorite'] ? InvalidSpec : Unavailable)
   | ([R] extends ['allocate'] ? InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked : never)
   | ([R] extends ['backlog'] ? InvalidBody | Conflict<{ readonly backlog: string }> | BacklogRefused : never)
   | ([R] extends ['runRelease'] ? InvalidBody | Conflict<{ readonly activity: string }> | RunReleaseRefused : never);
@@ -1057,6 +1102,11 @@ export interface BoardQuery {
 
 export const BOARD_QUERY_MAX = 2048;
 
+/** A workspace's favourite specs (spec 052, T1, ISC-296): their folder names, `NNN-slug`, sorted, each once. */
+export interface Favorites {
+  readonly specs: readonly string[];
+}
+
 /** The actor names route's 200 body (`GET` and `PUT`) and its `PUT` body: the whole mapping. */
 export type ActorsResponse = readonly ActorMapping[];
 export type ActorsRequest = readonly ActorMapping[];
@@ -1119,6 +1169,21 @@ export function isBoardQuery(body: unknown): body is BoardQuery {
   if (!isPlainRecord(body) || !hasOnlyKeys(body, ['query'])) return false;
   const { query } = body;
   return typeof query === 'string' && query.length <= BOARD_QUERY_MAX && !query.startsWith('?');
+}
+
+/**
+ * A spec id a favourite may name: a spec folder name as the loader lists it (core's `SPEC_FOLDER`, `NNN-slug`), and
+ * never with a `/`, which no folder name holds. Whether the workspace has the spec is not checked (plan 052).
+ */
+export function isFavoriteSpec(spec: unknown): spec is string {
+  return typeof spec === 'string' && SPEC_FOLDER.test(spec) && !spec.includes('/');
+}
+
+/** The `favorites` and `favorite` 200 body: `{specs}` and nothing else, each a favourite spec id. */
+export function isFavorites(body: unknown): body is Favorites {
+  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['specs'])) return false;
+  const { specs } = body;
+  return Array.isArray(specs) && specs.every((spec) => isFavoriteSpec(spec));
 }
 
 // ─── Evidence file ───────────────────────────────────────────────────────────────────────────────────────────────
