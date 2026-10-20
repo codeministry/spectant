@@ -72,6 +72,10 @@ export const areaPath = (area: SpecArea): string => area.tabs[0] ?? '';
 /** `['/w', ws, 's', id, …]` as a router link; `tab` '' is the spec dashboard. */
 export const specLink = (ws: string, id: string, tab = ''): string[] => (tab ? ['/w', ws, 's', id, tab] : ['/w', ws, 's', id]);
 
+/** Spec 051 (ISC-291, ISC-292): the target of a spec switch keeps the route's tab; no tab or a former Docs/Evidence tab gives the new spec's dashboard. */
+export const switchSpecLink = (ws: string, id: string, tab: TabId | null): string[] =>
+  specLink(ws, id, tab === null || isLegacyTab(tab) ? '' : tab);
+
 export const isTabId = (value: unknown): value is TabId => (TAB_IDS as readonly unknown[]).includes(value);
 export const isAreaId = (value: unknown): value is AreaId => (AREA_IDS as readonly unknown[]).includes(value);
 

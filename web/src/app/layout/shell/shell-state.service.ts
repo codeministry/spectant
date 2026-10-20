@@ -10,7 +10,7 @@ import {
   isTabId,
   isWorkspacePageId,
   type ShellRouteData,
-  specLink,
+  switchSpecLink,
   type TabId,
   type WorkspacePageId,
 } from './areas';
@@ -146,7 +146,8 @@ export class ShellState {
       const next = index < 0 ? undefined : order[index + (event.key === ']' ? 1 : -1)];
       if (next === undefined) return false;
       event.preventDefault();
-      void this.router.navigate(specLink(ws, next, this.tab() ?? ''));
+      // Spec 051 (ISC-291): the same switch rule as the header's spec select.
+      void this.router.navigate(switchSpecLink(ws, next, this.tab()));
       return true;
     }
     return false;

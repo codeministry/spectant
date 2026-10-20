@@ -20,7 +20,7 @@ import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/seg
 import { AreaMenu } from '../area-menu/area-menu';
 import { AssistantDot } from '../assistant/assistant.service';
 import { Mascot } from '../assistant/mascot';
-import { specLink } from './areas';
+import { switchSpecLink } from './areas';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
@@ -265,8 +265,9 @@ export class ShellMenus {
     void this.settings.update({ singleKeyShortcuts: !this.singleKeys() });
   }
 
+  /** Spec 051 (ISC-291, ISC-292): an entry of the spec select keeps the open tab; from the dashboard it stays the dashboard. */
   protected specEntryLink(id: string): string[] {
-    return specLink(this.state.ws() ?? '', id);
+    return switchSpecLink(this.state.ws() ?? '', id, this.state.tab());
   }
 
   private show(kind: MenuKind, trigger: HTMLElement, retry = true): void {
