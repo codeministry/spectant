@@ -351,6 +351,20 @@ describe("worktrees", () => {
     expect(mixed).toEqual(lower.map(({ role, label }) => ({ role, label: label.replace("mixed-case", "Mixed-Case") })));
   });
 
+  test("uppercase slug: `<folder>--worktrees-012-MCP-endpoint` is accepted as a spec worktree, its session and sub-agent read, no diagnostic", () => {
+    const transcripts = transcriptCopy();
+    const projects = dirname(transcripts);
+    const folder = "harbor--worktrees-012-MCP-endpoint";
+    put(join(projects, folder, "s.jsonl"), fs.readFileSync(join(projects, IN_REPO, `${IN_REPO_SESSION}.jsonl`)));
+    put(join(projects, folder, "s", "subagents", "agent-d1e2f3.jsonl"), `${usageLine("2026-03-09T08:00:09.000Z", "req_upper_sub", 3)}\n`);
+    const { files, diagnostics } = discoverTranscripts(transcripts);
+    expect(diagnostics).toEqual([]);
+    expect(files.filter((f) => f.label.startsWith(`../${folder}/`)).map(({ role, session, label }) => ({ role, session, label }))).toEqual([
+      { role: "subagent", session: "s", label: `../${folder}/s/subagents/agent-d1e2f3.jsonl` },
+      { role: "main", session: "s", label: `../${folder}/s.jsonl` },
+    ]);
+  });
+
   test("mixed case slug: a nested agent worktree below a mixed-case spec worktree is still not one", () => {
     const transcripts = transcriptCopy();
     const before = new Set(seen(transcripts).map((file) => file.label));

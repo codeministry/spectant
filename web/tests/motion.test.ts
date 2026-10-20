@@ -163,3 +163,40 @@ describe("literal durations live in motion.css only", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// Spec 057 (ISC-377, review 024): stylelint reads only `.css`, so a component's inline `styles` and its Web Animations
+// calls (`el.animate(…, { duration: 240, easing: 'cubic-bezier(…)' })`) slipped past the rule above. This guard reads
+// every `.ts` under web/src/app (specs excluded: their fixtures may spell a value they assert) for the same literal
+// durations, a numeric `duration:` and a literal `easing:` or `cubic-bezier(…)`; TypeScript reads the tokens instead.
+const APP = join(SRC, "app");
+
+function scripts(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".ts") && !e.name.endsWith(".spec.ts"))
+    .map((e) => join(e.parentPath, e.name));
+}
+
+/** Every literal duration or easing in a TypeScript source: inline CSS and animation options alike. */
+function literalMotionInTs(source: string): string[] {
+  const code = stripComments(source).replace(/^\s*\/\/.*$/gm, "");
+  const hits = literalDurations(code);
+  for (const m of code.matchAll(/\bduration\s*:\s*\d[\d_.]*/g)) hits.push(m[0]);
+  for (const m of code.matchAll(/\beasing\s*:\s*['"`][^'"`]*['"`]/g)) hits.push(m[0]);
+  for (const m of code.matchAll(/cubic-bezier\([^)]*\)/g)) hits.push(m[0]);
+  return hits;
+}
+
+describe("literal durations and easings in TypeScript (ISC-377)", () => {
+  test("the TypeScript scanner catches inline CSS and animation options and lets tokens through", () => {
+    expect(literalMotionInTs("styles: [`.dot { animation: pulse 1.6s var(--ease) infinite; }`]")).toHaveLength(1);
+    expect(literalMotionInTs("el.animate(k, { duration: 240, easing: 'cubic-bezier(.2,0,0,1)' });")).toHaveLength(3);
+    expect(literalMotionInTs("el.animate(k, { duration: tokenMs('--motion-duration-base'), easing: ease });")).toHaveLength(0);
+    expect(literalMotionInTs("styles: [`.dot { animation: pulse var(--motion-duration-pulse) var(--ease); }`]")).toHaveLength(0);
+  });
+
+  test("no .ts file under web/src/app sets a literal duration or easing", () => {
+    const offenders = scripts(APP).flatMap((path) =>
+      literalMotionInTs(readFileSync(path, "utf8")).map((hit) => `${relative(SRC, path)}: ${hit}`));
+    expect(offenders).toEqual([]);
+  });
+});

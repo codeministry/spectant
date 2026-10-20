@@ -289,6 +289,21 @@ export function addFavorite(db: Database, ws: string, spec: string, createdAt: s
   db.run("INSERT INTO spec_favorite (ws, spec, created_at) VALUES (?, ?, ?) ON CONFLICT (ws, spec) DO NOTHING", [ws, spec, createdAt]);
 }
 
+/**
+ * Deletes every favourite of workspace `ws` whose spec is not in `open`, the folder names of its open specs as the
+ * server's workspace scan found them (spec 057 T1, ISC-352), and returns how many rows went. Only the scan calls it,
+ * never a GET handler (ISC-353).
+ */
+export function pruneFavorites(db: Database, ws: string, open: readonly string[]): number {
+  const keep = new Set(open);
+  const gone = listFavorites(db, ws).filter((spec) => !keep.has(spec));
+  if (gone.length === 0) return 0;
+  db.transaction(() => {
+    for (const spec of gone) removeFavorite(db, ws, spec);
+  })();
+  return gone.length;
+}
+
 /** Unsets `spec` as a favourite of workspace `ws`; one never set is no error (idempotent). */
 export function removeFavorite(db: Database, ws: string, spec: string): void {
   db.run("DELETE FROM spec_favorite WHERE ws = ? AND spec = ?", [ws, spec]);

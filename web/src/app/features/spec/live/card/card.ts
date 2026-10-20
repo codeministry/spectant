@@ -11,6 +11,7 @@ import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { UiTime } from '../../../../shared/time';
 import { toneMark } from '../../../../shared/ui/tone';
 import { agentOfCard } from '../live-frame';
+import { LiveSource } from '../live-source';
 import { runOf } from '../board/board-model';
 import { absentNote } from '../recut';
 import { lookOf } from '../steps/step-timeline';
@@ -119,7 +120,7 @@ export class RunChip {
     @container shell (width < 1120px) { :host([data-flow-card]) .lane-chip { display: none; } }
     /* spec 024: the prototype .tcard.sel (2 px cyan outline) and .tcard.changed (a 1200 ms cyan tint after a frame change). */
     article[data-sel] { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-    article[data-changed] { animation: card-tint 1200ms var(--ease); }
+    article[data-changed] { animation: card-tint var(--motion-duration-highlight) var(--motion-ease-standard); }
     @keyframes card-tint { from { background: var(--disp-t); } }
     @media (prefers-reduced-motion: reduce) { article[data-changed] { animation: none; } }
     .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
@@ -247,20 +248,29 @@ export class BoardCard {
     return 'stale' in c && c.stale === true;
   });
 
-  /** Every frame on the scrubber, history then live, read only while the detail is open. */
-  private readonly frames = resource({
+  /** The live frame the board and the matrix read too: one shared read per refresh tick (ISC-371). */
+  private readonly live = inject(LiveSource).attach(() => this.detailOpen());
+  /** The history frames, read only while the detail is open; the live frame comes from `LiveSource`. */
+  private readonly historyFrames = resource({
     params: () => {
       const ws = this.shell.ws();
       const id = this.shell.specId();
       return this.detailOpen() && ws !== null && id !== null ? { ws, id } : undefined;
     },
     loader: async ({ params }): Promise<readonly HistoryFrame[]> => {
-      const [history, live] = await Promise.all([this.api.frames(params.ws, params.id), this.api.live(params.ws, params.id)]);
-      return [...(history.kind === 'ok' ? history.body : []), ...(live.kind === 'ok' ? [live.body] : [])];
+      const history = await this.api.frames(params.ws, params.id);
+      return history.kind === 'ok' ? history.body : [];
     },
   });
+  /** Every frame on the scrubber, history then live, once the detail's history is read. */
+  private readonly frames = computed<readonly HistoryFrame[] | undefined>(() => {
+    const history = this.historyFrames.value();
+    if (history === undefined) return undefined;
+    const live = this.live.value();
+    return [...history, ...(live?.kind === 'ok' ? [live.body] : [])];
+  });
   protected readonly history = computed(() => {
-    const frames = this.frames.value();
+    const frames = this.frames();
     return frames === undefined ? null : cardHistory(frames, this.card());
   });
 }

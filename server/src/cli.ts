@@ -49,7 +49,7 @@ import { openRegistry, type Registry, RegistryError, type Workspace } from "./re
 import { openSettings, settingsApi } from "./settings.ts";
 import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
-import { createWatchHub } from "./watch.ts";
+import { createWatchHub, favoritesScan } from "./watch.ts";
 import { workspaceAdminApi } from "./workspace-admin-route.ts";
 import { openImageStore } from "./workspace-images.ts";
 
@@ -253,7 +253,8 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     // The writing workspace routes (spec 016) come before the list route of `dashboardApi`, which answers 405 for
     // every write on its path, and announce each registry write on the same hub, so open streams show it at once.
     const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos, imagesOf: images.imagesOf }), hub, images });
-    const api = composeApi(eventsApi({ hub, reads }), admin, reads);
+    // The favourites are pruned in the scan after a watcher change, never in a GET (spec 057, ISC-352, ISC-353).
+    const api = composeApi(eventsApi({ hub, reads, scan: favoritesScan({ db, registry }) }), admin, reads);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();

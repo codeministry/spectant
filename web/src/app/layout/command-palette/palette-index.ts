@@ -56,6 +56,13 @@ export interface PaletteClaim {
 /** At most this many claim reads run at once while a workspace's claims load (one read per spec). */
 export const CLAIM_LOAD_CONCURRENCY = 6;
 
+/**
+ * How long the palette's first draw waits for the other workspaces' dashboards (spec 057, ISC-373). Within it the list
+ * is drawn once, complete and in its final order (spec 024 T80); a workspace that has not answered by then holds back
+ * no other, and joins the drawn list when it answers.
+ */
+export const OTHERS_WAIT_MS = 500;
+
 type Loose = Readonly<Record<string, unknown>>;
 const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
@@ -116,6 +123,12 @@ async function mapLimited<T, R>(items: readonly T[], limit: number, task: (item:
  * open workspace's). Nothing loads before the palette first opens (`want()`); each later open reloads, so the lists
  * are as fresh as the dashboards. The open workspace always comes from `ShellData`'s own dashboard and leads the list.
  */
+/** One other workspace's answered dashboard, as the palette reads it, and its `dashboardStamp`. */
+interface OtherAnswer {
+  readonly workspace: PaletteWorkspace;
+  readonly stamp: string;
+}
+
 /** A source has given its first answer (a value, kept while it reloads, or an error), or has nothing to load. */
 const answered = (source: Resource<unknown>): boolean => source.hasValue() || source.status() === 'error' || source.status() === 'idle';
 
@@ -129,29 +142,27 @@ export class PaletteIndex {
   private readonly wanted = signal(false);
 
   /**
-   * Keyed on `wanted` alone, so a route or workspace-list change while the palette is closed fetches nothing; the loader
-   * reads the list and the open workspace when it runs (on the first open, on each later open and on refresh). The open
-   * workspace's dashboard is already in ShellData (`current`), so it is not read a second time.
+   * The other readable workspaces of the last load, in list order, and each one's last answer (`null`: it failed). A
+   * reload keeps an answer until the new one arrives; a workspace gone from the list is dropped when the next load starts.
    */
-  private readonly others = resource({
-    params: () => (this.wanted() ? true : undefined),
-    loader: async () => {
-      const open = this.state.ws();
-      const targets = this.data
-        .workspaceList()
-        .filter((entry) => entry.readable && entry.slug !== open)
-        .map((entry) => ({ slug: entry.slug, name: entry.name }));
-      const answers = await Promise.all(targets.map(async (ws) => ({ ws, result: await this.api.dashboard(ws.slug) })));
-      return answers.flatMap(({ ws, result }) =>
-        result.kind === 'ok' ? [{ workspace: readWorkspace(ws.slug, ws.name, result.body), stamp: dashboardStamp(result.body) }] : [],
-      );
-    },
+  private readonly targets = signal<readonly string[]>([]);
+  private readonly answers = signal<ReadonlyMap<string, OtherAnswer | null>>(new Map());
+  /** Every other workspace of the first load has answered, or `OTHERS_WAIT_MS` ran out; it stays true after. */
+  private readonly othersReady = signal(false);
+  private loads = 0;
+
+  /** The other workspaces that answered, in list order. */
+  private readonly others = computed<readonly OtherAnswer[]>(() => {
+    const answers = this.answers();
+    return this.targets().flatMap((slug) => answers.get(slug) ?? []);
   });
 
   /** The open workspace (when its dashboard answered), then every other readable one in list order. */
   readonly workspaces = computed<readonly PaletteWorkspace[]>(() => {
     const current = this.current();
-    const rest = (this.others.value() ?? []).map((other) => other.workspace).filter((ws) => ws.slug !== current?.slug);
+    const rest = this.others()
+      .map((other) => other.workspace)
+      .filter((ws) => ws.slug !== current?.slug);
     return current === null ? rest : [current, ...rest];
   });
 
@@ -165,7 +176,7 @@ export class PaletteIndex {
 
   /** Each known workspace's `dashboardStamp`: the open one from ShellData's dashboard, the others from this index. */
   private readonly stamps = computed<ReadonlyMap<string, string>>(() => {
-    const stamps = new Map((this.others.value() ?? []).map((other) => [other.workspace.slug, other.stamp] as const));
+    const stamps = new Map(this.others().map((other) => [other.workspace.slug, other.stamp] as const));
     const slug = this.state.ws();
     const result = this.data.dashboard.value();
     if (slug !== null && result?.kind === 'ok') stamps.set(slug, dashboardStamp(result.body));
@@ -177,20 +188,25 @@ export class PaletteIndex {
 
   /**
    * Every source of the palette's groups has given its first answer since the first open: the shell's workspaces,
-   * dashboard and planning tree, the other workspaces' dashboards and every workspace's claims (spec 024
-   * T80). Until then the palette lists nothing, so its list never grows or re-orders under a pointer or a query
-   * (a click on Help landed on Library while the other workspaces' specs arrived above it). A reload keeps the last
-   * answer, so a later open or a live refresh does not empty the list again.
+   * dashboard and planning tree, the other workspaces' dashboards and every listed workspace's claims (spec 024 T80).
+   * Until then the palette lists nothing, so its list does not grow or re-order under a pointer or a query (a click on
+   * Help landed on Library while the other workspaces' specs arrived above it). One other workspace holds the draw back
+   * for at most `OTHERS_WAIT_MS` (spec 057, ISC-373): then the ones that answered are drawn, and a late one joins when it
+   * answers. Once true it stays true, so a reload, a live refresh or a late workspace does not empty the list again.
    */
-  readonly settled = computed(() => {
-    if (!this.wanted() || !answered(this.others)) return false;
-    if (![this.data.workspaces, this.data.dashboard, this.data.planning].every(answered)) return false;
-    return this.workspaces().every((ws) => {
-      this.claimsFor(ws.slug);
-      const load = this.claimLoads.get(ws.slug);
-      return load === undefined || answered(load);
-    });
-  });
+  readonly settled = linkedSignal<boolean, boolean>({
+    source: () => {
+      if (!this.wanted() || !this.othersReady()) return false;
+      if (![this.data.workspaces, this.data.dashboard, this.data.planning].every(answered)) return false;
+      // Every listed workspace's claims start loading at once; `every` alone would start one per read.
+      const loads = this.workspaces().map((ws) => {
+        this.claimsFor(ws.slug);
+        return this.claimLoads.get(ws.slug);
+      });
+      return loads.every((load) => load === undefined || answered(load));
+    },
+    computation: (now, previous) => now || (previous?.value ?? false),
+  }).asReadonly();
 
   /**
    * T3 · ISC-139: every claim of every spec (active, then archived, each in file order) of workspace `ws`, for the
@@ -240,8 +256,10 @@ export class PaletteIndex {
 
   /** Called on every open: the first loads, each later one reloads. */
   want(): void {
-    if (this.wanted()) this.others.reload();
-    else this.wanted.set(true);
+    this.wanted.set(true);
+    untracked(() => {
+      this.loadOthers();
+    });
   }
 
   /**
@@ -250,6 +268,45 @@ export class PaletteIndex {
    */
   refresh(): void {
     this.refresher.refresh();
-    if (this.wanted()) this.others.reload();
+    if (this.wanted()) untracked(() => {
+      this.loadOthers();
+    });
+  }
+
+  /**
+   * Reads every other readable workspace's dashboard, each answer landing on its own as it arrives (spec 057, ISC-373),
+   * never behind one `Promise.all`. It reads the list and the open workspace when it runs (on each open and on refresh),
+   * so a route or list change while the palette is closed fetches nothing; the open workspace's dashboard is already in
+   * ShellData (`current`) and is not read a second time. An answer of an older load is dropped.
+   */
+  private loadOthers(): void {
+    const load = ++this.loads;
+    const open = this.state.ws();
+    const targets = this.data.workspaceList().filter((entry) => entry.readable && entry.slug !== open);
+    const slugs = targets.map((entry) => entry.slug);
+    this.targets.set(slugs);
+    this.answers.update((answers) => new Map([...answers].filter(([slug]) => slugs.includes(slug))));
+    let waiting = targets.length;
+    const answer = (slug: string, value: OtherAnswer | null): void => {
+      if (load !== this.loads) return;
+      this.answers.update((answers) => new Map(answers).set(slug, value));
+      if (--waiting === 0) this.othersReady.set(true);
+    };
+    if (waiting === 0) this.othersReady.set(true);
+    else if (!this.othersReady() && load === 1) {
+      setTimeout(() => {
+        this.othersReady.set(true);
+      }, OTHERS_WAIT_MS);
+    }
+    for (const { slug, name } of targets) {
+      this.api.dashboard(slug).then(
+        (result) => {
+          answer(slug, result.kind === 'ok' ? { workspace: readWorkspace(slug, name, result.body), stamp: dashboardStamp(result.body) } : null);
+        },
+        () => {
+          answer(slug, null);
+        },
+      );
+    }
   }
 }

@@ -7,7 +7,7 @@
 // branch with its worktree, or one checked out in the main checkout, gives none. Merged or removed, the worktree leaves
 // the dashboard reading, so no chip shows. Nothing is written: `events.jsonl` stays byte-identical.
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
 import { composeApi, dashboardApi } from "../server/src/api.ts";
@@ -347,8 +347,11 @@ interface GitSpawn {
   readonly command: string;
 }
 
-/** The git processes `read` starts, counted over `Bun.spawn`; every other spawn passes through uncounted. */
-async function gitSpawnsOf<T>(read: () => Promise<T>): Promise<{ value: T; spawns: GitSpawn[] }> {
+/**
+ * The git processes `read` starts, counted over `Bun.spawn`; every other spawn passes through uncounted. `onSpawn` sees
+ * each git process with the promise of its exit, so a test can follow how many run at once.
+ */
+async function gitSpawnsOf<T>(read: () => Promise<T>, onSpawn?: (spawn: GitSpawn, exited: Promise<unknown>) => void): Promise<{ value: T; spawns: GitSpawn[] }> {
   const spawns: GitSpawn[] = [];
   const original = Bun.spawn;
   const spy = spyOn(Bun, "spawn").mockImplementation(((first: unknown, options?: { cwd?: string }) => {
@@ -361,7 +364,11 @@ async function gitSpawnsOf<T>(read: () => Promise<T>): Promise<{ value: T; spawn
         if (args[i] === "-C") at = args[i + 1] ?? at;
         i += args[i] === "-C" || args[i] === "-c" ? 2 : 1;
       }
-      spawns.push({ args, at, command: args[i] ?? "" });
+      const spawn: GitSpawn = { args, at, command: args[i] ?? "" };
+      spawns.push(spawn);
+      const child = (original as (...a: unknown[]) => { exited: Promise<unknown> })(first, options);
+      onSpawn?.(spawn, child.exited);
+      return child;
     }
     return (original as (...a: unknown[]) => unknown)(first, options);
   }) as unknown as typeof Bun.spawn);
@@ -784,5 +791,76 @@ describe("ISC-209.1 conflict: two spec worktrees with different versions of one 
     expect(conflicts[0]).toMatchObject({ file: "specs/tldr.md", diagnostic: { severity: "warning", subject: "specs/tldr.md" } });
     expect(conflicts[0]?.diagnostic.message).toContain(SPEC_WORKTREE);
     expect(conflicts[0]?.diagnostic.message).toContain(second);
+  });
+});
+
+// ── ISC-359 spec source one read (spec 057, T8; review 027, finding 2) ───────────────────────────────────────────────
+//
+// A spec with a code-reviewed mark and a live worktree: its tree id is the worktree's (ISC-176), hashed after one
+// `git ls-files --cached --others` in that worktree. Each request runs on a repository of its own, so no memo of an
+// earlier request hides a read. A single-spec route reads that tree at most once per request, and a route that shows no
+// tree (the timeline) reads none: `readSpecSource` computes no tree only to drop it.
+
+describe("ISC-359 spec source one read: a single-spec route reads a spec worktree's tree at most once, and never to drop it", () => {
+  /** The worktree fixture with 004's code-reviewed mark copied onto 002, whose worktree then is the one hashed. */
+  async function plantMarked(): Promise<PlantedWorktreeRepo> {
+    const repo = await plant();
+    const gates = (folder: string): string => join(repo.root, "specs", folder, ".gates");
+    copyFileSync(join(gates(MARKED_SPEC), "code-reviewed.json"), join(gates(SPEC_FOLDER), "code-reviewed.json"));
+    return repo;
+  }
+
+  /** The tree reads of one cold request to `path`: the `ls-files --others` runs in the spec's worktree. */
+  async function treeReadsOf(path: string): Promise<{ status: number; reads: number; all: string }> {
+    const repo = await plantMarked();
+    const { value: res, spawns } = await gitSpawnsOf(() => call(handlerFor(repo), path));
+    const reads = spawns.filter((s) => s.command === "ls-files" && s.args.includes("--others") && (s.at ?? "").endsWith(SPEC_WORKTREE)).length;
+    return { status: res.status, reads, all: summary(spawns) };
+  }
+
+  test("spec source one read: the spec page reads the worktree's tree exactly once", async () => {
+    expect(await treeReadsOf(specRoutes.spec("harbor", SPEC_ID))).toMatchObject({ status: 200, reads: 1 });
+  });
+
+  for (const route of ["claims", "tasks", "live"] as const) {
+    test(`spec source one read: the ${route} route reads the worktree's tree at most once`, async () => {
+      const { status, reads, all } = await treeReadsOf(specRoutes[route]("harbor", SPEC_ID));
+      expect(status).toBe(200);
+      expect(reads, all).toBeLessThanOrEqual(1);
+    });
+  }
+
+  test("spec source one read: the timeline route, which shows no tree, reads none", async () => {
+    expect(await treeReadsOf(specRoutes.timeline("harbor", SPEC_ID))).toMatchObject({ status: 200, reads: 0 });
+  });
+});
+
+// ── ISC-362 bounded and cached (spec 057, T11; review 027, finding 5) ───────────────────────────────────────────────
+//
+// The chip's two git facts per live spec worktree, `status` (dirty) and `rev-list --count` (ahead), on the budget
+// repository's five spec worktrees: a cold poll reads them in parallel, at most four worktrees at a time
+// (`WORKTREE_READS`), and a second poll without a change to the repository state starts no git process at all.
+
+describe("ISC-362 bounded and cached: the worktrees' git facts run in parallel within a bound and are read once per state", () => {
+  test("bounded and cached: a cold poll reads several worktrees at once, never more than four; a second poll starts no git process", async () => {
+    const repo = await plantBudget();
+    const inFlight = new Map<string, number>();
+    let peak = 0;
+    const { spawns: first } = await gitSpawnsOf(
+      () => poll(repo),
+      (spawn, exited) => {
+        const at = spawn.at;
+        if ((spawn.command !== "status" && spawn.command !== "rev-list") || at?.includes("/.worktrees/") !== true) return;
+        inFlight.set(at, (inFlight.get(at) ?? 0) + 1);
+        peak = Math.max(peak, [...inFlight.values()].filter((n) => n > 0).length);
+        void exited.then(() => inFlight.set(at, (inFlight.get(at) ?? 1) - 1));
+      },
+    );
+    const worktrees = new Set(first.filter((s) => s.command === "status" && s.at?.includes("/.worktrees/")).map((s) => s.at));
+    expect(worktrees.size, summary(first)).toBe(BUDGET_SPECS.length + 1);
+    expect(peak, summary(first)).toBeGreaterThan(1);
+    expect(peak, summary(first)).toBeLessThanOrEqual(4);
+    const { spawns: second } = await gitSpawnsOf(() => poll(repo));
+    expect({ count: second.length, all: summary(second) }).toMatchObject({ count: 0 });
   });
 });

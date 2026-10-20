@@ -832,3 +832,72 @@ describe('worktree-only spec (spec 039, ISC-208.1)', () => {
     expect(again.worktrees.find((w) => w.path === '.worktrees/099-retired')?.spec).toBe('099');
   });
 });
+
+// Spec 057: three regression tests for findings of the spec 027 review, each selected by its probe's filter.
+//   - ISC-360 (`-t prunable`, finding 3): a worktree git lists as `prunable` has ended and no spec is assigned to it,
+//     even while every folder still reads as present.
+//   - ISC-368 (`-t "inner dotdot"`, hardening S1): `relativeTo` resolves an inner `..` before it compares, so a path
+//     that reads as inside the repository but climbs out of it is refused, and one that stays inside is normalised.
+//   - ISC-369 (`-t "external path"`, hardening S2): a worktree outside the repository reaches neither the workspace
+//     answer (`buildDashboard`) nor the spec answer (`buildSpecPage`) with its location, absolute or relative.
+describe('spec 057: review 027 findings on worktree paths and ends', () => {
+  test('prunable: a worktree git lists as prunable has ended, and 0 specs are assigned to it (ISC-360)', () => {
+    const text = read('prunable.porcelain');
+    const facts = allPresent(text, SPECS);
+    const view = viewOf(text, { '014-export': ['specs/014-export/spec.md'], '015-ledger': ['specs/015-ledger/spec.md'] }, facts);
+    expect(view.ended.map(({ worktree, reason }) => [worktree.spec, reason])).toEqual([
+      ['014', 'prunable'],
+      ['015', 'prunable'],
+    ]);
+    // Only the worktree of no spec stays listed while prunable: it was never assigned, so it never ends here.
+    expect(view.live.filter((w) => w.prunable === true).map((w) => [w.path, w.spec])).toEqual([['.worktrees/scratch', null]]);
+    const assigned = view.live.filter((w) => w.kind === 'spec' && w.spec !== null).map((w) => w.spec);
+    expect(assigned).toEqual(['012']);
+    expect(copyDirFor(ROOT, { id: '014', slug: '014-export' }, view)).toBeNull();
+    expect(copyDirFor(ROOT, { id: '015', slug: '015-ledger' }, view)).toBeNull();
+  });
+
+  test('inner dotdot: a path that climbs out of the repository through .worktrees/x is refused, a/../b is b (ISC-368)', () => {
+    // Three `..` from `.worktrees/x` leave the repository; read segment by segment it would start with `.worktrees/`.
+    expect(relativeTo('/srv/repo', '/srv/repo/.worktrees/x/../../../outside')).toBeNull();
+    expect(relativeTo('/srv/repo', '/srv/repo/.worktrees/x/../../../repo-013/.worktrees/013-relay')).toBeNull();
+    // Two `..` from `.worktrees/x` land on the root itself, so `outside` there lies inside the repository.
+    expect(relativeTo('/srv/repo', '/srv/repo/.worktrees/x/../../outside')).toBe('outside');
+    expect(relativeTo('/srv/repo', '/srv/repo/a/../b')).toBe('b');
+    const listing = listingOf([
+      { path: '/srv/repo/.worktrees/x/../../../repo-012', branch: 'feature/012-harbor' },
+      { path: '/srv/repo/a/../b', branch: 'fix/013-relay' },
+    ]);
+    const { worktrees } = assignWorktrees(listing, SPECS);
+    expect(worktrees.map((w) => [w.path, w.spec])).toEqual([
+      [null, '012'],
+      ['b', '013'],
+    ]);
+  });
+
+  test('external path: a worktree outside the repository reaches no workspace or spec answer with its location (ISC-369)', () => {
+    const [folder] = HARBOR_MAIN.specs.map((files) => files.folder);
+    if (folder === undefined) throw new Error('harbor has no active spec');
+    const outside = ['/srv/repo-ext', '/srv/repo/../repo-ext', '/srv/repo/.worktrees/x/../../../repo-ext'];
+    for (const path of outside) {
+      const assignment = assignWorktrees(listingOf([{ path, branch: `feature/${folder}` }]), HARBOR_FOLDERS);
+      expect(assignment.worktrees.map((w) => [w.path, w.spec])).toEqual([[null, folder.slice(0, 3)]]);
+
+      const dashboard = buildDashboard({ ...HARBOR_MAIN, worktrees: assignment });
+      const row = dashboard.specs.find((r) => r.slug === folder);
+      expect(row?.worktree).toMatchObject({ path: null, branch: `feature/${folder}`, kind: 'spec' });
+
+      const files = HARBOR_MAIN.specs.find((f) => f.folder === folder) as SpecFiles;
+      const others = [...HARBOR_MAIN.specs, ...HARBOR_MAIN.archived].filter((f) => f !== files);
+      const page = buildSpecPage({ files, others, tldr: HARBOR_MAIN.tldr, worktrees: assignment });
+      expect(page.head.worktree).toMatchObject({ path: null, kind: 'spec' });
+
+      // 0 paths outside the repository in either answer, absolute or relative.
+      for (const answer of [JSON.stringify(dashboard), JSON.stringify(page)]) {
+        expect(answer).not.toContain('repo-ext');
+        expect(answer).not.toContain('/srv/');
+        expect(answer).not.toMatch(/"path":"\.\.(?:\/|")/u);
+      }
+    }
+  });
+});
