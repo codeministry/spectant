@@ -531,7 +531,17 @@
       "uploadedScreenshot": "Screenshot of {{name}} uploaded.",
       "uploadTooLarge": "{{name}}: the image is larger than {{max}} MB; nothing was stored.",
       "uploadUnsupported": "{{name}}: only PNG, JPEG or WebP images; nothing was stored.",
-      "uploadFailed": "The image for {{name}} could not be uploaded."
+      "uploadFailed": "The image for {{name}} could not be uploaded.",
+      "kind": {
+        "logo": "Logo",
+        "screenshot": "Screenshot"
+      },
+      "refused": {
+        "type": "{{kind}} not taken: only PNG, JPEG or WebP up to {{max}} MB",
+        "size": "{{kind}} not taken: the file is larger than {{max}} MB",
+        "failed": "{{kind}} not taken: the upload failed. Please try again."
+      },
+      "dismissNotice": "Dismiss notice"
     },
     "menu": {
       "rename": "Rename…",
@@ -543,9 +553,16 @@
     },
     "remove": {
       "title": "Remove {{name}}?",
-      "body": "Spectant forgets the workspace. The folder and its specs stay untouched.",
+      "body": "The workspace leaves the list, and its logo and screenshot are deleted from the app's data folder. The repository folder stays on disk, specs included.",
       "cancel": "Cancel",
-      "confirm": "Remove"
+      "confirm": "Remove",
+      "busy": "Removing…",
+      "removed": "Removed {{name}}",
+      "error": {
+        "notFound": "{{name}} was not removed: the registry no longer has it (404).",
+        "failed": "{{name}} was not removed (status {{status}}).",
+        "noAnswer": "{{name}} was not removed: the server did not answer."
+      }
     },
     "rename": {
       "title": "Rename {{name}}",

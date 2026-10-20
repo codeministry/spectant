@@ -98,6 +98,24 @@ afterEach(() => {
   proto['close'] = native.close;
 });
 
+/** A file that starts with the PNG signature, `size` bytes long, named and typed as a PNG. */
+function pngFile(size: number, name = 'logo.png'): File {
+  const bytes = new Uint8Array(size);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  return new File([bytes], name, { type: 'image/png' });
+}
+
+/** An SVG upload with script, under any name and type the picker reports; marked so the icon guard skips the fixture. */
+function svgFile(name: string, type: string): File {
+  return new File(['<svg data-icon-exempt xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'], name, { type });
+}
+
+/** Lets the row read the file's first bytes, await the write and render. */
+async function settle(fixture: { whenStable(): Promise<unknown> }): Promise<void> {
+  for (let i = 0; i < 3; i++) await new Promise((done) => setTimeout(done, 0));
+  await fixture.whenStable();
+}
+
 const row = (root: HTMLElement, slug: string): HTMLElement => {
   const found = root.querySelector<HTMLElement>(`[data-ws-row="${slug}"]`);
   if (found === null) throw new Error(`no row ${slug}`);
@@ -241,16 +259,14 @@ describe('WorkspaceRow (spec 016, T15, ISC-309)', () => {
       data.uploadWorkspaceImage.mockResolvedValueOnce(answer);
       Object.defineProperty(input(kind), 'files', { configurable: true, value: [file] });
       input(kind).dispatchEvent(new Event('change'));
-      await Promise.resolve();
-      await Promise.resolve();
-      await fixture.whenStable();
+      await settle(fixture);
     };
-    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'logo.png', { type: 'image/png' });
+    const png = pngFile(16);
     await choose('logo', png, { kind: 'ok', body: { kind: 'logo', url: '/api/workspaces/harbor/images/logo?v=0123456789abcdef' } });
     expect(data.uploadWorkspaceImage).toHaveBeenLastCalledWith('harbor', 'logo', png);
     expect(toasts.spoken()?.text).toBe('Logo of Harbor uploaded.');
 
-    // Server refusals are spoken for now; the persistent ui-notice under the row is T19's.
+    // Server refusals are spoken as well as shown under the row (T19).
     await choose('screenshot', png, { kind: 'refused', status: 413, body: { error: 'too-large', maxBytes: 2097152 } });
     expect(data.uploadWorkspaceImage).toHaveBeenLastCalledWith('harbor', 'screenshot', png);
     expect(toasts.spoken()?.text).toBe('Harbor: the image is larger than 2 MB; nothing was stored.');
@@ -278,5 +294,88 @@ describe('WorkspaceRow (spec 016, T15, ISC-309)', () => {
     ]);
     expect(harbor.querySelector('a[data-row-act="open"]')?.getAttribute('href')).toBe('/w/harbor');
     expect(harbor.querySelector('[data-row-act="uploadLogo"]')?.textContent).toContain('Upload logo…');
+  });
+});
+
+describe('WorkspaceRow upload refusals (spec 016, T19, ISC-311)', () => {
+  const setup = async (tier: 'compact' | 'medium' | 'wide' = 'wide') => {
+    const rendered = await render(tier);
+    const harbor = row(rendered.root, 'harbor');
+    const input = (kind: string) => {
+      const found = harbor.querySelector<HTMLInputElement>(`input[type="file"][data-row-upload="${kind}"]`);
+      if (found === null) throw new Error(`no ${kind} input`);
+      return found;
+    };
+    const choose = async (kind: string, file: File) => {
+      Object.defineProperty(input(kind), 'files', { configurable: true, value: [file] });
+      input(kind).dispatchEvent(new Event('change'));
+      await settle(rendered.fixture);
+    };
+    const notice = () => harbor.querySelector<HTMLElement>('ui-notice[data-row-notice]');
+    return { ...rendered, harbor, input, choose, notice, toasts: TestBed.inject(ToastService) };
+  };
+
+  it('refuses an SVG typed as image/png before sending and shows a persistent error notice under the row', async () => {
+    const { choose, notice, toasts, harbor } = await setup();
+    await choose('logo', svgFile('logo.png', 'image/png'));
+    expect(data.uploadWorkspaceImage).not.toHaveBeenCalled();
+    expect(notice()?.getAttribute('data-tone')).toBe('error');
+    expect(notice()?.getAttribute('role')).toBe('alert');
+    expect(notice()?.textContent).toContain('Logo not taken: only PNG, JPEG or WebP up to 2 MB');
+    expect(harbor.lastElementChild).toBe(notice());
+    expect(toasts.spoken()?.text).toBe('Harbor: only PNG, JPEG or WebP images; nothing was stored.');
+    expect(toasts.message()).toBeNull();
+  });
+
+  it('refuses a renamed text file and a 3 MB PNG before sending, naming kind and reason', async () => {
+    const { choose, notice, toasts, input } = await setup();
+    await choose('screenshot', new File(['just some text'], 'shot.webp', { type: 'image/webp' }));
+    expect(data.uploadWorkspaceImage).not.toHaveBeenCalled();
+    expect(notice()?.textContent).toContain('Screenshot not taken: only PNG, JPEG or WebP up to 2 MB');
+    expect(input('screenshot').value).toBe('');
+
+    await choose('logo', pngFile(3 * 1024 * 1024));
+    expect(data.uploadWorkspaceImage).not.toHaveBeenCalled();
+    expect(notice()?.textContent).toContain('Logo not taken: the file is larger than 2 MB');
+    expect(toasts.spoken()?.text).toBe('Harbor: the image is larger than 2 MB; nothing was stored.');
+    expect(toasts.message()).toBeNull();
+  });
+
+  it('shows a server 415, 413 and any other failure as the same notice, never a toast', async () => {
+    const { choose, notice, toasts } = await setup('compact');
+    data.uploadWorkspaceImage.mockResolvedValueOnce({ kind: 'refused', status: 415, body: { error: 'unsupported-type' } });
+    await choose('screenshot', pngFile(16));
+    expect(data.uploadWorkspaceImage).toHaveBeenCalledTimes(1);
+    expect(notice()?.textContent).toContain('Screenshot not taken: only PNG, JPEG or WebP up to 2 MB');
+
+    data.uploadWorkspaceImage.mockResolvedValueOnce({ kind: 'refused', status: 413, body: { error: 'too-large', maxBytes: 2097152 } });
+    await choose('logo', pngFile(16));
+    expect(notice()?.textContent).toContain('Logo not taken: the file is larger than 2 MB');
+
+    data.uploadWorkspaceImage.mockResolvedValueOnce({ kind: 'error', status: 500 });
+    await choose('logo', pngFile(16));
+    expect(notice()?.textContent).toContain('Logo not taken: the upload failed. Please try again.');
+    expect(toasts.message()).toBeNull();
+  });
+
+  it('dismisses the notice with ✕, and a later success of that kind clears it', async () => {
+    const { choose, notice, fixture, harbor } = await setup();
+    await choose('logo', svgFile('a.svg', 'image/svg+xml'));
+    const close = notice()?.querySelector<HTMLButtonElement>('button[data-row-notice-dismiss]');
+    expect(close?.getAttribute('aria-label')).toBe('Dismiss notice');
+    close?.click();
+    await fixture.whenStable();
+    expect(notice()).toBeNull();
+
+    await choose('logo', svgFile('a.svg', 'image/svg+xml'));
+    expect(notice()).not.toBeNull();
+    data.uploadWorkspaceImage.mockResolvedValueOnce({ kind: 'ok', body: { kind: 'screenshot', url: '/api/workspaces/harbor/images/screenshot?v=0123456789abcdef' } });
+    await choose('screenshot', pngFile(16));
+    expect(notice()?.textContent).toContain('Logo not taken');
+
+    data.uploadWorkspaceImage.mockResolvedValueOnce({ kind: 'ok', body: { kind: 'logo', url: '/api/workspaces/harbor/images/logo?v=0123456789abcdef' } });
+    await choose('logo', pngFile(16));
+    expect(notice()).toBeNull();
+    expect(harbor.querySelector('ui-notice')).toBeNull();
   });
 });

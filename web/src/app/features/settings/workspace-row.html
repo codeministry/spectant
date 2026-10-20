@@ -63,3 +63,18 @@
     <div class="ws-menu"><ng-container [ngTemplateOutlet]="entries" /></div>
   </ui-popover>
 }
+
+@if (notice(); as n) {
+  <ui-notice tone="error" class="notice" data-row-notice [attr.data-kind]="n.kind" [attr.data-reason]="n.reason">
+    {{ 'settingsWorkspaces.row.refused.' + n.reason | transloco: { kind: ('settingsWorkspaces.row.kind.' + n.kind | transloco), max: n.max } }}
+    <button
+      action
+      ui-icon-button
+      icon="x"
+      size="sm"
+      data-row-notice-dismiss
+      [label]="'settingsWorkspaces.row.dismissNotice' | transloco"
+      (click)="notice.set(null)"
+    ></button>
+  </ui-notice>
+}

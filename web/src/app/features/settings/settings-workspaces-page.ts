@@ -25,6 +25,7 @@ import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
+import { ToastService } from '../../shared/ui/toast/toast';
 import { WorkspaceRow } from './workspace-row';
 
 /** How long the list may load before the skeleton rows show (design.md § Zustände), so a fast answer never flashes. */
@@ -37,6 +38,12 @@ type AddError =
 
 /** A rename refusal shown inline in the dialog, keyed like `settingsWorkspaces.rename.error.*`. */
 type RenameError = 'invalidName' | 'failed';
+
+/** Why a remove did not land, shown in the dialog, keyed like `settingsWorkspaces.remove.error.*`; 0 is no answer. */
+interface RemoveError {
+  readonly key: 'notFound' | 'failed' | 'noAnswer';
+  readonly status: number;
+}
 
 /** Typing targets: a key pressed here is text, never a shortcut (as `KeyboardService`). */
 const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
@@ -62,8 +69,8 @@ const FOCUS_STEP_MS = 16;
  *
  * Each entry renders as `app-workspace-row` (T15), which emits its menu actions. Rename (T16, ISC-305) opens a dialog
  * that sends the name only; `?sort=` (T20, ISC-313) orders the rows on the client with the contract's comparator.
- * Later tasks own the rest: re-scan (T17), upload (T18, T19) and the remove write (T21); until then the remove dialog
- * only opens and closes.
+ * Remove (T21, ISC-314) asks in a dialog that starts on Cancel and sends `DELETE` only after Confirm. Re-scan (T17)
+ * and upload (T18, T19) are wired by their own tasks.
  */
 @Component({
   selector: 'app-settings-workspaces-page',
@@ -93,6 +100,7 @@ export class SettingsWorkspacesPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly transloco = inject(TranslocoService);
+  private readonly toast = inject(ToastService);
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
@@ -139,9 +147,12 @@ export class SettingsWorkspacesPage {
   protected readonly renameError = signal<RenameError | null>(null);
   private renameTrigger: HTMLElement | null = null;
 
-  /** The row the remove dialog asks about; the dialog changes nothing until T21 wires the write. */
+  /** The row the remove dialog asks about and its state (T21); local, never stored. */
   protected readonly removing = signal<WorkspaceListEntry | null>(null);
   protected readonly removeOpen = signal(false);
+  protected readonly removeBusy = signal(false);
+  protected readonly removeError = signal<RemoveError | null>(null);
+  private removeTrigger: HTMLElement | null = null;
 
   protected readonly command = 'spectant add | list | remove';
   protected readonly addCommand = 'spectant add <path>';
@@ -279,15 +290,20 @@ export class SettingsWorkspacesPage {
   private returnFocus(): void {
     const trigger = this.renameTrigger;
     this.renameTrigger = null;
-    if (trigger === null) return;
-    const dialog = this.host.nativeElement.querySelector<HTMLDialogElement>('[data-ws-rename-dialog] dialog');
+    if (trigger !== null) this.focusOnceClosed('[data-ws-rename-dialog] dialog', () => trigger);
+  }
+
+  /** Moves focus to `target()` once the dialog under `selector` has closed; the target is looked up only then. */
+  private focusOnceClosed(selector: string, target: () => HTMLElement | null | undefined): void {
+    const dialog = this.host.nativeElement.querySelector<HTMLDialogElement>(selector);
     let tries = 0;
     const step = (): void => {
       if (dialog?.open === true && tries++ < FOCUS_TRIES) {
         setTimeout(step, FOCUS_STEP_MS);
         return;
       }
-      if (trigger.isConnected) trigger.focus();
+      const element = target();
+      if (element?.isConnected === true) element.focus();
     };
     setTimeout(step, 0);
   }
@@ -307,8 +323,56 @@ export class SettingsWorkspacesPage {
     });
   }
 
+  /**
+   * Opens the remove dialog (T21, ISC-307, ISC-314) for one row: the focus starts on Cancel (`data-autofocus`), and
+   * nothing is sent until Confirm. Focus goes back to the row's menu trigger when the dialog closes without removing.
+   */
   protected askRemove(entry: WorkspaceListEntry): void {
     this.removing.set(entry);
+    this.removeError.set(null);
+    this.removeTrigger = this.rowElement(entry.slug)?.querySelector<HTMLElement>('[data-row-menu]') ?? null;
     this.removeOpen.set(true);
+  }
+
+  /** The dialog's open state; Esc, Cancel, the close button and a backdrop click land here and send nothing. */
+  protected setRemoveOpen(open: boolean): void {
+    this.removeOpen.set(open);
+    if (open) return;
+    this.removeError.set(null);
+    const trigger = this.removeTrigger;
+    this.removeTrigger = null;
+    if (trigger !== null) this.focusOnceClosed('[data-ws-remove-dialog] dialog', () => trigger);
+  }
+
+  /**
+   * Confirm: `DELETE /api/workspaces/:ws` through `ShellData`, which reloads the list on 204. Then the dialog closes,
+   * the one toast names the workspace and focus moves to the next row's menu trigger (the previous one after the last
+   * row), or to the add path field when no row is left. A 404 or any other failure stays in the dialog as an error
+   * notice; the dialog stays open and the row stays.
+   */
+  protected async confirmRemove(): Promise<void> {
+    const entry = this.removing();
+    if (entry === null || this.removeBusy()) return;
+    const rows = this.rows();
+    const at = rows.findIndex((row) => row.slug === entry.slug);
+    const next: string | undefined = rows.at(at + 1)?.slug ?? (at > 0 ? rows.at(at - 1)?.slug : undefined);
+    this.removeBusy.set(true);
+    this.removeError.set(null);
+    try {
+      const result = await this.data.removeWorkspace(entry.slug);
+      if (result.kind === 'ok') {
+        this.removeTrigger = null;
+        this.setRemoveOpen(false);
+        this.toast.show(this.transloco.translate('settingsWorkspaces.remove.removed', { name: entry.name }));
+        this.focusOnceClosed('[data-ws-remove-dialog] dialog', () =>
+          next === undefined
+            ? this.host.nativeElement.querySelector<HTMLElement>('[data-ws-add-path]')
+            : this.rowElement(next)?.querySelector<HTMLElement>('[data-row-menu]'),
+        );
+      } else if (result.kind === 'refused' && result.status === 404) this.removeError.set({ key: 'notFound', status: 404 });
+      else this.removeError.set({ key: result.status === 0 ? 'noAnswer' : 'failed', status: result.status });
+    } finally {
+      this.removeBusy.set(false);
+    }
   }
 }

@@ -35,6 +35,7 @@ function setUp(
   list: () => Promise<ApiResult<readonly WorkspaceListEntry[]>> = () => Promise.resolve(ok(TWO)),
   add: () => Promise<WorkspaceAdminResult<'add'>> = () => Promise.resolve(failed),
   rename: () => Promise<WorkspaceAdminResult<'rename'>> = () => Promise.resolve(failed),
+  remove: () => Promise<WorkspaceAdminResult<'remove'>> = () => Promise.resolve(failed),
 ): Calls {
   const calls: Calls = { lists: 0, adds: [], renames: [], writes: [] };
   const api: Partial<ApiClient> = {
@@ -58,7 +59,7 @@ function setUp(
     },
     removeWorkspace: (ws) => {
       calls.writes.push(`remove ${ws}`);
-      return Promise.resolve(failed);
+      return remove();
     },
     uploadWorkspaceImage: (ws) => {
       calls.writes.push(`upload ${ws}`);
@@ -422,5 +423,101 @@ describe('SettingsWorkspacesPage rename (spec 016, T16, ISC-305)', () => {
     await settle(fixture);
     expect(dialog().hasAttribute('open')).toBe(true);
     expect(one<HTMLInputElement>(dialog(), 'input[data-ws-rename-name]').value).toBe('Quay');
+  });
+});
+
+function removeFrom(fixture: ComponentFixture<SettingsWorkspacesPage>, slug: string): void {
+  const row = fixture.debugElement.queryAll(By.directive(WorkspaceRow)).find((found) => (found.nativeElement as HTMLElement).dataset['wsRow'] === slug);
+  if (row === undefined) throw new Error(`no row ${slug}`);
+  const instance = row.componentInstance as WorkspaceRow;
+  instance.remove.emit(instance.entry());
+}
+
+describe('SettingsWorkspacesPage remove (spec 016, T21, ISC-314)', () => {
+  let restore: () => void;
+  beforeEach(() => (restore = stubDialogApi()));
+  afterEach(() => {
+    restore();
+  });
+
+  const dialogOf = (root: HTMLElement): HTMLDialogElement => one<HTMLDialogElement>(one(root, '[data-ws-remove-dialog]'), 'dialog');
+
+  it('remove: opens with the focus on Cancel and a text that names the deleted images and the kept folder', async () => {
+    setUp();
+    const { fixture, root } = await render();
+    removeFrom(fixture, 'harbor');
+    await settle(fixture);
+
+    const dialog = dialogOf(root);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    const cancel = one<HTMLButtonElement>(dialog, 'button[data-ws-remove-cancel]');
+    expect(cancel.hasAttribute('data-autofocus')).toBe(true);
+    expect(document.activeElement).toBe(cancel);
+    const body = one(dialog, '[data-ws-remove-body]').textContent;
+    expect(body).toContain('logo and screenshot');
+    expect(body).toContain('folder stays');
+  });
+
+  it('remove: Cancel and Esc close the dialog, send no DELETE and keep the row', async () => {
+    const calls = setUp();
+    const { fixture, root } = await render();
+
+    removeFrom(fixture, 'harbor');
+    await settle(fixture);
+    one<HTMLButtonElement>(dialogOf(root), 'button[data-ws-remove-cancel]').click();
+    await settle(fixture);
+    expect(dialogOf(root).hasAttribute('open')).toBe(false);
+
+    removeFrom(fixture, 'quay');
+    await settle(fixture);
+    one(dialogOf(root), 'button[data-ws-remove-cancel]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(dialogOf(root).hasAttribute('open')).toBe(false);
+
+    expect(calls.writes).toEqual([]);
+    expect(slugs(root)).toEqual(['harbor', 'quay']);
+  });
+
+  it('remove: Confirm sends exactly one remove of the slug, closes, reloads and focuses the next row', async () => {
+    let list: readonly WorkspaceListEntry[] = TWO;
+    const calls = setUp(
+      () => Promise.resolve(ok(list)),
+      undefined,
+      undefined,
+      () => {
+        list = TWO.filter((entry) => entry.slug !== 'harbor');
+        return Promise.resolve({ kind: 'ok', body: null });
+      },
+    );
+    const { fixture, root } = await render();
+    const before = calls.lists;
+    removeFrom(fixture, 'harbor');
+    await settle(fixture);
+    one<HTMLButtonElement>(dialogOf(root), 'button[data-ws-remove-confirm]').click();
+    await settle(fixture);
+    await settle(fixture);
+
+    expect(calls.writes).toEqual(['remove harbor']);
+    expect(calls.lists).toBe(before + 1);
+    expect(dialogOf(root).hasAttribute('open')).toBe(false);
+    expect(slugs(root)).toEqual(['quay']);
+    expect(document.activeElement).toBe(one(root, '[data-ws-row="quay"] [data-row-menu]'));
+  });
+
+  it('remove: a refused remove shows the refusal notice in the dialog and keeps it open', async () => {
+    const calls = setUp(undefined, undefined, undefined, () => Promise.resolve({ kind: 'refused', status: 404, body: { error: 'not-found' } }));
+    const { fixture, root } = await render();
+    removeFrom(fixture, 'quay');
+    await settle(fixture);
+    one<HTMLButtonElement>(dialogOf(root), 'button[data-ws-remove-confirm]').click();
+    await settle(fixture);
+
+    expect(calls.writes).toEqual(['remove quay']);
+    const dialog = dialogOf(root);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    const notice = one(dialog, '[data-ws-remove-error]');
+    expect(notice.getAttribute('role')).toBe('alert');
+    expect(notice.textContent).toContain('Quay');
+    expect(slugs(root)).toEqual(['harbor', 'quay']);
   });
 });

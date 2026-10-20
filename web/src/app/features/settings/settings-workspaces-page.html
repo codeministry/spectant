@@ -151,18 +151,26 @@
   </form>
 </ui-dialog>
 
-<!-- Stub until T21: the confirm button closes without a request. -->
+<!-- T21 (ISC-314): focus starts on Cancel; DELETE only on Confirm; Esc, backdrop, ✕ and Cancel send nothing. -->
 <ui-dialog
-  [(open)]="removeOpen"
+  [open]="removeOpen()"
+  (openChange)="setRemoveOpen($event)"
   [heading]="'settingsWorkspaces.remove.title' | transloco: { name: removing()?.name ?? '' }"
   data-ws-remove-dialog
 >
-  <p class="dlg-text">{{ 'settingsWorkspaces.remove.body' | transloco }}</p>
-  <div class="dlg-acts">
-    <button ui-button (click)="removeOpen.set(false)">{{ 'settingsWorkspaces.remove.cancel' | transloco }}</button>
-    <button ui-button variant="primary" tone="danger" (click)="removeOpen.set(false)">
+  <p class="dlg-text" data-ws-remove-body>{{ 'settingsWorkspaces.remove.body' | transloco }}</p>
+  @if (removeError(); as error) {
+    <ui-notice tone="error" icon="circle-alert" data-ws-remove-error>
+      {{ 'settingsWorkspaces.remove.error.' + error.key | transloco: { name: removing()?.name ?? '', status: error.status } }}
+    </ui-notice>
+  }
+  <div class="dlg-acts" [attr.aria-busy]="removeBusy() ? 'true' : null">
+    <button ui-button type="button" data-ws-remove-cancel data-autofocus (click)="setRemoveOpen(false)">
+      {{ 'settingsWorkspaces.remove.cancel' | transloco }}
+    </button>
+    <button ui-button variant="primary" tone="danger" type="button" data-ws-remove-confirm [disabled]="removeBusy()" (click)="confirmRemove()">
       <ui-icon name="trash" />
-      {{ 'settingsWorkspaces.remove.confirm' | transloco }}
+      {{ (removeBusy() ? 'settingsWorkspaces.remove.busy' : 'settingsWorkspaces.remove.confirm') | transloco }}
     </button>
   </div>
 </ui-dialog>

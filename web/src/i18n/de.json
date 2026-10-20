@@ -531,7 +531,17 @@
       "uploadedScreenshot": "Screenshot für {{name}} hochgeladen.",
       "uploadTooLarge": "{{name}}: Das Bild ist grösser als {{max}} MB; es wurde nichts gespeichert.",
       "uploadUnsupported": "{{name}}: Nur PNG-, JPEG- oder WebP-Bilder; es wurde nichts gespeichert.",
-      "uploadFailed": "Das Bild für {{name}} konnte nicht hochgeladen werden."
+      "uploadFailed": "Das Bild für {{name}} konnte nicht hochgeladen werden.",
+      "kind": {
+        "logo": "Logo",
+        "screenshot": "Screenshot"
+      },
+      "refused": {
+        "type": "{{kind}} nicht übernommen: nur PNG, JPEG oder WebP bis {{max}} MB",
+        "size": "{{kind}} nicht übernommen: Die Datei ist grösser als {{max}} MB",
+        "failed": "{{kind}} nicht übernommen: Der Upload ist fehlgeschlagen. Bitte versuchen Sie es erneut."
+      },
+      "dismissNotice": "Hinweis schliessen"
     },
     "menu": {
       "rename": "Umbenennen…",
@@ -543,9 +553,16 @@
     },
     "remove": {
       "title": "{{name}} entfernen?",
-      "body": "Spectant vergisst den Workspace. Der Ordner und seine Specs bleiben unberührt.",
+      "body": "Der Workspace verschwindet aus der Liste, Logo und Screenshot werden aus dem Datenordner der App gelöscht. Der Ordner des Repositorys bleibt samt Specs auf der Festplatte.",
       "cancel": "Abbrechen",
-      "confirm": "Entfernen"
+      "confirm": "Entfernen",
+      "busy": "Wird entfernt…",
+      "removed": "{{name}} entfernt",
+      "error": {
+        "notFound": "{{name}} wurde nicht entfernt: Die Registry kennt den Workspace nicht mehr (404).",
+        "failed": "{{name}} wurde nicht entfernt (Status {{status}}).",
+        "noAnswer": "{{name}} wurde nicht entfernt: Der Server hat nicht geantwortet."
+      }
     },
     "rename": {
       "title": "{{name}} umbenennen",
