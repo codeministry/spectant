@@ -16,11 +16,13 @@ export const meta = {
 //            goal,               the spec's goal, byte for byte
 //            cli?,               'bun "<absolute path>/bin/spec-check"', resolved by the parent; default below
 //            actor?,             the parent actor 'a:<kind>:<id>'; builders log as '<actor>/T<k>'
-//            lanes?: { <lane>: <profile text> }, seams?: { <task id>: <contract> } },
+//            lanes?: { <lane>: <profile text> }, seams?: { <task id>: <contract> },
+//            packs?: { <task id>: <the one JSON line of `spec-check pack <spec> <task id> --json`> } },
 //   builder?: agent type of the builders, reader?: agent type of the optional reviewer, secondLook?: false,
 //   ts: '<ISO-8601 from the parent>' }
-// The script has no filesystem: everything a builder needs is in the brief, and every builder reads the spec itself
-// from the path the brief names. It writes no bookkeeping: every builder's prompt opens with the marker line
+// The script has no filesystem: everything a builder needs is in the brief. A task with a pack (spec 010, T21,
+// ISC-340) gets it on a `PACK:` line in place of the SPEC, GOAL and CLAIM lines, and the spec path only as a fallback;
+// a task without one reads the spec itself from the path the brief names. It writes no bookkeeping: every builder's prompt opens with the marker line
 // `spectant: spec=<NNN> task=<Tn> claim=<ISC-N>`, from which the plugin's hooks write the claim, dispatch, build and
 // release lines; the parent writes the run pair and the patch/apply lines, applies the patches, runs the write order
 // and records the round. Start it from the spec's own checkout: worktree isolation branches from the session's HEAD.
@@ -80,10 +82,30 @@ const specNumber = (/(?:^|\/)(\d{3})-[^/]+\/spec\.md$/.exec(brief.spec) || [])[1
 if (!specNumber) throw new Error('args.brief.spec must be the path of specs/NNN-slug/spec.md (its NNN goes into the marker line)')
 const markerLine = (t) => {
   if (!/^T\d+$/.test(t.id)) throw new Error(`task id must be T<n>, got "${t.id}"`)
-  if (!/^ISC-\d+(?:\.\d+)*$/.test(t.claim)) throw new Error(`claim must be ISC-<n>[.<n>], got "${t.claim}"`)
+  if (!/^ISC-\d+(?:\.\d+)*$/.test(t.claim)) throw new Error(`claim must be ISC-<n>[.<n>], got "${t.claim}"`) // single-core: allow — the Workflow sandbox cannot import core/; validates a marker field, pinned to markerLine by implement-workflow.test.ts
   return `spectant: spec=${specNumber} task=${t.id} claim=${t.claim}`
 }
 for (const t of plan.dispatch) markerLine(t)
+
+// The pack of a task, as one line: the CLI's output with its line break dropped. A pack that is no single JSON line,
+// or that names another task or claim, fails the round before any builder starts, like a garbled marker field.
+const packOf = (t) => {
+  const raw = brief.packs && brief.packs[t.id]
+  if (raw === undefined || raw === null) return null
+  const line = typeof raw === 'string' ? raw.trim() : JSON.stringify(raw)
+  let pack = null
+  try {
+    pack = line.includes('\n') ? null : JSON.parse(line)
+  } catch {
+    pack = null
+  }
+  if (!pack || typeof pack !== 'object') throw new Error(`the pack of ${t.id} must be the one JSON line of spec-check pack`)
+  const task = pack.task && pack.task.id
+  const claim = pack.claim && pack.claim.id
+  if (task !== t.id || claim !== t.claim) throw new Error(`the pack of ${t.id} names ${task} ${claim}, not ${t.id} ${t.claim}`)
+  return line
+}
+for (const t of plan.dispatch) packOf(t)
 
 if (plan.dispatch.length === 0) {
   log(plan.exhausted ? 'frontier exhausted: nothing to dispatch' : 'nothing dispatchable this round')
@@ -109,11 +131,26 @@ const seamOf = (t) => {
   return (t.after || []).map((a) => brief.seams[a]).filter(Boolean).join('\n')
 }
 
+// With a pack, the builder has the goal, its task, claim, probe row, lane and decisions in hand and reads the spec only
+// to answer what the pack cannot; without one, the classic lines send it to the spec.
+const specLines = (t) => {
+  const pack = packOf(t)
+  if (pack) {
+    return [
+      `PACK:      ${pack}`,
+      `SPEC:      ${brief.spec}   (fallback only: read it to answer a question the pack cannot; the pack's probe is your PROBE)`,
+    ]
+  }
+  return [
+    `SPEC:      ${brief.spec}   (read it first; you are closing one claim of it)`,
+    `GOAL:      "${brief.goal}"`,
+    `CLAIM:     ${t.claim} — read its text and its Test Strategy row in the spec verbatim; that row is your PROBE`,
+  ]
+}
+
 const buildPrompt = (t) => [
   markerLine(t),
-  `SPEC:      ${brief.spec}   (read it first; you are closing one claim of it)`,
-  `GOAL:      "${brief.goal}"`,
-  `CLAIM:     ${t.claim} — read its text and its Test Strategy row in the spec verbatim; that row is your PROBE`,
+  ...specLines(t),
   `TASK:      ${t.id} · ${t.lane || 'no lane'} — ${t.text}${t.path ? ' · ' + t.path : ''}`,
   `LANE:      ${t.lane || 'none'}\n${(brief.lanes && t.lane && brief.lanes[t.lane]) || '(no lane profile: load the nearest CLAUDE.md above your path)'}`,
   `SEAM:      ${seamOf(t) || 'none'}`,

@@ -122,10 +122,8 @@ as `<scratch>/round-N.plan.json`:
 
 ```
 spectant: spec=<NNN> task=T<k>|C<k> claim=ISC-N
-SPEC:      <absolute path>/specs/NNN-slug/spec.md   (read it; you are closing one claim of it)
-GOAL:      "<the spec's goal, byte for byte>"
-CLAIM:     ISC-N — <claim text verbatim>
-PROBE:     <the Test Strategy row for ISC-N, verbatim: type | check | threshold | tool>
+PACK:      <the one JSON line of `spec-check pack specs/NNN-slug T<k> --json`, verbatim>
+SPEC:      <absolute path>/specs/NNN-slug/spec.md   (fallback only: read it to answer a question the pack cannot)
 TASK:      T<k>|C<k> · <lane> — <task text> · <path column>
 LANE:      <lane> — load: <files from specs/constitution.md § Lanes> — lane probe: <command>
 SEAM:      <the contract from plan.md this task builds against, or "none">
@@ -139,10 +137,20 @@ ISOLATION: you run in your own git worktree; never commit, never switch branches
            path column unless the probe forces it, and then list them in files touched.
 RETURN:    result | question — the shapes under "What a builder returns". A question only when a wrong choice
            changes the claim set, the seam, or makes the probe unmeetable; everything else is a mark.
-DONE:      the probe named above ran red before your change and green after, in your worktree.
+DONE:      the probe in the pack ran red before your change and green after, in your worktree.
 ```
 
-The first line is the marker, exactly this shape and always first, before `SPEC:`: the plugin's hooks read it from
+The parent runs `spec-check pack specs/NNN-slug T<k> --json` once per dispatched task, right before the dispatch, and
+puts its one output line on `PACK:` verbatim: the goal byte for byte, the task with its paths, the claim text, its Test
+Strategy row (the probe), the lane with its context files and lane probe, and the relevant decisions, under the pack's
+fixed size cap. The builder works from the pack and opens `spec.md` only for a question the pack cannot answer; a pack
+whose `truncated` is above 0 dropped that many of the oldest decisions, never the goal, task, claim, probe or lane. A
+pack that fails (an error object instead of the pack) is no brief: fix the cause or hold the task, never dispatch with
+the old instruction to read the whole spec. `SEAM:` stays the parent's: it fills it from `plan.md`, as the pack carries
+no contract. A claim unit `C<k>` of a spec without `tasks.md` has no task line to pack: its brief keeps the claim lines
+instead of `PACK:` (`GOAL:` byte for byte, `CLAIM:` with the claim text verbatim, `PROBE:` with its Test Strategy row).
+
+The first line is the marker, exactly this shape and always first, before `PACK:`: the plugin's hooks read it from
 the Agent tool's prompt to write the task's `claim`, `dispatch`, `build` and `release` lines, and a brief without it
 is no task to them. `<NNN>` is the spec's three-digit number, `ISC-N` the claim of this brief, and its task either
 `T<k>` from `tasks.md` or, for a spec without `tasks.md`, the claim unit `C<k>` that `frontier` named (Step 3): write
@@ -187,8 +195,10 @@ builder is launched, its `build`.
   `{dispatched, results, questions, failed, verdicts}`; it closes nothing and is resumable by its run ID. It has no
   filesystem, so the parent fills `brief` with text: `spec` (absolute path), `goal` verbatim, `cli` (the resolved
   `bun "<path>"`), `actor` (the parent actor), `lanes` (lane → profile text from the constitution), `seams` (task →
-  contract from `plan.md`). The script opens every builder's prompt with the same marker line, the spec number taken
-  from the folder in `brief.spec`, so the hooks write the same lines on this path. Start the Workflow from this
+  contract from `plan.md`), `packs` (task → the one line of `spec-check pack`, Step 5). A task with a pack gets the
+  `PACK:` line of Step 5; one without gets the spec path to read instead. The script opens every builder's prompt with
+  the same marker line, the spec number taken from the folder in `brief.spec`, so the hooks write the same lines on
+  this path, with or without a pack. Start the Workflow from this
   checkout, for the same HEAD reason as in Step 2.
 
 **Isolation: one worktree per task.** What comes back is a patch, not a branch:
@@ -269,7 +279,7 @@ producing a **one-line** provenance stub: a test name, a command with its exit c
 1. run the probe in this checkout, capture the one-line stub              (nothing written)
 2. spec-check verify NNN ISC-N <type> "<stub>"   # Verification line in spec.md, then the master; ticks the claim
                                                  # after its evidence; recounts progress in both
-3. tasks.md ← every task of ISC-N → [x]; updated:
+3. spec-check tick NNN T<k>                      # once per task of ISC-N: one tasks.md line each, nothing else
 ```
 
 The claim's lock is no step here: the hooks released it when its last builder stopped.

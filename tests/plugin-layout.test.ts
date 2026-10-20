@@ -18,6 +18,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { parseFrontmatter } from "../core/src/frontmatter.ts";
+import { tableCells } from "../core/src/markdown.ts";
 
 const ROOT = join(import.meta.dir, "..");
 /** The shipped plugin directory: the source the root marketplace manifest names for the plugin `spectant`. */
@@ -42,13 +44,8 @@ function readSkill(): string {
   return readFileSync(SKILL_MD, "utf8");
 }
 
-/** The frontmatter block between the leading `---` lines, or null when the file opens without one. */
-function frontmatterOf(text: string): string | null {
-  const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
-  return match ? (match[1] ?? null) : null;
-}
-
-/** The first-column values of the Markdown table under `## Subcommands`, backticks stripped, header and rule skipped. */
+/** The first-column values of the Markdown table under `## Subcommands`, backticks stripped, header and rule skipped;
+ *  the cells are split by core's `tableCells`, so a row reads one way (ISC-5). */
 function routedSubcommands(text: string): string[] {
   const lines = text.split("\n");
   const start = lines.findIndex((line) => line.trim() === "## Subcommands");
@@ -61,7 +58,7 @@ function routedSubcommands(text: string): string[] {
   const rows = section.filter((line) => line.trimStart().startsWith("|"));
   return rows
     .slice(2)
-    .map((row) => (row.trim().slice(1).split("|")[0] ?? "").trim())
+    .map((row) => tableCells(row)[0] ?? "")
     .map((cell) => /^`([^`]+)`$/.exec(cell)?.[1] ?? cell);
 }
 
@@ -81,11 +78,11 @@ describe("plugin layout: exposed commands (ISC-39)", () => {
   });
 
   test("commands: the SKILL.md frontmatter names the skill spec", () => {
-    const frontmatter = frontmatterOf(readSkill());
-    expect(frontmatter).not.toBeNull();
-    const name = /^name:\s*["']?([^"'\s]+)["']?\s*$/m.exec(frontmatter ?? "")?.[1];
-    expect(name).toBe("spec");
-    expect(/^description:\s*\S/m.test(frontmatter ?? "")).toBe(true);
+    // Read with core's frontmatter parser, never a second reader (ISC-5).
+    const frontmatter = parseFrontmatter(readSkill());
+    expect(frontmatter.present).toBe(true);
+    expect(frontmatter.values.name).toBe("spec");
+    expect(frontmatter.values.description ?? "").toMatch(/\S/);
   });
 
   test("commands: the routing table names exactly the bare /spec and the eight subcommands", () => {

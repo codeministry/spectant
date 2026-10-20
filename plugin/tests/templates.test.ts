@@ -4,7 +4,7 @@
 // writes from it is one the dashboard and every later subcommand can read. No second parser here: frontmatter and
 // claims go through `core/`, table rows through core's `tableCells`.
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseClaims } from '../../core/src/claims.ts';
 import { parseFrontmatter } from '../../core/src/frontmatter.ts';
@@ -350,5 +350,62 @@ describe('templates are generic', () => {
       const text = read(name);
       expect(text).not.toMatch(/~\/|\/Users\/|\/home\/|LIFEOS|LifeOS|\.html\b/);
     }
+  });
+});
+
+// The tasks.md box is set by `spec-check tick` (spec 010, T24, ISC-341), never by hand. A hand edit is an assignment
+// (`←`/`→` beside `[x]`), an imperative verb on a box ("tick the box", "set the `tasks.md` box", "mark [x]") or the
+// bare step "the `tasks.md` box"; a chunk that names `spec-check tick` routes the write and passes. Format descriptions
+// ("A checked box `- [x]` means landed", "checkbox states") use no imperative and stay allowed.
+const SKILL_DIR = join(import.meta.dir, '..', 'spectant', 'skills', 'spec');
+const skillFiles = (): string[] => [
+  'SKILL.md',
+  ...['workflows', 'templates', 'scripts'].flatMap((d) => readdirSync(join(SKILL_DIR, d)).map((f) => join(d, f))),
+];
+
+const HAND_TICK = [
+  /[←→][^\n]*\[x\]|\[x\][^\n]*[←→]/, // single-core: allow — scans skill prose for hand-tick instructions, reads no task line
+  /\b(?:tick|set|mark|check)(?:s|ing)?(?:\s+off)?\s+(?:the\s+|its\s+|each\s+|every\s+)?(?:`?tasks\.md`?\s+)?(?:task\s+)?(?:box(?:es)?|checkbox(?:es)?|`?\[x\]`?)/i, // single-core: allow — scans skill prose for hand-tick instructions, reads no task line
+  /\bthe `tasks\.md` box/,
+];
+
+/** Sentences, list items, table rows and blank-line paragraphs: the unit an instruction lives in, wrapped lines joined. */
+const chunks = (text: string): string[] =>
+  text
+    .split(/\n\s*\n|\n(?=\s*(?:\d+\.|-|\|)\s)|(?<=\.)\s+(?=[A-Z*`])/)
+    .map((c) => c.replace(/\s+/g, ' ').trim())
+    .filter((c) => c !== '');
+
+const handTicks = (text: string): string[] =>
+  chunks(text).filter((c) => !c.includes('spec-check tick') && HAND_TICK.some((re) => re.test(c)));
+
+describe('tasks.md box via spec-check tick (ISC-341)', () => {
+  test('tick: the patterns catch the old hand-edit wording and pass the format descriptions', () => {
+    expect(handTicks('3. tasks.md ← every task of ISC-N → [x]; updated:')).toHaveLength(1);
+    expect(handTicks('Probe, then `spec-check verify`, then the `tasks.md` box,\n  then `release`.')).toHaveLength(1);
+    expect(handTicks('Tick the box of every task.')).toHaveLength(1);
+    expect(handTicks('- A checked box `- [x]` means landed. A struck task is never a checkbox.')).toEqual([]);
+    expect(handTicks('the sha256 of `tasks.md` (frontmatter, checkbox states)')).toEqual([]);
+  });
+
+  test("tick: implement.md's write order sets each task's box with spec-check tick", () => {
+    const text = readFileSync(join(SKILL_DIR, 'workflows', 'implement.md'), 'utf8');
+    const order = text.slice(text.indexOf('## Step 8'), text.indexOf('## Step 9'));
+    expect(order).toMatch(/^3\. spec-check tick NNN T<k>/m);
+  });
+
+  test('tick: no workflow, template, script or SKILL.md instructs a hand edit of a tasks.md box', () => {
+    const found = skillFiles().flatMap((f) =>
+      handTicks(readFileSync(join(SKILL_DIR, f), 'utf8')).map((c) => `${f}: ${c}`),
+    );
+    expect(found).toEqual([]);
+  });
+
+  test("tick: SKILL.md's CLI table lists pack and tick, and its checkmark rule names spec-check tick", () => {
+    const skill = readFileSync(join(SKILL_DIR, 'SKILL.md'), 'utf8');
+    expect(skill).toMatch(/^\| `pack <spec> T<k>` \|/m);
+    expect(skill).toMatch(/^\| `tick <spec> T<k>` \|/m);
+    const rule = skill.slice(skill.indexOf('**Evidence before the checkmark.**'));
+    expect(rule.slice(0, rule.indexOf('\n- **'))).toContain('spec-check tick');
   });
 });

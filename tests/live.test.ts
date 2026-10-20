@@ -44,7 +44,7 @@ const paths = (update: LiveUpdate): string[] => update.views.map((view) => view.
 /** Flips the first open box of `file` to done, as an agent ticking a task from outside would. */
 function tickFirstOpenBox(file: string): void {
   const before = readFileSync(file, "utf8");
-  const after = before.replace(/^- \[ \]/m, "- [x]");
+  const after = before.replace(/^- \[ \]/m, "- [x]"); // single-core: allow — simulates an outside agent editing raw file bytes
   expect(after).not.toBe(before);
   writeFileSync(file, after);
 }

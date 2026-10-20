@@ -330,6 +330,7 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
       git(root, 'worktree', 'add', '-q', tree, '-b', 'feature/001-digest');
       const board = cli(root, [0], 'frontier', '001', '--json');
       expect(() => JSON.parse(board) as unknown).not.toThrow();
+      cli(root, [0], 'pack', '001', 'T1', '--json');
       cli(root, [0], 'claim', 'ISC-1', '--task', 'T1', '--session', BUILDER, '--worktree', '.worktrees/001-digest');
       const step = (event: string, ...extra: string[]): string => cli(root, [0], 'activity', event, '--task', 'T1', '--claim', 'ISC-1', ...extra);
       step('dispatch', '--session', MAIN);
@@ -342,7 +343,7 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
       cli(root, [0], 'verify', '001', 'ISC-1', 'test', 'bun test src/digest.test.ts — 3 pass');
       cli(root, [0], 'release', 'ISC-1', '--task', 'T1', '--session', BUILDER);
       cli(root, [0], 'hook'); // no payload on stdin: the hook writes nothing and still exits 0 (hooks.test.ts drives it)
-      writeFileSync(join(root, DIR, 'tasks.md'), TASKS.replace('- [ ] T1', '- [x] T1')); // single-core: allow — the test ticks its own fixture task; it parses nothing
+      cli(root, [0], 'tick', '001', 'T1');
       const planFile = join(root, '.plan.json');
       writeFileSync(
         planFile,

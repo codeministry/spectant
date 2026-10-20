@@ -2903,11 +2903,23 @@ function section2(lines, heading) {
     out.push({ text: lines[i] ?? "", line: i + 1 });
   return out;
 }
-function lanesOf(constitution) {
+function laneRows(constitution) {
   const rows = section2(constitution.replace(/\r\n?/g, `
 `).split(`
 `), /^## Lanes\s*$/).filter((l) => l.text.trim().startsWith("|"));
-  return rows.slice(1).filter((row) => !SEPARATOR_ROW.test(row.text.trim())).map((row) => (cells(row.text)[0] ?? "").replace(/`/g, "").trim()).filter((name) => name !== "");
+  return rows.slice(1).filter((row) => !SEPARATOR_ROW.test(row.text.trim())).map((row) => cells(row.text));
+}
+var unticked = (cell) => (cell ?? "").replace(/`/g, "").trim();
+function lanesOf(constitution) {
+  return laneRows(constitution).map((row) => unticked(row[0])).filter((name) => name !== "");
+}
+function laneProfileOf(constitution, lane) {
+  const row = laneRows(constitution).find((r) => unticked(r[0]) === lane);
+  if (row === undefined)
+    return null;
+  const context = (row[2] ?? "").split(", ").map(unticked).filter((c) => c !== "");
+  const probe = unticked(row[3]);
+  return { name: lane, context, probe: probe === "" ? null : probe };
 }
 function parseBody(rest, warn) {
   const body = rest.replace(/^\s*\u00B7\s*/, "");
@@ -3092,6 +3104,35 @@ function laneCounts(tasks, tableLanes) {
       order.push(t.lane);
   order.push(OPERATOR);
   return order.map((name) => ({ name, count: tasks.filter((t) => t.lane === name).length })).filter((c) => c.count > 0);
+}
+
+class TaskTextError extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "TaskTextError";
+    this.code = code;
+  }
+}
+function tickTaskText(text2, id) {
+  const parts = text2.split(/(\r\n|\n|\r)/);
+  let fenced = false;
+  for (let i = 0;i < parts.length; i += 2) {
+    const raw = parts[i] ?? "";
+    if (FENCE2.test(raw)) {
+      fenced = !fenced;
+      continue;
+    }
+    const box = fenced ? null : BOX_LINE.exec(raw);
+    if (box?.[2] !== id)
+      continue;
+    if (box[1] !== " ")
+      return { text: text2, changed: false };
+    const at = raw.indexOf("- [") + 3;
+    parts[i] = `${raw.slice(0, at)}x${raw.slice(at + 1)}`;
+    return { text: parts.join(""), changed: true };
+  }
+  throw new TaskTextError("unknown-task", `${id}: no task line with a checkbox carries this id.`);
 }
 function parseMapping(lines, tasks, diagnostics) {
   const body = section2(lines, /^##\s+Probe Mapping\b/i);
@@ -4045,6 +4086,105 @@ function runContext(openRuns, options) {
   };
 }
 
+// core/src/pack.ts
+var PACK_LIMIT = 8192;
+
+class PackError extends Error {
+  code;
+  constructor(code, message) {
+    super(message);
+    this.name = "PackError";
+    this.code = code;
+  }
+}
+var unticked2 = (cell) => cell.replace(/`/g, "").trim();
+var KIND_PREFIX2 = { normal: "", anti: "Anti: ", antecedent: "Antecedent: " };
+var BULLET = /^[-*+]\s+(.*)$/;
+function decisionRows(text2) {
+  const section3 = levelTwoSection(text2, ["Decisions"]);
+  if (section3 === null)
+    return [];
+  const rows = [];
+  let row = null;
+  let gap = false;
+  for (const line of section3.split(`
+`).map((l) => l.trimEnd())) {
+    const bullet = BULLET.exec(line);
+    if (bullet !== null) {
+      row = [bullet[1] ?? ""];
+      rows.push(row);
+      gap = false;
+    } else if (line === "") {
+      gap = row !== null;
+    } else if (row !== null && (!gap || /^\s/.test(line))) {
+      row.push(line);
+      gap = false;
+    } else {
+      row = null;
+    }
+  }
+  return rows.map((r) => r.join(`
+`));
+}
+var escapeRegExp2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function mentions(row, claimId, taskId) {
+  return [claimId, taskId].some((id) => id !== "" && new RegExp(String.raw`(?<![\w-])${escapeRegExp2(id)}(?!\w)`).test(row));
+}
+function decisionsOf(source, text2, claimId, taskId) {
+  return decisionRows(text2).filter((r) => mentions(r, claimId, taskId)).map((r) => ({ source, text: r }));
+}
+function buildPack(input) {
+  const tab = parseTaskLines({ tasks: input.tasks, ...input.constitution === null ? {} : { constitution: input.constitution } });
+  const row = tab.tasks.find((t) => t.id === input.task);
+  if (row === undefined)
+    throw new PackError("unknown-task", `${input.task} is no task line of ${input.slug}/tasks.md.`);
+  const doc = parseClaims(input.spec);
+  const claim = row.claim === "" ? undefined : doc.claims.find((c) => c.id === row.claim);
+  if (claim === undefined) {
+    throw new PackError("no-claim", `${input.task} names ${row.claim === "" ? "no claim" : row.claim}, which ${input.slug}/spec.md does not carry.`);
+  }
+  const strategy = doc.testStrategy.find((r) => unticked2(r.isc) === claim.id);
+  const lane = row.lane === "" ? null : row.lane;
+  return {
+    spec: input.slug,
+    goal: (levelTwoSection(input.spec, GOAL_HEADINGS) ?? "").trim(),
+    task: { id: row.id, lane, text: row.text, paths: [...row.paths] },
+    claim: { id: claim.id, text: `${KIND_PREFIX2[claim.kind]}${claim.text}`, after: [...claim.after] },
+    probe: strategy === undefined ? null : { type: strategy.type, check: strategy.check, threshold: strategy.threshold, tool: strategy.tool },
+    lane: lane === null || input.constitution === null ? null : laneProfileOf(input.constitution, lane),
+    decisions: [
+      ...decisionsOf("spec.md", input.spec, claim.id, row.id),
+      ...input.plan === null ? [] : decisionsOf("plan.md", input.plan, claim.id, row.id)
+    ],
+    truncated: 0
+  };
+}
+var packBytes = (pack) => new TextEncoder().encode(JSON.stringify(pack)).length;
+var LEADING_DATE = /^\d{4}-\d{2}-\d{2}/;
+var dateOf = (d) => LEADING_DATE.exec(d.text)?.[0] ?? "";
+function capPack(pack, limit = PACK_LIMIT) {
+  const order = pack.decisions.map((d, i) => ({ date: dateOf(d), i })).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i).map((e) => e.i);
+  const dropped = new Set;
+  const at = () => ({
+    spec: pack.spec,
+    goal: pack.goal,
+    task: pack.task,
+    claim: pack.claim,
+    probe: pack.probe,
+    lane: pack.lane,
+    decisions: pack.decisions.filter((_, i) => !dropped.has(i)),
+    truncated: pack.truncated + dropped.size
+  });
+  let capped = at();
+  for (const i of order) {
+    if (packBytes(capped) <= limit)
+      break;
+    dropped.add(i);
+    capped = at();
+  }
+  return capped;
+}
+
 // core/src/resolve.ts
 import { readdirSync as readdirSync2 } from "fs";
 import { join as join4, resolve as resolve3, sep } from "path";
@@ -4788,16 +4928,49 @@ function parseRow(text2, line, warn) {
 
 // plugin/src/spec-check.ts
 var EXIT = { ok: 0, badArgs: 1, drift: 3, lockLost: 4 };
+var ERROR_CODES = [
+  "bad-args",
+  "unknown-command",
+  "unknown-spec",
+  "missing-file",
+  "drift",
+  "gate-missing",
+  "gate-stale",
+  "refused",
+  "run-locked",
+  "blocked",
+  "lock-held",
+  "lock-lost",
+  "bad-input",
+  "multi-line",
+  "unknown-id",
+  "dropped-claim",
+  "duplicate-id",
+  "unknown-feature",
+  "no-claim-section",
+  "bad-session",
+  "bad-claim",
+  "bad-task",
+  "bad-ts",
+  "bad-target",
+  "bad-outcome",
+  "claim-required",
+  "unknown-task",
+  "no-claim",
+  "internal"
+];
 
 class CliError extends Error {
   exit;
-  constructor(exit, message) {
+  code;
+  constructor(exit, message, code = "bad-args") {
     super(message);
     this.name = "CliError";
     this.exit = exit;
+    this.code = code;
   }
 }
-var bad = (message) => new CliError(EXIT.badArgs, message);
+var bad = (message, code = "bad-args") => new CliError(EXIT.badArgs, message, code);
 var COMMON_FLAGS = ["json", "help"];
 function parseArgs(argv, valueNames, flagNames) {
   const positional = [];
@@ -4861,14 +5034,14 @@ function specRef(root, arg) {
   const name = basename(arg.replace(/[\\/]+$/u, ""));
   const ref = resolveSpec(root, name);
   if (ref.kind === "not_found")
-    throw bad(`no spec folder matches "${arg}" (${ref.reason})`);
+    throw bad(`no spec folder matches "${arg}" (${ref.reason})`, "unknown-spec");
   return ref;
 }
 var rel = (ctx, path) => relative(ctx.root, path).split(sep2).join("/");
 function specText(ctx, ref) {
   const text2 = readIfExists2(join5(ref.dir, "spec.md"));
   if (text2 === null)
-    throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
+    throw bad(`${rel(ctx, ref.dir)} has no spec.md`, "missing-file");
   return text2;
 }
 var masterPath = (ctx) => join5(ctx.root, "ISA.md");
@@ -4878,6 +5051,11 @@ async function locksOf(ctx) {
 function emit(ctx, args, value, lines) {
   ctx.out(args.flags.has("json") ? JSON.stringify(value, null, 2) : lines.join(`
 `));
+}
+function refuse(ctx, args, exit, code, value, lines) {
+  ctx.out(args.flags.has("json") ? JSON.stringify({ error: code, command: ctx.command, detail: value }) : lines.join(`
+`));
+  return exit;
 }
 function titleOf(slug) {
   const words = slug.replace(/-+/gu, " ").trim();
@@ -5028,7 +5206,7 @@ function verify(ctx, args) {
   let nextMaster = null;
   if (master !== null) {
     if (!parseClaims(master).claims.some((c) => c.id === id)) {
-      throw new CliError(EXIT.drift, `the master ISA.md holds no ${id}; nothing written \u2014 run spec-check drift`);
+      throw new CliError(EXIT.drift, `the master ISA.md holds no ${id}; nothing written \u2014 run spec-check drift`, "drift");
     }
     nextMaster = appendVerificationText(master, id, type, stub, ctx.now);
   }
@@ -5098,8 +5276,11 @@ function drift(ctx, args) {
     lines.push(`ISA.md: progress ${masterProgress.declared ?? "missing"}, counted ${masterProgress.counted}`);
   if (master === null)
     lines.push("no master ISA.md: claim IDs are not checked against a master");
-  emit(ctx, args, { drift: any, master: master !== null, masterProgress, specs }, any ? lines : [`drift: none (${specs.length} spec${specs.length === 1 ? "" : "s"})`, ...lines]);
-  return any ? EXIT.drift : EXIT.ok;
+  const value = { drift: any, master: master !== null, masterProgress, specs };
+  if (any)
+    return refuse(ctx, args, EXIT.drift, "drift", value, lines);
+  emit(ctx, args, value, [`drift: none (${specs.length} spec${specs.length === 1 ? "" : "s"})`, ...lines]);
+  return EXIT.ok;
 }
 function partitionView(p) {
   return { closed: p.closed, open: p.open, takeable: p.takeable, gated: p.gated, blocked: p.blocked, taken: p.taken, dropped: p.dropped };
@@ -5249,7 +5430,7 @@ function transitionInput(ctx, ref, to, actor, locks) {
 }
 function refusal(ref, plan) {
   const next = plan.command === null ? "" : `; next: ${pluginCommand2(plan.command)}`;
-  return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`);
+  return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`, "refused");
 }
 async function transition(ctx, args) {
   const ref = specRef(ctx.root, required(args, 0, "the spec"));
@@ -5352,7 +5533,7 @@ function lockClaim(ctx, args) {
   const input = lockInput(ctx, args);
   const outcome = appendClaim(ctx.root, input);
   if (outcome.done === "other")
-    throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`);
+    throw new CliError(EXIT.lockLost, `lock held: ${input.claim} is held by ${String(outcome.holder)}; nothing written`, "lock-held");
   if (outcome.done === "held") {
     emit(ctx, args, { claim: input.claim, session: input.session, already: true }, [`${input.claim}: held by ${input.session} already; nothing written`]);
     return EXIT.ok;
@@ -5368,7 +5549,7 @@ function lockRelease(ctx, args) {
     return EXIT.ok;
   }
   if (outcome.done === "other")
-    throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`);
+    throw new CliError(EXIT.lockLost, `lock lost: ${input.claim} is held by ${String(outcome.holder)}, not ${input.session}; nothing written`, "lock-lost");
   emit(ctx, args, { claim: input.claim, session: input.session, released: true }, [`${input.claim}: released by ${input.session}`]);
   return EXIT.ok;
 }
@@ -5770,8 +5951,11 @@ function gateCheck(ctx, args) {
     const why = check.changed.length > 0 ? `changed since: ${check.changed.join(", ")}` : problems.join("; ") || "the working tree changed";
     line = `${ref.slug}: the ${gate} mark is stale, ${why}`;
   }
-  emit(ctx, args, { spec: ref.slug, gate, state: check.state, at: check.at, changed: check.changed, problems, next }, next === null ? [line] : [line, `next: ${next}`]);
-  return check.state === "fresh" ? EXIT.ok : EXIT.drift;
+  const value = { spec: ref.slug, gate, state: check.state, at: check.at, changed: check.changed, problems, next };
+  if (next !== null)
+    return refuse(ctx, args, EXIT.drift, check.state === "missing" ? "gate-missing" : "gate-stale", value, [line, `next: ${next}`]);
+  emit(ctx, args, value, [line]);
+  return EXIT.ok;
 }
 function runLocked(ctx, ref, actor) {
   const foreign = (activityReading(activityText(ctx)).openRuns ?? []).filter((r) => r.session !== actor);
@@ -5785,7 +5969,7 @@ function gateReviewed(ctx, args, ref) {
   const actor = args.values.get("actor") ?? CLI_SESSION;
   const locked = runLocked(ctx, ref, actor);
   if (locked !== null) {
-    throw new CliError(EXIT.drift, `${ref.slug}: run-locked by ${locked.run} (${locked.session}, ${locked.command ?? "no command"}, since ${locked.since}); nothing written`);
+    throw new CliError(EXIT.drift, `${ref.slug}: run-locked by ${locked.run} (${locked.session}, ${locked.command ?? "no command"}, since ${locked.since}); nothing written`, "run-locked");
   }
   const texts = specFiles(ref).texts;
   const textOf2 = { "spec.md": texts.spec, "plan.md": texts.plan, "tasks.md": texts.tasks };
@@ -6001,11 +6185,10 @@ async function archive(ctx, args) {
   const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: v.to, ok: v.ok, blockers: v.blockers }));
   const refused = verdicts.filter((v) => !v.ok);
   if (refused.length > 0) {
-    emit(ctx, args, { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
+    return refuse(ctx, args, EXIT.drift, "blocked", { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
       ...verdictLines,
       `nothing moved: ${refused.length} spec${refused.length === 1 ? "" : "s"} blocked`
     ]);
-    return EXIT.drift;
   }
   const date = ctx.now.toISOString().slice(0, 10);
   const moves = verdicts.map((v) => {
@@ -6039,6 +6222,59 @@ function archiveRestore(ctx, args, refs2, dry) {
     return { spec: m.ref.slug, from: m.from, to: m.to, archived: row?.archived ?? null, archivedReason: row?.archivedReason ?? null };
   });
   emit(ctx, args, { dryRun: dry, restored }, restored.map((r) => `${dry ? "would restore" : "restored"} ${r.from} \u2192 ${r.to}${r.archived === null ? "" : ` (archived ${r.archived}${r.archivedReason === null ? "" : `: ${r.archivedReason}`})`}`));
+  return EXIT.ok;
+}
+function packLines(pack) {
+  const { task, claim, probe, lane } = pack;
+  const after = claim.after.length === 0 ? "" : ` (after: ${claim.after.join(", ")})`;
+  return [
+    `${pack.spec} ${task.id} \xB7 ${task.lane ?? "no lane"} \u2014 ${task.text}${task.paths.length === 0 ? "" : ` \xB7 ${task.paths.join(", ")}`}`,
+    `  ${claim.id}: ${claim.text}${after}`,
+    `  probe: ${probe === null ? "no Test Strategy row" : `${probe.type} | ${probe.check} | ${probe.threshold} | ${probe.tool}`}`,
+    `  lane: ${lane === null ? "no lane profile" : `${lane.name} \u2014 load ${lane.context.join(", ") || "nothing"} \u2014 probe ${lane.probe ?? "none"}`}`,
+    `  goal: ${pack.goal.split(`
+`)[0] ?? ""}`,
+    ...pack.decisions.map((d) => `  decision (${d.source}): ${d.text}`)
+  ];
+}
+function pack(ctx, args) {
+  const ref = specRef(ctx.root, required(args, 0, "spec"));
+  const task = required(args, 1, "task (T<k>)");
+  const tasks = readIfExists2(join5(ref.dir, "tasks.md"));
+  if (tasks === null)
+    throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
+  let value;
+  try {
+    const uncapped = buildPack({
+      slug: ref.slug,
+      spec: specText(ctx, ref),
+      tasks,
+      plan: readIfExists2(join5(ref.dir, "plan.md")),
+      constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
+      task
+    });
+    value = capPack(uncapped, PACK_LIMIT);
+  } catch (error) {
+    if (error instanceof PackError)
+      throw bad(`${error.message} (${error.code})`, error.code);
+    throw error;
+  }
+  ctx.out(args.flags.has("json") ? JSON.stringify(value) : packLines(value).join(`
+`));
+  return EXIT.ok;
+}
+function tick(ctx, args) {
+  const ref = specRef(ctx.root, required(args, 0, "spec"));
+  const task = required(args, 1, "task (T<k>)");
+  const path = join5(ref.dir, "tasks.md");
+  const text2 = readIfExists2(path);
+  if (text2 === null)
+    throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
+  const planned = tickTaskText(text2, task);
+  if (planned.changed)
+    writeFileSync2(path, planned.text);
+  const result = planned.changed ? "ticked" : "already-ticked";
+  emit(ctx, args, { spec: ref.slug, task, result }, [`${planned.changed ? "ticked" : "already ticked"} ${task}`]);
   return EXIT.ok;
 }
 var COMMANDS = {
@@ -6078,6 +6314,16 @@ var COMMANDS = {
     usage: "frontier <spec> [--json]",
     summary: "takeable claims and tasks of one spec, with what holds the rest",
     run: frontier
+  },
+  pack: {
+    usage: "pack <spec> T<k> [--json]",
+    summary: "the context pack of one task: the goal, the task line, its claim, its Test Strategy row, its lane profile from the constitution and its decisions; --json prints one compact line. Writes nothing; an unknown task exits 1",
+    run: pack
+  },
+  tick: {
+    usage: "tick <spec> T<k> [--json]",
+    summary: 'set the box of one task in tasks.md to [x]: exactly that line changes, tasks.md is the only file written. A task already ticked exits 0, "already ticked", nothing written; an unknown task exits 1, nothing written',
+    run: tick
   },
   claim: {
     usage: "claim <ISC-N> [--task T<k>] --session <actor> [--worktree <path>] [--json]",
@@ -6142,26 +6388,32 @@ function help() {
     "",
     ...Object.entries(COMMANDS).map(([name, c]) => `  ${name.padEnd(width)}  ${c.summary}`),
     "",
-    "spec-check <command> --help shows one command. Exit: 0 ok, 1 bad arguments, 3 drift or gate open, 4 lock lost."
+    "spec-check <command> --help shows one command. Exit: 0 ok, 1 bad arguments, 3 drift or gate open, 4 lock lost.",
+    'With --json a refusal (exit 1, 3 or 4) is one object {"error": <code>, "command": <name>, "detail": \u2026} on stdout, nothing on stderr.',
+    `Error codes: ${ERROR_CODES.join(", ")}.`
   ].join(`
 `);
 }
 async function main(argv, cwd = process.cwd(), now = new Date) {
   const out = (text2) => process.stdout.write(`${text2}
 `);
-  const fail = (code, message) => {
-    process.stderr.write(`spec-check: ${message}
-`);
-    return code;
-  };
   const [name, ...rest] = argv;
+  const json = rest.includes("--json");
+  const fail = (exit, code, detail, message = detail) => {
+    if (json)
+      out(JSON.stringify({ error: code, command: name, detail }));
+    else
+      process.stderr.write(`spec-check: ${message}
+`);
+    return exit;
+  };
   if (name === undefined || name === "--help" || name === "-h" || name === "help") {
     out(help());
     return name === undefined ? EXIT.badArgs : EXIT.ok;
   }
   const command = COMMANDS[name];
   if (command === undefined)
-    return fail(EXIT.badArgs, `unknown command "${name}"
+    return fail(EXIT.badArgs, "unknown-command", `unknown command "${name}"`, `unknown command "${name}"
 
 ${help()}`);
   if (rest.includes("--help") || rest.includes("-h")) {
@@ -6172,16 +6424,17 @@ ${command.summary}`);
   }
   try {
     const args = parseArgs(rest, command.values ?? [], command.flags ?? []);
-    return await command.run({ cwd, root: repoRoot(cwd), now, out }, args);
+    return await command.run({ cwd, root: repoRoot(cwd), now, command: name, out }, args);
   } catch (error) {
     if (error instanceof CliError)
-      return fail(error.exit, `${name}: ${error.message}`);
-    if (error instanceof SpecTextError)
-      return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
-    if (error instanceof ActivityTextError)
-      return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); nothing written`);
+      return fail(error.exit, error.code, error.message, `${name}: ${error.message}`);
+    if (error instanceof SpecTextError || error instanceof ActivityTextError || error instanceof TaskTextError) {
+      return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); nothing written`);
+    }
     if (error instanceof ActivityLogError)
-      return fail(EXIT.badArgs, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
+      return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
+    if (json)
+      return fail(EXIT.badArgs, "internal", error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
@@ -6189,5 +6442,6 @@ if (import.meta.main)
   process.exit(await main(process.argv.slice(2)));
 export {
   main,
-  EXIT
+  EXIT,
+  ERROR_CODES
 };

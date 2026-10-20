@@ -181,6 +181,17 @@ describe('spec-check gate reviewed under a run lock (spec 056, ISC-350)', () => 
     expect(gateBytes(root)).toBe(before);
   });
 
+  test('ISC-350: under --json the run lock is one compact refusal with the code run-locked (spec 010, ISC-335)', () => {
+    const root = repoWithSpec();
+    openRun(root, 'run-foreign-3', OTHER, new Date().toISOString());
+    const r = run(root, 'gate', 'reviewed', '001', '--yes', '--actor', REVIEWER, '--json');
+    expect(r.code).toBe(3);
+    const answer = JSON.parse(r.text) as { error: string; command: string; detail: string };
+    expect(answer.error).toBe('run-locked');
+    expect(answer.command).toBe('gate');
+    expect(answer.detail).toContain('run-foreign-3');
+  });
+
   test("ISC-350: the caller's own open run does not hide a running run of another session", () => {
     const root = repoWithSpec();
     openRun(root, 'run-own-1', REVIEWER, new Date().toISOString(), '/spec review 001');

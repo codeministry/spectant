@@ -16,7 +16,7 @@ import { parseClaims } from '../src/claims.ts';
 import type { TaskRow, TasksTab } from '../src/files.ts';
 import { parseFrontmatter } from '../src/frontmatter.ts';
 import { takeableSet } from '../src/takeable.ts';
-import { lanesOf, parseTaskLines } from '../src/tasks.ts';
+import { lanesOf, parseTaskLines, TaskTextError, tickTaskText } from '../src/tasks.ts';
 import { FIXTURES } from './helpers/read-tree.ts';
 
 const read = (rel: string): string => readFileSync(join(FIXTURES, rel), 'utf8');
@@ -466,5 +466,79 @@ describe('the counts count the task row (spec 021, ISC-252)', () => {
     expect(harbor.counts.done).toBe(27);
     expect(harbor.counts.done).toBe(harbor.tasks.filter((t) => t.status === 'done' || t.status === 'closed').length);
     expect(sum(harbor)).toBe(harbor.counts.rows);
+  });
+});
+
+// Spec 010, T7/T8 (ISC-334): `spec-check tick` sets one box through `tickTaskText`; the plugin writes what it returns.
+describe('tick: one task box set to [x] (spec 010, ISC-334)', () => {
+  const TASKS = [
+    '# Tasks',
+    '',
+    '- [ ] T1 · ISC-1 · core — first · `core/src/a.ts`',
+    '  - [ ] T3 · ISC-2 · [seam] · core — third (after: T1) · `core/src/b.ts`',
+    '- [x] T4 · ISC-2 · core — fourth',
+    '- [X] T5 · ISC-3 · core — fifth',
+    '- ~~T6 · ISC-3 · core — struck · `core/src/c.ts`~~ — dropped',
+    '- [ ] T30 · ISC-3 · core — thirtieth',
+    '',
+    '```',
+    '- [ ] T9 · ISC-1 · core — inside a fence',
+    '```',
+    '',
+  ].join('\n');
+
+  const changedLines = (before: string, after: string): number[] => {
+    const a = before.split('\n');
+    const b = after.split('\n');
+    expect(b.length).toBe(a.length);
+    return a.flatMap((line, i) => (line === b[i] ? [] : [i]));
+  };
+
+  const unknown = (text: string, id: string): void => {
+    let caught: unknown;
+    try {
+      tickTaskText(text, id);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TaskTextError);
+    expect((caught as TaskTextError).code).toBe('unknown-task');
+  };
+
+  test('an open task: exactly its line changes, and only its box', () => {
+    const { text, changed } = tickTaskText(TASKS, 'T3');
+    expect(changed).toBe(true);
+    expect(changedLines(TASKS, text)).toEqual([3]);
+    expect(text.split('\n')[3]).toBe('  - [x] T3 · ISC-2 · [seam] · core — third (after: T1) · `core/src/b.ts`');
+    expect(text.length).toBe(TASKS.length);
+    expect(parseTaskLines({ tasks: text }).tasks.find((t) => t.id === 'T3')?.state).toBe('done');
+  });
+
+  test('an already ticked task, [x] or [X]: changed false and the text returned byte-identical', () => {
+    for (const id of ['T4', 'T5']) {
+      const result = tickTaskText(TASKS, id);
+      expect(result.changed).toBe(false);
+      expect(result.text).toBe(TASKS);
+    }
+  });
+
+  test('an unknown task, a struck task, a fenced line or no task id throws unknown-task', () => {
+    for (const id of ['T2', 'T6', 'T9', 'T300', 'ISC-1', '']) unknown(TASKS, id);
+  });
+
+  test('T3 never matches T30, and T30 never matches T3', () => {
+    const t3 = tickTaskText(TASKS, 'T3').text;
+    expect(t3.split('\n')[7]).toBe('- [ ] T30 · ISC-3 · core — thirtieth');
+    const t30 = tickTaskText(TASKS, 'T30').text;
+    expect(changedLines(TASKS, t30)).toEqual([7]);
+    expect(t30.split('\n')[3]).toBe(TASKS.split('\n')[3]);
+    unknown('- [ ] T30 · ISC-3 · core — thirtieth\n', 'T3');
+  });
+
+  test('CRLF line ends, a BOM and a missing final newline stay byte-identical', () => {
+    const crlf = '﻿- [ ] T1 · ISC-1 · core — first\r\n- [ ] T2 · ISC-1 · core — second\r\n- [ ] T3 · ISC-1 · core — third';
+    expect(tickTaskText(crlf, 'T1').text).toBe('﻿- [x] T1 · ISC-1 · core — first\r\n- [ ] T2 · ISC-1 · core — second\r\n- [ ] T3 · ISC-1 · core — third');
+    expect(tickTaskText(crlf, 'T2').text).toBe('﻿- [ ] T1 · ISC-1 · core — first\r\n- [x] T2 · ISC-1 · core — second\r\n- [ ] T3 · ISC-1 · core — third');
+    expect(tickTaskText(crlf, 'T3').text).toBe('﻿- [ ] T1 · ISC-1 · core — first\r\n- [ ] T2 · ISC-1 · core — second\r\n- [x] T3 · ISC-1 · core — third');
   });
 });

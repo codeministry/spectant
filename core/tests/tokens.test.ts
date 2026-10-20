@@ -1005,3 +1005,146 @@ describe('roundtrip', () => {
     expect(serializeTokens(reading.rows)).toBe('{"v":1,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0}\n');
   });
 });
+
+// ─── Spec 010 · plugin invocations (T12, ISC-345) and plugin versions (T13, ISC-336) ────────────────────────────
+//
+// Its own transcript folder `fixtures/transcripts-plugin/`, so the ISC-135 golden above stays untouched: two main
+// sessions of a repository where the plugin runs `/spectant:spec implement 010` twice (from the marketplace cache,
+// versions 0.1.0 and 0.2.0), `/spectant:spec plan 010` once from a checkout (no version in the skill's base
+// directory) and the old skill's `/spec-review 010` once. Its golden `transcripts-plugin/tokens.golden.jsonl` is
+// computed by hand from those lines.
+
+const PLUGIN_TRANSCRIPTS = join(import.meta.dir, 'fixtures', 'transcripts-plugin');
+const PLUGIN_GOLDEN = join(PLUGIN_TRANSCRIPTS, 'tokens.golden.jsonl');
+const PLUGIN_SPEC = '010-core-cli-context-pack';
+
+/** Spec 010 as the CLI would hand it over: build from 08:00, code review from 10:35, rounds 1 to 3. */
+const pluginInput = (): TokenInput => ({
+  transcripts: sessionsOf(join(PLUGIN_TRANSCRIPTS, 'spectant'), ''),
+  specs: [
+    specInput(PLUGIN_SPEC, {
+      events: [eventLine('2026-10-20T08:00:00.000Z', 'tasks', 'build'), eventLine('2026-10-20T10:35:00.000Z', 'build', 'code-review')],
+      rounds: [roundLine(1, '2026-10-20T09:10:00.000Z'), roundLine(2, '2026-10-20T09:30:00.000Z'), roundLine(3, '2026-10-20T10:30:00.000Z')],
+      derivedStage: 'code-review',
+    }),
+  ],
+});
+
+const pluginLines = (run: TokenRun): string => serializeTokens([...(run.baseline === null ? [] : [run.baseline]), ...run.rows]);
+
+/** A meta user line loading a skill from `base`, as Claude Code writes it after the command line. */
+const skillLine = (ts: string, base: string): string =>
+  JSON.stringify({ type: 'user', isMeta: true, timestamp: ts, message: { role: 'user', content: [{ type: 'text', text: `Base directory for this skill: ${base}\n\n# Spec` }] } });
+
+describe('tokens: plugin invocations (ISC-345)', () => {
+  test('`/spectant:spec implement 010` is a `/spec implement` invocation of spec 010 with its round lines, and nothing lands in unassigned', () => {
+    const input = pluginInput();
+    const run = tokenRows(input);
+    expect(invocationsOf(run).map((row) => [row.command, row.spec, row.requests])).toEqual([
+      ['/spec implement', PLUGIN_SPEC, 3],
+      ['/spec implement', PLUGIN_SPEC, 2],
+      ['/spec plan', PLUGIN_SPEC, 1],
+      ['/spec-review', PLUGIN_SPEC, 1],
+    ]);
+    expect(roundsOf(run).map((row) => [row.spec, row.round, row.requests])).toEqual([
+      [PLUGIN_SPEC, 1, 2],
+      [PLUGIN_SPEC, 2, 1],
+      [PLUGIN_SPEC, 3, 2],
+    ]);
+    expect(unassignedOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[0, 0, 0, 0, 0]]);
+    expect(specRowOf(run, PLUGIN_SPEC)?.requests).toBe(7);
+    expectSumInvariant(input, run);
+  });
+
+  test('any `/<plugin>:spec` is stored as `/spec <subcommand>`, without one as `/spec`; another plugin command only ends the window', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'p', [
+          commandLine(at(0), '/other-plugin:spec', 'tasks 002 --force'),
+          usageLine(at(1), 'p1', [1, 1, 1, 1]),
+          commandLine(at(2), '/spectant:spec', ''),
+          usageLine(at(3), 'p2', [1, 1, 1, 1]),
+          commandLine(at(4), '/spectant:status', ''),
+          usageLine(at(5), 'p3', [1, 1, 1, 1]),
+        ]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => [row.command, row.spec, row.requests])).toEqual([
+      ['/spec tasks', '002-alpha', 1],
+      ['/spec', null, 1],
+    ]);
+    expect(unassignedOf(run).map((row) => row.requests)).toEqual([1]);
+  });
+});
+
+describe('tokens: plugin versions in the baseline line (ISC-336)', () => {
+  test('a run over the plugin fixture yields exactly the plugin golden', () => {
+    const built = pluginLines(tokenRows(pluginInput()));
+    expect(built.split('\n')).toEqual(readFileSync(PLUGIN_GOLDEN, 'utf8').split('\n'));
+    expect(built).toBe(readFileSync(PLUGIN_GOLDEN, 'utf8'));
+  });
+
+  test('per /spec command the versions of its invocations, sorted and each once, `unknown` without one; the old skill commands carry none', () => {
+    const baseline = baselineOfRun(tokenRows(pluginInput()));
+    expect(baseline.commands['/spec implement']?.plugin).toEqual(['0.1.0', '0.2.0']);
+    expect(baseline.commands['/spec plan']?.plugin).toEqual(['unknown']);
+    expect(baseline.commands['/spec-review']).toBeDefined();
+    expect(Object.keys(baseline.commands['/spec-review'] ?? {})).not.toContain('plugin');
+    // The same version twice is named once; an invocation without a skill line, or with another skill's, is `unknown`.
+    const cache = '/srv/bait/.claude/plugins/cache/spectant/spectant/0.3.0/skills';
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'v', [
+          commandLine(at(0), '/spectant:spec', 'plan 002'),
+          skillLine(at(0), `${cache}/spec`),
+          usageLine(at(1), 'v1', [1, 1, 1, 1]),
+          commandLine(at(2), '/spectant:spec', 'plan 002'),
+          skillLine(at(2), `${cache}/spec`),
+          usageLine(at(3), 'v2', [1, 1, 1, 1]),
+          commandLine(at(4), '/spec', 'plan 002'),
+          usageLine(at(5), 'v3', [1, 1, 1, 1]),
+          commandLine(at(6), '/spectant:spec', 'tasks 002'),
+          skillLine(at(6), `${cache}/archify`),
+          usageLine(at(7), 'v4', [1, 1, 1, 1]),
+        ]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    const commands = baselineOfRun(run).commands;
+    expect(commands['/spec plan']?.plugin).toEqual(['0.3.0', 'unknown']);
+    expect(commands['/spec tasks']?.plugin).toEqual(['unknown']);
+  });
+
+  test('only the version segment reaches the file, never the skill path', () => {
+    const built = pluginLines(tokenRows(pluginInput()));
+    for (const bait of ['/srv', 'bait', 'plugins/', '/cache/', 'skills/', 'checkout', '.claude']) expect(built).not.toContain(bait);
+  });
+
+  test('the plugin golden reads back without a diagnostic and serialises to the same bytes', () => {
+    const golden = readFileSync(PLUGIN_GOLDEN, 'utf8');
+    const reading = readTokens(golden);
+    expect(reading.diagnostics).toEqual([]);
+    expect(serializeTokens(reading.rows)).toBe(golden);
+  });
+
+  test('a baseline line of an earlier run without `plugin` reads back and serialises byte-identical, and the same state again adds no second line', () => {
+    const old = baselineLinesOf(readFileSync(GOLDEN, 'utf8'))[0] ?? '';
+    expect(old).not.toContain('"plugin"');
+    expect(serializeTokens(readTokens(`${old}\n`).rows)).toBe(`${old}\n`);
+    // The plugin fixture's own state as a run before the field wrote it: same measured_through, no `plugin` anywhere.
+    const before = readFileSync(PLUGIN_GOLDEN, 'utf8').replace(/,"plugin":\[[^\]]*\]/g, '');
+    expect(before).not.toContain('"plugin"');
+    expect(readTokens(before).diagnostics).toEqual([]);
+    const after = measureInto(before, pluginInput());
+    expect(baselineLinesOf(after)).toEqual(baselineLinesOf(before));
+    expect(after).toBe(before);
+  });
+
+  test('a `plugin` value of the wrong shape is a diagnostic and its line is left out', () => {
+    const line = baselineLinesOf(readFileSync(PLUGIN_GOLDEN, 'utf8'))[0] ?? '';
+    const reading = readTokens(`${line.replace('"plugin":["unknown"]', '"plugin":"unknown"')}\n`);
+    expect(reading.rows).toEqual([]);
+    expect(reading.diagnostics.map((d) => [d.line, d.code, d.subject])).toEqual([[1, 'tokens-value-invalid', 'commands']]);
+  });
+});

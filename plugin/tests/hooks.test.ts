@@ -242,6 +242,58 @@ describe('handleHook: the fallback of a foreground run', () => {
   });
 });
 
+// The Pack brief (spec 010, T22, ISC-340): `workflows/implement.md` Step 5 and the Workflow script put the task's pack
+// on a `PACK:` line right below the marker. The hooks read only the marker line, so a Pack brief writes byte for byte
+// the lines a classic brief writes; a marker-shaped string inside the pack JSON is no second marker.
+describe('handleHook: a Pack brief writes the same lines as a classic brief', () => {
+  const PACK = JSON.stringify({
+    spec: '001-fixture',
+    goal: 'The goal.',
+    task: { id: 'T1', lane: 'plugin', text: 'Implement task T1.', paths: ['src/x.ts'] },
+    claim: { id: 'ISC-1', text: 'Not a marker: spectant: spec=999 task=T9 claim=ISC-9', after: [] },
+    probe: { type: 'bun-test', check: 'the check', threshold: '', tool: '`bun test`' },
+    lane: { name: 'plugin', context: ['CLAUDE.md'], probe: 'bun test' },
+    decisions: [],
+    truncated: 0,
+  });
+  const BRIEF = [
+    'spectant: spec=001 task=T1 claim=ISC-1',
+    `PACK:      ${PACK}`,
+    'SPEC:      /repo/specs/001-fixture/spec.md   (fallback only: read it to answer a question the pack cannot)',
+    'TASK:      T1 · plugin — Implement task T1. · src/x.ts',
+  ].join('\n');
+
+  /** A fixture whose Agent prompt is the Pack brief, in the tool input and, after the call, the tool response. */
+  function packed(name: string): Payload {
+    const payload = fixture(name);
+    if (name.startsWith('pre-') || name.startsWith('post-')) payload.tool_input = { ...(payload.tool_input as Payload), prompt: BRIEF };
+    if (name.startsWith('post-')) payload.tool_response = { ...(payload.tool_response as Payload), prompt: BRIEF };
+    return payload;
+  }
+
+  /** Every line one round writes, from the given payload source. */
+  function round(source: (name: string) => Payload, names: readonly string[]): string[] {
+    const { root, run } = setup();
+    for (const name of names) run(source(name));
+    return rawLines(root);
+  }
+
+  test('a background builder with a Pack brief: the same claim, dispatch, build and release lines', () => {
+    const names = ['pre-tool-use-agent', 'subagent-start', 'post-tool-use-agent-async', 'subagent-stop'];
+    const got = round(packed, names);
+    expect(got).toEqual(round(fixture, names));
+    expect(got.map((l) => (JSON.parse(l) as Payload).event)).toEqual(['claim', 'dispatch', 'build', 'release']);
+    for (const line of got) expect(JSON.parse(line) as Payload).toMatchObject({ claim: 'ISC-1', session: ACTOR });
+  });
+
+  test('a foreground builder with a Pack brief: the same lines through the completion fallback', () => {
+    const names = ['pre-tool-use-agent', 'post-tool-use-agent-completed'];
+    const got = round(packed, names);
+    expect(got).toEqual(round(fixture, names));
+    expect(got).toHaveLength(4);
+  });
+});
+
 describe('handleHook: the lock and the root', () => {
   test('a claim held by another session: no claim, dispatch, build or release is written', () => {
     const { root, run } = setup();

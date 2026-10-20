@@ -1998,8 +1998,8 @@ describe("ISC-28 with the live stream: an open stream and its updates leave the 
 
       const file = join(repo, ticked);
       const text = readFileSync(file, "utf8");
-      expect(text).toMatch(/^- \[ \]/m);
-      writeFileSync(file, text.replace(/^- \[ \]/m, "- [x]"));
+      expect(text).toMatch(/^- \[ \]/m); // single-core: allow — asserts the raw fixture bytes before the outside edit
+      writeFileSync(file, text.replace(/^- \[ \]/m, "- [x]")); // single-core: allow — simulates an outside agent ticking a box in raw bytes
 
       // Read until an update names the ticked spec; the probe of the 2 s bound is `tests/live.test.ts`.
       const want = `"${specRoutes.spec(SLUG, SPEC_ID)}"`;

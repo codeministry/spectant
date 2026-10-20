@@ -301,7 +301,7 @@ describe("ISC-176 worktree: the code-review mark of a spec with a worktree compa
 // reads the mark fresh, stale after a change only in the worktree, and still stale after a further change only in the
 // main checkout. `bun test tests/gates.test.ts -t "cli mark worktree"` runs the group.
 describe("ISC-211 cli mark worktree: spectant gate code-reviewed F<n> marks a spec with a worktree against that worktree", () => {
-  const F2_OPEN = /^- \[ \] (ISC-7[4-8]):/gm;
+  const F2_OPEN = /^- \[ \] (ISC-7[4-8]):/gm; // single-core: allow — test setup edits raw fixture bytes of known claim lines
 
   /** Ticks F2's open claims ISC-74…78 in `file`; returns whether anything changed. */
   function closeF2(file: string): boolean {

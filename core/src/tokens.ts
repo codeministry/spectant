@@ -45,7 +45,19 @@ export interface BaselineCommand extends TokenCounters {
   readonly count: number;
   /** Per counter, the sum divided by `count`, rounded to a whole token so the file stays deterministic. */
   readonly mean: TokenCounters;
+  /**
+   * The plugin versions of the measured invocations, sorted, each once; `unknown` for an invocation whose skill line
+   * names none (spec 010, ISC-336). Only a plugin-form command (`/spec`, `/spec <subcommand>`) carries it; the old
+   * skill's `/spec-<name>` commands and every line of a run before the field have none, and keep none.
+   */
+  readonly plugin?: readonly string[];
 }
+
+/** The key of a baseline entry's plugin versions; it follows `BASELINE_COMMAND_KEYS` when the entry carries it. */
+export const BASELINE_PLUGIN_KEY = 'plugin';
+
+/** What an invocation whose skill line names no plugin version counts as. */
+export const UNKNOWN_PLUGIN = 'unknown';
 
 /** One measuring run. Kept across runs, even when its transcripts are gone; the same state adds no second line. */
 export interface BaselineRow {
@@ -211,7 +223,17 @@ export interface TranscriptUsage extends TokenCounters {
   readonly version: string | null;
 }
 
-export type TranscriptEntry = TranscriptCommand | TranscriptInput | TranscriptUsage;
+/**
+ * The `isMeta` user line that loads the `/spec` skill from a plugin cache (`Base directory for this skill:
+ * …/plugins/cache/<marketplace>/<plugin>/<version>/skills/spec`): only the version segment is kept, never the path
+ * (spec 010, ISC-336). A skill loaded from a checkout or with `--plugin-dir` names no version and is no entry.
+ */
+export interface TranscriptPlugin {
+  readonly type: 'plugin';
+  readonly version: string;
+}
+
+export type TranscriptEntry = TranscriptCommand | TranscriptInput | TranscriptUsage | TranscriptPlugin;
 
 export interface ParsedTranscript {
   readonly role: TranscriptRole;
@@ -249,8 +271,11 @@ const stringOf = (value: unknown): string | null => (typeof value === 'string' &
 
 const countOf = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0);
 
-/** A `/spec` command name: `/spec` itself or `/spec-<name>`; any other slash command only ends a window. */
-const SPEC_COMMAND = /^\/spec(?:-[a-z0-9-]+)?$/;
+/**
+ * A `/spec` command name: `/spec` itself, the plugin's `/<plugin>:spec` (spec 010, T12) or the old skill's
+ * `/spec-<name>`; any other slash command only ends a window.
+ */
+const SPEC_COMMAND = /^\/(?:spec(?:-[a-z0-9-]+)?|[A-Za-z0-9._-]+:spec)$/;
 
 const COMMAND_NAME = /<command-name>\s*([^<\s]+)\s*<\/command-name>/;
 
@@ -258,11 +283,28 @@ const COMMAND_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
 
 /**
  * The command name an invocation stores: the transcript's name, and for the plugin's `/spec` its subcommand word too
- * (`/spec implement`), so its rounds and its baseline entry stand apart; never any other argument.
+ * (`/spec implement`), so its rounds and its baseline entry stand apart; never any other argument. A plugin call
+ * `/<plugin>:spec implement` is stored as `/spec implement` too, so it shares its baseline entry and its rounds with
+ * the bare `/spec` (T12).
  */
 function commandNameOf(name: string, args: string): string {
   const word = args.trim().split(/\s+/)[0] ?? '';
-  return commandKey(name) === null && commandKey(`${name} ${word}`) !== null ? `${name} ${word}` : name;
+  const head = name.endsWith(':spec') ? '/spec' : name;
+  return commandKey(head) === null && commandKey(`${head} ${word}`) !== null ? `${head} ${word}` : head;
+}
+
+/** A plugin-form command name as `commandNameOf` stores it, the one a baseline entry names plugin versions for. */
+const isPluginCommand = (command: string): boolean => command === '/spec' || command.startsWith('/spec ');
+
+const SKILL_BASE = /^\s*Base directory for this skill:\s*(\S+)/;
+
+/** The version segment of a `/spec` skill's base directory in a plugin cache; never anything else of the path. */
+const PLUGIN_CACHE_VERSION = /[\\/]plugins[\\/]cache[\\/][^\\/]+[\\/][^\\/]+[\\/]([0-9A-Za-z][0-9A-Za-z.+_-]*)[\\/]skills[\\/]spec[\\/]?$/;
+
+/** The plugin version a meta line's skill base directory names, or null. */
+function pluginVersionOf(text: string): string | null {
+  const base = SKILL_BASE.exec(text)?.[1];
+  return base === undefined ? null : (PLUGIN_CACHE_VERSION.exec(base)?.[1] ?? null);
 }
 
 /** The first three-digit number standing alone in a command's arguments. */
@@ -338,7 +380,13 @@ export function parseTranscript(file: TranscriptFile): ParsedTranscript {
       });
       return;
     }
-    if (value.isMeta === true) return;
+    if (value.isMeta === true) {
+      // The loaded skill text belongs to the open window; it only tells which plugin version runs it (T13).
+      const meta = userText(message.content);
+      const version = meta === null ? null : pluginVersionOf(meta);
+      if (version !== null) entries.push({ type: 'plugin', version });
+      return;
+    }
     const text = userText(message.content);
     if (text === null) return;
     if (ts === null) {
@@ -379,6 +427,8 @@ interface Invocation {
   readonly spec: string | null;
   readonly ts: string;
   subagents: number;
+  /** The plugin version of the first `/spec` skill line in the window, null while none named one. */
+  plugin: string | null;
 }
 
 /** One API request, counted once: the first line seen in the fixed file order, its counters the maximum over all. */
@@ -472,10 +522,12 @@ export function tokenRows(input: TokenInput): TokenRun {
       if (entry.type === 'command') {
         const n = (perSession.get(transcript.session) ?? 0) + 1;
         perSession.set(transcript.session, n);
-        open = { id: `a:claude:${transcript.session}#${n}`, command: entry.command, spec: resolveSpec(entry.specNumber, transcript.label), ts: entry.ts, subagents: 0 };
+        open = { id: `a:claude:${transcript.session}#${n}`, command: entry.command, spec: resolveSpec(entry.specNumber, transcript.label), ts: entry.ts, subagents: 0, plugin: null };
         invocations.push(open);
       } else if (entry.type === 'input') {
         open = null;
+      } else if (entry.type === 'plugin') {
+        if (open !== null && open.plugin === null) open.plugin = entry.version;
       } else {
         for (const id of entry.toolUseIds) toolUses.set(id, open);
       }
@@ -589,11 +641,14 @@ export function tokenRows(input: TokenInput): TokenRun {
   rows.push({ v: TOKENS_VERSION, kind: 'unassigned', requests: rest?.requests ?? 0, ...counters(rest) });
   rows.sort(compareRows);
 
-  return { rows, baseline: baselineOf(requests, rows), diagnostics };
+  return { rows, baseline: baselineOf(requests, rows, invocations), diagnostics };
 }
 
-/** This run's baseline line: newest counted turn, Claude Code versions, per command the sums and rounded means. */
-function baselineOf(requests: readonly Request[], rows: ReadonlyArray<Exclude<TokenRow, BaselineRow>>): BaselineRow | null {
+/**
+ * This run's baseline line: newest counted turn, Claude Code versions, per command the sums and rounded means, and per
+ * plugin-form command the plugin versions of its invocations (T13).
+ */
+function baselineOf(requests: readonly Request[], rows: ReadonlyArray<Exclude<TokenRow, BaselineRow>>, invocations: readonly Invocation[]): BaselineRow | null {
   if (requests.length === 0) return null;
   let newest = requests[0]?.ts ?? '';
   for (const request of requests) if (timeOf(request.ts) > timeOf(newest)) newest = request.ts;
@@ -611,7 +666,10 @@ function baselineOf(requests: readonly Request[], rows: ReadonlyArray<Exclude<To
     const sum = sums.get(command) ?? { count: 0, ...zero() };
     const mean = zero();
     for (const counter of TOKEN_COUNTERS) mean[counter] = sum.count === 0 ? 0 : Math.round(sum[counter] / sum.count);
-    commands[command] = { ...sum, mean };
+    const plugin = isPluginCommand(command)
+      ? [...new Set(invocations.filter((invocation) => invocation.command === command).map((invocation) => invocation.plugin ?? UNKNOWN_PLUGIN))].sort(plainOrder)
+      : null;
+    commands[command] = { ...sum, mean, ...(plugin === null ? {} : { plugin }) };
   }
   return { v: TOKENS_VERSION, kind: 'baseline', measured_through: newest, claude_code: versions, commands };
 }
@@ -645,9 +703,18 @@ function lineOf(row: TokenRow): JsonRecord {
   for (const command of Object.keys(row.commands).sort(plainOrder)) {
     const entry = row.commands[command];
     if (entry === undefined) continue;
-    commands[command] = { ...ordered(entry, BASELINE_COMMAND_KEYS), mean: ordered(entry.mean, TOKEN_COUNTERS) };
+    commands[command] = commandEntryOf(entry);
   }
   return { ...line, claude_code: [...row.claude_code], commands };
+}
+
+/**
+ * A baseline entry key by key: `BASELINE_COMMAND_KEYS`, then `plugin` only when the entry carries it, so an entry of a
+ * run before the field reads and writes back byte for byte (T13).
+ */
+function commandEntryOf(entry: BaselineCommand): BaselineCommand {
+  const out = { ...ordered(entry, BASELINE_COMMAND_KEYS), mean: ordered(entry.mean, TOKEN_COUNTERS) } as unknown as BaselineCommand;
+  return entry.plugin === undefined ? out : { ...out, [BASELINE_PLUGIN_KEY]: [...entry.plugin] };
 }
 
 /** The file text: lines in the fixed order of `TOKEN_ROW_KINDS`, keys in the order of `TOKEN_ROW_KEYS`, `\n` after each (T6). */
@@ -685,7 +752,11 @@ const isText = (value: unknown): value is string => typeof value === 'string' &&
 
 const isCounters = (value: unknown): value is JsonRecord => isRecord(value) && TOKEN_COUNTERS.every((counter) => isCount(value[counter]));
 
-const isCommandEntry = (value: unknown): boolean => isCounters(value) && isCount(value.count) && isCounters(value.mean);
+/** An entry's `plugin`, when it has one, is a list of versions; an entry without it is a line of an earlier run. */
+const isPluginList = (value: unknown): boolean => value === undefined || (Array.isArray(value) && value.every(isText));
+
+const isCommandEntry = (value: unknown): boolean =>
+  isCounters(value) && isCount(value.count) && isCounters(value.mean) && isPluginList(value[BASELINE_PLUGIN_KEY]);
 
 /** Per key, the values a line may hold there; `spec` is checked per kind (an invocation's may be null). */
 const VALUE_CHECKS: Readonly<Record<string, (value: unknown) => boolean>> = {
@@ -713,8 +784,7 @@ function rowOf(record: JsonRecord, kind: TokenRowKind): TokenRow {
   const source = record.commands as Record<string, JsonRecord>;
   const commands: Record<string, BaselineCommand> = {};
   for (const command of Object.keys(source).sort(plainOrder)) {
-    const entry = source[command] ?? {};
-    commands[command] = { ...ordered(entry, BASELINE_COMMAND_KEYS), mean: ordered(entry.mean as JsonRecord, TOKEN_COUNTERS) } as unknown as BaselineCommand;
+    commands[command] = commandEntryOf((source[command] ?? {}) as unknown as BaselineCommand);
   }
   return { v: TOKENS_VERSION, kind, measured_through: record.measured_through as string, claude_code: [...(record.claude_code as string[])], commands };
 }
