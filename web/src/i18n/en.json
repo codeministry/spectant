@@ -66,11 +66,6 @@
         "unreachable": "Unreachable"
       },
       "refresh": "Refresh now",
-      "interval": {
-        "label": "Refresh interval",
-        "off": "Off",
-        "seconds": "{{seconds}} s"
-      },
       "services": {
         "title": "Dev services",
         "empty": "Nothing listening",
@@ -713,8 +708,8 @@
       "ago": "{{value}} {{unit}} ago",
       "heading": "Live",
       "reading": {
-        "one": "Reading {{count}} workspace · every {{seconds}} s",
-        "other": "Reading {{count}} workspaces · every {{seconds}} s"
+        "one": "Reading {{count}} workspace",
+        "other": "Reading {{count}} workspaces"
       },
       "board": "Open the round board",
       "services": "Dev services",
@@ -785,10 +780,7 @@
       "trigger": "Assistant"
     },
     "refresh": {
-      "now": "Refresh now",
-      "interval": "Refresh interval",
-      "seconds": "{{seconds}} s",
-      "off": "Off"
+      "now": "Refresh now"
     },
     "more": "More",
     "settingsPanel": {

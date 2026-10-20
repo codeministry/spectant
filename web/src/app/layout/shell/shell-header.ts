@@ -26,7 +26,7 @@ import { ShellState } from './shell-state.service';
  * hairline shows only once the page has scrolled (prototype `[data-ui="header"].scrolled`).
  *
  * Every control carries `data-control` (in the overflow menu its entry does) so later tasks replace it in place; the
- * tools spec 024 adds (refresh, interval, assistant, help, more) carry `data-tool`, keeping the `data-control` set of
+ * tools spec 024 adds (refresh, assistant, help, more) carry `data-tool`, keeping the `data-control` set of
  * ISC-140.2. The parts own their styles: `ShellBrand`, `ShellNav` (rail-selects and the deferred `ShellMenus`),
  * `ShellLive` (the status group).
  */

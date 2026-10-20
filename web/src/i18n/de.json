@@ -66,11 +66,6 @@
         "unreachable": "Nicht erreichbar"
       },
       "refresh": "Jetzt aktualisieren",
-      "interval": {
-        "label": "Aktualisierungsintervall",
-        "off": "Aus",
-        "seconds": "{{seconds}} s"
-      },
       "services": {
         "title": "Dev-Services",
         "empty": "Kein Dienst lauscht",
@@ -713,8 +708,8 @@
       "ago": "{{value}} {{unit}}",
       "heading": "Live",
       "reading": {
-        "one": "Liest {{count}} Workspace · alle {{seconds}} s",
-        "other": "Liest {{count}} Workspaces · alle {{seconds}} s"
+        "one": "Liest {{count}} Workspace",
+        "other": "Liest {{count}} Workspaces"
       },
       "board": "Round-Board öffnen",
       "services": "Dev-Dienste",
@@ -785,10 +780,7 @@
       "trigger": "Assistent"
     },
     "refresh": {
-      "now": "Jetzt aktualisieren",
-      "interval": "Aktualisierungsintervall",
-      "seconds": "{{seconds}} s",
-      "off": "Aus"
+      "now": "Jetzt aktualisieren"
     },
     "more": "Mehr",
     "settingsPanel": {

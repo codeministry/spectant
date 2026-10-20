@@ -5,7 +5,12 @@ import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
 import { ApiClient } from './api.service';
 import { LiveStreamService } from './live-stream.service';
-import { SettingsService } from './settings.service';
+
+/**
+ * The fallback poll's period (spec 053, ISC-317): a fixed 60 s while the live stream is disconnected and the page is
+ * visible. A constant, never a setting; the stream is the primary path.
+ */
+export const FALLBACK_POLL_MS = 60_000;
 
 /** What one refresh changed on the open workspace's dashboard, keyed stably so the view can mark it in place. */
 export interface DashboardDiff {
@@ -64,7 +69,7 @@ export function diffDashboards(before: unknown, after: unknown): DashboardDiff {
  * (`LiveStreamService`) is the primary path: each `update` frame is put into `ApiClient`'s ETag cache (`prime`), and
  * when it names the open workspace the shell's `resource()`s reload through that cache, so each read is a 304 that
  * renders the frame's body through the same `ApiClient` read a poll takes, never a body set from outside it. The
- * poll is the fallback: only while the stream is not connected, every `settings.refreshSeconds` while the page is
+ * poll is the fallback: only while the stream is not connected, every `FALLBACK_POLL_MS` (60 s) while the page is
  * visible; after a reconnect the shell refreshes once to catch what the gap missed. Once when the page becomes visible
  * again it refreshes either way. A 304 costs no body, and a reload keeps the resources' last value, so no view is torn
  * down and the DOM nodes holding a number keep their identity while the number changes. The palette's "Refresh now"
@@ -78,7 +83,6 @@ export class RefreshService {
   private readonly state = inject(ShellState);
   private readonly api = inject(ApiClient);
   private readonly live = inject(LiveStreamService);
-  private readonly settings = inject(SettingsService);
   private readonly document = inject(DOCUMENT);
   private readonly transloco = inject(TranslocoService);
 
@@ -115,10 +119,9 @@ export class RefreshService {
   constructor() {
     effect((onCleanup) => {
       if (this.live.connected()) return;
-      const ms = this.settings.settings().refreshSeconds * 1000;
       const timer = setInterval(() => {
         if (this.document.visibilityState === 'visible') this.refresh();
-      }, ms);
+      }, FALLBACK_POLL_MS);
       onCleanup(() => clearInterval(timer));
     });
 

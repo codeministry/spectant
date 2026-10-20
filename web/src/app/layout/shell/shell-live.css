@@ -56,13 +56,6 @@
   }
 }
 
-.seconds {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 @media (pointer: coarse) {
   .group {
     block-size: 44px;
@@ -85,10 +78,9 @@
   background: var(--clos-text);
 }
 
-/* Below 640 px only the indicator: activity and the dot, no refresh, no interval (prototype rule). */
+/* Below 640 px only the indicator: activity and the dot, no refresh (prototype rule). */
 @container header (width < 640px) {
-  .refresh,
-  .interval {
+  .refresh {
     display: none;
   }
 
@@ -98,13 +90,9 @@
   }
 }
 
-/* The popovers' contents (prototype `pop-live`, `pop-interval`: `.pop-head`, `.service`, `.pop-item`, `.pop-sep`). */
+/* The popover's contents (prototype `pop-live`: `.pop-head`, `.service`, `.pop-item`, `.pop-sep`). */
 .live-pop {
   --ui-popover-width: 300px;
-}
-
-.interval-pop {
-  --ui-popover-width: 160px;
 }
 
 .pop-head {
@@ -145,7 +133,6 @@
 }
 
 .pop-item:hover,
-.pop-item[aria-current="true"],
 .service-link:hover {
   background: var(--color-base-300);
 }

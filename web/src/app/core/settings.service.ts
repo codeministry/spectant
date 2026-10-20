@@ -16,7 +16,6 @@ export type Density = 'comfortable' | 'compact';
 export interface Settings {
   theme: ThemeMode;
   language: Lang;
-  refreshSeconds: number;
   singleKeyShortcuts: boolean;
   /** The context rail at wide shows as its 48 px strip (spec 002, ISC-75). */
   railCollapsed: boolean;
@@ -34,7 +33,6 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   theme: 'system',
   language: 'en',
-  refreshSeconds: 30,
   singleKeyShortcuts: true,
   railCollapsed: false,
   notesImportDismissed: false,
@@ -48,18 +46,19 @@ export const SETTINGS_URL = '/api/settings';
 
 const isThemeMode = (value: unknown): value is ThemeMode => value === 'system' || value === 'light' || value === 'dark';
 export const isDensity = (value: unknown): value is Density => value === 'comfortable' || value === 'compact';
-const isRefresh = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 3600;
 /** Whole minutes from 5 to 1440: the range `SettingsSchema` checks for both ages, `runAbortMinutes` and `staleMinutes`. */
 export const isAgeMinutes = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 5 && (value as number) <= 1440;
 
-/** A server answer read field by field; a field that fails its check reads as its default, as the server does. */
+/**
+ * A server answer read field by field; a field that fails its check reads as its default, as the server does, and a
+ * key the schema does not know (such as one an older server still sends) is dropped.
+ */
 function sanitize(raw: unknown): Settings {
   const value = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes, staleMinutes, density } = value;
+  const { theme, language, singleKeyShortcuts, railCollapsed, notesImportDismissed, runAbortMinutes, staleMinutes, density } = value;
   return {
     theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme,
     language: typeof language === 'string' && isLang(language) ? language : DEFAULT_SETTINGS.language,
-    refreshSeconds: isRefresh(refreshSeconds) ? refreshSeconds : DEFAULT_SETTINGS.refreshSeconds,
     singleKeyShortcuts: typeof singleKeyShortcuts === 'boolean' ? singleKeyShortcuts : DEFAULT_SETTINGS.singleKeyShortcuts,
     railCollapsed: typeof railCollapsed === 'boolean' ? railCollapsed : DEFAULT_SETTINGS.railCollapsed,
     notesImportDismissed: typeof notesImportDismissed === 'boolean' ? notesImportDismissed : DEFAULT_SETTINGS.notesImportDismissed,
@@ -70,7 +69,7 @@ function sanitize(raw: unknown): Settings {
 }
 
 /**
- * The user's settings (theme mode, language, refresh interval, single-key shortcuts, the collapsed rail, the Notes import notice, the density, the run and claim ages), stored server-side through
+ * The user's settings (theme mode, language, single-key shortcuts, the collapsed rail, the Notes import notice, the density, the run and claim ages), stored server-side through
  * `GET` / `PUT /api/settings` so they survive a reload on a different port (ISC-18.3). Never in `localStorage`:
  * per-origin storage is lost when the port changes (web/CLAUDE.md § State).
  *

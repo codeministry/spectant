@@ -333,7 +333,6 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: SHELL, place: 'palette trigger', route: '/w/harbor', at: 'header [data-control="palette"]', icon: 'search' },
   { section: SHELL, place: 'live indicator', route: '/w/harbor', at: 'header [data-control="live"]', icon: 'activity', attached: true },
   { section: SHELL, place: 'status group refresh', route: '/w/harbor', at: 'header [data-tool="refresh"]', icon: 'refresh-cw' },
-  { section: SHELL, place: 'refresh interval', route: '/w/harbor', at: 'header [data-tool="interval"]', icon: 'timer' },
   { section: SHELL, place: 'zen', route: '/w/harbor', at: 'header [data-control="zen"]', icon: 'scan' },
   { section: SHELL, place: 'settings', route: '/w/harbor', at: 'header [data-control="settings"]', icon: 'settings' },
   { section: SHELL, place: 'help', route: '/w/harbor', at: 'header [data-tool="help"]', icon: 'circle-help' },
