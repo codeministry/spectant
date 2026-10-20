@@ -9,6 +9,10 @@ open · 4 lock lost; `--json` for machine output).
 
 ## When to run
 
+First, before the type: a spec without claims (the total in `progress` from `CLI status NNN --json` is 0) is refused
+with one line naming `/spec new NNN`, which mints its claims in its own folder, and nothing is written; every task
+hangs on a claim ID. The run still opens and ends `ok`, as for every refusal by design.
+
 For the types `refactor`, `feature` and `project`, after `spec.md` (and `plan.md` where the type has one). Not below
 three claims: a task list with one entry is a checkbox with a cover page. With fewer, say so and stop; the spec goes
 to `/spec review <NNN>` without a `tasks.md`.
