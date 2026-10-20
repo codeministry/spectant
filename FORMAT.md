@@ -339,6 +339,105 @@ takeable, which needs a fresh reviewed mark, task edges done, no file shared wit
 and infra, else 4) and the cards of
 the live frame.
 
+## The context pack
+
+What a builder of an implement round reads instead of the whole `spec.md` (spec 010, ISC-333): the pack of one task,
+printed by `spec-check pack <spec> T<k>`, with `--json` as one compact JSON line. It is no file kind; nothing writes it
+into a repository. `core/src/pack.ts` builds it (`buildPack`) from the spec's `spec.md`, `tasks.md` and `plan.md` and
+from `specs/constitution.md`, through the parsers above; it holds no grammar of its own. The keys stand in this fixed
+order, top level and nested:
+
+- `spec`: the spec folder name, `NNN-slug`;
+- `goal`: the body of `## Goal` (or `## Ziel`) in `spec.md`, trimmed, its lines kept as written;
+- `task`: `id`, `lane` (the lane token, null without one), `text` (without `(after: …)` and the path column) and
+  `paths` (the path column, code spans unwrapped), all from the task line (`parseTaskLines`);
+- `claim`: `id`, `text` (as written, an `Anti: ` or `Antecedent: ` prefix kept, without its trailing edge) and `after`
+  (the claim IDs of its `(after: …)`);
+- `probe`: the claim's `## Test Strategy` row, `type`, `check`, `threshold` and `tool` as written; null without a row;
+- `lane`: the lane's `## Lanes` row of the constitution, `name`, `context` (the files a worker loads) and `probe` (the
+  lane probe, null for an empty cell); null without a constitution, without a lane token or for a lane outside the
+  table;
+- `decisions`: the Decisions rows that name the task or its claim, each `{source, text}` with `source` `spec.md` or
+  `plan.md`; spec.md's rows first, then plan.md's, each in file order;
+- `truncated`: how many decisions the cap dropped.
+
+**Decisions rows** (spec 010, ISC-337). A row is a top-level bullet (`- `, `* ` or `+ `) under `## Decisions`, its
+text without the marker, plus its continuation lines: a non-blank line under the bullet that is no new top-level
+bullet (a nested bullet included) continues it, keeping its indentation; after a blank line only an indented line
+does, and blank lines inside a row are dropped. Prose outside a bullet and bullets under any other heading are no
+rows. A row names an ID as a whole token: no letter, digit, `_` or `-` right before it and no letter, digit or `_`
+right after it. `ISC-12` hits `ISC-12` and its sub-claim `ISC-12.1`, never `ISC-120`; `T3` hits `T3`, never `T30`.
+
+**The cap** (spec 010, ISC-339). The pack is at most 8 KiB, 8192 bytes of UTF-8 in its compact JSON (`PACK_LIMIT`,
+`capPack`). Over the limit, the oldest decision goes first, one at a time until the pack fits: the earliest leading
+`YYYY-MM-DD` of a row, a row without a leading date before every dated one, ties in pack order. Each dropped row counts
+in `truncated`; the kept rows keep their order. The goal, task, claim, probe and lane are never cut: a pack still over
+the limit with no decisions left is printed as it is. An unknown task is the error `unknown-task`, a task whose claim
+`spec.md` lacks is `no-claim`.
+
+The golden of the plugin's fixture repository, pretty-printed (the CLI prints the same object on one line).
+
+From `plugin/tests/fixtures/pack.golden.json`:
+
+```json
+{
+  "spec": "001-digest",
+  "goal": "A week of notes becomes one digest page\nthat fits on one screen and keeps every note title, `a | b` included.",
+  "task": {
+    "id": "T3",
+    "lane": "plugin",
+    "text": "Repeated titles kept as two lines",
+    "paths": [
+      "plugin/src/digest-cli.ts",
+      "plugin/tests/digest.test.ts"
+    ]
+  },
+  "claim": {
+    "id": "ISC-3",
+    "text": "Anti: the digest drops a note whose title repeats an earlier one.",
+    "after": [
+      "ISC-2"
+    ]
+  },
+  "probe": {
+    "type": "bun-test",
+    "check": "digest: repeated title",
+    "threshold": "both notes listed",
+    "tool": "`bun test plugin/ -t \"repeat\"`"
+  },
+  "lane": {
+    "name": "plugin",
+    "context": [
+      "plugin/CLAUDE.md"
+    ],
+    "probe": "bun test plugin/"
+  },
+  "decisions": [
+    {
+      "source": "spec.md",
+      "text": "2026-03-04: ISC-3 counts a repeated title as two notes; T3 keeps both lines."
+    },
+    {
+      "source": "spec.md",
+      "text": "2026-03-04: ISC-3.1 splits off a title that repeats across two weeks."
+    },
+    {
+      "source": "spec.md",
+      "text": "2026-03-05: The digest renders as one page,\n  its title order kept line by line as\n  T3 writes it."
+    },
+    {
+      "source": "plan.md",
+      "text": "2026-03-03: T3 compares titles case-sensitively; ISC-3 names no folding."
+    },
+    {
+      "source": "plan.md",
+      "text": "2026-03-05: A repeated title keeps its own line (ISC-3)."
+    }
+  ],
+  "truncated": 0
+}
+```
+
 ## `context` — `context.md`
 
 The context log: the goal lock, question rounds and dated decisions. A record, not an authority; nothing gates on it.

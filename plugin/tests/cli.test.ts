@@ -3,7 +3,7 @@
 // chain the claim names: `allocate` a feature spec, `mint` two claims (master first, then the spec), `verify` one,
 // `decide`, `drift` clean, `status --json` lists the spec, `frontier` names the open claim takeable.
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseClaims } from '../../core/src/claims.ts';
@@ -227,6 +227,134 @@ describe('spec-check --json: compact errors', () => {
     expect(JSON.parse(option.out)).toEqual({ error: 'bad-args', command: 'status', detail: 'unknown option --bogus' });
     const codes = helpCodes(root);
     for (const code of ['unknown-command', 'bad-args', 'unknown-spec', 'drift', 'unknown-task']) expect(codes).toContain(code);
+  });
+});
+
+// T11, ISC-335: every command but `hook`, in a fresh copy of the pack fixture repository, answers one success and one
+// refusal under --json with exactly one JSON object on stdout and nothing on stderr; a refusal (exit 1, 3 or 4) is
+// `{error, command, detail}` with a code from the `--help` list. The command list comes from `--help`, so a new
+// command without a case here fails the guard test.
+describe('spec-check --json: compact answers of every command', () => {
+  const FIXTURE = join(import.meta.dir, 'fixtures', 'pack');
+  const HOLDER = 'a:claude:00000001';
+  const OTHER = 'a:claude:00000002';
+
+  interface Case {
+    /** Commands run first, without --json, each expected to exit 0. */
+    readonly setup?: ReadonlyArray<readonly string[]>;
+    /** The refusal, run before the success: its exit code and error code. */
+    readonly fail: readonly string[];
+    readonly exit: 1 | 3 | 4;
+    readonly code: string;
+    readonly ok: readonly string[];
+  }
+
+  const CASES: Readonly<Record<string, Case>> = {
+    allocate: { fail: ['novel', 'x'], exit: 1, code: 'bad-args', ok: ['feature', 'fresh', '--goal', 'One page.'] },
+    mint: { fail: ['001', '--feature', 'F1'], exit: 1, code: 'bad-args', ok: ['001', '--feature', 'F1', '--claims', '.claims.json'] },
+    verify: { fail: ['001', 'ISC-9', 'test', 'green'], exit: 1, code: 'unknown-id', ok: ['001', 'ISC-1', 'test', 'green'] },
+    decide: { fail: ['001', 'one\ntwo'], exit: 1, code: 'multi-line', ok: ['001', 'The digest is one page.'] },
+    drift: { fail: ['999'], exit: 1, code: 'unknown-spec', ok: ['001'] },
+    status: { fail: ['999'], exit: 1, code: 'unknown-spec', ok: [] },
+    frontier: { fail: ['999'], exit: 1, code: 'unknown-spec', ok: ['001'] },
+    pack: { fail: ['001', 'T9'], exit: 1, code: 'unknown-task', ok: ['001', 'T3'] },
+    tick: { fail: ['001', 'T9'], exit: 1, code: 'unknown-task', ok: ['001', 'T1'] },
+    claim: {
+      setup: [['claim', 'ISC-2', '--task', 'T2', '--session', HOLDER]],
+      fail: ['ISC-2', '--task', 'T2', '--session', OTHER],
+      exit: 4,
+      code: 'lock-held',
+      ok: ['ISC-1', '--task', 'T1', '--session', HOLDER],
+    },
+    release: {
+      setup: [['claim', 'ISC-2', '--task', 'T2', '--session', HOLDER]],
+      fail: ['ISC-2', '--task', 'T2', '--session', OTHER],
+      exit: 4,
+      code: 'lock-lost',
+      ok: ['ISC-2', '--task', 'T2', '--session', HOLDER],
+    },
+    transition: { setup: [['gate', 'reviewed', '001', '--yes']], fail: ['001', 'done'], exit: 3, code: 'refused', ok: ['001', 'build'] },
+    run: { fail: ['end', 'r-unknown', '--outcome', 'ok'], exit: 1, code: 'bad-args', ok: ['start', '001', '--command', '/spec implement 001'] },
+    gate: { fail: ['check', 'reviewed', '001'], exit: 3, code: 'gate-missing', ok: ['reviewed', '001', '--yes'] },
+    archive: { fail: ['001', '--dry-run'], exit: 3, code: 'blocked', ok: ['001', '--dry-run', '--reason', 'superseded'] },
+    // A --plan that is a directory is no refusal the command foresaw: it answers with the code `internal`.
+    rounds: { fail: ['record', '001', '--plan', 'specs'], exit: 1, code: 'internal', ok: ['record', '001'] },
+    activity: {
+      fail: ['probe', '--task', 'T1', '--session', HOLDER, '--result', 'green'],
+      exit: 1,
+      code: 'bad-args',
+      ok: ['probe', '--task', 'T1', '--claim', 'ISC-1', '--session', HOLDER, '--result', 'green'],
+    },
+  };
+
+  /** A fresh git repository holding a copy of the pack fixture and the claims file `mint` reads. */
+  function fixtureRepo(): string {
+    const root = repo(null);
+    cpSync(FIXTURE, root, { recursive: true });
+    writeClaims(root);
+    return root;
+  }
+
+  /** The command names `spec-check --help` lists, one per indented `  <name>  <summary>` line. */
+  const helpCommands = (root: string): string[] =>
+    run(root, '--help')
+      .out.split('\n')
+      .filter((l) => l.startsWith('  '))
+      .map((l) => l.trim().split(' ')[0] ?? '');
+
+  /** The fixed error codes `spec-check --help` names on its `Error codes` line. */
+  const helpCodes = (root: string): string[] => {
+    const line = run(root, '--help').out.split('\n').find((l) => l.startsWith('Error codes')) ?? '';
+    return line
+      .slice(line.indexOf(':') + 1)
+      .split(',')
+      .map((c) => c.trim().replace(/\.$/u, ''))
+      .filter((c) => c !== '');
+  };
+
+  /** The whole stdout is exactly one JSON value, an object, and stderr is empty. */
+  function oneObject(r: Run): Record<string, unknown> {
+    expect(r.err).toBe('');
+    const value = JSON.parse(r.out) as unknown;
+    expect(typeof value === 'object' && value !== null && !Array.isArray(value)).toBe(true);
+    return value as Record<string, unknown>;
+  }
+
+  test('compact: every command --help lists, hook aside, has a success and a refusal case here', () => {
+    const commands = helpCommands(repo(null));
+    expect(commands).toContain('hook');
+    expect(commands.filter((c) => c !== 'hook').toSorted()).toEqual(Object.keys(CASES).toSorted());
+  });
+
+  for (const [name, c] of Object.entries(CASES)) {
+    test(`compact: ${name} --json answers one object on success and one error object on refusal`, () => {
+      const root = fixtureRepo();
+      const codes = helpCodes(root);
+      for (const step of c.setup ?? []) expect(run(root, ...step).code).toBe(0);
+
+      const refused = run(root, name, ...c.fail, '--json');
+      const error = oneObject(refused);
+      expect({ exit: refused.code, keys: Object.keys(error) }).toEqual({ exit: c.exit, keys: ['error', 'command', 'detail'] });
+      expect(error).toMatchObject({ error: c.code, command: name });
+      expect(codes).toContain(String(error.error));
+
+      const done = run(root, name, ...c.ok, '--json');
+      const answer = oneObject(done);
+      expect(done.code).toBe(0);
+      expect(Object.keys(answer)).not.toContain('error');
+    });
+  }
+
+  test('compact: hook stays the exception and prints nothing, also with --json', () => {
+    const root = fixtureRepo();
+    const r = Bun.spawnSync(['bun', CLI, 'hook', '--json'], {
+      cwd: root,
+      stdin: Buffer.from('{not json'),
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+    });
+    expect({ code: r.exitCode, out: r.stdout.toString() }).toEqual({ code: 0, out: '' });
   });
 });
 

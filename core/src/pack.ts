@@ -9,7 +9,7 @@
 // - The goal is the whole `## Goal` (or `## Ziel`) section body, trimmed, its lines kept as written.
 // - The size of a pack is the UTF-8 byte length of `JSON.stringify(pack)`; `capPack` holds it under `PACK_LIMIT`.
 // - `decisions` (T15, ISC-337) are the `## Decisions` bullets of spec.md, then plan.md, that name the task or its
-//   claim as a whole token (`decisionRows`, `mentions`). `capPack` is T18; until then it throws.
+//   claim as a whole token (`decisionRows`, `mentions`). `capPack` (T18, ISC-339) drops the oldest of them first.
 //
 // Pure: text in, model out. No file system, no Bun API. An unknown task or a task whose claim spec.md lacks throws a
 // `PackError` with its code; the CLI maps the code to its JSON error.
@@ -162,7 +162,7 @@ function decisionsOf(source: PackDecision['source'], text: string, claimId: stri
 
 /**
  * The pack of `input.task`: keys in the fixed order, the decisions of spec.md first, then plan.md's (T15), and
- * `truncated` 0 until T18. Only this spec's two texts are read, so no other spec's Decisions can enter.
+ * `truncated` 0: the pack is uncapped until `capPack` holds it under the limit. Only this spec's two texts are read, so no other spec's Decisions can enter.
  */
 export function buildPack(input: PackInput): Pack {
   const tab = parseTaskLines({ tasks: input.tasks, ...(input.constitution === null ? {} : { constitution: input.constitution }) });
@@ -192,8 +192,41 @@ export function buildPack(input: PackInput): Pack {
   };
 }
 
-/** The pack held under `limit` UTF-8 bytes of compact JSON: oldest decisions dropped first, counted in `truncated`. */
+/** The UTF-8 byte length of a pack's compact JSON. TextEncoder, not Buffer: core stays browser-safe. */
+const packBytes = (pack: Pack): number => new TextEncoder().encode(JSON.stringify(pack)).length;
+
+/** The ISO date a Decisions row starts with; '' for a row without one, so it sorts as the oldest. */
+const LEADING_DATE = /^\d{4}-\d{2}-\d{2}/;
+const dateOf = (d: PackDecision): string => LEADING_DATE.exec(d.text)?.[0] ?? '';
+
+/**
+ * The pack held under `limit` UTF-8 bytes of compact JSON (T18, ISC-339). While it is over the limit and decisions
+ * remain, the oldest decision goes first: the earliest leading `YYYY-MM-DD`, a row without a date before every dated
+ * one, ties in pack order (spec.md before plan.md, top to bottom). Each dropped row counts in `truncated`; the kept
+ * rows keep their order. Goal, task, claim, probe and lane are never cut: a pack still over the limit with no
+ * decisions left comes back as it is. Returns a new object, keys in the same order; an in-limit pack comes back equal.
+ */
 export function capPack(pack: Pack, limit: number = PACK_LIMIT): Pack {
-  // T18 implements the cap; this round only lands the signature.
-  throw new Error(`capPack: not implemented (spec 010, T18): ${pack.task.id}, ${limit} bytes`);
+  const order = pack.decisions
+    .map((d, i) => ({ date: dateOf(d), i }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i))
+    .map((e) => e.i);
+  const dropped = new Set<number>();
+  const at = (): Pack => ({
+    spec: pack.spec,
+    goal: pack.goal,
+    task: pack.task,
+    claim: pack.claim,
+    probe: pack.probe,
+    lane: pack.lane,
+    decisions: pack.decisions.filter((_, i) => !dropped.has(i)),
+    truncated: pack.truncated + dropped.size,
+  });
+  let capped = at();
+  for (const i of order) {
+    if (packBytes(capped) <= limit) break;
+    dropped.add(i);
+    capped = at();
+  }
+  return capped;
 }

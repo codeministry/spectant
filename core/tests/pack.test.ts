@@ -5,7 +5,7 @@
 // repository (plugin/tests/pack.test.ts) pins the CLI output; this file pins the core model it prints.
 import { describe, expect, test } from 'bun:test';
 
-import { buildPack, decisionRows, mentions, PACK_LIMIT, PackError, type PackInput } from '../src/pack.ts';
+import { buildPack, capPack, decisionRows, mentions, type Pack, PACK_LIMIT, PackError, type PackInput } from '../src/pack.ts';
 import { laneProfileOf } from '../src/tasks.ts';
 
 const SPEC = `---
@@ -197,5 +197,72 @@ Unindented prose after a blank line closes the row.
       { source: 'plan.md', text: '2026-03-05: ISC-3.1 is a sub-claim.' },
     ]);
     expect(buildPack(input('T3', { spec })).decisions).toEqual([{ source: 'spec.md', text: '2026-03-01: ISC-3 is an Anti claim.' }]);
+  });
+});
+
+// T18, ISC-339: the pack stays under 8 KiB; the oldest decisions go first, counted in `truncated`, and the goal, task,
+// claim, probe and lane are never cut.
+describe('pack size', () => {
+  const bytes = (pack: Pack): number => new TextEncoder().encode(JSON.stringify(pack)).length;
+  const filler = 'the digest keeps every note title as written, and the reviewer reads this row in full. '.repeat(3);
+  // Row n carries day n: spec.md rows 1–30 in March, plan.md rows 31–40 as April 1–10.
+  const day = (n: number): string => (n <= 30 ? `2026-03-${String(n).padStart(2, '0')}` : `2026-04-${String(n - 30).padStart(2, '0')}`);
+  const rows = (from: number, to: number): string =>
+    Array.from({ length: to - from + 1 }, (_, i) => `- ${day(from + i)}: ISC-3 row ${from + i}, ${filler}`).join('\n');
+  const spec = `${SPEC}\n## Decisions\n\n${rows(1, 30)}\n`;
+  const plan = `# Plan\n\n## Decisions\n\n${rows(31, 40)}\n`;
+
+  test('40 decision rows on one task: at most 8192 bytes, the oldest dropped and counted, the rest kept whole', () => {
+    const full = buildPack(input('T3', { spec, plan }));
+    expect(full.decisions).toHaveLength(40);
+    expect(bytes(full)).toBeGreaterThan(PACK_LIMIT);
+
+    const capped = capPack(full);
+    expect(bytes(capped)).toBeLessThanOrEqual(PACK_LIMIT);
+    expect(capped.truncated).toBeGreaterThan(0);
+    expect(capped.truncated + capped.decisions.length).toBe(40);
+    // The newest rows stay, in their order; one more row would break the limit.
+    expect(capped.decisions).toEqual(full.decisions.slice(capped.truncated));
+    expect(bytes({ ...capped, decisions: full.decisions.slice(capped.truncated - 1) })).toBeGreaterThan(PACK_LIMIT);
+    // Goal, task, claim, probe and lane byte-equal; keys in the same order.
+    for (const key of ['spec', 'goal', 'task', 'claim', 'probe', 'lane'] as const) {
+      expect(JSON.stringify(capped[key])).toBe(JSON.stringify(full[key]));
+    }
+    expect(Object.keys(capped)).toEqual(Object.keys(full));
+  });
+
+  test('oldest by leading date, undated rows first, ties in file order; the kept rows keep their order', () => {
+    const d: Pack['decisions'] = [
+      { source: 'spec.md', text: `2026-03-09: newest ${filler}` },
+      { source: 'spec.md', text: `2026-03-01: tie one ${filler}` },
+      { source: 'spec.md', text: `undated ${filler}` },
+      { source: 'plan.md', text: `2026-03-01: tie two ${filler}` },
+      { source: 'plan.md', text: `2026-03-05: middle ${filler}` },
+    ];
+    const pack: Pack = { ...buildPack(input('T3')), decisions: d };
+    // Each limit is the size of the pack with exactly these rows, so the cap drops just the rows before it.
+    const kept = [
+      [d[0], d[1], d[3], d[4]],
+      [d[0], d[3], d[4]],
+      [d[0], d[4]],
+      [d[0]],
+    ] as Array<Pack['decisions']>;
+    kept.forEach((keep, i) => {
+      const capped = capPack(pack, bytes({ ...pack, decisions: keep }));
+      expect(capped.decisions).toEqual(keep);
+      expect(capped.truncated).toBe(i + 1);
+    });
+  });
+
+  test('a small pack comes back unchanged; with no decisions left an oversized pack stays as it is', () => {
+    const small = buildPack(input('T3', { spec: `${SPEC}\n## Decisions\n\n- 2026-03-01: ISC-3 is an Anti claim.\n` }));
+    const same = capPack(small);
+    expect(same).toEqual(small);
+    expect(same.truncated).toBe(0);
+
+    const tiny = capPack(small, 10);
+    expect(tiny.decisions).toEqual([]);
+    expect(tiny.truncated).toBe(1);
+    expect(JSON.stringify({ ...tiny, truncated: 0 })).toBe(JSON.stringify({ ...small, decisions: [] }));
   });
 });

@@ -4810,7 +4810,8 @@ var ERROR_CODES = [
   "bad-outcome",
   "claim-required",
   "unknown-task",
-  "no-claim"
+  "no-claim",
+  "internal"
 ];
 
 class CliError extends Error {
@@ -6276,6 +6277,8 @@ ${command.summary}`);
     }
     if (error instanceof ActivityLogError)
       return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
+    if (json)
+      return fail(EXIT.badArgs, "internal", error instanceof Error ? error.message : String(error));
     throw error;
   }
 }

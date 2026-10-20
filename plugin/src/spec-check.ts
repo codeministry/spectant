@@ -99,6 +99,8 @@ export const ERROR_CODES = [
   'claim-required',
   'unknown-task',
   'no-claim',
+  // An error no command foresaw (a file that cannot be read, …): under --json still one object, never a stack.
+  'internal',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -1826,6 +1828,7 @@ export async function main(argv: readonly string[], cwd = process.cwd(), now = n
       return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); nothing written`);
     }
     if (error instanceof ActivityLogError) return fail(EXIT.badArgs, error.code, error.message, `${name}: ${error.message} (${error.code}); pass --claim ISC-N`);
+    if (json) return fail(EXIT.badArgs, 'internal', error instanceof Error ? error.message : String(error));
     throw error;
   }
 }

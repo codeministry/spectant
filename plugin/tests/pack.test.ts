@@ -142,3 +142,71 @@ describe('spec-check pack decisions (ISC-337)', () => {
     }
   });
 });
+
+// T17, ISC-338 (Anti): the pack of 001 T3 holds no line of another spec, none of the master outside the task's goal,
+// claim and Test Strategy row, and no text of 001's other claims, rows, tasks or decisions. The fixture's words overlap
+// on purpose (digest, title, repeated, T3, ISC-3); each fragment below stands in exactly one foreign place, and the
+// test first proves it is still there, so a fixture edit cannot empty the check.
+describe('spec-check pack foreign lines (ISC-338)', () => {
+  const FOREIGN: Readonly<Record<string, readonly string[]>> = {
+    'specs/002-other/spec.md': [
+      'A digest of last month is gone',
+      'stays findable by its week number',
+      'An archived digest keeps its week number',
+      'archiving a digest rewrites a note',
+      'byte-identical notes',
+      'T3 of the archive keeps a repeated digest title as two files',
+      'stay outside the archive index ledger',
+    ],
+    'specs/002-other/plan.md': ['it never opens a note', 'names the second file with a counter'],
+    'specs/002-other/tasks.md': ['Repeated digest titles kept as two files', 'Archive file name with the week number', 'plugin/src/archive-cli.ts'],
+    'ISA.md': [
+      'Why: the notes of a week become one page',
+      'an old digest stays findable',
+      'The digest and the archive ship as two specs',
+      'settle repeated titles in the master ledger',
+    ],
+    'specs/001-digest/spec.md': [
+      'The notes of a week sit in seven files',
+      'The digest of one week fits on one screen',
+      'Every note title of the week appears in the digest',
+      'digest: line budget',
+      'all titles present',
+      '`bun test core/ -t "digest"`',
+      'The digest is Markdown, not HTML',
+      'ISC-30 is a later claim',
+      'T30 and T3x are other tasks',
+    ],
+    'specs/001-digest/plan.md': ['A pure model in `core/`', 'T1 reads no file', 'T30 sorts the archive'],
+    'specs/001-digest/tasks.md': ['Digest model with a line budget', 'Every note title into the digest', 'Command `digest` prints the page', 'core/src/digest.ts', 'core/tests/digest.test.ts'],
+  };
+
+  /** Every string value of the pack, at any depth, so a fragment is matched unescaped. */
+  const strings = (value: unknown): string[] =>
+    typeof value === 'string' ? [value] : typeof value === 'object' && value !== null ? Object.values(value).flatMap(strings) : [];
+
+  function packText(): { text: string; source: (path: string) => string } {
+    const root = repo();
+    const r = run(root, 'pack', '001', 'T3', '--json');
+    expect({ code: r.code, err: r.err }).toEqual({ code: 0, err: '' });
+    return { text: strings(JSON.parse(r.out) as unknown).join('\n'), source: (path) => readFileSync(join(root, path), 'utf8') };
+  }
+
+  test('pack: no foreign lines of another spec, the master, or 001\'s other claims, rows, tasks and decisions', () => {
+    const { text, source } = packText();
+    for (const [path, fragments] of Object.entries(FOREIGN)) {
+      const file = source(path);
+      for (const fragment of fragments) {
+        expect({ path, fragment, inSource: file.includes(fragment) }).toEqual({ path, fragment, inSource: true });
+        expect({ path, fragment, inPack: text.includes(fragment) }).toEqual({ path, fragment, inPack: false });
+      }
+    }
+  });
+
+  test('pack: the own goal, claim, row and task line are in, so the foreign check reads a real pack', () => {
+    const { text } = packText();
+    for (const own of ['A week of notes becomes one digest page', 'Anti: the digest drops a note whose title repeats an earlier one.', 'both notes listed', 'Repeated titles kept as two lines']) {
+      expect(text).toContain(own);
+    }
+  });
+});

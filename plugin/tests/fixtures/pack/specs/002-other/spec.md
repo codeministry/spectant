@@ -37,5 +37,6 @@ An old digest stays findable by its week number, and archiving it touches no not
 ## Decisions
 
 - 2026-03-06: T3 of the archive keeps a repeated digest title as two files; ISC-5 forbids a rewrite.
+- 2026-03-07: ISC-3 and T3 of the digest stay outside the archive index ledger.
 
 ## Verification

@@ -37,5 +37,6 @@ Why: an old digest stays findable.
 ## Decisions
 
 - 2026-03-01: The digest and the archive ship as two specs.
+- 2026-03-02: ISC-3 and T3 settle repeated titles in the master ledger.
 
 ## Verification
