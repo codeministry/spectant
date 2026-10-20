@@ -165,7 +165,9 @@ describe('SpecTable (prototype port, T89)', () => {
     const { host } = await render();
     const head = host.querySelector('.t-head') as HTMLElement;
     const sort = head.querySelector('[data-control="sort"]') as HTMLElement;
-    expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
+    // Spec 050 (T3): with an archive, "Show archived" stands between the counters and the sort.
+    expect(sort.previousElementSibling?.getAttribute('data-control')).toBe('archived');
+    expect(sort.previousElementSibling?.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
     const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
     expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

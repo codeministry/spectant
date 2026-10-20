@@ -11,6 +11,7 @@ import {
   linkedSignal,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -38,6 +39,7 @@ import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { SpecRow } from './spec-row';
 import {
   ALL,
+  applyArchivedQuery,
   applyListQuery,
   type ArchiveRow,
   FOG,
@@ -195,7 +197,26 @@ export class SpecTable {
   protected readonly sortMenuKeys = SORT_MENU;
   protected readonly compact = computed(() => this.shell.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
-  protected readonly visible = computed(() => applyListQuery(this.rows(), this.query()));
+  /**
+   * The listed rows: the active ones filtered and sorted, then the archived ones under `?archived=1` (spec 050, T3,
+   * ISC-287), so one roving list and the `SPEC_ROW_CAP` fold run over both blocks, never interleaved.
+   */
+  protected readonly visible = computed(() => [...applyListQuery(this.rows(), this.query()), ...applyArchivedQuery(this.archive(), this.query())]);
+  /** The first archived row listed (spec 050, T3): its row draws the dashed boundary hairline (`archivedFirst`). */
+  protected readonly firstArchivedId = computed(() => this.visible().find((row) => row.archived !== undefined)?.id ?? null);
+  /**
+   * The polite announcement of the archive toggle (spec 050, T3, ISC-287): empty on the first render (a reload with
+   * `?archived=1` announces nothing), then "N archived specs shown" or "Archived specs hidden" on each flip.
+   */
+  protected readonly archivedLive = linkedSignal<boolean, string>({
+    source: () => this.query().archived,
+    computation: (on, previous) => {
+      if (previous === undefined) return '';
+      if (!on) return this.transloco.translate('specs.archivedHidden');
+      const count = untracked(() => this.visible().filter((row) => row.archived !== undefined).length);
+      return this.transloco.translate(`specs.archivedShown.${count === 1 ? 'one' : 'other'}`, { count });
+    },
+  });
   protected readonly sortSheetOpen = signal(false);
 
   private readonly openState = inject(OpenState);
@@ -318,6 +339,11 @@ export class SpecTable {
     this.sortPopover()?.close();
     this.sortSheetOpen.set(false);
     if (sort !== this.query().sort) this.queryChange.emit({ ...this.query(), sort });
+  }
+
+  /** The "Show archived" toggle (spec 050, T3, ISC-287): the page turns the flipped flag into `?archived=1` or nothing. */
+  protected toggleArchived(): void {
+    this.queryChange.emit({ ...this.query(), archived: !this.query().archived });
   }
 
   protected clearTakeable(): void {

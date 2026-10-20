@@ -200,6 +200,12 @@
     "agentWorking": "Agent {{session}} working",
     "archivedChip": "Archived",
     "archivedOn": "Archived on {{date}}",
+    "showArchived": "Show archived",
+    "archivedShown": {
+      "one": "{{count}} archived spec shown",
+      "other": "{{count}} archived specs shown"
+    },
+    "archivedHidden": "Archived specs hidden",
     "moreName": "More… {{id}} {{title}}",
     "lessName": "Less {{id}} {{title}}",
     "ideas": {
