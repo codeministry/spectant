@@ -1,10 +1,12 @@
-import { signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { type CanActivateFn, NavigationStart, provideRouter, type Route, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../core/fixtures/harbor.golden.json';
+import type { Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
+import { routes } from '../../app.routes';
 import { RefreshService } from '../../core/refresh.service';
 import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { RailContent } from '../../layout/shell/rail-content';
@@ -20,6 +22,23 @@ const BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up
 const withBrief = (stale: boolean | null): unknown => ({ ...harbor, brief: stale === null ? null : { ...harbor.brief, stale } });
 const fresh = withBrief(false);
 
+/** The app's own guards of `w/:ws`: they send a list address on to `/w/:ws/specs`, never `sel` alone (ISC-396, ISC-400). */
+const dashboardGuards = (routes.flatMap((route: Route) => route.children ?? []).find((route) => route.path === 'w/:ws')?.canActivate ??
+  []) as CanActivateFn[];
+
+/** Stands in for the Specs page, so a redirect of the guard lands on a route of its own. */
+@Component({ selector: 'app-specs-stub', template: '', changeDetection: ChangeDetectionStrategy.OnPush })
+class SpecsStub {}
+
+/** A spec entry in the relation index for each spec harbor's Next up and warnings link to, so the sidebar has an entry. */
+const relations = Object.fromEntries(
+  ['001', '002', '003', '004', '005', '006'].map((id) => {
+    const ref = `spec:${id}` as RelationRef;
+    const entry: Relation = { ref, type: 'spec', id, title: id, closed: 0, total: 0, parents: [], children: [], blockers: [] };
+    return [ref, entry];
+  }),
+) as RelationIndex;
+
 /** The dashboard body the stubbed shell data serves; a test may swap it before rendering. */
 const body = signal<unknown>(fresh);
 
@@ -34,7 +53,10 @@ beforeEach(() => {
       }),
     ],
     providers: [
-      provideRouter([{ path: 'w/:ws', component: DashboardPage, data: { page: 'dashboard' } }]),
+      provideRouter([
+        { path: 'w/:ws', component: DashboardPage, canActivate: dashboardGuards, data: { page: 'dashboard' } },
+        { path: 'w/:ws/specs', component: SpecsStub },
+      ]),
       {
         provide: ShellData,
         useValue: {
@@ -42,7 +64,7 @@ beforeEach(() => {
           workspaceUnavailable: () => false,
           workspaceList: () => [{ slug: 'harbor', pathTail: 'code/harbor' }],
           dashboard: { value: () => ({ kind: 'ok', body: body() }) },
-          planningModel: () => null,
+          planningModel: () => ({ relations }),
           isFavorite: () => false,
           toggleFavorite: () => Promise.resolve(false),
         },
@@ -60,7 +82,7 @@ async function render(tier: Tier, url = '/w/harbor') {
   await harness.fixture.whenStable();
   const root = harness.fixture.nativeElement as HTMLElement;
   const page = root.querySelector('app-dashboard-page') as HTMLElement;
-  return { root, page };
+  return { root, page, harness };
 }
 
 const text = (el: Element | null | undefined): string | undefined => el?.textContent.replace(/\s+/g, ' ').trim();
@@ -136,5 +158,58 @@ describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
     await render('wide');
     expect(dock).not.toHaveBeenCalled();
     dock.mockRestore();
+  });
+});
+
+/** The non-docked presentation of each tier (design.md § Across viewports). */
+const FLOATING = { compact: 'sheet', medium: 'overlay', wide: 'floating' } as const;
+
+describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)', () => {
+  /** Every navigation the router starts from here on, by URL. */
+  function navigations(): string[] {
+    const urls: string[] = [];
+    TestBed.inject(Router).events.subscribe((event) => {
+      if (event instanceof NavigationStart) urls.push(event.url);
+    });
+    return urls;
+  }
+
+  for (const tier of ['compact', 'medium', 'wide'] as const) {
+    for (const [name, selector] of [
+      ['a Next up link', 'app-next-up-list a[data-next-link]'],
+      ['a warnings link', 'app-warnings-panel a[data-warning-link]'],
+    ] as const) {
+      it(`sets ?sel=spec:<id> from ${name} and stays on /w/harbor, the sidebar ${FLOATING[tier]}, at ${tier}`, async () => {
+        const { page, harness } = await render(tier);
+        const link = page.querySelector<HTMLAnchorElement>(selector);
+        expect(link).not.toBeNull();
+        const href = link?.getAttribute('href');
+        expect(href).toMatch(/^\/w\/harbor\?sel=spec:\d{3}$/);
+        const urls = navigations();
+        link?.click();
+        await harness.fixture.whenStable();
+        await harness.fixture.whenStable();
+        expect(TestBed.inject(Router).url).toBe(href);
+        expect(urls).toEqual([href]);
+        expect(TestBed.inject(DetailSelection).presentation()).toBe(FLOATING[tier]);
+        expect(TestBed.inject(DetailSelection).docked()).toBe(false);
+      });
+    }
+
+    it(`stays on /w/harbor?sel=spec:002 when the address holds it, the sidebar ${FLOATING[tier]}, at ${tier}`, async () => {
+      const urls = navigations();
+      const { root } = await render(tier, '/w/harbor?sel=spec:002');
+      expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:002');
+      expect(urls).toEqual(['/w/harbor?sel=spec:002']);
+      expect(root.querySelector('app-dashboard-page')).not.toBeNull();
+      expect(root.querySelector('app-specs-stub')).toBeNull();
+      expect(TestBed.inject(DetailSelection).presentation()).toBe(FLOATING[tier]);
+    });
+  }
+
+  it('still sends a list address on to /w/harbor/specs, sel included (the guard is the real one)', async () => {
+    const { root } = await render('wide', '/w/harbor?phase=fog&sel=spec:002');
+    expect(TestBed.inject(Router).url).toBe('/w/harbor/specs?phase=fog&sel=spec:002');
+    expect(root.querySelector('app-specs-stub')).not.toBeNull();
   });
 });

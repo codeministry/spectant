@@ -135,10 +135,6 @@
     },
     "meta": "{{active}} aktiv · {{archived}} archiviert",
     "metaShort": "{{active}} · {{archived}} archiviert",
-    "countSegment": {
-      "one": "{{count}} Spec",
-      "other": "{{count}} Specs"
-    },
     "typeMeta": {
       "one": "{{count}} {{type}} · {{archived}} archiviert",
       "other": "{{count}} {{type}} · {{archived}} archiviert"
@@ -223,7 +219,6 @@
     "showAll": "Alle {{count}} anzeigen",
     "moreName": "Mehr… {{entry}}, Next up",
     "lessName": "Weniger {{entry}}, Next up",
-    "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
     "waitOnFog": {
@@ -2805,11 +2800,7 @@
       "waiting": "+{{n}} bei Ihnen",
       "foldName": "+{{n}} weitere · Liegt bei Ihnen, alle {{count}} zeigen",
       "fewer": "Weniger zeigen",
-      "fewerName": "Weniger zeigen · Liegt bei Ihnen, nur der oberste Eintrag",
-      "headLinkName": {
-        "one": "Liegt bei Ihnen · {{count}} Eintrag, zur Liste",
-        "other": "Liegt bei Ihnen · {{count}} Einträge, zur Liste"
-      }
+      "fewerName": "Weniger zeigen · Liegt bei Ihnen, nur der oberste Eintrag"
     },
     "next": {
       "label": "Als Nächstes",

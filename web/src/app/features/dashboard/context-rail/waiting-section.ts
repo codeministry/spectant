@@ -24,8 +24,8 @@ export const WAITING_SHOWN = 0;
  * order behind `ui-disclosure` "+n more" right below it, each row with its reason and its chip. The toggle's
  * accessible name starts with its visible text and names the list ("+6 more · Waits on you, show all 7"). Arriving
  * over `#waiting` opens the disclosure, scrolls the section into view and focuses it (`tabindex="-1"`, DS-APP-35), so
- * the fragment lists every entry. The context rail places it as the rail's first block at wide, the page before the
- * KPI band at medium and after the spec list at compact.
+ * the fragment lists every entry. The dashboard has one column without a rail at every width (spec 058): the section
+ * follows the KPI band and the TL;DR, before Next up and Warnings, with its heading at level 2 under the page's h1.
  *
  * Unencapsulated (like the Brief) so the fold's toggle can be a 28 px text row instead of the disclosure's 48 px
  * summary; under a coarse pointer a `::before` widens its hit area to 44 px without growing the row. Every selector

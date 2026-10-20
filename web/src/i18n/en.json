@@ -135,10 +135,6 @@
     },
     "meta": "{{active}} active · {{archived}} archived",
     "metaShort": "{{active}} · {{archived}} archived",
-    "countSegment": {
-      "one": "{{count}} spec",
-      "other": "{{count}} specs"
-    },
     "typeMeta": {
       "one": "{{count}} {{type}} · {{archived}} archived",
       "other": "{{count}} {{type}} · {{archived}} archived"
@@ -223,7 +219,6 @@
     "showAll": "Show all {{count}}",
     "moreName": "More… {{entry}}, next up",
     "lessName": "Less {{entry}}, next up",
-    "badge": "Next up: {{count}}",
     "empty": "Nothing ready to build",
     "emptyHint": "Every active spec is waiting on scoping. Run /spec plan on a specified spec to get one moving.",
     "waitOnFog": {
@@ -2805,11 +2800,7 @@
       "waiting": "+{{n}} waiting",
       "foldName": "+{{n}} more · Waits on you, show all {{count}}",
       "fewer": "Show fewer",
-      "fewerName": "Show fewer · Waits on you, only the top entry",
-      "headLinkName": {
-        "one": "Waits on you · {{count}} entry, go to the list",
-        "other": "Waits on you · {{count}} entries, go to the list"
-      }
+      "fewerName": "Show fewer · Waits on you, only the top entry"
     },
     "next": {
       "label": "Next",
