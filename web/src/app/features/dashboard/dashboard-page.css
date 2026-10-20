@@ -1,10 +1,25 @@
-/* One column at every tier; the shell adds the 352 px rail at wide (design.md § Across viewports, grid rules). */
+/*
+ * One column at every tier, no rail (spec 058, design.md § Across viewports). Rhythm on the 8 px scale: 16 px from
+ * the head to the KPI band, between the KPI band and the TL;DR and before the footnote; 24 px before every block with
+ * a section header (Waits on you, Next up, the warnings).
+ */
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  gap: 0;
   align-content: start;
   min-inline-size: 0;
+}
+
+:host > * + * {
+  margin-block-start: 16px;
+}
+
+:host > app-waiting-section,
+:host > app-next-up-list,
+:host > app-warnings-panel,
+:host > .skeleton-next-up {
+  margin-block-start: 24px;
 }
 
 /* Prototype `.footer-note`: 12 px muted, closing the page. */
@@ -15,7 +30,7 @@
   line-height: 16px;
 }
 
-/* Prototype `page-head h1`: the 22 px workspace badge, "Specs", then "· <ws>" in muted 400. */
+/* Prototype `page-head h1`: the 22 px workspace badge, "Dashboard", then "· <ws>" in muted 400. */
 .h1-row {
   display: flex;
   gap: 10px;
@@ -36,48 +51,4 @@
 .h1-ws {
   color: var(--muted-ink);
   font-weight: 400;
-}
-
-/* Spec 021 (ISC-246.1, E3): the compact head's link to the section #waiting, "Waits on you" with its count chip. */
-.waits-link {
-  display: inline-flex;
-  flex: none;
-  gap: 6px;
-  align-items: center;
-  position: relative;
-  min-block-size: 28px;
-  margin-inline-start: auto;
-  color: var(--ques-ink);
-  font-size: 13px;
-  line-height: 20px;
-  text-decoration: none;
-}
-
-.waits-link:hover {
-  text-decoration: underline;
-}
-
-/* A 44 px hit area under a coarse pointer without growing the head row. */
-@media (pointer: coarse) {
-  .waits-link::before {
-    position: absolute;
-    inset-block: -8px;
-    inset-inline: 0;
-    content: "";
-  }
-}
-
-.visually-hidden {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-@media (forced-colors: active) {
-  .waits-link {
-    color: LinkText;
-  }
 }

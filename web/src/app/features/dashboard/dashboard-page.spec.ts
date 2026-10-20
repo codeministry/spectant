@@ -1,58 +1,20 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { RefreshService } from '../../core/refresh.service';
-import { RailSlot } from '../../layout/shell/rail-slot';
+import { DetailSelection } from '../../layout/detail-sidebar/selection';
+import { RailContent } from '../../layout/shell/rail-content';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { DashboardPage } from './dashboard-page';
 
-/** The shell's main column and rail as `shell.html` places them: main first, the rail's slot after it. */
-@Component({
-  selector: 'app-test-shell',
-  imports: [DashboardPage, RailSlot],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <main data-test-main><app-dashboard-page /></main>
-    <aside data-test-rail>
-      @if (rail()) {
-        <app-rail-slot />
-      }
-    </aside>
-  `,
-})
-class TestShell {
-  /** False stands for the shell's collapsed strip (and zen), where no rail slot renders. */
-  readonly rail = signal(true);
-}
-
-/** The page's four reading parts (design.md § Across viewports: the DOM order every tier shares). */
-const PARTS = ['app-kpi-band', 'app-brief', 'app-next-up-list', 'app-spec-table'] as const;
-
-/**
- * The order a screen reader reads the parts of `root` in: document order, with an element's `aria-owns` children read
- * at the owner's place and skipped at their own (the accessibility tree's reparenting).
- */
-function readingOrder(root: HTMLElement): string[] {
-  const doc = root.ownerDocument;
-  const owned = new Set([...doc.querySelectorAll('[aria-owns]')].flatMap((owner) => (owner.getAttribute('aria-owns') ?? '').split(/\s+/)).filter(Boolean));
-  const order: string[] = [];
-  const walk = (node: Element): void => {
-    const tag = node.tagName.toLowerCase();
-    if ((PARTS as readonly string[]).includes(tag)) order.push(tag);
-    for (const child of node.children) if (!owned.has(child.id)) walk(child);
-    for (const id of (node.getAttribute('aria-owns') ?? '').split(/\s+/).filter(Boolean)) {
-      const target = doc.getElementById(id);
-      if (target) walk(target);
-    }
-  };
-  walk(root);
-  return order;
-}
+/** The dashboard's blocks in the one order every tier shares (spec 058, design.md § Across viewports). */
+const BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up-list', 'app-warnings-panel'] as const;
 
 /** Harbor's body with its TL;DR fresh or stale (the golden's own brief is stale), or with no TL;DR at all. */
 const withBrief = (stale: boolean | null): unknown => ({ ...harbor, brief: stale === null ? null : { ...harbor.brief, stale } });
@@ -72,15 +34,15 @@ beforeEach(() => {
       }),
     ],
     providers: [
-      provideRouter([]),
+      provideRouter([{ path: 'w/:ws', component: DashboardPage, data: { page: 'dashboard' } }]),
       {
         provide: ShellData,
         useValue: {
           workspaceMissing: () => false,
           workspaceUnavailable: () => false,
-          workspaceList: () => [],
+          workspaceList: () => [{ slug: 'harbor', pathTail: 'code/harbor' }],
           dashboard: { value: () => ({ kind: 'ok', body: body() }) },
-          // The spec list's stars (spec 052, T18) ask for the favourites; none here.
+          planningModel: () => null,
           isFavorite: () => false,
           toggleFavorite: () => Promise.resolve(false),
         },
@@ -90,131 +52,89 @@ beforeEach(() => {
   });
 });
 
-async function render(tier: Tier) {
+async function render(tier: Tier, url = '/w/harbor') {
   TestBed.inject(ShellState).tier.set(tier);
-  const fixture = TestBed.createComponent(TestShell);
-  await fixture.whenStable();
-  await fixture.whenStable();
-  const root = fixture.nativeElement as HTMLElement;
-  return {
-    root,
-    main: root.querySelector('[data-test-main]') as HTMLElement,
-    rail: root.querySelector('[data-test-rail]') as HTMLElement,
-  };
+  const harness = await RouterTestingHarness.create();
+  await harness.navigateByUrl(url);
+  await harness.fixture.whenStable();
+  await harness.fixture.whenStable();
+  const root = harness.fixture.nativeElement as HTMLElement;
+  const page = root.querySelector('app-dashboard-page') as HTMLElement;
+  return { root, page };
 }
 
-describe('DashboardPage dashboard order', () => {
-  for (const tier of ['compact', 'medium'] as const) {
-    it(`reads KPI band, TL;DR, Next up, then the spec list in the main column at ${tier}`, async () => {
-      const { root, main, rail } = await render(tier);
-      expect(readingOrder(root)).toEqual([...PARTS]);
-      expect(readingOrder(main)).toEqual([...PARTS]);
-      expect(root.querySelectorAll('app-next-up-list')).toHaveLength(1);
-      expect(rail.querySelector('app-next-up-list')).toBeNull();
-    });
-  }
+const text = (el: Element | null | undefined): string | undefined => el?.textContent.replace(/\s+/g, ' ').trim();
+/** The page's direct children in DOM order, by tag. */
+const children = (page: HTMLElement): string[] => [...page.children].map((el) => el.tagName.toLowerCase());
+/** The dashboard blocks among the page's children, in DOM order. */
+const blocks = (page: HTMLElement): string[] => children(page).filter((tag) => (BLOCKS as readonly string[]).includes(tag));
 
-  it('reads Next up between TL;DR and the spec list at wide while it stands visually in the rail, one accessible copy', async () => {
-    const { root, main, rail } = await render('wide');
-    // Visually in the rail: its one rendered copy is the rail block after Waits on you.
-    const lists = root.querySelectorAll('app-next-up-list');
-    expect(lists).toHaveLength(1);
-    const next = lists[0] as HTMLElement;
-    expect(rail.contains(next)).toBe(true);
-    expect(next.getAttribute('data-form')).toBe('rail');
-    expect(next.closest('[aria-hidden="true"], [inert]')).toBeNull();
-    // Read in the main column's order: the main column owns it between the TL;DR and the spec list.
-    expect(main.querySelector(`[aria-owns~="${next.id}"]`)).not.toBeNull();
-    expect(readingOrder(main)).toEqual([...PARTS]);
-    expect(readingOrder(root)).toEqual([...PARTS]);
-  });
-
-  it('owns nothing at wide while the rail renders no Next up block (collapsed strip), so no reference dangles', async () => {
-    TestBed.inject(ShellState).tier.set('wide');
-    const fixture = TestBed.createComponent(TestShell);
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('app-context-rail')?.getAttribute('aria-owns')).toBeTruthy();
-    fixture.componentInstance.rail.set(false);
-    await fixture.whenStable();
-    await fixture.whenStable();
-    expect(root.querySelector('app-next-up-list')).toBeNull();
-    expect(root.querySelector('app-context-rail')?.hasAttribute('aria-owns')).toBe(false);
-  });
-
+describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
   for (const tier of ['compact', 'medium', 'wide'] as const) {
-    it(`dashboard order: a stale brief stands behind the spec list at ${tier}`, async () => {
+    it(`names Dashboard in the eyebrow and the h1, without a count segment or a waits link, at ${tier}`, async () => {
+      const { page } = await render(tier);
+      expect(text(page.querySelector('ui-page-head [data-page-eyebrow]'))).toBe('harbor · Dashboard');
+      const h1 = page.querySelectorAll('h1');
+      expect(h1).toHaveLength(1);
+      expect(text(h1[0])).toBe('Dashboard · harbor');
+      expect(page.querySelector('[data-waits-link]')).toBeNull();
+    });
+
+    it(`stands the five blocks in one column in order, with no spec list, backlog or context rail, at ${tier}`, async () => {
+      const { root, page } = await render(tier);
+      expect(blocks(page)).toEqual([...BLOCKS]);
+      for (const tag of BLOCKS) expect(root.querySelectorAll(tag)).toHaveLength(1);
+      const order = children(page);
+      expect(order[0]).toBe('ui-page-head');
+      expect(order.at(-1)).toBe('p');
+      expect(page.lastElementChild?.hasAttribute('data-footer-note')).toBe(true);
+      expect(root.querySelector('app-spec-table')).toBeNull();
+      expect(root.querySelector('app-ideas-panel')).toBeNull();
+      expect(root.querySelector('app-context-rail')).toBeNull();
+      // No rail blocks or strip badges are registered (T13).
+      const rail = TestBed.inject(RailContent);
+      expect([rail.blocks(), rail.badges()]).toEqual([null, null]);
+      expect(page.querySelector('app-next-up-list')?.getAttribute('data-form')).toBe('card');
+      expect(page.querySelector('app-warnings-panel')?.getAttribute('data-form')).toBe('section');
+    });
+
+    it(`keeps a stale TL;DR in second place at ${tier}`, async () => {
       body.set(withBrief(true));
-      const { root, main } = await render(tier);
-      expect(readingOrder(root)).toEqual(['app-kpi-band', 'app-next-up-list', 'app-spec-table', 'app-brief']);
-      expect(readingOrder(main)).toEqual(['app-kpi-band', 'app-next-up-list', 'app-spec-table', 'app-brief']);
-      // Right after the spec list's "Show all n", before the backlog and the warnings; one copy only.
-      expect(main.querySelectorAll('app-brief')).toHaveLength(1);
-      expect(main.querySelector('app-spec-table')?.nextElementSibling?.tagName.toLowerCase()).toBe('app-brief');
-      expect(main.querySelector('app-brief')?.hasAttribute('data-stale')).toBe(true);
-    });
-
-    it(`dashboard order: a fresh brief stays second, right after the KPI band at ${tier}`, async () => {
-      body.set(withBrief(false));
-      const { root, main } = await render(tier);
-      expect(readingOrder(root)).toEqual([...PARTS]);
-      expect(main.querySelectorAll('app-brief')).toHaveLength(1);
-      expect(main.querySelector('app-kpi-band')?.nextElementSibling?.tagName.toLowerCase()).toBe('app-brief');
-      expect(main.querySelector('app-brief')?.hasAttribute('data-stale')).toBe(false);
-    });
-
-    it(`dashboard order: no brief renders no TL;DR card in either place at ${tier}`, async () => {
-      body.set(withBrief(null));
-      const { root } = await render(tier);
-      expect(root.querySelector('app-brief')).toBeNull();
-      expect(readingOrder(root)).toEqual(['app-kpi-band', 'app-next-up-list', 'app-spec-table']);
+      const { page } = await render(tier);
+      expect(blocks(page)).toEqual([...BLOCKS]);
+      expect(page.querySelector('app-kpi-band')?.nextElementSibling?.tagName.toLowerCase()).toBe('app-brief');
+      expect(page.querySelector('app-brief')?.hasAttribute('data-stale')).toBe(true);
     });
   }
 
-  /** The main column's direct children in DOM order, by tag. */
-  const children = (main: HTMLElement): string[] => [...(main.querySelector('app-dashboard-page')?.children ?? [])].map((el) => el.tagName.toLowerCase());
-
-  it('dashboard order: at compact #waiting follows the spec list, before the warnings, and the head links to it', async () => {
-    const { main } = await render('compact');
-    const order = children(main);
-    expect(main.querySelectorAll('app-waiting-section')).toHaveLength(1);
-    expect(order.indexOf('app-waiting-section')).toBe(order.indexOf('app-spec-table') + 1);
-    expect(order.indexOf('app-waiting-section')).toBeLessThan(order.indexOf('app-warnings-panel'));
-    expect(order.indexOf('app-waiting-section')).toBeGreaterThan(order.indexOf('app-kpi-band'));
-    const link = main.querySelector('ui-page-head [data-waits-link]');
-    // The test shell routes no workspace slug; the fragment is the target.
-    expect(link?.getAttribute('href')).toMatch(/^\/w\/[^#]*#waiting$/);
-    expect(link?.querySelector('ui-chip')?.textContent.trim()).toBe(String(harbor.guidance.waits.length));
-    expect(link?.querySelector('.visually-hidden')?.textContent.trim()).toBe(`Waits on you · ${String(harbor.guidance.waits.length)} entries, go to the list`);
+  it('heads Waits on you, Next up and the warnings with h2 under the h1', async () => {
+    const { page } = await render('wide');
+    expect(text(page.querySelector('app-waiting-section h2'))).toContain('Waits on you');
+    expect(page.querySelector('app-waiting-section ui-section-header h3')).toBeNull();
+    expect(page.querySelector('app-next-up-list h2')).not.toBeNull();
+    expect(page.querySelector('app-warnings-panel h2')).not.toBeNull();
   });
 
-  it('dashboard order: at compact a stale brief keeps its place right after the list, #waiting after it', async () => {
-    body.set(withBrief(true));
-    const { main } = await render('compact');
-    const order = children(main);
-    expect(order.slice(order.indexOf('app-spec-table'), order.indexOf('app-spec-table') + 3)).toEqual(['app-spec-table', 'app-brief', 'app-waiting-section']);
+  it('renders no TL;DR card without a brief, the rest in order', async () => {
+    body.set(withBrief(null));
+    const { page } = await render('medium');
+    expect(blocks(page)).toEqual(BLOCKS.filter((tag) => tag !== 'app-brief'));
   });
 
-  it('dashboard order: at medium #waiting stays before the KPI band (spec 020) and the head has no link', async () => {
-    const { main } = await render('medium');
-    const order = children(main);
-    expect(order.indexOf('app-waiting-section')).toBe(order.indexOf('app-kpi-band') - 1);
-    expect(main.querySelectorAll('app-waiting-section')).toHaveLength(1);
-    expect(main.querySelector('[data-waits-link]')).toBeNull();
+  it('shows a skeleton where the KPI band and Next up stand while the body is loading', async () => {
+    body.set(null);
+    const { page } = await render('wide');
+    expect(page.querySelector('ui-page-head')).not.toBeNull();
+    expect(page.querySelectorAll('ui-skeleton')).toHaveLength(2);
+    expect(page.querySelector('[data-skeleton="kpi-band"]')).not.toBeNull();
+    expect(page.querySelector('[data-skeleton="next-up"]')).not.toBeNull();
+    for (const tag of BLOCKS) expect(page.querySelector(tag)).toBeNull();
   });
 
-  it('dashboard order: at wide #waiting is the rail block only and the head has no link', async () => {
-    const { main, rail } = await render('wide');
-    expect(main.querySelector('app-waiting-section')).toBeNull();
-    expect(rail.querySelectorAll('app-waiting-section')).toHaveLength(1);
-    expect(main.querySelector('[data-waits-link]')).toBeNull();
-  });
-
-  it('binds the archived count of the KPIs to the spec list head', async () => {
-    // The KPI count, not the length of the archive block the body happens to carry.
-    expect(harbor.archive.length).not.toBe(7);
-    body.set({ ...harbor, kpis: { ...harbor.kpis, archived: 7 } });
-    const { main } = await render('wide');
-    expect(main.querySelector('app-spec-table [data-count="archived"]')?.textContent).toContain('7');
+  it('never docks the detail sidebar', async () => {
+    const dock = vi.spyOn(DetailSelection.prototype, 'dock');
+    await render('wide');
+    expect(dock).not.toHaveBeenCalled();
+    dock.mockRestore();
   });
 });

@@ -391,7 +391,8 @@ describe('ShellComponent', () => {
       expect(control(workspace, 'spec').tagName).toBe('A');
       // Spec 058 (ISC-395): the spec list is the Specs page `/w/<ws>/specs`.
       expect(control(workspace, 'spec').getAttribute('href')).toBe('/w/harbor/specs');
-      expect(workspace.querySelector('[data-page="workspace"] h2#specs')).not.toBeNull();
+      // The dashboard itself no longer carries the list (ISC-390).
+      expect(workspace.querySelector('[data-page="workspace"] h2#specs')).toBeNull();
 
       const { root: spec } = await open('/w/harbor/s/002/claims');
       expect(control(spec, 'spec').tagName).toBe('A');
@@ -674,6 +675,24 @@ describe('ShellComponent', () => {
       delete dialogProto['close'];
     });
 
+    // Spec 058 (ISC-395): a link meaning the spec list leads to /w/<ws>/specs, one meaning the workspace to /w/<ws>.
+    it.each(['/', '/w/harbor', '/w/harbor/s/002'])('on %s leads the workspace picker to /w/<ws> and the spec select "show all" to /w/<ws>/specs (spec 058, ISC-395)', async (url) => {
+      setUp(TWO);
+      const { root, harness } = await open(url);
+      click(control(root, 'workspace'));
+      await harness.fixture.whenStable();
+      const workspaces = [...root.querySelectorAll<HTMLAnchorElement>('nav[data-picker="workspace"] a[data-workspace]')];
+      expect(workspaces.map((entry) => entry.getAttribute('href')), url).toEqual(['/w/harbor', '/w/lantern']);
+      if (url === '/') {
+        expect(root.querySelector('header [data-control="spec"]'), url).toBeNull();
+        return;
+      }
+      click(control(root, 'spec'));
+      await harness.fixture.whenStable();
+      const all = root.querySelector('nav[data-picker="spec"] .picker-all');
+      expect(all?.getAttribute('href'), url).toBe('/w/harbor/specs');
+    });
+
     it('opens the workspace picker on a plain click: all workspaces, every workspace with its specs, the current marked', async () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002/claims');
@@ -732,7 +751,7 @@ describe('ShellComponent', () => {
 
       const list = root.querySelector('nav[data-picker="spec"]');
       expect(list?.getAttribute('aria-label')).toBe('Specs');
-      expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
+      expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor/specs');
       // spec 024: prototype value (principal: the prototype wins) — pop-specs ends with "Spec overview" (g s).
       expect(list?.querySelector('.picker-all')?.textContent).toContain('Spec overview');
       const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
@@ -943,7 +962,7 @@ describe('ShellComponent', () => {
           expect(nav.querySelector('.menu-head')?.textContent.trim()).toBe('Favorites · harbor');
           // Dashboard order (004 before 003), and the open spec 002 has no star, so it is no row.
           expect(ids(nav)).toEqual(['004', '003']);
-          expect(nav.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
+          expect(nav.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor/specs');
           expect(nav.querySelector('.picker-empty')).toBeNull();
           // Each row is the unchanged link plus its own star, a sibling of the link, never inside it.
           const stars = [...nav.querySelectorAll<HTMLButtonElement>('li > button[ui-star-toggle]')];
@@ -973,7 +992,7 @@ describe('ShellComponent', () => {
           expect(hint?.textContent.trim()).toBe('No favorites yet. Star a spec on its page or in the spec list to see it here.');
           expect(hint?.querySelector('ui-icon')?.getAttribute('aria-hidden')).toBe('true');
           const all = nav.querySelector<HTMLAnchorElement>('.picker-all');
-          expect(all?.getAttribute('href')).toBe('/w/harbor#specs');
+          expect(all?.getAttribute('href')).toBe('/w/harbor/specs');
           expect(document.activeElement).toBe(all);
         });
 

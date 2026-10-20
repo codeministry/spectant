@@ -110,3 +110,44 @@ describe('the workspace dashboard and the Specs page are two routes (spec 058, T
     expect(route.notFound).toBe(false);
   });
 });
+
+describe('an old list address of the dashboard leads to the Specs page (spec 058, T20, T21, ISC-396, ISC-400)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const moved: Record<string, string> = {
+    '/w/harbor?phase=building&sort=next': '/w/harbor/specs?phase=building&sort=next',
+    '/w/harbor?q=api': '/w/harbor/specs?q=api',
+    '/w/harbor?takeable=1&sel=spec:002#top': '/w/harbor/specs?takeable=1&sel=spec:002#top',
+    '/w/harbor?open=specs': '/w/harbor/specs?open=specs',
+    '/w/harbor?open=tldr,specs&density=compact': '/w/harbor/specs?open=tldr,specs&density=compact',
+  };
+
+  for (const [from, to] of Object.entries(moved)) {
+    it(`redirects ${from} to ${to}, the same query on the Specs page`, async () => {
+      const { url, route, component } = await at(from);
+      expect(url).toBe(to);
+      expect(component).toBe(SpecsPage);
+      expect(route.ws).toBe('harbor');
+    });
+  }
+
+  for (const stays of ['/w/harbor?sel=spec:002', '/w/harbor', '/w/harbor?open=tldr']) {
+    it(`keeps ${stays} on the dashboard`, async () => {
+      const { url, component } = await at(stays);
+      expect(url).toBe(stays);
+      expect(component).toBe(DashboardPage);
+    });
+  }
+
+  it('replaces the history entry: the old list address never stays behind the Specs page', async () => {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()] });
+    const router = TestBed.inject(Router);
+    const replaced: Array<boolean | undefined> = [];
+    router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) replaced.push(router.currentNavigation()?.extras.replaceUrl);
+    });
+    await router.navigateByUrl('/w/harbor?q=api');
+    expect(router.url).toBe('/w/harbor/specs?q=api');
+    expect(replaced.at(-1)).toBe(true);
+  });
+});

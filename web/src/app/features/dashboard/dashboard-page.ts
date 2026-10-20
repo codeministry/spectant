@@ -1,80 +1,48 @@
-import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, linkedSignal, viewChild } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { altTyped } from '../../core/keyboard-bindings';
 import { RefreshService } from '../../core/refresh.service';
-import { SettingsService } from '../../core/settings.service';
-import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
-import { UiChip } from '../../shared/ui/chip/chip';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
+import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { Brief, type BriefModel } from './brief/brief';
-import { ContextRail } from './context-rail/context-rail';
 import type { DashboardView } from './context-rail/dashboard-view';
-import { type DashboardIdeas, IdeasPanel } from './ideas-panel/ideas-panel';
+import { WaitingSection } from './context-rail/waiting-section';
 import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
-import { SpecTable } from './spec-table/spec-table';
-import { WAITING_FRAGMENT, WaitingSection } from './context-rail/waiting-section';
+import { NextUpList } from './next-up-list/next-up-list';
 import { WarningsPanel } from './warnings-panel/warnings-panel';
-import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readListCounts, readSpecRows } from './spec-table/spec-table-model';
 
 /**
- * The workspace dashboard `/w/:ws` (spec 001, design.md § Desktop / Tablet / Mobile Soll): KPI band, Brief, Next up,
- * the Specs panel and the warnings in one column below wide; at wide Next up and the warnings move into the shell's
- * context rail through `RailContent` (spec 002's rail slot), so the main column holds band, Brief and Specs.
+ * The workspace dashboard `/w/:ws` (spec 058, design.md § Across viewports): the head, then the KPI band, the TL;DR,
+ * the section `#waiting` ("Waits on you"), Next up, the warnings `#warnings` and the footnote, in one column and in
+ * the same DOM and visual order at every tier. The shell gives this page no rail; the spec list and the backlog are
+ * the Specs page's (`/w/:ws/specs`).
  *
- * Spec 021 (ISC-246): the reading order is KPI band, TL;DR, Next up, spec list at every tier. At wide Next up stands
- * only visually in the rail; `app-context-rail` keeps its place in the main column and owns the rail's block for
- * assistive technology (`aria-owns`, see `ContextRail`), so there is exactly one copy and one order everywhere.
- * A stale TL;DR leaves the second place and stands right after the spec list instead (ISC-247, `briefSlot`).
- *
- * The KPI band (T61), the Brief (T62) and Next up with the warnings (T64, `app-context-rail`, which registers the rail
- * blocks at wide) are wired here. The section ids `specs`, `archive` (spec table), `next-up` and `warnings` (their own
- * components) are the targets of the tiles, the `g` jumps and the header's spec picker.
- *
- * Filter, sort and takeable are query state (`?phase=&type=&sort=&takeable=`), read from and written to the URL.
- *
- * The spec preview (T69, ISC-61.1) is the detail sidebar since spec 026 (T27, ISC-171): a row's first activation (Enter
- * or a click) selects `?sel=spec:<id>`, and the page docks the sidebar (`DetailSelection.dock`), so at wide it stands
- * in for the rail's Next up and Warnings, at medium it overlays and at compact it is a sheet. The sidebar's Escape
- * closes it and returns focus to the row (`data-ref`); `[` `]` step the selection through the panel's current order.
- * These keys are the `SHORTCUTS` table's own `prev-spec` / `next-spec` bindings, which the keyboard service runs only on
- * a spec route; on the dashboard the page takes them while a spec is selected (`onKeydown`).
+ * A stale TL;DR keeps the second place and arrives collapsed (the Brief's own short form). The block headings are h2
+ * under the page's h1. While the body is loading the head stands alone, with a skeleton where the KPI band and Next
+ * up will stand. The page selects nothing of its own and never docks the detail sidebar.
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [RouterLink, TranslocoPipe, NotFound, UiChip, UiNotice, UiPageHead, UiWsBadge, KpiBand, Brief, ContextRail, SpecTable, WaitingSection, WarningsPanel, IdeasPanel],
+  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiSkeleton, UiWsBadge, KpiBand, Brief, WaitingSection, NextUpList, WarningsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
-  host: { 'data-page': 'workspace', '(document:keydown)': 'onKeydown($event)' },
+  host: { 'data-page': 'workspace' },
 })
 export class DashboardPage {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly settings = inject(SettingsService);
-  private readonly document = inject(DOCUMENT);
-  private readonly selection = inject(DetailSelection);
-
-  constructor() {
-    this.selection.dock(inject(DestroyRef));
-  }
-
-  private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
-  protected readonly query = computed(() => parseListQuery(this.params()));
+  /** The live refresh's KPI tint (T68); the list's row marks belong to the Specs page. */
+  protected readonly refresh = inject(RefreshService);
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
   /** The registry's path tail of the open workspace, for the prototype's footnote (spec 024); '' while unknown. */
   protected readonly pathTail = computed(() => this.data.workspaceList().find((entry) => entry.slug === this.ws())?.pathTail ?? '');
-  protected readonly body = computed(() => {
+  private readonly body = computed(() => {
     const result = this.data.dashboard.value();
     return result?.kind === 'ok' ? result.body : null;
   });
@@ -83,122 +51,9 @@ export class DashboardPage {
    * importable under the web tsconfig (see `DashboardBody`), so each component names only the fields it reads.
    */
   protected readonly view = computed(() => readView(this.body()));
-  protected readonly rows = computed(() => readSpecRows(this.body()));
-
-  /** The live refresh's marks (T68): the KPI tint, the row dots; the page holds back new specs itself. */
-  protected readonly refresh = inject(RefreshService);
-  /**
-   * The active spec ids the reader has seen on this workspace (design.md § Live update: new specs never reflow under
-   * the reader). Taken from the first loaded body of a workspace and kept across refreshes; `showPending` adds the rest.
-   */
-  private readonly seen = linkedSignal<{ ws: string; loaded: boolean; ids: readonly string[] }, ReadonlySet<string> | null>({
-    source: () => ({ ws: this.ws(), loaded: this.body() !== null, ids: this.rows().map((row) => row.id) }),
-    computation: (source, previous) => {
-      if (!source.loaded) return null;
-      const kept = previous?.source.ws === source.ws && previous.source.loaded ? previous.value : null;
-      return kept ?? new Set(source.ids);
-    },
-  });
-  /** The rows the Specs panel lists and the new ones it offers behind the pill. */
-  protected readonly held = computed(() => holdNewRows(this.rows(), this.seen()));
-
-  /** The pill: the held-back specs join the list, on the reader's input. */
-  protected showPending(): void {
-    this.seen.set(new Set(this.rows().map((row) => row.id)));
-  }
-  protected readonly archive = computed(() => readArchiveRows(this.body()));
-  protected readonly listCounts = computed(() => readListCounts(this.body()));
-  /** The backlog's stories (`DashboardModel.ideas`), none while the body lacks the block. */
-  protected readonly ideas = computed(() => readIdeas(this.body()));
-  /** The rail holds Next up and the warnings at wide; below it Next up follows the Brief and the warnings follow the Specs panel. */
-  protected readonly railHolds = computed(() => this.state.tier() === 'wide');
-  /**
-   * Where the section `#waiting` stands below wide (spec 021, ISC-246.1, decision E3): `lead`, before the KPI band, at
-   * medium (020's order); `trail`, after the spec list (and a stale TL;DR), before the backlog and the warnings, at
-   * compact, where the page head links to it instead. Null at wide: the rail holds it.
-   */
-  protected readonly waitsSlot = computed<'lead' | 'trail' | null>(() => {
-    const tier = this.state.tier();
-    return tier === 'wide' ? null : tier === 'compact' ? 'trail' : 'lead';
-  });
-  protected readonly waitingFragment = WAITING_FRAGMENT;
-  /**
-   * Where the TL;DR stands (spec 021, ISC-247): `lead`, second after the KPI band, while it is fresh; `trail`, right
-   * after the spec list's "Show all n", once core calls it stale (`DashboardBrief.stale`, never recomputed here), so an
-   * outdated summary no longer opens the page. Null without a TL;DR: neither place renders a card.
-   */
-  protected readonly briefSlot = computed<'lead' | 'trail' | null>(() => {
-    const brief = this.view()?.brief ?? null;
-    if (brief === null) return null;
-    return brief.stale ? 'trail' : 'lead';
-  });
-
-  private readonly table = viewChild(SpecTable);
-  /** The selected spec id as the URL names it (`?sel=spec:<id>`); null for no selection or another type. */
-  protected readonly previewId = computed(() => {
-    const ref = this.selection.selected();
-    return ref?.startsWith('spec:') ? ref.slice('spec:'.length) : null;
-  });
-  /** The previewed spec's row; null when `?spec` is unset or names no active spec. */
-  protected readonly preview = computed(() => {
-    const id = this.previewId();
-    return id === null ? null : (this.rows().find((row) => row.id === id) ?? null);
-  });
-  /** The previewed spec's neighbours in the panel's current (filtered, sorted) order. */
-  protected readonly neighbours = computed(() => {
-    const id = this.preview()?.id;
-    const order = this.table()?.visibleIds() ?? [];
-    const index = id === undefined ? -1 : order.indexOf(id);
-    return index < 0 ? { prev: null, next: null } : { prev: order[index - 1] ?? null, next: order[index + 1] ?? null };
-  });
-
-  protected setQuery(query: ListQuery): void {
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: listQueryParams(query),
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
-  }
-
-  /** `[` `]`: the previous / next spec of the panel's current order becomes the preview; the selection follows it. */
-  private step(delta: -1 | 1): boolean {
-    const { prev, next } = this.neighbours();
-    const target = delta < 0 ? prev : next;
-    if (target === null) return false;
-    const onRow = (this.document.activeElement?.closest('[data-spec-row]') ?? null) !== null;
-    void this.selection.select(`spec:${target}`).then(() => {
-      if (onRow) this.table()?.focusRow(target);
-    });
-    return true;
-  }
-
-  /**
-   * `[` and `]` while a spec is selected (Escape is the sidebar's). Like the keyboard service: never from a field, never
-   * with a modifier, never while a dialog or popover owns the keyboard, and only with single-key shortcuts on.
-   */
-  protected onKeydown(event: KeyboardEvent): void {
-    if (this.preview() === null || event.defaultPrevented || event.isComposing) return;
-    if ((event.ctrlKey || event.metaKey || event.altKey) && !altTyped(event)) return;
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
-    if (target?.closest('dialog, [popover]')) return;
-    if ((event.key === '[' || event.key === ']') && this.settings.settings().singleKeyShortcuts && this.step(event.key === '[' ? -1 : 1)) {
-      event.preventDefault();
-    }
-  }
 }
 
 type DashboardPageView = DashboardView & KpiBandModel & { readonly brief: BriefModel | null };
-
-const NO_IDEAS: DashboardIdeas = { count: 0, list: [] };
-
-/** The body's `ideas` block as served, or none when it is missing or malformed. */
-function readIdeas(body: unknown): DashboardIdeas {
-  if (typeof body !== 'object' || body === null) return NO_IDEAS;
-  const { ideas } = body as { ideas?: Partial<DashboardIdeas> | null };
-  return typeof ideas?.count === 'number' && Array.isArray(ideas.list) ? (ideas as DashboardIdeas) : NO_IDEAS;
-}
 
 /** The body as the components' view, or null when it lacks the KPI block and the spec rows they all read. */
 function readView(body: unknown): DashboardPageView | null {

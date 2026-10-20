@@ -3,77 +3,33 @@
 } @else if (data.workspaceUnavailable()) {
   <ui-notice>{{ 'shell.unavailable' | transloco }}</ui-notice>
 } @else {
-  <!-- Prototype eyebrow `WS · DASHBOARD · 6 SPECS` (spec 024): the page segment, then the count of active specs. -->
-  <ui-page-head [segments]="[ws(), ('shell.pages.specs' | transloco), ((rows().length === 1 ? 'specs.countSegment.one' : 'specs.countSegment.other') | transloco: { count: rows().length })]">
-    <!-- Prototype `page-head` h1: the workspace badge (`ws-badge page-mark`), "Specs" and the muted "· <ws>". -->
+  <!-- Eyebrow `WS · DASHBOARD` without a count (spec 058, design.md § Across viewports). -->
+  <ui-page-head [segments]="[ws(), ('shell.pages.dashboard' | transloco)]">
+    <!-- Prototype `page-head` h1: the workspace badge (`ws-badge page-mark`), "Dashboard" and the muted "· <ws>". -->
     <div class="h1-row" ngProjectAs="h1">
       <ui-ws-badge class="page-mark" size="page" [name]="ws()" aria-hidden="true" />
-      <h1 class="type-page-title">{{ 'shell.pages.specs' | transloco }} <span class="h1-ws">· {{ ws() }}</span></h1>
-      <!-- Spec 021 (ISC-246.1, E3): at compact the section #waiting stands after the spec list; the head links to it. -->
-      @if (waitsSlot() === 'trail' && view()?.guidance; as guidance) {
-        <a class="waits-link" data-waits-link [routerLink]="['/w', ws()]" [fragment]="waitingFragment" queryParamsHandling="preserve">
-          <span aria-hidden="true">{{ 'guidance.waits.label' | transloco }}</span>
-          <ui-chip variant="count" tone="secondary" aria-hidden="true">{{ guidance.waits.length }}</ui-chip>
-          <span class="visually-hidden">{{ (guidance.waits.length === 1 ? 'guidance.waits.headLinkName.one' : 'guidance.waits.headLinkName.other') | transloco: { count: guidance.waits.length } }}</span>
-        </a>
-      }
+      <h1 class="type-page-title">{{ 'shell.pages.dashboard' | transloco }} <span class="h1-ws">· {{ ws() }}</span></h1>
     </div>
   </ui-page-head>
   @if (view(); as view) {
-    <!-- Spec 020 T17: the section `#waiting`. At medium it opens the main column before the KPI band; at wide it is
-         the rail's first block, above Next up (the context rail registers it); at compact it follows the spec list. -->
-    @if (waitsSlot() === 'lead' && view.guidance; as guidance) {
-      <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
-    }
-    <!-- Spec 021 (ISC-246): the DOM order KPI band, TL;DR, Next up, spec list at every tier; a stale TL;DR moves behind
-         the spec list (ISC-247). -->
+    <!-- One column, one order at every tier: KPI band, TL;DR (fresh or stale, always second), Waits on you, Next up,
+         the warnings. -->
     <app-kpi-band [model]="view" [ws]="ws()" [changed]="refresh.changedKpis()" />
-    @if (briefSlot() === 'lead') {
+    @if (view.brief) {
       <app-brief [brief]="view.brief" />
     }
-    <!-- One context-rail: at wide it hands Waits on you, Next up and the warnings to the shell's rail (the docked
-         detail sidebar stands in for them while something is selected, spec 026), below wide it renders Next up here.
-         At wide this host stays Next up's place in the reading order: it owns the rail's block (`aria-owns`). -->
-    <app-context-rail [model]="view" [ws]="ws()" inline="next-up" />
-  }
-  <app-spec-table
-    [ws]="ws()"
-    [rows]="held().shown"
-    [archivedCount]="view()?.kpis.archived ?? null"
-    [counts]="listCounts()"
-    [guidance]="view()?.guidance"
-    [changed]="refresh.changedRows()"
-    [pending]="held().pending"
-    (showPending)="showPending()"
-    [archive]="archive()"
-    [query]="query()"
-    [preview]="previewId()"
-    (queryChange)="setQuery($event)"
-  />
-  <!-- The TL;DR's trailing place, right after the spec list's "Show all n": a stale TL;DR stands here (`briefSlot`). -->
-  @if (view(); as view) {
-    @if (briefSlot() === 'trail') {
-      <app-brief [brief]="view.brief" />
+    @if (view.guidance; as guidance) {
+      <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" [level]="2" />
     }
-    <!-- Spec 021 (ISC-246.1, E3): at compact the section #waiting stands here, after the list, before the backlog. -->
-    @if (waitsSlot() === 'trail' && view.guidance; as guidance) {
-      <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
-    }
-  }
-  <!-- The backlog after the Specs panel at every tier, the desktop's closing group of the spec list (T138). -->
-  @if (ideas().count > 0) {
-    <app-ideas-panel [ws]="ws()" [ideas]="ideas()" />
-  }
-  <!-- Below wide the Warnings list (018-B15) is the section after Next up and the Specs panel, where the prototype's
-       `pageWorkspace` puts `#warnings-n`; at wide it is the rail block after Next up. -->
-  @if (view(); as view) {
-    @if (!railHolds()) {
-      <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" />
-    }
+    <app-next-up-list form="card" [ws]="ws()" [specs]="view.specs" [ids]="view.nextUp" [guidance]="view.guidance" />
+    <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" />
+  } @else {
+    <!-- Loading: the head alone, a placeholder where the KPI band and Next up will stand. -->
+    <ui-skeleton class="skeleton-kpi" data-skeleton="kpi-band" height="96px" />
+    <ui-skeleton class="skeleton-next-up" data-skeleton="next-up" height="160px" />
   }
   <!-- Prototype `.footer-note` of `pageWorkspace` (spec 024): where the page is read from. -->
   @if (pathTail()) {
     <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: pathTail() } }}</p>
   }
 }
-

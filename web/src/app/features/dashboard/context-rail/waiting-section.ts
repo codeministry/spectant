@@ -56,7 +56,7 @@ export const WAITING_SHOWN = 0;
     }
   `,
   template: `
-    <ui-waits-block [entries]="entries()" [workspace]="workspace()" [limit]="folds() ? shown : null" [chips]="true" [headingId]="headingId()" />
+    <ui-waits-block [entries]="entries()" [workspace]="workspace()" [limit]="folds() ? shown : null" [chips]="true" [headingId]="headingId()" [level]="level()" />
     @if (folds()) {
       <ui-disclosure class="waits-fold" data-show-all [(open)]="open">
         <span uiDisclosureSummary data-fold-toggle>
@@ -101,6 +101,8 @@ export class WaitingSection {
   readonly workspace = input.required<string>();
   /** The block heading's id; unique on the page. */
   readonly headingId = input('waiting-heading');
+  /** The block heading's level (spec 058): 2 under the dashboard's h1; 3, the default, as `ui-waits-block` has it. */
+  readonly level = input<2 | 3>(3);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);

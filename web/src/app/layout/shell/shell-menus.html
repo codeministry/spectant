@@ -117,8 +117,7 @@
           <a
             uiRovingItem
             class="entry picker-entry picker-all"
-            fragment="specs"
-            [routerLink]="['/w', ws]"
+            [routerLink]="['/w', ws, 'specs']"
             [attr.data-autofocus]="rows.length === 0 ? '' : null"
             (click)="close('spec')"
           >
