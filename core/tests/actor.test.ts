@@ -113,6 +113,16 @@ describe('parseActor', () => {
     });
   });
 
+  test('a:<kind>:<id>/C<n> is a sub-agent on a frontier claim unit of a spec without tasks.md (spec 056)', () => {
+    expect(parseActor('a:claude:spec-056/C2')).toEqual({
+      raw: 'a:claude:spec-056/C2',
+      kind: 'subagent',
+      id: 'a:claude:spec-056',
+      task: 'C2',
+      legacy: false,
+    });
+  });
+
   test('legacy: a bare word is kept as its own id and flagged', () => {
     for (const raw of ['principal', 'agent', 'spec-002-ISC-75']) {
       expect(parseActor(raw)).toEqual({ raw, kind: 'legacy', id: raw, legacy: true });
@@ -123,7 +133,8 @@ describe('parseActor', () => {
     for (const raw of [
       '', ' u:3f9c0a7d', 'u:3f9c0a7d ', 'u:3F9C0A7D', 'u:3f9c0a7', 'u:3f9c0a7d0', 'u:', 'a:claude', 'a:claude:',
       'a::sess-7', 'a:Claude:sess-7', 'a:claude:Sess-7', 'a:claude:-sess', 'a:claude:sess-7/', 'a:claude:sess-7/t12',
-      'a:claude:sess-7/T12/T13', 'a:claude:sess:7', 'dev@example.com',
+      'a:claude:sess-7/T12/T13', 'a:claude:sess:7', 'dev@example.com', 'a:claude:sess-7/c2', 'a:claude:sess-7/C',
+      'a:claude:sess-7/X2',
     ]) {
       expect(parseActor(raw)).toEqual({ raw, kind: 'legacy', id: raw, legacy: true });
     }

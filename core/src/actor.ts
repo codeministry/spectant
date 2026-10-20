@@ -10,13 +10,14 @@
 //   person    `u:` + exactly eight lower-case hex digits, `[0-9a-f]{8}` (what actor-id.ts prints);
 //   agent     `a:` + kind + `:` + id, each `[a-z0-9][a-z0-9_-]*` — lower case, starting with a letter or digit, so
 //             a separator `:` or `/` is never part of a segment;
-//   sub-agent the agent form + `/` + a task id `T[0-9]+`, the task grammar of tasks.md (`T<n>`).
+//   sub-agent the agent form + `/` + a task id `[TC][0-9]+`: a task of tasks.md (`T<n>`) or, for a spec without
+//             tasks.md, a claim unit of frontier (`C<n>`, spec 056).
 // Upper case in a segment, blanks, an empty segment or an extra segment make a value legacy.
 import type { Diagnostic } from './diagnostics.ts';
 import type { ActorRef } from './files.ts';
 
 const PERSON = /^u:[0-9a-f]{8}$/;
-const AGENT = /^(a:[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*)(?:\/(T[0-9]+))?$/;
+const AGENT = /^(a:[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*)(?:\/([TC][0-9]+))?$/;
 
 /** Parses one `actor` value of an event, activity line, mark or lock. `raw` is always kept as written. */
 export function parseActor(raw: string): ActorRef {

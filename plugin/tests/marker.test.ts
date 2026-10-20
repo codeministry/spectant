@@ -18,9 +18,16 @@ describe('markerLine', () => {
     expect(markerLine({ spec: '041', task: 'T12', claim: 'ISC-33.1' })).toBe('spectant: spec=041 task=T12 claim=ISC-33.1');
   });
 
+  test('writes a claim unit C<n>, the unit of a spec without tasks.md (spec 056, ISC-346)', () => {
+    expect(markerLine({ spec: '056', task: 'C2', claim: 'ISC-346' })).toBe('spectant: spec=056 task=C2 claim=ISC-346');
+  });
+
   test('refuses a field the parser would reject', () => {
     expect(() => markerLine({ ...MARKER, spec: '32' })).toThrow(MarkerError);
     expect(() => markerLine({ ...MARKER, task: '2' })).toThrow(MarkerError);
+    expect(() => markerLine({ ...MARKER, task: 'C' })).toThrow(MarkerError);
+    expect(() => markerLine({ ...MARKER, task: 'c2' })).toThrow(MarkerError);
+    expect(() => markerLine({ ...MARKER, task: 'X2' })).toThrow(MarkerError);
     expect(() => markerLine({ ...MARKER, claim: 'ISC33' })).toThrow(MarkerError);
     expect(() => markerLine({ ...MARKER, task: 'T2 claim=ISC-1' })).toThrow(MarkerError);
   });
@@ -33,6 +40,10 @@ describe('parseMarker', () => {
 
   test('reads a prompt that is only the line', () => {
     expect(parseMarker('spectant: spec=041 task=T12 claim=ISC-33.1')).toEqual({ spec: '041', task: 'T12', claim: 'ISC-33.1' });
+  });
+
+  test('reads a claim unit C<n> like a task T<n> (spec 056, ISC-346)', () => {
+    expect(parseMarker('spectant: spec=056 task=C2 claim=ISC-346\n\nBuild claim unit C2.')).toEqual({ spec: '056', task: 'C2', claim: 'ISC-346' });
   });
 
   test('is lenient about surrounding whitespace and line endings', () => {
@@ -55,6 +66,10 @@ describe('parseMarker', () => {
       'spectant: spec=0320 task=T2 claim=ISC-33',
       'spectant: spec=032 task=2 claim=ISC-33',
       'spectant: spec=032 task=T claim=ISC-33',
+      'spectant: spec=032 task=C claim=ISC-33',
+      'spectant: spec=032 task=c2 claim=ISC-33',
+      'spectant: spec=032 task=X2 claim=ISC-33',
+      'spectant: spec=032 task=TC2 claim=ISC-33',
       'spectant: spec=032 task=T2 claim=ISC33',
       'spectant: spec=032 task=T2 claim=ISC-33.',
       'spectant: spec=032 task=T2',
@@ -71,5 +86,7 @@ describe('parseMarker', () => {
   test('round-trips what markerLine writes', () => {
     const marker = { spec: '007', task: 'T40', claim: 'ISC-213.2' };
     expect(parseMarker(markerLine(marker))).toEqual(marker);
+    const unit = { spec: '056', task: 'C14', claim: 'ISC-346' };
+    expect(parseMarker(markerLine(unit))).toEqual(unit);
   });
 });

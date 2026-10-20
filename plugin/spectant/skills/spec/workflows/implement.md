@@ -41,8 +41,10 @@ Exit 0 → go to Step 2. Exit 3 (no mark, or a stale one: the CLI names the file
 2. Ask once, one `AskUserQuestion`: "Spec NNN has no current review. Review and approve it now?" Options:
    **Approve and implement** (recommended and listed first when nothing blocks) and **Not yet** (listed first and
    recommended when something blocks, with the reason in its description).
-3. **On the user's explicit yes** → `spec-check gate reviewed specs/NNN-slug --yes`. It writes
-   `specs/NNN-slug/.gates/reviewed.json` and appends exactly one `review → build` line to the spec's `events.jsonl`. Run
+3. **On the user's explicit yes** → `spec-check gate reviewed specs/NNN-slug --yes --actor <actor>`, the actor that
+   opened the run (its `--session`). It writes `specs/NNN-slug/.gates/reviewed.json` and appends exactly one
+   `review → build` line to the spec's `events.jsonl`. This run does not lock its own mark; a run of another session
+   running on the spec does: exit 3 naming that run, nothing written; say so, end the run, stop. Run
    `spec-check gate check reviewed specs/NNN-slug` again; exit 0 → Step 2.
 4. **Not yet**, silence, or anything but an explicit yes → write nothing, say that `implement` stays closed until a
    fresh mark exists (`/spec review NNN`, or the review view in Spectant), end the run, stop.

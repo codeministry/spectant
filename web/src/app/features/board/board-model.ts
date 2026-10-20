@@ -2,6 +2,7 @@ import { guidanceEntryOf } from '../../shared/ui/guidance/guidance-entry';
 import type { ActorRef, Guidance, GuidanceReason, ItemStateInfo, Priority, SpecType, SpecWait, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
 import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
+import { allowedEntryMove } from '../../../../../core/src/transition';
 import type { Stage } from '../../../../../core/src/stage';
 import type { ActorMapping } from '../../../../../server/src/spec-routes.contract';
 import { type FeatureGroup, featureOrder } from '../backlog/backlog-order';
@@ -352,7 +353,8 @@ const WAITS_ON_OTHERS: ReadonlySet<WorkflowStage> = new Set<WorkflowStage>(['blo
 
 /**
  * The columns a card may be dropped on, from core's transition table by the card's type: for a spec every column
- * `allowedTransition` admits from its stage; for an idea the first stage of its type's row (the allocation). An untyped
+ * `allowedTransition` admits from its stage, and from the allocation entry `plan` of a row without it every stage of the
+ * row up to `review` (`allowedEntryMove`, spec 056); for an idea the first stage of its type's row (the allocation). An untyped
  * card has no row and no target. Core still decides every drop; these are hints and the set the board offers.
  */
 export function dropTargetsOf(
@@ -366,7 +368,9 @@ export function dropTargetsOf(
     const first = workflowStagesOf(type, workflow)[0];
     return stages.filter((stage) => stage === first);
   }
-  return stages.filter((stage) => stage !== card.stage && allowedTransition(card.stage, stage, type, workflow));
+  return stages.filter(
+    (stage) => stage !== card.stage && (allowedTransition(card.stage, stage, type, workflow) || allowedEntryMove(card.stage, stage, type, workflow)),
+  );
 }
 
 const PRIORITY_RANK: Readonly<Record<Priority, number>> = { P1: 1, P2: 2, P3: 3, P4: 4 };

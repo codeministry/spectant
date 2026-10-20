@@ -146,6 +146,72 @@ describe('spec-check gate reviewed --yes (ISC-45.1, T24)', () => {
   });
 });
 
+// spec 056 (T3, ISC-350, ISC-351): `gate reviewed --yes` takes the app's run lock. An open run on the spec that core's
+// `runLockOf` reads `running`, started by another session, refuses the mark with exit 3 and writes nothing; the caller's
+// own open run (its session equals `--actor`) and an `aborted` run (older than the default abort age) lock nothing.
+const REVIEWER = 'a:claude:review01';
+const OTHER = 'a:claude:other999';
+
+/** Appends one `run-start` line on spec 001 to the repository's activity log, as `spec-check run start` writes it. */
+function openRun(root: string, runId: string, session: string, ts: string, command = '/spec implement 001'): void {
+  mkdirSync(join(root, '.spectant'), { recursive: true });
+  const line = JSON.stringify({ ts, event: 'run-start', run: runId, command, session, spec: '001-digest' });
+  const path = join(root, '.spectant', 'activity.jsonl');
+  writeFileSync(path, `${existsSync(path) ? readFileSync(path, 'utf8') : ''}${line}\n`);
+}
+
+/** The bytes the gate write may touch: the spec's events, the mark, the activity log and the .gitignore. */
+function gateBytes(root: string): string {
+  const opt = (p: string): string => (existsSync(join(root, p)) ? read(root, p) : '<absent>');
+  return [opt(`${DIR}/events.jsonl`), opt(`${DIR}/.gates/reviewed.json`), opt('.spectant/activity.jsonl'), opt('.gitignore')].join('\u0000');
+}
+
+describe('spec-check gate reviewed under a run lock (spec 056, ISC-350)', () => {
+  test('ISC-350: a running run of another session on the spec refuses the mark with exit 3, naming the run, and writes nothing', () => {
+    const root = repoWithSpec();
+    openRun(root, 'run-foreign-1', OTHER, new Date().toISOString());
+    const before = gateBytes(root);
+    const r = run(root, 'gate', 'reviewed', '001', '--yes', '--actor', REVIEWER);
+    expect(r.code).toBe(3);
+    expect(r.text).toContain('run-foreign-1');
+    expect(r.text).toContain(OTHER);
+    expect(r.text).toContain('/spec implement 001');
+    expect(r.text.trim().split('\n').length).toBe(1);
+    expect(existsSync(join(root, DIR, '.gates'))).toBe(false);
+    expect(gateBytes(root)).toBe(before);
+  });
+
+  test("ISC-350: the caller's own open run does not hide a running run of another session", () => {
+    const root = repoWithSpec();
+    openRun(root, 'run-own-1', REVIEWER, new Date().toISOString(), '/spec review 001');
+    openRun(root, 'run-foreign-2', OTHER, new Date().toISOString());
+    const before = gateBytes(root);
+    const r = run(root, 'gate', 'reviewed', '001', '--yes', '--actor', REVIEWER);
+    expect(r.code).toBe(3);
+    expect(r.text).toContain('run-foreign-2');
+    expect(gateBytes(root)).toBe(before);
+  });
+});
+
+describe('spec-check gate reviewed in its own run and after an aborted one (spec 056, ISC-351)', () => {
+  test("ISC-351: the caller's own running run (session equals --actor) does not lock: exit 0, mark and event written", () => {
+    const root = repoWithSpec();
+    openRun(root, 'run-own-2', REVIEWER, new Date().toISOString(), '/spec review 001');
+    const r = run(root, 'gate', 'reviewed', '001', '--yes', '--actor', REVIEWER);
+    expect(r.code).toBe(0);
+    expect(existsSync(join(root, DIR, '.gates', 'reviewed.json'))).toBe(true);
+    expect(lastEvent(root)).toMatchObject({ from: 'review', to: 'build', actor: REVIEWER });
+  });
+
+  test('ISC-351: an aborted run of another session (older than the abort age) does not lock: exit 0', () => {
+    const root = repoWithSpec();
+    openRun(root, 'run-foreign-old', OTHER, new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString());
+    const r = run(root, 'gate', 'reviewed', '001', '--yes', '--actor', REVIEWER);
+    expect(r.code).toBe(0);
+    expect(existsSync(join(root, DIR, '.gates', 'reviewed.json'))).toBe(true);
+  });
+});
+
 describe('spec-check gate code-reviewed (T22, T24)', () => {
   test('absent: exit 3 naming the code review; --yes without counts exits 1; with them the check exits 0, an edit makes it stale', () => {
     const root = repoWithSpec();
