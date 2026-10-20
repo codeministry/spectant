@@ -3983,6 +3983,8 @@ function nextSpecNumber(taken) {
 }
 
 // core/src/pack.ts
+var PACK_LIMIT = 8192;
+
 class PackError extends Error {
   code;
   constructor(code, message) {
@@ -4052,6 +4054,31 @@ function buildPack(input) {
     ],
     truncated: 0
   };
+}
+var packBytes = (pack) => new TextEncoder().encode(JSON.stringify(pack)).length;
+var LEADING_DATE = /^\d{4}-\d{2}-\d{2}/;
+var dateOf = (d) => LEADING_DATE.exec(d.text)?.[0] ?? "";
+function capPack(pack, limit = PACK_LIMIT) {
+  const order = pack.decisions.map((d, i) => ({ date: dateOf(d), i })).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i).map((e) => e.i);
+  const dropped = new Set;
+  const at = () => ({
+    spec: pack.spec,
+    goal: pack.goal,
+    task: pack.task,
+    claim: pack.claim,
+    probe: pack.probe,
+    lane: pack.lane,
+    decisions: pack.decisions.filter((_, i) => !dropped.has(i)),
+    truncated: pack.truncated + dropped.size
+  });
+  let capped = at();
+  for (const i of order) {
+    if (packBytes(capped) <= limit)
+      break;
+    dropped.add(i);
+    capped = at();
+  }
+  return capped;
 }
 
 // core/src/resolve.ts
@@ -6090,7 +6117,7 @@ function pack(ctx, args) {
     throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
   let value;
   try {
-    value = buildPack({
+    const uncapped = buildPack({
       slug: ref.slug,
       spec: specText(ctx, ref),
       tasks,
@@ -6098,6 +6125,7 @@ function pack(ctx, args) {
       constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
       task
     });
+    value = capPack(uncapped, PACK_LIMIT);
   } catch (error) {
     if (error instanceof PackError)
       throw bad(`${error.message} (${error.code})`, error.code);

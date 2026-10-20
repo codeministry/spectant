@@ -38,7 +38,7 @@ import { REVIEWED_FILES, codeReviewedMarkText, gateState, hashForGate, readGateM
 import type { GateCheck, ReviewedFile, TreeEntry, TreeEntryMode } from '../../core/src/gates.ts';
 import { nextSpecNumber, specNumbersOf } from '../../core/src/allocate.ts';
 import { activityReading, readLockSources } from '../../core/src/locks.ts';
-import { PackError, buildPack } from '../../core/src/pack.ts';
+import { PACK_LIMIT, PackError, buildPack, capPack } from '../../core/src/pack.ts';
 import type { Pack } from '../../core/src/pack.ts';
 import { listSpecs, resolveSpec } from '../../core/src/resolve.ts';
 import type { SpecRef } from '../../core/src/resolve.ts';
@@ -1608,7 +1608,8 @@ function packLines(pack: Pack): string[] {
 
 /**
  * `pack <spec> T<k>` (spec 010, T5, ISC-333): the task's context pack from spec.md, tasks.md, plan.md and the
- * constitution, built by core's `buildPack`. Writes nothing. `--json` prints `JSON.stringify(pack)` on one line: the
+ * constitution, built by core's `buildPack` and held under `PACK_LIMIT` bytes by `capPack` (T19, ISC-339: the oldest
+ * decisions go first, counted in `truncated`). Writes nothing. `--json` prints `JSON.stringify(pack)` on one line: the
  * pack's size is defined on the compact form, so it never goes through `emit`'s pretty print.
  */
 function pack(ctx: Context, args: Args): number {
@@ -1618,7 +1619,7 @@ function pack(ctx: Context, args: Args): number {
   if (tasks === null) throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, 'missing-file');
   let value: Pack;
   try {
-    value = buildPack({
+    const uncapped = buildPack({
       slug: ref.slug,
       spec: specText(ctx, ref),
       tasks,
@@ -1626,6 +1627,7 @@ function pack(ctx: Context, args: Args): number {
       constitution: readIfExists(join(ctx.root, 'specs', 'constitution.md')),
       task,
     });
+    value = capPack(uncapped, PACK_LIMIT);
   } catch (error) {
     if (error instanceof PackError) throw bad(`${error.message} (${error.code})`, error.code);
     throw error;

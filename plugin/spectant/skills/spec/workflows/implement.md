@@ -272,7 +272,7 @@ producing a **one-line** provenance stub: a test name, a command with its exit c
 1. run the probe in this checkout, capture the one-line stub              (nothing written)
 2. spec-check verify NNN ISC-N <type> "<stub>"   # Verification line in spec.md, then the master; ticks the claim
                                                  # after its evidence; recounts progress in both
-3. tasks.md ← every task of ISC-N → [x]; updated:
+3. spec-check tick NNN T<k>                      # once per task of ISC-N: one tasks.md line each, nothing else
 ```
 
 The claim's lock is no step here: the hooks released it when its last builder stopped.

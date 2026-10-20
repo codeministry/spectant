@@ -82,7 +82,7 @@ const specNumber = (/(?:^|\/)(\d{3})-[^/]+\/spec\.md$/.exec(brief.spec) || [])[1
 if (!specNumber) throw new Error('args.brief.spec must be the path of specs/NNN-slug/spec.md (its NNN goes into the marker line)')
 const markerLine = (t) => {
   if (!/^T\d+$/.test(t.id)) throw new Error(`task id must be T<n>, got "${t.id}"`)
-  if (!/^ISC-\d+(?:\.\d+)*$/.test(t.claim)) throw new Error(`claim must be ISC-<n>[.<n>], got "${t.claim}"`)
+  if (!/^ISC-\d+(?:\.\d+)*$/.test(t.claim)) throw new Error(`claim must be ISC-<n>[.<n>], got "${t.claim}"`) // single-core: allow — the Workflow sandbox cannot import core/; validates a marker field, pinned to markerLine by implement-workflow.test.ts
   return `spectant: spec=${specNumber} task=${t.id} claim=${t.claim}`
 }
 for (const t of plan.dispatch) markerLine(t)

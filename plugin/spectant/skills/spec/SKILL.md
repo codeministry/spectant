@@ -63,14 +63,16 @@ bun "${CLAUDE_PLUGIN_ROOT}/bin/spec-check" <command> … [--json]
 ```
 
 Exit codes: `0` ok · `1` bad arguments · `3` drift or gate open · `4` lock lost. Claims, Verification and Decisions
-lines, progress counts, locks, gate marks, events and run lines are written by the CLI and never by hand; prose (Goal,
-Context, plan text, task text, `context.md`) is written directly.
+lines, progress counts, task boxes, locks, gate marks, events and run lines are written by the CLI and never by hand;
+prose (Goal, Context, plan text, task text, `context.md`) is written directly.
 
 | Command | Does |
 |---|---|
 | `allocate <type> <slug>` | the next free number, the folder `specs/NNN-slug/` and its first files from the type template |
 | `mint <spec> …` | claims into the master `ISA.md` first, then into the spec |
 | `verify <spec> <ISC-N> <type> "<stub>"` | the Verification line in spec and master, the claim ticked, progress recounted |
+| `pack <spec> T<k>` | one task's context pack as one JSON line, at most 8 KiB; writes nothing |
+| `tick <spec> T<k>` | one task's `tasks.md` box set, that line only |
 | `decide <file> "<line>"` | one Decisions row |
 | `status [NNN]` · `drift [NNN]` · `frontier <spec>` | stage and progress · drift against the master · takeable claims and blockers |
 | `claim <ISC-N> --session <actor>` · `release <ISC-N> --session <actor>` | locks, in `.spectant/activity.jsonl` only |
@@ -134,9 +136,9 @@ rule below does not apply.
 
 - **Master first.** Claims are minted in `ISA.md` before the spec names them (`spec-check mint`); `drift` exit 3 is a
   defect to fix, not a warning.
-- **Evidence before the checkmark.** Probe, then `spec-check verify` (stub, tick, progress), then the `tasks.md` box,
-  then `release`. One claim at a time, per claim, never batched at the end. Only the parent session writes `spec.md`,
-  `tasks.md` and `ISA.md`; sub-agents change code and return evidence.
+- **Evidence before the checkmark.** Probe, then `spec-check verify` (stub, claim tick, progress), then
+  `spec-check tick` per task, then `release`. One claim at a time, per claim, never batched at the end. Only the parent
+  session writes `spec.md`, `tasks.md` and `ISA.md`; sub-agents change code and return evidence.
 - **One question per `AskUserQuestion`**, the recommended option first and marked as such. Ask only what changes the
   claim set, the seam or the probe; mark everything else inline as `⟨?: … ⟩` and move on.
 - **No acceptance criteria in `plan.md` or `tasks.md`.** They point at claim IDs; a claim lives only in `spec.md`.
