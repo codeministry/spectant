@@ -2,7 +2,7 @@ import { ViewportScroller } from '@angular/common';
 import { DestroyRef, inject } from '@angular/core';
 import { Router, Scroll } from '@angular/router';
 
-/** The path of a router URL without its query and fragment: `/w/harbor?spec=007#specs` → `/w/harbor`. */
+/** The path of a router URL without its query and fragment: `/w/harbor/specs?phase=building#specs` → `/w/harbor/specs`. */
 export const pathOf = (url: string): string => url.split(/[?#]/u, 1)[0] ?? url;
 
 /**

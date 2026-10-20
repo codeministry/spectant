@@ -17,7 +17,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
 
 /**
  * The block "Waits on you" (spec 020, ISC-238; design.md § Gemeinsame Bausteine per viewport, § Viewport-übergreifend
- * wins): a level-3 section header with the total as a `count` chip and the `user-round` icon, never the hourglass of
+ * wins): a section header (level 3 by default, `level` 2 on the dashboard, spec 058) with the total as a `count` chip and the `user-round` icon, never the hourglass of
  * 040's `waiting`. The top entry stands highlighted in a `ui-card` with its side edge in `--ques-ink`: the spec ID as a
  * link, the title on one clamped line, `ui-priority`, the reason as a whole sentence (`guidanceReason`, never cut), the
  * command as `ui-command-chip` and "waiting 2 d" as `ui-relative-time` from `since`. Up to `limit` more entries follow
@@ -61,7 +61,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
   `,
   template: `
     <section [attr.aria-labelledby]="headingId()">
-      <ui-section-header [heading]="'guidance.waits.label' | transloco" [level]="3" [headingId]="headingId()">
+      <ui-section-header [heading]="'guidance.waits.label' | transloco" [level]="level()" [headingId]="headingId()">
         <span meta class="meta">
           <ui-icon name="user-round" [size]="12" />
           <ui-chip variant="count" tone="secondary">{{ entries().length }}</ui-chip>
@@ -163,6 +163,11 @@ export class UiWaitsBlock {
   readonly scope = input<'workspace' | 'spec'>('workspace');
   /** The id of the block's heading, the section's accessible name; unique on the page. */
   readonly headingId = input('waits-heading');
+  /**
+   * The level of the block's heading (spec 058, T14): 3, the default, under the spec page's own sections; 2 on the
+   * dashboard, where the block is a sibling of Next up and Warnings directly under the page's h1.
+   */
+  readonly level = input<2 | 3>(3);
 
   protected readonly top = computed(() => this.entries()[0] ?? null);
   protected readonly rest = computed(() => {

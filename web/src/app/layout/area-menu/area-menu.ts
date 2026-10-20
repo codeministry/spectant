@@ -151,6 +151,8 @@ export class AreaMenu {
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
   private readonly summaryParams = computed<Record<Exclude<WorkspaceMenuPageId, 'milestones'>, SummaryParams>>(() => ({
+    // Spec 058 (ISC-394): the workspace dashboard's line comes from the dashboard model (T22); none until then.
+    dashboard: null,
     specs:
       this.data.dashboard.value()?.kind === 'ok'
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
@@ -172,6 +174,7 @@ export class AreaMenu {
       return values === null ? null : { key: workspacePageById(id).summaryKey, params: values };
     };
     return {
+      dashboard: line('dashboard'),
       specs: line('specs'),
       board: line('board'),
       planning: line('planning'),

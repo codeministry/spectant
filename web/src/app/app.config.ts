@@ -49,7 +49,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     // Explicit on purpose: zoneless is the default in Angular 22, but the intent must not hang on a default.
     provideZonelessChangeDetection(),
-    // Anchor scrolling: the header's spec picker links to `/w/:ws#specs`, and the router scrolls to and focuses it.
+    // Anchor scrolling: the spec list is its own page at `/w/:ws/specs`, no anchor; a link to a section of a page, such
+    // as the board's waits link `/w/:ws#waiting`, has the router scroll to and focus it.
     provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' })),
     // The fetch backend is the default; the app only ever calls its own loopback `/api` with relative URLs (ISC-2).
     provideHttpClient(),

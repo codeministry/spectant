@@ -99,18 +99,19 @@ export interface ShellRouteData {
  * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. Spec 023's tech page is gone: spec 017
  * folded it into the Library (T41, ISC-157.1, removed in T50), `/w/:ws/tech` and every `/w/:ws/tech/<tab>` redirect
  * there (`app.routes.ts`). `library` (spec 024,
- * `/w/:ws/library`, on the real catalog since spec 017) stands where Tech stood, fifth after Milestones.
+ * `/w/:ws/library`, on the real catalog since spec 017) stands where Tech stood, fifth after Milestones. Spec 058
+ * (ISC-394) splits the workspace root: `dashboard` is `/w/:ws` itself, `specs` the spec list at `/w/:ws/specs`.
  */
-export type WorkspacePageId = 'specs' | 'board' | 'planning' | 'features' | 'milestones' | 'idea' | 'library';
+export type WorkspacePageId = 'dashboard' | 'specs' | 'board' | 'planning' | 'features' | 'milestones' | 'idea' | 'library';
 export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'planning', 'features', 'milestones', 'idea', 'library'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['dashboard', 'specs', 'board', 'planning', 'features', 'milestones', 'idea', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
 
 /**
- * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the PAGE select's menu
+ * A page of a workspace (`/w/:ws`, `/w/:ws/specs`, `/w/:ws/board`, …): the registry the PAGE select's menu
  * (spec 024 T80), the palette and the routes read, in menu order. It always holds every entry; `milestones` is only listed by the menu (and the
  * palette, and answered by the route) while `ShellData.hasMilestones` is true (ISC-104, T26), so the filtering lives
  * with the reader, not here.
@@ -126,12 +127,15 @@ export interface WorkspacePage {
    * The second key of the page's `g` sequence, read by `SHORTCUTS`: Board's `g b` (spec 008, T117), Features' `g f`
    * and Milestones' `g m` (spec 024, T58, ISC-150.1), Library's `g o` (spec 017, T41, ISC-157.1: the key that opens
    * the documents inside a spec, the Library area since T45, opens them at workspace scope; the prototype's `g b` is the app's Board).
-   * Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists.
+   * The dashboard and Specs have none: `g s` is Status inside a spec and no workspace-scope binding exists.
    */
   readonly goKey: string | null;
 }
 
 export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
+  // Spec 058 (ISC-394): the workspace dashboard, first in the menu, at the workspace root `/w/:ws`; the spec list
+  // moved to `/w/:ws/specs`, second. Its summary line counts what waits on the viewer and the warnings.
+  { id: 'dashboard', icon: 'layout-dashboard', labelKey: 'shell.pages.dashboard', summaryKey: 'shell.pages.summary.dashboard', goKey: null },
   { id: 'specs', icon: 'file-text', labelKey: 'shell.pages.specs', summaryKey: 'shell.pages.summary.specs', goKey: null },
   // Spec 008 (ISC-129): the workspace board, second in the menu, "Board" (the spec's tab is the "Round board"). Its
   // summary line counts through the board's own model (T116). `g b` is bound (T117, SHORTCUTS `go-board`): the
@@ -148,8 +152,11 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
 /** A menu page's entry. */
 export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WORKSPACE_PAGES.find((page) => page.id === id) ?? must(id);
 
-/** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */
-export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);
+/**
+ * `['/w', ws]` for the dashboard (the workspace root, spec 058), else `['/w', ws, page]`, as a router link; Specs is
+ * `['/w', ws, 'specs']`.
+ */
+export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'dashboard' ? ['/w', ws] : ['/w', ws, page]);
 
 /** `['/w', ws, 'planning', 'tree']`, the planning page's tree lens as a router link (spec 026, ISC-167). */
 export const planningTreeLink = (ws: string): string[] => ['/w', ws, 'planning', 'tree'];

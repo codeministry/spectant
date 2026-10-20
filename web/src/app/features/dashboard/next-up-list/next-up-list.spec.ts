@@ -31,6 +31,7 @@ async function render(model: Pick<DashboardModel, 'specs' | 'nextUp'>, form?: 'c
   const fixture = TestBed.createComponent(NextUpList);
   fixture.componentRef.setInput('specs', model.specs);
   fixture.componentRef.setInput('ids', model.nextUp);
+  fixture.componentRef.setInput('ws', 'harbor');
   if (form) fixture.componentRef.setInput('form', form);
   await fixture.whenStable();
   return fixture.nativeElement as HTMLElement;
@@ -151,12 +152,12 @@ describe('NextUpList', () => {
     expect(root.querySelector('[data-next-fog]')).toBeNull();
   });
 
-  it('links the specs that wait on fog to the fog filter when nothing is ready', async () => {
+  it('links the specs that wait on fog to the fog filter on /w/:ws/specs when nothing is ready (ISC-395)', async () => {
     const waiting = HARBOR.specs.filter((r) => r.fog > 0).map((r) => ({ ...r, nextCommand: null }));
     expect(waiting.length).toBeGreaterThan(0);
     const root = await render({ specs: waiting, nextUp: [] });
     const link = root.querySelector('a[data-next-fog]') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/?phase=fog');
+    expect(link.getAttribute('href')).toBe('/w/harbor/specs?phase=fog');
     expect(link.textContent.trim()).toBe(waiting.length === 1 ? '1 spec waits on fog' : `${waiting.length} specs wait on fog`);
   });
 });

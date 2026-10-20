@@ -809,6 +809,7 @@
       "app": "App"
     },
     "pages": {
+      "dashboard": "Dashboard",
       "specs": "Specs",
       "board": "Board",
       "planning": "Planung",
@@ -816,6 +817,7 @@
       "milestones": "Meilensteine",
       "library": "Library",
       "summary": {
+        "dashboard": "{{waits}} liegen bei Ihnen · {{warnings}} Warnungen",
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "planning": "{{milestones}} Meilensteine · {{features}} Features",

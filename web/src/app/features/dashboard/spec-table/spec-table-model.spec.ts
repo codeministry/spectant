@@ -7,6 +7,7 @@ import {
   DEFAULT_QUERY,
   FOG,
   holdNewRows,
+  LIST_QUERY_KEYS,
   type ListQuery,
   listQueryParams,
   parseListQuery,
@@ -169,6 +170,21 @@ describe('parseListQuery and listQueryParams', () => {
       takeable: '1',
       archived: null,
     });
+  });
+});
+
+describe('LIST_QUERY_KEYS (spec 058, T5, ISC-396)', () => {
+  it('names every key listQueryParams can write', () => {
+    const every = listQueryParams({ phase: FOG, type: 'feature', sort: 'next', takeable: true, archived: true });
+    for (const key of Object.keys(every)) expect(LIST_QUERY_KEYS).toContain(key);
+  });
+
+  it('names search, the show-all fold and density beside the filters', () => {
+    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'takeable', 'type']);
+  });
+
+  it('never names sel: the dashboard keeps its own selection (ISC-400)', () => {
+    expect(LIST_QUERY_KEYS).not.toContain('sel');
   });
 });
 

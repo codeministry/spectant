@@ -19,7 +19,16 @@
     </div>
     @if (sectioned()) {
       <!-- Spec 021 (T26, ISC-246): the first section stands whole; one toggle in the footer opens the others. -->
-      <div class="brief-prose" data-brief-prose data-brief-first [attr.lang]="textLang()" [innerHTML]="firstHtml()"></div>
+      <!-- Spec 058 (T15): a stale brief's first section is clamped to two lines until its toggle opens it. -->
+      <div
+        class="brief-prose"
+        data-brief-prose
+        data-brief-first
+        [id]="bodyId"
+        [attr.lang]="textLang()"
+        [attr.data-clipped]="firstClipped() ? '' : null"
+        [innerHTML]="firstHtml()"
+      ></div>
       @if (restHtml(); as rest) {
         <ui-disclosure class="brief-fold" data-brief-fold [open]="wholeOpen()" (openChange)="setWhole($event)">
           <span uiDisclosureSummary class="brief-toggle" data-brief-toggle>
@@ -28,6 +37,8 @@
           </span>
           <div class="brief-prose" data-brief-rest [attr.lang]="textLang()" [innerHTML]="rest"></div>
         </ui-disclosure>
+      } @else if (brief.stale) {
+        <ng-container [ngTemplateOutlet]="moreButton" />
       }
     } @else {
       <div
@@ -38,17 +49,22 @@
         [attr.data-clipped]="open() ? null : ''"
         [innerHTML]="html()"
       ></div>
-      <button
-        type="button"
-        class="brief-more"
-        data-brief-more
-        [attr.aria-expanded]="open()"
-        [attr.aria-controls]="bodyId"
-        [attr.aria-label]="(open() ? 'brief.lessName' : 'brief.moreName') | transloco"
-        (click)="toggle()"
-      >
-        {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
-      </button>
+      <ng-container [ngTemplateOutlet]="moreButton" />
     }
   </ui-card>
 }
+
+<!-- "More" / "Less" over the clipped text block `bodyId`: the clip view's, and a stale single-section brief's. -->
+<ng-template #moreButton>
+  <button
+    type="button"
+    class="brief-more"
+    data-brief-more
+    [attr.aria-expanded]="open()"
+    [attr.aria-controls]="bodyId"
+    [attr.aria-label]="(open() ? 'brief.lessName' : 'brief.moreName') | transloco"
+    (click)="toggle()"
+  >
+    {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
+  </button>
+</ng-template>

@@ -453,3 +453,95 @@ describe('Brief toggles name the TL;DR (spec 021, T33)', () => {
     expect(accessibleName(toggles()[0])).toBe('Ganzes TL;DR zeigen, alle Abschnitte der Kurzfassung');
   });
 });
+
+// Spec 058 (T15, ISC-392): a stale TL;DR always starts in its short form, two clamped lines, a sectioned one its first
+// section clamped to two lines with the rest folded. `?open=tldr` never opens it on arrival; its toggle still does, on
+// demand, and only then the first section stands whole. The chips `brief-stale` and `brief-as-of` stay.
+describe('Brief stale: always collapsed on arrival (spec 058, T15)', () => {
+  const OVERVIEW = 'Sync is **done** and archived (001). '.repeat(12).trim();
+  const STALE: BriefModel = {
+    markdown: '# TL;DR — harbor\n\n<!-- section: overview -->\n…',
+    generated: GENERATED,
+    stale: true,
+    sections: { overview: OVERVIEW, risks: '- The loader rewrite touches every package.' },
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function render(brief: BriefModel, url = '/') {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
+    const fixture = TestBed.createComponent(Brief);
+    fixture.componentRef.setInput('brief', brief);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const first = () => host.querySelector<HTMLElement>('[data-brief-first]');
+    const fold = () => host.querySelector<HTMLElement>('ui-disclosure[data-brief-fold]');
+    const toggle = () => fold()?.querySelector<HTMLButtonElement>('button[aria-expanded]') ?? null;
+    return { fixture, host, router, first, fold, toggle };
+  }
+
+  it('a stale sectioned brief stands on its first section clamped to two lines, the rest folded, chips kept', async () => {
+    const { host, first, fold, toggle } = await render(STALE);
+    expect(first()?.hasAttribute('data-clipped')).toBe(true);
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('ui-chip[data-brief-stale]')?.getAttribute('data-tone')).toBe('warning');
+    expect(host.querySelector('[data-brief-as-of] time')).not.toBeNull();
+  });
+
+  it('`?open=tldr` does not open a stale brief on arrival', async () => {
+    const { first, fold, toggle } = await render(STALE, '/?open=tldr');
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(first()?.hasAttribute('data-clipped')).toBe(true);
+  });
+
+  it('the toggle still opens it on demand: the rest unfolds and the first section stands whole', async () => {
+    const { fixture, first, fold, toggle } = await render(STALE);
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+    expect(first()?.hasAttribute('data-clipped')).toBe(false);
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(fold()?.hasAttribute('data-open')).toBe(false);
+    expect(first()?.hasAttribute('data-clipped')).toBe(true);
+  });
+
+  it('a stale single-section brief is clamped too, with "More" instead of the fold', async () => {
+    const { fixture, host, first } = await render({ ...STALE, sections: { overview: OVERVIEW } });
+    expect(first()?.hasAttribute('data-clipped')).toBe(true);
+    expect(host.querySelector('ui-disclosure')).toBeNull();
+    const more = host.querySelector<HTMLButtonElement>('button[data-brief-more]');
+    expect(more?.getAttribute('aria-expanded')).toBe('false');
+    expect(more?.getAttribute('aria-controls')).toBe(first()?.id);
+    more?.click();
+    await fixture.whenStable();
+    expect(first()?.hasAttribute('data-clipped')).toBe(false);
+    expect(more?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('a stale brief without sections keeps the two-line clip and "More", closed', async () => {
+    const { host } = await render({ ...STALE, sections: {} });
+    expect(host.querySelector('[data-brief-prose]')?.hasAttribute('data-clipped')).toBe(true);
+    expect(host.querySelector('button[data-brief-more]')?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('a fresh sectioned brief is unchanged: first section whole, `?open=tldr` opens the rest', async () => {
+    const { first, fold } = await render({ ...STALE, stale: false }, '/?open=tldr');
+    expect(first()?.hasAttribute('data-clipped')).toBe(false);
+    expect(fold()?.hasAttribute('data-open')).toBe(true);
+  });
+});

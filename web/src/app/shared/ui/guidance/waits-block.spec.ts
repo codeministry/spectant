@@ -130,3 +130,26 @@ describe('ui-waits-block (T14, ISC-238)', () => {
     expect(text(empty.querySelector('[data-empty]'))).toBe(de.guidance.waits.empty);
   });
 });
+
+// Spec 058 (T14, ISC-392): the heading level is an input. The spec page keeps the default level 3; the dashboard, where
+// the block is a sibling of Next up and Warnings under the page's h1, passes 2.
+describe('ui-waits-block heading level (spec 058, T14)', () => {
+  it('heads the block with an h3 by default, the section named by it', async () => {
+    const host = await render(WAITS);
+    const heading = host.querySelector('ui-section-header h3');
+    expect(heading).not.toBeNull();
+    expect(host.querySelector('ui-section-header h2')).toBeNull();
+    expect(heading?.id).toBe('waits-heading');
+    expect(host.querySelector('section')?.getAttribute('aria-labelledby')).toBe('waits-heading');
+  });
+
+  it('heads the block with an h2 when the caller passes level 2, entries and empty alike', async () => {
+    const host = await render(WAITS, { level: 2 });
+    expect(host.querySelector('ui-section-header h2')?.id).toBe('waits-heading');
+    expect(host.querySelector('ui-section-header h3')).toBeNull();
+    TestBed.resetTestingModule();
+    const empty = await render([], { level: 2 });
+    expect(empty.querySelector('ui-section-header h2')).not.toBeNull();
+    expect(empty.querySelector('ui-section-header h3')).toBeNull();
+  });
+});

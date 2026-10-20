@@ -45,12 +45,12 @@ export const RAIL_NEXT_UP = 'rail-next-up';
       @if (model().guidance; as guidance) {
         <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" />
       }
-      <app-next-up-list [id]="railNextUp" form="rail"[specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
+      <app-next-up-list [id]="railNextUp" form="rail" [ws]="ws()" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
       <app-warnings-panel form="rail" [specs]="model().specs" [kpis]="model().kpis" />
     </ng-template>
     @if (!wide()) {
       @if (inline() !== 'warnings') {
-        <app-next-up-list form="card" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
+        <app-next-up-list form="card" [ws]="ws()" [specs]="model().specs" [ids]="model().nextUp" [guidance]="model().guidance" />
       }
       @if (inline() !== 'next-up') {
         <app-warnings-panel form="section" [specs]="model().specs" [kpis]="model().kpis" />
@@ -61,7 +61,7 @@ export const RAIL_NEXT_UP = 'rail-next-up';
 export class ContextRail {
   readonly model = input.required<DashboardView>();
   readonly inline = input<ContextRailInline>('all');
-  /** The workspace slug the waiting entries link into; the rail block `#waiting` needs it (spec 020 T17). */
+  /** The workspace slug the waiting entries and Next up's fog link point into (spec 020 T17, spec 058). */
   readonly ws = input('');
 
   private readonly state = inject(ShellState);

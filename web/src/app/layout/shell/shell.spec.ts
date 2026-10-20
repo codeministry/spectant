@@ -399,8 +399,9 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Pages"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'planning', 'library']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
+        // Spec 058: the root still reads as Specs until the area menu's `currentPage` learns the dashboard (T22).
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, 'page', null, null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];
