@@ -107,6 +107,16 @@
   border-radius: 2px;
 }
 
+/*
+ * The roving host over both row lists (spec 057, ISC-388): a column at 14 px, the layout it had while it carried
+ * daisyUI's `list` class by accident.
+ */
+.row-lists {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
 .rows {
   container: specs / inline-size;
   margin: 0;
@@ -183,7 +193,7 @@
 }
 
 .row-link:focus-visible::after {
-  outline: 2px solid var(--disp);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 

@@ -103,7 +103,7 @@ import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
-import { atWidth, expect, headerControl, menusReady, test } from './fixtures';
+import { atWidth, expect, headerControl, test } from './fixtures';
 import { RESET_PATH, SESSION_HEADER, STUB_NOTES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -302,8 +302,7 @@ const click =
 const openPalette = click('header [data-control="palette"]');
 /** The settings button, once the deferred menus have mounted (before that it leads to /settings, its fallback). */
 const openSettings = async (page: Page): Promise<void> => {
-  await menusReady(page);
-  await click('header [data-control="settings"]')(page);
+  await (await headerControl(page, 'settings')).click();
 };
 /** The palette after one of its entries was chosen, so Recent has an entry. */
 const openPaletteWithRecent = async (page: Page): Promise<void> => {
@@ -659,7 +658,6 @@ const follow =
 const viaSettings =
   (entry: string) =>
   async (page: Page): Promise<void> => {
-    await menusReady(page);
     await (await headerControl(page, 'settings')).click();
     await follow(`[data-menu="settings"] [data-settings-link="${entry}"]`)(page);
   };
@@ -1042,8 +1040,7 @@ test.describe('navigation', () => {
         };
         await page.goto('/w/harbor/s/002/timeline');
         await timeline();
-        await menusReady(page);
-        await page.locator('header [data-control="spec"]').click();
+        await (await headerControl(page, 'spec')).click();
         const picker = page.locator('nav[data-picker="spec"]');
         await expect(picker).toBeVisible();
         await expect(picker.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);

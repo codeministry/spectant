@@ -131,12 +131,12 @@ export class RunChip {
     :host([data-run]) article { grid-template-columns: minmax(0, 1fr) auto; }
     :host([data-run]) .r1 { grid-area: 1 / 1; }
     :host([data-run]) .run-state { grid-area: 1 / 2; align-self: center; }
-    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .step, :host([data-run]) .r3 { grid-column: 1 / -1; }
+    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .latest-step, :host([data-run]) .r3 { grid-column: 1 / -1; }
     /* spec 015: the latest agent step, a text line and no chip; a new step swaps it with a fade (0 ms under reduce). */
-    .step { display: flex; gap: 6px; align-items: center; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; white-space: nowrap; animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard); }
-    .step .sw { overflow: hidden; font-weight: 600; text-overflow: ellipsis; }
-    .step ui-icon, .step .st { flex: none; }
-    .step .st { font: 11px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
+    .latest-step { display: flex; gap: 6px; align-items: center; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; white-space: nowrap; animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard); }
+    .latest-step .sw { overflow: hidden; font-weight: 600; text-overflow: ellipsis; }
+    .latest-step ui-icon, .latest-step .st { flex: none; }
+    .latest-step .st { font: 11px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
     @keyframes step-in { from { opacity: 0; } }
     @container live-card (width < 320px) {
       :host([data-run]) .run-state { grid-area: auto / 1 / auto / -1; justify-self: start; }
@@ -184,7 +184,7 @@ export class RunChip {
         <app-run-chip small class="run-state" [run]="run.state" />
       }
       @for (l of latestStep(); track l.key) {
-        <p class="step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
+        <p class="latest-step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
           <ui-icon [name]="l.icon" [size]="12" [style.color]="l.color" /><span class="sw" data-step-word>{{ 'steps.kind.' + l.word | transloco }}</span><span aria-hidden="true">·</span><ui-time class="st" data-step-time [value]="l.step.ts" form="clock" />
         </p>
       }

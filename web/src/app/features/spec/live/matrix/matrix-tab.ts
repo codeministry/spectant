@@ -13,7 +13,7 @@ import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { UiSheet } from '../../../../shared/ui/overlay/sheet';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
-import { frameEvents, needsYouOf, recutMarkers, scrubberStops } from '../board/board-model';
+import { frameEvents, LANE_COLORS, needsYouOf, recutMarkers, scrubberStops } from '../board/board-model';
 import { CardDetail } from '../card/card-detail';
 import { cardHistory } from '../card/card-history';
 import { LiveSource } from '../live-source';
@@ -176,7 +176,7 @@ export class MatrixTab {
 
   /** The lane dot of a lane group: the board's lane colours in constitution order. */
   protected laneDot(i: number): string {
-    return ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'][i % 5] ?? 'var(--color-primary)';
+    return LANE_COLORS[i % LANE_COLORS.length] ?? 'var(--color-primary)';
   }
 
   protected setFrame(index: number): void {

@@ -185,6 +185,34 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
     expect(root.querySelector('app-idea-page [role="status"]')?.getAttribute('aria-label')).toBe('Loading story');
   });
 
+  // Spec 057 (review 024): the CONTENTS column's scroll listener exists only while the story has a table of contents.
+  it('idea scroll listener: none without a toc, one with a toc', async () => {
+    const capture = (options: unknown): boolean => (typeof options === 'boolean' ? options : (options as { capture?: boolean } | undefined)?.capture === true);
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const scrollCalls = (spy: typeof add | typeof remove): number =>
+      spy.mock.calls.filter(([type, , options]) => type === 'scroll' && capture(options)).length;
+    const active = (): number => scrollCalls(add) - scrollCalls(remove);
+    try {
+      const plain: IdeaPageBody = { ...BODY, page: renderDocsMarkdown('A story without a single heading.\n') };
+      expect(plain.page.toc).toEqual([]);
+      setUp(() => Promise.resolve(ok(plain)));
+      await open('/w/harbor/ideas/console-audit-log');
+      expect(active()).toBe(0);
+
+      TestBed.resetTestingModule();
+      add.mockClear();
+      remove.mockClear();
+      expect(BODY.page.toc.length).toBeGreaterThan(0);
+      setUp(stub);
+      await open('/w/harbor/ideas/console-audit-log');
+      expect(active()).toBe(1);
+    } finally {
+      add.mockRestore();
+      remove.mockRestore();
+    }
+  });
+
   it('shows the error notice when the story route fails', async () => {
     setUp(() => Promise.resolve({ kind: 'error', status: 500 }));
     const root = await open('/w/harbor/ideas/console-audit-log');

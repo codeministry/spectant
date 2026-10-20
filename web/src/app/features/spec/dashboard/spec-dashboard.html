@@ -273,6 +273,7 @@
                   <ui-command-chip
                     data-warning-command
                     [command]="command"
+                    [context]="'orientation.chipContext.warning' | transloco: { n: $index + 1, total: $count, spec: m.head.id }"
                     [copyLabel]="'specDashboard.next.copy' | transloco"
                     [copiedLabel]="'specDashboard.next.copied' | transloco"
                     [manualHint]="'specDashboard.next.manual' | transloco"

@@ -208,7 +208,7 @@
 }
 
 .bsearch:focus-within {
-  outline: 2px solid var(--disp);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -218,7 +218,7 @@
   font-size: 11px;
 }
 
-@media (width <= 639px) {
+@container shell (width < 640px) {
   .bsearch input {
     inline-size: 90px;
   }

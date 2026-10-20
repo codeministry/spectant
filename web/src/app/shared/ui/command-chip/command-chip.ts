@@ -12,7 +12,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoService } from '@jsverse/transloco';
 import type { ItemRun } from '../../../../../../core/src/files';
 import { LanguageService } from '../../../core/language.service';
 import { UiIcon } from '../../icons/icon';
@@ -66,7 +66,8 @@ function highlightMs(doc: Document): number {
  * copy path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
  *
  * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec implement 012"; ISC-142),
- * so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
+ * plus, through `context`, what it stands for there (`orientation.copyCommandFor`: "Copy /spec review 006 · next up for
+ * 006"; spec 057, ISC-354), so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
  *
  * `lockedBy` (spec 040, T47, ISC-225.1): while a run on the item is running the chip is locked. `lock` replaces
  * `copy`, the chip goes `--muted-ink` on `--color-base-300`, the button is `aria-disabled` but stays focusable, and its
@@ -80,7 +81,7 @@ function highlightMs(doc: Document): number {
 @Component({
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslocoPipe, UiIcon, UiLiveRegion],
+  imports: [UiIcon, UiLiveRegion],
   styles: `
     :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
     /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. A host may round it
@@ -115,7 +116,7 @@ function highlightMs(doc: Document): number {
           type="button"
           class="btn btn-ghost btn-xs btn-square copy"
           [attr.data-copied]="state() === 'copied' ? '' : null"
-          [attr.aria-label]="state() === 'copied' ? copiedLabel() : ('orientation.copyCommand' | transloco: { command: command() })"
+          [attr.aria-label]="state() === 'copied' ? copiedLabel() : copyName()"
           [title]="copyLabel()"
           (click)="copy()"
           (blur)="onBlur()"
@@ -146,6 +147,12 @@ export class UiCommandChip {
   readonly copyLabel = input('Copy command');
   readonly copiedLabel = input('Copied');
   readonly manualHint = input('Select and press ⌘C');
+  /**
+   * What the command stands for on its surface (spec 057, ISC-354), already translated: "next up for 006", "waits on
+   * you: 002 ISC-77", "warning 2 of 2 on 006". It joins the command in the accessible name, so two chips with the same
+   * command on one page still differ; null keeps the bare "Copy {command}".
+   */
+  readonly context = input<string | null>(null);
   readonly copied = output<string>();
   /** The run that holds the item (spec 040, ISC-225.1): the chip is locked while it is set. */
   readonly lockedBy = input<ItemRun | null>(null);
@@ -166,6 +173,14 @@ export class UiCommandChip {
     const lang = this.lang();
     const locked = this.transloco.translate('itemState.locked.chip', { command: run.command ?? this.command(), actor: run.actor.id }, lang);
     return `${locked} · ${this.transloco.translate('itemState.since', { duration: this.duration() }, lang)}`;
+  });
+  /** The idle accessible name: the command, and what it stands for when the host says so (ISC-142, ISC-354). */
+  protected readonly copyName = computed(() => {
+    const command = this.command();
+    const context = this.context();
+    return context
+      ? this.transloco.translate('orientation.copyCommandFor', { command, context }, this.lang())
+      : this.transloco.translate('orientation.copyCommand', { command }, this.lang());
   });
   protected readonly lockedHint = computed(() => this.transloco.translate('itemState.locked.hint', { duration: this.duration() }, this.lang()));
 

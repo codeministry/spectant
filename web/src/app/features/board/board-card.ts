@@ -115,7 +115,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--color-base-content); font-size: 14px; font-weight: 600; line-height: 20px; overflow-wrap: anywhere; text-decoration: none; }
     .title::after { position: absolute; inset: 0; border-radius: inherit; content: ''; }
     .title:focus-visible { outline: none; }
-    .title:focus-visible::after { outline: 2px solid var(--disp); outline-offset: -2px; }
+    .title:focus-visible::after { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
     :host([data-stage='done']) .title { color: var(--muted-ink); }
     .chip { display: inline-flex; flex: none; gap: 4px; align-items: center; max-inline-size: 120px; block-size: 24px; padding-inline: 8px; border-radius: var(--radius-field); font-size: 12px; font-weight: 500; line-height: 16px; white-space: nowrap; }
     .chip > span { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }

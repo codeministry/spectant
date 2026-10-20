@@ -7,7 +7,8 @@ import { UiCard } from '../../../shared/ui/card/card';
 import { UiKpiTile } from '../../../shared/ui/kpi-tile/kpi-tile';
 import { type MeterSegment, UiMeter } from '../../../shared/ui/meter/meter';
 import { UiRing } from '../../../shared/ui/ring/ring';
-import { type Tone, toneMark } from '../../../shared/ui/tone';
+import { PHASE_TONE } from '../../../shared/ui/phase-tone';
+import { toneMark } from '../../../shared/ui/tone';
 import { FOG } from '../spec-table/spec-table-model';
 
 interface Fraction {
@@ -57,7 +58,6 @@ interface PhaseSegment extends MeterSegment {
   readonly mark: string;
 }
 
-const PHASE_TONE: Record<StageGroup, Tone> = { building: 'primary', scoping: 'secondary', complete: 'accent' };
 const PHASE_ORDER: readonly StageGroup[] = ['building', 'scoping', 'complete'];
 
 /** The band's tiles, as their `data-kpi` names them (and the Pulse card's figures their `data-stat`). */

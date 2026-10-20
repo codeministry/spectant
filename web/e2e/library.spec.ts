@@ -54,7 +54,7 @@ import type { APIRequestContext, BrowserContext, Locator, Page, Request, Respons
 
 import type { DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../core/src/files';
 import { type LibrarySearchResult, PROTOTYPE_PREFIX, prototypeFolderOf, prototypeRoute, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
-import { atWidth, expect, headerControl, menusReady, test, WIDTHS } from './fixtures';
+import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
 
 /** The two control counts of the card's first row, in their order (design.md 017 § Across viewports). */
@@ -1639,7 +1639,6 @@ test.describe('redirect', () => {
     await page.goto(OLD);
     await expect(page).toHaveURL((url) => url.pathname === PAGE);
     await expect(heading(page)).toBeVisible();
-    await menusReady(page);
     const trigger = await headerControl(page, 'page');
     await expect(trigger).toContainText(pageName('library'));
     await trigger.click();

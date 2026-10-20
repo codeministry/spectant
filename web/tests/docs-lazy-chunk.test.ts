@@ -85,3 +85,26 @@ describe("the spec page stays a lazy chunk", () => {
     expect(lazy.some((file) => marker.test(readFileSync(join(DIST, file), "utf8")))).toBe(true);
   });
 });
+
+// The not-found page is a lazy chunk (spec 024 review, spec 057): `app.routes.ts` imports `spec-area.routes.ts`
+// statically, so a static `NotFound` import there pulls the page into the initial bundle.
+describe("the notfound page stays a lazy chunk", () => {
+  const ROUTE_FILES = [join(SRC, "app", "app.routes.ts"), join(SRC, "app", "features", "spec", "spec-area.routes.ts")];
+
+  test("notfound: the route files load it through import(), never a static import", () => {
+    for (const file of ROUTE_FILES) {
+      expect(readFileSync(file, "utf8"), relative(WEB, file)).not.toMatch(/^\s*import\s[^;]*from\s+['"][^'"]*\/not-found\/not-found['"]/m);
+    }
+  });
+
+  const noBuild = !existsSync(join(DIST, "index.html"));
+  // The component definition (its selector list), not a template's `<app-not-found>` element, marks the page's code.
+  test.skipIf(noBuild)("notfound: the initial bundle carries no NotFound component, a lazy chunk does (skipped without a build)", () => {
+    const initial = initialFiles();
+    expect(initial.length).toBeGreaterThan(0);
+    const marker = /selectors:\[\[["'`]app-not-found["'`]\]\]/;
+    for (const file of initial) expect(marker.test(readFileSync(join(DIST, file), "utf8")), file).toBe(false);
+    const lazy = readdirSync(DIST).filter((file) => file.endsWith(".js") && !initial.includes(file));
+    expect(lazy.some((file) => marker.test(readFileSync(join(DIST, file), "utf8")))).toBe(true);
+  });
+});
