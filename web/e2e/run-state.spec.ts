@@ -199,8 +199,8 @@ test.describe('run-state surfaces', () => {
   }
 });
 
-/** `DEFAULT_SETTINGS.refreshSeconds` in `src/app/core/settings.service.ts`, plus a second of slack (as refresh.spec.ts). */
-const ONE_TICK_MS = 31_000;
+/** `FALLBACK_POLL_MS` (60 s) in `src/app/core/refresh.service.ts`, plus a second of slack (as refresh.spec.ts). */
+const ONE_TICK_MS = 61_000;
 
 test.describe('run-state tasks-run', () => {
   // The spec installs its own fake timers to fire the refresh tick, so the fixture's pinned clock is off.
