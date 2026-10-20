@@ -10,12 +10,14 @@ import {
   type AllocateRequest,
   type BacklogRequest,
   type BoardQuery,
+  type Favorites,
   type IdeaPage,
   type LibrarySearchResult,
   prototypeFolderOf,
   prototypeRoute,
   isActorMappings,
   isBoardQuery,
+  isFavorites,
   SPEC_HASH_HEADER,
   type TransitionRequest,
   type GateReviewedRequest,
@@ -408,6 +410,26 @@ export class ApiClient {
     return this.put(workspaceRoutes.boardQuery(ws), body, isBoardQuery);
   }
 
+  /**
+   * Spec 052 (T9, ISC-300): the workspace's favourite specs (`{specs}`, folder names, sorted), ETag-cached like
+   * `boardQuery()`. A 200 the contract's `isFavorites` does not fit is an `error`, so no caller renders a foreign set.
+   */
+  async favorites(ws: string): Promise<ApiResult<Favorites>> {
+    const result = await this.get<unknown>(workspaceRoutes.favorites(ws));
+    if (result.kind !== 'ok') return result;
+    return isFavorites(result.body) ? { ...result, body: result.body } : { kind: 'error', status: 200 };
+  }
+
+  /** Spec 052 (T9): `PUT …/favorites/:spec` without a body sets one favourite; the answer is the whole set as stored. */
+  putFavorite(ws: string, spec: string): Promise<PutResult<Favorites>> {
+    return this.put(workspaceRoutes.favorite(ws, spec), null, isFavorites);
+  }
+
+  /** Spec 052 (T9): `DELETE …/favorites/:spec` unsets one, idempotent; the answer is the whole set as stored. */
+  deleteFavorite(ws: string, spec: string): Promise<PutResult<Favorites>> {
+    return this.put(workspaceRoutes.favorite(ws, spec), null, isFavorites, 'DELETE');
+  }
+
   /** T55: the spec's timeline, newest first (`TimelineEntry[]`, ISC-80). */
   timeline(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['timeline']>> {
     return this.get(specRoutes.timeline(ws, id));
@@ -560,10 +582,14 @@ export class ApiClient {
     return { kind: 'error', status };
   }
 
-  /** A `PUT` whose 200 body must pass the contract's validator `fits`; anything else is an `error`. */
-  private async put<T>(url: string, body: unknown, fits: (value: unknown) => value is T): Promise<PutResult<T>> {
+  /**
+   * A `PUT` (or, for a favourite, a bodiless `DELETE`) whose 200 body must pass the contract's validator `fits`;
+   * anything else is an `error`.
+   */
+  private async put<T>(url: string, body: unknown, fits: (value: unknown) => value is T, method: 'PUT' | 'DELETE' = 'PUT'): Promise<PutResult<T>> {
     try {
-      const response = await firstValueFrom(this.http.put<unknown>(url, body, { observe: 'response' }));
+      const request = method === 'PUT' ? this.http.put<unknown>(url, body, { observe: 'response' }) : this.http.delete<unknown>(url, { observe: 'response' });
+      const response = await firstValueFrom(request);
       return fits(response.body) ? { kind: 'ok', body: response.body } : { kind: 'error', status: response.status, error: null };
     } catch (failure: unknown) {
       return noteError(failure);

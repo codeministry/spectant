@@ -3,7 +3,7 @@
 // module stays importable by the browser bundle.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import type {
   CardState,
   ClaimGlyphState,
@@ -54,7 +54,11 @@ import {
   type Conflict,
   type IdeaAllocated,
   type IdeaPage,
+  type Favorites,
   type InvalidBody,
+  type InvalidSpec,
+  isFavoriteSpec,
+  isFavorites,
   type LibraryDocPage,
   type LibraryTechSection,
   type LibrarySearchHit,
@@ -270,9 +274,16 @@ const workspaceErrors: Equal<WorkspaceRouteError,NotFound | Forbidden | MethodNo
 // The board query (T92) reads the database alone: no 409, and its PUT adds 400.
 const boardQueryErrors: Equal<WorkspaceRouteError<"boardQuery">, NotFound | Forbidden | MethodNotAllowed | InvalidBody> = true;
 const boardQueryBodies: Equal<[WorkspaceRouteResponses["boardQuery"], WorkspaceRouteRequests["boardQuery"]], [BoardQuery, BoardQuery]> = true;
+// The favourites (spec 052 T5) read the database alone too: no 409; the set and the unset add 400 `invalid-spec`, and
+// both answer the workspace's whole set.
+const favoriteErrors: Equal<
+  [WorkspaceRouteError<"favorites">, WorkspaceRouteError<"favorite">],
+  [NotFound | Forbidden | MethodNotAllowed, NotFound | Forbidden | MethodNotAllowed | InvalidSpec]
+> = true;
+const favoriteBodies: Equal<[WorkspaceRouteResponses["favorites"], WorkspaceRouteResponses["favorite"]], [Favorites, Favorites]> = true;
 const workspaceFamilies: Equal<
   Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>,
-  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "backlog" | "runRelease" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
+  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "favorites" | "favorite" | "allocate" | "backlog" | "runRelease" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
 > = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
@@ -305,6 +316,8 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   planning: (ws) => workspaceRoutes.planning(ws),
   idea: (ws) => workspaceRoutes.idea(ws, "console-audit-log"),
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
+  favorites: (ws) => workspaceRoutes.favorites(ws),
+  favorite: (ws) => workspaceRoutes.favorite(ws, "004-retention-policies"),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
   backlog: (ws) => workspaceRoutes.backlog(ws),
   runRelease: (ws) => workspaceRoutes.runRelease(ws, "r-0308-1452"),
@@ -316,8 +329,8 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
 
 describe("workspace routes (spec 003, 008): planning and the story page beside the spec routes", () => {
   test("compile-time pins: PlanningModel and IdeaPage's parts are core's, every route has a 200 type and an error union", () => {
-    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, libraryDocIsDocsPlusCore, searchIsTheContracts, libraryErrors]).toEqual([
-      true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, favoriteErrors, favoriteBodies, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, libraryDocIsDocsPlusCore, searchIsTheContracts, libraryErrors]).toEqual([
+      true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
     ]);
   });
 
@@ -328,6 +341,9 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(workspaceRoutes.idea("harbor", "tide-tables")).toBe("/api/workspaces/harbor/ideas/tide-tables");
     expect(workspaceRoutes.idea("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb");
     expect(workspaceRoutes.boardQuery("häfen")).toBe("/api/workspaces/h%C3%A4fen/board-query");
+    expect(workspaceRoutes.favorites("häfen")).toBe("/api/workspaces/h%C3%A4fen/favorites");
+    expect(workspaceRoutes.favorite("harbor", "004-retention-policies")).toBe("/api/workspaces/harbor/favorites/004-retention-policies");
+    expect(workspaceRoutes.favorite("my repo", "a/b")).toBe("/api/workspaces/my%20repo/favorites/a%2Fb");
     expect(workspaceRoutes.allocate("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb/allocate");
     expect(workspaceRoutes.library("my repo")).toBe("/api/workspaces/my%20repo/library");
     expect(workspaceRoutes.libraryDoc("harbor", "001-x/plan.md")).toBe("/api/workspaces/harbor/library/doc?path=001-x%2Fplan.md");
@@ -351,6 +367,12 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       }
       const board = new URL(workspaceRoutes.boardQuery(ws), "http://127.0.0.1:7717");
       expect({ ws, match: matchWorkspacePath(board.pathname) }).toEqual({ ws, match: { route: "boardQuery", params: { ws } } });
+      const favorites = new URL(workspaceRoutes.favorites(ws), "http://127.0.0.1:7717");
+      expect({ ws, match: matchWorkspacePath(favorites.pathname) }).toEqual({ ws, match: { route: "favorites", params: { ws } } });
+      for (const spec of [...WS, "004-retention-policies"]) {
+        const favorite = new URL(workspaceRoutes.favorite(ws, spec), "http://127.0.0.1:7717");
+        expect({ ws, spec, match: matchWorkspacePath(favorite.pathname) }).toEqual({ ws, spec, match: { route: "favorite", params: { ws, spec } } });
+      }
       for (const path of [".tech/architecture.png", "a b+c%41.svg", "ü/ö.png"]) {
         for (const route of ["libraryDoc", "libraryAsset"] as const) {
           const file = new URL(workspaceRoutes[route](ws, path), "http://127.0.0.1:7717");
@@ -386,6 +408,14 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       "/api/workspaces/harbor/ideas/x/allocate/",
       "/api/workspaces/harbor/ideas/x/allocate/more",
       "/api/workspaces/harbor/ideas//allocate",
+      // The favourites (spec 052): no trailing slash, no empty segment, one spec segment, a spec segment decoded once.
+      "/api/workspaces//favorites",
+      "/api/workspaces/harbor/favorites/",
+      "/api/workspaces//favorites/004-retention-policies",
+      "/api/workspaces/harbor/favorites/004-retention-policies/",
+      "/api/workspaces/harbor/favorites/004-retention-policies/more",
+      "/api/workspaces/harbor/favorites/%E0%A4%A",
+      "/api/workspaces/harbor/favorite/004-retention-policies",
       // The tech page's routes went with spec 017 T51: no route any more.
       "/api/workspaces/harbor/tech",
       "/api/workspaces/harbor/tech/asset",
@@ -416,16 +446,23 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     const read = SPEC_ROUTE_TABLE.find((entry) => entry.route === "spec")?.statuses;
     const write = SPEC_ROUTE_TABLE.find((entry) => entry.route === "transition")?.statuses;
     for (const entry of WORKSPACE_ROUTE_TABLE) {
-      expect(entry.method).toBe(entry.route === "allocate" || entry.route === "backlog" || entry.route === "runRelease" ? "POST" : "GET");
+      expect(entry.method).toBe(
+        entry.route === "allocate" || entry.route === "backlog" || entry.route === "runRelease" ? "POST" : entry.route === "favorite" ? "PUT" : "GET",
+      );
       if (entry.method === "GET") expect(entry.request === undefined).toBe(entry.write === undefined);
+      // The favourites (spec 052) read the database alone: the read statuses without 409, the set and unset no 304.
       expect(entry.statuses).toEqual(
         entry.route === "allocate"
           ? (write ?? [])
           : entry.route === "backlog" || entry.route === "runRelease"
             ? (write ?? []).filter((status) => status !== 423)
-            : entry.write === undefined
-              ? (read ?? [])
-              : [200, 304, 400, 403, 404, 405],
+            : entry.route === "favorites"
+              ? (read ?? []).filter((status) => status !== 409)
+              : entry.route === "favorite"
+                ? [200, 400, 403, 404, 405]
+                : entry.write === undefined
+                  ? (read ?? [])
+                  : [200, 304, 400, 403, 404, 405],
       );
       expect(matchWorkspacePath(new URL(WORKSPACE_ARGS[entry.route]("harbor"), "http://127.0.0.1").pathname)?.route).toBe(entry.route);
     }
@@ -433,6 +470,8 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["planning", "GET", `${SPEC_API_ROOT}/:ws/planning`, null, null, "PlanningModel"],
       ["idea", "GET", `${SPEC_API_ROOT}/:ws/ideas/:slug`, null, null, "IdeaPage"],
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
+      ["favorites", "GET", `${SPEC_API_ROOT}/:ws/favorites`, null, null, "Favorites"],
+      ["favorite", "PUT", `${SPEC_API_ROOT}/:ws/favorites/:spec`, "DELETE", null, "Favorites"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
       ["backlog", "POST", `${SPEC_API_ROOT}/:ws/backlog`, null, "BacklogRequest", "BacklogWritten"],
       ["runRelease", "POST", `${SPEC_API_ROOT}/:ws/runs/:run/release`, null, "RunReleaseRequest", "RunReleased"],
@@ -443,10 +482,12 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     ]);
   });
 
-  test("allowForWorkspace: the reads answer GET and HEAD, the board query PUT too, the allocation POST", () => {
+  test("allowForWorkspace: the reads answer GET and HEAD, the board query PUT too, the allocation POST, a favourite PUT and DELETE", () => {
     expect(allowForWorkspace("planning")).toBe("GET, HEAD");
     expect(allowForWorkspace("idea")).toBe("GET, HEAD");
     expect(allowForWorkspace("boardQuery")).toBe("GET, HEAD, PUT");
+    expect(allowForWorkspace("favorites")).toBe("GET, HEAD");
+    expect(allowForWorkspace("favorite")).toBe("PUT, DELETE");
     expect(allowForWorkspace("allocate")).toBe("POST");
     expect(allowForWorkspace("runRelease")).toBe("POST");
     for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) expect(allowForWorkspace(route)).toBe("GET, HEAD");
@@ -697,6 +738,20 @@ describe("spec 008 bodies (T81): the shared shapes of the writes and resources",
     expect(isBoardQuery({ query: "?feature=F2" })).toBe(false);
     expect(isBoardQuery({ query: "x".repeat(BOARD_QUERY_MAX + 1) })).toBe(false);
     expect(isBoardQuery({ query: null })).toBe(false);
+  });
+
+  test("favourites (spec 052): a spec id is a spec folder name, the body is {specs} and nothing else", () => {
+    expect(isFavoriteSpec("004-retention-policies")).toBe(true);
+    for (const spec of ["004", "retention-policies", "04-x", "004-", "004-x/y", "../004-x", "", 4, null]) {
+      expect({ spec, ok: isFavoriteSpec(spec) }).toEqual({ spec, ok: false });
+    }
+    expect(isFavorites({ specs: [] })).toBe(true);
+    expect(isFavorites({ specs: ["002-web-console", "004-retention-policies"] })).toBe(true);
+    expect(isFavorites({ specs: ["004"] })).toBe(false);
+    expect(isFavorites({ specs: "004-retention-policies" })).toBe(false);
+    expect(isFavorites({ specs: [], ws: "harbor" })).toBe(false);
+    expect(isFavorites({})).toBe(false);
+    expect(isFavorites(null)).toBe(false);
   });
 
   test("the refusal codes are kebab-case and in API_ERRORS", () => {
@@ -954,7 +1009,13 @@ describe("the contract is browser-safe", () => {
 
   test("no module reached from the contract imports Bun or Node, or touches Bun.* or process.*", () => {
     const files = [...reach(CONTRACT)];
-    expect(files.length).toBe(3);
+    // The contract, assets.contract.ts, core's files.ts and core's spec-ref.ts (`SPEC_FOLDER`, spec 052's favourite id).
+    expect(files.map((file) => relative(ROOT, file)).sort()).toEqual([
+      "core/src/files.ts",
+      "core/src/spec-ref.ts",
+      "server/src/assets.contract.ts",
+      "server/src/spec-routes.contract.ts",
+    ]);
     const offending = files.filter((file) => {
       // Code only: assets.contract.ts documents `Bun.file()` for its consumers in comments.
       const source = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");

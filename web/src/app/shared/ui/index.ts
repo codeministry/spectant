@@ -52,6 +52,7 @@ export { type SegmentedOption, UiSegmented } from './segmented/segmented';
 export { UiSkeleton } from './skeleton/skeleton';
 export { UiSourceChip } from './source-chip/source-chip';
 export { type StageState, UiStageTrack } from './stage-track/stage-track';
+export { type StarToggleSize, UiStarToggle } from './star-toggle/star-toggle';
 export { UiStateChip } from './state-chip/state-chip';
 export { UiTerm } from './term/term';
 export { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from './type-glyph/type-glyph';

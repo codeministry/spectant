@@ -1,7 +1,10 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
+import { ToastService } from '../../shared/ui/toast/toast';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
@@ -35,11 +38,14 @@ const holder = { id: '003', title: 'Planning', main: false, archived: false } as
 function setUp(
   planning: (ws: string) => Promise<ApiResult<PlanningBody>>,
   initialWs: string | null,
-  extra: Partial<Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech', unknown>> = {},
+  extra: Partial<
+    Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech' | 'dashboard' | 'favorites' | 'putFavorite' | 'deleteFavorite', unknown>
+  > = {},
 ) {
   const ws = signal<string | null>(initialWs);
   const wsPage = signal<string | null>(null);
   const calls: string[] = [];
+  const toasts: string[] = [];
   const techCalls: string[] = [];
   const api = {
     workspaces: () => Promise.resolve(ok([])),
@@ -51,6 +57,7 @@ function setUp(
     },
     actors: () => Promise.resolve(ok([])),
     boardQuery: () => Promise.resolve(ok({ query: '' })),
+    favorites: () => Promise.resolve(ok({ specs: [] })),
     tech: (slug: string) => {
       techCalls.push(slug);
       return Promise.resolve(ok({ pages: null, specs: [] }));
@@ -58,13 +65,21 @@ function setUp(
     ...extra,
   };
   TestBed.configureTestingModule({
+    imports: [
+      TranslocoTestingModule.forRoot({
+        langs: CATALOGUES,
+        translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' },
+        preloadLangs: true,
+      }),
+    ],
     providers: [
       { provide: ApiClient, useValue: api },
+      { provide: ToastService, useValue: { show: (message: string) => toasts.push(message) } },
       { provide: ShellState, useValue: { ws, wsPage, specId: signal<string | null>(null) } },
       { provide: LockSourceService, useValue: { connect: () => undefined } },
     ],
   });
-  return { data: TestBed.inject(ShellData), ws, wsPage, calls, techCalls };
+  return { data: TestBed.inject(ShellData), ws, wsPage, calls, techCalls, toasts };
 }
 
 async function settle(): Promise<void> {
@@ -227,3 +242,201 @@ describe('ShellData spec 008 (T112, ISC-129.1)', () => {
   });
 });
 
+
+// Spec 052, T10 and T11 · ISC-300, ISC-302: one favourite set per workspace, shared by every star, switched
+// optimistically, and the rows the header's spec select lists.
+describe('ShellData favourites (spec 052, T10, T11)', () => {
+  type Favorites = { readonly specs: readonly string[] };
+  type Answer = { readonly kind: 'ok'; readonly body: Favorites } | { readonly kind: 'error'; readonly status: number; readonly error: string | null };
+  const row = (id: string, slug: string) => ({ id, slug, title: slug, stage: 'build' });
+  const dashboard = () =>
+    Promise.resolve(
+      ok({
+        specs: [row('007', '007-tide-tables'), row('002', '002-web-console'), row('004', '004-retention-policies')],
+        archive: [row('001', '001-bootstrap')],
+      }),
+    );
+  const deferred = () => {
+    let resolve!: (answer: Answer) => void;
+    const promise = new Promise<Answer>((done) => (resolve = done));
+    return { promise, resolve };
+  };
+
+  it('loads the set per workspace, none without one, and reloads on a change', async () => {
+    const reads: string[] = [];
+    const { data, ws } = setUp(() => Promise.resolve(ok(model([]))), null, {
+      favorites: (slug: string) => {
+        reads.push(slug);
+        return Promise.resolve(ok({ specs: slug === 'harbor' ? ['002-web-console'] : [] }));
+      },
+    });
+    await settle();
+    expect(reads).toEqual([]);
+    expect([...data.favoriteIds()]).toEqual([]);
+    ws.set('harbor');
+    await settle();
+    expect(reads).toEqual(['harbor']);
+    expect([...data.favoriteIds()]).toEqual(['002-web-console']);
+    expect(data.isFavorite('002-web-console')).toBe(true);
+    expect(data.isFavorite('004-retention-policies')).toBe(false);
+    ws.set('lantern');
+    await settle();
+    expect(reads).toEqual(['harbor', 'lantern']);
+    expect([...data.favoriteIds()]).toEqual([]);
+  });
+
+  it('answers an empty set when the favourites route fails', async () => {
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { favorites: () => Promise.reject(new Error('down')) });
+    await settle();
+    expect([...data.favoriteIds()]).toEqual([]);
+    expect(data.favoriteRows()).toEqual([]);
+  });
+
+  it('stars at once, sends the PUT, then takes the set the server answers', async () => {
+    const put = deferred();
+    const puts: Array<[string, string]> = [];
+    const { data, toasts } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'] })),
+      putFavorite: (slug: string, spec: string) => {
+        puts.push([slug, spec]);
+        return put.promise;
+      },
+    });
+    await settle();
+    const toggled = data.toggleFavorite('004-retention-policies');
+    expect(data.isFavorite('004-retention-policies')).toBe(true);
+    expect([...data.favoriteIds()]).toEqual(['002-web-console', '004-retention-policies']);
+    expect(puts).toEqual([['harbor', '004-retention-policies']]);
+
+    put.resolve({ kind: 'ok', body: { specs: ['004-retention-policies', '007-tide-tables'] } });
+    expect(await toggled).toBe(true);
+    TestBed.tick();
+    expect([...data.favoriteIds()]).toEqual(['004-retention-policies', '007-tide-tables']);
+    expect(toasts).toEqual([]);
+  });
+
+  it('unstars at once and sends the DELETE', async () => {
+    const deletes: Array<[string, string]> = [];
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console', '004-retention-policies'] })),
+      deleteFavorite: (slug: string, spec: string) => {
+        deletes.push([slug, spec]);
+        return Promise.resolve({ kind: 'ok', body: { specs: ['004-retention-policies'] } });
+      },
+    });
+    await settle();
+    const toggled = data.toggleFavorite('002-web-console');
+    expect(data.isFavorite('002-web-console')).toBe(false);
+    expect(await toggled).toBe(true);
+    expect(deletes).toEqual([['harbor', '002-web-console']]);
+    expect([...data.favoriteIds()]).toEqual(['004-retention-policies']);
+  });
+
+  it('reverts to the set before the click and toasts favorites.failed on a 500', async () => {
+    const put = deferred();
+    const { data, toasts } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'] })),
+      putFavorite: () => put.promise,
+    });
+    await settle();
+    const toggled = data.toggleFavorite('004-retention-policies');
+    expect(data.isFavorite('004-retention-policies')).toBe(true);
+
+    put.resolve({ kind: 'error', status: 500, error: null });
+    expect(await toggled).toBe(false);
+    TestBed.tick();
+    expect([...data.favoriteIds()]).toEqual(['002-web-console']);
+    expect(toasts).toEqual(['Could not save the favorite.']);
+  });
+
+  it('reverts an unstar the server refuses, keeping a star another click set meanwhile', async () => {
+    const removal = deferred();
+    const { data, toasts } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'] })),
+      deleteFavorite: () => removal.promise,
+      putFavorite: () => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console', '007-tide-tables'] } }),
+    });
+    await settle();
+    const unstar = data.toggleFavorite('002-web-console');
+    expect(data.isFavorite('002-web-console')).toBe(false);
+    expect(await data.toggleFavorite('007-tide-tables')).toBe(true);
+
+    removal.resolve({ kind: 'error', status: 0, error: null });
+    expect(await unstar).toBe(false);
+    TestBed.tick();
+    expect([...data.favoriteIds()].sort()).toEqual(['002-web-console', '007-tide-tables']);
+    expect(toasts).toEqual(['Could not save the favorite.']);
+  });
+
+  it('sends nothing without a workspace or for an id that is no spec folder', async () => {
+    let writes = 0;
+    const write = () => {
+      writes += 1;
+      return Promise.resolve({ kind: 'ok', body: { specs: [] } });
+    };
+    const { data, ws } = setUp(() => Promise.resolve(ok(model([]))), null, { putFavorite: write, deleteFavorite: write });
+    await settle();
+    expect(await data.toggleFavorite('004-retention-policies')).toBe(false);
+    ws.set('harbor');
+    await settle();
+    expect(await data.toggleFavorite('004')).toBe(false);
+    expect(writes).toBe(0);
+    expect([...data.favoriteIds()]).toEqual([]);
+  });
+
+  it('drops an answer that lands after the workspace changed', async () => {
+    const put = deferred();
+    const { data, ws } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: (slug: string) => Promise.resolve(ok({ specs: slug === 'lantern' ? ['001-lamp'] : [] })),
+      putFavorite: () => put.promise,
+    });
+    await settle();
+    const toggled = data.toggleFavorite('004-retention-policies');
+    ws.set('lantern');
+    await settle();
+    put.resolve({ kind: 'ok', body: { specs: ['004-retention-policies'] } });
+    expect(await toggled).toBe(true);
+    TestBed.tick();
+    expect([...data.favoriteIds()]).toEqual(['001-lamp']);
+  });
+
+  it('lists the favourite rows in the dashboard\'s row order', async () => {
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      dashboard,
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console', '007-tide-tables'] })),
+    });
+    await settle();
+    expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['007', '002']);
+  });
+
+  it('drops archived and unknown ids, so stale ids alone leave the select empty (ISC-302)', async () => {
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      dashboard,
+      favorites: () => Promise.resolve(ok({ specs: ['001-bootstrap', '009-renamed', '004-retention-policies'] })),
+    });
+    await settle();
+    expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['004']);
+    TestBed.resetTestingModule();
+
+    const stale = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      dashboard,
+      favorites: () => Promise.resolve(ok({ specs: ['001-bootstrap', '009-renamed'] })),
+    });
+    await settle();
+    expect(stale.data.favoriteIds().size).toBe(2);
+    expect(stale.data.favoriteRows()).toEqual([]);
+  });
+
+  it('shows a new star in favoriteRows without a reload', async () => {
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      dashboard,
+      putFavorite: () => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console'] } }),
+    });
+    await settle();
+    expect(data.favoriteRows()).toEqual([]);
+    const toggled = data.toggleFavorite('002-web-console');
+    expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['002']);
+    await toggled;
+    expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['002']);
+  });
+});

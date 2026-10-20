@@ -1334,14 +1334,16 @@ describe('stub API matches the real server handlers byte for byte', () => {
     const handler = real?.[state];
     if (!handler) throw new Error('real handlers not loaded');
     // The route with a golden family (`planning`) is compared here, whole file to whole body. The story route,
-    // the board query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real
-    // handlers". The tech page's routes went with spec 017 T51.
+    // the board query and the allocation (T119) and the favourites (spec 052) have no family; their parity runs in "stub API
+    // board seam matches the real handlers". The tech page's routes went with spec 017 T51.
     // The library routes (spec 017) have no golden and no server handler yet (`LIBRARY_AWAITING_HANDLER` in api.ts);
     // their answers are pinned in "stub API: the library".
     expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual([
       'planning',
       'idea',
       'boardQuery',
+      'favorites',
+      'favorite',
       'allocate',
       'backlog',
       'runRelease',
@@ -1972,6 +1974,30 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
     expect(await (await ask(bq, { session })).json()).toEqual({ query: '' });
   });
 
+  // Spec 052 T8: the e2e seeds a session's favourites with one PUT per id under its session header, as here.
+  test('favourites: in memory per session and workspace, sorted, validated as the server does, cleared by the reset', async () => {
+    const session = 't052-mem';
+    const list = workspaceRoutes.favorites(WS);
+    const put = async (spec: string, init: Parameters<typeof request>[1] = {}): Promise<Response> =>
+      ask(workspaceRoutes.favorite(WS, spec), { session, method: 'PUT', ...init });
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: [] });
+    expect(await (await put('006-partial-push')).json()).toEqual({ specs: ['006-partial-push'] });
+    expect(await (await put('002-web-console')).json()).toEqual({ specs: ['002-web-console', '006-partial-push'] });
+    // A second set keeps the one entry; the workspace's specs are not checked, so an unknown id is kept too.
+    expect(await (await put('002-web-console')).json()).toEqual({ specs: ['002-web-console', '006-partial-push'] });
+    expect(await (await put('999-not-there')).json()).toEqual({ specs: ['002-web-console', '006-partial-push', '999-not-there'] });
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: ['002-web-console', '006-partial-push', '999-not-there'] });
+    expect(await (await ask(list, { session: 't052-mem-other' })).json()).toEqual({ specs: [] });
+    expect(await (await ask(workspaceRoutes.favorites('lantern'), { session })).json()).toEqual({ specs: [] });
+    expect(await (await put('006-partial-push', { method: 'DELETE' })).json()).toEqual({ specs: ['002-web-console', '999-not-there'] });
+    expect(await (await put('006-partial-push', { method: 'DELETE' })).json()).toEqual({ specs: ['002-web-console', '999-not-there'] });
+    const refused = await put('web-console');
+    expect([refused.status, await refused.json()]).toEqual([400, { error: 'invalid-spec' }]);
+    expect((await ask(workspaceRoutes.favorite('nope', '002-web-console'), { session, method: 'PUT' })).status).toBe(404);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: [] });
+  });
+
   // Every registered route, every status its contract row names and no other; each 405 names the table's Allow.
   test('the status set of every registered route equals its contract row', async () => {
     const hash006 = holderIn(await boardTree(''), '006-partial-push')?.hash ?? '';
@@ -2036,6 +2062,25 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         [workspaceRoutes.boardQuery(WS), { method: 'DELETE' }],
         [workspaceRoutes.boardQuery('lantern'), { state: 'unreadable' }],
       ],
+      // Spec 052: the database alone, so no 409 even on an unreadable workspace; `favorite`'s two methods are both writes.
+      favorites: [
+        [workspaceRoutes.favorites(WS), {}],
+        [workspaceRoutes.favorites(WS), { method: 'HEAD' }],
+        [workspaceRoutes.favorites(WS), { headers: { 'If-None-Match': '*' } }],
+        [workspaceRoutes.favorites(WS), { headers: evil }],
+        [workspaceRoutes.favorites('nope'), {}],
+        [workspaceRoutes.favorites(WS), { method: 'PUT' }],
+        [workspaceRoutes.favorites('lantern'), { state: 'unreadable' }],
+      ],
+      favorite: [
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'PUT', session: 't052-favorite-status' }],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'DELETE', session: 't052-favorite-status' }],
+        [workspaceRoutes.favorite(WS, 'web-console'), { method: 'PUT' }],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'PUT', headers: evil }],
+        [workspaceRoutes.favorite('nope', '002-web-console'), { method: 'PUT' }],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'GET' }],
+        [workspaceRoutes.favorite('lantern', '001-reading-list'), { method: 'PUT', state: 'unreadable', session: 't052-favorite-status' }],
+      ],
       allocate: [
         ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
         [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
@@ -2089,6 +2134,8 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       'planning',
       'idea',
       'boardQuery',
+      'favorites',
+      'favorite',
       'allocate',
       'backlog',
       'runRelease',
@@ -2194,7 +2241,7 @@ describe('stub API board seam matches the real handlers (T119)', () => {
     expect(statuses).toEqual([200, 200, 200, 404, 404, 405]);
   });
 
-  test('board-query and actors: the same sequence of requests gives the same answers', async () => {
+  test('board-query, favourites and actors: the same sequence of requests gives the same answers', async () => {
     const queries = await same(
       dashboard,
       [
@@ -2208,6 +2255,27 @@ describe('stub API board seam matches the real handlers (T119)', () => {
       't119-parity-bq',
     );
     expect(queries).toEqual([200, 200, 200, 400, 404, 405]);
+    // Spec 052: the favourites, set and unset in one session; the last DELETE leaves the real database as it found it.
+    const favourites = await same(
+      dashboard,
+      [
+        [workspaceRoutes.favorites(WS), {}],
+        [workspaceRoutes.favorite(WS, '006-partial-push'), { method: 'PUT' }],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'PUT' }],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'PUT' }],
+        [workspaceRoutes.favorites(WS), { method: 'HEAD' }],
+        [workspaceRoutes.favorite(WS, '006-partial-push'), { method: 'DELETE' }],
+        [workspaceRoutes.favorite(WS, 'web-console'), { method: 'PUT' }],
+        [workspaceRoutes.favorite('nope', '002-web-console'), { method: 'PUT' }],
+        [workspaceRoutes.favorites('nope'), {}],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'GET' }],
+        [workspaceRoutes.favorites(WS), { method: 'POST', body: '{}' }],
+        [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'DELETE' }],
+        [workspaceRoutes.favorites(WS), {}],
+      ],
+      't052-parity-favorites',
+    );
+    expect(favourites).toEqual([200, 200, 200, 200, 200, 200, 400, 404, 404, 405, 405, 200, 200]);
     const people = [
       { id: 'u:3f9c0a7d', displayName: 'Harbor dev', gitIdentities: [] },
       { id: 'u:0000000a', displayName: 'B', gitIdentities: ['b@example.test'] },

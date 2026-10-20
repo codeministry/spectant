@@ -1,9 +1,11 @@
 import { computed, inject, Injectable, resource } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
 import type { Priority } from '../../../../../core/src/files';
 import { specRefMatches } from '../../../../../core/src/spec-ref';
-import type { ActorMapping, BoardQuery } from '../../../../../server/src/spec-routes.contract';
+import { type ActorMapping, type BoardQuery, isFavoriteSpec } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient, type PlanningBody, type PutResult, type WorkspaceListEntry } from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
+import { ToastService } from '../../shared/ui/toast/toast';
 import { ShellState } from './shell-state.service';
 
 /**
@@ -66,6 +68,8 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
 export class ShellData {
   private readonly api = inject(ApiClient);
   private readonly state = inject(ShellState);
+  private readonly toast = inject(ToastService);
+  private readonly transloco = inject(TranslocoService);
 
   readonly workspaces = resource({ loader: () => this.api.workspaces() });
 
@@ -90,6 +94,15 @@ export class ShellData {
   readonly boardQuery = resource({
     params: () => this.state.ws() ?? undefined,
     loader: ({ params }) => this.api.boardQuery(params),
+  });
+
+  /**
+   * The open workspace's favourite specs (spec 052, T10, ISC-300), keyed like `boardQuery`. Its value is the one set
+   * every star reads, so a click in one place shows in all three without a reload; `toggleFavorite` writes it.
+   */
+  readonly favorites = resource({
+    params: () => this.state.ws() ?? undefined,
+    loader: ({ params }) => this.api.favorites(params),
   });
 
   readonly spec = resource({
@@ -168,6 +181,67 @@ export class ShellData {
     const result = this.boardQuery.hasValue() ? this.boardQuery.value() : undefined;
     return result?.kind === 'ok' ? result.body.query : null;
   });
+
+  /**
+   * The favourite spec folders (`NNN-slug`) of the open workspace as stored, ids the dashboard no longer lists
+   * included; empty without a workspace, while loading and for every answer but `ok` (a failed route included).
+   */
+  readonly favoriteIds = computed<ReadonlySet<string>>(() => {
+    const result = this.favorites.hasValue() ? this.favorites.value() : undefined;
+    return new Set(result?.kind === 'ok' ? result.body.specs : []);
+  });
+
+  /**
+   * The favourite rows the header's spec select lists (spec 052, T11, ISC-302): `specRows` filtered to the favourite
+   * folders, in its order. An archived, deleted or renamed spec is no row of `specRows`, so its stored id drops out
+   * here and `favoriteRows().length === 0` is the empty state even while stale ids are stored.
+   */
+  readonly favoriteRows = computed<readonly SpecRowView[]>(() => {
+    const ids = this.favoriteIds();
+    return this.specRows().filter((row) => ids.has(row.slug ?? row.id));
+  });
+
+  /** Whether the spec folder `spec` is a favourite of the open workspace; reactive, a star's `pressed` reads it. */
+  isFavorite(spec: string): boolean {
+    return this.favoriteIds().has(spec);
+  }
+
+  /**
+   * Stars or unstars the spec folder `spec` (`NNN-slug`) in the open workspace (spec 052, T10, ISC-300), optimistically:
+   * the set flips at once, then the `PUT` or `DELETE` runs and its answer, the whole set as stored, replaces the
+   * local one. On a failure only this spec flips back, so a star another click set meanwhile survives, and the toast
+   * says `favorites.failed`. An answer landing after the workspace changed is dropped: the new workspace's set loads
+   * on its own. Without a workspace, or for an id that is no spec folder, nothing is sent. Resolves true when the
+   * server accepted the write.
+   */
+  async toggleFavorite(spec: string): Promise<boolean> {
+    const ws = this.state.ws();
+    if (ws === null || !isFavoriteSpec(spec)) return false;
+    const star = !this.favoriteIds().has(spec);
+    this.setFavorites(this.flipped(spec, star));
+    const result = star ? await this.api.putFavorite(ws, spec) : await this.api.deleteFavorite(ws, spec);
+    if (this.state.ws() !== ws) return result.kind === 'ok';
+    if (result.kind === 'ok') {
+      this.setFavorites(result.body.specs);
+      return true;
+    }
+    this.setFavorites(this.flipped(spec, !star));
+    this.toast.show(this.transloco.translate('favorites.failed'));
+    return false;
+  }
+
+  /** The current set with `spec` in it (`on`) or not, sorted as the server sorts it. */
+  private flipped(spec: string, on: boolean): string[] {
+    const ids = new Set(this.favoriteIds());
+    if (on) ids.add(spec);
+    else ids.delete(spec);
+    return [...ids].sort();
+  }
+
+  /** A local value of the `favorites` resource; the client's ETag cache for the route stays as the last read left it. */
+  private setFavorites(specs: readonly string[]): void {
+    this.favorites.set({ kind: 'ok', body: { specs }, etag: null, notModified: false });
+  }
 
   /** `PUT /api/actors` with the whole list; on an accepted answer the `actors` resource reloads. */
   async saveActors(list: readonly ActorMapping[]): Promise<PutResult<readonly ActorMapping[]>> {

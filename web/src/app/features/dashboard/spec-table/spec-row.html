@@ -62,3 +62,10 @@
   <ui-meter class="meter" [mini]="true" [value]="row().closed" [max]="row().total" aria-hidden="true" />
   <span class="frac" aria-hidden="true">{{ row().closed }}/{{ row().total }}</span>
 </span>
+<!-- Spec 052 (T17, ISC-300): the list's favorite star, its own target beside the row link, lifted above the link's
+     stretch. An archived row gets none; its cell stays, empty, so the columns line up. -->
+<span class="rstar">
+  @if (!row().archived) {
+    <ng-content select="[ui-star-toggle]" />
+  }
+</span>
