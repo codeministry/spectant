@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { convertToParamMap, provideRouter, Router } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { type Density, SETTINGS_URL, SettingsService } from '../../../core/settings.service';
@@ -10,7 +10,7 @@ import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
 import { SpecTable } from './spec-table';
-import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
+import { DEFAULT_QUERY, type ListQuery, parseListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
 /** A dashboard row as the server sends it (`DashboardSpecRow`), only the fields that matter overridden. */
 function wire(id: string, over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -168,6 +168,10 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
     const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
     expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Spec 050: "Show archived" is the last of the filters, after the type chips, so the phase chips keep head line 1.
+    const toggle = head.querySelector('[data-control="archived"]') as HTMLElement;
+    const lastFilter = [...head.querySelectorAll('ui-filter-chips')].at(-1) as HTMLElement;
+    expect(lastFilter.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {
@@ -205,16 +209,6 @@ describe('SpecTable (prototype port, T89)', () => {
     const rows = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')];
     expect(rows.map((row) => row.getAttribute('tabindex'))).toEqual(['0', '-1']);
     expect(rows[0]?.hasAttribute('data-selected')).toBe(true);
-  });
-
-  it('closes with the archived footer "1 archived spec 001 manifest-sync" under #archive', async () => {
-    const { host } = await render();
-    const foot = host.querySelector('#archive');
-    expect(foot?.classList.contains('t-foot')).toBe(true);
-    // The parts sit in a flex row with an 8 px gap, so the text nodes carry no spaces between them.
-    expect(text(foot?.querySelector(':scope > span'))).toBe('1 archived spec');
-    expect(text(foot?.querySelector('a[data-archived-row="001"]'))).toBe('001 manifest-sync');
-    expect(foot?.querySelector('a[data-archived-row="001"]')?.getAttribute('href')).toBe('/w/harbor/s/001');
   });
 
   describe('live update marks (design.md § Live update, ISC-62.1)', () => {
@@ -741,5 +735,379 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
     const second = await renderWith('/?density=dense', 'compact');
     expect(second.row('002')?.getAttribute('data-density')).toBe('compact');
     expect(second.writes()).toEqual([]);
+  });
+});
+
+// Spec 050 (T4, ISC-287): "Show archived" in the list's head. Off by default and only there with an archive; on, the
+// archived specs are rows of the one list under every active row, each with the archive chip and none of an active
+// row's priority, stage track or phase chip, and their link selects, then opens the spec like any other row.
+describe('archived toggle (spec 050, ISC-287)', () => {
+  const ARCHIVED = {
+    specs: [
+      wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.' }),
+      wire('003'),
+    ],
+    archive: [
+      { id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature', claims: { closed: 6, total: 6 }, goal: 'Syncs the manifest.', archived: '2026-09-12' },
+      { id: '004', slug: '004-old-export', title: 'Old export', type: 'feature', claims: { closed: 3, total: 4 }, goal: '', archived: null },
+    ],
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderArchive(query: ListQuery = DEFAULT_QUERY, body: Record<string, unknown> = ARCHIVED) {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('archive', readArchiveRows(body));
+    fixture.componentRef.setInput('query', query);
+    const emitted: ListQuery[] = [];
+    fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const toggle = () => host.querySelector<HTMLButtonElement>('button[data-control="archived"]');
+    const archivedLinks = () => [...host.querySelectorAll<HTMLAnchorElement>('.row-link[data-archived-row]')];
+    const rowIds = () => [...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow']);
+    return { fixture, host, router, emitted, toggle, archivedLinks, rowIds };
+  }
+
+  it('renders no toggle without an archive', async () => {
+    const { toggle, archivedLinks } = await renderArchive(DEFAULT_QUERY, { specs: ARCHIVED.specs, archive: [] });
+    expect(toggle()).toBeNull();
+    expect(archivedLinks()).toHaveLength(0);
+  });
+
+  it('is off by default: aria-pressed="false" and no archived row; a click asks for archived: true', async () => {
+    const { fixture, toggle, archivedLinks, rowIds, emitted } = await renderArchive();
+    expect(text(toggle())).toBe('Show archived');
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+    expect(archivedLinks()).toHaveLength(0);
+    expect(rowIds()).toEqual(['002', '003']);
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(emitted).toEqual([{ ...DEFAULT_QUERY, archived: true }]);
+  });
+
+  it('reads "Archivierte zeigen" in German', async () => {
+    const { fixture, toggle } = await renderArchive();
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(toggle())).toBe('Archivierte zeigen');
+  });
+
+  it('on, lists every archived spec as a row under all active ones, each with the chip and no priority, track or phase', async () => {
+    const { fixture, host, toggle, archivedLinks, rowIds, emitted } = await renderArchive({ ...DEFAULT_QUERY, archived: true });
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+    const archivedIds = archivedLinks().map((link) => link.dataset['archivedRow']);
+    expect([...archivedIds].sort()).toEqual(['001', '004']);
+    // One list, DOM order: the active rows first, then the archived block.
+    const ids = rowIds();
+    expect(ids.slice(0, 2)).toEqual(['002', '003']);
+    expect([...ids.slice(2)].sort()).toEqual(['001', '004']);
+    for (const link of archivedLinks()) {
+      const row = link.closest('app-spec-row') as HTMLElement;
+      expect(row.hasAttribute('data-archived')).toBe(true);
+      expect(text(row.querySelector('[data-archived-chip]'))).toBe('Archived');
+      expect(row.querySelector('ui-priority')).toBeNull();
+      expect(row.querySelector('ui-stage-track')).toBeNull();
+      expect(row.querySelector('ui-chip.phase')).toBeNull();
+    }
+    // The active rows keep theirs and carry no archive mark.
+    for (const id of ['002', '003']) {
+      const row = host.querySelector(`.row-link[data-spec-row="${id}"]`)?.closest('app-spec-row') as HTMLElement;
+      expect(row.hasAttribute('data-archived')).toBe(false);
+      expect(row.querySelector('[data-archived-chip]')).toBeNull();
+      expect(row.querySelector('ui-stage-track')).not.toBeNull();
+    }
+    expect(host.querySelectorAll('app-spec-row[data-archived]')).toHaveLength(2);
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(emitted).toEqual([{ ...DEFAULT_QUERY, archived: false }]);
+  });
+
+  it('a reload with `?archived=1` shows them: the URL the page parses turns the toggle on', async () => {
+    const { fixture, router, toggle, archivedLinks } = await renderArchive();
+    expect(archivedLinks()).toHaveLength(0);
+    // The dashboard page parses its query params with `parseListQuery`; feed it the reloaded URL's map.
+    const reloaded = parseListQuery(router.parseUrl('/w/harbor?archived=1').queryParamMap);
+    expect(reloaded).toEqual({ ...DEFAULT_QUERY, archived: true });
+    expect(parseListQuery(convertToParamMap({ archived: '1' }))).toEqual(reloaded);
+    fixture.componentRef.setInput('query', reloaded);
+    await fixture.whenStable();
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+    expect(archivedLinks().map((link) => link.dataset['archivedRow']).sort()).toEqual(['001', '004']);
+    // Without the parameter the reload is off again.
+    expect(parseListQuery(convertToParamMap({}))).toEqual(DEFAULT_QUERY);
+  });
+
+  it('an archived row selects first (`?sel=spec:<id>`), then links to the spec page like an active row', async () => {
+    const { fixture, host, router } = await renderArchive({ ...DEFAULT_QUERY, archived: true });
+    const link = () => host.querySelector<HTMLAnchorElement>('.row-link[data-archived-row="001"]');
+    expect(link()?.getAttribute('data-ref')).toBe('spec:001');
+    expect(link()?.getAttribute('href')).toMatch(/[?&]sel=spec:001$/);
+    link()?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?sel=spec:001');
+    fixture.componentRef.setInput('preview', '001');
+    await fixture.whenStable();
+    expect(link()?.getAttribute('data-selected')).toBe('row');
+    expect(link()?.getAttribute('href')).toBe('/w/harbor/s/001');
+  });
+});
+
+describe('archived rows under filters and the fold (spec 050, ISC-288)', () => {
+  const pad = (n: number): string => String(n).padStart(3, '0');
+  const PHASES = [
+    { phase: 'building', stageGroup: 'building', stage: 'build' },
+    { phase: 'scoping', stageGroup: 'scoping', stage: 'review' },
+    { phase: 'complete', stageGroup: 'complete', stage: 'done' },
+  ];
+  // 22 active specs on the even IDs 002–044: phases in turn, every third a bug, fog and takeable on some, mixed ratios.
+  const ACTIVE = Array.from({ length: 22 }, (_, i) =>
+    wire(pad(2 * (i + 1)), {
+      ...PHASES[i % 3],
+      type: i % 3 === 0 ? 'bug' : 'feature',
+      progress: { closed: i % 4, total: 4 },
+      fog: i % 5 === 0 ? 1 : 0,
+      takeable: i % 4 === 1 ? ['ISC-1'] : [],
+    }),
+  );
+  // 17 archived specs on the odd IDs 001–033, out of order, so an ID sort over both blocks would interleave them.
+  const ARCHIVED_IDS = [17, 5, 29, 1, 23, 11, 33, 9, 21, 3, 27, 15, 31, 7, 19, 25, 13];
+  const ARCHIVE = ARCHIVED_IDS.map((n, i) => ({
+    id: pad(n),
+    slug: `${pad(n)}-old`,
+    title: `Old ${pad(n)}`,
+    type: i % 4 === 0 ? 'bug' : 'feature',
+    claims: { closed: i % 5, total: 4 },
+    goal: '',
+    archived: '2026-09-01',
+  }));
+  const BODY_050 = { specs: ACTIVE, archive: ARCHIVE };
+  const ON: ListQuery = { ...DEFAULT_QUERY, archived: true };
+
+  const ids = (rows: ReadonlyArray<Record<string, unknown>>): string[] => rows.map((row) => String(row['id']));
+  const activeOf = (keep: (row: Record<string, unknown>) => boolean): string[] => ids(ACTIVE.filter(keep));
+  const ratioOf = (row: (typeof ARCHIVE)[number]): number => row.claims.closed / row.claims.total;
+  const archivedDesc = (rows = ARCHIVE): string[] => ids([...rows].sort((a, b) => b.id.localeCompare(a.id)));
+  const archivedBugs = archivedDesc(ARCHIVE.filter((row) => row.type === 'bug'));
+  const activeBugs = activeOf((row) => row['type'] === 'bug');
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  /** Renders the table under `query`; `?open=specs` (the default) opens the fold so every listed row is in the DOM. */
+  async function render(query: ListQuery, url = '/?open=specs') {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(BODY_050));
+    fixture.componentRef.setInput('archive', readArchiveRows(BODY_050));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const rowIds = () => [...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow'] ?? '');
+    const archivedIds = () => [...host.querySelectorAll<HTMLElement>('.row-link[data-archived-row]')].map((link) => link.dataset['archivedRow'] ?? '');
+    const fold = () => host.querySelector<HTMLElement>('ui-disclosure[data-fold="specs"]');
+    const summary = () => host.querySelector<HTMLElement>('[data-show-all]');
+    const suffix = () => host.querySelector<HTMLElement>('[data-fold-archived]');
+    return { fixture, rowIds, archivedIds, fold, summary, suffix };
+  }
+
+  it('the type filter reaches the archived rows: only the bugs of both blocks, the archived ones after the active', async () => {
+    const { rowIds, archivedIds } = await render({ ...ON, type: 'bug' });
+    expect(activeBugs).toHaveLength(8);
+    expect(archivedBugs).toEqual(['031', '023', '021', '017', '013']);
+    expect(rowIds()).toEqual([...activeBugs, ...archivedBugs]);
+    expect(archivedIds()).toEqual(archivedBugs);
+  });
+
+  it('every phase chip, fog and takeable hide every archived row and leave the active rows they match', async () => {
+    const cases: Array<{ query: ListQuery; active: string[] }> = [
+      ...['scoping', 'building', 'complete'].map((phase) => ({ query: { ...ON, phase }, active: activeOf((row) => row['stageGroup'] === phase) })),
+      { query: { ...ON, phase: 'fog' }, active: activeOf((row) => Number(row['fog']) > 0) },
+      { query: { ...ON, takeable: true }, active: activeOf((row) => Array.isArray(row['takeable']) && row['takeable'].length > 0) },
+    ];
+    for (const { query, active } of cases) {
+      const { rowIds, archivedIds, suffix } = await render(query);
+      expect(active.length).toBeGreaterThan(0);
+      expect(rowIds()).toEqual(active);
+      expect(archivedIds()).toEqual([]);
+      expect(suffix()).toBeNull();
+    }
+  });
+
+  it('the sort orders the archive block on its own, always after every active row', async () => {
+    const activeIds = ids(ACTIVE);
+    const byId = await render({ ...ON, sort: 'id' });
+    expect(byId.rowIds()).toEqual([...activeIds, ...ids([...ARCHIVE].sort((a, b) => a.id.localeCompare(b.id)))]);
+    expect(byId.archivedIds().slice(0, 3)).toEqual(['001', '003', '005']);
+
+    const byStage = await render({ ...ON, sort: 'stage' });
+    expect(byStage.rowIds()).toEqual([...activeIds, ...archivedDesc()]);
+    expect(byStage.archivedIds().slice(0, 3)).toEqual(['033', '031', '029']);
+
+    const byProgress = await render({ ...ON, sort: 'progress' });
+    const closedOf = (row: Record<string, unknown>): number => (row['progress'] as { closed: number }).closed;
+    const activeByRatio = ids([...ACTIVE].sort((a, b) => closedOf(b) - closedOf(a)));
+    const archivedByRatio = ids([...ARCHIVE].sort((a, b) => ratioOf(b) - ratioOf(a) || b.id.localeCompare(a.id)));
+    expect(byProgress.rowIds()).toEqual([...activeByRatio, ...archivedByRatio]);
+    // The three 4/4 specs lead the block, their tie broken by ID descending.
+    expect(byProgress.archivedIds().slice(0, 3)).toEqual(['023', '019', '003']);
+  });
+
+  it('the fold counts the archived rows: 10 before it, the other 29 inside, "Show all 39 specs · 17 archived"', async () => {
+    const closed = await render(ON, '/');
+    expect(closed.rowIds()).toEqual(ids(ACTIVE.slice(0, 10)));
+    expect(text(closed.summary())).toBe('Show all 39 specs · 17 archived');
+    expect(text(closed.suffix())).toBe('· 17 archived');
+
+    const open = await render(ON);
+    expect(open.rowIds()).toHaveLength(39);
+    expect(open.fold()?.querySelectorAll('.row-link[data-spec-row]')).toHaveLength(29);
+    expect(open.fold()?.querySelectorAll('.row-link[data-archived-row]')).toHaveLength(17);
+  });
+
+  it('under a type filter that leaves fewer than 10 active rows, archived rows move up into the first 10', async () => {
+    const { rowIds, archivedIds, summary, suffix } = await render({ ...ON, type: 'bug' }, '/');
+    expect(rowIds()).toEqual([...activeBugs, '031', '023']);
+    expect(archivedIds()).toEqual(['031', '023']);
+    expect(text(summary())).toBe('Show all 13 specs · 5 archived');
+    expect(text(suffix())).toBe('· 5 archived');
+  });
+
+  it('with the switch off the fold counts the active rows only and names no archive', async () => {
+    const { rowIds, archivedIds, summary, suffix } = await render(DEFAULT_QUERY, '/');
+    expect(rowIds()).toHaveLength(10);
+    expect(archivedIds()).toEqual([]);
+    expect(text(summary())).toBe('Show all 22 specs');
+    expect(suffix()).toBeNull();
+  });
+
+  it('reads the fold in German: "Alle 39 Specs zeigen · 17 archiviert"', async () => {
+    const { fixture, summary } = await render(ON, '/');
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(summary())).toBe('Alle 39 Specs zeigen · 17 archiviert');
+  });
+});
+
+describe('toggle off shows no archived spec (spec 050, ISC-289)', () => {
+  const ACTIVE = [
+    wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, goal: 'Serves the dashboard.' }),
+    wire('003', { type: 'bug' }),
+  ];
+  const ARCHIVE = [
+    { id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature', claims: { closed: 6, total: 6 }, goal: 'Syncs the manifest.', archived: '2026-09-12' },
+    { id: '004', slug: '004-old-export', title: 'Old export', type: 'bug', claims: { closed: 3, total: 4 }, goal: '', archived: null },
+  ];
+  const ARCHIVED_IDS = ARCHIVE.map((row) => row.id);
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  /** Renders the table with the fold open (`?open=specs`), so a row behind it would be in the DOM too. */
+  async function render(query: ListQuery = DEFAULT_QUERY, body: Record<string, unknown> = { specs: ACTIVE, archive: ARCHIVE }) {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?open=specs');
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('archive', readArchiveRows(body));
+    fixture.componentRef.setInput('query', query);
+    await fixture.whenStable();
+    return { fixture, host: fixture.nativeElement as HTMLElement };
+  }
+
+  /** Every forbidden trace of an archived spec in the panel: a list row, a row host, the old footer, a link to its page. */
+  function expectNoArchived(host: HTMLElement): void {
+    expect(host.querySelectorAll('.row-link[data-archived-row]')).toHaveLength(0);
+    expect(host.querySelectorAll('app-spec-row[data-archived]')).toHaveLength(0);
+    expect(host.querySelectorAll('[data-archived-chip]')).toHaveLength(0);
+    expect(host.querySelectorAll('[data-fold="archive"]')).toHaveLength(0);
+    expect(host.querySelectorAll('#archive, .t-foot')).toHaveLength(0);
+    for (const id of ARCHIVED_IDS) {
+      expect(host.querySelectorAll(`a[href*="/s/${id}"], a[href*="spec:${id}"], [data-spec-row="${id}"], [data-ref="spec:${id}"]`)).toHaveLength(0);
+    }
+  }
+
+  it('the default query lists the active rows only, names no archived spec anywhere and keeps "2 archived specs" in the head', async () => {
+    const { host } = await render();
+    expect(DEFAULT_QUERY.archived).toBe(false);
+    expectNoArchived(host);
+    expect([...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow'])).toEqual(['002', '003']);
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('2 archived specs');
+    expect(host.querySelector('button[data-control="archived"]')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('stays without archived rows under every sort and under a type filter that an archived spec matches', async () => {
+    const queries: ListQuery[] = [
+      ...(['id', 'stage', 'next', 'progress'] as const).map((sort) => ({ ...DEFAULT_QUERY, sort })),
+      { ...DEFAULT_QUERY, type: 'feature' },
+      { ...DEFAULT_QUERY, type: 'bug', sort: 'id' },
+    ];
+    for (const query of queries) {
+      const { host } = await render(query);
+      expectNoArchived(host);
+      expect(host.querySelectorAll('.row-link[data-spec-row]').length).toBeGreaterThan(0);
+      expect(text(host.querySelector('[data-count="archived"]'))).toBe('2 archived specs');
+    }
+  });
+
+  it('the singular counter reads "1 archived spec"', async () => {
+    const { host } = await render(DEFAULT_QUERY, { specs: ACTIVE, archive: ARCHIVE.slice(0, 1) });
+    expectNoArchived(host);
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('1 archived spec');
+  });
+
+  it('no active spec, an archive and the switch off: "No active spec · K archived", no row and no footer', async () => {
+    for (const archive of [ARCHIVE, ARCHIVE.slice(0, 1)]) {
+      const { host } = await render(DEFAULT_QUERY, { specs: [], archive });
+      expectNoArchived(host);
+      expect(host.querySelectorAll('.row-link')).toHaveLength(0);
+      expect(text(host.querySelector('p.empty[data-empty="active"]'))).toBe(`No active spec · ${archive.length} archived`);
+      expect(text(host.querySelector('[data-count="archived"]'))).toBe(archive.length === 1 ? '1 archived spec' : `${archive.length} archived specs`);
+    }
+  });
+
+  it('no active spec and no archive: the old "No specs yet", no active-empty line', async () => {
+    const { host } = await render(DEFAULT_QUERY, { specs: [], archive: [] });
+    expect(text(host.querySelector('p.empty'))).toBe('No specs yet');
+    expect(host.querySelector('[data-empty="active"]')).toBeNull();
+    expect(text(host.querySelector('[data-count="archived"]'))).toBe('0 archived specs');
   });
 });

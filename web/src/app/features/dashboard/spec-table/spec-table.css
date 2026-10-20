@@ -52,6 +52,47 @@
   border-style: solid;
 }
 
+/*
+ * Spec 050 (T3): "Show archived", shaped like `.sort`, muted while off; pressed, the planning tree's flat primary
+ * underline. It follows the filter chips, so the sort keeps its place and the phase chips stay on the head's first line
+ * (spec 021, P3). Under `pointer: coarse` a pseudo-element widens the target to 44 px.
+ */
+.archived-toggle {
+  --btn-bg: var(--color-base-100);
+  --btn-border: var(--line);
+  --btn-fg: var(--muted-ink);
+
+  position: relative;
+  gap: 8px;
+  border-radius: var(--radius-field);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.archived-toggle[aria-pressed='true'] {
+  --btn-bg: var(--color-base-300);
+  --btn-fg: var(--color-base-content);
+
+  box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+
+@media (pointer: coarse) {
+  .archived-toggle::after {
+    content: '';
+    position: absolute;
+    inset: -7px 0;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .takeable-flag {
   --btn-bg: var(--disp-t);
   --btn-fg: var(--disp-ink);
@@ -97,6 +138,11 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
+}
+
+/* Spec 050 (T6, ISC-288): the fold's "· K archived" suffix, muted behind the name. */
+.show-all-archived {
+  color: var(--muted-ink);
 }
 
 .rows-rest {
@@ -182,38 +228,6 @@
   padding: 16px;
   border-block-start: 1px solid var(--line);
   color: var(--muted-ink);
-}
-
-.t-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  min-block-size: 44px;
-  padding: 0 16px;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.archived-link {
-  display: inline-flex;
-  gap: 8px;
-  align-items: baseline;
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  text-decoration: none;
-}
-
-.archived-link:hover {
-  color: var(--color-base-content);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.archived-id {
-  color: var(--disp-text);
-  font-variant-numeric: tabular-nums;
 }
 
 /* The sort menu, in the popover and the sheet (prototype `.pop-item`). The prototype popover is at least 240 px wide; the panel's 8 px padding is part of that. */

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyArchivedQuery,
   applyListQuery,
+  type ArchiveRow,
+  archivedTableRow,
   DEFAULT_QUERY,
+  FOG,
   holdNewRows,
   type ListQuery,
   listQueryParams,
@@ -10,8 +14,10 @@ import {
   readArchiveRows,
   readListCounts,
   readSpecRows,
+  SORT_KEYS,
   SORT_MENU,
   type SpecTableRow,
+  STAGE_GROUPS,
   typeOptions,
 } from './spec-table-model';
 
@@ -48,7 +54,9 @@ const BODY = {
     wire('002', { phase: 'building', stageGroup: 'building', stage: 'build', progress: { closed: 25, total: 30 }, takeable: ['ISC-1', 'ISC-2'] }),
     wire('003', { type: 'refactor', phase: 'climbing', stageGroup: 'complete', stage: 'tasks', progress: { closed: 0, total: 13 }, nextCommand: null }),
   ],
-  archive: [{ id: '001', slug: '001-first', title: 'First', type: 'feature' }],
+  archive: [
+    { id: '001', slug: '001-first', title: 'First', type: 'feature', archived: '2026-09-01', archivedReason: null, claims: { closed: 5, total: 6 }, tasks: { landed: 3, total: 3 }, goal: 'Starts the workspace.' },
+  ],
   kpis: { specs: 4, stageGroups: { scoping: 1, building: 2, complete: 1 }, specsWithFog: 1, byType: { feature: 2, bug: 1, refactor: 1 } },
 };
 
@@ -78,34 +86,88 @@ describe('readSpecRows', () => {
     expect(ids(readSpecRows({ specs: [{ title: 'x' }, wire('007')] }))).toEqual(['007']);
   });
 
-  it('reads the archive rows', () => {
-    expect(readArchiveRows(BODY)).toEqual([{ id: '001', slug: '001-first', title: 'First', type: 'feature' }]);
+  it('reads the archive rows with their claims, goal and archive date (spec 050, ISC-287)', () => {
+    expect(readArchiveRows(BODY)).toEqual([
+      { id: '001', slug: '001-first', title: 'First', type: 'feature', closed: 5, total: 6, goal: 'Starts the workspace.', archived: '2026-09-01' },
+    ]);
+  });
+
+  it('reads an archive row without claims, goal or date as zero claims, no goal and no date', () => {
+    expect(readArchiveRows({ archive: [{ id: '007', slug: '007-old', title: 'Old', type: null, claims: 'no', goal: 3 }, { title: 'x' }] })).toEqual([
+      { id: '007', slug: '007-old', title: 'Old', type: null, closed: 0, total: 0, goal: '', archived: null },
+    ]);
+  });
+});
+
+describe('archivedTableRow (spec 050, ISC-287)', () => {
+  const [archived] = readArchiveRows(BODY);
+
+  it('builds a done row with the archive mark and no priority, stage group, phase or next step', () => {
+    expect(archivedTableRow(archived)).toEqual({
+      id: '001',
+      title: 'First',
+      type: 'feature',
+      priority: null,
+      phase: null,
+      stage: 'done',
+      stageGroup: null,
+      closed: 5,
+      total: 6,
+      nextCommand: null,
+      nextReason: '',
+      takeable: [],
+      warnings: 0,
+      fog: 0,
+      description: 'Starts the workspace.',
+      agent: null,
+      waits: null,
+      archived: { on: '2026-09-01' },
+    });
+  });
+
+  it('drops a goal that repeats the title and keeps a missing date as null', () => {
+    const row = archivedTableRow({ id: '008', slug: '008-same', title: 'Same', type: null, closed: 0, total: 0, goal: 'Same.', archived: null });
+    expect(row).toMatchObject({ description: null, archived: { on: null } });
+  });
+
+  it('leaves every active row without the archive mark', () => {
+    expect(readSpecRows(BODY).every((row) => row.archived === undefined)).toBe(true);
   });
 });
 
 describe('parseListQuery and listQueryParams', () => {
-  it('reads the four query params and falls back to the defaults', () => {
+  it('reads the five query params and falls back to the defaults', () => {
     expect(parseListQuery(params({}))).toEqual(DEFAULT_QUERY);
-    expect(parseListQuery(params({ phase: 'building', type: 'bug', sort: 'id', takeable: '1' }))).toEqual({
+    expect(parseListQuery(params({ phase: 'building', type: 'bug', sort: 'id', takeable: '1', archived: '1' }))).toEqual({
       phase: 'building',
       type: 'bug',
       sort: 'id',
       takeable: true,
+      archived: true,
     });
-    expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes' }))).toEqual(DEFAULT_QUERY);
+    expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes', archived: 'yes' }))).toEqual(DEFAULT_QUERY);
     // The phase chips filter by stage group (ISC-255): an old frontmatter value such as `climbing` reads as all.
     expect(parseListQuery(params({ phase: 'climbing' }))).toEqual(DEFAULT_QUERY);
     expect(parseListQuery(params({ phase: 'complete' })).phase).toBe('complete');
     expect(parseListQuery(params({ phase: 'fog' })).phase).toBe('fog');
   });
 
+  it('starts with the archived specs hidden and reads ?archived=1 as shown (spec 050, ISC-287)', () => {
+    expect(DEFAULT_QUERY.archived).toBe(false);
+    expect(parseListQuery(params({ archived: '1' }))).toEqual({ ...DEFAULT_QUERY, archived: true });
+    expect(parseListQuery(params({ archived: '0' })).archived).toBe(false);
+    expect(listQueryParams(query({ archived: true })).archived).toBe('1');
+    expect(listQueryParams(DEFAULT_QUERY).archived).toBeNull();
+  });
+
   it('writes defaults as null, so the URL only carries what differs', () => {
-    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null });
+    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, archived: null });
     expect(listQueryParams(query({ phase: 'fog', sort: 'next', takeable: true }))).toEqual({
       phase: 'fog',
       type: null,
       sort: 'next',
       takeable: '1',
+      archived: null,
     });
   });
 });
@@ -219,5 +281,96 @@ describe('spec-table-model description beside the title (ISC-249)', () => {
     const row = described('Keeps the manifest in step', 'The manifest never drifts from the folder.');
     expect(row).toMatchObject({ title: 'Keeps the manifest in step', description: 'The manifest never drifts from the folder.' });
     expect(described('Keeps the manifest', 'Keeps the manifest in step.')?.description).toBe('Keeps the manifest in step.');
+  });
+});
+
+describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, phase chips and order)', () => {
+  /** An archive row as `readArchiveRows` gives it, only the fields that matter overridden. */
+  const archive = (id: string, over: Partial<ArchiveRow> = {}): ArchiveRow => ({
+    id,
+    slug: `${id}-slug`,
+    title: `Archived ${id}`,
+    type: 'feature',
+    closed: 0,
+    total: 0,
+    goal: '',
+    archived: '2026-09-01',
+    ...over,
+  });
+  /** Seventeen archived specs in model order (not by ID), three of them bugs, with mixed claim ratios. */
+  const ARCHIVE: readonly ArchiveRow[] = [
+    archive('009', { closed: 3, total: 4 }),
+    archive('001', { closed: 6, total: 6 }),
+    archive('017', { type: 'bug', closed: 1, total: 2 }),
+    archive('005', { closed: 2, total: 4 }),
+    archive('012', { closed: 9, total: 9 }),
+    archive('002', { type: 'bug', closed: 0, total: 3 }),
+    archive('010'),
+    archive('003', { closed: 4, total: 4 }),
+    archive('014', { closed: 1, total: 4 }),
+    archive('006', { closed: 3, total: 4 }),
+    archive('011', { closed: 5, total: 10 }),
+    archive('004', { type: 'refactor', closed: 1, total: 1 }),
+    archive('016', { closed: 2, total: 8 }),
+    archive('007', { closed: 7, total: 7 }),
+    archive('015', { type: 'bug', closed: 2, total: 3 }),
+    archive('008', { closed: 0, total: 5 }),
+    archive('013', { closed: 1, total: 3 }),
+  ];
+  const on = (over: Partial<ListQuery>): ListQuery => query({ archived: true, ...over });
+  const descending = ARCHIVE.map((row) => row.id).sort((a, b) => b.localeCompare(a));
+
+  it('shows no archived row while the switch is off', () => {
+    expect(applyArchivedQuery(ARCHIVE, DEFAULT_QUERY)).toEqual([]);
+    expect(applyArchivedQuery(ARCHIVE, query({ sort: 'id', type: 'bug' }))).toEqual([]);
+  });
+
+  it('builds every row through archivedTableRow, so each carries the archive mark', () => {
+    const rows = applyArchivedQuery(ARCHIVE, on({}));
+    expect(rows).toHaveLength(17);
+    expect(rows.every((row) => row.archived !== undefined && row.stage === 'done' && row.stageGroup === null)).toBe(true);
+    expect(rows.find((row) => row.id === '009')).toEqual(archivedTableRow(archive('009', { closed: 3, total: 4 })));
+  });
+
+  it('hides every archived row under a phase chip, the fog chip or takeable', () => {
+    for (const phase of [...STAGE_GROUPS, FOG]) expect(applyArchivedQuery(ARCHIVE, on({ phase }))).toEqual([]);
+    expect(applyArchivedQuery(ARCHIVE, on({ takeable: true }))).toEqual([]);
+  });
+
+  it('lets the type filter reach the archived rows', () => {
+    expect(ids(applyArchivedQuery(ARCHIVE, on({ type: 'bug' })))).toEqual(['017', '015', '002']);
+    expect(ids(applyArchivedQuery(ARCHIVE, on({ type: 'refactor', sort: 'id' })))).toEqual(['004']);
+    expect(applyArchivedQuery(ARCHIVE, on({ type: 'chore' }))).toEqual([]);
+  });
+
+  it('orders the archive by ID descending under Stage and Next, the last archived at the boundary', () => {
+    expect(ids(applyArchivedQuery(ARCHIVE, on({ sort: 'stage' })))).toEqual(descending);
+    expect(ids(applyArchivedQuery(ARCHIVE, on({ sort: 'next' })))).toEqual(descending);
+  });
+
+  it('orders the archive by ID ascending under ID, numerically', () => {
+    expect(ids(applyArchivedQuery(ARCHIVE, on({ sort: 'id' })))).toEqual([...descending].reverse());
+    expect(ids(applyArchivedQuery([archive('100'), archive('99'), archive('9')], on({ sort: 'id' })))).toEqual(['9', '99', '100']);
+  });
+
+  it('orders the archive by claim ratio descending under Progress, ties by ID descending', () => {
+    expect(ids(applyArchivedQuery(ARCHIVE, on({ sort: 'progress' })))).toEqual([
+      ...['012', '007', '004', '003', '001'], // 1
+      ...['009', '006'], // 0.75
+      '015', // 0.67
+      ...['017', '011', '005'], // 0.5
+      '013', // 0.33
+      ...['016', '014'], // 0.25
+      ...['010', '008', '002'], // 0, a spec without claims counting as 0
+    ]);
+  });
+
+  it('yields nothing for an empty archive, so ?archived=1 alone changes nothing', () => {
+    for (const sort of SORT_KEYS) expect(applyArchivedQuery([], on({ sort }))).toEqual([]);
+  });
+
+  it('leaves the active rows to applyListQuery unchanged', () => {
+    const rows = readSpecRows(BODY);
+    expect(applyListQuery(rows, on({}))).toEqual(applyListQuery(rows, DEFAULT_QUERY));
   });
 });

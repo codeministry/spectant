@@ -152,6 +152,12 @@
       "one": "Show the {{count}} spec",
       "other": "Show all {{count}} specs"
     },
+    "fold": {
+      "archivedSuffix": {
+        "one": "· {{count}} archived",
+        "other": "· {{count}} archived"
+      }
+    },
     "filter": {
       "label": "Filter by phase",
       "typeLabel": "Filter by type",
@@ -191,6 +197,10 @@
     "parseError": "parse error",
     "changed": "Changed since the last refresh",
     "empty": "No specs yet",
+    "emptyActive": {
+      "one": "No active spec · {{count}} archived",
+      "other": "No active spec · {{count}} archived"
+    },
     "noMatch": "No spec in {{phase}}",
     "clearFilter": "Clear filter",
     "fogCount": {
@@ -198,6 +208,14 @@
       "other": "{{count}} open fog items"
     },
     "agentWorking": "Agent {{session}} working",
+    "archivedChip": "Archived",
+    "archivedOn": "Archived on {{date}}",
+    "showArchived": "Show archived",
+    "archivedShown": {
+      "one": "{{count}} archived spec shown",
+      "other": "{{count}} archived specs shown"
+    },
+    "archivedHidden": "Archived specs hidden",
     "moreName": "More… {{id}} {{title}}",
     "lessName": "Less {{id}} {{title}}",
     "ideas": {

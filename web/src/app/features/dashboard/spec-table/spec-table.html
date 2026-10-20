@@ -42,6 +42,21 @@
         (valueChange)="setType($event)"
       />
     }
+    <!-- Spec 050 (T3, ISC-287): "Show archived", only with an archive, the last of the filters (focus order counters,
+         sort, phase, type, toggle), so the head's first line keeps the phase chips (P3); the label stays the same in both
+         states, aria-pressed carries the state. -->
+    @if (archive().length > 0) {
+      <button
+        type="button"
+        class="btn btn-sm btn-ghost archived-toggle"
+        data-control="archived"
+        [attr.aria-pressed]="query().archived"
+        (click)="toggleArchived()"
+      >
+        <ui-icon name="archive" [size]="16" />
+        <span>{{ 'specs.showArchived' | transloco }}</span>
+      </button>
+    }
     @if (query().takeable) {
       <button type="button" class="btn btn-sm btn-ghost takeable-flag" data-filter="takeable" aria-pressed="true" (click)="clearTakeable()">
         {{ 'kpi.takeableNow' | transloco }}
@@ -49,6 +64,7 @@
       </button>
     }
   </div>
+  <span class="visually-hidden" aria-live="polite" data-archived-live>{{ archivedLive() }}</span>
 
   @if (strip().length > 0) {
     <div class="phase-strip" role="img" [attr.aria-label]="phaseStripLabel()">
@@ -80,6 +96,10 @@
         <ui-disclosure class="show-all" data-fold="specs" [open]="allOpen()" (openChange)="setAllOpen($event)" (keydown)="keepToggleKeys($event)">
           <span uiDisclosureSummary class="show-all-label" data-show-all>
             {{ (visible().length === 1 ? 'specs.showAll.one' : 'specs.showAll.other') | transloco: { count: visible().length } }}
+            <!-- Spec 050 (T6, ISC-288): N counts both blocks; with archived rows listed, a muted "· K archived" follows. -->
+            @if (archivedShown() > 0) {
+              <span class="show-all-archived" data-fold-archived>{{ (archivedShown() === 1 ? 'specs.fold.archivedSuffix.one' : 'specs.fold.archivedSuffix.other') | transloco: { count: archivedShown() } }}</span>
+            }
           </span>
           @if (allOpen()) {
             <ol class="rows rows-rest" [start]="cap + 1">
@@ -103,6 +123,7 @@
             [row]="row"
             [ws]="ws()"
             [titles]="titles()"
+            [archivedFirst]="row.id === firstArchivedId()"
             [mark]="guide ? (guide.waits ? 'waits' : 'next') : null"
             [stageLabels]="stageLabels()"
             [density]="density()"
@@ -123,7 +144,8 @@
               [attr.aria-expanded]="row.id === preview()"
               [attr.aria-labelledby]="'rid-' + row.id + ' rl-' + row.id"
               [attr.aria-describedby]="describedBy(row, !!guide?.waits, why !== '')"
-              [attr.data-changed]="dots().has(row.id) ? '' : null"
+              [attr.data-archived-row]="row.archived ? row.id : null"
+              [attr.data-changed]="!row.archived && dots().has(row.id) ? '' : null"
               [title]="linkTitle(row.title, why)"
               [uiClamp]="row.title"
               [uiClampLines]="1"
@@ -155,25 +177,18 @@
         </li>
       </ng-template>
     </div>
-  } @else if (rows().length === 0) {
+  } @else if (rows().length === 0 && archive().length === 0) {
     <p class="empty">{{ 'specs.empty' | transloco }}</p>
+  } @else if (rows().length === 0 && !query().archived) {
+    <!-- Spec 050 (T8, ISC-289): no active spec and the archive hidden; the toggle in the head is the action. -->
+    <p class="empty" data-empty="active">
+      {{ (archive().length === 1 ? 'specs.emptyActive.one' : 'specs.emptyActive.other') | transloco: { count: archive().length } }}
+    </p>
   } @else {
     <p class="empty">
       {{ 'specs.noMatch' | transloco: { phase: noMatchPhase() } }}
       <button type="button" class="btn btn-sm btn-ghost" (click)="clearFilter()">{{ 'specs.clearFilter' | transloco }}</button>
     </p>
-  }
-
-  @if (archive().length > 0) {
-    <div id="archive" class="t-foot" data-fold="archive" tabindex="-1">
-      <ui-icon name="layers" [size]="16" />
-      <span>{{ (archive().length === 1 ? 'specs.archived.one' : 'specs.archived.other') | transloco: { count: archive().length } }}</span>
-      @for (spec of archive(); track spec.id) {
-        <a class="archived-link" [routerLink]="['/w', ws(), 's', spec.id]" [attr.data-archived-row]="spec.id" [title]="spec.title">
-          <span class="archived-id">{{ spec.id }}</span> {{ archivedName(spec) }}
-        </a>
-      }
-    </div>
   }
 </ui-card>
 

@@ -10,6 +10,9 @@ import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from '../../../shared/ui/type-glyph/type-glyph';
 import { UiWaitsChip } from '../../../shared/ui/waits-chip/waits-chip';
 import type { Density } from '../../../core/settings.service';
+import { LanguageService } from '../../../core/language.service';
+import { formatDay } from '../../../shared/time/format';
+import { UiTime } from '../../../shared/time/time';
 import { stageIndex } from '../../spec/dashboard/dashboard-model';
 import { PHASE_TONES, type SpecTableRow } from './spec-table-model';
 
@@ -35,16 +38,23 @@ const AGENT_KEY = 'specs.agentWorking';
  * Density (spec 021, ISC-254): the list resolves it, the stored setting or the view's `?density=`. `compact` drops the
  * description and nothing else: at wide the title stands alone on its line, below 640 px line 2 is `mark · phase ·
  * priority`. The guidance reason stays the row link's description either way (R1).
+ *
+ * Spec 050 (T2, ISC-287): an archived row (`row().archived` present) keeps the grid, but its track cell holds only the
+ * archive chip (icon `archive`, the word, a dashed border) where the phase chip stands, from 640 px behind the archive
+ * date as `<time datetime>`; no priority, stage track, agent dot, waits chip, Next mark or ring. Its meter reads the
+ * live claims. The list sets `archivedFirst` on the first archived row, whose top hairline is then dashed.
  */
 @Component({
   selector: 'app-spec-row',
-  imports: [TranslocoPipe, UiChip, UiClamp, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTypeGlyph, UiWaitsChip],
+  imports: [TranslocoPipe, UiChip, UiClamp, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTime, UiTypeGlyph, UiWaitsChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-row.html',
   styleUrl: './spec-row.css',
   host: {
     '[attr.data-density]': 'density()',
-    '[attr.data-mark]': 'mark()',
+    '[attr.data-mark]': 'shownMark()',
+    '[attr.data-archived]': "row().archived ? '' : null",
+    '[attr.data-archived-first]': "archivedFirst() ? '' : null",
     '[attr.data-desc]': "description() ? '' : null",
     '[attr.data-overflow]': "overflowing() ? '' : null",
     '[attr.data-expanded]': "descriptionExpanded() ? '' : null",
@@ -66,6 +76,10 @@ export class SpecRow {
    * neither. The list derives it from the spec's own guidance entry; the entry's reason is the row link's description.
    */
   readonly mark = input<'waits' | 'next' | null>(null);
+  /** Spec 050 (T2, ISC-287): the guidance mark the row shows; an archived row shows none. */
+  protected readonly shownMark = computed(() => (this.row().archived ? null : this.mark()));
+  /** Spec 050 (T2, ISC-287): the first archived row under the active ones; its top hairline is dashed. */
+  readonly archivedFirst = input(false);
   /** Title and description show in full (the list's "more…" toggle, ISC-111). */
   readonly descriptionExpanded = input(false);
   /** Whether the title needs more than its line or the description more than its two, so the list offers "more…" outside the row link. */
@@ -110,6 +124,14 @@ export class SpecRow {
     return this.transloco.translate('stages.position', { index: index + 1, total: labels.length, stage: word });
   });
   protected readonly phaseTone = computed(() => PHASE_TONES[this.row().phase ?? ''] ?? 'neutral');
+  private readonly appLang = inject(LanguageService).current;
+  /** Spec 050 (T2, ISC-287): the archive chip's title, "Archived on <day>"; null without an archive date. */
+  protected readonly archivedTitle = computed(() => {
+    const on = this.row().archived?.on ?? null;
+    if (on === null) return null;
+    const lang = this.appLang();
+    return this.transloco.translate('specs.archivedOn', { date: formatDay(on, lang) });
+  });
   protected readonly agentLabel = computed(() => {
     this.lang();
     const session = this.row().agent ?? '';

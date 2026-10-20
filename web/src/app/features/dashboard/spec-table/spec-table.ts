@@ -11,6 +11,7 @@ import {
   linkedSignal,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -32,12 +33,12 @@ import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { toneMark } from '../../../shared/ui/tone';
-import { specSlugOf } from '../../../../../../core/src/spec-ref';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { SpecRow } from './spec-row';
 import {
   ALL,
+  applyArchivedQuery,
   applyListQuery,
   type ArchiveRow,
   FOG,
@@ -63,7 +64,10 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
  * 362-400, app.js specTable): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
  * picker land on, the phase chips (plus type chips from two types and the takeable flag) and the sort menu (a
  * `ui-popover`, a bottom `ui-sheet` at compact), the 8 px phase strip (one segment per active spec), the rows as one
- * roving list (↓ ↑ j k Home End, one tab stop, no wrap) and the archived footer under `#archive`.
+ * roving list (↓ ↑ j k Home End, one tab stop, no wrap).
+ *
+ * Spec 050 (T8, ISC-289): the archived footer under `#archive` is gone; the archived specs list as rows behind the
+ * head's toggle, and with no active spec and the toggle off the panel says "No active spec · K archived".
  *
  * Filter, sort and takeable are the page's query state: the panel renders `query` and asks for a new one through
  * `queryChange`, it never holds them itself. The selection is the roving list's tab stop, exposed as `selectedId`
@@ -195,7 +199,31 @@ export class SpecTable {
   protected readonly sortMenuKeys = SORT_MENU;
   protected readonly compact = computed(() => this.shell.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
-  protected readonly visible = computed(() => applyListQuery(this.rows(), this.query()));
+  /**
+   * The listed rows: the active ones filtered and sorted, then the archived ones under `?archived=1` (spec 050, T3,
+   * ISC-287), so one roving list and the `SPEC_ROW_CAP` fold run over both blocks, never interleaved.
+   */
+  protected readonly visible = computed(() => [...applyListQuery(this.rows(), this.query()), ...applyArchivedQuery(this.archive(), this.query())]);
+  /** The first archived row listed (spec 050, T3): its row draws the dashed boundary hairline (`archivedFirst`). */
+  protected readonly firstArchivedId = computed(() => this.visible().find((row) => row.archived !== undefined)?.id ?? null);
+  /**
+   * Spec 050 (T6, ISC-288): the archived rows listed, the K of the fold's "· K archived" and of the live announcement;
+   * 0 while the toggle is off or a phase, fog or takeable filter hides the archive block.
+   */
+  protected readonly archivedShown = computed(() => this.visible().filter((row) => row.archived !== undefined).length);
+  /**
+   * The polite announcement of the archive toggle (spec 050, T3, ISC-287): empty on the first render (a reload with
+   * `?archived=1` announces nothing), then "N archived specs shown" or "Archived specs hidden" on each flip.
+   */
+  protected readonly archivedLive = linkedSignal<boolean, string>({
+    source: () => this.query().archived,
+    computation: (on, previous) => {
+      if (previous === undefined) return '';
+      if (!on) return this.transloco.translate('specs.archivedHidden');
+      const count = untracked(() => this.archivedShown());
+      return this.transloco.translate(`specs.archivedShown.${count === 1 ? 'one' : 'other'}`, { count });
+    },
+  });
   protected readonly sortSheetOpen = signal(false);
 
   private readonly openState = inject(OpenState);
@@ -320,17 +348,17 @@ export class SpecTable {
     if (sort !== this.query().sort) this.queryChange.emit({ ...this.query(), sort });
   }
 
+  /** The "Show archived" toggle (spec 050, T3, ISC-287): the page turns the flipped flag into `?archived=1` or nothing. */
+  protected toggleArchived(): void {
+    this.queryChange.emit({ ...this.query(), archived: !this.query().archived });
+  }
+
   protected clearTakeable(): void {
     this.queryChange.emit({ ...this.query(), takeable: false });
   }
 
   protected clearFilter(): void {
     this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false });
-  }
-
-  /** The footer's name for an archived spec: its slug without the number (prototype "001 manifest-sync"). */
-  protected archivedName(spec: ArchiveRow): string {
-    return specSlugOf(spec.slug);
   }
 
   private chip(option: ListOption, key: string | null, toned: boolean): FilterOption {
