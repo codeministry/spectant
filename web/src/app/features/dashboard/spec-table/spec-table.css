@@ -155,6 +155,11 @@
   line-height: 20px;
 }
 
+/* Spec 050 (T6, ISC-288): the fold's "· K archived" suffix, muted behind the name. */
+.show-all-archived {
+  color: var(--muted-ink);
+}
+
 .rows-rest {
   margin: 0 -16px;
   border-block-start: 1px solid var(--line);

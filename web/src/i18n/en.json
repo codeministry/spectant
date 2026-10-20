@@ -152,6 +152,12 @@
       "one": "Show the {{count}} spec",
       "other": "Show all {{count}} specs"
     },
+    "fold": {
+      "archivedSuffix": {
+        "one": "· {{count}} archived",
+        "other": "· {{count}} archived"
+      }
+    },
     "filter": {
       "label": "Filter by phase",
       "typeLabel": "Filter by type",

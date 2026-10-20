@@ -152,6 +152,12 @@
       "one": "Die {{count}} Spec zeigen",
       "other": "Alle {{count}} Specs zeigen"
     },
+    "fold": {
+      "archivedSuffix": {
+        "one": "· {{count}} archiviert",
+        "other": "· {{count}} archiviert"
+      }
+    },
     "filter": {
       "label": "Nach Phase filtern",
       "typeLabel": "Nach Typ filtern",

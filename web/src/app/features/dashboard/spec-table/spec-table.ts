@@ -205,6 +205,11 @@ export class SpecTable {
   /** The first archived row listed (spec 050, T3): its row draws the dashed boundary hairline (`archivedFirst`). */
   protected readonly firstArchivedId = computed(() => this.visible().find((row) => row.archived !== undefined)?.id ?? null);
   /**
+   * Spec 050 (T6, ISC-288): the archived rows listed, the K of the fold's "· K archived" and of the live announcement;
+   * 0 while the toggle is off or a phase, fog or takeable filter hides the archive block.
+   */
+  protected readonly archivedShown = computed(() => this.visible().filter((row) => row.archived !== undefined).length);
+  /**
    * The polite announcement of the archive toggle (spec 050, T3, ISC-287): empty on the first render (a reload with
    * `?archived=1` announces nothing), then "N archived specs shown" or "Archived specs hidden" on each flip.
    */
@@ -213,7 +218,7 @@ export class SpecTable {
     computation: (on, previous) => {
       if (previous === undefined) return '';
       if (!on) return this.transloco.translate('specs.archivedHidden');
-      const count = untracked(() => this.visible().filter((row) => row.archived !== undefined).length);
+      const count = untracked(() => this.archivedShown());
       return this.transloco.translate(`specs.archivedShown.${count === 1 ? 'one' : 'other'}`, { count });
     },
   });

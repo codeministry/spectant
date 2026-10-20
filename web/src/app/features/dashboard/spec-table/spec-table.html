@@ -95,6 +95,10 @@
         <ui-disclosure class="show-all" data-fold="specs" [open]="allOpen()" (openChange)="setAllOpen($event)" (keydown)="keepToggleKeys($event)">
           <span uiDisclosureSummary class="show-all-label" data-show-all>
             {{ (visible().length === 1 ? 'specs.showAll.one' : 'specs.showAll.other') | transloco: { count: visible().length } }}
+            <!-- Spec 050 (T6, ISC-288): N counts both blocks; with archived rows listed, a muted "· K archived" follows. -->
+            @if (archivedShown() > 0) {
+              <span class="show-all-archived" data-fold-archived>{{ (archivedShown() === 1 ? 'specs.fold.archivedSuffix.one' : 'specs.fold.archivedSuffix.other') | transloco: { count: archivedShown() } }}</span>
+            }
           </span>
           @if (allOpen()) {
             <ol class="rows rows-rest" [start]="cap + 1">
