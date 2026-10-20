@@ -1,0 +1,2 @@
+{"ts":"2026-10-20T17:57:57.663Z","from":null,"to":"plan","command":"/spec new text-helpers","actor":"a:claude:spec-check"}
+{"ts":"2026-10-20T17:58:54.447Z","from":"review","to":"build","command":"/spec review 001","actor":"a:claude:spec-check"}
