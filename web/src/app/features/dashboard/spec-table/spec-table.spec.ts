@@ -339,7 +339,7 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
   // link's description and tooltip. No guide row, no command chip in the list; no mark on any other row.
   it('marks exactly the rows in "Waits on you" in their line and makes every entry\'s sentence the row link\'s description', async () => {
     const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
-    // Spec 021 (T25): every harbor row in view, past the fold's first 5.
+    // Spec 021 (T25): every harbor row in view, past the fold's first 10.
     await TestBed.inject(Router).navigateByUrl('/?open=specs');
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
@@ -480,7 +480,7 @@ describe('SpecTable waits chip (T24, ISC-163)', () => {
   });
 });
 
-// Spec 021 (T25, ISC-246): the dashboard's spec list shows its head with the counters and its first 5 rows; the rest
+// Spec 021 (T25, ISC-246): the dashboard's spec list shows its head with the counters and its first 10 rows (5 until 2026-10-20); the rest
 // stand behind "show all N", whose open state is `?open=specs`, so a reload keeps it.
 describe('SpecTable fold (spec 021, T25)', () => {
   const MANY = {
@@ -532,9 +532,9 @@ describe('SpecTable fold (spec 021, T25)', () => {
     expect(text(host.querySelector('[data-count="archived"]'))).toBe('1 archived spec');
   });
 
-  it('shows the first 5 rows and folds the rest behind "Show all 22 specs", closed', async () => {
+  it('shows the first 10 rows and folds the rest behind "Show all 22 specs", closed', async () => {
     const { rowIds, fold, toggle } = await renderMany();
-    expect(rowIds()).toEqual(['002', '003', '004', '005', '006']);
+    expect(rowIds()).toEqual(['002', '003', '004', '005', '006', '007', '008', '009', '010', '011']);
     expect(fold()?.hasAttribute('data-open')).toBe(false);
     expect(text(toggle())).toBe('Show all 22 specs');
     expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
@@ -550,14 +550,14 @@ describe('SpecTable fold (spec 021, T25)', () => {
     expect(fold()?.hasAttribute('data-open')).toBe(true);
     expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
     expect(rowIds()).toHaveLength(22);
-    expect(fold()?.querySelectorAll('[data-spec-row]')).toHaveLength(17);
-    expect(fold()?.querySelector('ol.rows-rest')?.getAttribute('start')).toBe('6');
+    expect(fold()?.querySelectorAll('[data-spec-row]')).toHaveLength(12);
+    expect(fold()?.querySelector('ol.rows-rest')?.getAttribute('start')).toBe('11');
     expect(document.activeElement).toBe(toggle());
 
     toggle()?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/?sel=spec:002');
-    expect(rowIds()).toHaveLength(5);
+    expect(rowIds()).toHaveLength(10);
   });
 
   it('a reload with `?open=specs` shows the whole list', async () => {
@@ -566,14 +566,14 @@ describe('SpecTable fold (spec 021, T25)', () => {
     expect(rowIds()).toHaveLength(22);
   });
 
-  it('keeps one roving list over both parts: ↓ from row 5 lands on row 6; the toggle keeps its own arrow keys', async () => {
+  it('keeps one roving list over both parts: ↓ from row 10 lands on row 11; the toggle keeps its own arrow keys', async () => {
     const { fixture, host, toggle } = await renderMany('/?open=specs');
     const row = (id: string) => host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`);
-    row('006')?.focus();
-    row('006')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    row('011')?.focus();
+    row('011')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     await fixture.whenStable();
-    expect(document.activeElement).toBe(row('007'));
-    expect(row('007')?.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(row('012'));
+    expect(row('012')?.tabIndex).toBe(0);
 
     toggle()?.focus();
     toggle()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -581,13 +581,13 @@ describe('SpecTable fold (spec 021, T25)', () => {
     expect(document.activeElement).toBe(toggle());
   });
 
-  it('caps a filtered list the same way and counts its rows; no fold for 5 rows or fewer', async () => {
+  it('caps a filtered list the same way and counts its rows; no fold for 10 rows or fewer', async () => {
     const building = await renderMany('/', { ...DEFAULT_QUERY, phase: 'building' });
-    expect(building.rowIds()).toHaveLength(5);
+    expect(building.rowIds()).toHaveLength(10);
     expect(text(building.toggle())).toBe('Show all 11 specs');
 
-    const few = await renderMany('/', DEFAULT_QUERY, { specs: MANY.specs.slice(0, 5), archive: [] });
-    expect(few.rowIds()).toHaveLength(5);
+    const few = await renderMany('/', DEFAULT_QUERY, { specs: MANY.specs.slice(0, 10), archive: [] });
+    expect(few.rowIds()).toHaveLength(10);
     expect(few.fold()).toBeNull();
   });
 

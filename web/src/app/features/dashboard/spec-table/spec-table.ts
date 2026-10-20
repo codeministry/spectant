@@ -52,8 +52,8 @@ import {
   typeOptions,
 } from './spec-table-model';
 
-/** The rows the dashboard's spec list shows before "show all N" (spec 021, ISC-246). */
-export const SPEC_ROW_CAP = 5;
+/** The rows the dashboard's spec list shows before "show all N" (spec 021, ISC-246; 10 since 2026-10-20, was 5). */
+export const SPEC_ROW_CAP = 10;
 
 /** The keys `uiRovingList` moves on; the fold's toggle keeps them (`keepToggleKeys`). */
 const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End', 'j', 'k']);

@@ -172,7 +172,7 @@ for (const stub of STUBS) {
       expect(await numbersOf(table.locator('[data-count="active"]'))).toEqual([model.specs.length]);
       expect(await numbersOf(table.locator('[data-count="archived"]'))).toEqual([k.archived]);
       const showAll = table.locator('[data-fold="specs"] button.summary');
-      if (model.specs.length > 5) expect(await numbersOf(showAll)).toEqual([model.specs.length]);
+      if (model.specs.length > 10) expect(await numbersOf(showAll)).toEqual([model.specs.length]);
 
       // Filter chips: `all` is `kpis.specs`, each stage-group chip its `kpis.stageGroups` entry (the Specs tile's split,
       // one derivation), fog `kpis.specsWithFog`, each type chip its `kpis.byType` entry.
@@ -250,7 +250,10 @@ for (const stub of STUBS) {
       // Dashboard: the spec list and the TL;DR fold.
       await page.goto(`/w/${WS}`);
       await expect(page.locator('app-spec-table [data-spec-row]').first()).toBeVisible();
-      await toggleTwice(page.locator('app-spec-table [data-fold="specs"] button.summary'));
+      // The list folds only past its first 10 rows (ISC-246, 5 until 2026-10-20); a shorter list has no fold.
+      const specFold = page.locator('app-spec-table [data-fold="specs"] button.summary');
+      if ((await page.locator('app-spec-table [data-spec-row]').count()) >= 10 && (await specFold.count()) > 0) await toggleTwice(specFold);
+      else await expect(specFold).toHaveCount(0);
       const brief = page.locator('[data-ui="brief"] [data-brief-fold] button.summary');
       if ((await brief.count()) > 0) await toggleTwice(brief);
 

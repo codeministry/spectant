@@ -147,7 +147,7 @@ for (const width of [1440, 600, 390] as const) {
       // The spec table opens a row in two steps: the first click selects it for the detail sidebar (`?sel=spec:`, spec
       // 026), the second opens the spec: the row again, or below 1120 px the sidebar's "Open spec", which may cover the row.
       const row = page.locator(`[data-panel="specs"] [data-spec-row="${TARGET.spec}"]`);
-      // Spec 021: the spec list shows its first five rows and folds the rest behind "Show all N specs"; where the
+      // Spec 021: the spec list shows its first ten rows (five until 2026-10-20) and folds the rest behind "Show all N specs"; where the
       // target row sits behind the fold, opening it is a step of the path and counts.
       await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
       if ((await row.count()) === 0) {
@@ -429,7 +429,8 @@ for (const lang of ['en', 'de'] as const) {
         // A row is its list item: the row link stretches over it (`::after`), so the item's box is what is read.
         const rows = page.locator('app-spec-table li:has([data-spec-row])');
         await expect(rows.nth(P3.rows - 1)).toBeVisible();
-        await expect(rows).toHaveCount(P3.rows);
+        // The list shows up to 10 rows before its fold (5 until 2026-10-20); the path reads the first P3.rows of them.
+        expect(await rows.count()).toBeGreaterThanOrEqual(P3.rows);
         const blocks: ReadonlyArray<readonly [string, Locator]> = [
           ['waits', page.locator('app-waiting-section:visible').first()],
           ['kpi band', page.locator('app-kpi-band')],
