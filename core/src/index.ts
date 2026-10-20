@@ -31,6 +31,8 @@
 // Spec 031's activity-text.ts (`claimLine`, `releaseLine`, `runStartLine`, `runEndLine`, `runEventLine`, `probeLine`,
 // `questionLine`, `newRunId`) plans the lines of `.spectant/activity.jsonl` from the caller's input, imports only
 // actor.ts, spec-ref.ts and types, writes nothing and rides it whole; the plugin CLI appends what it returns.
+// Spec 010's pack.ts (`buildPack`, `capPack`, `PACK_LIMIT`, `PackError`) takes the spec folder's and the constitution's
+// texts from the caller, imports only archive.ts, claims.ts and tasks.ts, reads no file and rides it whole.
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';
@@ -65,6 +67,7 @@ export * from './repo-source.ts';
 export * from './item-state.ts';
 export * from './guidance.ts';
 export * from './steps.ts';
+export * from './pack.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';
 export type * from './library.ts';

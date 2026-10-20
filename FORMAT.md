@@ -396,7 +396,9 @@ reads `specs/constitution.md` at a fixed place (the frontmatter key `constitutio
 frontmatter parses like a spec's; `dev_services: <port>=<label>, …` names the local services on the live indicator.
 A service whose process runs in a worktree carries `worktree: true`, and one in the spec worktree `.worktrees/NNN-slug`
 also `spec`, that spec's number `NNN` (spec 027, ISC-177).
-The `## Lanes` table maps path prefixes to lanes for the task grammar (spec 002, T23). The Docs tab renders the rest.
+The `## Lanes` table maps path prefixes to lanes for the task grammar (spec 002, T23). Its third column (the context a
+worker loads, split on `, `) and its fourth (the lane probe) form a lane's profile in a task's context pack (spec 010,
+ISC-333). The Docs tab renders the rest.
 
 `shared_files: [<path or glob>, …]` names the files every spec may change without the specs waiting on each other,
 such as a message catalogue or the lockfile (spec 025, ISC-164). The dashboard compares the paths of every open spec

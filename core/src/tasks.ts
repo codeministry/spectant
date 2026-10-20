@@ -184,14 +184,40 @@ function section(lines: readonly string[], heading: RegExp): Array<{ text: strin
   return out;
 }
 
-/** The first column of the constitution's `## Lanes` table, in table order, backticks stripped. */
-export function lanesOf(constitution: string): string[] {
+/** The body rows of the constitution's `## Lanes` table as cells, header and separator rows skipped. */
+function laneRows(constitution: string): string[][] {
   const rows = section(constitution.replace(/\r\n?/g, '\n').split('\n'), /^## Lanes\s*$/).filter((l) => l.text.trim().startsWith('|'));
   return rows
     .slice(1)
     .filter((row) => !SEPARATOR_ROW.test(row.text.trim()))
-    .map((row) => (cells(row.text)[0] ?? '').replace(/`/g, '').trim())
+    .map((row) => cells(row.text));
+}
+
+const unticked = (cell: string | undefined): string => (cell ?? '').replace(/`/g, '').trim();
+
+/** The first column of the constitution's `## Lanes` table, in table order, backticks stripped. */
+export function lanesOf(constitution: string): string[] {
+  return laneRows(constitution)
+    .map((row) => unticked(row[0]))
     .filter((name) => name !== '');
+}
+
+/** One lane's row of `## Lanes`: the files a worker loads and the lane probe (spec 010, T2, ISC-333). */
+export interface LaneProfile {
+  readonly name: string;
+  /** The third column split on `, `, backticks stripped, in table order. */
+  readonly context: readonly string[];
+  /** The fourth column, backticks stripped; null when the cell is empty or missing. */
+  readonly probe: string | null;
+}
+
+/** The profile of `lane` from the constitution's `## Lanes` table; null for a lane not in it or no table at all. */
+export function laneProfileOf(constitution: string, lane: string): LaneProfile | null {
+  const row = laneRows(constitution).find((r) => unticked(r[0]) === lane);
+  if (row === undefined) return null;
+  const context = (row[2] ?? '').split(', ').map(unticked).filter((c) => c !== '');
+  const probe = unticked(row[3]);
+  return { name: lane, context, probe: probe === '' ? null : probe };
 }
 
 // ── task lines ────────────────────────────────────────────────────────────────────────────────────────────────────
