@@ -22,6 +22,7 @@ import {
   upsertActor,
 } from "../server/src/db.ts";
 import { dbPath } from "../server/src/paths.ts";
+import { DEFAULT_SETTINGS, openSettings } from "../server/src/settings.ts";
 
 let root: string;
 let data: string;
@@ -101,6 +102,18 @@ describe("migration 2", () => {
     expect(db.query("SELECT key, value FROM setting WHERE key <> 'schema_version' ORDER BY key").all()).toEqual(settingsBefore);
     expect(db.query("SELECT * FROM workspace").all()).toEqual(workspacesBefore);
     expect(db.query<{ n: number }, []>("SELECT count(*) AS n FROM note").get()?.n).toBe(0);
+  });
+
+  test("the legacy refreshSeconds row survives the migration and the settings load without it (spec 053, ISC-323)", () => {
+    versionOneDatabase().close();
+    open.splice(0);
+
+    const db = track(openDatabase(data));
+    const row = db.query<{ value: string }, []>("SELECT value FROM setting WHERE key = 'refreshSeconds'").get();
+    expect(row?.value).toBe("60");
+    const settings = openSettings(db).get();
+    expect(settings).toEqual({ ...DEFAULT_SETTINGS, theme: "dark" });
+    expect(Object.keys(settings)).not.toContain("refreshSeconds");
   });
 
   test("running migrate twice is a no-op: same version, same schema, same rows", () => {

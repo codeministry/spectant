@@ -7,7 +7,9 @@
  * `SettingsSchema` is the single source of truth: a key, its default and its validator. Spec 002 appends a key
  * (`railCollapsed`, `termHints`, …) with one line here; storage, merging, validation and the HTTP layer follow.
  * The `setting` table also holds `schema_version`, which belongs to the migration: it is not in the schema, so it is
- * never returned and a `set` naming it fails with `unknown-key`.
+ * never returned and a `set` naming it fails with `unknown-key`. The same holds for a key an older build stored and this
+ * one dropped (spec 053 dropped the poll interval; the fallback poll is a fixed constant in the web): its row stays
+ * in the table, never returned, and a `set` naming it fails with `unknown-key`.
  */
 import type { Database } from "bun:sqlite";
 import { type ApiHandler, matchesIfNoneMatch } from "./http.ts";
@@ -33,7 +35,6 @@ export const SettingsSchema = {
   language: { default: "en", validate: oneOf("en", "de") },
   /** Spec 021, ISC-254: the default density of board, flow view and spec row; `?density=` overrides one view only. */
   density: { default: "comfortable", validate: oneOf("comfortable", "compact") },
-  refreshSeconds: { default: 30, validate: integerIn(5, 3600) },
   singleKeyShortcuts: { default: true, validate: isBoolean },
   /** Spec 002, ISC-75: the context rail at wide shows as its 48 px strip. */
   railCollapsed: { default: false, validate: isBoolean },
