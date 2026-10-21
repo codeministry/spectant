@@ -3,7 +3,7 @@
 
 // plugin/src/spec-check.ts
 import { appendFileSync as appendFileSync2, existsSync as existsSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync3, readlinkSync, renameSync as renameSync2, statSync, writeFileSync as writeFileSync2 } from "fs";
-import { basename, dirname as dirname2, join as join6, relative, resolve as resolve4, sep as sep2 } from "path";
+import { basename as basename2, dirname as dirname3, join as join6, relative, resolve as resolve5, sep as sep2 } from "path";
 
 // core/src/actor.ts
 var PERSON = /^u:[0-9a-f]{8}$/;
@@ -187,8 +187,8 @@ function newRunId(input) {
 }
 
 // plugin/src/activity-log.ts
-import { appendFileSync, mkdirSync, readFileSync } from "fs";
-import { dirname, join as join2, resolve as resolve2 } from "path";
+import { appendFileSync, lstatSync, mkdirSync, readFileSync, realpathSync } from "fs";
+import { dirname as dirname2, join as join2, resolve as resolve3 } from "path";
 
 // core/src/locks.ts
 import { createHash } from "crypto";
@@ -490,6 +490,192 @@ function readingOf(frontier, activity) {
   };
 }
 
+// core/src/worktree-facts.ts
+import { basename, dirname, resolve as resolve2 } from "path";
+
+// core/src/worktrees.ts
+var SPEC_WORKTREES = ".worktrees";
+var BUILDER_WORKTREES = ".claude/worktrees/";
+var SPEC_BRANCH = /^(?:feature|fix|spike|infra)\/([^/]+)$/u;
+function isSpecBranch(branch) {
+  const name = SPEC_BRANCH.exec(branch)?.[1];
+  return name !== undefined && SPEC_FOLDER.test(name);
+}
+var BRANCH_REF = "refs/heads/";
+var MISMATCH = "worktree-branch-mismatch";
+function parseRecords(porcelain) {
+  const records = [];
+  porcelain.split(`
+`).forEach((raw, index) => {
+    const text = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    if (text.startsWith("worktree ")) {
+      records.push({ path: text.slice("worktree ".length), branch: null, line: index + 1, prunable: false });
+      return;
+    }
+    const current = records.at(-1);
+    if (current === undefined)
+      return;
+    if (text.startsWith("branch ")) {
+      const ref = text.slice("branch ".length);
+      current.branch = ref.startsWith(BRANCH_REF) ? ref.slice(BRANCH_REF.length) : ref;
+    } else if (text === "prunable" || text.startsWith("prunable ")) {
+      current.prunable = true;
+    }
+  });
+  return records;
+}
+function segments(path) {
+  const out = [];
+  for (const part of path.split("/")) {
+    if (part === "" || part === ".")
+      continue;
+    if (part === "..")
+      out.pop();
+    else
+      out.push(part);
+  }
+  return out;
+}
+function relativeTo(root, path) {
+  const from = segments(root);
+  const to = segments(path);
+  if (to.length < from.length || from.some((part, index) => to[index] !== part))
+    return null;
+  return to.slice(from.length).join("/") || ".";
+}
+function knownSpec(name, numbers) {
+  const id = SPEC_FOLDER.exec(name)?.[1];
+  return id !== undefined && numbers.has(id) ? id : null;
+}
+function specOfPath(path, numbers) {
+  const parts = path.split("/");
+  return parts.length === 2 && parts[0] === SPEC_WORKTREES ? knownSpec(parts[1] ?? "", numbers) : null;
+}
+function specOfBranch(branch, numbers) {
+  const name = branch === null ? undefined : SPEC_BRANCH.exec(branch)?.[1];
+  return name === undefined ? null : knownSpec(name, numbers);
+}
+function mismatch(record, path, pathSpec, branchSpec) {
+  return {
+    severity: "warning",
+    code: MISMATCH,
+    line: record.line,
+    subject: pathSpec,
+    message: `Worktree ${path} is on branch ${record.branch ?? ""}, which names spec ${branchSpec}; ` + `its path names spec ${pathSpec}, and the path wins.`
+  };
+}
+function assignWorktrees(porcelain, specs) {
+  const numbers = new Set(specs.map(specIdOf).filter((id) => id !== null));
+  const [main, ...others] = parseRecords(porcelain);
+  if (main === undefined)
+    return { worktrees: [], builders: 0, diagnostics: [] };
+  const worktrees = [];
+  const diagnostics = [];
+  let builders = 0;
+  for (const record of others) {
+    const path = relativeTo(main.path, record.path);
+    if (path?.startsWith(BUILDER_WORKTREES) === true) {
+      builders += 1;
+      worktrees.push({ path, branch: record.branch, spec: null, ahead: null, dirty: null, kind: "builder" });
+      continue;
+    }
+    const pathSpec = path === null ? null : specOfPath(path, numbers);
+    const branchSpec = specOfBranch(record.branch, numbers);
+    if (path !== null && pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
+      diagnostics.push(mismatch(record, path, pathSpec, branchSpec));
+    }
+    const spec = pathSpec ?? branchSpec;
+    const base = { path, branch: record.branch, spec, ahead: null, dirty: null, kind: "spec" };
+    worktrees.push(record.prunable ? { ...base, prunable: true } : base);
+  }
+  return { worktrees, builders, diagnostics };
+}
+function mainBranchOf(porcelain) {
+  return parseRecords(porcelain)[0]?.branch ?? null;
+}
+var SPECS = "specs";
+function specSourceOf({ folder, worktree, lsFiles }) {
+  const own = worktree !== null && worktree.kind === "spec" && worktree.spec !== null && worktree.spec === specIdOf(folder);
+  const under = `${SPECS}/${folder}/`;
+  return own && lsFiles.some((path) => path.startsWith(under)) ? "worktree" : "main";
+}
+function liveWorktrees(assignment, facts) {
+  const merged = new Set(facts.merged);
+  const present = new Set(facts.present);
+  const dirty = new Set(facts.dirty);
+  const live = [];
+  const ended = [];
+  for (const worktree of assignment.worktrees) {
+    const reason = worktree.kind !== "spec" || worktree.spec === null ? null : endOf(worktree, merged, present, dirty);
+    if (reason === null)
+      live.push(worktree);
+    else
+      ended.push({ worktree, reason });
+  }
+  return { live, ended };
+}
+function endOf(worktree, merged, present, dirty) {
+  if (worktree.branch !== null && merged.has(worktree.branch) && (worktree.path === null || !dirty.has(worktree.path)))
+    return "merged";
+  if (worktree.prunable === true)
+    return "prunable";
+  if (worktree.path !== null && !present.has(worktree.path))
+    return "removed";
+  return null;
+}
+var insideRepository = (path) => !path.startsWith("/") && path !== ".." && !path.startsWith("../");
+function ownLiveWorktree(live, id) {
+  const worktree = live.find((w) => w.kind === "spec" && w.spec === id) ?? null;
+  return worktree?.path != null && insideRepository(worktree.path) ? worktree : null;
+}
+function copyDirFor(root, ref, view) {
+  const worktree = ownLiveWorktree(view.live, ref.id);
+  if (worktree?.path == null)
+    return null;
+  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
+  return source === "worktree" ? [root.replace(/\/+$/u, ""), worktree.path, SPECS, ref.slug].join("/") : null;
+}
+
+// core/src/worktree-facts.ts
+function mainCheckoutFrom({ cwd, commonDir, holdsGit, sameFolder }) {
+  const answer = commonDir?.trim() ?? "";
+  if (answer === "")
+    return cwd;
+  const common = resolve2(cwd, answer);
+  if (basename(common) !== ".git")
+    return cwd;
+  const main = dirname(common);
+  if (!holdsGit(main) || main === resolve2(cwd) || sameFolder(main, resolve2(cwd)))
+    return cwd;
+  return main;
+}
+function worktreeFactsToRead(assignment) {
+  const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
+  return {
+    ofSpec,
+    branches: [...new Set(ofSpec.flatMap((w) => w.branch !== null && isSpecBranch(w.branch) ? [w.branch] : []))],
+    paths: ofSpec.flatMap((w) => w.path === null ? [] : [w.path])
+  };
+}
+function statusToRead(ofSpec, merged, present) {
+  return ofSpec.flatMap((w) => w.path !== null && present.includes(w.path) && w.branch !== null && merged.includes(w.branch) ? [w.path] : []);
+}
+function trackedToRead(live, refs) {
+  const listed = new Set;
+  for (const worktree of live) {
+    const ref = worktree.kind === "spec" ? refs.find((r) => !r.archived && r.id === worktree.spec) : undefined;
+    if (ref !== undefined && worktree.path !== null && insideRepository(worktree.path))
+      listed.add(ref.slug);
+  }
+  return [...listed];
+}
+function worktreeViewOf({ porcelain, assignment, split, live, tracked }) {
+  return { assignment, live: live ?? split.live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
+}
+function mergeNeedsAncestry(tip, main, firstParent) {
+  return tip !== null && tip !== "" && main !== null && main !== "" && !firstParent.has(tip);
+}
+
 // plugin/src/activity-log.ts
 class ActivityLogError extends Error {
   code;
@@ -499,10 +685,25 @@ class ActivityLogError extends Error {
     this.code = code;
   }
 }
+function holdsGit(folder) {
+  try {
+    lstatSync(join2(folder, ".git"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function sameFolder(a, b) {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return false;
+  }
+}
 function repoRoot(dir) {
-  const r = Bun.spawnSync(["git", "rev-parse", "--git-common-dir"], { cwd: dir, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
-  const common = r.exitCode === 0 ? r.stdout.toString().trim() : "";
-  return common === "" ? dir : dirname(resolve2(dir, common));
+  const cwd = resolve3(dir);
+  const r = Bun.spawnSync(["git", "rev-parse", "--git-common-dir"], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
+  return mainCheckoutFrom({ cwd, commonDir: r.exitCode === 0 ? r.stdout.toString() : null, holdsGit, sameFolder });
 }
 var activityPath = (root) => join2(root, ".spectant", "activity.jsonl");
 function readIfExists(path) {
@@ -516,7 +717,7 @@ function readIfExists(path) {
 }
 function appendActivity(root, line) {
   const path = activityPath(root);
-  mkdirSync(dirname(path), { recursive: true });
+  mkdirSync(dirname2(path), { recursive: true });
   const existing = readIfExists(path);
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
@@ -711,160 +912,12 @@ function runHook(stdin, env, now) {
 }
 
 // plugin/src/worktree-source.ts
-import { existsSync, lstatSync } from "fs";
+import { existsSync } from "fs";
 import { join as join4 } from "path";
-
-// core/src/worktrees.ts
-var SPEC_WORKTREES = ".worktrees";
-var BUILDER_WORKTREES = ".claude/worktrees/";
-var SPEC_BRANCH = /^(?:feature|fix|spike|infra)\/([^/]+)$/u;
-function isSpecBranch(branch) {
-  const name = SPEC_BRANCH.exec(branch)?.[1];
-  return name !== undefined && SPEC_FOLDER.test(name);
-}
-var BRANCH_REF = "refs/heads/";
-var MISMATCH = "worktree-branch-mismatch";
-function parseRecords(porcelain) {
-  const records = [];
-  porcelain.split(`
-`).forEach((raw, index) => {
-    const text = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
-    if (text.startsWith("worktree ")) {
-      records.push({ path: text.slice("worktree ".length), branch: null, line: index + 1, prunable: false });
-      return;
-    }
-    const current = records.at(-1);
-    if (current === undefined)
-      return;
-    if (text.startsWith("branch ")) {
-      const ref = text.slice("branch ".length);
-      current.branch = ref.startsWith(BRANCH_REF) ? ref.slice(BRANCH_REF.length) : ref;
-    } else if (text === "prunable" || text.startsWith("prunable ")) {
-      current.prunable = true;
-    }
-  });
-  return records;
-}
-function segments(path) {
-  const out = [];
-  for (const part of path.split("/")) {
-    if (part === "" || part === ".")
-      continue;
-    if (part === "..")
-      out.pop();
-    else
-      out.push(part);
-  }
-  return out;
-}
-function relativeTo(root, path) {
-  const from = segments(root);
-  const to = segments(path);
-  if (to.length < from.length || from.some((part, index) => to[index] !== part))
-    return null;
-  return to.slice(from.length).join("/") || ".";
-}
-function knownSpec(name, numbers) {
-  const id = SPEC_FOLDER.exec(name)?.[1];
-  return id !== undefined && numbers.has(id) ? id : null;
-}
-function specOfPath(path, numbers) {
-  const parts = path.split("/");
-  return parts.length === 2 && parts[0] === SPEC_WORKTREES ? knownSpec(parts[1] ?? "", numbers) : null;
-}
-function specOfBranch(branch, numbers) {
-  const name = branch === null ? undefined : SPEC_BRANCH.exec(branch)?.[1];
-  return name === undefined ? null : knownSpec(name, numbers);
-}
-function mismatch(record, path, pathSpec, branchSpec) {
-  return {
-    severity: "warning",
-    code: MISMATCH,
-    line: record.line,
-    subject: pathSpec,
-    message: `Worktree ${path} is on branch ${record.branch ?? ""}, which names spec ${branchSpec}; ` + `its path names spec ${pathSpec}, and the path wins.`
-  };
-}
-function assignWorktrees(porcelain, specs) {
-  const numbers = new Set(specs.map(specIdOf).filter((id) => id !== null));
-  const [main, ...others] = parseRecords(porcelain);
-  if (main === undefined)
-    return { worktrees: [], builders: 0, diagnostics: [] };
-  const worktrees = [];
-  const diagnostics = [];
-  let builders = 0;
-  for (const record of others) {
-    const path = relativeTo(main.path, record.path);
-    if (path?.startsWith(BUILDER_WORKTREES) === true) {
-      builders += 1;
-      worktrees.push({ path, branch: record.branch, spec: null, ahead: null, dirty: null, kind: "builder" });
-      continue;
-    }
-    const pathSpec = path === null ? null : specOfPath(path, numbers);
-    const branchSpec = specOfBranch(record.branch, numbers);
-    if (path !== null && pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
-      diagnostics.push(mismatch(record, path, pathSpec, branchSpec));
-    }
-    const spec = pathSpec ?? branchSpec;
-    const base = { path, branch: record.branch, spec, ahead: null, dirty: null, kind: "spec" };
-    worktrees.push(record.prunable ? { ...base, prunable: true } : base);
-  }
-  return { worktrees, builders, diagnostics };
-}
-function mainBranchOf(porcelain) {
-  return parseRecords(porcelain)[0]?.branch ?? null;
-}
-var SPECS = "specs";
-function specSourceOf({ folder, worktree, lsFiles }) {
-  const own = worktree !== null && worktree.kind === "spec" && worktree.spec !== null && worktree.spec === specIdOf(folder);
-  const under = `${SPECS}/${folder}/`;
-  return own && lsFiles.some((path) => path.startsWith(under)) ? "worktree" : "main";
-}
-function liveWorktrees(assignment, facts) {
-  const merged = new Set(facts.merged);
-  const present = new Set(facts.present);
-  const dirty = new Set(facts.dirty);
-  const live = [];
-  const ended = [];
-  for (const worktree of assignment.worktrees) {
-    const reason = worktree.kind !== "spec" || worktree.spec === null ? null : endOf(worktree, merged, present, dirty);
-    if (reason === null)
-      live.push(worktree);
-    else
-      ended.push({ worktree, reason });
-  }
-  return { live, ended };
-}
-function endOf(worktree, merged, present, dirty) {
-  if (worktree.branch !== null && merged.has(worktree.branch) && (worktree.path === null || !dirty.has(worktree.path)))
-    return "merged";
-  if (worktree.prunable === true)
-    return "prunable";
-  if (worktree.path !== null && !present.has(worktree.path))
-    return "removed";
-  return null;
-}
-function copyDirFor(root, ref, view) {
-  const worktree = view.live.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
-  if (worktree?.path == null || worktree.path === ".." || worktree.path.startsWith("../"))
-    return null;
-  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
-  return source === "worktree" ? [root.replace(/\/+$/u, ""), worktree.path, SPECS, ref.slug].join("/") : null;
-}
-
-// plugin/src/worktree-source.ts
 var NO_FSMONITOR = ["-c", "core.fsmonitor=false"];
 function git(cwd, args) {
   const r = Bun.spawnSync(["git", "-C", cwd, ...args], { stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
-}
-function hasOwnGit(folder) {
-  try {
-    lstatSync(join4(folder, ".git"));
-    return true;
-  } catch {
-    return false;
-  }
 }
 function mergedOf(root, branches) {
   if (branches.length === 0)
@@ -876,9 +929,7 @@ function mergedOf(root, branches) {
 `).filter((sha) => sha !== ""));
   return branches.filter((branch) => {
     const tip = git(root, ["rev-parse", "--verify", "-q", `refs/heads/${branch}^{commit}`])?.trim() ?? "";
-    if (tip === "" || firstParent.has(tip))
-      return false;
-    return git(root, ["merge-base", "--is-ancestor", tip, main]) !== null;
+    return mergeNeedsAncestry(tip, main, firstParent) && git(root, ["merge-base", "--is-ancestor", tip, main]) !== null;
   });
 }
 function isDirty(folder) {
@@ -894,34 +945,29 @@ function trackedSpecPaths(root) {
 function assigned(root, refs) {
   const porcelain = git(root, ["worktree", "list", "--porcelain"]) ?? "";
   const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
-  return { porcelain, assignment, ofSpec: assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null) };
+  return { porcelain, assignment, facts: worktreeFactsToRead(assignment) };
 }
-function split(root, assignment, ofSpec) {
-  const merged = mergedOf(root, [...new Set(ofSpec.flatMap((w) => w.branch !== null && isSpecBranch(w.branch) ? [w.branch] : []))]);
-  const present = ofSpec.flatMap((w) => w.path !== null && hasOwnGit(join4(root, w.path)) ? [w.path] : []);
-  const dirty = ofSpec.flatMap((w) => w.path !== null && present.includes(w.path) && w.branch !== null && merged.includes(w.branch) && isDirty(join4(root, w.path)) ? [w.path] : []);
+function splitOf(root, assignment, facts) {
+  const merged = mergedOf(root, facts.branches);
+  const present = facts.paths.filter((path) => holdsGit(join4(root, path)));
+  const dirty = statusToRead(facts.ofSpec, merged, present).filter((path) => isDirty(join4(root, path)));
   return liveWorktrees(assignment, { merged, present, dirty });
 }
-var liveOf = (live, id) => live.find((w) => w.kind === "spec" && w.spec === id && w.path !== null && w.path !== ".." && !w.path.startsWith("../")) ?? null;
 function specReadDirs(root, refs) {
   const dirs = new Map;
   const active = refs.filter((ref) => !ref.archived);
   if (active.length === 0)
     return dirs;
-  const { porcelain, assignment, ofSpec } = assigned(root, refs);
-  if (ofSpec.length === 0)
+  const { porcelain, assignment, facts } = assigned(root, refs);
+  if (facts.ofSpec.length === 0)
     return dirs;
   const paths = trackedSpecPaths(root);
   const trackedOf = (slug) => paths.filter((path) => path.startsWith(`specs/${slug}/`));
-  if (!active.some((ref) => ofSpec.some((w) => w.spec === ref.id) && trackedOf(ref.slug).length > 0))
+  if (!active.some((ref) => facts.ofSpec.some((w) => w.spec === ref.id) && trackedOf(ref.slug).length > 0))
     return dirs;
-  const { live, ended } = split(root, assignment, ofSpec);
-  const tracked = {};
-  for (const ref of active) {
-    if (live.some((w) => w.kind === "spec" && w.spec === ref.id && w.path !== null))
-      tracked[ref.slug] = trackedOf(ref.slug);
-  }
-  const view = { assignment, live, ended, mainBranch: mainBranchOf(porcelain), tracked };
+  const split = splitOf(root, assignment, facts);
+  const tracked = Object.fromEntries(trackedToRead(split.live, active).map((slug) => [slug, trackedOf(slug)]));
+  const view = worktreeViewOf({ porcelain, assignment, split, tracked });
   for (const ref of active) {
     const copy = copyDirFor(root, ref, view);
     if (copy !== null && existsSync(join4(copy, "spec.md")))
@@ -934,12 +980,12 @@ function specTreeDirs(root, refs) {
   const active = refs.filter((ref) => !ref.archived);
   if (active.length === 0)
     return dirs;
-  const { assignment, ofSpec } = assigned(root, refs);
-  if (ofSpec.length === 0)
+  const { assignment, facts } = assigned(root, refs);
+  if (facts.ofSpec.length === 0)
     return dirs;
-  const { live } = split(root, assignment, ofSpec);
+  const { live } = splitOf(root, assignment, facts);
   for (const ref of active) {
-    const worktree = liveOf(live, ref.id);
+    const worktree = ownLiveWorktree(live, ref.id);
     if (worktree?.path != null)
       dirs.set(ref.slug, join4(root, worktree.path));
   }
@@ -4423,7 +4469,7 @@ function capPack(pack, limit = PACK_LIMIT) {
 
 // core/src/resolve.ts
 import { readdirSync as readdirSync2 } from "fs";
-import { join as join5, resolve as resolve3, sep } from "path";
+import { join as join5, resolve as resolve4, sep } from "path";
 function listSpecs(workspaceRoot) {
   return scan(workspaceRoot) ?? [];
 }
@@ -4451,7 +4497,7 @@ function notFound(ref, reason) {
   return { kind: "not_found", ref, reason };
 }
 function scan(workspaceRoot) {
-  const specsDir = resolve3(workspaceRoot, "specs");
+  const specsDir = resolve4(workspaceRoot, "specs");
   const active = folders(specsDir);
   if (active === null)
     return null;
@@ -5281,7 +5327,7 @@ function sourced(ctx, ref) {
 }
 var specsOf = (ctx) => listSpecs(ctx.root).map((ref) => sourced(ctx, ref));
 function specRef(ctx, arg) {
-  const name = basename(arg.replace(/[\\/]+$/u, ""));
+  const name = basename2(arg.replace(/[\\/]+$/u, ""));
   const ref = resolveSpec(ctx.root, name);
   if (ref.kind === "not_found")
     throw bad(`no spec folder matches "${arg}" (${ref.reason})`, "unknown-spec");
@@ -5297,7 +5343,7 @@ function specText(ctx, ref) {
 var masterPath = (ctx) => join6(ctx.root, "ISA.md");
 function holderOf2(ctx, ref) {
   const copy = ref.archived ? undefined : readDirs(ctx).get(ref.slug);
-  return copy !== undefined && copy === ref.dir ? dirname2(dirname2(copy)) : ctx.root;
+  return copy !== undefined && copy === ref.dir ? dirname3(dirname3(copy)) : ctx.root;
 }
 var TREE_DIRS = new WeakMap;
 function treeHolderOf(ctx, ref) {
@@ -5346,12 +5392,12 @@ function specFoldersIn(dir) {
 }
 function allocationSite(ctx) {
   const top = git2(ctx.cwd, ["rev-parse", "--show-toplevel"])?.trim() ?? "";
-  const linked = top !== "" && resolve4(top) !== resolve4(ctx.root);
+  const linked = top !== "" && resolve5(top) !== resolve5(ctx.root);
   const tracks = linked && (git2(top, ["-c", "core.fsmonitor=false", "ls-files", "--", "specs/"]) ?? "").trim() !== "";
   const porcelain = git2(ctx.root, ["worktree", "list", "--porcelain"]) ?? "";
   const worktrees = porcelain.split(`
 `).flatMap((line) => line.startsWith("worktree ") ? [line.slice("worktree ".length)] : []);
-  const taken = worktrees.filter((w) => resolve4(w) !== resolve4(ctx.root)).flatMap((w) => [...specFoldersIn(join6(w, "specs")), ...specFoldersIn(join6(w, "specs", "archive"))]);
+  const taken = worktrees.filter((w) => resolve5(w) !== resolve5(ctx.root)).flatMap((w) => [...specFoldersIn(join6(w, "specs")), ...specFoldersIn(join6(w, "specs", "archive"))]);
   return { at: tracks ? top : ctx.root, taken };
 }
 function allocate(ctx, args) {
@@ -5396,12 +5442,12 @@ var isString = (v) => typeof v === "string";
 function claimInputs(path) {
   const text2 = readIfExists2(path);
   if (text2 === null)
-    throw bad(`the claims file ${basename(path)} does not exist`);
+    throw bad(`the claims file ${basename2(path)} does not exist`);
   let data;
   try {
     data = JSON.parse(text2);
   } catch {
-    throw bad(`the claims file ${basename(path)} is not valid JSON`);
+    throw bad(`the claims file ${basename2(path)} is not valid JSON`);
   }
   if (!Array.isArray(data) || data.length === 0)
     throw bad("the claims file must hold a non-empty JSON array");
@@ -5453,7 +5499,7 @@ function mint(ctx, args) {
   const claimsFile = args.values.get("claims");
   if (claimsFile === undefined)
     throw bad("--claims <json-file> is required");
-  const inputs = claimInputs(resolve4(ctx.cwd, claimsFile));
+  const inputs = claimInputs(resolve5(ctx.cwd, claimsFile));
   const claims = inputs.map((i) => i.claim);
   const rows = inputs.map((i) => i.row);
   const featureName = args.values.get("feature-name");
@@ -5509,11 +5555,11 @@ function verify(ctx, args) {
   return EXIT.ok;
 }
 function decisionFile(ctx, arg) {
-  for (const candidate of [resolve4(ctx.cwd, arg), resolve4(ctx.root, arg)]) {
+  for (const candidate of [resolve5(ctx.cwd, arg), resolve5(ctx.root, arg)]) {
     if (!existsSync2(candidate) || !statSync(candidate).isFile())
       continue;
     const inside = relative(ctx.root, candidate);
-    if (inside.startsWith("..") || resolve4(ctx.root, inside) !== candidate)
+    if (inside.startsWith("..") || resolve5(ctx.root, inside) !== candidate)
       throw bad(`${arg} lies outside the repository`);
     return candidate;
   }
@@ -5795,7 +5841,7 @@ function startedRunIds(text2) {
   return ids;
 }
 function runStart(ctx, args) {
-  const target = basename(required(args, 1, "the target (NNN, NNN-slug, an idea slug or init)").replace(/[\\/]+$/u, ""));
+  const target = basename2(required(args, 1, "the target (NNN, NNN-slug, an idea slug or init)").replace(/[\\/]+$/u, ""));
   const command = requiredValue(args, "command", '"<the command as typed>"');
   const session = args.values.get("session") ?? CLI_SESSION;
   const ts = ctx.now.toISOString();
@@ -5905,13 +5951,13 @@ var OPEN_ATTENTION = new Set(["question", "concerns", "fail"]);
 var ROUND_MODES = ["agent", "workflow", "cockpit"];
 var records = (value) => Array.isArray(value) ? value.filter(isRecord5) : [];
 function readJsonFile(ctx, file, flag) {
-  const text2 = readIfExists2(resolve4(ctx.cwd, file));
+  const text2 = readIfExists2(resolve5(ctx.cwd, file));
   if (text2 === null)
-    throw bad(`${flag} ${basename(file)} does not exist`);
+    throw bad(`${flag} ${basename2(file)} does not exist`);
   try {
     return JSON.parse(text2);
   } catch {
-    throw bad(`${flag} ${basename(file)} is not valid JSON`);
+    throw bad(`${flag} ${basename2(file)} is not valid JSON`);
   }
 }
 function planEntries(value, what) {
@@ -6353,7 +6399,7 @@ async function gateCommand(ctx, args) {
   return sub === "reviewed" ? gateReviewed(ctx, args, ref) : gateCodeReviewed(ctx, args, ref);
 }
 function pickFolder(pool, arg) {
-  const name = basename(arg.replace(/[\\/]+$/u, ""));
+  const name = basename2(arg.replace(/[\\/]+$/u, ""));
   return pool.find((s) => s.id === name || s.slug === name || specSlugOf(s.slug) === name);
 }
 function shiftedText(text2, down) {
@@ -6442,7 +6488,7 @@ function archiveReferences(ctx, ref, at) {
   return out;
 }
 function performMove(move) {
-  mkdirSync3(dirname2(join6(move.at, move.to)), { recursive: true });
+  mkdirSync3(dirname3(join6(move.at, move.to)), { recursive: true });
   const tracked = (git2(move.at, ["ls-files", "--", move.from]) ?? "").trim() !== "";
   if (tracked) {
     if (git2(move.at, ["mv", move.from, move.to]) === null)

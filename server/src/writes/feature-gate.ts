@@ -37,7 +37,8 @@ import { appendInPlace, writeInPlace } from "../infra/fs/in-place.ts";
 import { readIfExists } from "../infra/fs/read.ts";
 import { lstatOf, readTextOf } from "../infra/fs/stat.ts";
 import { commitsFor } from "../infra/git/index.ts";
-import { insideRepository, readSpecSource, readWorkspaceInput, readWorktreeView, worktreeTreeId } from "../workspace/index.ts";
+import { ownLiveWorktree } from "../../../core/src/worktrees.ts";
+import { readSpecSource, readWorkspaceInput, readWorktreeView, worktreeTreeId } from "../workspace/index.ts";
 import { ensureGatesDir } from "./run-write.ts";
 
 /** `F<n>`, the master's feature block id: the only argument the subcommand takes. */
@@ -145,8 +146,8 @@ export async function codeReviewFeature(root: string, feature: string, options: 
     const ref = refs.get(folder);
     if (ref === undefined) return refuse(`${folder} is no active spec folder`);
     const { dir } = await readSpecSource(root, ref, worktrees);
-    const own = worktrees.view.live.find((w) => w.kind === "spec" && w.spec === ref.id);
-    const checkout = own?.path == null || !insideRepository(own.path) ? "." : own.path;
+    // The spec's own live spec worktree inside the repository, by `core/`'s one rule (spec 062, ISC-443).
+    const checkout = ownLiveWorktree(worktrees.view.live, ref.id)?.path ?? ".";
     places.set(folder, { dir, source: dir === ref.dir ? "main" : "worktree", checkout });
   }
   const placeOf = (folder: string): { dir: string; source: "main" | "worktree"; checkout: string } =>

@@ -10,11 +10,11 @@ import { FILE_KINDS } from "../../../core/src/files.ts";
 import type { SpecFiles, SpecRead, TextFileKind } from "../../../core/src/files.ts";
 import { SPEC_FOLDER, SPEC_ID, specSlugOf } from "../../../core/src/spec-ref.ts";
 import { type NotFound, type SpecNotFoundReason, type SpecRef, listSpecs, resolveSpec } from "../../../core/src/resolve.ts";
-import { WORKTREE_COPY_KINDS, type WorktreeView, copyDirFor } from "../../../core/src/worktrees.ts";
+import { WORKTREE_COPY_KINDS, type WorktreeView, copyDirFor, ownLiveWorktree } from "../../../core/src/worktrees.ts";
 import { worktreeTreeId } from "../infra/git/tree-id.ts";
 import { readIfExists } from "../infra/fs/read.ts";
 import { FOLDER_KINDS, specFiles } from "./spec-files.ts";
-import { type WorktreeReading, insideRepository, readWorktreeView, withWorktreeOnly } from "./worktree-view.ts";
+import { type WorktreeReading, readWorktreeView, withWorktreeOnly } from "./worktree-view.ts";
 
 /** How the loader read one active spec (spec 027): its files, the `SpecRead` beside them, and the copy's folder. */
 export interface SpecSourceReading {
@@ -56,8 +56,9 @@ export async function specSourceFor(
   view: WorktreeView,
   withTree = true,
 ): Promise<SpecSourceReading> {
-  const worktree = view.live.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
-  if (worktree?.path == null || !insideRepository(worktree.path)) return { files: main, read: null, copy: null };
+  // The spec's own live spec worktree inside the repository, by `core/`'s one rule (spec 062, ISC-443).
+  const worktree = ownLiveWorktree(view.live, ref.id);
+  if (worktree?.path == null) return { files: main, read: null, copy: null };
   const at = join(root, worktree.path);
   const copyDir = copyDirFor(root, ref, view);
   const copy = copyDir === null ? null : copyFiles(ref.dir, copyDir, ref.slug);

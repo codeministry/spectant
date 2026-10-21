@@ -2,6 +2,7 @@
 // and `log --ancestry-path` (`mergeCommitOf`), whether and where a merge brought a spec branch into `main`; all read
 // refs and objects only, never touch the index, never take a lock and never write an object.
 import { SPEC_FOLDER } from "../../../../core/src/spec-ref.ts";
+import { mergeNeedsAncestry } from "../../../../core/src/worktree-facts.ts";
 import { hasGit } from "../fs/read.ts";
 import { storeBounded } from "./bounded.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
@@ -131,8 +132,9 @@ export async function mergedSpecBranches(root: string, options: MergedBranchesOp
 
     const branches: SpecBranch[] = [];
     for (const tip of tips) {
-      // No main, or a tip on its first-parent line (main's own tip included): no merge brought the branch in.
-      if (main === null || firstParent.has(tip.sha)) {
+      // No main, or a tip on its first-parent line (main's own tip included): no merge brought the branch in, by `core/`'s
+      // `mergeNeedsAncestry`, the rule the plugin's `mergedOf` applies too (spec 062, ISC-443); `main === null` narrows.
+      if (main === null || !mergeNeedsAncestry(tip.sha, main, firstParent)) {
         branches.push({ spec: tip.spec, branch: tip.branch, merged: false });
         continue;
       }

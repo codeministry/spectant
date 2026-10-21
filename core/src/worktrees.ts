@@ -40,7 +40,9 @@
 //     `main`, its folder is gone, or git lists it as `prunable`. Builders and worktrees of no spec never end here.
 //   - `copyDirFor` names the folder a spec is read from, `<root>/<worktree>/specs/NNN-slug`: only for the spec's first
 //     live spec worktree in git's order (the one the dashboard chip shows), only inside the repository, and only when
-//     `specSourceOf` names `worktree` for it. Otherwise null, and the spec reads from the main checkout.
+//     `specSourceOf` names `worktree` for it. Otherwise null, and the spec reads from the main checkout. That worktree
+//     is `ownLiveWorktree`, the one rule every lane picks a spec's checkout by (spec 062, ISC-443); the git facts the
+//     view is assembled from are named in `worktree-facts.ts`.
 //
 // Pure and browser-safe like `planning.ts`: text in, model out, no file system, no git, no Node or Bun API. Malformed
 // lines are skipped, never thrown on: a listing git did not print yields no worktrees rather than an empty page.
@@ -365,13 +367,30 @@ export interface SpecFolderRef {
 }
 
 /**
+ * A worktree path inside the repository, relative and `/`-separated: the only ones whose files are read (plan 027
+ * § Risks, external paths). An absolute path, `..` and a path below `../` are outside.
+ */
+export const insideRepository = (path: string): boolean => !path.startsWith('/') && path !== '..' && !path.startsWith('../');
+
+/**
+ * The spec's own live spec worktree (spec 062, ISC-443): the first live worktree of kind `spec` of the spec `id` in
+ * git's order (the one the dashboard chip shows), when it lies inside the repository; null when the spec has none or
+ * that first one lies outside, so the spec reads from the main checkout. The one rule `copyDirFor`, the server's
+ * `specSourceFor` and the plugin's `specTreeDirs` share.
+ */
+export function ownLiveWorktree(live: readonly Worktree[], id: string): Worktree | null {
+  const worktree = live.find((w) => w.kind === 'spec' && w.spec === id) ?? null;
+  return worktree?.path != null && insideRepository(worktree.path) ? worktree : null;
+}
+
+/**
  * The absolute folder of the worktree copy a spec is read from, `<root>/<worktree>/specs/NNN-slug`, when `specSourceOf`
- * names `worktree` for the spec's first live spec worktree inside the repository; null when the spec reads from the
- * main checkout. `root` is the absolute, `/`-separated workspace root; the path is joined as text, nothing is looked at.
+ * names `worktree` for the spec's own live spec worktree (`ownLiveWorktree`); null when the spec reads from the main
+ * checkout. `root` is the absolute, `/`-separated workspace root; the path is joined as text, nothing is looked at.
  */
 export function copyDirFor(root: string, ref: SpecFolderRef, view: WorktreeView): string | null {
-  const worktree = view.live.find((w) => w.kind === 'spec' && w.spec === ref.id) ?? null;
-  if (worktree?.path == null || worktree.path === '..' || worktree.path.startsWith('../')) return null;
+  const worktree = ownLiveWorktree(view.live, ref.id);
+  if (worktree?.path == null) return null;
   const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
   return source === 'worktree' ? [root.replace(/\/+$/u, ''), worktree.path, SPECS, ref.slug].join('/') : null;
 }
@@ -415,7 +434,7 @@ export function worktreeOnlySpecs(
   const found = new Map<string, WorktreeOnlySpec>();
   for (const worktree of worktrees) {
     const path = worktree.path;
-    if (worktree.kind !== 'spec' || worktree.spec !== null || path === null || path === '..' || path.startsWith('../')) continue;
+    if (worktree.kind !== 'spec' || worktree.spec !== null || path === null || !insideRepository(path)) continue;
     const slug = folderNameOf(worktree);
     const id = slug === null ? null : specIdOf(slug);
     if (slug === null || id === null || taken.has(id) || found.has(id)) continue;
