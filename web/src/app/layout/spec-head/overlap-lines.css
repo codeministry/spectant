@@ -1,3 +1,6 @@
+/* The overlap lines; the spec id links are shared/ui/_spec-id-link.css. */
+@import "../../shared/ui/_spec-id-link.css";
+
 :host {
   display: block;
   min-inline-size: 0;
@@ -39,18 +42,6 @@ ul {
 .o-text {
   margin: 0;
   overflow-wrap: anywhere;
-}
-
-.spec {
-  color: var(--disp-text);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-decoration: none;
-}
-
-.spec:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .o-paths {

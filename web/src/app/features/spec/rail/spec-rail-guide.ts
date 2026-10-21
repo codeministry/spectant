@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { SpecPageModel } from '../../../../../../core/src/files';
 import { specLink } from '../../../layout/shell/areas';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
+import { specModel } from '../../../layout/shell/spec-model';
 import { specGuide } from '../../../layout/spec-head/spec-guide';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
@@ -30,10 +30,7 @@ export class SpecRailGuide {
   private readonly data = inject(ShellData);
   private readonly state = inject(ShellState);
 
-  private readonly model = computed<SpecPageModel | null>(() => {
-    const result = this.data.spec.value();
-    return result?.kind === 'ok' ? result.body : null;
-  });
+  private readonly model = specModel(this.data);
 
   /** The guidance spot: the spec's own entry as the next step and the rest of its `waits` (`specGuide`). */
   protected readonly guide = computed(() => {

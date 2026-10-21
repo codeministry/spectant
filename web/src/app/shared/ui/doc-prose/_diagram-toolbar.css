@@ -1,0 +1,62 @@
+/*
+ * The diagram toolbar's own anatomy (ISC-154.1, design.md § Mermaid toolbar), alike wherever `ui-diagram-toolbar` is
+ * mounted: the drawn diagrams of `ui-doc-prose` (`doc-prose.css`) and the planning graph lens (`planning-graph.css`).
+ * Both sheets are unencapsulated and import this partial as their first rule. `ui-diagram-toolbar .x` keeps the
+ * specificity of the host-prefixed rules it replaces (one element, one class) and meets the same toolbars, since those
+ * two hosts are the only ones that mount it; no rule of either host before the old place sets these properties on the
+ * toolbar, so the move changes no cascade. Only what both hosts set alike lives here: the surface (glass in the prose,
+ * solid in the graph), the prose's transitions and its zoom-level line stay with each host.
+ */
+ui-diagram-toolbar .diagram-toolbar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+ui-diagram-toolbar .diagram-tool {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+ui-diagram-toolbar .diagram-tool:hover:not([aria-disabled='true']) {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+ui-diagram-toolbar .diagram-tool[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  ui-diagram-toolbar .diagram-tool {
+    inline-size: 44px;
+    block-size: 44px;
+  }
+}
+
+ui-diagram-toolbar .diagram-zoom-level {
+  min-inline-size: 6ch;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+ui-diagram-toolbar .diagram-tool-rule {
+  inline-size: 1px;
+  block-size: 16px;
+  background: var(--line);
+}

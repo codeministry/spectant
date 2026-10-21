@@ -93,7 +93,7 @@ const sameRow = (a: WorkflowRow, b: WorkflowRow): boolean =>
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',
-  styleUrls: ['./help-page.css', './help-tables.css'],
+  styleUrls: ['./help-page.css', './help-page.workflows.css', './help-page.about.css', './help-tables.css'],
 })
 export class HelpPage {
   private readonly shell = inject(ShellState);

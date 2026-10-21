@@ -35,8 +35,10 @@
 }
 
 /* The statement line: what the number means and which way is good, 12/16, at most two lines, hyphenated in the
-   host's `lang`. In a tile without a meta line it goes to the foot. */
-.statement {
+   host's `lang`. In a tile without a meta line it goes to the foot. `.say`, the Pulse card's reference and statement
+   as one text, takes the same two-line clamp (see below); merged here, as no rule between sets these on it. */
+.statement,
+.say {
   display: -webkit-box;
   overflow: hidden;
   color: var(--muted-ink);
@@ -173,20 +175,8 @@
   color: var(--muted-ink);
 }
 
-/* Reference and statement as one text of at most two lines: on one line where they fit. */
-.say {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--muted-ink);
-  font-size: 12px;
-  line-height: 16px;
-  hyphens: auto;
-  overflow-wrap: break-word;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
+/* Reference and statement as one text of at most two lines (`.say`, with `.statement` above): on one line where
+   they fit. */
 .say > .ref,
 .say > .statement {
   display: inline;

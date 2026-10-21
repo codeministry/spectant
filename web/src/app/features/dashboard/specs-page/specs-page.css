@@ -1,4 +1,6 @@
 /* One column at every tier: the page head, the spec list, the backlog, the footnote (spec 058). */
+@import "../_workspace-page.css";
+
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -7,33 +9,8 @@
   min-inline-size: 0;
 }
 
-/* The page head's h1: the workspace badge, "Specs", then "· <ws>" in muted 400. */
+/* The page head's h1: the workspace badge, "Specs", then "· <ws>" in muted 400, and the closing footnote (both in
+   _workspace-page.css); the row 8 px apart. */
 .h1-row {
-  display: flex;
   gap: 8px;
-  align-items: center;
-  min-inline-size: 0;
-}
-
-.page-mark {
-  flex: none;
-}
-
-.h1-row h1 {
-  min-inline-size: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.h1-ws {
-  color: var(--muted-ink);
-  font-weight: 400;
-}
-
-/* The closing footnote: where the page is read from, 12 px muted. */
-.footer-note {
-  margin: 0;
-  color: var(--muted-ink);
-  font-size: 12px;
-  line-height: 16px;
 }

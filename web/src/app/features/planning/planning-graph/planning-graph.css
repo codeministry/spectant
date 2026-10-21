@@ -1,5 +1,8 @@
-/* The graph lens (spec 026, ISC-170). Not encapsulated (mermaid's SVG is innerHTML): every selector starts at the host.
+/* The graph lens (spec 026, ISC-170). Not encapsulated (mermaid's SVG is innerHTML): every selector starts at the host,
+   but for the diagram toolbar's anatomy it shares with the Docs diagrams (`_diagram-toolbar.css`, ui-diagram-toolbar).
    The SVG's own node and edge colours live in GRAPH_CSS (graph-source.ts), inside mermaid's #id-scoped sheet. */
+@import '../../../shared/ui/doc-prose/_diagram-toolbar.css';
+
 app-planning-graph {
   display: block;
 }
@@ -113,58 +116,7 @@ app-planning-graph .graph-figure > ui-diagram-toolbar {
 }
 
 app-planning-graph .diagram-toolbar {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
   background: var(--color-base-100);
-}
-
-app-planning-graph .diagram-tool {
-  display: inline-grid;
-  place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-app-planning-graph .diagram-tool:hover:not([aria-disabled='true']) {
-  background: var(--color-base-300);
-  color: var(--color-base-content);
-}
-
-app-planning-graph .diagram-tool[aria-disabled='true'] {
-  opacity: 0.4;
-  cursor: default;
-}
-
-@media (pointer: coarse) {
-  app-planning-graph .diagram-tool {
-    inline-size: 44px;
-    block-size: 44px;
-  }
-}
-
-app-planning-graph .diagram-zoom-level {
-  min-inline-size: 6ch;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-app-planning-graph .diagram-tool-rule {
-  inline-size: 1px;
-  block-size: 16px;
-  background: var(--line);
 }
 
 app-planning-graph .graph-legend {

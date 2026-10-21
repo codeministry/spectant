@@ -33,18 +33,34 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   developer gallery `dev/` belong to no layer. Imports name the file; no `index.ts` barrels. Reason: a lower layer that
   reaches up makes the frame depend on a view; the rule `layers` of `bun run check:architecture` reports every such
   import, type-only ones included, and `bun test tests/architecture.test.ts -t layers` holds the app to it.
-- Every component in `core/`, `shared/` and `layout/` keeps its template and styles in files of their own beside the
-  `.ts`, same base name: `templateUrl: './x.html'`, `styleUrl: './x.css'`, never `template:` or `styles:`. ESLint
-  enforces it there with `@angular-eslint/component-max-inline-declarations` (`template: 0`, `styles: 0`), guarded by
-  `web/tests/inline-declarations.test.ts`; `features/` follows with the third spec of F25, and a test host component
-  inside a `*.spec.ts` may stay inline. Reason: the size and duplicate guards see markup and CSS only as files, and a
-  review reads one concern per file.
+- No folder under `features/` imports another, statically, type-only or through a dynamic `import()`. A part two
+  features need moves down: pure derivations to `core/model/` (backlog order, planning page state, stage track), UI
+  primitives and helpers to `shared/` (`shared/brief/`, `shared/page-nav/`, `shared/arrival.ts`, drag config and
+  stage edge in `shared/ui/`), frame parts to `layout/` (the backlog writer and its menus). Routes that join several
+  features (`spec-area.routes.ts`) sit directly in `src/app`. Reason: a feature that reaches into another couples two
+  views that change for different reasons; the rule `isolation` of `bun run check:architecture` reports every such
+  import, and `bun test tests/architecture.test.ts -t isolation` holds the app to it.
+- Board, library, spec and planning are cut into a page, a signal store and part components. A store
+  (`<name>.store.ts`, `@Injectable()`, provided by its page) holds the state as signals, the derivations as
+  `computed` and the changes as methods, and touches no template, `ElementRef` or `DOCUMENT`; a page (a route, a
+  tab, a planning lens or the library reader) provides and injects its store, keeps the DOM work (observers, focus,
+  scrolling, `viewChild`) and is the only component there that injects a store or `ApiClient`; a part component
+  gets its data through `input()`, `output()` and `model()` and may inject the router, selection, shell and live
+  sources. Pure helpers of a feature live beside it (`board-view.ts`, `library-view.ts`, `spec/spec-view.ts`).
+  `web/tests/feature-shape.test.ts` lists the stores and pages (`-t store`, `-t pages`). Reason: a part that loads
+  its own data cannot be reused or tested without the network, and state spread over a page is hard to follow.
+- Every component in `src/app` keeps its template and styles in files of their own beside the `.ts`, same base name:
+  `templateUrl: './x.html'`, `styleUrl: './x.css'` (several `styleUrls` in cascade order when one stylesheet would pass
+  400 lines), never `template:` or `styles:`. ESLint enforces it with
+  `@angular-eslint/component-max-inline-declarations` (`template: 0`, `styles: 0`), guarded by
+  `web/tests/inline-declarations.test.ts`; a test host component inside a `*.spec.ts` may stay inline. Reason: the
+  size and duplicate guards see markup and CSS only as files, and a review reads one concern per file.
 - The web entry of `bun run check:architecture` (`scripts/architecture/web.entry.ts`, listed in
   `scripts/architecture.config.ts`, part of `bun run check:static`) checks `web/src/app` without tests and generated
   files: at most 400 lines per `.ts`, `.html` and `.css` file, no copied block of 50 tokens or more (jscpd
-  `typescript`, `markup`, `css`), and the layers above. `features/**` and `dev/**` are outside size and duplicates for
-  now; the third spec of F25 removes the `features/**` pattern. A clone that has no shared rule without changing the
-  DOM or a computed value is a named exception in the entry's `duplicates.allow`, its two files and a `why`; code is
+  `typescript`, `markup`, `css`), the layers and the feature isolation above. Only `dev/**` (the developer gallery)
+  is outside size and duplicates. A clone that has no shared rule without changing the DOM or a computed value is a
+  named exception in the entry's `duplicates.allow`, its two files and a `why`; code is
   never reordered just to slip under jscpd. Reason: small files without copies keep every change reviewable, and an
   exception is visible with its reason instead of hidden.
 - A rule two components share lives in a CSS partial (`shared/ui/overlay/_overlay-surface.css`,
@@ -106,7 +122,7 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
 - Tiers are measured on the shell container (`container: shell / inline-size`) by `ShellState` through a ResizeObserver and exposed as `data-tier="compact|medium|wide"`: compact < 640 stacks everything and turns popovers into bottom sheets, medium keeps one column with the tab bar under the spec head, wide adds the 352 px rail. Reason: the same app runs in a 600 px cmux panel and full-window (ISC-63), and a viewport query would lie inside a panel.
 - The tab bar is one `app-tab-bar` rendered by `app-tab-bar-slot`: `placement="header"` (row 2, horizontally scrolling with a trailing fade) at compact, `placement="main"` under the spec head, sticky at `top: 64px`, at medium and wide. It shows only the current area's tabs with the counts the spec model carries (claims closed/total, tasks landed/total). Reason: exactly one bar exists per tier, and a count the model does not hold is not invented here (ISC-72).
 - The area menu is `app-area-menu` (`layout/area-menu/`), a native popover at medium and wide and a bottom sheet at compact, listing the six areas with `aria-current="page"` on the current one and no `role="menu"`; areas whose views are not built render as disabled entries with the reason as visible text. Reason: ISC-76, and a menu role would take over arrow-key handling the browser already provides.
-- Areas and tabs come only from `SPEC_AREAS` (`layout/shell/areas.ts`); a feature registers its view in `VIEW_LOADERS` (`features/spec/spec-area.routes.ts`) keyed by tab id (or `dashboard`); an unregistered key renders `app-area-placeholder`.
+- Areas and tabs come only from `SPEC_AREAS` (`layout/shell/areas.ts`); a feature registers its view in `VIEW_LOADERS` (`src/app/spec-area.routes.ts`) keyed by tab id (or `dashboard`); an unregistered key renders `app-area-placeholder`.
 - `ShellData` feeds `LockSourceService.connect()` with the spec payload's `areas.live`; `source` stays `none` until the spec route answers `ok`.
 - Header controls carry `data-control="brand|workspace|spec|area|palette|live|zen|settings"`; T36 to T38 replace them in place, never add a second `<header>`.
 - An unknown path, workspace, spec or tab renders `app-not-found` (ISC-71); a catch-all 404 (`served: false`) renders the placeholder instead.

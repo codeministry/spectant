@@ -1,17 +1,9 @@
+/* The actors card; the card rules are _settings-card.css. */
+@import "./_settings-card.css";
 
     :host {
       display: block;
       container-type: inline-size;
-    }
-
-    .c-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 12px;
-      align-items: baseline;
-      justify-content: space-between;
-      padding: 12px var(--space-3);
-      border-block-end: 1px solid var(--line);
     }
 
     h2 {
@@ -20,23 +12,6 @@
       font-size: 15px;
       font-weight: 600;
       line-height: 24px;
-    }
-    .card-pad { padding: var(--space-3); }
-
-    .meta, .intro, .empty {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 20px;
-    }
-
-    .eyebrow {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      line-height: 16px;
-      text-transform: uppercase;
     }
 
     .actor-head, .actor-row {
@@ -70,14 +45,6 @@
       box-sizing: border-box;
       inline-size: 100%;
       min-inline-size: 0;
-      block-size: 36px;
-      padding: 0 10px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--lane);
-      color: var(--color-base-content);
-      font: inherit;
-      font-size: 14px;
     }
 
     .field:focus-visible {

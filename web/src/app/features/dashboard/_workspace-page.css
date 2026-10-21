@@ -1,0 +1,29 @@
+/* The workspace pages' h1 row (the workspace badge, the page name, then "· <ws>" in muted 400) and their 12 px muted
+   closing footnote, shared by the dashboard and the Specs page; each page sets its own gap in the row. */
+.footer-note {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.h1-row {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.page-mark {
+  flex: none;
+}
+
+.h1-row h1 {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.h1-ws {
+  color: var(--muted-ink);
+  font-weight: 400;
+}

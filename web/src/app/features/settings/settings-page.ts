@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LANGS } from '../../../i18n/catalogues';
 import { KeyboardService } from '../../layout/shell/keyboard.service';
+import { chooseLanguage } from '../../core/language-choice';
 import { LanguageService } from '../../core/language.service';
 import { isAgeMinutes, isDensity, SettingsService, type ThemeMode } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
@@ -105,10 +106,7 @@ export class SettingsPage {
   }
 
   protected setLanguage(lang: string | undefined): void {
-    const next = LANGS.find((key) => key === lang);
-    if (next === undefined) return;
-    this.language.set(next);
-    void this.settings.update({ language: next });
+    chooseLanguage(lang, this.language, this.settings);
   }
 
   protected setDensity(value: string | undefined): void {

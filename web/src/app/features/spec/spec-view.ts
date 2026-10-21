@@ -17,13 +17,8 @@ import type { BriefModel } from '../../shared/brief/brief';
 /** Where a spec tab stands: `loading` only before the first answer, so a reload keeps the tab on screen. */
 export type SpecView = 'loading' | 'ok' | 'unserved' | 'error';
 
-/** The spec payload once the spec route answered `ok`, else null. */
-export function specModel(data: Pick<ShellData, 'spec'>): Signal<SpecPageModel | null> {
-  return computed(() => {
-    const result = data.spec.value();
-    return result?.kind === 'ok' ? result.body : null;
-  });
-}
+/** The spec payload once the spec route answered `ok`, else null; it lives in layout, which the spec head shares. */
+export { specModel } from '../../layout/shell/spec-model';
 
 /** The tab's state: the skeleton before the first answer, the placeholder while the route is unserved (a catch-all 404). */
 export function specView(data: Pick<ShellData, 'spec'>): Signal<SpecView> {

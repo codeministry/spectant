@@ -1,15 +1,7 @@
 import type { SpecType, WorkflowStage } from '../../../../../core/src/files';
 import { CLAIMLESS_RULE, STAGE_RULES, TYPE_NEEDS, WORKFLOW_TYPES } from '../../../../../core/src/stage';
 import type { HelpSection } from '../../shared/page-nav/help-nav';
-import {
-  GROUP_CONTEXT,
-  type Shortcut,
-  SHORTCUT_CONTEXTS,
-  SHORTCUT_GROUPS,
-  type ShortcutContext,
-  type ShortcutGroup,
-  SHORTCUTS,
-} from '../../layout/shell/keyboard-bindings';
+import { SHORTCUT_SHEET, type ShortcutSheetContext } from '../../layout/shell/shortcut-sheet-contexts';
 
 /**
  * The Help page's sections and the data they render (spec 008, T162, ISC-133.1). Everything here is read from the
@@ -62,26 +54,11 @@ export const LEGEND: readonly LegendEntry[] = [
 /** The Getting started steps, each a catalogue key under `help.start.steps`. */
 export const START_STEPS: readonly string[] = ['install', 'register', 'open'];
 
-interface KeyGroup {
-  readonly id: ShortcutGroup;
-  readonly bindings: readonly Shortcut[];
-}
-
-export interface KeyContext {
-  readonly id: ShortcutContext;
-  readonly groups: readonly KeyGroup[];
-  /** A context of one group names it once, in the context heading — as the `?` sheet does. */
-  readonly titled: boolean;
-}
+/** One context of the Keyboard section: the `?` sheet's (layout/shell/shortcut-sheet-contexts.ts). */
+export type KeyContext = ShortcutSheetContext;
 
 /** `SHORTCUTS` grouped by context and group exactly as the `?` sheet lists them: the one table, never a copy. */
-export const KEY_CONTEXTS: readonly KeyContext[] = SHORTCUT_CONTEXTS.map((context) => {
-  const groups = SHORTCUT_GROUPS.filter((group) => GROUP_CONTEXT[group] === context).map((id) => ({
-    id,
-    bindings: SHORTCUTS.filter((binding) => binding.group === id),
-  }));
-  return { id: context, groups, titled: groups.length > 1 };
-});
+export const KEY_CONTEXTS: readonly KeyContext[] = SHORTCUT_SHEET;
 
 /** A node colour of the lifecycle bands (prototype `WFC`): start, files written, your gate, agents at work, done. */
 export type LifecycleTone = 'start' | 'files' | 'gate' | 'agents' | 'done';

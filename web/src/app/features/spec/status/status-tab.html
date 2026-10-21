@@ -31,7 +31,7 @@
               @if (tier() === 'wide' && name === 'reviewed' && store.action() !== 'stale' && m.gates.reviewed.files?.length) {
                 <ul class="files">
                   @for (file of m.gates.reviewed.files; track file) {
-                    <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
+                    <li><code ui-path-breaks [path]="file"></code></li>
                   }
                 </ul>
               }

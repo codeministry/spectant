@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { RefreshService } from '../../layout/shell/refresh.service';
 import { NotFound } from '../../layout/not-found/not-found';
@@ -14,6 +14,7 @@ import { WaitingSection } from './context-rail/waiting-section';
 import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
 import { NextUpList } from './next-up-list/next-up-list';
 import { WarningsPanel } from './warnings-panel/warnings-panel';
+import { workspacePage } from './workspace-page';
 
 /**
  * The workspace dashboard `/w/:ws` (spec 058, design.md § Across viewports): the head, then the KPI band, the TL;DR,
@@ -39,18 +40,12 @@ export class DashboardPage {
   /** The live refresh's KPI tint (T68); the list's row marks belong to the Specs page. */
   protected readonly refresh = inject(RefreshService);
 
-  protected readonly ws = computed(() => this.state.ws() ?? '');
-  /** The registry's path tail of the open workspace, for the prototype's footnote (spec 024); '' while unknown. */
-  protected readonly pathTail = computed(() => this.data.workspaceList().find((entry) => entry.slug === this.ws())?.pathTail ?? '');
-  private readonly body = computed(() => {
-    const result = this.data.dashboard.value();
-    return result?.kind === 'ok' ? result.body : null;
-  });
   /**
-   * The dashboard body read through the narrow structural views the components declare: core's model type is not
-   * importable under the web tsconfig (see `DashboardBody`), so each component names only the fields it reads.
+   * The open workspace, its path tail for the prototype's footnote (spec 024) and the dashboard body read through the
+   * narrow structural views the components declare (`view`): core's model type is not importable under the web
+   * tsconfig (see `DashboardBody`), so each component names only the fields it reads.
    */
-  protected readonly view = computed(() => readView(this.body()));
+  protected readonly page = workspacePage(this.state, this.data, readView);
 }
 
 type DashboardPageView = DashboardView & KpiBandModel & { readonly brief: BriefModel | null };

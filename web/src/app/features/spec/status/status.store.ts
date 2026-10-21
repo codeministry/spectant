@@ -2,7 +2,7 @@ import { computed, inject, Injectable, resource } from '@angular/core';
 import { ApiClient } from '../../../core/api.service';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
-import { type GateAction, gateAction } from '../../../layout/spec-head/spec-head-model';
+import { reviewGate } from '../../../layout/spec-head/review-gate';
 import { claimsRatio, specBrief, specModel, specParams, specTabLink, specView } from '../spec-view';
 import { openClaims } from './status-model';
 
@@ -78,11 +78,10 @@ export class StatusStore {
   readonly workflow = this.data.workflow;
   readonly actors = this.data.actorList;
 
-  readonly lock = computed(() => this.model()?.areas.live.lock ?? null);
-  readonly action = computed<GateAction | null>(() => {
-    const model = this.model();
-    return model ? gateAction(model.gates.reviewed, this.lock()) : null;
-  });
+  /** The review gate's lock and action, the same the gate button shows (`reviewGate`). */
+  private readonly gate = reviewGate(this.model);
+  readonly lock = this.gate.lock;
+  readonly action = this.gate.action;
 
   /** The spec's slice of `specs/tldr.md` for the Activity card's TL;DR box; null when no TL;DR item names this spec. */
   readonly brief = specBrief(this.model);

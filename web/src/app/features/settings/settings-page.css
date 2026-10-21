@@ -1,3 +1,7 @@
+/* The settings page; the card rules are _settings-card.css, the switch and the text link shared/ui partials. */
+@import "./_settings-card.css";
+@import "../../shared/ui/_switch.css";
+@import "../../shared/ui/_text-link.css";
 
     :host { display: block; }
     ui-page-head { margin-block-end: 4px; }
@@ -20,16 +24,6 @@
     }
     .main > * { scroll-margin-block-start: 128px; }
 
-    .c-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 12px;
-      align-items: baseline;
-      justify-content: space-between;
-      padding: 12px var(--space-3);
-      border-block-end: 1px solid var(--line);
-    }
-
     .c-head h2 {
       margin: 0;
       font-family: var(--font-brand);
@@ -37,35 +31,10 @@
       font-weight: 600;
       line-height: 24px;
     }
-    .card-pad { padding: var(--space-3); }
-
-    .meta {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 20px;
-    }
-
-    .eyebrow {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      line-height: 16px;
-      text-transform: uppercase;
-    }
 
     /* Ahead of `.set-row .switch`: sets no justify-self, the switch has no other class; order is inert. */
     .switch {
-      position: relative;
       flex: none;
-      inline-size: 32px;
-      block-size: 18px;
-      padding: 0;
-      border: 0;
-      border-radius: 9px;
-      background: var(--track);
-      cursor: pointer;
       transition: background-color var(--dur-pop) var(--ease);
     }
 
@@ -103,17 +72,7 @@
       border: 0;
     }
 
-    .switch::after {
-      position: absolute;
-      inset-block-start: 2px;
-      inset-inline-start: 2px;
-      inline-size: 14px;
-      block-size: 14px;
-      border-radius: 50%;
-      background: var(--color-base-100);
-      content: '';
-      transition: translate var(--dur-pop) var(--ease);
-    }
+    .switch::after { transition: translate var(--dur-pop) var(--ease); }
     .switch[aria-checked='true'] { background: var(--badge); }
     .switch[aria-checked='true']::after { translate: 14px 0; }
     .switch:disabled { cursor: not-allowed; }
@@ -166,16 +125,6 @@
       color: var(--muted);
     }
 
-    .text-link {
-      display: inline-flex;
-      gap: 4px;
-      align-items: center;
-      color: var(--disp-text);
-      font-size: 13px;
-      text-decoration: none;
-    }
-    .text-link:hover { text-decoration: underline; }
-
     .key-row {
       display: flex;
       gap: 12px;
@@ -225,14 +174,6 @@
       justify-self: start;
       box-sizing: border-box;
       inline-size: 112px;
-      block-size: 36px;
-      padding: 0 10px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--lane);
-      color: var(--color-base-content);
-      font: inherit;
-      font-size: 14px;
       font-variant-numeric: tabular-nums;
     }
     .field[aria-invalid='true'] { border-color: var(--color-error); }

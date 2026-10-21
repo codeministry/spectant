@@ -16,6 +16,7 @@ import { UiWsBadge } from '../../../shared/ui/ws-badge/ws-badge';
 import type { DashboardView } from '../context-rail/dashboard-view';
 import { type DashboardIdeas, IdeasPanel } from '../ideas-panel/ideas-panel';
 import { SpecTable } from '../spec-table/spec-table';
+import { workspacePage } from '../workspace-page';
 import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readListCounts, readSpecRows } from '../spec-table/spec-table-model';
 
 /**
@@ -53,22 +54,19 @@ export class SpecsPage {
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
   protected readonly query = computed(() => parseListQuery(this.params()));
 
-  protected readonly ws = computed(() => this.state.ws() ?? '');
-  /** The registry's path tail of the open workspace, for the footnote; '' while unknown. */
-  protected readonly pathTail = computed(() => this.data.workspaceList().find((entry) => entry.slug === this.ws())?.pathTail ?? '');
-  private readonly body = computed(() => {
-    const result = this.data.dashboard.value();
-    return result?.kind === 'ok' ? result.body : null;
-  });
-  /** The body through the narrow view the spec list reads (`kpis`, `guidance`); null while it lacks them. */
-  protected readonly view = computed(() => readView(this.body()));
+  /**
+   * The open workspace, its path tail for the footnote and the body, `view` through the narrow view the spec list
+   * reads (`kpis`, `guidance`; null while it lacks them).
+   */
+  protected readonly page = workspacePage(this.state, this.data, readView);
+  private readonly body = this.page.body;
   protected readonly rows = computed(() => readSpecRows(this.body()));
   protected readonly archive = computed(() => readArchiveRows(this.body()));
   protected readonly listCounts = computed(() => readListCounts(this.body()));
   /** The backlog's stories (`DashboardModel.ideas`), none while the body lacks the block. */
   protected readonly ideas = computed(() => readIdeas(this.body()));
   /** The eyebrow's summary params, as the area menu's line for this page: active and archived specs. */
-  protected readonly summary = computed(() => ({ active: this.rows().length, archived: this.view()?.kpis.archived ?? this.archive().length }));
+  protected readonly summary = computed(() => ({ active: this.rows().length, archived: this.page.view()?.kpis.archived ?? this.archive().length }));
 
   /** The live refresh's row marks (T68); the page holds back new specs itself. */
   protected readonly refresh = inject(RefreshService);
@@ -77,7 +75,7 @@ export class SpecsPage {
    * across refreshes, so new specs never reflow under the reader; `showPending` adds the rest.
    */
   private readonly seen = linkedSignal<{ ws: string; loaded: boolean; ids: readonly string[] }, ReadonlySet<string> | null>({
-    source: () => ({ ws: this.ws(), loaded: this.body() !== null, ids: this.rows().map((row) => row.id) }),
+    source: () => ({ ws: this.page.ws(), loaded: this.body() !== null, ids: this.rows().map((row) => row.id) }),
     computation: (source, previous) => {
       if (!source.loaded) return null;
       const kept = previous?.source.ws === source.ws && previous.source.loaded ? previous.value : null;

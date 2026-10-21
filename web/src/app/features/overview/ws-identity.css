@@ -1,3 +1,5 @@
+/* The workspace identity; the path tail is _ws-path.css. */
+@import "./_ws-path.css";
 
     :host {
       display: flex;
@@ -40,17 +42,6 @@
       white-space: nowrap;
     }
     .ws-head a:hover h2 { color: var(--disp-text); }
-
-    .path {
-      overflow: hidden;
-      min-inline-size: 0;
-      color: var(--muted-ink);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      line-height: 16px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
 
     .end {
       display: inline-flex;

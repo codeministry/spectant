@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { GateState, WaitingItem } from '../../../../../../core/src/files';
 import { GateButton } from '../../../layout/spec-head/gate-button/gate-button';
-import { pathSegments } from '../../../layout/spec-head/spec-head-model';
+import { UiPathBreaks } from '../../../shared/ui/path-breaks/path-breaks';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiTime } from '../../../shared/time';
 import { UiButton } from '../../../shared/ui/button/button';
@@ -50,6 +50,7 @@ const ANCHORS = ['waiting', 'gates'] as const;
     TranslocoPipe,
     UiIcon,
     UiMeter,
+    UiPathBreaks,
     UiRing,
     UiSectionHeader,
     UiSkeleton,
@@ -69,7 +70,6 @@ export class StatusTab {
 
   protected readonly tier = this.store.tier;
   protected readonly gateNames = GATE_NAMES;
-  protected readonly segments = pathSegments;
 
   readonly model = this.store.model;
   readonly claims = this.store.claims;

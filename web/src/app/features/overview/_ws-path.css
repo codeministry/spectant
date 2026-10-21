@@ -1,0 +1,12 @@
+/* A workspace's path tail (and the overview's unreadable reason): mono 12/16 muted on one line, cut with an ellipsis. */
+.path,
+.reason {
+  overflow: hidden;
+  min-inline-size: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -8,13 +8,16 @@ import { LanguageService } from '../../../core/language.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { formatInstant, UiTimeLabel } from '../../../shared/time';
 import { UiNotice } from '../../../shared/ui/notice/notice';
+import { UiPathBreaks } from '../../../shared/ui/path-breaks/path-breaks';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiKbd } from '../../../shared/ui/kbd/kbd';
 import { UiDialog } from '../../../shared/ui/overlay/dialog';
 import { ToastService } from '../../../shared/ui/toast/toast';
 import { ShellData } from '../../shell/shell-data.service';
 import { ShellState } from '../../shell/shell-state.service';
-import { type GateAction, gateAction, pathSegments, shortHash } from '../spec-head-model';
+import { specModel } from '../../shell/spec-model';
+import { reviewGate } from '../review-gate';
+import { shortHash } from '../spec-head-model';
 
 const HASH_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
 
@@ -52,7 +55,7 @@ type WriteState =
  */
 @Component({
   selector: 'app-gate-button',
-  imports: [TranslocoPipe, UiChip, UiIcon, UiKbd, UiNotice, UiDialog, UiTimeLabel],
+  imports: [TranslocoPipe, UiChip, UiIcon, UiKbd, UiNotice, UiDialog, UiPathBreaks, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-size]': 'size()' },
   styleUrl: './gate-button.css',
@@ -79,17 +82,11 @@ export class GateButton {
   protected readonly ids = gateIds();
   protected readonly hashFiles = HASH_FILES;
   protected readonly hashFileNames = REVIEWED_HASH_FILES;
-  protected readonly segments = pathSegments;
 
-  protected readonly model = computed<SpecPageModel | null>(() => {
-    const result = this.data.spec.value();
-    return result?.kind === 'ok' ? result.body : null;
-  });
-  protected readonly lock = computed(() => this.model()?.areas.live.lock ?? null);
-  readonly action = computed<GateAction | null>(() => {
-    const model = this.model();
-    return model ? gateAction(model.gates.reviewed, this.lock()) : null;
-  });
+  protected readonly model = specModel(this.data);
+  private readonly gate = reviewGate(this.model);
+  protected readonly lock = this.gate.lock;
+  readonly action = this.gate.action;
 
   /** The pill's name: its label, then the hint and, when stale, the list of changed files. */
   protected readonly labelledBy = computed(() => {

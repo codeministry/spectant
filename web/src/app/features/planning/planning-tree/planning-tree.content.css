@@ -1,5 +1,8 @@
 /* The tree lens, continued (spec 061 split planning-tree.css in two; this part follows it in the cascade): the
- * chevron, the row content, the tint and the compact tier. */
+ * chevron, the row content, the tint and the compact tier. The milestone word's visually hidden span takes the shared
+ * clip (`_visually-hidden.css`, first rule here: no other tree rule styles that span) plus the tree's own resets below. */
+@import '../../../shared/ui/_visually-hidden.css';
+
 .chev[data-toggle]::before {
   position: absolute;
   inset: -10px;
@@ -158,15 +161,9 @@
 }
 
 .visually-hidden {
-  position: absolute;
-  overflow: hidden;
-  inline-size: 1px;
-  block-size: 1px;
   margin: -1px;
   padding: 0;
   border: 0;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 @container shell (inline-size < 640px) {
