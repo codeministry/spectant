@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { API_ERRORS, SPEC_API_ROOT } from "../server/src/spec-routes.contract.ts";
+import { API_ERRORS, SPEC_API_ROOT } from "../server/src/contracts/spec-routes.contract.ts";
 import {
   ANCHOR_KINDS,
   NOTE_ERRORS,
@@ -27,7 +27,7 @@ import {
   parseNoteDraft,
   parseNotesQuery,
   validateNote,
-} from "../server/src/notes.contract.ts";
+} from "../server/src/contracts/note-routes.contract.ts";
 
 const ID = "3f2b8c1e-4a5d-4e6f-9a7b-1c2d3e4f5a6b";
 const NOW = "2026-09-29T10:00:00.000Z";
@@ -260,10 +260,15 @@ describe("storage mapping and counts", () => {
   });
 });
 
-test("the module stays browser-safe: its only import is the spec routes contract", () => {
-  const source = readFileSync(join(import.meta.dir, "../server/src/notes.contract.ts"), "utf8");
-  const imports = [...source.matchAll(/^import .* from ['"](.+)['"];$/gm)].map((match) => match[1]);
-  expect(imports).toEqual(["./spec-routes.contract.ts"]);
+test("the module stays browser-safe: the shape imports only the guards, the routes only the shape, the guards and the spec routes contract", () => {
+  // Re-exports count as imports: `export … from` reaches a module as surely as `import … from`.
+  const importsOf = (file: string): Array<string | undefined> => {
+    const source = readFileSync(join(import.meta.dir, "../server/src/contracts", file), "utf8");
+    return [...source.matchAll(/^(?:import|export) .* from ['"](.+)['"];$/gm)].map((match) => match[1]);
+  };
+  expect(importsOf("notes.contract.ts")).toEqual(["./guards.ts"]);
+  expect(importsOf("note-routes.contract.ts")).toEqual(["./spec-routes.contract.ts", "./guards.ts", "./notes.contract.ts", "./notes.contract.ts"]);
+  expect(importsOf("guards.ts")).toEqual([]);
   const typed: Note = { id: ID, workspace: "leadgen", anchor: null, title: "", body: "x", pinned: false, created: NOW, updated: NOW };
   expect(validateNote(typed).ok).toBe(true);
 });

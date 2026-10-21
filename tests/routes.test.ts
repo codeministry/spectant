@@ -18,13 +18,13 @@ import { readLockSources } from "../core/src/locks.ts";
 import { taskSteps } from "../core/src/steps.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
-import { composeApi, dashboardApi } from "../server/src/api.ts";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { run } from "../server/src/cli.ts";
-import { CommitCache, commitsFor } from "../server/src/git.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
+import { composeApi } from "../server/src/infra/http/json.ts";
+import { dashboardApi, run } from "../server/src/cli/index.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { CommitCache, commitsFor } from "../server/src/infra/git/index.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
 import {
   type AllocateRefused,
   type IdeaAllocated,
@@ -43,10 +43,10 @@ import {
   parseReviewedHashes,
   specRoutes,
   workspaceRoutes,
-} from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi, timelineEtag } from "../server/src/spec-routes.ts";
-import { readSpecFiles } from "../server/src/workspace-loader.ts";
-import { VIEWER_ACTOR_FALLBACK } from "../server/src/writes.contract.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi, timelineEtag } from "../server/src/spec/index.ts";
+import { readSpecFiles } from "../server/src/workspace/index.ts";
+import { VIEWER_ACTOR_FALLBACK } from "../server/src/contracts/writes.contract.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HARBOR = join(FIXTURES, "harbor");

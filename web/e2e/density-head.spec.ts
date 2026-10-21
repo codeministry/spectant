@@ -17,7 +17,7 @@
  */
 import type { Page } from '@playwright/test';
 import type { SpecPageModel } from '../../core/src/files.ts';
-import { specRoutes } from '../../server/src/spec-routes.contract.ts';
+import { specRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { SPEC_AREAS } from '../src/app/layout/shell/areas';
 import { expect, test } from './fixtures';
 import { DENSE_HEADER, STUB_DENSE } from './stub-api';

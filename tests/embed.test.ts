@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ensureEmbedded } from "../scripts/dev.ts";
 import { manifestStatus } from "../scripts/embed.ts";
-import { EMBED_MANIFEST_PATH, WEB_OUTPUT_DIR, type EmbeddedManifest } from "../server/src/assets.contract.ts";
-import { manifestFailure, manifestHint } from "../server/src/manifest-load.ts";
+import { EMBED_MANIFEST_PATH, WEB_OUTPUT_DIR, type EmbeddedManifest } from "../server/src/contracts/assets.contract.ts";
+import { manifestFailure, manifestHint } from "../server/src/infra/manifest-load.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "scripts", "embed.ts");
 
@@ -61,7 +61,7 @@ describe("scripts/embed.ts", () => {
     // `main.ts` pulls the manifest into `tsc`; Bun's types cannot model `with { type: "file" }` (T11).
     expect(text.split("\n")[1]).toBe("// @ts-nocheck");
     expect(text.endsWith("export default manifest;\n")).toBe(true);
-    expect(text).toContain('import type { EmbeddedManifest } from "./src/assets.contract.ts";');
+    expect(text).toContain('import type { EmbeddedManifest } from "./src/contracts/assets.contract.ts";');
     expect(text).toContain('import a0 from "../web/dist/browser/fonts/inter.woff2" with { type: "file" };');
     expect(text).toContain('import a1 from "../web/dist/browser/index.html" with { type: "file" };');
     expect(text).toContain('import a2 from "../web/dist/browser/main-ABCDEFGH.js" with { type: "file" };');

@@ -4,7 +4,7 @@ import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
 import { allowedEntryMove } from '../../../../../core/src/transition';
 import type { Stage } from '../../../../../core/src/stage';
-import type { ActorMapping } from '../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../server/src/contracts/spec-routes.contract';
 import { type FeatureGroup, featureOrder } from '../backlog/backlog-order';
 
 /**

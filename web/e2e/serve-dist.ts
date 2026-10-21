@@ -15,7 +15,7 @@
  */
 import { extname, join, resolve, sep } from 'node:path';
 
-import { PROTOTYPE_PREFIX } from '../../server/src/spec-routes.contract';
+import { PROTOTYPE_PREFIX } from '../../server/src/contracts/spec-routes.contract';
 import { stubApi } from './stub-api';
 
 export type ApiHandler = (request: Request, url: URL) => Response | Promise<Response>;

@@ -8,7 +8,7 @@ import {
   type LibrarySearchResult,
   type LiveView,
   specRoutes,
-} from '../../../../server/src/spec-routes.contract';
+} from '../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient, dashboardUrl, type PlanningBody, planningUrl } from './api.service';
 
 const PLANNING_URL = '/api/workspaces/harbor/planning';

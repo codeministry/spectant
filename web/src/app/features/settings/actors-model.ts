@@ -1,5 +1,5 @@
 import { parseActor } from '../../../../../core/src/actor';
-import type { ActorMapping } from '../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../server/src/contracts/spec-routes.contract';
 
 /**
  * The Actors section's model (T140, ISC-119.2), pure: which person ids the app knows, the editable rows and the list

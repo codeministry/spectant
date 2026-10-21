@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { parseActor } from "../core/src/actor.ts";
 import { validateEventLine } from "../core/src/events.ts";
 import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
-import { TOKENS_PATH } from "../server/src/tokens-cli.ts";
+import { TOKENS_PATH } from "../server/src/tokens/index.ts";
 import {
   REVIEWED_FILES,
   hashForGate,
@@ -27,7 +27,7 @@ import {
   matchSpecRoute,
   specRoutes,
   type ReviewedHashes,
-} from "../server/src/spec-routes.contract.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
 import {
   EVENTS_PATH,
   NO_AGENT_SOURCE,
@@ -66,13 +66,15 @@ import {
   type ReviewedMark as ContractReviewedMark,
   type WriteAnswer,
   type WriteRoute,
-} from "../server/src/writes.contract.ts";
+} from "../server/src/contracts/writes.contract.ts";
 
 /** A synthetic viewer id of the actor grammar (`u:` + eight hex digits); no real address behind it. */
 const VIEWER = "u:3f9c0a7d";
 
 const ROOT = resolve(import.meta.dir, "..");
-const CONTRACT = join(ROOT, "server", "src", "writes.contract.ts");
+const CONTRACT = join(ROOT, "server", "src", "contracts", "writes.contract.ts");
+/** The contract barrel and its parts below `contracts/writes/`. */
+const CONTRACT_FILES = [CONTRACT, ...["writes-table.ts", "write-events.ts", "write-answers.ts", "write-answer-check.ts"].map((f) => join(ROOT, "server", "src", "contracts", "writes", f))];
 const HEX_A = hashForGate("spec.md", "# a\n");
 const HEX_B = hashForGate("plan.md", "# b\n");
 const HEX_C = hashForGate("tasks.md", "- [ ] T1 · ISC-1 · core — c\n");
@@ -444,7 +446,7 @@ describe("the five app writes (spec 008, T81; spec 036): the table, the paths ea
 describe("the sixth write path is the one the CLI writes", () => {
   test("`spectant tokens` takes its path from WRITE_PATHS.tokens and names no literal of its own", () => {
     expect(TOKENS_PATH).toBe(WRITE_PATHS.tokens.writes[0]);
-    const source = readFileSync(join(ROOT, "server", "src", "tokens-cli.ts"), "utf8");
+    const source = readFileSync(join(ROOT, "server", "src", "tokens", "command.ts"), "utf8");
     expect(source.includes("WRITE_PATHS.tokens")).toBe(true);
     expect(source.includes('"specs/tokens.jsonl"')).toBe(false);
   });
@@ -468,9 +470,22 @@ describe("the writes contract is browser-safe", () => {
       "core/src/events.ts",
       "core/src/files.ts",
       "core/src/spec-ref.ts",
-      "server/src/assets.contract.ts",
-      "server/src/spec-routes.contract.ts",
-      "server/src/writes.contract.ts",
+      "server/src/contracts/assets.contract.ts",
+      "server/src/contracts/guards.ts",
+      "server/src/contracts/spec-routes.contract.ts",
+      "server/src/contracts/spec-routes/api-answers.ts",
+      "server/src/contracts/spec-routes/app-state.ts",
+      "server/src/contracts/spec-routes/live.ts",
+      "server/src/contracts/spec-routes/prototype-route.ts",
+      "server/src/contracts/spec-routes/route-match.ts",
+      "server/src/contracts/spec-routes/spec-route-table.ts",
+      "server/src/contracts/spec-routes/workspace-route-table.ts",
+      "server/src/contracts/spec-routes/write-requests.ts",
+      "server/src/contracts/writes.contract.ts",
+      "server/src/contracts/writes/write-answer-check.ts",
+      "server/src/contracts/writes/write-answers.ts",
+      "server/src/contracts/writes/write-events.ts",
+      "server/src/contracts/writes/writes-table.ts",
     ]);
     const offending = files.filter((file) => {
       const source = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -482,7 +497,7 @@ describe("the writes contract is browser-safe", () => {
   // T111: the web client imports `writeAnswerOf`, and its tsconfig type-checks a type import's module too, so not even
   // a type may come from `gates.ts` (it imports `node:crypto`). The two types re-declared here equal gates.ts' own.
   test("the contract imports nothing from gates.ts, not even a type; its ReviewedFile and ReviewedMark equal gates.ts'", () => {
-    const source = readFileSync(CONTRACT, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const source = CONTRACT_FILES.map((file) => readFileSync(file, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(source).not.toMatch(/from\s+['"][^'"]*gates\.ts['"]/);
     const sameFile: [GateReviewedFile] extends [ContractReviewedFile] ? ([ContractReviewedFile] extends [GateReviewedFile] ? true : false) : false = true;
     const sameMark: [GateReviewedMark] extends [ContractReviewedMark] ? ([ContractReviewedMark] extends [GateReviewedMark] ? true : false) : false = true;

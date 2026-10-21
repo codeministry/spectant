@@ -12,23 +12,79 @@ SQLite registry, asks `core/` for the dashboard model, serves settings and serve
 Everything visual lives in `web/`, and all spec parsing lives in `core/`. Parsing here would make a second parser
 (ISC-5).
 
+## Layout (spec 059)
+
+`server/src/` holds `main.ts`, twelve feature slices and two shared areas, nothing else. Reason: a change to one
+feature touches one folder, and the guards below keep it that way.
+
+A slice is a folder directly under `server/src/` whose `index.ts` is its one public surface:
+
+- `workspace/`: one registered repository read into the dashboard model, its worktree view, the read sources of its
+  repository files and specs, and the workspace list and dashboard routes (`routes.ts`, `family.ts`).
+- `planning/`: the planning tree, the story page, the board's stored query and the favourites as handlers of the
+  workspace family, and the favourites' scan before each live build (`favorites-scan.ts`).
+- `library/`: the document catalog of a workspace, its loads, the reader, the search and the asset route (spec 017).
+- `spec/`: every route under `/api/workspaces/:ws/specs`, its family and its read handlers, composed with the write
+  handlers of `writes/`.
+- `writes/`: the write mechanism (`run-write.ts`) and the write paths on top of it (§ The write path), and the write
+  routes' answers (`routes.ts`).
+- `notes/`: the notes routes and `import-notes` / `export-notes`.
+- `settings/`: the settings schema and `/api/settings`, `/api/actors` and `/api/lifeos`.
+- `prototype/`: `GET`/`HEAD /proto/:ws/:spec/:folder/*` (spec 017).
+- `live/`: the live update stream `GET /api/events` and the watch hub behind it (spec 030).
+- `workspace-admin/`: the writing workspace routes of the settings page and the workspace image store in the data
+  folder.
+- `tokens/`: `spectant tokens`, its transcript discovery and its write path (spec 009).
+- `cli/`: the `spectant` command line and the composition root. `cli/routes.ts` lists the route families in the order
+  they answer, and `cli/serve.ts` joins them with every slice's handlers into one router. Only `main.ts` imports it.
+
+The two areas are not slices:
+
+- `infra/`: the shared I/O. `http/` (the loopback server `server.ts`, the router `router.ts` with `RouteFamily` and
+  `createRouter`, JSON answers, ETags, file answers, the loopback guard), `git/` (read-only git, `index.ts` its
+  surface), `db/` (the SQLite database and its stores: registry, settings, notes, prefs), `fs/` (reads, the in-place
+  writes, stat, listings, the directory watch), `process/` (opening the browser, `lsof`), and `hash.ts`, `paths.ts`,
+  `version.ts`, `manifest-load.ts`, `lifeos.ts`, `abort-age.ts`.
+- `contracts/`: the browser-safe seams, types and pure helpers without I/O that `web/` and the e2e stub import beside
+  the server: `assets`, `spec-routes` (its parts under `spec-routes/`), `writes` (its parts under `writes/`),
+  `workspace-list`, `workspace-admin`, `notes`, `note-routes` (each `<name>.contract.ts`), and `guards.ts`.
+
+The import rules:
+
+- A slice imports another slice only through its `index.ts` (`../writes/index.ts`); inside a slice, files import each
+  other directly. Reason: a slice's files can move or split without touching a consumer.
+- `infra/` and `contracts/` import no slice; a slice imports both freely. Reason: the shared areas stay below every
+  feature, so nothing shared depends on what one feature does.
+- No import cycle between slices. Reason: a cycle makes two slices one, and neither can change alone.
+- Direct I/O only inside `infra/`: `node:fs`, `node:fs/promises`, `node:child_process` and `bun:sqlite` imports
+  (type-only ones included) and the calls `Bun.spawn`, `Bun.file` and `Bun.write`. Outside it, the database type is
+  `Db` from `infra/db/db.ts`. Reason: what the app reads and writes, and so the read-only rule, is reviewed in one area.
+- Directly under `server/src/` stands only `main.ts`; every other folder is an area or a slice with an `index.ts`.
+- No file over 400 lines, and no copied block of 50 tokens or more (jscpd). Reason: a file stays reviewable in one
+  pass, and a copy drifts from its original.
+
+`bun run check:architecture` enforces all of it (`scripts/check-architecture.ts` over
+`scripts/architecture.config.ts`, one entry per lane), and `tests/architecture.test.ts` runs the same rules on the app
+and on fixtures.
+
 ## Seams
 
-- `server/src/assets.contract.ts`: the build contract between the Angular output and the embedded manifest (T6).
+- `server/src/contracts/assets.contract.ts`: the build contract between the Angular output and the embedded manifest
+  (T6).
 - `core/src/dashboard.ts`: the dashboard model type shared by server and web (T44). The server returns it as it is
   and never reshapes it.
 
 This lane builds against both seams and does not define what they contain.
 
-**Spec routes.** `server/src/spec-routes.contract.ts` is the one source for every `/api/workspaces/:ws/specs/:id…`
-route: builders, `matchSpecPath`, 200 types (core types only), error bodies, write bodies, `SPEC_ROUTE_TABLE`. The
+**Spec routes.** `server/src/contracts/spec-routes.contract.ts` (its parts under `contracts/spec-routes/`) is the one
+source for every `/api/workspaces/:ws/specs/:id…` route: builders, `matchSpecPath`, 200 types (core types only), error bodies, write bodies, `SPEC_ROUTE_TABLE`. The
 server, the e2e stub and the web import it; nobody re-types a route. Error codes are kebab-case, `{error: "not-found"}`,
 as every existing route answers (plan 002's `not_found` is superseded). `tests/spec-routes.contract.test.ts` pins it.
 
 ## The write path (spec 002)
 
 The app writes into a registered repository along exactly eight write paths, the eight entries of `WRITE_PATHS`
-(`writes.contract.ts`), each through `writes.ts`. Four are the routes of specs 002 and 008, each on a user action and
+(`contracts/writes.contract.ts`), each through the `writes/` slice. Four are the routes of specs 002 and 008, each on a user action and
 typed by `WRITE_TABLE`: the reviewed mark (`.gates/reviewed.json` in the old
 skill's byte format plus one `review → build` line appended to `events.jsonl`), one task checkbox (one `[ ]` ↔ `[x]`
 flip on one line of `tasks.md`, line endings kept), the stage move (`stage:` in `spec.md` plus one event line, spec
@@ -36,10 +92,11 @@ flip on one line of `tasks.md`, line endings kept), the stage move (`stage:` in 
 `events.jsonl`, and `specs/ideas/<slug>.md` removed; the index `README.md` is not touched, its `Spec` cell is the
 web's or the skill's to fill). Event actors are the viewer's `u:` id, `VIEWER_ACTOR_FALLBACK` without one.
 
-The CLI adds two further paths, never written by a route, both over `writes.ts`' in-place primitives:
+The CLI adds two further paths, never written by a route, both over the in-place primitives of `infra/fs/in-place.ts`:
 
 - The feature-level code-review mark, `WRITE_PATHS.codeReviewFeature` (`spectant gate code-reviewed F<n> [--root DIR]
-  [--yes]`, `server/src/feature-gate.ts`; no `WRITE_TABLE` row). It refuses while a spec of the feature still holds an
+  [--yes]`, `server/src/writes/feature-gate.ts`, its command `server/src/cli/feature-gate-command.ts`; no `WRITE_TABLE`
+  row). It refuses while a spec of the feature still holds an
   open claim, appends one `code-review → close` event per target, then writes the `scope: F<n>` mark with the tree id
   of the target's checkout as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Each
   target is placed by the one worktree view the app reads (spec 041, ISC-211): the event and the mark go into the
@@ -51,7 +108,7 @@ The CLI adds two further paths, never written by a route, both over `writes.ts`'
   no claim holds it.
 
 The seventh path is a route again: the feature backlog (spec 036, `WRITE_PATHS.backlog`, `writeBacklog`,
-`backlog-route.ts`), `POST /api/workspaces/:ws/backlog`. It rewrites `specs/backlog.md` in place and appends one line
+`writes/backlog.ts`), `POST /api/workspaces/:ws/backlog`. It rewrites `specs/backlog.md` in place and appends one line
 to `specs/backlog.events.jsonl`, at the main checkout, under the raw sha256 check (the client's
 `PlanningModel.backlogHash`). It reads no lock source and never answers 423. Reason: the file belongs to no spec and
 no agent writes it, so no claim can hold it, and a lock check would block the backlog during every implementation
@@ -59,7 +116,7 @@ round for nothing. core plans the write (`planBacklogMove`, `planBacklogPriority
 with core's reason, and nothing is written.
 
 The eighth path is the run release (spec 040, ISC-226, `WRITE_PATHS.runRelease`, `writeRunRelease`,
-`run-release-route.ts`), `POST /api/workspaces/:ws/runs/:run/release`. Its one file is `.spectant/activity.jsonl` at the
+`writes/run-release.ts`), `POST /api/workspaces/:ws/runs/:run/release`. Its one file is `.spectant/activity.jsonl` at the
 main checkout, and its one change is one appended `run-end` line with `outcome: released`, the run's `command` and
 `spec` or `idea`, and the viewer's `u:` id as `session`: one `appendInPlace`, never a rewrite, no directory created.
 The client sends the raw sha256 of the whole file it rendered in `X-Spectant-Activity-Hash` (the dashboard sends it);
@@ -76,7 +133,7 @@ read route and every refused write, and after an accepted one only the files of 
 differ, `spectant tokens --yes` included (`-t tokens`).
 
 - The allocation's number is one past the highest taken by a folder in `specs/` or `specs/archive/` and by a branch name
-  or a path added to history (`git.ts` `takenSpecNumbers`). A story has no claims, so the allocation never answers
+  or a path added to history (`infra/git/refs.ts` `takenSpecNumbers`). A story has no claims, so the allocation never answers
   423 `locked`, and it answers 423 only while a run is open on the idea (`run-locked`, below); its `lockSource` still
   names the source consulted. 422 `allocate-refused`: `not-in-index` or `folder-exists`.
 
@@ -92,7 +149,7 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Beside `locked`, a 423 has the reason `run-locked` (spec 040, ISC-225): while a run on the write's item is
   `running` (an open `run-start` in `.spectant/activity.jsonl`, younger than the `runAbortMinutes` setting), the stage
   move, the reviewed mark and the tick of that spec, and the allocation of that story, answer 423
-  `{error: "run-locked", run, command, actor, since}`. `writes.ts` checks it strictly after `blockingLock` and asks
+  `{error: "run-locked", run, command, actor, since}`. `writes/run-write.ts` checks it strictly after `blockingLock` and asks
   core's `runLockOf`, never deciding running itself; an `aborted` run locks nothing. The order is 400 → 404 → 409 →
   423 (`locked`, then `run-locked`) → 422. Reason: the user must not move what a command is writing right now, and a
   stale hash stays the plain 409 so the client reloads (`tests/run-lock.test.ts`, `tests/readonly.test.ts -t run-lock`).
@@ -153,8 +210,8 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 
 ## The live update stream (spec 030)
 
-- `GET /api/events` (`EVENTS_PATH`, `server/src/events-route.ts`) is the push path. While at least one stream is
-  open, `server/src/watch.ts` watches, per registered repository and per live spec worktree inside it, `specs/`
+- `GET /api/events` (`EVENTS_PATH`, `server/src/live/events.ts`) is the push path. While at least one stream
+  is open, `server/src/live/hub.ts` watches (over `infra/fs/watch.ts`), per registered repository and per live spec worktree inside it, `specs/`
   recursively, the root for `ISA.md` and `.spectant/`. It watches directories, never the files themselves, so an
   editor's write-and-rename still reports. Reason: these are the files the read routes read; a change only in git
   state (a commit, a merge) is left to the poll.
@@ -175,19 +232,20 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 ## LifeOS detection
 
 - LifeOS is present only when `SPECTANT_LIFEOS_STATE_DIR` names an existing directory by an absolute path, detected
-  once at start; no default location is derived or probed (`server/src/lifeos.ts`, ISC-37).
+  once at start; no default location is derived or probed (`server/src/infra/lifeos.ts`, ISC-37); the route is
+  `server/src/settings/lifeos-route.ts`.
 - Absent means no LifeOS path is read: the dashboard reads only the repository's own `.spectant/activity.jsonl`.
   Present adds the frontier locks through `core/`'s `readLockSources`. `GET /api/lifeos` answers `{present}`, never the path.
 
 ## Git reads
 
-- Every function in `server/src/git.ts` runs only read-only git commands under one environment and root rule, never
+- Every function in `server/src/infra/git/` (`index.ts` its surface) runs only read-only git commands under one environment and root rule, never
   fetches and never throws: no repository, no git, a failure or the deadline answers `source: 'none'` or empty / null.
 - A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).
 - The worktrees are read once per workspace state, not per caller (spec 041, ISC-215): `readWorktreeView` (the
   listing, the merge state, `ahead`, `dirty` and `ls-files` per live spec worktree, four worktrees at a time), the
   listed paths of `worktreeTreeId`, the viewer's address, `mergeCommitOf` and the `CommitCache` hit are kept while
-  `repo-state.ts`' `repoStateOf` stands. That key is read from the file system alone (`HEAD`, the indexes, `packed-refs`,
+  `infra/git/repo-state.ts`' `repoStateOf` stands. That key is read from the file system alone (`HEAD`, the indexes, `packed-refs`,
   `refs/heads/`, the config files, each linked worktree's `HEAD`, index and folder), so a repeat poll, a spec route, a
   library document or a search keystroke starts no git process. An edit that touches no index does not move it: the
   dirty mark follows on the next commit, stage or ref move.

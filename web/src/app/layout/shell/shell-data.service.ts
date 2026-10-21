@@ -2,8 +2,8 @@ import { computed, inject, Injectable, resource } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 import type { Priority } from '../../../../../core/src/files';
 import { specRefMatches } from '../../../../../core/src/spec-ref';
-import { type ActorMapping, type BoardQuery, isFavoriteSpec } from '../../../../../server/src/spec-routes.contract';
-import type { AddWorkspaceRequest, ImageKind } from '../../../../../server/src/workspace-admin.contract';
+import { type ActorMapping, type BoardQuery, isFavoriteSpec } from '../../../../../server/src/contracts/spec-routes.contract';
+import type { AddWorkspaceRequest, ImageKind } from '../../../../../server/src/contracts/workspace-admin.contract';
 import {
   ApiClient,
   type PlanningBody,

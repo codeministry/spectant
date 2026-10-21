@@ -18,7 +18,7 @@ import {
   embeddedAssetFor,
   isImmutable,
   isSpaRoute,
-} from "../server/src/assets.contract.ts";
+} from "../server/src/contracts/assets.contract.ts";
 
 describe("paths", () => {
   test("constants match the plan", () => {

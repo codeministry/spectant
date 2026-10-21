@@ -25,7 +25,7 @@ import { assigneeOf } from '../../core/src/assignee.ts';
 import { allowedTransition, workflowStagesOf } from '../../core/src/stage.ts';
 import { allowedEntryMove } from '../../core/src/transition.ts';
 import { DEFAULT_WORKFLOW, FIXED_GATES, boardStages } from '../../core/src/workflow.ts';
-import { writePathsOf } from '../../server/src/writes.contract.ts';
+import { writePathsOf } from '../../server/src/contracts/writes.contract.ts';
 import type { PlanningModel } from '../../core/src/planning.ts';
 import { featureOrder } from '../src/app/features/backlog/backlog-order.ts';
 import { atWidth, expect, test } from './fixtures';

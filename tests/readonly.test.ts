@@ -40,11 +40,10 @@ import { basename, join, relative } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
 import type { Guidance, TasksTab } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { dashboardApi } from "../server/src/api.ts";
-import { run } from "../server/src/cli.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { openRegistry } from "../server/src/registry.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { dashboardApi, run } from "../server/src/cli/index.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { openRegistry } from "../server/src/infra/db/registry.ts";
 import {
   ACTIVITY_HASH_HEADER,
   ACTORS_PATH,
@@ -61,12 +60,12 @@ import {
   prototypeRoute,
   specRoutes,
   workspaceRoutes,
-} from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { tokensCommand } from "../server/src/tokens-cli.ts";
-import { WRITE_PATHS, WRITE_TABLE, runReleaseEvent, writePathsOf } from "../server/src/writes.contract.ts";
-import { IMAGE_MAX_BYTES, workspaceAdminRoutes } from "../server/src/workspace-admin.contract.ts";
-import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
+import { tokensCommand } from "../server/src/tokens/index.ts";
+import { WRITE_PATHS, WRITE_TABLE, runReleaseEvent, writePathsOf } from "../server/src/contracts/writes.contract.ts";
+import { IMAGE_MAX_BYTES, workspaceAdminRoutes } from "../server/src/contracts/workspace-admin.contract.ts";
+import { readWorkspaceInput } from "../server/src/workspace/index.ts";
 import { BACKLOG_UI_SEQUENCE, EMPTY_BACKLOG_HASH } from "../web/e2e/backlog-ui-sequence.ts";
 import { BUILDER_WORKTREE, type PlantedWorktreeRepo, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 

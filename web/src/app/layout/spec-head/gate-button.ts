@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { SpecPageModel } from '../../../../../core/src/files';
-import { REVIEWED_HASH_FILES, type ReviewedHashFile } from '../../../../../server/src/spec-routes.contract';
+import { REVIEWED_HASH_FILES, type ReviewedHashFile } from '../../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
 import { LanguageService } from '../../core/language.service';
 import { UiIcon } from '../../shared/icons/icon';

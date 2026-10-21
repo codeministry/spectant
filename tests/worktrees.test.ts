@@ -10,15 +10,17 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { TimelineEntry } from "../core/src/files.ts";
-import { composeApi, dashboardApi } from "../server/src/api.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { takenSpecNumbers } from "../server/src/git.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { loadCatalogDoc, loadCatalogDocs, loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
-import { rawSha256 } from "../server/src/writes.ts";
+import { composeApi } from "../server/src/infra/http/json.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { takenSpecNumbers } from "../server/src/infra/git/index.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
+import { loadCatalogDoc, loadCatalogDocs } from "../server/src/library/index.ts";
+import { loadDashboard, readWorkspaceInput } from "../server/src/workspace/index.ts";
+import { rawSha256 } from "../server/src/writes/index.ts";
 import {
   DATES,
   type PlantedWorktreeRepo,

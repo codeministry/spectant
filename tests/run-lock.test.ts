@@ -13,11 +13,11 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseActor } from "../core/src/actor.ts";
-import { dashboardApi } from "../server/src/api.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { REVIEWED_HASHES_HEADER, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { REVIEWED_HASHES_HEADER, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes, workspaceRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const HOST = { Host: "127.0.0.1:7717" };

@@ -19,7 +19,7 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/rout
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { filter } from 'rxjs';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
-import type { Note, NoteDraft } from '../../../../../../server/src/notes.contract';
+import type { Note, NoteDraft } from '../../../../../../server/src/contracts/notes.contract';
 import { ApiClient } from '../../../core/api.service';
 import { SettingsService } from '../../../core/settings.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';

@@ -1,0 +1,2443 @@
+{
+  "writePaths": {
+    "gateReviewed": {
+      "writes": [
+        "specs/NNN-slug/.gates/reviewed.json",
+        "specs/NNN-slug/events.jsonl"
+      ],
+      "removes": [],
+      "creates": "specs/NNN-slug/.gates/"
+    },
+    "taskCheck": {
+      "writes": [
+        "specs/NNN-slug/tasks.md"
+      ],
+      "removes": [],
+      "creates": null
+    },
+    "transition": {
+      "writes": [
+        "specs/NNN-slug/spec.md",
+        "specs/NNN-slug/events.jsonl"
+      ],
+      "removes": [],
+      "creates": null
+    },
+    "allocate": {
+      "writes": [
+        "specs/NNN-slug/context.md",
+        "specs/NNN-slug/spec.md",
+        "specs/NNN-slug/events.jsonl"
+      ],
+      "removes": [
+        "specs/ideas/<slug>.md"
+      ],
+      "creates": "specs/NNN-slug/"
+    },
+    "codeReviewFeature": {
+      "writes": [
+        "specs/NNN-slug/.gates/code-reviewed.json",
+        "specs/NNN-slug/events.jsonl"
+      ],
+      "removes": [],
+      "creates": "specs/NNN-slug/.gates/"
+    },
+    "tokens": {
+      "writes": [
+        "specs/tokens.jsonl"
+      ],
+      "removes": [],
+      "creates": null
+    },
+    "backlog": {
+      "writes": [
+        "specs/backlog.md",
+        "specs/backlog.events.jsonl"
+      ],
+      "removes": [],
+      "creates": null
+    },
+    "runRelease": {
+      "writes": [
+        ".spectant/activity.jsonl"
+      ],
+      "removes": [],
+      "creates": null
+    }
+  },
+  "entries": [
+    {
+      "name": "gateReviewed valid 006",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/006/gate/reviewed",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"4895GPYorwVtUpCPdoCovfk4yc6yu5SFsI4Jnfr_OJs\""
+      },
+      "encoding": "utf8",
+      "body": "{\"at\":\"2026-03-20T12:00:00.000Z\",\"hashes\":{\"spec\":\"05aba2ae367468efe7d2b2ae2f65a92c4cf7b26dae8f38ce534be155194ede55\",\"plan\":null,\"tasks\":null},\"lockSource\":\"activity\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"review\",\"to\":\"build\",\"command\":\"spectant mark-reviewed 006-partial-push\",\"actor\":\"u:db06af25\"}}",
+      "sent": "{\"hashes\":{\"spec\":\"05aba2ae367468efe7d2b2ae2f65a92c4cf7b26dae8f38ce534be155194ede55\",\"plan\":null,\"tasks\":null}}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/006-partial-push/.gates/reviewed.json": {
+              "change": "changed",
+              "content": "{\n  \"gate\": \"reviewed\",\n  \"at\": \"2026-03-20T12:00:00.000Z\",\n  \"files\": {\n    \"spec.md\": \"05aba2ae367468efe7d2b2ae2f65a92c4cf7b26dae8f38ce534be155194ede55\",\n    \"plan.md\": null,\n    \"tasks.md\": null\n  }\n}\n"
+            },
+            "specs/006-partial-push/events.jsonl": {
+              "change": "appended",
+              "appended": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"review\",\"to\":\"build\",\"command\":\"spectant mark-reviewed 006-partial-push\",\"actor\":\"u:db06af25\"}\n",
+              "sha256": "f95e4bb21c3a5561a46e14f327e9b64b699565bc197cc9cc339bffd245de06f6"
+            }
+          },
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed valid 003 creates .gates",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/gate/reviewed",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"a4I0mBsm1DEo_Ld1a3D3JYUnSvo6se8P-BiWL3ruB18\""
+      },
+      "encoding": "utf8",
+      "body": "{\"at\":\"2026-03-20T12:00:00.000Z\",\"hashes\":{\"spec\":\"c1ab95270e1714e849bd67f8d6fcc9c3961ee032677c8b7d1c7273b29ba09f39\",\"plan\":\"3f4740ecadeef862f5bbe233e39e016d091786fd0d999d4af3546ffb899f8c56\",\"tasks\":null},\"lockSource\":\"activity\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"review\",\"to\":\"build\",\"command\":\"spectant mark-reviewed 003-config-loader\",\"actor\":\"u:db06af25\"}}",
+      "sent": "{\"hashes\":{\"spec\":\"c1ab95270e1714e849bd67f8d6fcc9c3961ee032677c8b7d1c7273b29ba09f39\",\"plan\":\"3f4740ecadeef862f5bbe233e39e016d091786fd0d999d4af3546ffb899f8c56\",\"tasks\":null}}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/003-config-loader/.gates": {
+              "change": "added",
+              "kind": "dir",
+              "mode": "755"
+            },
+            "specs/003-config-loader/.gates/reviewed.json": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\n  \"gate\": \"reviewed\",\n  \"at\": \"2026-03-20T12:00:00.000Z\",\n  \"files\": {\n    \"spec.md\": \"c1ab95270e1714e849bd67f8d6fcc9c3961ee032677c8b7d1c7273b29ba09f39\",\n    \"plan.md\": \"3f4740ecadeef862f5bbe233e39e016d091786fd0d999d4af3546ffb899f8c56\",\n    \"tasks.md\": null\n  }\n}\n"
+            },
+            "specs/003-config-loader/events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"review\",\"to\":\"build\",\"command\":\"spectant mark-reviewed 003-config-loader\",\"actor\":\"u:db06af25\"}\n"
+            }
+          },
+          "touched": [
+            "specs/003-config-loader"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed wrong hash 006",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/006/gate/reviewed",
+      "status": 409,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"J6DluKjVj2IvOYEZBWNvF5o2D14itp1pzvf-wLeJEfA\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"hash-mismatch\",\"files\":[\"spec.md\"],\"expected\":{\"spec\":\"05aba2ae367468efe7d2b2ae2f65a92c4cf7b26dae8f38ce534be155194ede55\",\"plan\":null,\"tasks\":null}}",
+      "sent": "{\"hashes\":{\"spec\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"plan\":null,\"tasks\":null}}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed locked 002",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/002/gate/reviewed",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"akKABhYXhl94IpjRDYl7c7UC9kX-ITVUjvO9RD3akgg\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"locked\",\"lock\":{\"source\":\"activity\",\"claim\":\"ISC-74\",\"session\":\"a:claude:sess-2\",\"actor\":{\"raw\":\"a:claude:sess-2\",\"kind\":\"agent\",\"id\":\"a:claude:sess-2\",\"legacy\":false},\"since\":\"2026-03-08T14:06:00Z\"}}",
+      "sent": "{\"hashes\":{\"spec\":\"3c3f47b169b191c7bb34d41fd9c95740680cb1607c8e0c3844da7f2fab929973\",\"plan\":\"47f696b05b3a5f7309641fdcc31a943b1f11ca6025fc672888a6933d4ff87792\",\"tasks\":\"52c5a5fb860a2152e60a600bbbb0a7be03dc861438274edfaeea6df23a6a1c6d\"}}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed run-locked 006",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/006/gate/reviewed",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"2FpXm0MlQxwTIClXlvD44JrqOyXIls-cQLjTSufa7ng\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"run-locked\",\"run\":\"r-006\",\"command\":\"/spec review 006\",\"actor\":{\"raw\":\"a:claude:sess-9\",\"kind\":\"agent\",\"id\":\"a:claude:sess-9\",\"legacy\":false},\"since\":\"2026-03-20T11:55:00.000Z\"}",
+      "sent": "{\"hashes\":{\"spec\":\"05aba2ae367468efe7d2b2ae2f65a92c4cf7b26dae8f38ce534be155194ede55\",\"plan\":null,\"tasks\":null}}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed unknown spec",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/999/gate/reviewed",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"hashes\":{\"spec\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"plan\":null,\"tasks\":null}}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed bad body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/006/gate/reviewed",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed missing hashes",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/006/gate/reviewed",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "{}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "gateReviewed 403 origin",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/006/gate/reviewed",
+      "status": 403,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"KBX-5u3DcWvWyFAnOZ8G4DFocG5_yseG7PDGbmGQhD8\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"forbidden\"}",
+      "sent": "{\"hashes\":{\"spec\":\"05aba2ae367468efe7d2b2ae2f65a92c4cf7b26dae8f38ce534be155194ede55\",\"plan\":null,\"tasks\":null}}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck valid 004 T1",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/004/tasks/T1/check",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"EwjEvpjrP4FZEmQuWtK5olK1URTSXLBUoMS4WLaEyE4\""
+      },
+      "encoding": "utf8",
+      "body": "{\"task\":\"T1\",\"checked\":false,\"hash\":\"f89e3a17913337e20d85e3842254e07bad7b78d37d86e028a8afbe27e7da36e4\",\"lockSource\":\"activity\",\"line\":{\"number\":19,\"text\":\"- [ ] T1 · ISC-95 · api — verdict log for keep-last-N (ISC-95) · `api/src/retention.ts`\"}}",
+      "sent": "{\"checked\":false,\"hash\":\"99e973eb004aa44f1f75f56687ec7872d8f8bdcf3033d97c014b4045ce46fe04\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/004-retention-policies/tasks.md": {
+              "change": "changed",
+              "line": 19,
+              "removed": [
+                "- [x] T1 · ISC-95 · api — verdict log for keep-last-N (ISC-95) · `api/src/retention.ts`"
+              ],
+              "added": [
+                "- [ ] T1 · ISC-95 · api — verdict log for keep-last-N (ISC-95) · `api/src/retention.ts`"
+              ],
+              "sha256": "f89e3a17913337e20d85e3842254e07bad7b78d37d86e028a8afbe27e7da36e4"
+            }
+          },
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck unchanged 004 T1",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/004/tasks/T1/check",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cT2C6Jyfz_3ysFeQTgZlbGnGcyTsCWGU8lf-cx-U0i8\""
+      },
+      "encoding": "utf8",
+      "body": "{\"task\":\"T1\",\"checked\":true,\"hash\":\"99e973eb004aa44f1f75f56687ec7872d8f8bdcf3033d97c014b4045ce46fe04\",\"lockSource\":\"activity\",\"line\":{\"number\":19,\"text\":\"- [x] T1 · ISC-95 · api — verdict log for keep-last-N (ISC-95) · `api/src/retention.ts`\"}}",
+      "sent": "{\"checked\":true,\"hash\":\"99e973eb004aa44f1f75f56687ec7872d8f8bdcf3033d97c014b4045ce46fe04\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck wrong hash 004 T1",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/004/tasks/T1/check",
+      "status": 409,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"qBw6SryLoQq0OaSb1L0bCtCUTHRHOrqSLhNh6atLBqc\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"hash-mismatch\",\"files\":[\"tasks.md\"],\"expected\":{\"tasks\":\"99e973eb004aa44f1f75f56687ec7872d8f8bdcf3033d97c014b4045ce46fe04\"}}",
+      "sent": "{\"checked\":false,\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck locked 002 T27",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/002/tasks/T27/check",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"akKABhYXhl94IpjRDYl7c7UC9kX-ITVUjvO9RD3akgg\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"locked\",\"lock\":{\"source\":\"activity\",\"claim\":\"ISC-74\",\"session\":\"a:claude:sess-2\",\"actor\":{\"raw\":\"a:claude:sess-2\",\"kind\":\"agent\",\"id\":\"a:claude:sess-2\",\"legacy\":false},\"since\":\"2026-03-08T14:06:00Z\"}}",
+      "sent": "{\"checked\":true,\"hash\":\"e266cc4abfed2fa8e5f7e7d68f210c32dbbef5a578eeb3b2d528d4ed13e7781a\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck run-locked 004 T1",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/004/tasks/T1/check",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"UeWdXwHPrnvsY5_vi8SJN9H29KkbQxOqck8wFw-WQgE\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"run-locked\",\"run\":\"r-004\",\"command\":\"/spec implement 004\",\"actor\":{\"raw\":\"a:claude:sess-9\",\"kind\":\"agent\",\"id\":\"a:claude:sess-9\",\"legacy\":false},\"since\":\"2026-03-20T11:55:00.000Z\"}",
+      "sent": "{\"checked\":false,\"hash\":\"99e973eb004aa44f1f75f56687ec7872d8f8bdcf3033d97c014b4045ce46fe04\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck unknown task",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/004/tasks/T99/check",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"checked\":true,\"hash\":\"99e973eb004aa44f1f75f56687ec7872d8f8bdcf3033d97c014b4045ce46fe04\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "taskCheck bad body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/004/tasks/T1/check",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "{\"checked\":\"yes\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition valid 003 review",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"p8PEiXQ1B4nx0Rswh15jsADbzrC6ufG5VP3P0N7Z02Q\""
+      },
+      "encoding": "utf8",
+      "body": "{\"from\":\"tasks\",\"to\":\"review\",\"hash\":\"df31a9860486c5cbe87de0d298506a8d1c6435669eb7ae3bbdcc7e9c70e8fc48\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"tasks\",\"to\":\"review\",\"command\":\"/spec tasks 003\",\"actor\":\"u:db06af25\"},\"lockSource\":\"activity\"}",
+      "sent": "{\"to\":\"review\",\"hash\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/003-config-loader/events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"tasks\",\"to\":\"review\",\"command\":\"/spec tasks 003\",\"actor\":\"u:db06af25\"}\n"
+            },
+            "specs/003-config-loader/spec.md": {
+              "change": "changed",
+              "line": 16,
+              "removed": [],
+              "added": [
+                "stage: review"
+              ],
+              "sha256": "df31a9860486c5cbe87de0d298506a8d1c6435669eb7ae3bbdcc7e9c70e8fc48"
+            }
+          },
+          "touched": [
+            "specs/003-config-loader"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition wrong hash 003",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 409,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"85-f2jN2fT-CQi0YW1pFGWRN4GYXNFEcx9P-WNXYNTQ\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"hash-mismatch\",\"files\":[\"spec.md\"],\"expected\":{\"spec\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}}",
+      "sent": "{\"to\":\"review\",\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition locked 002",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/002/transition",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"akKABhYXhl94IpjRDYl7c7UC9kX-ITVUjvO9RD3akgg\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"locked\",\"lock\":{\"source\":\"activity\",\"claim\":\"ISC-74\",\"session\":\"a:claude:sess-2\",\"actor\":{\"raw\":\"a:claude:sess-2\",\"kind\":\"agent\",\"id\":\"a:claude:sess-2\",\"legacy\":false},\"since\":\"2026-03-08T14:06:00Z\"}}",
+      "sent": "{\"to\":\"code-review\",\"hash\":\"4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition run-locked 003",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"RlyvPcB4S4jK105q89G8vngL6Uj5n0K910kbCbjidu0\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"run-locked\",\"run\":\"r-003\",\"command\":\"/spec tasks 003\",\"actor\":{\"raw\":\"a:claude:sess-9\",\"kind\":\"agent\",\"id\":\"a:claude:sess-9\",\"legacy\":false},\"since\":\"2026-03-20T11:55:00.000Z\"}",
+      "sent": "{\"to\":\"review\",\"hash\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition aborted run 003",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"p8PEiXQ1B4nx0Rswh15jsADbzrC6ufG5VP3P0N7Z02Q\""
+      },
+      "encoding": "utf8",
+      "body": "{\"from\":\"tasks\",\"to\":\"review\",\"hash\":\"df31a9860486c5cbe87de0d298506a8d1c6435669eb7ae3bbdcc7e9c70e8fc48\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"tasks\",\"to\":\"review\",\"command\":\"/spec tasks 003\",\"actor\":\"u:db06af25\"},\"lockSource\":\"activity\"}",
+      "sent": "{\"to\":\"review\",\"hash\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/003-config-loader/events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":\"tasks\",\"to\":\"review\",\"command\":\"/spec tasks 003\",\"actor\":\"u:db06af25\"}\n"
+            },
+            "specs/003-config-loader/spec.md": {
+              "change": "changed",
+              "line": 16,
+              "removed": [],
+              "added": [
+                "stage: review"
+              ],
+              "sha256": "df31a9860486c5cbe87de0d298506a8d1c6435669eb7ae3bbdcc7e9c70e8fc48"
+            }
+          },
+          "touched": [
+            "specs/003-config-loader"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition refused 003 done",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"Lp9lz_w_VhwvQ4ICvcFv7Zqu82AG8u702P9_8wm_kno\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"transition-refused\",\"reason\":\"the refactor workflow lists no move tasks → done\",\"command\":\"/spec tasks 003\"}",
+      "sent": "{\"to\":\"done\",\"hash\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition refused 003 same",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cjDqCq81qyfLA-JA5TPU5u6sKb8mWPF0bucMnsoF99o\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"transition-refused\",\"reason\":\"the spec already stands in tasks\",\"command\":\"/spec tasks 003\"}",
+      "sent": "{\"to\":\"tasks\",\"hash\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition unknown stage",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "{\"to\":\"bogus\",\"hash\":\"2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition unknown spec",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/999/transition",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"to\":\"review\",\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "transition bad body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/specs/003/transition",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate valid console-audit-log",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/ideas/console-audit-log/allocate",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"Xy-_JxfWlvINMwXi8y-q3BSGb8Np_T0vo2Vot_7sjp4\""
+      },
+      "encoding": "utf8",
+      "body": "{\"id\":\"010\",\"folder\":\"specs/010-console-audit-log/\",\"files\":[\"specs/010-console-audit-log/context.md\",\"specs/010-console-audit-log/spec.md\",\"specs/010-console-audit-log/events.jsonl\"],\"removed\":\"specs/ideas/console-audit-log.md\",\"lockSource\":\"activity\"}",
+      "sent": "{\"hash\":\"ecd8e2a3d7006409700df0234c5dcb8ddb624d875613f835af7a92b37b3fb419\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/010-console-audit-log": {
+              "change": "added",
+              "kind": "dir",
+              "mode": "755"
+            },
+            "specs/010-console-audit-log/context.md": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "---\nspec: 010-console-audit-log\ncreated: 2026-03-20T12:00:00.000Z\nupdated: 2026-03-20T12:00:00.000Z\nrounds: 1\n---\n\n<!-- CONTEXT LOG — a record, not an authority. Nothing here gates anything and nothing\n     reads it back. Every answer that changes the build lives in spec.md or plan.md. -->\n\n# Context 010 — Console audit log\n\n## Round 0 — the story, 2026-03-20T12:00:00.000Z\n\n/spec\n\n## Type\nfeature\n\n## Repo\nharbor\nSlug: console-audit-log\n\n## Goal (one sentence)\nEvery change made in the web console is written to an audit log a teammate can read back.\n\n## Problem\nA setting changed in the console leaves no trace; when a mirror stops, nobody can say who changed what, or when.\n\n## In\n- One audit line per console write: time, actor, setting, old and new value\n- An audit page in the console, newest first\n\n## Out\n- No export, no retention policy of its own\n\n## Done means (observable)\n- A console write appends exactly one audit line → bun-test\n- The audit page lists the newest line first → e2e\n\n## Guard rails\n- No credential value ever reaches an audit line (F0)\n"
+            },
+            "specs/010-console-audit-log/events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"from\":null,\"to\":\"plan\",\"command\":\"/spec new console-audit-log\",\"actor\":\"u:db06af25\"}\n"
+            },
+            "specs/010-console-audit-log/spec.md": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "---\nslug: 010-console-audit-log\nspec_type: feature\nisa_feature: F2\nmilestone: Harbor 2.0\npriority: P3\nstage: plan\nphase: scoping\nstarted: 2026-03-20T12:00:00.000Z\nupdated: 2026-03-20T12:00:00.000Z\n---\n\n# 010 — Console audit log\n\n## Goal\n\nEvery change made in the web console is written to an audit log a teammate can read back.\n"
+            },
+            "specs/ideas/console-audit-log.md": {
+              "change": "removed",
+              "kind": "file"
+            }
+          },
+          "touched": [
+            "specs",
+            "specs/ideas"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate wrong hash",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/ideas/console-audit-log/allocate",
+      "status": 409,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"AnMr5ji_APyS3UyufgjAOuaq2iH2YpMAUQF7FP3FYII\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"hash-mismatch\",\"files\":[\"specs/ideas/console-audit-log.md\"],\"expected\":{\"idea\":\"ecd8e2a3d7006409700df0234c5dcb8ddb624d875613f835af7a92b37b3fb419\"}}",
+      "sent": "{\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate run-locked",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/ideas/console-audit-log/allocate",
+      "status": 423,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"LALdkm6AjwpdP4udhNvUpNn67sPq-dRGtHQOb427hzM\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"run-locked\",\"run\":\"r-idea\",\"command\":\"/spec new console-audit-log\",\"actor\":{\"raw\":\"a:claude:sess-9\",\"kind\":\"agent\",\"id\":\"a:claude:sess-9\",\"legacy\":false},\"since\":\"2026-03-20T11:55:00.000Z\"}",
+      "sent": "{\"hash\":\"ecd8e2a3d7006409700df0234c5dcb8ddb624d875613f835af7a92b37b3fb419\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate refused not-in-index",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/ideas/registry-webhooks/allocate",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"biiE6UOy0GVg6eQGaDV6f-WoaXk_gLUlX9oC0B6FX-A\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"allocate-refused\",\"reason\":\"not-in-index\",\"folder\":\"specs/010-registry-webhooks/\"}",
+      "sent": "{\"hash\":\"8cb73aaccdd01eaef3bda73165111c587703f8315d76f08fefc9cd57c632aecb\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate unknown story",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/ideas/tide-tables/allocate",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate bad body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/ideas/console-audit-log/allocate",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "allocate unknown workspace",
+      "method": "POST",
+      "path": "/api/workspaces/nowhere/ideas/console-audit-log/allocate",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog valid move",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"P7DhlwcBBlsD9603ryVEhGT4RZZ8ucJgeYVHhGXOY-c\""
+      },
+      "encoding": "utf8",
+      "body": "{\"hash\":\"ba25a547b898d4a5a3b874766e1540b2ff2d78dc65bc0297efda55bdb9642a77\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"actor\":\"u:db06af25\",\"kind\":\"move\",\"feature\":\"F2\",\"from\":3,\"to\":2}}",
+      "sent": "{\"op\":\"move\",\"feature\":\"F2\",\"before\":\"F1\",\"hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/backlog.events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"actor\":\"u:db06af25\",\"kind\":\"move\",\"feature\":\"F2\",\"from\":3,\"to\":2}\n"
+            },
+            "specs/backlog.md": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "# Backlog\n\n- F0 · P3\n- F2 · P3\n- F1 · P3\n- F3 · P3\n- F4 · P3\n- F5 · P3\n- F6 · P3\n- F7 · P3\n"
+            }
+          },
+          "touched": [
+            "specs"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog valid move last",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"dOeeLNYI6xa6Qrbo9X7ClBMeiK849r8RWAwVZtmTGic\""
+      },
+      "encoding": "utf8",
+      "body": "{\"hash\":\"a40fe0fa0a7f9ae405158b9a2d837395bcbc24aab878b55dac7339029da1962e\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"actor\":\"u:db06af25\",\"kind\":\"move\",\"feature\":\"F0\",\"from\":1,\"to\":8}}",
+      "sent": "{\"op\":\"move\",\"feature\":\"F0\",\"before\":null,\"hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/backlog.events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"actor\":\"u:db06af25\",\"kind\":\"move\",\"feature\":\"F0\",\"from\":1,\"to\":8}\n"
+            },
+            "specs/backlog.md": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "# Backlog\n\n- F1 · P3\n- F2 · P3\n- F3 · P3\n- F4 · P3\n- F5 · P3\n- F6 · P3\n- F7 · P3\n- F0 · P3\n"
+            }
+          },
+          "touched": [
+            "specs"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog valid priority",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"_Y3TNLSQeO9uFxZUhxN_Rvb9Kav2YB6e8WlFqqZKQlo\""
+      },
+      "encoding": "utf8",
+      "body": "{\"hash\":\"f53fdd6121d339a15fa8c167912342aca5fd2c378d9be30fd6ddb669fa58c32c\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"actor\":\"u:db06af25\",\"kind\":\"priority\",\"feature\":\"F1\",\"from\":\"P3\",\"to\":\"P1\"}}",
+      "sent": "{\"op\":\"priority\",\"feature\":\"F1\",\"priority\":\"P1\",\"hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+      "diff": {
+        "harbor": {
+          "changes": {
+            "specs/backlog.events.jsonl": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"actor\":\"u:db06af25\",\"kind\":\"priority\",\"feature\":\"F1\",\"from\":\"P3\",\"to\":\"P1\"}\n"
+            },
+            "specs/backlog.md": {
+              "change": "added",
+              "kind": "file",
+              "mode": "644",
+              "content": "# Backlog\n\n- F0 · P3\n- F1 · P1\n- F2 · P3\n- F3 · P3\n- F4 · P3\n- F5 · P3\n- F6 · P3\n- F7 · P3\n"
+            }
+          },
+          "touched": [
+            "specs"
+          ]
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog wrong hash",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 409,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"D5pxBqIREyJCOxRynKy7acEIM4qgGRcHJZess3VaPvw\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"hash-mismatch\",\"files\":[\"specs/backlog.md\"],\"expected\":{\"backlog\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}}",
+      "sent": "{\"op\":\"priority\",\"feature\":\"F1\",\"priority\":\"P1\",\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog refused priority",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"fB6kNOO-ynqLS5ddlLAOzqIRDOGGyUpE6E3II_PVxxo\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"backlog-refused\",\"reason\":\"priority \\\"P9\\\" is none of P1 to P4\"}",
+      "sent": "{\"op\":\"priority\",\"feature\":\"F1\",\"priority\":\"P9\",\"hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog refused unknown feature",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"-yQJ9GaR8j5B6hhxDhWchL3PxvyjzGh3i0gYO9xbC54\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"backlog-refused\",\"reason\":\"F9 is not a feature block of the master\"}",
+      "sent": "{\"op\":\"move\",\"feature\":\"F9\",\"before\":\"F1\",\"hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog bad body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/backlog",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "{\"op\":\"swap\",\"feature\":\"F1\",\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "backlog unknown workspace",
+      "method": "POST",
+      "path": "/api/workspaces/nowhere/backlog",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"op\":\"priority\",\"feature\":\"F1\",\"priority\":\"P1\",\"hash\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "runRelease valid r-003",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/runs/r-003/release",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"bLD0MOOuqzpZfP2c6lrnocCF1hAvvBl_qjss_QVZjXM\""
+      },
+      "encoding": "utf8",
+      "body": "{\"hash\":\"032de1068060a4b451483b419b1321af4a376472852997678dac66c3a2809155\",\"event\":{\"ts\":\"2026-03-20T12:00:00.000Z\",\"event\":\"run-end\",\"run\":\"r-003\",\"command\":\"/spec tasks 003\",\"session\":\"u:db06af25\",\"spec\":\"003\",\"outcome\":\"released\"}}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {
+            ".spectant/activity.jsonl": {
+              "change": "appended",
+              "appended": "{\"ts\":\"2026-03-20T12:00:00.000Z\",\"event\":\"run-end\",\"run\":\"r-003\",\"command\":\"/spec tasks 003\",\"session\":\"u:db06af25\",\"spec\":\"003\",\"outcome\":\"released\"}\n",
+              "sha256": "032de1068060a4b451483b419b1321af4a376472852997678dac66c3a2809155"
+            }
+          },
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "runRelease missing hash",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/runs/r-003/release",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "runRelease unknown run",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/runs/r-none/release",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "runRelease wrong hash",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/runs/r-003/release",
+      "status": 409,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"ut6B3r_9T9dPjQSL_6kT8GZyU-b5uIbYiYnpsq2YyVM\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"hash-mismatch\",\"files\":[\".spectant/activity.jsonl\"],\"expected\":{\"activity\":\"1c71fc8dbb78e68d16938f28787005af3a7c98da606120b9d3a53d31716ad1e3\"}}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "runRelease refused aborted",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/runs/r-old/release",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"ZLGUT1N0tEg0dtRc8DDfm-DXJzzMhMsrUp_iZKEaXQw\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"release-refused\",\"reason\":\"run-aborted\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "runRelease refused no-viewer",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/runs/r-003/release",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"7E2OQmIH9_npYLQTF93lpFN6TyS437CTnXWLV9z6_Wg\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"release-refused\",\"reason\":\"no-viewer\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "settings valid",
+      "method": "PUT",
+      "path": "/api/settings",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "W/\"2z1nx8z1zho6p\""
+      },
+      "encoding": "utf8",
+      "body": "{\"theme\":\"dark\",\"language\":\"en\",\"density\":\"comfortable\",\"singleKeyShortcuts\":true,\"railCollapsed\":false,\"notesImportDismissed\":false,\"runAbortMinutes\":90,\"staleMinutes\":45}",
+      "sent": "{\"theme\":\"dark\",\"runAbortMinutes\":90}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "settings invalid value",
+      "method": "PUT",
+      "path": "/api/settings",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-value\",\"key\":\"theme\"}",
+      "sent": "{\"theme\":\"neon\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "settings unknown key",
+      "method": "PUT",
+      "path": "/api/settings",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"unknown-key\",\"key\":\"colour\"}",
+      "sent": "{\"colour\":\"red\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "settings bad body",
+      "method": "PUT",
+      "path": "/api/settings",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "settings 403 origin",
+      "method": "PUT",
+      "path": "/api/settings",
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8"
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"forbidden\"}",
+      "sent": "{\"theme\":\"dark\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "actors valid",
+      "method": "PUT",
+      "path": "/api/actors",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"fRAGEa3ceJTmLOBCFWnVXiy7j-HgdcaE7S5CGYTBq2U\""
+      },
+      "encoding": "utf8",
+      "body": "[{\"id\":\"u:3f9c0a7d\",\"displayName\":\"Harbor Master\",\"gitIdentities\":[\"harbor@example.org\"]}]",
+      "sent": "[{\"id\":\"u:3f9c0a7d\",\"displayName\":\"Harbor Master\",\"gitIdentities\":[\"harbor@example.org\"]}]",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "actors duplicate ids",
+      "method": "PUT",
+      "path": "/api/actors",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "[{\"id\":\"u:3f9c0a7d\",\"displayName\":\"Harbor Master\",\"gitIdentities\":[\"harbor@example.org\"]},{\"id\":\"u:3f9c0a7d\",\"displayName\":\"Harbor Master\",\"gitIdentities\":[\"harbor@example.org\"]}]",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "actors bad body",
+      "method": "PUT",
+      "path": "/api/actors",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "boardQuery valid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/board-query",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"ch-7Pi6P2WC4CiwdZAs1YvbR20xXY1BCJJF7scqg1ec\""
+      },
+      "encoding": "utf8",
+      "body": "{\"query\":\"stage:build\"}",
+      "sent": "{\"query\":\"stage:build\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "boardQuery invalid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/board-query",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "{\"query\":\"?stage:build\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "boardQuery bad body",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/board-query",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "boardQuery unknown workspace",
+      "method": "PUT",
+      "path": "/api/workspaces/nowhere/board-query",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"query\":\"\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "favorite put valid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/favorites/002-web-console",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"DNR4ZEe_XT4aWZEhP8gS2RBPEGzbQg6hS7SV4HD72I0\""
+      },
+      "encoding": "utf8",
+      "body": "{\"specs\":[\"002-web-console\"]}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "favorite put invalid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/favorites/retention",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"F-Kx5QqndJxxMWcQKlsvdiEbDIKkdHoeyRdYdGabLGQ\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-spec\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "favorite put unknown workspace",
+      "method": "PUT",
+      "path": "/api/workspaces/nowhere/favorites/002-web-console",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "favorite delete valid",
+      "method": "DELETE",
+      "path": "/api/workspaces/harbor/favorites/002-web-console",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"qdfDWQ1LvlGYkKIdqHNpn_e528XxZat1zXwNPCly3LI\""
+      },
+      "encoding": "utf8",
+      "body": "{\"specs\":[]}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "favorite delete unknown workspace",
+      "method": "DELETE",
+      "path": "/api/workspaces/nowhere/favorites/002-web-console",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note create valid",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/notes",
+      "status": 201,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "<normalised>"
+      },
+      "encoding": "utf8",
+      "body": "{\"id\":\"<id:1>\",\"workspace\":\"harbor\",\"anchor\":{\"kind\":\"claim\",\"spec\":\"002\",\"id\":\"ISC-74\"},\"title\":\"\",\"body\":\"A claim note.\",\"pinned\":true,\"created\":\"2026-03-20T12:00:00.000Z\",\"updated\":\"2026-03-20T12:00:00.000Z\"}",
+      "sent": "{\"anchor\":{\"kind\":\"claim\",\"spec\":\"002\",\"id\":\"ISC-74\"},\"title\":\"\",\"body\":\"A claim note.\",\"pinned\":true}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note create blank body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/notes",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"Tom59sT2yinX692MyQdCk6VdxXVpMztov3ImDDWHbRY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"empty-body\"}",
+      "sent": "{\"anchor\":null,\"title\":\"\",\"body\":\"  \"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note create bad body",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/notes",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note create unknown workspace",
+      "method": "POST",
+      "path": "/api/workspaces/nowhere/notes",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"anchor\":null,\"title\":\"\",\"body\":\"x\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note update valid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/notes/<id:1>",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "<normalised>"
+      },
+      "encoding": "utf8",
+      "body": "{\"id\":\"<id:1>\",\"workspace\":\"harbor\",\"anchor\":null,\"title\":\"Renamed\",\"body\":\"Edited body.\",\"pinned\":false,\"created\":\"2026-03-20T11:59:00.000Z\",\"updated\":\"2026-03-20T12:00:00.000Z\"}",
+      "sent": "{\"anchor\":null,\"title\":\"Renamed\",\"body\":\"Edited body.\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note update invalid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/notes/<id:1>",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"ds5ZPglLBeHzW6vgTDA8vIId0JATaiwVfYZ07NjDsD8\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-anchor\"}",
+      "sent": "{\"anchor\":{\"kind\":\"shelf\",\"spec\":\"002\"},\"title\":\"\",\"body\":\"x\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note update unknown note",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/notes/<id:1>",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"anchor\":null,\"title\":\"\",\"body\":\"x\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note remove valid",
+      "method": "DELETE",
+      "path": "/api/workspaces/harbor/notes/<id:1>",
+      "status": 204,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "encoding": "utf8",
+      "body": "",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "note remove unknown note",
+      "method": "DELETE",
+      "path": "/api/workspaces/harbor/notes/<id:1>",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "image put valid logo",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/images/logo",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"xjWaCUiawAbP0Dp255dq1WTEKJpAq9w6AWEykcOFVMw\""
+      },
+      "encoding": "utf8",
+      "body": "{\"kind\":\"logo\",\"url\":\"/api/workspaces/harbor/images/logo?v=497790947d466676\"}",
+      "sent": {
+        "size": 70,
+        "sha256": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581"
+      },
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "image put valid screenshot",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/images/screenshot",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"jH_AIik7bJ__gPGzXyAVTr759lcBxsEmk4SQH-Ya4KU\""
+      },
+      "encoding": "utf8",
+      "body": "{\"kind\":\"screenshot\",\"url\":\"/api/workspaces/harbor/images/screenshot?v=497790947d466676\"}",
+      "sent": {
+        "size": 70,
+        "sha256": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581"
+      },
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "image put unsupported type",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/images/logo",
+      "status": 415,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"CtKKmenDMwFpfz2GNbZNXG06aKgMAnl5Xqb2K9xWEoA\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"unsupported-type\"}",
+      "sent": "plain text, no image",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "image put too large",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/images/logo",
+      "status": 413,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"GZqqN2rG6AiIK_Q6TJsRo35n21cgqh_PGOrht8M-I80\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"too-large\",\"maxBytes\":2097152}",
+      "sent": {
+        "size": 2097153,
+        "sha256": "e9a099c75ef837c28bc91683bee127e463fa0ee10c11fd816f8d2d428c0d610e"
+      },
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "image put unknown kind",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/images/banner",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json;charset=utf-8"
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not found\"}",
+      "sent": {
+        "size": 70,
+        "sha256": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581"
+      },
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "image put unknown workspace",
+      "method": "PUT",
+      "path": "/api/workspaces/nowhere/images/logo",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": {
+        "size": 70,
+        "sha256": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581"
+      },
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace add valid",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"oitTRZzVZTCVf2hgQeU51MpRTYVo-UO4Lxh5PSXDlc4\""
+      },
+      "encoding": "utf8",
+      "body": "{\"slug\":\"spare\",\"name\":\"Spare\",\"pathTail\":\"spare\",\"readable\":true,\"counts\":{\"specs\":0,\"building\":0,\"scoping\":0,\"stageGroups\":{\"scoping\":0,\"building\":0,\"complete\":0},\"master\":null,\"masterOpen\":null,\"masterPercent\":null,\"byType\":{},\"claims\":{\"closed\":0,\"total\":0},\"tasks\":{\"landed\":0,\"total\":0},\"takeable\":0,\"openClaims\":0,\"warnings\":0,\"specsWithWarnings\":0,\"fog\":0,\"specsWithFog\":0,\"masterFog\":0,\"attention\":0,\"archived\":0},\"status\":\"empty\",\"images\":{\"logo\":null,\"screenshot\":null}}",
+      "sent": "{\"path\":\"<base>/spare\",\"name\":\"Spare\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace add duplicate",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"j_Pf3qVKXZpcXVbxVObmuDk7rPAlF51o7LpbhxsL7FU\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"duplicate-path\",\"slug\":\"harbor\"}",
+      "sent": "{\"path\":\"<base>/harbor\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace add missing path",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"9Mcs-qhPxdHyK-N-UKgGpb5MkQhNX6S466pQNeXJfvo\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-a-directory\"}",
+      "sent": "{\"path\":\"<base>/spare/absent\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace add relative path",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 422,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"9Mcs-qhPxdHyK-N-UKgGpb5MkQhNX6S466pQNeXJfvo\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-a-directory\"}",
+      "sent": "{\"path\":\"relative/dir\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace add bad body",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"cOL84fwrjsQVnfq3ck-5FdEHpBzYG55tB3g-JL7WX5g\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-body\"}",
+      "sent": "not json",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace add 403 origin",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 403,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"KBX-5u3DcWvWyFAnOZ8G4DFocG5_yseG7PDGbmGQhD8\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"forbidden\"}",
+      "sent": "{\"path\":\"<base>/harbor\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace rename valid",
+      "method": "PATCH",
+      "path": "/api/workspaces/harbor",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"Le3RjjBt4c1_djLaSLLDs17bHXFOK3QsW1W57EczZ3c\""
+      },
+      "encoding": "utf8",
+      "body": "{\"slug\":\"harbor\",\"name\":\"Harbour\",\"pathTail\":\"harbor\",\"readable\":true,\"counts\":{\"specs\":8,\"building\":4,\"scoping\":3,\"stageGroups\":{\"scoping\":3,\"building\":4,\"complete\":1},\"master\":{\"closed\":106,\"total\":130},\"masterOpen\":24,\"masterPercent\":81,\"byType\":{\"bug\":1,\"chore\":1,\"feature\":2,\"refactor\":1,\"spike\":3},\"claims\":{\"closed\":58,\"total\":82},\"tasks\":{\"landed\":57,\"total\":62},\"takeable\":4,\"openClaims\":24,\"warnings\":9,\"specsWithWarnings\":5,\"fog\":4,\"specsWithFog\":1,\"masterFog\":2,\"attention\":13,\"archived\":1},\"status\":\"ok\",\"images\":{\"logo\":null,\"screenshot\":null}}",
+      "sent": "{\"name\":\"Harbour\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace rename blank",
+      "method": "PATCH",
+      "path": "/api/workspaces/harbor",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"n2txRW53yHfuUKEtPNx06lCM5U8L3qNGomwpdB1nFTg\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-name\"}",
+      "sent": "{\"name\":\"  \"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace rename unknown",
+      "method": "PATCH",
+      "path": "/api/workspaces/nowhere",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": "{\"name\":\"Nowhere\"}",
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace remove valid",
+      "method": "DELETE",
+      "path": "/api/workspaces/library",
+      "status": 204,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "encoding": "utf8",
+      "body": "",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace remove unknown",
+      "method": "DELETE",
+      "path": "/api/workspaces/nowhere",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace rescan valid",
+      "method": "POST",
+      "path": "/api/workspaces/harbor/rescan",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"OVl9HwZq0BpYUwafww7DPd1YH8FJGnOSL3SIX8ikF6A\""
+      },
+      "encoding": "utf8",
+      "body": "{\"slug\":\"harbor\",\"name\":\"harbor\",\"pathTail\":\"harbor\",\"readable\":true,\"counts\":{\"specs\":8,\"building\":4,\"scoping\":3,\"stageGroups\":{\"scoping\":3,\"building\":4,\"complete\":1},\"master\":{\"closed\":106,\"total\":130},\"masterOpen\":24,\"masterPercent\":81,\"byType\":{\"bug\":1,\"chore\":1,\"feature\":2,\"refactor\":1,\"spike\":3},\"claims\":{\"closed\":58,\"total\":82},\"tasks\":{\"landed\":57,\"total\":62},\"takeable\":4,\"openClaims\":24,\"warnings\":9,\"specsWithWarnings\":5,\"fog\":4,\"specsWithFog\":1,\"masterFog\":2,\"attention\":13,\"archived\":1},\"status\":\"ok\",\"images\":{\"logo\":null,\"screenshot\":null}}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "workspace rescan unknown",
+      "method": "POST",
+      "path": "/api/workspaces/nowhere/rescan",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    }
+  ]
+}

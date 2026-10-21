@@ -8,11 +8,11 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseActor } from "../core/src/actor.ts";
-import { dashboardApi } from "../server/src/api.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { type BacklogRequest, allowForWorkspace, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { writeAnswerOf } from "../server/src/writes.contract.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { type BacklogRequest, allowForWorkspace, workspaceRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { writeAnswerOf } from "../server/src/contracts/writes.contract.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "backlog-ranks");
 const HOST = { Host: "127.0.0.1:7717" };

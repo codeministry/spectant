@@ -99,7 +99,7 @@
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, BrowserContext, Locator, Page } from '@playwright/test';
 import type { SpecPageModel } from '../../core/src/files.ts';
-import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';

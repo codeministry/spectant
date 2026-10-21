@@ -4,7 +4,7 @@ import { ApplicationRef, DOCUMENT, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { specRoutes, type LiveUpdate } from '../../../../server/src/spec-routes.contract';
+import { specRoutes, type LiveUpdate } from '../../../../server/src/contracts/spec-routes.contract';
 import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
 import { ApiClient, dashboardUrl, planningUrl, WORKSPACES_URL } from './api.service';

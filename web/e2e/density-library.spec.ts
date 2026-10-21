@@ -17,7 +17,7 @@
  */
 import type { Browser, Locator, Page } from '@playwright/test';
 import type { DocsPage } from '../../core/src/files';
-import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 import { DENSE_HEADER, STUB_DENSE } from './stub-api';
 

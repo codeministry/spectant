@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { EVENTS_PATH, LIVE_EVENT, type LiveUpdate } from '../../../../server/src/spec-routes.contract';
+import { EVENTS_PATH, LIVE_EVENT, type LiveUpdate } from '../../../../server/src/contracts/spec-routes.contract';
 import { EVENT_SOURCE, LiveStreamService } from './live-stream.service';
 
 /** An `EventSource` the test drives: it records every instance and dispatches what the server would send. */

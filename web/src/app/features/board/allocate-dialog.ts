@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { writePathsOf } from '../../../../../server/src/writes.contract';
+import { writePathsOf } from '../../../../../server/src/contracts/writes.contract';
 import { ApiClient } from '../../core/api.service';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiDialog } from '../../shared/ui/overlay/dialog';

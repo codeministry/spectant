@@ -431,5 +431,6 @@ Used to build, lint and test Spectant; none of them is shipped in the binary or 
 | `stylelint` | 17.15.0 | MIT |
 | `stylelint-config-standard` | 40.0.0 | MIT |
 | `bun-types` | 1.3.12 | MIT |
+| `jscpd` (and its platform binary package `jscpd-<os>-<cpu>`) | 5.4.0 | MIT |
 
 Their transitive dependencies are pinned in `bun.lock`.

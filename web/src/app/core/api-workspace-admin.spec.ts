@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { IMAGE_MAX_BYTES, type WorkspaceAdminSummary, workspaceAdminRoutes } from '../../../../server/src/workspace-admin.contract';
+import { IMAGE_MAX_BYTES, type WorkspaceAdminSummary, workspaceAdminRoutes } from '../../../../server/src/contracts/workspace-admin.contract';
 import { ApiClient } from './api.service';
 
 describe('ApiClient workspace admin (spec 016, T13, ISC-303)', () => {

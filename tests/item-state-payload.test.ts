@@ -12,11 +12,12 @@ import type { DashboardModel } from "../core/src/dashboard.ts";
 import type { ClaimViewModel, IdeaRef, ItemStateInfo, LiveFrame, SpecPageModel, TasksTab } from "../core/src/files.ts";
 import { DEFAULT_ABORT_AFTER_MS } from "../core/src/item-state.ts";
 import type { PlanningModel } from "../core/src/planning.ts";
-import { WORKSPACES_PATH, dashboardApi } from "../server/src/api.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { type IdeaPage, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { WORKSPACES_PATH } from "../server/src/workspace/index.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { type IdeaPage, specRoutes, workspaceRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const BEACON = join(FIXTURES, "beacon");

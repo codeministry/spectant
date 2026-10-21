@@ -1,5 +1,5 @@
 import { computed, DestroyRef, effect, inject, Injectable, resource, type ResourceRef, signal, untracked } from '@angular/core';
-import type { SpecRouteResponses } from '../../../../../../server/src/spec-routes.contract';
+import type { SpecRouteResponses } from '../../../../../../server/src/contracts/spec-routes.contract';
 import { type ApiResult, ApiClient } from '../../../core/api.service';
 import { RefreshService } from '../../../core/refresh.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';

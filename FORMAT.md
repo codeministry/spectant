@@ -132,7 +132,7 @@ Every other key is kept as written (`rest`) and read by nobody.
 **A transition writes `stage:`.** A `/spec` command and a drop on the board go through the same transition: it sets or
 replaces the `stage:` line of `spec.md`, leaves the rest of the file byte-identical, and appends exactly one line to
 `events.jsonl`, so the key and the last event agree. `planTransition` in `core/src/transition.ts` plans the move in
-memory and writes nothing (spec 008, T71 for ISC-121, T72 for ISC-31); `server/src/writes.ts` writes the plan. `from` is
+memory and writes nothing (spec 008, T71 for ISC-121, T72 for ISC-31); `server/src/writes/transition.ts` writes the plan. `from` is
 the spec's stage as above, explicit or derived, with the spec edges the dashboard row reads (spec 025: a claim an open
 spec edge holds is not takeable, and a spec whose open work all waits on open spec edges stands on `blocked`), so a
 move starts from the stage the row shows. The move must be one the type's row lists (§ workflow, Derived), or a

@@ -15,11 +15,11 @@ import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { type RunningServer, serve } from "../server/src/http.ts";
-import { prototypeApi } from "../server/src/prototype.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { PROTOTYPE_ALLOW, PROTOTYPE_CSP, prototypeRoute } from "../server/src/spec-routes.contract.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { type RunningServer, serve } from "../server/src/infra/http/server.ts";
+import { prototypeApi } from "../server/src/prototype/index.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { PROTOTYPE_ALLOW, PROTOTYPE_CSP, prototypeRoute } from "../server/src/contracts/spec-routes.contract.ts";
 
 const LIBRARY = join(import.meta.dir, "..", "core", "fixtures", "library");
 

@@ -8,12 +8,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dashboardApi } from "../server/src/api.ts";
-import { listFavorites, openDatabase } from "../server/src/db.ts";
-import { eventsApi } from "../server/src/events-route.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import { listFavorites, openDatabase } from "../server/src/infra/db/db.ts";
+import { eventsApi, type LiveChange, type LiveListener, type WatchHub } from "../server/src/live/index.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
 import {
   EVENTS_PATH,
   JSON_ANSWER,
@@ -25,8 +25,8 @@ import {
   matchWorkspacePath,
   specRoutes,
   workspaceRoutes,
-} from "../server/src/spec-routes.contract.ts";
-import { type LiveChange, type LiveListener, type WatchHub, favoritesScan } from "../server/src/watch.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
+import { favoritesScan } from "../server/src/planning/index.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HOST = { Host: "127.0.0.1:7717" };

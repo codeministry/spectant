@@ -18,7 +18,7 @@ import { LocationStrategy } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, LibraryDoc, LibraryDocType } from '../../../../../core/src/files';
-import type { LibraryDocPage } from '../../../../../server/src/spec-routes.contract';
+import type { LibraryDocPage } from '../../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
 import { RefreshService } from '../../core/refresh.service';
 import { specLink } from '../../layout/shell/areas';

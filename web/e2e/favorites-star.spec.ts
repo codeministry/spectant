@@ -17,7 +17,7 @@
  * Favourites are spec folder names (`003-config-loader`), the select and the dashboard key their rows by the id.
  */
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
-import { SPEC_API_ROOT, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { SPEC_API_ROOT, workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 

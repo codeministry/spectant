@@ -1,4 +1,4 @@
-import type { SpecRouteResponses } from '../../../../../../../server/src/spec-routes.contract';
+import type { SpecRouteResponses } from '../../../../../../../server/src/contracts/spec-routes.contract';
 import type { TaskCheckResult } from '../../../../core/api.service';
 
 /** One row of core's `TasksTab` (the same type `tasks-tab.ts` exports; declared here so the two do not import each other). */

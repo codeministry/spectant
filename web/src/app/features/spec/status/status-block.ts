@@ -3,7 +3,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import type { Guidance, ItemStateInfo, SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
 import { guidanceEntryOf, withReason } from '../../../shared/ui/guidance/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
-import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../../server/src/contracts/spec-routes.contract';
 import { RunRelease } from '../../../layout/run-release/run-release';
 import { UiActorChip } from '../../../shared/ui/actor-chip/actor-chip';
 import { UiItemState } from '../../../shared/ui/item-state/item-state';

@@ -9,7 +9,7 @@ import {
   sniffImageType,
   type WorkspaceStatus,
   workspaceStatusOf,
-} from '../../../../../server/src/workspace-admin.contract';
+} from '../../../../../server/src/contracts/workspace-admin.contract';
 import type { WorkspaceAdminResult, WorkspaceListEntry } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';

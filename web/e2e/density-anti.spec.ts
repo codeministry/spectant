@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import type { SpecPageModel, TasksTab } from '../../core/src/files.ts';
-import { SPEC_API_ROOT, specRoutes } from '../../server/src/spec-routes.contract.ts';
+import { SPEC_API_ROOT, specRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 import { DENSE_HEADER, EDGES_HEADER, SESSION_HEADER, STUB_DENSE } from './stub-api';
 

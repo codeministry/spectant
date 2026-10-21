@@ -6,7 +6,7 @@
  */
 import type { ActorRef, ClaimView, SpecHead, SpecNextStep, StageSource, Workflow, WorkflowStage } from '../../../../../../core/src/files';
 import { workflowStagesOf } from '../../../../../../core/src/stage';
-import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../../server/src/contracts/spec-routes.contract';
 import type { StageDetour } from '../../../shared/ui/stage-track/stage-track';
 
 /** The claims still open, in the model's order: everything neither closed nor dropped. */

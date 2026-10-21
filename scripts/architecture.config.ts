@@ -1,0 +1,97 @@
+/**
+ * architecture.config — the lane entries `scripts/check-architecture.ts` checks (spec 059, ISC-415).
+ *
+ * One entry per lane. Each entry names a root and the files under it; every optional section switches one rule on
+ * for that entry, and a rule never runs on an entry that leaves its section out. A new lane (the web lanes of the
+ * feature) adds an entry here and changes no rule.
+ *
+ * Paths: `root` is relative to the repository root; `ignore` patterns and the layout and io folder names are relative
+ * to `root`. Patterns are `Bun.Glob` globs.
+ */
+
+/** Line limit per file (ISC-413). */
+export type SizeConfig = {
+  /** A file with more lines than this is a violation. */
+  maxLines: number;
+};
+
+/** Copied blocks across the files of the root (ISC-414). */
+export type DuplicatesConfig = {
+  /** A copied block of at least this many tokens is a violation. */
+  minTokens: number;
+};
+
+/** The folder shape of the root (ISC-409). */
+export type LayoutConfig = {
+  /** The only files allowed directly in the root. */
+  topLevelFiles: string[];
+  /** Shared area folders that are not slices; every other folder of the root is a slice. */
+  areas: string[];
+  /** The file every slice needs: its one public surface. */
+  sliceEntry: string;
+};
+
+/** The import graph between slices and areas (ISC-410); slices and areas are the ones `layout` names. */
+export type ImportsConfig = {
+  /** A slice imports another slice only through that slice's entry file. */
+  sliceEntryOnly: boolean;
+  /** No area imports a slice. */
+  areasImportNoSlice: boolean;
+  /** No import cycle between slices. */
+  noSliceCycles: boolean;
+};
+
+/** Direct I/O only inside the named folders (ISC-411). */
+export type IoConfig = {
+  /** Folders of the root where the modules and calls below are allowed. */
+  allowedIn: string[];
+  /** Module specifiers no file outside `allowedIn` imports. */
+  modules: string[];
+  /** Member calls no file outside `allowedIn` makes. */
+  calls: string[];
+};
+
+export type LaneEntry = {
+  /** The lane's name, as it appears in the output. */
+  name: string;
+  /** The checked folder, relative to the repository root. */
+  root: string;
+  /** File extensions every rule looks at. */
+  extensions: string[];
+  /** Files no rule looks at (tests, generated files), as globs relative to `root`. */
+  ignore: string[];
+  size?: SizeConfig;
+  duplicates?: DuplicatesConfig;
+  layout?: LayoutConfig;
+  imports?: ImportsConfig;
+  io?: IoConfig;
+};
+
+export type ArchitectureConfig = {
+  lanes: LaneEntry[];
+};
+
+/** Test and generated files, which no rule of any lane looks at. */
+export const TEST_AND_GENERATED: string[] = ["**/*.test.ts", "**/*.spec.ts", "**/*.gen.ts"];
+
+const config: ArchitectureConfig = {
+  lanes: [
+    {
+      name: "server",
+      root: "server/src",
+      extensions: [".ts"],
+      ignore: TEST_AND_GENERATED,
+      size: { maxLines: 400 },
+      duplicates: { minTokens: 50 },
+      layout: { topLevelFiles: ["main.ts"], areas: ["infra", "contracts"], sliceEntry: "index.ts" },
+      imports: { sliceEntryOnly: true, areasImportNoSlice: true, noSliceCycles: true },
+      io: {
+        allowedIn: ["infra"],
+        modules: ["node:fs", "node:fs/promises", "node:child_process", "bun:sqlite"],
+        calls: ["Bun.spawn", "Bun.file", "Bun.write"],
+      },
+    },
+  ],
+};
+
+export default config;

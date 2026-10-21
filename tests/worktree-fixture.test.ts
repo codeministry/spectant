@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Worktree } from "../core/src/files.ts";
 import { assignWorktrees, specSourceOf } from "../core/src/worktrees.ts";
-import { aheadOfMain, dirty, worktreeList } from "../server/src/git.ts";
+import { aheadOfMain, dirty, worktreeList } from "../server/src/infra/git/index.ts";
 import {
   BUILDER_WORKTREE,
   DATES,

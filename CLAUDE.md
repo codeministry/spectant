@@ -26,7 +26,7 @@ administration. The skill targets Claude Code first and is meant to work with ot
 - **Loopback only; nothing leaves the machine.** The server binds 127.0.0.1 or ::1, and no code path calls an
   external host.
 - **Files in registered repositories are read-only for the app, `.git/` included**, except for exactly eight write
-  paths, each named with every file it may touch in `WRITE_PATHS` (`server/src/writes.contract.ts`):
+  paths, each named with every file it may touch in `WRITE_PATHS` (`server/src/contracts/writes.contract.ts`):
   1. the reviewed mark: `specs/NNN-slug/.gates/reviewed.json` plus one line in `events.jsonl` (spec 002);
   2. a task checkbox: one line of `tasks.md` (spec 002);
   3. a stage transition: `stage:` in `spec.md` plus one line in `events.jsonl`, through the board or the API
@@ -47,7 +47,7 @@ administration. The skill targets Claude Code first and is meant to work with ot
   `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create, and nothing else in the
   tree changes. The plugin writes every other line of `.spectant/activity.jsonl` (its hooks the `claim`, `dispatch`,
   `build` and `release` of a builder whose brief carries the marker line, `spec-check` the rest; spec 032); the app
-  only reads it, apart from the release of path 8. How each write is performed and guarded (`server/src/writes.ts`,
+  only reads it, apart from the release of path 8. How each write is performed and guarded (`server/src/writes/`,
   `tests/readonly.test.ts`) lives in `server/CLAUDE.md` § The write path.
 - **One parser for the spec format, in `core/`.** Every other lane imports it; a second implementation is a defect.
 - **Pin every dependency and tool version.** Reproducible builds and baselines depend on it.

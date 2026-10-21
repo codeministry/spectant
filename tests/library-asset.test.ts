@@ -12,11 +12,12 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { composeApi, dashboardApi } from "../server/src/api.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { SPEC_API_ROOT, allowForWorkspace, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { composeApi } from "../server/src/infra/http/json.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { SPEC_API_ROOT, allowForWorkspace, workspaceRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const HOST = { Host: "127.0.0.1:7717" };

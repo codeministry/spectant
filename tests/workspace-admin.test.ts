@@ -7,12 +7,12 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { run } from "../server/src/cli.ts";
-import { noteRoutes } from "../server/src/notes.contract.ts";
-import { openRegistry } from "../server/src/registry.ts";
-import { SPEC_API_ROOT } from "../server/src/spec-routes.contract.ts";
-import { IMAGE_MAX_BYTES, type ImageKind, type WorkspaceAdminSummary, workspaceAdminRoutes } from "../server/src/workspace-admin.contract.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { run } from "../server/src/cli/index.ts";
+import { noteRoutes } from "../server/src/contracts/note-routes.contract.ts";
+import { openRegistry } from "../server/src/infra/db/registry.ts";
+import { SPEC_API_ROOT } from "../server/src/contracts/spec-routes.contract.ts";
+import { IMAGE_MAX_BYTES, type ImageKind, type WorkspaceAdminSummary, workspaceAdminRoutes } from "../server/src/contracts/workspace-admin.contract.ts";
 import { LIVE_MS, openStream, serve } from "./fixtures/live-stream.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");

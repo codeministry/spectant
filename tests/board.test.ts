@@ -17,9 +17,9 @@ import { appendFileSync, cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CardState, LiveCard } from "../core/src/files.ts";
-import { WORKSPACES_PATH, type WorkspaceSummary } from "../server/src/api.ts";
-import { SETTINGS_PATH } from "../server/src/settings.ts";
-import { type SpecRouteResponses, specRoutes } from "../server/src/spec-routes.contract.ts";
+import { WORKSPACES_PATH, type WorkspaceSummary } from "../server/src/workspace/index.ts";
+import { SETTINGS_PATH } from "../server/src/settings/index.ts";
+import { type SpecRouteResponses, specRoutes } from "../server/src/contracts/spec-routes.contract.ts";
 import { LIVE_MS, changeAndWait, serve } from "./fixtures/live-stream.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
