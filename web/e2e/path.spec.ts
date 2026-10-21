@@ -18,7 +18,7 @@ import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
 import { type GuidanceView, sentenceOf } from './guidance-sentence';
 import { klm, StepCounter, StepRecorder, trail } from './steps';
-import { DENSE_HEADER, RESET_PATH, SESSION_HEADER, WAITS_HEADER } from './stub-api';
+import { DENSE_HEADER, LOCKS_HEADER, RESET_PATH, SESSION_HEADER, STUB_WORKING, WAITS_HEADER } from './stub-api';
 
 const TARGET = { ws: 'harbor', spec: '007', claim: 'ISC-126', number: '126' };
 const ENTRY = `claim:${TARGET.ws}:${TARGET.claim}`;
@@ -403,12 +403,15 @@ const whollyOnScreen = (target: Locator): Promise<boolean> =>
     return r.top >= 0 && r.bottom <= window.innerHeight;
   });
 
-/** One stub session per test, so the language and density set here never leak into another worker's case. */
-function useDenseSession(prefix: string, lang: 'en' | 'de', width: number): void {
+/**
+ * One stub session per test, so the language and density set here never leak into another worker's case. `extra`
+ * adds stub headers to the page's requests (P3 with specs in work: the lock fixture `working`).
+ */
+function useDenseSession(prefix: string, lang: 'en' | 'de', width: number, extra: Readonly<Record<string, string>> = {}): void {
   let session = '';
   test.beforeEach(async ({ page, request }, info) => {
     session = `${prefix}-${lang}-${String(width)}-${info.testId}`;
-    await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on', [SESSION_HEADER]: session });
+    await page.context().setExtraHTTPHeaders({ ...extra, [DENSE_HEADER]: 'on', [SESSION_HEADER]: session });
     const saved = await request.put('/api/settings', {
       data: { language: lang, density: 'comfortable' },
       headers: { [SESSION_HEADER]: session },
@@ -492,50 +495,85 @@ test.describe('P3 · step counter', () => {
   });
 });
 
+/** The fixture P3 runs on: the dense harbor alone, or with `STUB_WORKING`'s four specs in work as well. */
+type P3Variant = 'dense' | 'working';
+
+/**
+ * Walks P3 on the dense harbor and writes the Ist into the report: the click on the column, then each block of the
+ * dashboard's one column read in its order. Under `working` the row of Waits on you and In progress holds both lists,
+ * In progress three tiles and "Show all 4", and P3 reads In progress as a block of its own before Next up.
+ */
+async function walkP3(page: Page, lang: 'en' | 'de', width: number, variant: P3Variant): Promise<void> {
+  const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('lang', lang);
+  const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
+  await expect(column).toBeVisible();
+  const steps = new StepCounter(page);
+  await openWorkspace(page, lang, steps, column);
+
+  const nextUp = page.locator('app-next-up-list:visible').first();
+  const working = page.locator('ui-working-block section');
+  // The dashboard's one column, in its order; the spec list is not on it (spec 058).
+  const targets: readonly Block[] = [
+    ['kpi band', page.locator('app-kpi-band')],
+    ['tldr', page.locator('[data-ui="brief"]').first()],
+    ['waits', page.locator('#waiting')],
+    ...(variant === 'working' ? [['in progress', working] as const] : []),
+    ['next up', nextUp],
+  ];
+  for (const [name, target] of targets) await expect(target, `${name} is on the page`).toBeVisible();
+  if (variant === 'working') {
+    // Both lists populated: Waits on you holds its tiles, In progress three of STUB_WORKING's four and "Show all 4".
+    await expect(page.locator('#waiting ui-flat-tile').first(), 'Waits on you holds tiles').toBeVisible();
+    await expect(working.locator('ui-flat-tile [data-id]')).toHaveText(STUB_WORKING.specs.slice(0, 3));
+    await expect(working.locator('a.more[data-show-all]')).toContainText(String(STUB_WORKING.specs.length));
+  } else {
+    await expect(working, 'no spec in work without the lock fixture').toHaveCount(0);
+  }
+  await expect(page.locator('app-spec-table'), 'the dashboard holds no spec list').toHaveCount(0);
+  expect(await page.evaluate(() => window.scrollY), 'the dashboard opens unscrolled').toBe(0);
+  const height = page.viewportSize()?.height ?? 0;
+  const geometry = await geometryOf(targets);
+  const nextUpBottom = await nextUp.evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
+
+  const unreadNames = await readAll(page, steps, targets, width);
+
+  const seconds = klm(steps.sequence);
+  const label = variant === 'working' ? 'P3 working' : 'P3 workspace';
+  test.info().annotations.push(
+    {
+      type: `${label} @${width} ${lang}`,
+      description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; next up bottom y ${String(nextUpBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
+    },
+    { type: `${label} heights @${width} ${lang}`, description: geometry },
+  );
+  expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
+  expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
+  expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
+  expect(unreadNames, 'every block read').toEqual([]);
+}
+
 for (const lang of ['en', 'de'] as const) {
   for (const width of [1440, 600] as const) {
+    const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
     test.describe(`P3 · state of a workspace @${width} in ${lang}`, () => {
       test.use(atWidth(width));
       useDenseSession('p3', lang, width);
 
-      const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
       test(`P3 workspace @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you and Next up read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
-        await page.goto('/');
-        await expect(page.locator('html')).toHaveAttribute('lang', lang);
-        const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
-        await expect(column).toBeVisible();
-        const steps = new StepCounter(page);
-        await openWorkspace(page, lang, steps, column);
+        await walkP3(page, lang, width, 'dense');
+      });
+    });
 
-        const nextUp = page.locator('app-next-up-list:visible').first();
-        // The dashboard's one column, in its order; the spec list is not on it (spec 058).
-        const targets: readonly Block[] = [
-          ['kpi band', page.locator('app-kpi-band')],
-          ['tldr', page.locator('[data-ui="brief"]').first()],
-          ['waits', page.locator('#waiting')],
-          ['next up', nextUp],
-        ];
-        for (const [name, target] of targets) await expect(target, `${name} is on the page`).toBeVisible();
-        await expect(page.locator('app-spec-table'), 'the dashboard holds no spec list').toHaveCount(0);
-        expect(await page.evaluate(() => window.scrollY), 'the dashboard opens unscrolled').toBe(0);
-        const height = page.viewportSize()?.height ?? 0;
-        const geometry = await geometryOf(targets);
-        const nextUpBottom = await nextUp.evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
+    // P3 with both lists populated (spec 064, ISC-472): the dense harbor under `X-Spectant-Stub-Locks: working`, so
+    // Waits on you and In progress stand in their row before Next up, and the budget of ISC-401 still holds.
+    test.describe(`P3 · state of a workspace with specs in work @${width} in ${lang}`, () => {
+      test.use(atWidth(width));
+      useDenseSession('p3w', lang, width, { [LOCKS_HEADER]: 'working' });
 
-        const unreadNames = await readAll(page, steps, targets, width);
-
-        const seconds = klm(steps.sequence);
-        test.info().annotations.push(
-          {
-            type: `P3 workspace @${width} ${lang}`,
-            description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; next up bottom y ${String(nextUpBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
-          },
-          { type: `P3 heights @${width} ${lang}`, description: geometry },
-        );
-        expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
-        expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
-        expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
-        expect(unreadNames, 'every block read').toEqual([]);
+      test(`P3 working @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you, In progress and Next up read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
+        await walkP3(page, lang, width, 'working');
       });
     });
   }
