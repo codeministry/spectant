@@ -44,9 +44,8 @@
         <a
           class="fog"
           data-next-fog
-          [routerLink]="[]"
+          [routerLink]="specsLink()"
           [queryParams]="{ phase: 'fog' }"
-          queryParamsHandling="merge"
         >{{ (fogWaiting() === 1 ? 'nextUp.waitOnFog.one' : 'nextUp.waitOnFog.other') | transloco: { count: fogWaiting() } }}</a>
       }
     </div>

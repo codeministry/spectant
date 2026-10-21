@@ -3,7 +3,9 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { type ActivatedRouteSnapshot, NavigationStart, provideRouter, Router } from '@angular/router';
 import { routes, TECH_REDIRECTS } from './app.routes';
+import { DashboardPage } from './features/dashboard/dashboard-page';
 import { LibraryPage } from './features/library/library-page';
+import { SpecsPage } from './features/specs-page/specs-page';
 import { NotFound } from './layout/not-found/not-found';
 import { ShellState } from './layout/shell/shell-state.service';
 
@@ -81,5 +83,71 @@ describe('the former tech routes redirect to the Library (spec 017, T42, ISC-157
   it('keeps the spec status tab a spec tab', async () => {
     const { route } = await at('/w/harbor/s/002/status');
     expect(route.tab).toBe('status');
+  });
+});
+
+describe('the workspace dashboard and the Specs page are two routes (spec 058, T3, T7)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const children = routes.find((route) => route.path === '')?.children ?? [];
+  const child = (path: string) => children.find((route) => route.path === path);
+
+  it('marks /w/:ws as the dashboard page (ISC-390)', async () => {
+    expect(child('w/:ws')?.data).toEqual({ page: 'dashboard' });
+    const { component } = await at('/w/harbor');
+    expect(component).toBe(DashboardPage);
+  });
+
+  it('routes /w/:ws/specs to the lazy Specs page, before the catch-all (ISC-391)', async () => {
+    const specs = child('w/:ws/specs');
+    expect(specs?.data).toEqual({ page: 'specs' });
+    expect(specs?.loadComponent).toBeTypeOf('function');
+    expect(specs === undefined ? -1 : children.indexOf(specs)).toBeLessThan(children.findIndex((route) => route.path === '**'));
+    const { url, route, component } = await at('/w/harbor/specs?phase=building');
+    expect(url).toBe('/w/harbor/specs?phase=building');
+    expect(component).toBe(SpecsPage);
+    expect(route.ws).toBe('harbor');
+    expect(route.notFound).toBe(false);
+  });
+});
+
+describe('an old list address of the dashboard leads to the Specs page (spec 058, T20, T21, ISC-396, ISC-400)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const moved: Record<string, string> = {
+    '/w/harbor?phase=building&sort=next': '/w/harbor/specs?phase=building&sort=next',
+    '/w/harbor?q=api': '/w/harbor/specs?q=api',
+    '/w/harbor?takeable=1&sel=spec:002#top': '/w/harbor/specs?takeable=1&sel=spec:002#top',
+    '/w/harbor?open=specs': '/w/harbor/specs?open=specs',
+    '/w/harbor?open=tldr,specs&density=compact': '/w/harbor/specs?open=tldr,specs&density=compact',
+  };
+
+  for (const [from, to] of Object.entries(moved)) {
+    it(`redirects ${from} to ${to}, the same query on the Specs page`, async () => {
+      const { url, route, component } = await at(from);
+      expect(url).toBe(to);
+      expect(component).toBe(SpecsPage);
+      expect(route.ws).toBe('harbor');
+    });
+  }
+
+  for (const stays of ['/w/harbor?sel=spec:002', '/w/harbor', '/w/harbor?open=tldr']) {
+    it(`keeps ${stays} on the dashboard`, async () => {
+      const { url, component } = await at(stays);
+      expect(url).toBe(stays);
+      expect(component).toBe(DashboardPage);
+    });
+  }
+
+  it('replaces the history entry: the old list address never stays behind the Specs page', async () => {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()] });
+    const router = TestBed.inject(Router);
+    const replaced: Array<boolean | undefined> = [];
+    router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) replaced.push(router.currentNavigation()?.extras.replaceUrl);
+    });
+    await router.navigateByUrl('/w/harbor?q=api');
+    expect(router.url).toBe('/w/harbor/specs?q=api');
+    expect(replaced.at(-1)).toBe(true);
   });
 });

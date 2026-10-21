@@ -135,10 +135,6 @@
     },
     "meta": "{{active}} aktiv · {{archived}} archiviert",
     "metaShort": "{{active}} · {{archived}} archiviert",
-    "countSegment": {
-      "one": "{{count}} Spec",
-      "other": "{{count}} Specs"
-    },
     "typeMeta": {
       "one": "{{count}} {{type}} · {{archived}} archiviert",
       "other": "{{count}} {{type}} · {{archived}} archiviert"
@@ -223,7 +219,6 @@
     "showAll": "Alle {{count}} anzeigen",
     "moreName": "Mehr… {{entry}}, Next up",
     "lessName": "Weniger {{entry}}, Next up",
-    "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
     "waitOnFog": {
@@ -809,6 +804,7 @@
       "app": "App"
     },
     "pages": {
+      "dashboard": "Dashboard",
       "specs": "Specs",
       "board": "Board",
       "planning": "Planung",
@@ -816,6 +812,7 @@
       "milestones": "Meilensteine",
       "library": "Library",
       "summary": {
+        "dashboard": "{{waits}} liegen bei Ihnen · {{warnings}} Warnungen",
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "planning": "{{milestones}} Meilensteine · {{features}} Features",
@@ -2801,13 +2798,7 @@
       "since": "seit {{time}}",
       "showAll": "Alle {{count}} anzeigen",
       "waiting": "+{{n}} bei Ihnen",
-      "foldName": "+{{n}} weitere · Liegt bei Ihnen, alle {{count}} zeigen",
-      "fewer": "Weniger zeigen",
-      "fewerName": "Weniger zeigen · Liegt bei Ihnen, nur der oberste Eintrag",
-      "headLinkName": {
-        "one": "Liegt bei Ihnen · {{count}} Eintrag, zur Liste",
-        "other": "Liegt bei Ihnen · {{count}} Einträge, zur Liste"
-      }
+      "showAllName": "Alle {{count}} anzeigen · Liegt bei Ihnen"
     },
     "next": {
       "label": "Als Nächstes",

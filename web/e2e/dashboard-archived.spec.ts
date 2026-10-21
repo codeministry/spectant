@@ -1,7 +1,8 @@
 /**
- * Spec 050 (T12, ISC-290): against the stub API at 1440 × 900, the dashboard's "Show archived" toggle lists harbor's
+ * Spec 050 (T12, ISC-290): against the stub API at 1440 × 900, the spec list's "Show archived" toggle lists harbor's
  * archived spec (001, from `core/fixtures/harbor.golden.json`) as a marked row under the active ones, and a reload
- * keeps it: the toggle's state is `?archived=1` in the address. `bun run e2e -- dashboard -g archived` is the probe.
+ * keeps it: the toggle's state is `?archived=1` in the address. Since spec 058 the list stands on the Specs page
+ * (`/w/harbor/specs`), no longer on the dashboard. `bun run e2e -- dashboard -g archived` is the probe.
  *
  * Selectors are the list's own hooks: the toggle `[data-control="archived"]` (`aria-pressed`), the archived row links
  * `.row-link[data-archived-row]`, the row host's `[data-archived]` with its `[data-archived-chip]`, and the fold
@@ -20,9 +21,9 @@ const archivedHost = (page: Page, id: string): Locator =>
   specTable(page).locator('app-spec-row[data-archived]').filter({ has: page.locator(`.row-link[data-archived-row="${id}"]`) });
 const fold = (page: Page): Locator => specTable(page).locator('[data-fold="specs"] button.summary');
 
-/** Open harbor's dashboard and wait until the spec list rendered its rows. */
+/** Open harbor's Specs page (spec 058: the list's own page) and wait until the spec list rendered its rows. */
 async function openHarbor(page: Page, query = ''): Promise<void> {
-  await page.goto(`/w/harbor${query}`);
+  await page.goto(`/w/harbor/specs${query}`);
   await expect(specTable(page).locator('[data-spec-row]').first()).toBeVisible();
 }
 

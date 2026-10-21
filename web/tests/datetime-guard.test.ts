@@ -65,7 +65,7 @@ const PATTERNS: ReadonlyArray<readonly [name: string, re: RegExp]> = [
 /** Non-display uses of a pattern, by file and pattern name; keep it short and give every entry its reason. */
 const ALLOW: ReadonlyArray<{ file: string; pattern: string; why: string }> = [
   {
-    file: "app/features/dashboard/dashboard-page.ts",
+    file: "app/features/specs-page/specs-page.ts",
     pattern: "raw calendar day",
     why: "`spec:${target}` is a selection key built from a spec id, not a date",
   },

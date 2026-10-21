@@ -146,7 +146,9 @@ type ClsProbe = { __cls: () => Shift[] };
  * ISC-62.1 (T72): the same refresh shifts nothing. A PerformanceObserver collects `layout-shift` entries without recent
  * input from just before the bump until the refreshed value and its tint have been painted; their sum is the
  * cumulative layout shift, and it must be exactly 0. The refresh has to render its mark (the claims tile's tint), and
- * the KPI band and the Specs panel have to be in the viewport, or a 0 would prove nothing. Run at the wide and the
+ * the KPI band and the block below it have to be in the viewport, or a 0 would prove nothing: since spec 058 the
+ * dashboard holds no spec list, and the TL;DR (`[data-ui="brief"]`) stands right below the band at every tier. Run at
+ * the wide and the
  * medium tier. `bun run e2e -- refresh -g cls`.
  */
 test.describe('refresh cls', () => {
@@ -167,11 +169,10 @@ test.describe('refresh cls', () => {
         const tile = page.locator('.band [data-kpi="claims"]');
         const value = tile.locator('.value');
         await expect(value).toHaveText(BEFORE);
-        // Spec 020 T17: below wide the section #waiting opens the page before the KPI band; the band moves to the top
-        // so the tile and the first spec row both stand in the viewport the shifts are measured in.
-        if (width < 1120) await tile.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+        // Spec 058: one column at every tier, the KPI band first and the TL;DR second, so both stand in the viewport
+        // the shifts are measured in without scrolling.
         await expect(tile).toBeInViewport();
-        await expect(page.locator('[data-spec-row]').first()).toBeInViewport();
+        await expect(page.locator('[data-ui="brief"]')).toBeInViewport();
         await page.evaluate(() => document.fonts.ready);
 
         // From here on every shift counts: the observer starts once the first paint has settled.

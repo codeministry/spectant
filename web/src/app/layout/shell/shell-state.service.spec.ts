@@ -15,10 +15,16 @@ const milestones: ShellRouteData = { page: 'milestones' };
 
 const board: ShellRouteData = { page: 'board' };
 const idea: ShellRouteData = { page: 'idea' };
+const dashboard: ShellRouteData = { page: 'dashboard' };
+const specs: ShellRouteData = { page: 'specs' };
 
-// The board and story routes as T115 registers them in `app.routes.ts`; declared here so the derivation is pinned first.
+// The board and story routes as T115 registers them in `app.routes.ts`, and the workspace root and the spec list as
+// spec 058 splits them (the root `dashboard`, `/w/:ws/specs` `specs`); declared here so the derivation is pinned first.
+// `/w/:ws/bare` stands for a workspace route that names no page.
 const routes: Routes = [
-  { path: 'w/:ws', component: Stub },
+  { path: 'w/:ws', component: Stub, data: dashboard },
+  { path: 'w/:ws/specs', component: Stub, data: specs },
+  { path: 'w/:ws/bare', component: Stub },
   { path: 'w/:ws/board', component: Stub, data: board },
   { path: 'w/:ws/ideas/:slug', component: Stub, data: idea },
   { path: 'w/:ws/milestones', component: Stub, data: milestones },
@@ -34,8 +40,19 @@ async function routeAt(url: string): Promise<ShellRoute> {
 }
 
 describe('ShellState.route().wsPage', () => {
-  it("is 'specs' on the workspace route", async () => {
-    expect((await routeAt('/w/harbor')).wsPage).toBe('specs');
+  it("is 'dashboard' on the workspace root (spec 058, ISC-390)", async () => {
+    const route = await routeAt('/w/harbor');
+    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, lens: null, wsPage: 'dashboard', ideaSlug: null, notFound: false });
+  });
+
+  it("is 'specs' on the spec list (spec 058)", async () => {
+    expect((await routeAt('/w/harbor/specs')).wsPage).toBe('specs');
+  });
+
+  it("is null on a workspace route that names no page, never a fallback to 'specs' (spec 058, T4)", async () => {
+    const route = await routeAt('/w/harbor/bare');
+    expect(route.ws).toBe('harbor');
+    expect(route.wsPage).toBeNull();
   });
 
   it('is null on a spec route', async () => {

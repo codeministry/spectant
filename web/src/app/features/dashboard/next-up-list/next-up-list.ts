@@ -34,7 +34,7 @@ export const NEXT_UP_HEADING = 'next-up';
  * order; every further row with a next command sits behind "Show all n" in row order. Each entry links to the spec
  * preview (`?spec=<id>`, T69) and carries its next command with copy; the rail form adds the stage (in the link's name)
  * and the first takeable claim. Nothing is counted or ranked here: the order and the commands are the parser's.
- * With nothing to run it says so and, when specs wait on fog, links to the fog filter (`?phase=fog`).
+ * With nothing to run it says so and, when specs wait on fog, links to the fog filter of the Specs page (`/w/:ws/specs?phase=fog`, spec 058).
  */
 @Component({
   selector: 'app-next-up-list',
@@ -50,6 +50,8 @@ export class NextUpList {
   /** The model's `nextUp`: the first rows with a next command. */
   readonly ids = input.required<readonly string[]>();
   readonly form = input<NextUpForm>('card');
+  /** The workspace slug: the empty state's fog link targets the Specs page `/w/:ws/specs?phase=fog` (spec 058, ISC-395). */
+  readonly ws = input.required<string>();
   /** `DashboardModel.guidance` (spec 020): each entry reads its spec's sentence from it (ISC-237.1). */
   readonly guidance = input<Guidance | undefined>(undefined);
 
@@ -87,6 +89,9 @@ export class NextUpList {
   protected readonly total = computed(() => this.entries().length + this.more().length);
   /** Specs with open fog, named only when nothing is ready to build. */
   protected readonly fogWaiting = computed(() => this.specs().filter((row) => row.fog > 0).length);
+
+  /** The Specs page as router-link commands, for the fog link of the empty state. */
+  protected readonly specsLink = computed(() => ['/w', this.ws(), 'specs']);
 
   protected readonly stageLabels = computed(() => {
     this.lang();

@@ -165,7 +165,8 @@ test.describe('keyboard in the Specs panel', () => {
   }
 
   test('arrows and j/k move the selection in the Specs panel, without wrapping or navigating', async ({ page }) => {
-    const ids = await openDashboard(page, '/w/harbor?open=specs');
+    // spec 058: the Specs panel lives on the Specs page.
+    const ids = await openDashboard(page, '/w/harbor/specs?open=specs');
     expect(ids.length).toBeGreaterThanOrEqual(3);
     const rows = rowsOf(page);
     await expect(rows).toHaveCount(ids.length);
@@ -189,7 +190,7 @@ test.describe('keyboard in the Specs panel', () => {
     await expectSelected(page, ids.at(-1) ?? '');
     await page.keyboard.press('Home');
     await expectSelected(page, ids[0] ?? '');
-    await expect(page).toHaveURL(/\/w\/harbor\?open=specs$/);
+    await expect(page).toHaveURL(/\/w\/harbor\/specs\?open=specs$/);
   });
 
   test('the selection moves in the order the sort query names', async ({ page }) => {
@@ -231,11 +232,12 @@ test.describe('keyboard: Enter opens the selected spec', () => {
   const rowsOf = (page: Page) => page.locator('[data-panel="specs"] [data-spec-row]');
   const rowOf = (page: Page, id: string) => page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
   const sidebarId = (page: Page) => page.locator('app-detail-sidebar [data-part="id"]');
-  const selUrl = (id: string): RegExp => new RegExp(`/w/harbor\\?sel=spec(?::|%3A)${id}$`);
+  // spec 058: the spec list, and so its selection, lives on the Specs page.
+  const selUrl = (id: string): RegExp => new RegExp(`/w/harbor/specs\\?sel=spec(?::|%3A)${id}$`);
 
   test('enter selects the spec for the sidebar, enter again opens it, Esc returns to the row', async ({ page }) => {
     const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
-    await page.goto('/w/harbor');
+    await page.goto('/w/harbor/specs');
     const body = (await (await dashboard).json()) as { specs?: Array<{ id: string }> };
     const ids = (body.specs ?? []).map((spec) => spec.id);
     expect(ids.length).toBeGreaterThanOrEqual(3);
@@ -258,7 +260,7 @@ test.describe('keyboard: Enter opens the selected spec', () => {
     await expect(page).toHaveURL(selUrl(id));
 
     await page.keyboard.press('Escape');
-    await expect(page).toHaveURL(/\/w\/harbor$/);
+    await expect(page).toHaveURL(/\/w\/harbor\/specs$/);
     await expect(sidebarId(page)).toHaveCount(0);
     await expect(rowOf(page, id)).toBeFocused();
 
@@ -273,7 +275,7 @@ test.describe('keyboard: Enter opens the selected spec', () => {
 
   test('enter at medium shows the sidebar over the page, whose "Open spec" leads to the spec page', async ({ page }) => {
     await page.setViewportSize({ width: 820, height: 900 });
-    await page.goto('/w/harbor');
+    await page.goto('/w/harbor/specs');
     const row = rowsOf(page).first();
     const id = (await row.getAttribute('data-spec-row')) ?? '';
     await row.focus();
@@ -281,7 +283,7 @@ test.describe('keyboard: Enter opens the selected spec', () => {
     await expect(page).toHaveURL(selUrl(id));
     await expect(sidebarId(page)).toHaveText(id);
     await page.keyboard.press('Escape');
-    await expect(page).toHaveURL(/\/w\/harbor$/);
+    await expect(page).toHaveURL(/\/w\/harbor\/specs$/);
     await expect(rowOf(page, id)).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(sidebarId(page)).toHaveText(id);
@@ -317,7 +319,9 @@ test.describe('keyboard help on the workspace dashboard', () => {
     const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
     await page.goto('/w/harbor');
     await dashboard;
-    await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+    // spec 058: the dashboard has no spec list; its KPI band is the first section to render.
+    await expect(page.locator('[data-page="workspace"] app-kpi-band')).toBeVisible();
+    await expect(page.locator('[data-panel="specs"]')).toHaveCount(0);
   }
 
   test('? opens the help sheet on /w/harbor, listing the dashboard keys per context', async ({ page }) => {
@@ -342,8 +346,8 @@ test.describe('keyboard help on the workspace dashboard', () => {
 
   test('the dashboard keys the help sheet lists reach their sections, filter and columns', async ({ page }) => {
     await openDashboard(page);
+    // spec 058: g n and g w reach the dashboard's sections and stay on /w/harbor; g s leads to the Specs page.
     for (const [key, heading] of [
-      ['s', 'specs'],
       ['n', 'next-up'],
       ['w', 'warnings'],
     ] as const) {
@@ -352,10 +356,14 @@ test.describe('keyboard help on the workspace dashboard', () => {
       await expect(page.locator(`#${heading}`)).toBeFocused();
     }
     await expect(page).toHaveURL(/\/w\/harbor$/);
+    await page.keyboard.press('g');
+    await page.keyboard.press('s');
+    await expect(page).toHaveURL(/\/w\/harbor\/specs$/);
+    await expect(page.locator('#specs')).toBeFocused();
 
     await page.locator('[data-panel="specs"] [data-spec-row]').first().focus();
     await page.keyboard.press('2');
-    await expect(page).toHaveURL(/[?&]phase=building(&|$)/);
+    await expect(page).toHaveURL(/\/w\/harbor\/specs\?(.*&)?phase=building(&|$)/);
     await page.keyboard.press('1');
     await expect(page).not.toHaveURL(/[?&]phase=/);
 

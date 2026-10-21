@@ -11,7 +11,7 @@ import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
 import { CLAIM_GLYPHS } from '../../shared/ui/glyph/states';
 import { toneMark } from '../../shared/ui/tone';
 import { ToastService } from '../../shared/ui/toast/toast';
-import { specLink, workspaceLink } from '../shell/areas';
+import { specLink, workspaceLink, workspacePageById } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { PaletteIndex } from './palette-index';
@@ -171,6 +171,34 @@ function workspacesSource(): PaletteSource {
       })),
     ),
   );
+}
+
+/** After Next up (20), before Workspaces (30). */
+export const PAGES_ORDER = 25;
+
+/** The pages the Pages group lists, in the menu's order: the workspace dashboard before its spec list. */
+const PALETTE_PAGES = ['dashboard', 'specs'] as const;
+
+/**
+ * The Pages group (spec 058 T23, ISC-394): the open workspace's Dashboard (`/w/<ws>`), then its Specs list
+ * (`/w/<ws>/specs`), named as the page menu names them, under the menu's own heading ("Pages"). Each line carries the
+ * workspace as its meta, so the workspace dashboard is never taken for the spec area "Dashboard"; the workspace's
+ * name and slug stay search keys.
+ */
+function pagesSource(): PaletteSource {
+  const t = translator();
+  const state = inject(ShellState);
+  const data = inject(ShellData);
+  const entries = computed<readonly PaletteEntry[]>(() => {
+    const ws = state.ws();
+    if (ws === null || data.workspaceMissing()) return [];
+    const name = data.workspaceName(ws);
+    return PALETTE_PAGES.map((id) => {
+      const label = t(workspacePageById(id).labelKey);
+      return { id: `page/${ws}/${id}`, label, meta: name, link: workspaceLink(ws, id), keywords: [id, label, ws, name] };
+    });
+  });
+  return { id: 'pages', labelKey: 'shell.area.pageMenu', order: PAGES_ORDER, entries };
 }
 
 /** A spec of the Specs group: its phase as the prototype's chip (`.chip.building` / `.chip.scoping`). */
@@ -407,13 +435,13 @@ function archivedSource(): PaletteSource {
 }
 
 /**
- * Spec 001's own palette groups (T66): Recent 10, Next up 20, Workspaces 30, Specs 40, Services 60, Actions 70,
+ * Spec 001's own palette groups (T66): Recent 10, Next up 20, spec 058's Pages 25, Workspaces 30, Specs 40, Services 60, Actions 70,
  * Archived 80, plus spec 008's Ideas 45 and spec 019's Claims 15, each one provider line on `PALETTE_SOURCES` like any
  * other spec's group. Spec 023's Tech group went with the tech page into the Library (spec 017, T43, ISC-157.1): the
  * Library is the Actions group's "Open library".
  */
 export function providePaletteGroups(): Provider[] {
-  return [recentSource, claimsSource, nextUpSource, workspacesSource, specsSource, ideasSource, servicesSource, actionsSource, archivedSource].map(
+  return [recentSource, claimsSource, nextUpSource, pagesSource, workspacesSource, specsSource, ideasSource, servicesSource, actionsSource, archivedSource].map(
     (factory) => ({ provide: PALETTE_SOURCES, useFactory: factory, multi: true }),
   );
 }

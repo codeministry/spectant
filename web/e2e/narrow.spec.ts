@@ -2,7 +2,8 @@
  * The app in the 600 px cmux side panel (ISC-63, ISC-63.1). One file, one `test.describe` per surface, each the probe
  * of its claim through `-g`:
  *
- *   bun run e2e -- narrow -g dashboard     ISC-63 (T73): the workspace dashboard `/w/harbor`
+ *   bun run e2e -- narrow -g dashboard     ISC-63 (T73): the workspace dashboard `/w/harbor` and, since spec 058, its
+ *                                          spec list `/w/harbor/specs` (the two pages the root was split into)
  *   bun run e2e -- narrow -g column        ISC-63.1 (T74): a workspace column of the overview `/`
  *   bun run e2e -- narrow -g board         ISC-129.2 (T145): the workspace board `/w/harbor/board` at compact
  *
@@ -98,26 +99,43 @@ async function speak(page: Page, language: Language): Promise<void> {
   });
 }
 
-const DASHBOARD = {
-  host: 'app-dashboard-page',
-  states: [
-    { name: 'default', url: '/w/harbor', sortSheet: false },
-    { name: 'takeable, sorted by next', url: '/w/harbor?takeable=1&sort=next', sortSheet: false },
-    { name: 'phase filter', url: '/w/harbor?phase=building', sortSheet: false },
-    { name: 'sort sheet open', url: '/w/harbor', sortSheet: true },
-  ],
-} as const;
+/**
+ * The two workspace pages (spec 058, ISC-394): the dashboard `/w/harbor` (KPI band, TL;DR, waiting, Next up and
+ * warnings in one column, no spec list) and the Specs page `/w/harbor/specs` (the spec list and its sort sheet). The
+ * list states moved with the list; the old `/w/harbor?…` addresses redirect there.
+ */
+const WORKSPACE_PAGES = [
+  { page: 'dashboard', host: 'app-dashboard-page', states: [{ name: 'default', url: '/w/harbor', sortSheet: false }] },
+  {
+    page: 'specs page',
+    host: 'app-specs-page',
+    states: [
+      { name: 'default', url: '/w/harbor/specs', sortSheet: false },
+      { name: 'takeable, sorted by next', url: '/w/harbor/specs?takeable=1&sort=next', sortSheet: false },
+      { name: 'phase filter', url: '/w/harbor/specs?phase=building', sortSheet: false },
+      { name: 'sort sheet open', url: '/w/harbor/specs', sortSheet: true },
+    ],
+  },
+] as const;
+type WorkspacePage = (typeof WORKSPACE_PAGES)[number]['page'];
 
-/** Opens `/w/harbor` (or `url`) in the compact tier and waits until every dashboard section is rendered. */
-async function openDashboard(page: Page, url: string): Promise<void> {
+/** Opens `url` in the compact tier and waits until every section of `page` is rendered. */
+async function openWorkspacePage(page: Page, which: WorkspacePage, url: string): Promise<void> {
   await pinClock(page);
   await page.goto(url);
-  const host = page.locator(DASHBOARD.host);
   await expect(page.locator('app-shell')).toHaveAttribute('data-tier', 'compact');
-  await expect(host.locator('app-kpi-band')).toBeVisible();
-  await expect(host.locator('app-brief')).toBeVisible();
-  await expect(host.locator('app-spec-table')).toBeVisible();
-  await expect(host.locator('app-warnings-panel')).toBeVisible();
+  await expect(page).toHaveURL((at) => at.pathname === (which === 'dashboard' ? '/w/harbor' : '/w/harbor/specs'));
+  if (which === 'dashboard') {
+    const host = page.locator('app-dashboard-page');
+    await expect(host.locator('app-kpi-band')).toBeVisible();
+    await expect(host.locator('app-brief')).toBeVisible();
+    await expect(host.locator('app-warnings-panel')).toBeVisible();
+    // Spec 058: the dashboard carries no spec list.
+    await expect(page.locator('app-spec-table')).toHaveCount(0);
+  } else {
+    await expect(page.locator('app-specs-page [data-panel="specs"]')).toBeVisible();
+    await expect(page.locator('app-specs-page [data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+  }
 }
 
 test.describe('narrow dashboard', () => {
@@ -128,19 +146,21 @@ test.describe('narrow dashboard', () => {
       test.use({ ...atWidth(width), colorScheme: theme });
 
       for (const language of LANGUAGES) {
-        for (const state of DASHBOARD.states) {
-          test(`dashboard at ${String(width)}, ${theme}, ${language}, ${state.name}: no horizontal overflow`, async ({ page }) => {
-            await speak(page, language);
-            await openDashboard(page, state.url);
-            await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
-            await expect(page.locator('html')).toHaveAttribute('lang', language);
-            if (state.sortSheet) {
-              await page.locator('app-spec-table [data-control="sort"]').click();
-              await expect(page.locator('app-spec-table ui-sheet dialog')).toBeVisible();
-            }
+        for (const { page: which, host, states } of WORKSPACE_PAGES) {
+          for (const state of states) {
+            test(`${which} at ${String(width)}, ${theme}, ${language}, ${state.name}: no horizontal overflow`, async ({ page }) => {
+              await speak(page, language);
+              await openWorkspacePage(page, which, state.url);
+              await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+              await expect(page.locator('html')).toHaveAttribute('lang', language);
+              if (state.sortSheet) {
+                await page.locator('app-spec-table [data-control="sort"]').click();
+                await expect(page.locator('app-spec-table ui-sheet dialog')).toBeVisible();
+              }
 
-            expectNoHorizontalOverflow(await layout(page, DASHBOARD.host), width);
-          });
+              expectNoHorizontalOverflow(await layout(page, host), width);
+            });
+          }
         }
       }
     });
@@ -151,13 +171,26 @@ test.describe('narrow dashboard', () => {
     test.use(atWidth(width));
 
     test(`dashboard at ${String(width)}: the guard reports an injected overflow`, async ({ page }) => {
-      await openDashboard(page, '/w/harbor');
+      await openWorkspacePage(page, 'dashboard', '/w/harbor');
       await page.addStyleTag({ content: 'app-kpi-band { min-inline-size: 720px; }' });
 
-      const found = await layout(page, DASHBOARD.host);
+      const found = await layout(page, 'app-dashboard-page');
       const document = found.containers.find((c) => c.name === 'document');
       expect(document?.scroll ?? 0).toBeGreaterThan(document?.client ?? 0);
       expect(found.wide.some((entry) => entry.includes('app-kpi-band'))).toBe(true);
+      expect(() => {
+        expectNoHorizontalOverflow(found, width);
+      }).toThrow();
+    });
+
+    test(`specs page at ${String(width)}: the guard reports an injected overflow`, async ({ page }) => {
+      await openWorkspacePage(page, 'specs page', '/w/harbor/specs');
+      await page.addStyleTag({ content: 'app-specs-page { min-inline-size: 720px !important; }' });
+
+      const found = await layout(page, 'app-specs-page');
+      const document = found.containers.find((c) => c.name === 'document');
+      expect(document?.scroll ?? 0).toBeGreaterThan(document?.client ?? 0);
+      expect(found.wide.some((entry) => entry.includes('app-specs-page'))).toBe(true);
       expect(() => {
         expectNoHorizontalOverflow(found, width);
       }).toThrow();

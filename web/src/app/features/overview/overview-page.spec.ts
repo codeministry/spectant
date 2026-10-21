@@ -87,6 +87,10 @@ describe('OverviewPage (T65, ISC-16)', () => {
     expect(text(head?.querySelector('.path'))).toBe('code/harbor');
     expect(head?.querySelector('a')?.getAttribute('href')).toBe('/w/harbor');
     expect(text(head?.querySelector('[data-updated]'))).toMatch(/^Updated /);
+    // Spec 058 (ISC-395): every link of the workspace identity, the cover included, means the workspace, its dashboard.
+    const identityLinks = [...root.querySelectorAll('[data-ws="harbor"] app-ws-identity a')].map((link) => link.getAttribute('href'));
+    expect(identityLinks.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(identityLinks)).toEqual(new Set(['/w/harbor']));
   });
 
   it('fills the 2 × 2 kpi-strip: master ring and fraction, spec claims meter, specs split, warnings with an orange edge above 0', async () => {

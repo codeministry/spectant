@@ -85,7 +85,7 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone] as const) {
       await expect(picker.locator(`[data-spec="${OPEN}"]`)).toHaveCount(0);
       await expect(picker.locator('.picker-empty')).toHaveCount(0);
       await expect(picker.locator('.picker-all')).toBeVisible();
-      await expect(picker.locator('.picker-all')).toHaveAttribute('href', '/w/harbor#specs');
+      await expect(picker.locator('.picker-all')).toHaveAttribute('href', '/w/harbor/specs');
     });
   });
 

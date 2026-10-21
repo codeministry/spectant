@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, model, signal, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { NgTemplateOutlet } from '@angular/common';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { RepoFileSource } from '../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../core/src/markdown';
@@ -59,11 +60,16 @@ export interface BriefModel {
  * `ui-chip` with the upper-case code ("DE", named by `brief.lang`) stands after the as-of date and before "stale", and
  * every text block carries `lang`, so hyphenation and screen readers know the language. Without `lang:` neither shows.
  *
+ * Spec 058 (T15, ISC-392): a stale brief always arrives in its short form. Without sections that is the two-line clip
+ * it always had; with them its first section is clamped to two lines too, the others folded, and `?open=tldr` never
+ * opens it: its toggle (the fold, or "More" for a single section) opens it on demand, held here, not in the address.
+ * The chips `brief-stale` and `brief-as-of` mark it.
+ *
  * Not encapsulated: the prose is `[innerHTML]`; every selector in the stylesheet starts with `app-brief`.
  */
 @Component({
   selector: 'app-brief',
-  imports: [TranslocoPipe, UiCard, UiChip, UiDisclosure, UiSourceChip, UiTimeLabel],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiCard, UiChip, UiDisclosure, UiSourceChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -125,11 +131,22 @@ export class Brief {
     const rest = this.parts().slice(1);
     return rest.length === 0 ? null : this.render(rest.join('\n\n'));
   });
-  /** "Show whole TL;DR" is open: `?open=tldr` in the address. */
-  protected readonly wholeOpen = computed(() => this.openState.isOpen('tldr'));
+  /** A stale brief's "Show whole TL;DR", held here: it opens only on demand, never from the address (spec 058). */
+  private readonly staleWhole = signal(false);
+  /** "Show whole TL;DR" is open: `?open=tldr` in the address, or for a stale brief the toggle pressed here. */
+  protected readonly wholeOpen = computed(() => (this.brief()?.stale ? this.staleWhole() : this.openState.isOpen('tldr')));
+  /**
+   * A stale sectioned brief's first section is clamped to two lines (spec 058, T15) until its toggle opens it: the fold
+   * when there are more sections, "More" when there is only one. A fresh one stands whole.
+   */
+  protected readonly firstClipped = computed(() => {
+    if (!this.brief()?.stale) return false;
+    return !(this.restHtml() === null ? this.open() : this.wholeOpen());
+  });
 
   protected setWhole(open: boolean): void {
-    void this.openState.set('tldr', open);
+    if (this.brief()?.stale) this.staleWhole.set(open);
+    else void this.openState.set('tldr', open);
   }
 
   private render(markdown: string): SafeHtml {

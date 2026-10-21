@@ -51,8 +51,7 @@
     [label]="'kpi.specs' | transloco"
     [value]="complete"
     [denominator]="k.specs"
-    [href]="href()"
-    [fragment]="targets.specs"
+    [href]="specsHref()"
   >
     <ui-meter [segments]="phases()" [label]="'kpi.specs' | transloco" />
     <!-- Spans, not a list: the tile's body is phrasing content inside a link. None at wide, where the spec list's
@@ -79,9 +78,8 @@
     [label]="'kpi.takeableNow' | transloco"
     [value]="k.takeable"
     [denominator]="k.openClaims ?? noValue"
-    [href]="href()"
+    [href]="specsHref()"
     [queryParams]="takeableQuery"
-    [fragment]="targets.specs"
   >
     <span class="statement foot">{{ 'kpi.statement.takeable' | transloco }}</span>
   </ui-kpi-tile>
@@ -112,9 +110,8 @@
     [label]="'kpi.fog' | transloco"
     [value]="k.fog"
     [meta]="fogRef"
-    [href]="href()"
+    [href]="specsHref()"
     [queryParams]="fogQuery"
-    [fragment]="targets.specs"
   >
     <span class="statement">{{ 'kpi.statement.fog' | transloco }}</span>
   </ui-kpi-tile>
@@ -158,7 +155,7 @@
         <span class="statement">{{ 'kpi.statement.specClaims' | transloco }}</span>
       </div>
       <div class="cells">
-        <a [routerLink]="href()" [fragment]="targets.specs" data-cell="specs">
+        <a [routerLink]="specsLink()" data-cell="specs">
           <span class="head">
             <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span>
             <b data-stat="specs" [attr.data-tint]="tint()('specs')">{{ complete }}<small class="den">/{{ k.specs }}</small></b>
@@ -167,7 +164,7 @@
             <span class="statement">{{ 'kpi.statement.specs' | transloco }}</span>
           </span>
         </a>
-        <a [routerLink]="href()" [queryParams]="takeableQuery" [fragment]="targets.specs" data-cell="takeable">
+        <a [routerLink]="specsLink()" [queryParams]="takeableQuery" data-cell="takeable">
           <span class="head">
             <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span>
             <b data-stat="takeable" [attr.data-tint]="tint()('takeable')">{{ k.takeable }}<small class="den">/{{ k.openClaims ?? noValue }}</small></b>
@@ -186,7 +183,7 @@
             <span class="statement">{{ 'kpi.statement.warnings' | transloco }}</span>
           </span>
         </a>
-        <a [routerLink]="href()" [queryParams]="fogQuery" [fragment]="targets.specs" data-cell="fog">
+        <a [routerLink]="specsLink()" [queryParams]="fogQuery" data-cell="fog">
           <span class="head">
             <span class="type-eyebrow">{{ 'kpi.fog' | transloco }}</span>
             <b data-stat="fog" [attr.data-tint]="tint()('fog')">{{ k.fog }}</b>

@@ -265,8 +265,19 @@ export function parseListQuery(params: { get(name: string): string | null }): Li
   };
 }
 
-/** The query params for `query`; a default is null, so the URL carries only what differs. */
-export function listQueryParams(query: ListQuery): Record<'phase' | 'type' | 'sort' | 'takeable', string | null> & { readonly archived: '1' | null } {
+/**
+ * Spec 058 (T5, ISC-396): every query param the spec list reads or writes: its filters and sort (`listQueryParams`),
+ * the search `q`, the "show all" fold `all` and the row density. A workspace address carrying one of them means the
+ * list, so the router sends it on to the Specs page with the same query. `sel` is never one: the dashboard keeps its
+ * own selection (ISC-400).
+ */
+export const LIST_QUERY_KEYS = ['phase', 'type', 'sort', 'takeable', 'archived', 'q', 'all', 'density'] as const;
+export type ListQueryKey = (typeof LIST_QUERY_KEYS)[number];
+
+/** The query params for `query`; a default is null, so the URL carries only what differs. Every key is a list key. */
+export function listQueryParams(
+  query: ListQuery,
+): Pick<Record<ListQueryKey, string | null>, 'phase' | 'type' | 'sort' | 'takeable'> & { readonly archived: '1' | null } {
   return {
     phase: query.phase,
     type: query.type,

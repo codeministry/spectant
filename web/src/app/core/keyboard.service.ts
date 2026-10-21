@@ -1,5 +1,6 @@
 import { computed, DOCUMENT, inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, Router } from '@angular/router';
+import { first } from 'rxjs';
 import { TranslocoService } from '@jsverse/transloco';
 import { areaById, areaPath, specLink, workspaceLink } from '../layout/shell/areas';
 import { ShellData } from '../layout/shell/shell-data.service';
@@ -43,6 +44,12 @@ const SPECS_PANEL = '[data-panel="specs"]';
 const SELECTED_ROW = `${SPECS_PANEL} [data-spec-row][data-selected]`;
 
 const MOD = 'Mod+';
+
+/** The page that holds `section` (the Specs page for the list, else the dashboard) as router link and URL path. */
+function sectionLink(ws: string, section: DashboardSection): { link: string[]; path: string } {
+  const link = workspaceLink(ws, section === 'specs' ? 'specs' : 'dashboard');
+  return { link, path: ['/w', ...link.slice(1).map(encodeURIComponent)].join('/') };
+}
 
 /** The bindings of `list` by their `key`; one key holds one binding per context (`GROUP_CONTEXT`). */
 function byKey(list: readonly Shortcut[], key: (binding: Shortcut) => string | undefined): ReadonlyMap<string, readonly Shortcut[]> {
@@ -239,14 +246,57 @@ export class KeyboardService {
     return this.spec() === null ? this.state.ws() : null;
   }
 
-  /** `g s` `g n` `g w` on a dashboard: focus the section's heading (its id), wherever the tier put it. */
+  /**
+   * `g s` `g n` `g w` in a workspace: focus the section's heading (its id), wherever the tier put it. Spec 058
+   * (ISC-395): the spec list lives on the Specs page `/w/:ws/specs`, Next up and the warnings on the dashboard `/w/:ws`;
+   * from any other page the jump opens the section's page first and focuses the heading once it has rendered.
+   */
   private focusSection(section: DashboardSection): boolean {
-    if (this.workspace() === null) return false;
+    const ws = this.workspace();
+    if (ws === null) return false;
+    const { link, path } = sectionLink(ws, section);
+    if (this.router.url.split(/[?#]/u)[0] === path) return this.focusSectionHeading(section);
+    void this.router.navigate(link).then((done) => {
+      if (done) this.awaitSectionHeading(section);
+    });
+    return true;
+  }
+
+  /**
+   * Spec 058 (ISC-395, T45): a click on a link to a section's page (the spec select's "show all") that its
+   * `routerLink` navigates is a section jump like `g s`: when that navigation has ended, focus moves to the section
+   * heading. A click `routerLink` leaves to the browser (a modifier or another button than the primary) is none.
+   */
+  followSectionLink(event: MouseEvent, ws: string, section: DashboardSection): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (this.router.url.split(/[?#]/u)[0] === sectionLink(ws, section).path) {
+      this.awaitSectionHeading(section);
+      return;
+    }
+    this.router.events
+      .pipe(
+        first(
+          (e) => e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped,
+        ),
+      )
+      .subscribe((e) => {
+        if (e instanceof NavigationEnd) this.awaitSectionHeading(section);
+      });
+  }
+
+  private focusSectionHeading(section: DashboardSection): boolean {
     const heading = this.document.getElementById(section);
     if (heading === null) return false;
     if (!heading.hasAttribute('tabindex') && heading.tagName !== 'SUMMARY') heading.setAttribute('tabindex', '-1');
     heading.focus();
     return this.document.activeElement === heading;
+  }
+
+  /** After a navigation: the section heading once the page has rendered it, for up to `HEADING_FRAMES` frames. */
+  private awaitSectionHeading(section: DashboardSection, frames = 0): void {
+    this.document.defaultView?.requestAnimationFrame(() => {
+      if (!this.focusSectionHeading(section) && frames < HEADING_FRAMES) this.awaitSectionHeading(section, frames + 1);
+    });
   }
 
   /** `c`: copy the selected spec's next command — the one in the detail sidebar (`?sel=spec:`), else the Specs panel's selection. */
@@ -289,7 +339,8 @@ export class KeyboardService {
   private phaseFilter(phase: string | null): boolean {
     const ws = this.workspace();
     if (ws === null || this.document.querySelector(SPECS_PANEL)?.contains(this.document.activeElement) !== true) return false;
-    void this.router.navigate(['/w', ws], { queryParams: { phase }, queryParamsHandling: 'merge' });
+    // Spec 058 (ISC-395): the phase filter belongs to the spec list, on the Specs page.
+    void this.router.navigate(workspaceLink(ws, 'specs'), { queryParams: { phase }, queryParamsHandling: 'merge' });
     return true;
   }
 

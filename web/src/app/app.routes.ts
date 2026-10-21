@@ -1,9 +1,11 @@
 import { inject } from '@angular/core';
-import { type RedirectFunction, Router, type Routes } from '@angular/router';
+import { type CanActivateFn, RedirectCommand, type RedirectFunction, Router, type Routes } from '@angular/router';
+import { LIST_QUERY_KEYS } from './features/dashboard/spec-table/spec-table-model';
 import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { anchorRef, planningTreeLink, type ShellRouteData } from './layout/shell/areas';
 import { PLANNING_LENSES, type PlanningLensId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
+import { OPEN_PARAM, parseOpen } from './shared/open-state';
 
 const notFound: ShellRouteData = { notFound: true };
 // Spec 024: the designed not-found page is a lazy chunk, so it does not weigh on the initial bundle (1 MB budget).
@@ -16,6 +18,8 @@ const toTree =
     const sel = anchorRef(page, fragment);
     return inject(Router).createUrlTree(planningTreeLink(String(params['ws'])), sel === null ? {} : { queryParams: { sel } });
   };
+const dashboardPage: ShellRouteData = { page: 'dashboard' };
+const specsPage: ShellRouteData = { page: 'specs' };
 const boardPage: ShellRouteData = { page: 'board' };
 const ideaPage: ShellRouteData = { page: 'idea' };
 const libraryPage: ShellRouteData = { page: 'library' };
@@ -51,6 +55,30 @@ const techRedirect =
     });
   };
 
+/**
+ * Spec 058 (T20, ISC-396, ISC-400): whether a dashboard address is an old list address. One of the list's own params
+ * (`LIST_QUERY_KEYS`) counts, and `?open=` only when it opens the list's "show all" fold (`specs`); `?open=tldr` and
+ * `?sel=` stay the dashboard's own.
+ */
+export function isListAddress(queryParams: Readonly<Record<string, unknown>>): boolean {
+  if (LIST_QUERY_KEYS.some((key) => key in queryParams)) return true;
+  const open: unknown = queryParams[OPEN_PARAM];
+  const values = (Array.isArray(open) ? open : [open]).filter((value): value is string => typeof value === 'string');
+  return values.some((value) => parseOpen(value).includes('specs'));
+}
+
+/**
+ * Sends an old list address of the dashboard on to the Specs page with the same query (every param, `sel` included)
+ * and fragment. A guard, not a redirect route, since a redirect cannot look at the query; the lazy page stays a lazy
+ * chunk, and the redirect replaces the history entry, so Back never lands on the old address.
+ */
+const listAddressToSpecs: CanActivateFn = ({ params, queryParams, fragment }) => {
+  if (!isListAddress(queryParams)) return true;
+  const router = inject(Router);
+  const target = router.createUrlTree(['/w', params['ws'] ?? '', 'specs'], { queryParams, ...(fragment === null ? {} : { fragment }) });
+  return new RedirectCommand(target, { replaceUrl: true });
+};
+
 export const routes: Routes = [
   // The primitives gallery the browser tier measures (T29 to T31). Lazy, so it ships as a separate chunk that only
   // `/__ui` loads and never weighs on the initial bundle; outside the shell on purpose (see ui-gallery.ts).
@@ -72,7 +100,20 @@ export const routes: Routes = [
       // Spec 008 (ISC-116): help is global like settings, inside the shell and outside any workspace; lazy, its own chunk.
       { path: 'help', loadComponent: () => import('./features/help/help-page').then((m) => m.HelpPage) },
       // Spec 024: the workspace dashboard is a lazy chunk too, which keeps the initial bundle clear of its 1 MB budget.
-      { path: 'w/:ws', loadComponent: () => import('./features/dashboard/dashboard-page').then((m) => m.DashboardPage) },
+      // Spec 058 (ISC-390): the route names its page, so the side menu marks the dashboard, not the Specs page.
+      {
+        path: 'w/:ws',
+        loadComponent: () => import('./features/dashboard/dashboard-page').then((m) => m.DashboardPage),
+        // Spec 058 (ISC-396): an old list address of the dashboard goes on to the Specs page.
+        canActivate: [listAddressToSpecs],
+        data: dashboardPage,
+      },
+      // Spec 058 (ISC-391): the workspace's Specs page, the spec list with the backlog; lazy, its own chunk.
+      {
+        path: 'w/:ws/specs',
+        loadComponent: () => import('./features/specs-page/specs-page').then((m) => m.SpecsPage),
+        data: specsPage,
+      },
       // Spec 008 (ISC-129, ISC-124.2): the workspace board, a sibling of the planning pages, and a story's read-only
       // page, reached from a board card, the palette or an idea chip; an unknown slug renders not-found in the page.
       {

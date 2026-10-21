@@ -53,13 +53,28 @@ export class ShellComponent {
     () => this.state.route().lens === 'gantt' && this.state.tier() === 'wide' && this.selection.entry() !== null && !this.data.workspaceMissing() && !this.data.planningMissing(),
   );
 
+  /**
+   * Spec 058 (ISC-393): the spec list docks the detail sidebar into the rail at wide while a selection is open, as the
+   * Gantt does; without one, and below wide, it takes the full width.
+   */
+  private readonly specsRail = computed(
+    () =>
+      this.state.wsPage() === 'specs' &&
+      this.state.tier() === 'wide' &&
+      this.selection.entry() !== null &&
+      !this.data.workspaceMissing() &&
+      !this.data.workspaceUnavailable(),
+  );
+
   /** No rail column at all (prototype `no-rail`): outside a workspace, on the full-width workspace pages, in a `noRail` area. */
   protected readonly noRail = computed(() => {
     const page = this.state.wsPage();
     // Spec 026: the planning page's graph takes the full width too, and the Gantt (spec 038) until a selection docks the
     // sidebar at wide; the tree lens has a rail.
     const planningWide = page === 'planning' && this.state.route().lens !== 'tree' && !this.ganttRail();
-    return this.state.ws() === null || page === 'board' || page === 'library' || planningWide || this.specAreaNoRail();
+    // Spec 058 (ISC-392): the workspace dashboard is one column at every tier; the spec list until a selection docks.
+    const specsWide = page === 'specs' && !this.specsRail();
+    return this.state.ws() === null || page === 'dashboard' || page === 'board' || page === 'library' || planningWide || specsWide || this.specAreaNoRail();
   });
 
   /** The open spec area runs without the context column (`SpecArea.noRail`, the Library, spec 017 T46). */
@@ -69,8 +84,9 @@ export class ShellComponent {
   });
 
   /**
-   * The rail belongs to an open, existing spec (T54 fills its content, T38 adds the collapse toggle), and at wide to
-   * a workspace dashboard, whose Next up and warnings move into it (spec 001 design.md § Desktop Soll).
+   * The rail belongs to an open, existing spec (T54 fills its content, T38 adds the collapse toggle), to the planning
+   * tree and Gantt at wide, and to the spec list at wide while a selection is docked (spec 058). The workspace
+   * dashboard never draws one: its Next up and warnings stand in its own column (spec 058, ISC-392).
    */
   protected readonly showRail = computed(() => {
     if (this.state.notFound()) return false;
@@ -81,8 +97,8 @@ export class ShellComponent {
       if (this.ganttRail()) return true;
       return this.state.route().lens === 'tree' && this.state.tier() === 'wide' && !this.data.workspaceMissing() && !this.data.planningMissing();
     }
-    // The spec list only: the Features and Milestones pages draw no rail (spec 003 design.md § Where the pages sit).
-    return this.state.route().wsPage === 'specs' && this.state.tier() === 'wide' && !this.data.workspaceMissing() && !this.data.workspaceUnavailable();
+    // The spec list only, and only with a docked selection: the dashboard, the board and the Library draw no rail.
+    return this.specsRail();
   });
 
   constructor() {

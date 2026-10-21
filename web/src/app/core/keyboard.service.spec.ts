@@ -410,18 +410,50 @@ describe('KeyboardService', () => {
   describe('the workspace context (spec 001 T67)', () => {
     const onDashboard = () => setup({ url: '/w/harbor', specId: null });
 
-    it('g s, g n and g w focus the section headings; g a goes to all workspaces', () => {
+    it('g n and g w focus their dashboard headings, g s the list heading on the Specs page; g a goes to all workspaces', () => {
       const { press, navigate } = onDashboard();
-      document.body.innerHTML = '<h2 id="specs">S</h2><h2 id="next-up">N</h2><details><summary id="warnings">W</summary></details>';
-      for (const [key, id] of [['s', 'specs'], ['n', 'next-up'], ['w', 'warnings']] as const) {
+      document.body.innerHTML = '<h2 id="next-up">N</h2><details><summary id="warnings">W</summary></details>';
+      for (const [key, id] of [['n', 'next-up'], ['w', 'warnings']] as const) {
         press('g');
         expect(press(key).defaultPrevented, id).toBe(true);
         expect(document.activeElement?.id).toBe(id);
       }
+      expect(navigate).not.toHaveBeenCalled();
+      TestBed.resetTestingModule();
+      const onSpecs = setup({ url: '/w/harbor/specs?phase=building', specId: null });
+      document.body.innerHTML = '<h2 id="specs">S</h2>';
+      onSpecs.press('g');
+      expect(onSpecs.press('s').defaultPrevented).toBe(true);
+      expect(document.activeElement?.id).toBe('specs');
       expect(document.getElementById('specs')?.getAttribute('tabindex')).toBe('-1');
+      expect(onSpecs.navigate).not.toHaveBeenCalled();
       press('g');
       press('a');
       expect(navigate).toHaveBeenCalledWith(['/']);
+    });
+
+    it('g s opens the Specs page and g n, g w the dashboard from another page, then focus the section (spec 058, ISC-395)', async () => {
+      const frame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      const cases = [
+        ['/w/harbor', 's', ['/w', 'harbor', 'specs'], '<h2 id="specs">S</h2>', 'specs'],
+        ['/w/harbor/board', 's', ['/w', 'harbor', 'specs'], '<h2 id="specs">S</h2>', 'specs'],
+        ['/w/harbor/specs', 'n', ['/w', 'harbor'], '<h2 id="next-up">N</h2>', 'next-up'],
+        ['/w/harbor/specs', 'w', ['/w', 'harbor'], '<details><summary id="warnings">W</summary></details>', 'warnings'],
+      ] as const;
+      for (const [url, key, link, html, id] of cases) {
+        const { press, navigate } = setup({ url, specId: null });
+        document.body.innerHTML = '';
+        press('g');
+        expect(press(key).defaultPrevented, `${url} ${key}`).toBe(true);
+        expect(navigate, `${url} ${key}`).toHaveBeenCalledWith(link);
+        // The target page renders after the navigation; the jump then lands on its section heading.
+        await navigate.mock.results[0]?.value;
+        document.body.innerHTML = html;
+        await frame();
+        await frame();
+        expect(document.activeElement?.id, `${url} ${key}`).toBe(id);
+        TestBed.resetTestingModule();
+      }
     });
 
     it('g b opens the workspace board from any workspace page, and from nowhere else (spec 008, T117)', () => {
@@ -507,9 +539,10 @@ describe('KeyboardService', () => {
       expect(press('2').defaultPrevented).toBe(false);
       document.querySelector('button')?.focus();
       press('2');
-      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor'], { queryParams: { phase: 'building' }, queryParamsHandling: 'merge' });
+      // Spec 058 (ISC-395): the filter belongs to the spec list, on the Specs page.
+      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor', 'specs'], { queryParams: { phase: 'building' }, queryParamsHandling: 'merge' });
       press('1');
-      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor'], { queryParams: { phase: null }, queryParamsHandling: 'merge' });
+      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor', 'specs'], { queryParams: { phase: null }, queryParamsHandling: 'merge' });
     });
 
     it('h and l keep the row index across the workspace columns on /', () => {

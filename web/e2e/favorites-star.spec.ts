@@ -89,9 +89,9 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
       await expect(selectStar).toHaveAttribute('aria-pressed', 'true');
       await expect(selectStar).toHaveAccessibleName(ROW_NAME);
 
-      // In-app to the dashboard through the select's all-specs link: the 003 row's star is pressed.
+      // In-app to the Specs page (spec 058) through the select's all-specs link: the 003 row's star is pressed.
       await select.locator('.picker-all').click();
-      await expect(page).toHaveURL(new RegExp(`/w/${WS}(#specs)?$`));
+      await expect(page).toHaveURL(new RegExp(`/w/${WS}/specs$`));
       const row = rowStar(page, '003');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
       await expect(row).toHaveAccessibleName(ROW_NAME);

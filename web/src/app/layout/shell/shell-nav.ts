@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, viewChild
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
-import { specLink, workspacePageById } from './areas';
+import { specLink, workspaceLink, workspacePageById } from './areas';
 import { type AreaEntry, type MenuKind, ShellMenus } from './shell-menus';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
@@ -103,12 +103,12 @@ export class ShellNav {
   protected readonly specRoute = computed(() => this.state.specId() !== null);
   /**
    * The workspace page the PAGE select names: Specs on a spec page, the board on a story page (`idea`, spec 008, no
-   * menu page), else the route's page; null for a workspace the server does not know (`ShellState` is route-only and
-   * calls any `/w/:ws` the Specs page), so the select stays disabled there.
+   * menu page), else the route's page, the Dashboard where the route names none (spec 058: the root `/w/:ws` is the
+   * dashboard, never the Specs page); null for a workspace the server does not know, so the select stays disabled there.
    */
   protected readonly workspacePage = computed(() => {
     if (!this.inWorkspace() || this.data.workspaceMissing()) return null;
-    const id = this.specRoute() ? 'specs' : (this.state.route().wsPage ?? 'specs');
+    const id = this.specRoute() ? 'specs' : (this.state.route().wsPage ?? 'dashboard');
     // Spec 026: the Features and Milestones routes left the menu; until T30 redirects them they read as Planning.
     return workspacePageById(id === 'idea' ? 'board' : id === 'features' || id === 'milestones' ? 'planning' : id);
   });
@@ -132,12 +132,12 @@ export class ShellNav {
     return this.href({ link: ws === null ? ['/'] : ['/w', ws] });
   });
 
-  /** The open spec's dashboard, else the workspace's spec list (`#specs`); null without a workspace. */
+  /** The open spec's dashboard, else the workspace's Specs page `/w/:ws/specs` (spec 058, ISC-395); null without a workspace. */
   protected readonly specHref = computed(() => {
     const ws = this.state.ws();
     const id = this.state.specId();
     if (ws === null) return null;
-    return this.href(id !== null && this.specOpen() ? { link: specLink(ws, id) } : { link: ['/w', ws], fragment: 'specs' });
+    return this.href({ link: id !== null && this.specOpen() ? specLink(ws, id) : workspaceLink(ws, 'specs') });
   });
 
   press(kind: MenuKind): void {

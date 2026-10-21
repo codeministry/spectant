@@ -10,8 +10,12 @@
 
 .section {
   display: grid;
-  gap: 8px;
   min-inline-size: 0;
+}
+
+/* Section form: 8 px under the section header instead of its 16, as Next up's card form (spec 058, T46). */
+.section ui-section-header {
+  margin-block-end: var(--space-2);
 }
 
 /* Rail form: the eyebrow heading with its count on the right, 12 px above the card. */
@@ -79,6 +83,34 @@
 
 .group + .group {
   border-block-start: 1px solid var(--line);
+}
+
+/*
+ * Section form from 640 px of shell (spec 058, T46): the groups in equal columns, two from 640 px and three from
+ * 1120 px, under one grid of hairlines that also runs through the empty cells of a short last row (principal review
+ * 2026-10-21). The column lines are the list's background over its whole height; every group draws the line below
+ * it, and the list sits 1 px into the card's bottom edge so the last row's lines meet the border instead of doubling.
+ */
+@container shell (width >= 640px) {
+  .section .groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-block-end: -1px;
+    background: linear-gradient(to right, transparent calc(50% - 0.5px), var(--line) 0 calc(50% + 0.5px), transparent 0);
+  }
+
+  .section .group {
+    border-block: 0 solid var(--line);
+    border-block-end-width: 1px;
+  }
+}
+
+@container shell (width >= 1120px) {
+  .section .groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    background:
+      linear-gradient(to right, transparent calc(100% / 3 - 0.5px), var(--line) 0 calc(100% / 3 + 0.5px), transparent 0),
+      linear-gradient(to right, transparent calc(200% / 3 - 0.5px), var(--line) 0 calc(200% / 3 + 0.5px), transparent 0);
+  }
 }
 
 /* One line: 16 px icon, 40 px ID column, the text. */

@@ -94,7 +94,8 @@ for (const { width, tier, tabBar } of TIERS) {
 
       await control('spec').click();
       await page.locator('[data-picker="spec"] .picker-all').click();
-      await expect(page).toHaveURL(/\/w\/harbor#specs$/);
+      // spec 058: "show all" leads to the Specs page and focuses its list heading.
+      await expect(page).toHaveURL(/\/w\/harbor\/specs$/);
       await expect(page.locator('#specs')).toBeFocused();
 
       await page.goto('/w/harbor/s/002/status');

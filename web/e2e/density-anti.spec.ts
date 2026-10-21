@@ -4,13 +4,15 @@
  * and setting the density call no host but loopback. Each case runs against the default stub and the dense stub
  * (`DENSE_HEADER: on`) at 1440 px.
  *
- * - Numbers: every number the dashboard (KPI band, spec-list head, "Show all N", filter chips, TL;DR language chip),
- *   the Tasks tab (head line, `all` and per-lane / per-status chips) and the spec head (partial waits text) shows is
+ * - Numbers: every number the dashboard (KPI band, TL;DR language chip), the Specs page (spec-list head, "Show all N",
+ *   filter chips; the list left the dashboard for `/w/<ws>/specs` in spec 058, and both pages read the same dashboard
+ *   route), the Tasks tab (head line, `all` and per-lane / per-status chips) and the spec head (partial waits text) shows is
  *   compared with the body of the same route the page reads, fetched by the test (`page.request.get`). The test reads
  *   fields only, no arithmetic and no grouping of rows (T83): the master tile's open count and ring percent are
  *   `kpis.masterOpen` and `kpis.masterPercent`, the phase chips `kpis.stageGroups` (the Specs tile's split) and
  *   `kpis.specsWithFog`, the type chips `kpis.byType`, the `all` chips `kpis.specs`.
- * - Loopback: every request and web socket the page opens while it loads the dashboard, opens and closes every 021 fold
+ * - Loopback: every request and web socket the page opens while it loads the dashboard and the Specs page, opens and
+ *   closes every 021 fold
  *   (spec list, TL;DR, overlaps, the compact "Details of <id>", library sections) and sets the density on the settings
  *   page goes to 127.0.0.1, localhost or ::1.
  *
@@ -167,8 +169,22 @@ for (const stub of STUBS) {
         expect(await numbersOf(statement)).toEqual([]);
       }
 
-      // Spec list head: the active and the archived count, "Show all N".
+      // TL;DR language chip: only when the served `lang:` differs from the interface language (en).
+      const chip = page.locator('[data-ui="brief"] [data-brief-lang]');
+      const primary = (model.brief?.lang ?? '').split('-')[0] ?? '';
+      if (primary === '' || primary.toLowerCase() === 'en') {
+        await expect(chip).toHaveCount(0);
+      } else {
+        await expect(chip.locator('[aria-hidden="true"]')).toHaveText(primary.toUpperCase());
+      }
+
+      // Spec 058: the spec list stands on the Specs page, not on the dashboard.
+      await expect(page.locator('app-spec-table')).toHaveCount(0);
+      await page.goto(`/w/${WS}/specs`);
       const table = page.locator('app-spec-table');
+      await expect(table.locator('[data-spec-row]').first()).toBeVisible();
+
+      // Spec list head: the active and the archived count, "Show all N".
       expect(await numbersOf(table.locator('[data-count="active"]'))).toEqual([model.specs.length]);
       expect(await numbersOf(table.locator('[data-count="archived"]'))).toEqual([k.archived]);
       const showAll = table.locator('[data-fold="specs"] button.summary');
@@ -196,15 +212,6 @@ for (const stub of STUBS) {
         expect(allTypes?.count).toBe(k.specs);
         expect(numbers(allTypes?.name ?? null)).toEqual([k.specs]);
         for (const [type, count] of byType) expect(types.get(type)?.count, `type chip ${type}`).toBe(count);
-      }
-
-      // TL;DR language chip: only when the served `lang:` differs from the interface language (en).
-      const chip = page.locator('[data-ui="brief"] [data-brief-lang]');
-      const primary = (model.brief?.lang ?? '').split('-')[0] ?? '';
-      if (primary === '' || primary.toLowerCase() === 'en') {
-        await expect(chip).toHaveCount(0);
-      } else {
-        await expect(chip.locator('[aria-hidden="true"]')).toHaveText(primary.toUpperCase());
       }
     });
 
@@ -247,15 +254,19 @@ for (const stub of STUBS) {
         await expect(toggle).toHaveAttribute('aria-expanded', before ?? 'false');
       };
 
-      // Dashboard: the spec list and the TL;DR fold.
+      // Dashboard: the TL;DR fold.
       await page.goto(`/w/${WS}`);
+      await expect(tile(page, 'master')).toBeVisible();
+      const brief = page.locator('[data-ui="brief"] [data-brief-fold] button.summary');
+      if ((await brief.count()) > 0) await toggleTwice(brief);
+
+      // Specs page (spec 058): the spec list's fold.
+      await page.goto(`/w/${WS}/specs`);
       await expect(page.locator('app-spec-table [data-spec-row]').first()).toBeVisible();
       // The list folds only past its first 10 rows (ISC-246, 5 until 2026-10-20); a shorter list has no fold.
       const specFold = page.locator('app-spec-table [data-fold="specs"] button.summary');
       if ((await page.locator('app-spec-table [data-spec-row]').count()) >= 10 && (await specFold.count()) > 0) await toggleTwice(specFold);
       else await expect(specFold).toHaveCount(0);
-      const brief = page.locator('[data-ui="brief"] [data-brief-fold] button.summary');
-      if ((await brief.count()) > 0) await toggleTwice(brief);
 
       // Spec page: the overlaps fold at 1440, the details fold at compact.
       await page.goto(`/w/${WS}/s/${SPEC}`);

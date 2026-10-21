@@ -1,11 +1,11 @@
 /**
  * Spec 026 · T29 · ISC-171 (`bun run e2e -- sidebar`): one detail sidebar, one component, for every object in every
  * view. Choosing a milestone, feature, spec, claim or idea in the tree, the Gantt lens, the graph, on the workspace board,
- * in the dashboard's specs list and on the ideas opens `app-detail-sidebar` with the type, id, title, progress and the
+ * in the Specs page's list and on its ideas (spec 058) opens `app-detail-sidebar` with the type, id, title, progress and the
  * parents, children and blockers the relation index holds, every entry a link that re-selects. The selection lives in
  * `?sel=`, a reload shows the same sidebar, and Escape closes it and returns focus to the chosen object's `[data-ref]`.
  * Presentations per container tier (design.md § Across viewports): docked on the tree, the Gantt lens (spec 038) and
- * the dashboard at 1440, floating on the graph, board and idea page at 1440, a non-modal overlay at 820, a modal sheet
+ * the Specs page at 1440, floating on the graph, board and idea page at 1440, a non-modal overlay at 820, a modal sheet
  * at 390.
  *
  * Against the stub API: every expected value comes from harbor's planning golden
@@ -192,26 +192,26 @@ test.describe('sidebar: wide (1440)', () => {
     await escapeReturns(page, 'idea:console-audit-log');
   });
 
-  test('dashboard specs list: a row docks the sidebar; reload; Escape focuses the row', async ({ page }) => {
-    await page.goto('/w/harbor');
+  test('specs page list: a row docks the sidebar; reload; Escape focuses the row', async ({ page }) => {
+    await page.goto('/w/harbor/specs');
     await page.locator(`a.row-link${refSel('spec:004')}`).click();
-    await expect(page).toHaveURL(/\/w\/harbor\?/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/specs\?/u);
     await expectSidebar(page, 'spec:004', 'docked');
     await reloadSame(page, 'spec:004', 'docked');
     await escapeReturns(page, 'spec:004');
   });
 
-  test('dashboard ideas: a chip docks the sidebar on the idea; its feature parent re-selects; reload; Escape', async ({ page }) => {
+  test('specs page ideas: a chip docks the sidebar on the idea; its feature parent re-selects; reload; Escape', async ({ page }) => {
     const ref: RelationRef = 'idea:console-audit-log';
     const chip = page.locator(`a.idea${refSel(ref)}`);
     const openIdeas = async (): Promise<void> => {
       if (!(await chip.isVisible())) await page.locator('[data-ideas-title]').click();
       await expect(chip).toBeVisible();
     };
-    await page.goto('/w/harbor');
+    await page.goto('/w/harbor/specs');
     await openIdeas();
     await chip.click();
-    await expect(page).toHaveURL(/\/w\/harbor\?/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/specs\?/u);
     await expectSidebar(page, ref, 'docked');
     await reloadSame(page, ref, 'docked');
     await openIdeas();
@@ -242,8 +242,8 @@ test.describe('sidebar: medium (820)', () => {
     await escapeReturns(page, 'feature:F2');
   });
 
-  test('dashboard specs list: the overlay replaces the docked rail below wide', async ({ page }) => {
-    await page.goto('/w/harbor');
+  test('specs page list: the overlay replaces the docked rail below wide', async ({ page }) => {
+    await page.goto('/w/harbor/specs');
     await page.locator(`a.row-link${refSel('spec:004')}`).click();
     await expectSidebar(page, 'spec:004', 'overlay');
     await escapeReturns(page, 'spec:004');
@@ -253,8 +253,8 @@ test.describe('sidebar: medium (820)', () => {
 test.describe('sidebar: compact (390)', () => {
   test.use(atWidth(WIDTHS.phone));
 
-  test('dashboard specs list: the sidebar is a modal sheet; a link re-selects inside it; reload; Escape focuses the row', async ({ page }) => {
-    await page.goto('/w/harbor');
+  test('specs page list: the sidebar is a modal sheet; a link re-selects inside it; reload; Escape focuses the row', async ({ page }) => {
+    await page.goto('/w/harbor/specs');
     await page.locator(`a.row-link${refSel('spec:004')}`).click();
     await expectSidebar(page, 'spec:004', 'sheet');
     await expect(sidebar(page).locator('dialog[open]')).toHaveCount(1);

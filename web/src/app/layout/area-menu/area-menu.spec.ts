@@ -20,7 +20,9 @@ class Blank {}
 
 /** The shell's route shapes, reduced to the data `ShellState` reads (the real table loads every view). */
 const ROUTES: Routes = [
-  { path: 'w/:ws', component: Blank },
+  // Spec 058: the root carries its page, as the app's route does; the list lives on /specs.
+  { path: 'w/:ws', component: Blank, data: { page: 'dashboard' } },
+  { path: 'w/:ws/specs', component: Blank, data: { page: 'specs' } },
   { path: 'w/:ws/planning/tree', component: Blank, data: { page: 'planning', tab: 'tree' } },
   { path: 'w/:ws/planning/graph', component: Blank, data: { page: 'planning', tab: 'graph' } },
   { path: 'w/:ws/features', component: Blank, data: { page: 'features' } },
@@ -208,39 +210,41 @@ describe('AreaMenu', () => {
       expect(root.querySelectorAll('a[href^="/w/nope"]')).toHaveLength(0);
     });
 
-    it('lists Specs, Board, Planning, Tech and Library, no Features or Milestones entry, without milestones (spec 026, ISC-167)', async () => {
+    it('lists Dashboard, Specs, Board, Planning and Library (spec 058, ISC-394), no Features or Milestones entry, without milestones (spec 026, ISC-167)', async () => {
       setUp(ok(planning([UNNAMED])));
       const root = await render('/w/harbor');
       const entries = pages(root);
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
-      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/planning', '/w/harbor/library']);
-      expect(attr(entries, 'aria-disabled')).toEqual([null, null, null, null]);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Planning', 'Library']);
+      expect(attr(entries, 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
+      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A', 'A']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/specs', '/w/harbor/board', '/w/harbor/planning', '/w/harbor/library']);
+      expect(attr(entries, 'aria-disabled')).toEqual([null, null, null, null, null]);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Dashboard', 'Specs', 'Board', 'Planning', 'Library']);
       expect(root.querySelectorAll('nav [data-area]')).toHaveLength(0);
     });
 
-    it('keeps the same four entries when a spec carries a milestone: no Milestones page any more (spec 026); Library stands fourth, where Tech stood (spec 017 T41)', async () => {
+    it('keeps the same five entries when a spec carries a milestone: no Milestones page any more (spec 026); Library stands last, where Tech stood (spec 017 T41)', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/planning', '/w/harbor/library']);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Planning', 'Library']);
-      expect(entries[3]?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('book');
+      expect(attr(entries, 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/specs', '/w/harbor/board', '/w/harbor/planning', '/w/harbor/library']);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Dashboard', 'Specs', 'Board', 'Planning', 'Library']);
+      expect(entries[4]?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('book');
     });
 
     it("counts an archived spec's milestone", async () => {
       setUp(ok(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001', true)])])));
-      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
+      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
     });
 
     it('marks the current page with aria-current and gives it focus on open', async () => {
       setUp(ok(WITH_MILESTONES));
       const cases: Array<[string, Array<string | null>]> = [
-        ['/w/harbor', ['page', null, null, null]],
-        ['/w/harbor/planning/tree', [null, null, 'page', null]],
-        ['/w/harbor/planning/graph', [null, null, 'page', null]],
-        ['/w/harbor/library', [null, null, null, 'page']],
+        // Spec 058 (ISC-394): the root is the dashboard, the list its own page.
+        ['/w/harbor', ['page', null, null, null, null]],
+        ['/w/harbor/specs', [null, 'page', null, null, null]],
+        ['/w/harbor/planning/tree', [null, null, null, 'page', null]],
+        ['/w/harbor/planning/graph', [null, null, null, 'page', null]],
+        ['/w/harbor/library', [null, null, null, null, 'page']],
       ];
       for (const [url, current] of cases) {
         const entries = pages(await render(url));
@@ -262,12 +266,33 @@ describe('AreaMenu', () => {
     it('renders the summaries from the dashboard rows, the planning model and, once opened, the catalog', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor', 'wide', true));
+      // Spec 058 (ISC-394): the dashboard's line from the dashboard model (no guidance served: nothing waits).
       expect(entries.map(sub)).toEqual([
+        '0 waiting on you · 2 warnings',
         '3 active · 1 archived',
         '0 stages · 0 cards · 0 wait on you',
         '2 milestones · 2 features',
         '52 documents · 3 outdated · 5 missing',
       ]);
+    });
+
+    it("counts the Dashboard line from the dashboard model: what waits on you and the warnings KPI, in both languages (spec 058, ISC-394)", async () => {
+      const waits = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+      setUp(ok(WITH_MILESTONES), { ...DASHBOARD, guidance: { waits, next: [] } });
+      expect(pages(await render('/w/harbor')).map(sub)[0]).toBe('3 waiting on you · 2 warnings');
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      const de = TestBed.inject(TranslocoService).translate('shell.pages.summary.dashboard', { waits: 3, warnings: 2 });
+      expect(pages(await render('/w/harbor')).map(sub)[0]).toBe(de);
+      expect(de).not.toBe('3 waiting on you · 2 warnings');
+    });
+
+    it('reads a spec page as Specs in the page menu, not as the dashboard (spec 058, ISC-394)', async () => {
+      setUp(ok(WITH_MILESTONES));
+      await TestBed.inject(Router).navigateByUrl('/w/harbor/s/004');
+      const fixture = TestBed.createComponent(AreaMenu);
+      fixture.componentRef.setInput('scope', 'page');
+      await fixture.whenStable();
+      expect(attr(pages(fixture.nativeElement as HTMLElement), 'aria-current')).toEqual([null, 'page', null, null, null]);
     });
 
     it('counts the Library line from the catalog in German too (spec 017 T41, ISC-157.1)', async () => {
@@ -331,7 +356,7 @@ describe('AreaMenu', () => {
       const model = buildBoard({ planning: golden, rows: boardRowsOf(DASHBOARD_GOLDEN) });
       const cards = Object.values(golden.stageCounts).reduce((n, v) => n + v, 0);
       expect(model.total).toBe(cards);
-      expect(pages(await render('/w/harbor')).map(sub)[1]).toBe(`${String(golden.stages.length)} stages · ${String(cards)} cards · 3 wait on you`);
+      expect(pages(await render('/w/harbor')).map(sub)[2]).toBe(`${String(golden.stages.length)} stages · ${String(cards)} cards · 3 wait on you`);
     });
 
     it('leaves the Board line out until the dashboard rows have answered too', async () => {
@@ -339,7 +364,10 @@ describe('AreaMenu', () => {
       TestBed.overrideProvider(ApiClient, {
         useValue: { ...fakeApi(ok(WITH_MILESTONES), DASHBOARD), dashboard: () => Promise.resolve({ kind: 'unavailable' }) },
       });
-      expect(pages(await render('/w/harbor')).map(sub)[1]).toBeNull();
+      const entries = pages(await render('/w/harbor'));
+      expect(entries.map(sub)[2]).toBeNull();
+      // Spec 058 (ISC-394): nor does the Dashboard line stand before its model answered.
+      expect(entries.map(sub)[0]).toBeNull();
     });
 
     it('counts an undated milestone in the Planning line (spec 026)', async () => {
@@ -351,14 +379,14 @@ describe('AreaMenu', () => {
           ]),
         ),
       );
-      expect(pages(await render('/w/harbor')).map(sub)[2]).toMatch(/^2 milestones · \d+ features$/u);
+      expect(pages(await render('/w/harbor')).map(sub)[3]).toMatch(/^2 milestones · \d+ features$/u);
     });
 
     it('leaves the Planning summary out while the planning model is not loaded, rather than a broken template', async () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null, 'Every document, artifact and prototype']);
+      expect(attr(entries, 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
+      expect(entries.map(sub)).toEqual(['0 waiting on you · 2 warnings', '3 active · 1 archived', null, null, 'Every document, artifact and prototype']);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 
@@ -366,8 +394,8 @@ describe('AreaMenu', () => {
       setUp(ok(WITH_MILESTONES));
       const root = await render('/w/harbor/planning/tree', 'compact');
       expect(root.querySelector('ui-sheet nav')?.getAttribute('data-tier')).toBe('compact');
-      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
-      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null]);
+      expect(attr(pages(root), 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
+      expect(attr(pages(root), 'aria-current')).toEqual([null, null, null, 'page', null]);
     });
   });
 

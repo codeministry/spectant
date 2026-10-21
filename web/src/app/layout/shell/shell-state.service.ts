@@ -26,7 +26,7 @@ export interface ShellRoute {
   readonly tab: TabId | null;
   /** The planning page's lens on `/w/:ws/planning/<lens>` (`wsPage` `planning`, spec 026); null on every other route. */
   readonly lens: PlanningLensId | null;
-  /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
+  /** The workspace-scope page: route data `page` (the dashboard on `/w/:ws`, spec 058), else null (spec routes, not-found). */
   readonly wsPage: WorkspacePageId | null;
   /** The story's slug on `/w/:ws/ideas/:slug` (`wsPage` `idea`, spec 008); null on every other route. */
   readonly ideaSlug: string | null;
@@ -47,7 +47,9 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const specId = ws === null ? null : (params['id'] ?? null);
   const area = isAreaId(data.area) ? data.area : specId === null ? null : 'dashboard';
   const notFound = data.notFound === true;
-  const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
+  // Spec 058: every workspace page names itself in its route data (the root `dashboard`, `/w/:ws/specs` `specs`); a
+  // route that names none is no workspace page, never read as the spec list.
+  const wsPage = isWorkspacePageId(data.page) ? data.page : null;
   const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
   const planning = wsPage === 'planning';
   // `board` is a spec tab and a lens: on the planning page it is the lens only.
@@ -127,7 +129,7 @@ export class ShellState {
   readonly ws = computed(() => this.route().ws);
   readonly specId = computed(() => this.route().specId);
   readonly area = computed(() => this.route().area);
-  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`, `library`), null on spec and global routes. */
+  /** The workspace page of the route (`dashboard`, `specs`, `board`, `planning`, `idea`, `library`), null on spec and global routes. */
   readonly wsPage = computed(() => this.route().wsPage);
   readonly tab = computed(() => this.route().tab);
   readonly notFound = computed(() => this.route().notFound);

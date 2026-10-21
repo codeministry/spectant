@@ -44,13 +44,17 @@ export interface KpiBandModel {
   };
 }
 
-/** The sections of `/w/:ws` the tiles land on; the dashboard page gives its section headings these ids. */
-export const KPI_TARGETS = { specs: 'specs', warnings: 'warnings' } as const;
+/**
+ * The section of `/w/:ws` the Warnings tile lands on; the dashboard page gives its section heading this id. The list
+ * tiles (Specs, Takeable, Fog) land on the Specs page `/w/:ws/specs` instead, with query state and no fragment (spec
+ * 058, ISC-395).
+ */
+export const KPI_TARGETS = { warnings: 'warnings' } as const;
 
-/** The Takeable tile's query state: the list sorted by next step, takeable specs only (design.md § Routes and state). */
+/** The Takeable tile's query state on `/w/:ws/specs`: the list sorted by next step, takeable specs only (design.md § Routes and state). */
 export const TAKEABLE_QUERY: Params = { sort: 'next', takeable: 1 };
 
-/** The Open fog tile's query state: the list on its fog chip, the specs with open fog only. */
+/** The Open fog tile's query state on `/w/:ws/specs`: the list on its fog chip, the specs with open fog only. */
 export const FOG_QUERY: Params = { phase: FOG };
 
 interface PhaseSegment extends MeterSegment {
@@ -91,7 +95,8 @@ export function kpiTileOf(path: string): KpiTile | null {
  * tile is a `ui-card` with the prototype's explicit edge and glow (hero glow only). The shell's tier (`data-tier`)
  * places them: wide one row with a wider master tile, medium three columns by two rows, compact the Pulse card (the
  * master row and the spec-claims meter over a 2 × 2 grid). Both forms live in the DOM and the tier shows one. Tiles
- * with a destination are links on `/w/:ws`: a fragment for a section, query state for a filter. Renders the model as
+ * with a destination are links: Specs, Takeable and Fog on the Specs page `/w/:ws/specs` with their query state, Warnings
+ * on `/w/:ws` with its section's fragment (spec 058, ISC-395). Renders the model as
  * it is; derives no number: the open count and the ring percent are served fields too (ISC-255).
  */
 @Component({
@@ -104,7 +109,7 @@ export function kpiTileOf(path: string): KpiTile | null {
 })
 export class KpiBand {
   readonly model = input.required<KpiBandModel>();
-  /** The workspace slug; every tile link targets `/w/:ws`. */
+  /** The workspace slug; the list tiles target `/w/:ws/specs`, the Warnings tile `/w/:ws#warnings`. */
   readonly ws = input.required<string>();
   /** The KPI paths the last refresh changed (`RefreshService.changedKpis`): their tiles get the fading tint. */
   readonly changed = input<ReadonlySet<string>>(new Set());
@@ -141,7 +146,12 @@ export class KpiBand {
   protected readonly targets = KPI_TARGETS;
   protected readonly takeableQuery = TAKEABLE_QUERY;
   protected readonly fogQuery = FOG_QUERY;
+  /** The workspace page `/w/:ws`, where the Warnings section stands. */
   protected readonly href = computed(() => `/w/${encodeURIComponent(this.ws())}`);
+  /** The Specs page `/w/:ws/specs`, the list the Specs, Takeable and Fog tiles filter (a string: `ui-kpi-tile` takes one). */
+  protected readonly specsHref = computed(() => `${this.href()}/specs`);
+  /** The Specs page as router-link commands, for the Pulse cells. */
+  protected readonly specsLink = computed(() => ['/w', this.ws(), 'specs']);
   protected readonly kpis = computed(() => this.model().kpis);
 
   /** Specs by stage group for the split meter and its legend, as the model counts them; an empty group is left out. */

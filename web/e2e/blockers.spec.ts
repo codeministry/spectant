@@ -7,8 +7,8 @@
  *
  * - "waits", waiting: the spec head of 009 shows `blocked` and one chip "waits on 002" linking to 002's page, no scope;
  *   002's head shows "waits on 006" with the partial scope behind it, at 1440 and 390. The workspace board holds 009's
- *   card in the Blocked column with its chip and link, and 002's card carries "waits on 006". The dashboard's rows of
- *   002 and 009 carry their chips; a click on a chip lands on the blocker's page, not on the row's selection. 002's
+ *   card in the Blocked column with its chip and link, and 002's card carries "waits on 006". The Specs page's rows of
+ *   002 and 009 carry their chips (spec 058: the list left the dashboard); a click on a chip lands on the blocker's page, not on the row's selection. 002's
  *   Tasks tab gives each held task the reason with the blocker's link and a disabled box; 009's Claims tab carries the
  *   chip on ISC-131; 002's live board opens a waits group linking 006. Each chip's accessible name names the blocker.
  *   In German the chip reads "wartet auf 002".
@@ -100,7 +100,7 @@ test.describe('blockers waits: the spec edges hold their specs (waiting)', () =>
   });
 
   test('waits: the dashboard rows of 002 and 009 carry their chips, and a chip opens the blocker', async ({ page }) => {
-    await open(page, `/w/${WS}`);
+    await open(page, `/w/${WS}/specs`);
     await expectChip(rowChip(page, full.spec), full.on, '009 row');
     await expectChip(rowChip(page, partial.spec), partial.on, '002 row');
     // The stage track of 009, on stage blocked, keeps its progress at Build and marks it "Blocked" (spec 025,
@@ -177,7 +177,8 @@ test.describe('blockers waits: the edges are met', () => {
     [specPath(full.spec), '[data-head-chip="stage"]'],
     [specPath(partial.spec), '[data-head-chip="stage"]'],
     [`/w/${WS}/board`, `app-board-card[data-key="${FULL_CARD}"]`],
-    [`/w/${WS}`, `a.row-link[data-spec-row="${full.spec}"]`],
+    [`/w/${WS}`, '#waiting'],
+    [`/w/${WS}/specs`, `a.row-link[data-spec-row="${full.spec}"]`],
     [`${specPath(partial.spec)}/tasks`, `li[data-task-row]#task-${partial.tasks[0]}`],
     [`${specPath(full.spec)}/claims`, '[data-claim="ISC-131"]'],
     [`${specPath(partial.spec)}/board`, 'app-board-card'],

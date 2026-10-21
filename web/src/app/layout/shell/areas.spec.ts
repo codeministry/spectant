@@ -56,8 +56,8 @@ describe('SPEC_AREAS (spec 017, T45, ISC-158)', () => {
 });
 
 describe('WORKSPACE_PAGES', () => {
-  it('holds exactly Specs, Board, Planning and Library, in that order, no Tech (spec 008, ISC-129; spec 024, ISC-150.1; spec 017, ISC-157.1; spec 026, ISC-167)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'planning', 'library']);
+  it('holds exactly Dashboard, Specs, Board, Planning and Library, in that order, no Tech (spec 008, ISC-129; spec 024, ISC-150.1; spec 017, ISC-157.1; spec 026, ISC-167; spec 058, ISC-394)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
   });
 
   it('uses an icon from ICON_NAMES for every page', () => {
@@ -75,11 +75,13 @@ describe('WORKSPACE_PAGES', () => {
     }
   });
 
-  it('records the bound go keys b, p (Planning, spec 026) and o (Library, spec 017 T41), none for specs (g s is Status)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'p', 'o']);
+  it('records the bound go keys b, p (Planning, spec 026) and o (Library, spec 017 T41), none for the dashboard and specs (g s is Status)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, null,'b', 'p', 'o']);
   });
 
   it('looks a page up by id, Library with the book icon where Tech stood', () => {
+    // Spec 058 (ISC-394): the workspace dashboard, first in the menu, with the spec dashboard's icon.
+    expect(workspacePageById('dashboard')).toMatchObject({ icon: 'layout-dashboard', labelKey: 'shell.pages.dashboard', summaryKey: 'shell.pages.summary.dashboard', goKey: null });
     expect(workspacePageById('board').icon).toBe('square-kanban');
     // Spec 026 (ISC-167): Planning replaces Features and Milestones in the registry.
     expect(workspacePageById('planning')).toMatchObject({ icon: 'list-tree', labelKey: 'shell.pages.planning', summaryKey: 'shell.pages.summary.planning' });
@@ -89,15 +91,16 @@ describe('WORKSPACE_PAGES', () => {
   });
 
   it('knows the story page as a page id, but lists it in no menu entry', () => {
-    for (const id of ['specs', 'board', 'features', 'milestones', 'idea']) expect(isWorkspacePageId(id)).toBe(true);
+    for (const id of ['dashboard', 'specs', 'board', 'features', 'milestones', 'idea']) expect(isWorkspacePageId(id)).toBe(true);
     expect(isWorkspacePageId('ideas')).toBe(false);
     expect(WORKSPACE_PAGES.map((page): string => page.id)).not.toContain('idea');
   });
 });
 
 describe('workspaceLink', () => {
-  it('links Specs to the workspace root and the others to their page', () => {
-    expect(workspaceLink('harbor', 'specs')).toEqual(['/w', 'harbor']);
+  it('links the dashboard to the workspace root and the others, Specs included, to their page (spec 058, ISC-394)', () => {
+    expect(workspaceLink('harbor', 'dashboard')).toEqual(['/w', 'harbor']);
+    expect(workspaceLink('harbor', 'specs')).toEqual(['/w', 'harbor', 'specs']);
     expect(workspaceLink('harbor', 'board')).toEqual(['/w', 'harbor', 'board']);
     expect(workspaceLink('harbor', 'features')).toEqual(['/w', 'harbor', 'features']);
     expect(workspaceLink('harbor', 'milestones')).toEqual(['/w', 'harbor', 'milestones']);

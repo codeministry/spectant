@@ -2,12 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
-import { ApiClient, type ApiResult } from '../../core/api.service';
+import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import { navigatesNatively } from './shell-nav';
@@ -80,7 +80,44 @@ let realResizeObserver: typeof ResizeObserver | undefined;
 /** One harness per test (the router harness allows no second); `open` navigates it. */
 let current: RouterTestingHarness | null = null;
 
-function setUp(api: FakeApi = fakeApi()): void {
+/**
+ * The route table as spec 058 splits the workspace: the root `/w/:ws` names the page `dashboard`, `/w/:ws/specs` the
+ * spec list `specs`. Another task of the spec writes that data into `app.routes.ts`; this keeps the rail specs on it
+ * either way and changes nothing once the table carries it.
+ */
+function splitRoutes(table: Routes): Routes {
+  return table.map((route) => {
+    const children = route.children;
+    if (!children) return route;
+    const hasSpecs = children.some((child) => child.path === 'w/:ws/specs');
+    return {
+      ...route,
+      children: children.flatMap((child): Routes => {
+        if (child.path !== 'w/:ws') return [child];
+        const root = { ...child, data: { ...child.data, page: 'dashboard' } };
+        return hasSpecs ? [root] : [root, { ...child, path: 'w/:ws/specs', data: { ...child.data, page: 'specs' } }];
+      }),
+    };
+  });
+}
+
+/** A planning answer whose relation index holds spec 002, so `?sel=spec:002` is a selection (`DetailSelection.entry`). */
+const PLANNING_002 = {
+  asOf: '2026-03-20',
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: ['idea', 'plan', 'build', 'done'],
+  stageCounts: {},
+  ideas: [],
+  features: [],
+  milestones: [],
+  recount: { closed: 0, total: 0 },
+  diagnostics: [],
+  relations: {
+    'spec:002': { ref: 'spec:002', type: 'spec', id: '002', title: 'Web console', closed: 0, total: 0, parents: [], children: [], blockers: [] },
+  },
+} as unknown as PlanningBody;
+
+function setUp(api: FakeApi = fakeApi(), table: Routes = routes): void {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -89,7 +126,7 @@ function setUp(api: FakeApi = fakeApi()): void {
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
+    providers: [provideRouter(table), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
 }
 
@@ -138,15 +175,49 @@ describe('ShellComponent', () => {
     }
   });
 
-  it('drops the rail column (data-no-rail) outside a workspace, on the board, on the Library the tech addresses lead to and in the spec area Library (spec 023, spec 017)', async () => {
-    setUp();
+  it('drops the rail column (data-no-rail) outside a workspace, on the dashboard, on the spec list without a selection, on the board, on the Library the tech addresses lead to and in the spec area Library (spec 023, spec 017, spec 058)', async () => {
+    setUp(fakeApi(), splitRoutes(routes));
     const noRail = async (url: string): Promise<boolean> => (await open(url)).root.querySelector('app-shell')?.hasAttribute('data-no-rail') ?? false;
-    for (const url of ['/', '/settings', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status', '/w/harbor/s/002/library']) {
+    for (const url of ['/', '/settings', '/w/harbor', '/w/harbor/specs', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status', '/w/harbor/s/002/library']) {
       expect(await noRail(url), url).toBe(true);
     }
-    for (const url of ['/w/harbor', '/w/harbor/features', '/w/harbor/s/002', '/w/harbor/s/002/status']) {
+    for (const url of ['/w/harbor/features', '/w/harbor/s/002', '/w/harbor/s/002/status']) {
       expect(await noRail(url), url).toBe(false);
     }
+  });
+
+  // Spec 058 (T16, ISC-392): the dashboard is one column at every tier; it never reaches the rail slot, so no
+  // `shell.rail.pending` placeholder either.
+  it.each([
+    ['compact', 390],
+    ['medium', 820],
+    ['wide', 1440],
+  ] as const)('draws no rail on the workspace dashboard at %s (spec 058, ISC-392)', async (_tier, width) => {
+    setUp(fakeApi(), splitRoutes(routes));
+    const { root } = await open('/w/harbor', width);
+    expect(root.querySelector('app-shell')?.hasAttribute('data-no-rail')).toBe(true);
+    expect(root.querySelector('.shell-rail')).toBeNull();
+    expect(root.querySelector('app-rail-slot')).toBeNull();
+  });
+
+  // Spec 058 (T9, ISC-393): the spec list docks the detail sidebar into the rail at wide while a selection is open
+  // (the Gantt's rule), and takes the full width without one and below wide.
+  it('draws the rail on the spec list only at wide with a selection (spec 058, ISC-393)', async () => {
+    setUp(fakeApi({ planning: () => Promise.resolve(ok(PLANNING_002)) }), splitRoutes(routes));
+    const shellOf = (root: HTMLElement) => root.querySelector('app-shell');
+
+    const { root: bare } = await open('/w/harbor/specs');
+    expect(shellOf(bare)?.hasAttribute('data-no-rail')).toBe(true);
+    expect(bare.querySelector('.shell-rail')).toBeNull();
+
+    const { root: selected, harness } = await open('/w/harbor/specs?sel=spec:002');
+    expect(shellOf(selected)?.hasAttribute('data-no-rail')).toBe(false);
+    expect(selected.querySelector('.shell-rail')).not.toBeNull();
+
+    FakeResizeObserver.last?.resize(820);
+    await harness.fixture.whenStable();
+    expect(shellOf(selected)?.hasAttribute('data-no-rail')).toBe(true);
+    expect(selected.querySelector('.shell-rail')).toBeNull();
   });
 
   it('sets data-tier and the tier class from the measured container width', async () => {
@@ -318,8 +389,10 @@ describe('ShellComponent', () => {
 
       const { root: workspace } = await open('/w/harbor');
       expect(control(workspace, 'spec').tagName).toBe('A');
-      expect(control(workspace, 'spec').getAttribute('href')).toBe('/w/harbor#specs');
-      expect(workspace.querySelector('[data-page="workspace"] h2#specs')).not.toBeNull();
+      // Spec 058 (ISC-395): the spec list is the Specs page `/w/<ws>/specs`.
+      expect(control(workspace, 'spec').getAttribute('href')).toBe('/w/harbor/specs');
+      // The dashboard itself no longer carries the list (ISC-390).
+      expect(workspace.querySelector('[data-page="workspace"] h2#specs')).toBeNull();
 
       const { root: spec } = await open('/w/harbor/s/002/claims');
       expect(control(spec, 'spec').tagName).toBe('A');
@@ -364,9 +437,10 @@ describe('ShellComponent', () => {
       // spec 024: PAGE select (principal 2026-10-13)
       const area = control(root, 'page');
       expect(area.getAttribute('aria-disabled')).toBeNull();
-      expect(area.textContent).toContain('Specs');
+      // Spec 058 (T3, ISC-390): `/w/:ws` is the dashboard page; the Specs page has its own route.
+      expect(area.textContent).toContain('Dashboard');
       expect(area.getAttribute('aria-expanded')).toBe('false');
-      expect(area.getAttribute('aria-label')).toBe('Page: Specs');
+      expect(area.getAttribute('aria-label')).toBe('Page: Dashboard');
     });
 
     it('names Library on every former tech address, enabled, without a trigger icon (spec 017 T42, ISC-157.1; spec 024 T80)', async () => {
@@ -399,8 +473,9 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Pages"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'planning', 'library']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
+        // Spec 058 (T3, ISC-390): the root's route names the dashboard page, so the menu marks it current.
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];
@@ -600,6 +675,43 @@ describe('ShellComponent', () => {
       delete dialogProto['close'];
     });
 
+    // Spec 058 (ISC-395): a link meaning the spec list leads to /w/<ws>/specs, one meaning the workspace to /w/<ws>.
+    it.each(['/', '/w/harbor', '/w/harbor/s/002'])('on %s leads the workspace picker to /w/<ws> and the spec select "show all" to /w/<ws>/specs (spec 058, ISC-395)', async (url) => {
+      setUp(TWO);
+      const { root, harness } = await open(url);
+      click(control(root, 'workspace'));
+      await harness.fixture.whenStable();
+      const workspaces = [...root.querySelectorAll<HTMLAnchorElement>('nav[data-picker="workspace"] a[data-workspace]')];
+      expect(workspaces.map((entry) => entry.getAttribute('href')), url).toEqual(['/w/harbor', '/w/lantern']);
+      if (url === '/') {
+        expect(root.querySelector('header [data-control="spec"]'), url).toBeNull();
+        return;
+      }
+      click(control(root, 'spec'));
+      await harness.fixture.whenStable();
+      const all = root.querySelector('nav[data-picker="spec"] .picker-all');
+      expect(all?.getAttribute('href'), url).toBe('/w/harbor/specs');
+    });
+
+    // Spec 058 (ISC-395, T45): "show all" is a section jump like `g s`; focus lands on the list heading once it rendered.
+    it.each(['/w/harbor', '/w/harbor/s/002', '/w/harbor/specs'])('on %s moves focus to the Specs heading after "show all" (spec 058, ISC-395)', async (url) => {
+      setUp(TWO);
+      const { root, harness } = await open(url);
+      click(control(root, 'spec'));
+      await harness.fixture.whenStable();
+      const all = root.querySelector<HTMLAnchorElement>('nav[data-picker="spec"] .picker-all');
+      if (!all) throw new Error(`show all missing on ${url}`);
+      all.click();
+      await harness.fixture.whenStable();
+      for (let frame = 0; frame < 5 && document.activeElement?.id !== 'specs'; frame++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await harness.fixture.whenStable();
+      }
+      expect(TestBed.inject(Router).url, url).toBe('/w/harbor/specs');
+      expect(document.activeElement?.id, url).toBe('specs');
+      expect(document.activeElement?.tagName, url).toBe('H2');
+    });
+
     it('opens the workspace picker on a plain click: all workspaces, every workspace with its specs, the current marked', async () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002/claims');
@@ -658,7 +770,7 @@ describe('ShellComponent', () => {
 
       const list = root.querySelector('nav[data-picker="spec"]');
       expect(list?.getAttribute('aria-label')).toBe('Specs');
-      expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
+      expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor/specs');
       // spec 024: prototype value (principal: the prototype wins) — pop-specs ends with "Spec overview" (g s).
       expect(list?.querySelector('.picker-all')?.textContent).toContain('Spec overview');
       const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
@@ -869,7 +981,7 @@ describe('ShellComponent', () => {
           expect(nav.querySelector('.menu-head')?.textContent.trim()).toBe('Favorites · harbor');
           // Dashboard order (004 before 003), and the open spec 002 has no star, so it is no row.
           expect(ids(nav)).toEqual(['004', '003']);
-          expect(nav.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
+          expect(nav.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor/specs');
           expect(nav.querySelector('.picker-empty')).toBeNull();
           // Each row is the unchanged link plus its own star, a sibling of the link, never inside it.
           const stars = [...nav.querySelectorAll<HTMLButtonElement>('li > button[ui-star-toggle]')];
@@ -899,7 +1011,7 @@ describe('ShellComponent', () => {
           expect(hint?.textContent.trim()).toBe('No favorites yet. Star a spec on its page or in the spec list to see it here.');
           expect(hint?.querySelector('ui-icon')?.getAttribute('aria-hidden')).toBe('true');
           const all = nav.querySelector<HTMLAnchorElement>('.picker-all');
-          expect(all?.getAttribute('href')).toBe('/w/harbor#specs');
+          expect(all?.getAttribute('href')).toBe('/w/harbor/specs');
           expect(document.activeElement).toBe(all);
         });
 

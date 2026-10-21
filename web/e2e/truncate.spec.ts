@@ -32,9 +32,16 @@ function expectCutAtWord(m: { shown: string; full: string; height: number; line:
   expect(m.full.slice(kept.length)).toMatch(/^[\s,;:.–—-]/u);
 }
 
-async function openHarbor(page: Page): Promise<void> {
-  await page.goto('/w/harbor');
+/** Harbor's Specs page (spec 058: the spec list's own page), once its rows rendered. */
+async function openSpecs(page: Page): Promise<void> {
+  await page.goto('/w/harbor/specs');
   await expect(page.locator('[data-spec-row]').first()).toBeVisible();
+}
+
+/** Harbor's dashboard (spec 058: no spec list), once its Next up entries rendered. */
+async function openDashboard(page: Page): Promise<void> {
+  await page.goto('/w/harbor');
+  await expect(page.locator('[data-next-link]').first()).toBeVisible();
 }
 
 test.describe('truncate table', () => {
@@ -43,7 +50,7 @@ test.describe('truncate table', () => {
   test('table: a long description is cut after one line at a whole word, and more… / less toggle it in place', async ({ page }) => {
     // Spec 021 (design § P3 heights): below 640 px a marked row shows its mark where the description stood, and the
     // first five rows of harbor are all marked; the open list (`?open=specs`) holds unmarked rows with a description.
-    await page.goto('/w/harbor?open=specs');
+    await page.goto('/w/harbor/specs?open=specs');
     await expect(page.locator('[data-spec-row]').first()).toBeVisible();
     const cut = page.locator('[data-panel="specs"] app-spec-row .d[data-clamp="cut"]:visible');
     await expect(cut.first()).toBeVisible();
@@ -73,7 +80,7 @@ test.describe('truncate table', () => {
   });
 
   test('table: every cut description has its button, and a description that fits has none', async ({ page }) => {
-    await openHarbor(page);
+    await openSpecs(page);
     const descriptions = page.locator('[data-panel="specs"] app-spec-row .d');
     await expect(descriptions.first()).toHaveAttribute('data-clamp', /cut|whole/u);
     for (const d of await descriptions.all()) {
@@ -89,15 +96,19 @@ test.describe('truncate table', () => {
 
 /**
  * Since spec 020 (T25, ISC-240) Next up holds `guidance.next`, whose harbor titles fit their lines, and the entry's
- * sentence is never cut. So the dashboard body's first Next entry gets a longer title (its own title twice), the one
- * change to core's body, and the title clamp still has something to cut.
+ * sentence is never cut. So the dashboard body's first Next entry gets a longer title (its own title four times), the
+ * one change to core's body, and the title clamp still has something to cut: since spec 058 Next up spans the one
+ * column of the dashboard, about 1376 px at 1440, where the title twice still fits its line.
  */
+const LONG_TITLE_REPEATS = 4;
 async function longNextTitle(page: Page): Promise<void> {
   await page.route('**/api/workspaces/harbor/dashboard', async (route) => {
     const response = await route.fetch();
     const body = (await response.json()) as { specs: Array<{ id: string; title: string }>; guidance?: { next: Array<{ spec: string }> } };
     const id = body.guidance?.next[0]?.spec;
-    for (const spec of body.specs) if (spec.id === id) spec.title = `${spec.title}, then ${spec.title.toLowerCase()}`;
+    for (const spec of body.specs) {
+      if (spec.id === id) spec.title = [spec.title, ...Array.from({ length: LONG_TITLE_REPEATS - 1 }, () => spec.title.toLowerCase())].join(', then ');
+    }
     await route.fulfill({ response, json: body });
   });
 }
@@ -116,17 +127,18 @@ async function expectWholeSentences(page: Page): Promise<void> {
 test.describe('truncate next', () => {
   test.use(atWidth(1440));
 
-  test('next: a long rail card title is cut after one line at a whole word, and more… / less outside the link toggle it', async ({
+  test('next: a long title in the one-column Next up is cut after one line at a whole word, and more… / less outside the link toggle it', async ({
     page,
   }) => {
     await longNextTitle(page);
-    await openHarbor(page);
+    await openDashboard(page);
     await expectWholeSentences(page);
     const cut = page.locator('[data-next-card] [data-next-link] .title[data-clamp="cut"]');
     await expect(cut.first()).toBeVisible();
     const id = (await cut.first().getAttribute('id')) ?? '';
     const title = page.locator(`#${id}`);
-    // Spec 021 (T79): the rail title is clamped to one line, and `[data-next-card]` is the one card of every entry.
+    // Spec 021 (T79): the title is clamped to one line, and `[data-next-card]` is the one card of every entry; since
+    // spec 058 the dashboard has no rail, so at 1440 the entry is a row of the one column's card.
     expectCutAtWord(await measure(title), 1);
 
     const entry = page.locator('app-next-up-entry').filter({ has: title });
@@ -147,7 +159,7 @@ test.describe('truncate next', () => {
   test('next: below wide the one-line row title is cut at a whole word with its own more…', async ({ page }) => {
     await page.setViewportSize({ width: 600, height: 900 });
     await longNextTitle(page);
-    await openHarbor(page);
+    await openDashboard(page);
     await expectWholeSentences(page);
     const titles = page.locator('[data-next-row] [data-next-link] .title');
     await expect(titles.first()).toBeVisible();
@@ -167,7 +179,7 @@ test.describe('truncate palette', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 800, height: 900 });
-    await openHarbor(page);
+    await openDashboard(page);
     await page.keyboard.press('Meta+k');
     const palette = page.locator('app-command-palette dialog');
     await expect(palette).toBeVisible();

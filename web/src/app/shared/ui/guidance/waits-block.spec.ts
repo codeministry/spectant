@@ -130,3 +130,96 @@ describe('ui-waits-block (T14, ISC-238)', () => {
     expect(text(empty.querySelector('[data-empty]'))).toBe(de.guidance.waits.empty);
   });
 });
+
+// Spec 058 (T14, ISC-392): the heading level is an input. The spec page keeps the default level 3; the dashboard, where
+// the block is a sibling of Next up and Warnings under the page's h1, passes 2.
+describe('ui-waits-block heading level (spec 058, T14)', () => {
+  it('heads the block with an h3 by default, the section named by it', async () => {
+    const host = await render(WAITS);
+    const heading = host.querySelector('ui-section-header h3');
+    expect(heading).not.toBeNull();
+    expect(host.querySelector('ui-section-header h2')).toBeNull();
+    expect(heading?.id).toBe('waits-heading');
+    expect(host.querySelector('section')?.getAttribute('aria-labelledby')).toBe('waits-heading');
+  });
+
+  it('heads the block with an h2 when the caller passes level 2, entries and empty alike', async () => {
+    const host = await render(WAITS, { level: 2 });
+    expect(host.querySelector('ui-section-header h2')?.id).toBe('waits-heading');
+    expect(host.querySelector('ui-section-header h3')).toBeNull();
+    TestBed.resetTestingModule();
+    const empty = await render([], { level: 2 });
+    expect(empty.querySelector('ui-section-header h2')).not.toBeNull();
+    expect(empty.querySelector('ui-section-header h3')).toBeNull();
+  });
+});
+
+// Spec 058 (T40, T46, ISC-401, ISC-399): `form` `card-rows` sets every entry as a row in one card like Next up's card
+// form, three standing and the rest behind "Show all n" at the card's bottom (the dashboard); the default `stack` keeps
+// the highlighted card (the start and the spec page).
+describe('ui-waits-block form (spec 058, T40, T46)', () => {
+  const rowsOf = (el: Element | null | undefined): Element[] => [...(el?.querySelectorAll(':scope > ol.entries > li') ?? [])];
+
+  it('card-rows: one unpadded card of rows, the first three standing with ID link, reason and copy chip', async () => {
+    const host = await render(WAITS, { form: 'card-rows', chips: true });
+    const cards = host.querySelectorAll('ui-card');
+    expect(cards).toHaveLength(1);
+    const card = cards[0];
+    expect(card.hasAttribute('data-waits-card')).toBe(true);
+    expect(card.hasAttribute('data-top')).toBe(false);
+    const standing = rowsOf(card);
+    expect(standing).toHaveLength(3);
+    // The first entry stays [data-top] (e2e suites read it); the others are [data-row].
+    expect(standing.map((li) => li.hasAttribute('data-top'))).toEqual([true, false, false]);
+    expect(standing.map((li) => li.hasAttribute('data-row'))).toEqual([false, true, true]);
+    const top = standing[0];
+    expect(top.querySelector('a.row')?.getAttribute('href')).toBe('/w/harbor/s/006');
+    expect(text(top.querySelector('.id'))).toBe('006');
+    expect(text(top.querySelector('[data-reason]')).length).toBeGreaterThan(0);
+    expect(chips(top)).toEqual(['/spec review 006']);
+    expect(host.querySelector('ui-card .title, ui-priority, ui-relative-time, [data-more]')).toBeNull();
+  });
+
+  it('card-rows: the rest fold behind "Show all 7" at the bottom of the card, every row with reason and chip', async () => {
+    const host = await render(WAITS, { form: 'card-rows' });
+    const card = host.querySelector('ui-card[data-waits-card]');
+    const fold = card?.querySelector(':scope > ui-disclosure[data-show-all]');
+    expect(fold).not.toBeNull();
+    expect(card?.lastElementChild).toBe(fold);
+    const button = fold?.querySelector('button');
+    expect(text(button?.querySelector('[data-visible]'))).toBe('Show all 7');
+    expect(button?.querySelector('[data-visible]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(text(button?.querySelector('[data-name]'))).toBe('Show all 7 · Waits on you');
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
+    const folded = rowsOf(fold?.querySelector('.content'));
+    expect(folded).toHaveLength(4);
+    expect(folded.every((li) => li.hasAttribute('data-row') && text(li.querySelector('[data-reason]')) !== '')).toBe(true);
+    // Every entry once, in core's order, each with its chip.
+    expect([...host.querySelectorAll('[data-top], [data-row]')].map((li) => text(li.querySelector('.id')))).toEqual(WAITS.map((e) => e.spec));
+    expect(chips(host)).toEqual(WAITS.flatMap((e) => (e.command ? [e.command] : [])));
+  });
+
+  it('card-rows: three entries or fewer stand without a fold; German names the fold', async () => {
+    const short = await render(WAITS.slice(0, 3), { form: 'card-rows' });
+    expect(rowsOf(short.querySelector('ui-card'))).toHaveLength(3);
+    expect(short.querySelector('ui-disclosure')).toBeNull();
+    TestBed.resetTestingModule();
+    const de = await render(WAITS, { form: 'card-rows' }, 'de');
+    expect(text(de.querySelector('[data-show-all] [data-visible]'))).toBe('Alle 7 anzeigen');
+    expect(text(de.querySelector('[data-show-all] [data-name]'))).toBe('Alle 7 anzeigen · Liegt bei Ihnen');
+  });
+
+  it('card-rows: the top chip keeps the stack form\'s accessible names', async () => {
+    const row = await render(WAITS, { form: 'card-rows' });
+    const rowChip = row.querySelector('[data-top] ui-command-chip')?.innerHTML;
+    TestBed.resetTestingModule();
+    const card = await render(WAITS);
+    expect(rowChip).toBe(card.querySelector('[data-top] ui-command-chip')?.innerHTML);
+  });
+
+  it('stack is the default: the top entry stays the highlighted card', async () => {
+    const host = await render(WAITS);
+    expect(host.querySelector('ui-card[data-top]')).not.toBeNull();
+    expect(host.querySelector('[data-waits-card], ui-disclosure')).toBeNull();
+  });
+});

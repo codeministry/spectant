@@ -7,7 +7,7 @@
  * durations are the API's `elapsedMs` at `STUB_NOW`, so the browser clock is pinned there too.
  *
  * - surfaces: each of the five forms with its details on the board card, the status block, the idea card (board story
- *   card and the dashboard's ideas panel), the claim row and the task row, at the Mobile and the Desktop width. An idea
+ *   card and the Specs page's ideas panel, spec 058), the claim row and the task row, at the Mobile and the Desktop width. An idea
  *   is never `waiting` (a story carries no edges) and never `done` (an allocated story becomes a spec), so the idea
  *   card shows open, running and aborted, one beacon story each.
  * - tasks-run: the board polls once per refresh tick while the run variant changes between two polls: 003 reads
@@ -153,7 +153,7 @@ test.describe('run-state surfaces', () => {
         for (const { slug, form } of IDEA_FORMS) await expectForm(await boardCard(page, `idea:${slug}`, 'Idea'), form);
         // The aborted run's state word is the warning chip in the head, set off from the line, as on a spec card.
         await expect((await boardCard(page, 'idea:cert-expiry', 'Idea')).locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
-        await open(page, `/w/${WS}`);
+        await open(page, `/w/${WS}/specs`);
         await page.locator('app-ideas-panel [data-ideas-title]').click();
         for (const { slug, form } of IDEA_FORMS) await expectForm(page.locator(`app-ideas-panel li[data-idea="${slug}"] ui-item-state`), form);
         await expect(page.locator('app-ideas-panel li[data-idea="cert-expiry"] ui-item-state [data-item-line] ui-state-chip')).toHaveText(/aborted/i);

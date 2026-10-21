@@ -144,6 +144,15 @@ for (const width of [1440, 600, 390] as const) {
       await click(column, `workspace ${TARGET.ws}`);
       await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}$`));
 
+      // Spec 058: the workspace root is the dashboard; the list lives on the Specs page, one click away through the KPI
+      // band's Specs figure (the shortest way there, as path P6 measures).
+      // Below 640 px the band's tiles give way to the Pulse card; its Specs cell carries the same link.
+      const specsKpi = page.locator(`app-kpi-band a[href="/w/${TARGET.ws}/specs"]:visible`).first();
+      await expect(specsKpi).toBeVisible();
+      if (!(await wholly(specsKpi))) await steps.scrollTo(specsKpi);
+      await click(specsKpi, 'kpi specs');
+      await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}/specs$`));
+
       // The spec table opens a row in two steps: the first click selects it for the detail sidebar (`?sel=spec:`, spec
       // 026), the second opens the spec: the row again, or below 1120 px the sidebar's "Open spec", which may cover the row.
       const row = page.locator(`[data-panel="specs"] [data-spec-row="${TARGET.spec}"]`);
@@ -355,28 +364,104 @@ test.describe('P2 · waiting spec with its command @1440', () => {
   });
 });
 
+
 /*
- * Usage path P3 · state of a workspace (spec 021, ISC-246.1; notation of spec 018): from `/` to the dense harbor
- * dashboard read — its KPI band, TL;DR card, Next up list, the spec list's head and its first five rows — at 1440 and
- * 600 px (900 px high, the height `atWidth` gives both), in English and in German.
+ * Usage paths P3 and P6 share the dense harbor workspace (`DENSE_HEADER: on`: 22 specs, 3 Next-up entries, 7 waiting
+ * entries, a fresh TL;DR; density `comfortable`), the widths 1440 and 600 px (900 px high, the height `atWidth` gives
+ * both) and both languages. Reading is not a step: a block counts as read once its box is wholly in the viewport after
+ * the steps so far. Where a block is not yet read, the path scrolls down by at most one screen (seven eighths of the
+ * viewport, as Page Down) so the first unread block starts under the sticky header, and that scroll is one step.
+ */
+const DENSE = { ws: 'harbor' } as const;
+/** More scrolls than any budget allows, so a red run still reports how many screens the path takes. */
+const MAX_SCROLLS = 8;
+
+type Block = readonly [string, Locator];
+
+/** True when the target's box lies wholly between the viewport's top and bottom edge (P1's `wholly`). */
+const whollyOnScreen = (target: Locator): Promise<boolean> =>
+  target.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= window.innerHeight;
+  });
+
+/** One stub session per test, so the language and density set here never leak into another worker's case. */
+function useDenseSession(prefix: string, lang: 'en' | 'de', width: number): void {
+  let session = '';
+  test.beforeEach(async ({ page, request }, info) => {
+    session = `${prefix}-${lang}-${String(width)}-${info.testId}`;
+    await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on', [SESSION_HEADER]: session });
+    const saved = await request.put('/api/settings', {
+      data: { language: lang, density: 'comfortable' },
+      headers: { [SESSION_HEADER]: session },
+    });
+    expect(saved.ok()).toBe(true);
+  });
+  test.afterEach(async ({ request }) => {
+    await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+  });
+}
+
+/** Step 1 of both paths: from `/` a click on harbor's workspace column (a scroll to it first would count). */
+async function openWorkspace(page: Page, lang: 'en' | 'de', steps: StepCounter, column: Locator): Promise<void> {
+  if (!(await whollyOnScreen(column))) await steps.scrollTo(column);
+  await steps.clickOn(column, `workspace ${DENSE.ws}`);
+  await expect(page).toHaveURL(new RegExp(`/w/${DENSE.ws}$`));
+  await expect(page.locator('html')).toHaveAttribute('lang', lang);
+}
+
+/** Each block's height and top in page coordinates before any scroll, for the report. */
+async function geometryOf(blocks: readonly Block[]): Promise<string> {
+  const geometry: string[] = [];
+  for (const [name, target] of blocks) {
+    if ((await target.count()) === 0) continue;
+    const box = await target.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top + window.scrollY), height: Math.round(r.height) };
+    });
+    geometry.push(`${name} ${String(box.height)} px @y${String(box.top)}`);
+  }
+  return geometry.join('; ');
+}
+
+/** Reads what is wholly on screen and scrolls at most one screen toward the first unread block, until all are read. */
+async function readAll(page: Page, steps: StepCounter, targets: readonly Block[], width: number): Promise<string[]> {
+  const height = page.viewportSize()?.height ?? 0;
+  const headerBottom = await page.locator('app-shell header').first().evaluate((el) => Math.max(0, Math.round(el.getBoundingClientRect().bottom)));
+  const read = new Set<string>();
+  for (let scrolls = 0; ; scrolls++) {
+    for (const [name, target] of targets) if (!read.has(name) && (await whollyOnScreen(target))) read.add(name);
+    const unread = targets.find(([name]) => !read.has(name));
+    if (!unread || scrolls >= MAX_SCROLLS) break;
+    const top = await unread[1].evaluate((el) => el.getBoundingClientRect().top);
+    const delta = Math.max(1, Math.min(Math.round(height * 0.875), Math.round(top - headerBottom)));
+    steps.scroll();
+    const before = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(width / 2, height / 2);
+    await page.mouse.wheel(0, delta);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+  }
+  return targets.map(([name]) => name).filter((name) => !read.has(name));
+}
+
+/*
+ * Usage path P3 · state of a workspace (spec 058, ISC-401; spec 021's ISC-246.1 for the dashboard; notation of spec
+ * 018): from `/` to the dense harbor dashboard read — its KPI band, TL;DR card, "Waits on you" (`#waiting`) and Next up,
+ * the order of the one column — at 1440 and 600 px, in English and in German. Since the split the spec list stands on
+ * the page Specs, so P3 reads no list head; the way to the list is P6.
  *
  *   bun run e2e -- path -g P3
  *
- * The dense stub (`DENSE_HEADER: on`) makes harbor a workspace of 22 specs with 3 Next-up entries, 7 waiting entries and
- * a fresh TL;DR; the density is `comfortable`. Step 1 is the click on harbor's workspace column, as in P1. Reading is not
- * a step: a block counts as read once its box is wholly in the viewport (P1's `wholly`) after the steps so far. Where a
- * block is not yet read, the path scrolls down by at most one screen (seven eighths of the viewport, as Page Down) so the
- * first unread block starts under the sticky header, and that scroll is one step. Spec 018's Ist: 4 steps and 7.5 s at
- * 1440 px, 6 steps and 10.8 s at 600 px. The annotations carry the Ist: steps, KLM seconds, the trail, the bottom of the
- * fifth row against the viewport height, and each block's height and top before any scroll.
+ * Step 1 is the click on harbor's workspace column, as in P1. Spec 018's Ist: 4 steps and 7.5 s at 1440 px, 6 steps
+ * and 10.8 s at 600 px. The annotations carry the Ist: steps, KLM seconds, the trail, the bottom of Next up against the
+ * viewport height, and each block's height and top before any scroll.
  */
-const P3 = { ws: 'harbor', rows: 5 } as const;
 const P3_BUDGET: Readonly<Record<number, { steps: number; seconds: number }>> = {
-  1440: { steps: 1, seconds: 3 },
+  // Spec 058 review (2026-10-21): three Waits rows push Next up below the fold at 1440 too; one screen of scrolling is
+  // allowed there as at 600 (ISC-401 as refined).
+  1440: { steps: 2, seconds: 4.5 },
   600: { steps: 2, seconds: 4.5 },
 };
-/** More scrolls than any budget allows, so a red run still reports how many screens the path takes. */
-const P3_MAX_SCROLLS = 8;
 
 test.describe('P3 · step counter', () => {
   test('P3 counter: one click is M + P + B = 2.65 s; a click and one screen make M + P + B + M + K = 4.28 s', () => {
@@ -393,97 +478,124 @@ for (const lang of ['en', 'de'] as const) {
   for (const width of [1440, 600] as const) {
     test.describe(`P3 · state of a workspace @${width} in ${lang}`, () => {
       test.use(atWidth(width));
-
-      // One stub session per test, so the language and density set here never leak into another worker's case.
-      let session = '';
-      test.beforeEach(async ({ page, request }, info) => {
-        session = `p3-${lang}-${String(width)}-${info.testId}`;
-        await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on', [SESSION_HEADER]: session });
-        const saved = await request.put('/api/settings', {
-          data: { language: lang, density: 'comfortable' },
-          headers: { [SESSION_HEADER]: session },
-        });
-        expect(saved.ok()).toBe(true);
-      });
-      test.afterEach(async ({ request }) => {
-        await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
-      });
+      useDenseSession('p3', lang, width);
 
       const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
-      test(`P3 workspace @${width} in ${lang}: the column, then KPI band, TL;DR, Next up, the spec list head and its first ${P3.rows} rows read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
+      test(`P3 workspace @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you and Next up read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
         await page.goto('/');
         await expect(page.locator('html')).toHaveAttribute('lang', lang);
-        const column = page.locator(`app-workspace-column[data-ws="${P3.ws}"] .ws-head a[href="/w/${P3.ws}"]`);
+        const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
         await expect(column).toBeVisible();
         const steps = new StepCounter(page);
-        const wholly = (target: Locator) =>
-          target.evaluate((el) => {
-            const r = el.getBoundingClientRect();
-            return r.top >= 0 && r.bottom <= window.innerHeight;
-          });
+        await openWorkspace(page, lang, steps, column);
 
-        if (!(await wholly(column))) await steps.scrollTo(column);
-        await steps.clickOn(column, `workspace ${P3.ws}`);
-        await expect(page).toHaveURL(new RegExp(`/w/${P3.ws}$`));
-
-        // A row is its list item: the row link stretches over it (`::after`), so the item's box is what is read.
-        const rows = page.locator('app-spec-table li:has([data-spec-row])');
-        await expect(rows.nth(P3.rows - 1)).toBeVisible();
-        // The list shows up to 10 rows before its fold (5 until 2026-10-20); the path reads the first P3.rows of them.
-        expect(await rows.count()).toBeGreaterThanOrEqual(P3.rows);
-        const blocks: ReadonlyArray<readonly [string, Locator]> = [
-          ['waits', page.locator('app-waiting-section:visible').first()],
+        const nextUp = page.locator('app-next-up-list:visible').first();
+        // The dashboard's one column, in its order; the spec list is not on it (spec 058).
+        const targets: readonly Block[] = [
           ['kpi band', page.locator('app-kpi-band')],
           ['tldr', page.locator('[data-ui="brief"]').first()],
-          ['next up', page.locator('app-next-up-list:visible').first()],
-          ['list head', page.locator('app-spec-table .t-head')],
-          ...Array.from({ length: P3.rows }, (_, i) => [`row ${String(i + 1)}`, rows.nth(i)] as const),
+          ['waits', page.locator('#waiting')],
+          ['next up', nextUp],
         ];
-        const targets = blocks.filter(([name]) => name !== 'waits');
         for (const [name, target] of targets) await expect(target, `${name} is on the page`).toBeVisible();
+        await expect(page.locator('app-spec-table'), 'the dashboard holds no spec list').toHaveCount(0);
         expect(await page.evaluate(() => window.scrollY), 'the dashboard opens unscrolled').toBe(0);
         const height = page.viewportSize()?.height ?? 0;
+        const geometry = await geometryOf(targets);
+        const nextUpBottom = await nextUp.evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
 
-        // The geometry before any scroll: each block's height and top in page coordinates, for the report.
-        const geometry: string[] = [];
-        for (const [name, target] of blocks) {
-          if ((await target.count()) === 0) continue;
-          const box = await target.evaluate((el) => {
-            const r = el.getBoundingClientRect();
-            return { top: Math.round(r.top + window.scrollY), height: Math.round(r.height) };
-          });
-          geometry.push(`${name} ${String(box.height)} px @y${String(box.top)}`);
-        }
-        const lastBottom = await rows.nth(P3.rows - 1).evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
-        const headerBottom = await page.locator('app-shell header').first().evaluate((el) => Math.max(0, Math.round(el.getBoundingClientRect().bottom)));
-
-        // Read what is wholly on screen; scroll at most one screen toward the first unread block, until all are read.
-        const read = new Set<string>();
-        for (let scrolls = 0; ; scrolls++) {
-          for (const [name, target] of targets) if (!read.has(name) && (await wholly(target))) read.add(name);
-          const unread = targets.find(([name]) => !read.has(name));
-          if (!unread || scrolls >= P3_MAX_SCROLLS) break;
-          const top = await unread[1].evaluate((el) => el.getBoundingClientRect().top);
-          const delta = Math.max(1, Math.min(Math.round(height * 0.875), Math.round(top - headerBottom)));
-          steps.scroll();
-          const before = await page.evaluate(() => window.scrollY);
-          await page.mouse.move(width / 2, height / 2);
-          await page.mouse.wheel(0, delta);
-          await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
-        }
+        const unreadNames = await readAll(page, steps, targets, width);
 
         const seconds = klm(steps.sequence);
-        const unreadNames = targets.map(([name]) => name).filter((name) => !read.has(name));
         test.info().annotations.push(
           {
             type: `P3 workspace @${width} ${lang}`,
-            description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; row ${String(P3.rows)} bottom y ${String(lastBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
+            description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; next up bottom y ${String(nextUpBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
           },
-          { type: `P3 heights @${width} ${lang}`, description: geometry.join('; ') },
+          { type: `P3 heights @${width} ${lang}`, description: geometry },
         );
         expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
         expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
-        if (width === 1440) expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls at 1440').toBe(0);
+        expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
+        expect(unreadNames, 'every block read').toEqual([]);
+      });
+    });
+  }
+}
+
+/*
+ * Usage path P6 · list of a workspace (spec 058, ISC-402; notation of spec 018): from `/` to the dense harbor Specs
+ * page read — the spec list's head and its first five rows on `/w/harbor/specs` — at 1440 and 600 px, in English and in
+ * German.
+ *
+ *   bun run e2e -- path -g P6
+ *
+ * The start offers no link to a workspace's Specs page, so the shortest path is two clicks: harbor's workspace column,
+ * then the KPI band's Specs figure, which links to the page (one click, where the page menu takes two: open, entry).
+ * The annotations carry the Ist: steps, KLM seconds, the trail, the bottom of the fifth row against the viewport height,
+ * and each block's height and top before any scroll.
+ */
+const P6 = { rows: 5 } as const;
+const P6_BUDGET = { steps: 2 } as const;
+
+test.describe('P6 · step counter', () => {
+  test('P6 counter: two clicks are 2 steps and 2 × (M + P + B) = 5.3 s; a third screen would break the budget', () => {
+    const r = new StepRecorder();
+    r.click('workspace');
+    r.click('kpi specs');
+    expect(r.count).toBe(2);
+    expect(klm(r.sequence)).toBe(5.3);
+    r.scroll();
+    expect(r.count).toBeGreaterThan(P6_BUDGET.steps);
+  });
+});
+
+for (const lang of ['en', 'de'] as const) {
+  for (const width of [1440, 600] as const) {
+    test.describe(`P6 · list of a workspace @${width} in ${lang}`, () => {
+      test.use(atWidth(width));
+      useDenseSession('p6', lang, width);
+
+      test(`P6 list @${width} in ${lang}: the column, the KPI band's Specs figure, then the list head and its first ${P6.rows} rows read in ≤ ${P6_BUDGET.steps} steps`, async ({ page }) => {
+        await page.goto('/');
+        await expect(page.locator('html')).toHaveAttribute('lang', lang);
+        const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
+        await expect(column).toBeVisible();
+        const steps = new StepCounter(page);
+        await openWorkspace(page, lang, steps, column);
+
+        // The KPI band's Specs link: the tile at every tier where it is a tile, the cell where the band is a row of cells.
+        const specsLink = page.locator(`app-kpi-band a[href="/w/${DENSE.ws}/specs"]:visible`).first();
+        await expect(specsLink).toBeVisible();
+        if (!(await whollyOnScreen(specsLink))) await steps.scrollTo(specsLink);
+        await steps.clickOn(specsLink, 'kpi specs');
+        await expect(page).toHaveURL(new RegExp(`/w/${DENSE.ws}/specs$`));
+        await expect(page.locator('app-not-found')).toHaveCount(0);
+
+        // A row is its list item: the row link stretches over it (`::after`), so the item's box is what is read.
+        const rows = page.locator('app-spec-table li:has([data-spec-row])');
+        await expect(rows.nth(P6.rows - 1)).toBeVisible();
+        expect(await rows.count()).toBeGreaterThanOrEqual(P6.rows);
+        const targets: readonly Block[] = [
+          ['list head', page.locator('app-spec-table .t-head')],
+          ...Array.from({ length: P6.rows }, (_, i) => [`row ${String(i + 1)}`, rows.nth(i)] as const),
+        ];
+        for (const [name, target] of targets) await expect(target, `${name} is on the page`).toBeVisible();
+        const height = page.viewportSize()?.height ?? 0;
+        const geometry = await geometryOf(targets);
+        const lastBottom = await rows.nth(P6.rows - 1).evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
+
+        const unreadNames = await readAll(page, steps, targets, width);
+
+        const seconds = klm(steps.sequence);
+        test.info().annotations.push(
+          {
+            type: `P6 list @${width} ${lang}`,
+            description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; row ${String(P6.rows)} bottom y ${String(lastBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
+          },
+          { type: `P6 heights @${width} ${lang}`, description: geometry },
+        );
+        expect.soft(steps.count, 'P6 steps').toBeLessThanOrEqual(P6_BUDGET.steps);
         expect(unreadNames, 'every block read').toEqual([]);
       });
     });
