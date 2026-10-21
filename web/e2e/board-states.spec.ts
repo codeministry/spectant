@@ -107,7 +107,7 @@ test.describe('states', () => {
     for (const s of seen) {
       expect(s.glyph, `glyph of a ${s.state} card`).toBe(s.state);
       expect(s.chip, `chip of ${s.state}`).toBe(EN.states.card[s.state as CardState]);
-      // spec 024: prototype value (principal: the prototype wins)
+      // spec 024: the card's state edge is 4 px.
       expect(s.edgeWidth, `edge of ${s.state}`).toBe('4px');
       const first = byState.get(s.state);
       if (first === undefined) byState.set(s.state, s);
@@ -148,7 +148,7 @@ test.describe('states', () => {
 
     await page.goto(BOARD);
     await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    // spec 024: prototype value (principal: the prototype wins) — Landed clips past five cards at every tier, so a
+    // spec 024: Landed clips past five cards at every tier, so a
     // clipped card is reached through its lane's "show all n" first.
     const id = page.locator(`${CARDS}[data-card="${card.task}"] button.id`);
     if (!(await id.isVisible())) await page.locator(`[data-lane="${card.lane}"] [data-show-all]`).click();

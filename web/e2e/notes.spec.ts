@@ -117,7 +117,7 @@ test.describe('at 1440', () => {
   test('the anchor picker sets a claim anchor', async ({ page }) => {
     const target = note('spec');
     await page.goto(`${BASE}/${target.id}`);
-    // spec 024: prototype value (principal: the prototype wins) — the anchor button opens the `anchor-pop` popover.
+    // spec 024: the anchor button opens the `anchor-pop` popover.
     await area(page).locator('[data-anchor-trigger]').click();
     const pop = area(page).locator('[data-anchor-pop]');
     await expect(pop.locator('[data-value="claim:002:ISC-52"]')).toHaveCount(1);
@@ -133,7 +133,7 @@ test.describe('at 1440', () => {
     await area(page).locator('[data-note-delete]').click();
     const dialog = page.locator('[data-note-confirm] dialog');
     await expect(dialog).toBeVisible();
-    // spec 024: prototype value (principal: the prototype wins) — the prototype's confirm dialog says "Keep".
+    // spec 024: the confirm dialog says "Keep".
     await dialog.getByRole('button', { name: 'Keep' }).click();
     await expect(dialog).toBeHidden();
     await expect(rows(page)).toHaveCount(SEEDED.length);
@@ -196,7 +196,7 @@ test.describe('claim card badge', () => {
     await posted;
     await expect(page).toHaveURL(/\/notes\/00000000-0000-4000-8000-\d{12}$/);
     const put = page.waitForRequest(isWrite('PUT'));
-    // spec 024: prototype value (principal: the prototype wins) — the anchor button opens the `anchor-pop` popover.
+    // spec 024: the anchor button opens the `anchor-pop` popover.
     await area(page).locator('[data-anchor-trigger]').click();
     await area(page).locator('[data-anchor-pop] [data-value="claim:002:ISC-52"]').click();
     expect(((await put).postDataJSON() as { anchor: unknown }).anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-52' });

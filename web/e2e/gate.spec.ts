@@ -69,7 +69,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         const gate = page.locator(GATE);
         await expect(gate).toHaveAttribute('data-state', 'paused');
         await expect(gate).toBeDisabled();
-        // spec 024: prototype value (principal: the prototype wins) — the time and the session stand in the `.gate-hint` under the button.
+        // spec 024: the time and the session stand in the `.gate-hint` under the button.
         const hint = page.locator(`${HEAD} [data-gate-hint]`);
         await expect(hint).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
         const banner = page.locator(`${HEAD} [data-agent-banner]`);

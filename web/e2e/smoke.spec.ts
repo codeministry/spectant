@@ -52,7 +52,7 @@ const ROUTES = [
       const specs = page.locator('[data-page="specs"]');
       await expect(specs).toBeVisible();
       await expect(specs.locator('[data-page-eyebrow]')).toContainText('harbor');
-      // spec 024: prototype value (principal: the prototype wins): the h1 reads "Specs · <ws>".
+      // spec 024: the h1 reads "Specs · <ws>".
       await expect(specs.getByRole('heading', { level: 1, name: 'Specs · harbor', exact: true })).toBeVisible();
       await expect(specs.locator('h2#specs')).toBeVisible();
     },

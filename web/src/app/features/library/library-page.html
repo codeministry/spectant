@@ -33,7 +33,7 @@
     </div>
   </ui-card>
 } @else if (docs().length === 0) {
-  <!-- Prototype `library.js`, the branch without data: a workspace without documents, the empty state with the next command. -->
+  <!-- The branch without data: a workspace without documents, the empty state with the next command. -->
   <ui-card class="lib-card lib-none" data-library-none>
     <ui-empty-state
       icon="book"
@@ -284,7 +284,7 @@
 }
 }
 
-<!-- One document row (prototype `lib-row`): the type tag with its icon, the title, the flag line, the meta line. -->
+<!-- One document row: the type tag with its icon, the title, the flag line, the meta line. -->
 <ng-template #rowTpl let-row>
   <button
     type="button"
