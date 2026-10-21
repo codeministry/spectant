@@ -46,60 +46,8 @@ export function releasableRun(info: ItemStateInfo | null | undefined): ItemRun |
   imports: [TranslocoPipe, UiButton, UiDialog, UiIcon, UiNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-ui': 'run-release', '[attr.data-run]': 'run()?.run ?? null' },
-  styles: `
-    :host { display: grid; gap: 8px; justify-items: start; min-inline-size: 0; }
-    button.release { min-block-size: 44px; block-size: auto; }
-    @container shell (width < 640px) { :host { justify-items: stretch; } }
-    .reason { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
-    ui-dialog { --ui-dialog-size: 440px; }
-    .body { display: grid; gap: 16px; }
-    .question { margin: 0; font: 600 17px/26px var(--font-brand); }
-    .explain { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-    .actions button { min-block-size: 44px; block-size: auto; }
-  `,
-  template: `
-    @if (run(); as run) {
-      <button
-        ui-button
-        class="release"
-        variant="outline"
-        tone="warning"
-        data-release
-        [disabled]="state().kind === 'no-viewer' || state().kind === 'sending'"
-        [attr.aria-describedby]="state().kind === 'no-viewer' ? reasonId : null"
-        (click)="ask()"
-      >
-        <ui-icon name="lock-open" [size]="16" />{{ 'itemState.release.button' | transloco }}
-      </button>
-      @switch (state().kind) {
-        @case ('no-viewer') {
-          <p class="reason" data-release-no-viewer [id]="reasonId">{{ 'itemState.release.noViewer' | transloco }}</p>
-        }
-        @case ('changed') {
-          <ui-notice tone="warning" data-release-changed>{{ 'itemState.release.changed' | transloco }}</ui-notice>
-        }
-        @case ('aborted') {
-          <ui-notice tone="warning" data-release-aborted>{{ 'itemState.release.aborted' | transloco }}</ui-notice>
-        }
-        @case ('error') {
-          <ui-notice tone="error" data-release-error>{{ 'itemState.release.failed' | transloco: { status: errorStatus() } }}</ui-notice>
-        }
-      }
-      <ui-dialog [(open)]="confirming" [label]="'itemState.release.button' | transloco">
-        <div class="body" data-release-dialog>
-          <p class="question">{{ 'itemState.release.question' | transloco }}</p>
-          <p class="explain">{{ 'itemState.release.explain' | transloco }}</p>
-          <div class="actions">
-            <button ui-button data-release-keep data-autofocus (click)="confirming.set(false)">{{ 'itemState.release.keep' | transloco }}</button>
-            <button ui-button variant="primary" tone="warning" data-release-confirm [disabled]="state().kind === 'sending'" (click)="release(run)">
-              {{ 'itemState.release.confirm' | transloco }}
-            </button>
-          </div>
-        </div>
-      </ui-dialog>
-    }
-  `,
+  styleUrl: './run-release.css',
+  templateUrl: './run-release.html',
 })
 export class RunRelease {
   /** The item as the API serves it; the button shows only while its run line's run is open. */

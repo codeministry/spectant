@@ -1,0 +1,55 @@
+
+    <footer class="zen-bar" data-zen-footer [attr.data-merged]="bar() ? '' : null" [attr.aria-label]="'shell.zen.footer' | transloco">
+      @if (wsPath(); as path) {
+        <nav class="zen-path" data-zen-part="path" aria-hidden="true">
+          <a [routerLink]="path.link" tabindex="-1"><ui-icon name="arrow-left" [size]="12" /><ui-ws-badge size="sm" [name]="path.name" />{{ path.name }}</a>
+          <span class="zen-here">/</span>
+          <span class="zen-here">{{ areaKey() | transloco }}</span>
+        </nav>
+      }
+      <span class="zen-id" data-zen-part="id">{{ id() }}</span>
+      @if (title(); as title) {
+        <span class="zen-title" data-zen-part="title" [attr.title]="title">{{ title }}</span>
+      }
+      <span class="zen-chips">
+        @if (type(); as type) {
+          <ui-chip variant="plain" data-zen-part="type">{{ 'types.' + type | transloco }}</ui-chip>
+        }
+        <ui-chip tone="primary" [dot]="true" data-zen-part="stage">{{ stageKey() | transloco }}</ui-chip>
+      </span>
+      @if (claims(); as claims) {
+        <span class="zen-claims" data-zen-part="claims">
+          <ui-meter
+            class="zen-meter"
+            [mini]="true"
+            [value]="claims.closed"
+            [max]="claims.total"
+            [label]="'common.claimsClosed' | transloco: claims"
+          />
+          <span aria-hidden="true">{{ 'shell.zen.claims' | transloco: claims }}</span>
+        </span>
+      }
+      <span class="zen-command">
+        @if (command(); as command) {
+          <ui-command-chip
+            [command]="command"
+            [copyLabel]="'common.copyCommand' | transloco"
+            [copiedLabel]="'common.copied' | transloco: { command }"
+            [manualHint]="'common.copyFallback' | transloco"
+          />
+        }
+      </span>
+      @if (notesLink(); as link) {
+        <a class="zen-notes badge badge-ghost" data-zen-part="notes" [routerLink]="link">
+          @if (notes(); as count) {
+            {{ 'shell.zen.notesCount' | transloco: { count } }}
+          } @else {
+            {{ 'shell.zen.notes' | transloco }}
+          }
+        </a>
+      }
+      @if (bar(); as bar) {
+        <ng-container [ngTemplateOutlet]="bar" />
+      }
+    </footer>
+  

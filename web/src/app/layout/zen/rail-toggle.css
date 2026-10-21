@@ -1,0 +1,57 @@
+:host {
+  display: flex;
+}
+
+:host([data-collapsed]) {
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Prototype: rail-tab and rail-collapse are pure icons, no background, border or shadow, also on hover. */
+:host button.fold.fold[data-control] {
+  --btn-bg: transparent;
+  --btn-border: transparent;
+  --btn-shadow: none;
+
+  background: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--muted);
+  transition: color var(--dur-hover) var(--ease);
+}
+
+:host button.fold.fold[data-control]:is(:hover, :focus-visible) {
+  --btn-bg: transparent;
+
+  color: var(--disp-text);
+}
+
+:host button.fold[data-control='rail-expand'] {
+  animation: rail-tab-in var(--dur-pop) var(--ease);
+}
+
+.count {
+  min-inline-size: 24px;
+  font: 500 11px / 16px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--muted);
+}
+
+.count[data-tone='attention'] {
+  color: var(--hover-text);
+}
+
+@keyframes rail-tab-in {
+  from {
+    opacity: 0;
+    translate: 4px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host button.fold[data-control='rail-expand'] {
+    animation: none;
+  }
+}

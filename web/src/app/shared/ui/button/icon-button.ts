@@ -25,7 +25,7 @@ import { swallowClicksWhile } from './disabled';
     '[attr.aria-disabled]': "disabled() ? 'true' : null",
     '[attr.disabled]': 'null',
   },
-  template: '<ui-icon [name]="icon()" [size]="16" />',
+  templateUrl: './icon-button.html',
 })
 export class UiIconButton {
   readonly icon = input.required<IconName>();

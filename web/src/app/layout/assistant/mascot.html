@@ -1,0 +1,15 @@
+
+    <svg class="mascot" viewBox="0 0 48 48" aria-hidden="true" focusable="false" data-icon-exempt>
+      <g class="m-rings">
+        @for (arc of arcs; track arc.offset) {
+          <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" [attr.stroke-dashoffset]="arc.offset" [style.--m-mix]="arc.mix" />
+        }
+      </g>
+      <g class="m-face">
+        <circle class="m-dot" cx="31.5" cy="11" r="7.5" />
+        <circle class="m-eye" cx="29.3" cy="10" r="1.15" />
+        <circle class="m-eye" cx="33.7" cy="10" r="1.15" />
+        <path class="m-mouth" d="M29.5 13.4c.9 1.2 3.1 1.2 4 0" />
+      </g>
+    </svg>
+  

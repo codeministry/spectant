@@ -1,0 +1,50 @@
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+:host(:empty) {
+  display: none;
+}
+
+.guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.lead {
+  display: flex;
+  flex: 1 1 28ch;
+  gap: 8px;
+  align-items: flex-start;
+  min-inline-size: 0;
+}
+
+ui-glyph {
+  flex: none;
+  padding-block-start: 3px;
+}
+
+.sentence {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: break-word;
+}
+
+.waiting {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--disp-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+@media (forced-colors: active) {
+  .waiting {
+    color: LinkText;
+  }
+}

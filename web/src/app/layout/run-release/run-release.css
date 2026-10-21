@@ -1,0 +1,57 @@
+:host {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  min-inline-size: 0;
+}
+
+button.release {
+  min-block-size: 44px;
+  block-size: auto;
+}
+
+@container shell (width < 640px) {
+  :host {
+    justify-items: stretch;
+  }
+}
+
+.reason {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+ui-dialog {
+  --ui-dialog-size: 440px;
+}
+
+.body {
+  display: grid;
+  gap: 16px;
+}
+
+.question {
+  margin: 0;
+  font: 600 17px/26px var(--font-brand);
+}
+
+.explain {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.actions button {
+  min-block-size: 44px;
+  block-size: auto;
+}

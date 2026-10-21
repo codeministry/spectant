@@ -24,27 +24,8 @@ interface BarModel {
   selector: 'app-tab-bar-slot',
   imports: [TabBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host {
-      position: sticky;
-      inset-block-start: 64px;
-      z-index: 5;
-      display: block;
-      min-inline-size: 0;
-      margin-block-end: 24px;
-      border-block-end: 1px solid var(--line);
-      background: var(--page-glass);
-      /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
-      -webkit-backdrop-filter: blur(10px);
-      backdrop-filter: blur(10px);
-    }
-    :host(:empty) { display: none; }
-  `,
-  template: `
-    @if (bar(); as bar) {
-      <app-tab-bar [tabs]="bar.tabs" [current]="bar.current" [labelKey]="bar.labelKey" />
-    }
-  `,
+  styleUrl: './tab-bar-slot.css',
+  templateUrl: './tab-bar-slot.html',
 })
 export class TabBarSlot {
   private readonly state = inject(ShellState);

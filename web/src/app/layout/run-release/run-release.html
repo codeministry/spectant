@@ -1,0 +1,42 @@
+
+    @if (run(); as run) {
+      <button
+        ui-button
+        class="release"
+        variant="outline"
+        tone="warning"
+        data-release
+        [disabled]="state().kind === 'no-viewer' || state().kind === 'sending'"
+        [attr.aria-describedby]="state().kind === 'no-viewer' ? reasonId : null"
+        (click)="ask()"
+      >
+        <ui-icon name="lock-open" [size]="16" />{{ 'itemState.release.button' | transloco }}
+      </button>
+      @switch (state().kind) {
+        @case ('no-viewer') {
+          <p class="reason" data-release-no-viewer [id]="reasonId">{{ 'itemState.release.noViewer' | transloco }}</p>
+        }
+        @case ('changed') {
+          <ui-notice tone="warning" data-release-changed>{{ 'itemState.release.changed' | transloco }}</ui-notice>
+        }
+        @case ('aborted') {
+          <ui-notice tone="warning" data-release-aborted>{{ 'itemState.release.aborted' | transloco }}</ui-notice>
+        }
+        @case ('error') {
+          <ui-notice tone="error" data-release-error>{{ 'itemState.release.failed' | transloco: { status: errorStatus() } }}</ui-notice>
+        }
+      }
+      <ui-dialog [(open)]="confirming" [label]="'itemState.release.button' | transloco">
+        <div class="body" data-release-dialog>
+          <p class="question">{{ 'itemState.release.question' | transloco }}</p>
+          <p class="explain">{{ 'itemState.release.explain' | transloco }}</p>
+          <div class="actions">
+            <button ui-button data-release-keep data-autofocus (click)="confirming.set(false)">{{ 'itemState.release.keep' | transloco }}</button>
+            <button ui-button variant="primary" tone="warning" data-release-confirm [disabled]="state().kind === 'sending'" (click)="release(run)">
+              {{ 'itemState.release.confirm' | transloco }}
+            </button>
+          </div>
+        </div>
+      </ui-dialog>
+    }
+  
