@@ -57,10 +57,10 @@
   line-height: 24px;
 }
 
-/* `.at-grid`: as many 160 px tiles as fit. */
+/* `.at-grid`: as many 160 px tiles as fit; `auto-fit` drops the empty tracks, so the row spans the full width. */
 .tile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
