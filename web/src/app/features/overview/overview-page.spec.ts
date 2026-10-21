@@ -155,9 +155,6 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const lists = column?.querySelector('[data-lists]');
     expect(children[1]?.hasAttribute('data-lists')).toBe(true);
     expect(children[2]?.getAttribute('data-ui')).toBe('kpi-strip');
-    // ISC-462: without a held lock the wrapper holds the waits block alone: no working block, no heading, no track.
-    expect([...(lists?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-waits-block']);
-    expect(column?.querySelector('ui-working-block')).toBeNull();
     const block = lists?.querySelector('[data-ui="waits-block"]');
     const waits = harbor.guidance.waits;
     expect(waits.length).toBe(7);
@@ -196,9 +193,32 @@ describe('OverviewPage (T65, ISC-16)', () => {
     expect(text(tiles[0]?.querySelector('[data-title]'))).toBe(titleOf('004'));
     expect(text(tiles[0]?.querySelector('[data-agent]'))).toBe('a:claude:spec-004/T2');
     expect(tiles[0]?.querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/004');
-    // ISC-462: lantern holds no lock and carries no working block.
-    const lanternLists = root.querySelector('[data-ws="lantern"] [data-lists]');
-    expect([...(lanternLists?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-waits-block']);
+  });
+
+  // spec 064 T20 (ISC-462): without a held claim a column shows no element of "In progress", in either workspace (harbor
+  // has waiting entries, lantern none); the golden bodies carry `taken: []` on every row.
+  it('ISC-462: no In Arbeit element without a held claim', async () => {
+    expect([...harbor.specs, ...lantern.specs].every((row) => row.taken.length === 0)).toBe(true);
+    const { root } = await render([entry('harbor'), entry('lantern')]);
+    for (const ws of ['harbor', 'lantern']) {
+      const column = root.querySelector(`.overview [data-ws="${ws}"]`);
+      expect(column).not.toBeNull();
+      // The heading first: a block that drew its section header for 0 entries fails here.
+      expect(column?.querySelector(`#working-${ws}, [id^="working-"]`)).toBeNull();
+      const headings = [...(column?.querySelectorAll('h1, h2, h3, h4, [role="heading"]') ?? [])].map((el) => text(el));
+      expect(headings.filter((heading) => heading.includes('In progress'))).toEqual([]);
+      expect(column?.querySelector('ui-working-block')).toBeNull();
+      // No tile list beyond the waits one (lantern's waits block shows its sentence and no list at all).
+      const tiles = [...(column?.querySelectorAll('.tiles') ?? [])];
+      expect(tiles.filter((list) => !list.closest('[data-ui="waits-block"]'))).toEqual([]);
+      // Exactly three subgrid tracks: identity, the lists wrapper, the kpi-strip; the wrapper holds the waits block alone.
+      const children = [...(column?.children ?? [])];
+      expect(children.map((el) => el.tagName.toLowerCase())).toEqual(['app-ws-identity', 'div', 'div']);
+      expect(children[1]?.hasAttribute('data-lists')).toBe(true);
+      expect(children[2]?.getAttribute('data-ui')).toBe('kpi-strip');
+      expect([...(children[1]?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-waits-block']);
+    }
+    expect(root.querySelectorAll('[data-ws="harbor"] [data-ui="waits-block"] .tiles').length).toBe(1);
   });
 
   it('says in one sentence that nothing waits, with no card and no link, when the workspace has no waiting entry', async () => {

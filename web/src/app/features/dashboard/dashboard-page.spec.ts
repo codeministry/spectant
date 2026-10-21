@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type CanActivateFn, NavigationStart, provideRouter, type Route, Router } from '@angular/router';
@@ -13,7 +14,7 @@ import { RailContent } from '../../layout/shell/rail-content';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
-import { OpenState } from '../../shared/open-state';
+import { OPEN_PARAM, OpenState, parseOpen } from '../../shared/open-state';
 import { DashboardPage } from './dashboard-page';
 
 /**
@@ -249,12 +250,26 @@ describe('DashboardPage lists row on /w/harbor (spec 064, ISC-460)', () => {
     expect(tiles[0].querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/002');
   });
 
-  it('renders no In progress block and no working heading without a held claim', async () => {
+});
+
+// Spec 064 (T20, ISC-462): without a held claim the dashboard shows no element of "In progress": no block, no heading,
+// no tile list beyond the waits one and no empty slot in the lists row. The golden body carries `taken: []` everywhere.
+describe('DashboardPage without a held claim (spec 064, ISC-462)', () => {
+  it('ISC-462: no In Arbeit element without a held claim', async () => {
+    expect(harbor.specs.every((row) => row.taken.length === 0)).toBe(true);
     const { page } = await render('wide');
+    // The heading first: a block that drew its section header for 0 entries fails here.
+    expect(page.querySelector('#working-heading, [id^="working-"]')).toBeNull();
+    const headings = [...page.querySelectorAll('h1, h2, h3, h4, [role="heading"]')].map((el) => text(el) ?? '');
+    expect(headings.filter((heading) => heading.includes('In progress'))).toEqual([]);
+    expect(page.querySelector('ui-working-block')).toBeNull();
+    // The one tile list is the waits one.
+    const tiles = [...page.querySelectorAll('.tiles')];
+    expect(tiles.length).toBeGreaterThan(0);
+    expect(tiles.filter((list) => !list.closest('app-waiting-section'))).toEqual([]);
+    // The lists row holds the waits section alone: no second, empty track.
     const lists = page.querySelector('[data-lists]') as HTMLElement;
-    expect(lists.querySelector('app-waiting-section')).not.toBeNull();
-    expect(lists.querySelector('ui-working-block')).toBeNull();
-    expect(page.querySelector('#working-heading')).toBeNull();
+    expect([...lists.children].map((el) => el.tagName.toLowerCase())).toEqual(['app-waiting-section']);
   });
 });
 
@@ -305,4 +320,54 @@ describe('DashboardPage warnings fold in ?open= (spec 064, ISC-473)', () => {
     expect(toggleOf(page).getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(page.querySelector('h2#warnings'));
   });
+});
+
+// Spec 064 (T34, ISC-477, anti): the warnings never stand open without `warnings` in `?open=`, nor closed with it; over
+// addresses with and without the key, after a click, after navigating back to the previous address and after history back.
+describe('DashboardPage warnings and ?open= never diverge (spec 064, ISC-477)', () => {
+  const STARTS = ['/w/harbor', '/w/harbor?open=warnings', '/w/harbor?open=tldr,warnings', '/w/harbor?open=tldr'] as const;
+  const settle = async (harness: RouterTestingHarness): Promise<void> => {
+    await harness.fixture.whenStable();
+    await harness.fixture.whenStable();
+  };
+  /** Whether the current address holds `warnings`, after checking the fold (toggle and region) says the same. */
+  const agrees = (harness: RouterTestingHarness, where: string): boolean => {
+    const router = TestBed.inject(Router);
+    const inAddress = parseOpen(router.parseUrl(router.url).queryParamMap.get(OPEN_PARAM)).includes('warnings');
+    const page = (harness.fixture.nativeElement as HTMLElement).querySelector('app-dashboard-page') as HTMLElement;
+    const toggle = page.querySelector('h2#warnings > button[data-warnings-toggle]');
+    expect(toggle?.getAttribute('aria-expanded'), `toggle ${where} at ${router.url}`).toBe(String(inAddress));
+    expect(page.querySelector('#warnings-region')?.hasAttribute('hidden'), `region ${where} at ${router.url}`).toBe(!inAddress);
+    return inAddress;
+  };
+
+  for (const start of STARTS) {
+    it(`ISC-477: from ${start} the fold and the address agree, after a click, a navigation back and history back`, async () => {
+      const { page, harness } = await render('wide', start);
+      const router = TestBed.inject(Router);
+      // The app's initial navigation listens to popstate; the harness does not, so the test router subscribes here.
+      router.setUpLocationChangeListener();
+      const keyed =parseOpen(router.parseUrl(start).queryParamMap.get(OPEN_PARAM)).includes('warnings');
+      expect(agrees(harness, 'on arrival')).toBe(keyed);
+
+      (page.querySelector('h2#warnings > button[data-warnings-toggle]') as HTMLButtonElement).click();
+      await settle(harness);
+      const clicked = router.url;
+      expect(agrees(harness, 'after the click')).toBe(!keyed);
+      expect(clicked).not.toBe(start);
+
+      await harness.navigateByUrl(start);
+      await settle(harness);
+      expect(router.url).toBe(start);
+      expect(agrees(harness, 'after navigating back')).toBe(keyed);
+
+      // History back: the router picks the popstate up in a later task, so wait a few ticks for it to sync.
+      const location = TestBed.inject(Location);
+      location.back();
+      for (let tick = 0; tick < 5 && router.url !== location.path(); tick++) await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle(harness);
+      expect(router.url).toBe(clicked);
+      expect(agrees(harness, 'after history back')).toBe(!keyed);
+    });
+  }
 });
