@@ -590,6 +590,88 @@ describe('spec-check: worktree source', () => {
         for (const at of [root, wt]) expect(run(at, 'gate', 'check', 'code-reviewed', '001').code).toBe(0);
       }
     }, 30_000);
+
+    // The main checkout stays untouched (spec 062, ISC-440): from a spec worktree whose branch tracks `specs/` and
+    // ISA.md, every command `spec-check --help` lists changes no file of the main checkout but
+    // `.spectant/activity.jsonl`, creates no directory there and runs no `git mv` there.
+    describe('main untouched', () => {
+      /** Every file under `root` by relative path with its sha256, and every directory; `skip` paths are left out. */
+      function fullTree(root: string, skip: readonly string[]): { files: Record<string, string>; dirs: string[] } {
+        const files: Record<string, string> = {};
+        const found: string[] = [];
+        const walk = (prefix: string): void => {
+          for (const entry of readdirSync(join(root, prefix), { withFileTypes: true })) {
+            const path = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+            if (skip.includes(path)) continue;
+            if (entry.isDirectory()) {
+              found.push(path);
+              walk(path);
+            } else files[path] = new Bun.CryptoHasher('sha256').update(readFileSync(join(root, path))).digest('hex');
+          }
+        };
+        walk('');
+        return { files, dirs: found.toSorted() };
+      }
+
+      test('main untouched: every listed command run from the spec worktree leaves the main checkout byte-identical but activity.jsonl', () => {
+        const { root, wt } = forked(true);
+        const LOG = '.spectant/activity.jsonl';
+        const SESSION = 'a:claude:00000062';
+        mkdirSync(join(root, '.spectant'));
+        writeFileSync(join(root, LOG), '');
+        // Left out: the worktree itself and its own index under `.git/worktrees/`, which `archive` moves the spec in.
+        // Everything else under `.git/` counts, the main index and the object store included.
+        const skip = ['.worktrees', '.git/worktrees/001-digest/index', LOG];
+        const porcelain = git(root, 'status', '--porcelain', '--untracked-files=all');
+        const stage = git(root, 'ls-files', '-s');
+        const before = fullTree(root, skip);
+        const covered = new Set<string>();
+        const ok = (args: readonly string[], env: Record<string, string> = {}, stdin = ''): Run => {
+          covered.add(args[0] ?? '');
+          const r = Bun.spawnSync(['bun', CLI, ...args], { cwd: wt, stdin: Buffer.from(stdin), stdout: 'pipe', stderr: 'pipe', env: { ...process.env, ...env } });
+          const got = { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
+          expect(`${args.join(' ')} → ${got.code} ${got.err}${got.code === 0 ? '' : got.out}`).toBe(`${args.join(' ')} → 0 `);
+          return got;
+        };
+
+        for (const args of [['status', '--json'], ['drift', '001'], ['frontier', '001'], ['pack', '001', 'T1'], ['tick', '001', 'T1']]) ok(args);
+        ok(['mint', '001', '--feature', 'F1', '--claims', claimsFile('The digest exports as one file.')]);
+        ok(['verify', '001', 'ISC-1', 'test', 'bun test src/digest.test.ts — 1 pass']);
+        ok(['decide', '001', 'The digest is Markdown.']);
+        const tasks = read(wt, `${SPEC}/tasks.md`);
+        rmSync(join(wt, SPEC, 'tasks.md'));
+        writeFileSync(join(wt, SPEC, 'plan.md'), '# 001 — Plan\n\n## Approach\n\nOne pass over the notes.\n');
+        ok(['transition', '001', 'tasks', '--command', '/spec plan 001']);
+        writeFileSync(join(wt, SPEC, 'tasks.md'), tasks);
+        ok(['transition', '001', 'review', '--command', '/spec tasks 001']);
+        ok(['gate', 'reviewed', '001', '--yes']);
+        ok(['gate', 'check', 'reviewed', '001']);
+        ok(['claim', 'ISC-2', '--task', 'T1', '--session', SESSION]);
+        ok(['activity', 'probe', '--task', 'T1', '--claim', 'ISC-2', '--session', SESSION, '--result', 'green']);
+        ok(['release', 'ISC-2', '--task', 'T1', '--session', SESSION]);
+        const started = JSON.parse(ok(['run', 'start', '001', '--command', '/spec implement 001', '--json']).out) as { run: string };
+        ok(['run', 'end', started.run, '--outcome', 'ok']);
+        ok(['rounds', 'record', '001', '--outcome', 'T1=pass', '--builder', 'T1=Engineer']);
+        const data = mkdtempSync(join(tmpdir(), 'spec-check-data-'));
+        dirs.push(data);
+        // The hook claims and dispatches ISC-1 of spec 001 (T1), then builds and releases it.
+        for (const payload of ['pre-tool-use-agent', 'post-tool-use-agent-completed']) {
+          ok(['hook'], { CLAUDE_PROJECT_DIR: wt, CLAUDE_PLUGIN_DATA: data }, readFileSync(join(import.meta.dir, 'fixtures', 'payloads', `${payload}.json`), 'utf8'));
+        }
+        ok(['gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0']);
+        ok(['gate', 'check', 'code-reviewed', '001']);
+        ok(['allocate', 'feature', 'export', '--goal', 'One export.']);
+        ok(['archive', '001', '--reason', 'a fixture']);
+
+        expect([...covered].toSorted()).toEqual(run(root, '--help').out.split('\n').filter((l) => l.startsWith('  ')).map((l) => l.trim().split(' ')[0] ?? '').toSorted());
+        expect(fullTree(root, skip)).toEqual(before);
+        expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe(porcelain);
+        expect(git(root, 'ls-files', '-s')).toBe(stage);
+        // The one file the main checkout may change: the activity log, which got the claim, probe, release, run and hook lines.
+        expect(read(root, LOG)).toContain('"run-end"');
+        expect(existsSync(join(wt, LOG))).toBe(false);
+      }, 60_000); // twenty-five CLI processes, each with its git reads
+    });
   });
 });
 
