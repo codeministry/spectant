@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { parseClaims } from '../../core/src/claims.ts';
 import { parseFrontmatter } from '../../core/src/frontmatter.ts';
 import { hashForGate } from '../../core/src/gates.ts';
@@ -466,6 +466,130 @@ describe('spec-check: worktree source', () => {
     git(root, 'worktree', 'add', '-q', join(root, '.worktrees', 'side'), '-b', 'side');
     const status = json(run(join(root, '.worktrees', 'side'), 'status', '--json')) as { specs: Array<{ slug: string }> };
     expect(status.specs.map((s) => s.slug)).toEqual(['001-digest']);
+  });
+
+  // Every write of spec-check lands in the spec's read source (spec 062, ISC-439): called from a spec worktree whose
+  // branch tracks `specs/`, tick, verify, mint, decide, transition, gate reviewed, gate code-reviewed, allocate and
+  // archive change only the worktree's copy; the main checkout's `specs/` (and a tracked ISA.md) stay byte-identical.
+  describe('worktree writes', () => {
+    /** Every file under `dir` but `.git`, `.worktrees` and `.spectant`, by relative path. */
+    function snapshot(dir: string, prefix = ''): Record<string, string> {
+      const out: Record<string, string> = {};
+      for (const entry of readdirSync(join(dir, prefix), { withFileTypes: true })) {
+        const path = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+        if (['.git', '.worktrees', '.spectant'].includes(path)) continue;
+        if (entry.isDirectory()) Object.assign(out, snapshot(dir, path));
+        else out[path] = readFileSync(join(dir, path), 'utf8');
+      }
+      return out;
+    }
+
+    /** The tree id `git add -A && git write-tree` gives in `checkout`, through a throwaway index. */
+    function treeOf(checkout: string): string {
+      const index = join(mkdtempSync(join(tmpdir(), 'spec-check-index-')), 'index');
+      dirs.push(dirname(index));
+      const env = { ...process.env, GIT_INDEX_FILE: index };
+      for (const args of [['add', '-A'], ['write-tree']]) {
+        const r = Bun.spawnSync(['git', ...args], { cwd: checkout, env, stdout: 'pipe', stderr: 'pipe' });
+        if (r.exitCode !== 0) throw new Error(r.stderr.toString());
+        if (args[0] === 'write-tree') return r.stdout.toString().trim();
+      }
+      return '';
+    }
+
+    /** A claims file outside the repository, so no checkout's tree carries it. */
+    function claimsFile(text: string): string {
+      const dir = mkdtempSync(join(tmpdir(), 'spec-check-claims-'));
+      dirs.push(dir);
+      const path = join(dir, 'claims.json');
+      writeFileSync(path, JSON.stringify([{ text, row: { type: 'test', check: 'export', threshold: 'one file', tool: 'bun test', anchorsTo: 'goal' } }]));
+      return path;
+    }
+
+    /** Spec 001 committed on main (ISA.md too when `withMaster`), its spec worktree on `feature/001-digest`. */
+    function forked(withMaster: boolean): { root: string; wt: string } {
+      const root = minted();
+      git(root, 'add', ...(withMaster ? ['-A'] : ['specs']));
+      git(root, 'commit', '-q', '-m', 'spec 001');
+      const wt = join(root, WORKTREE);
+      git(root, 'worktree', 'add', '-q', wt, '-b', 'feature/001-digest');
+      return { root, wt };
+    }
+
+    test('worktree writes: every write command lands in the worktree copy; the gate checks read the marks fresh from both checkouts', () => {
+      const { root, wt } = forked(true);
+      const before = snapshot(root);
+      const ok = (cwd: string, ...args: string[]): Run => {
+        const r = run(cwd, ...args);
+        expect(`${args.join(' ')} → ${r.code} ${r.err}${r.code === 0 ? '' : r.out}`).toBe(`${args.join(' ')} → 0 `);
+        return r;
+      };
+      ok(wt, 'tick', '001', 'T1');
+      ok(wt, 'mint', '001', '--feature', 'F1', '--claims', claimsFile('The digest exports as one file.'));
+      ok(wt, 'verify', '001', 'ISC-1', 'test', 'bun test src/digest.test.ts — 1 pass');
+      ok(wt, 'decide', '001', 'The digest is Markdown.');
+      const tasks = read(wt, `${SPEC}/tasks.md`);
+      rmSync(join(wt, SPEC, 'tasks.md'));
+      writeFileSync(join(wt, SPEC, 'plan.md'), '# 001 — Plan\n\n## Approach\n\nOne pass over the notes.\n');
+      ok(wt, 'transition', '001', 'tasks', '--command', '/spec plan 001');
+      writeFileSync(join(wt, SPEC, 'tasks.md'), tasks);
+      ok(wt, 'transition', '001', 'review', '--command', '/spec tasks 001');
+      ok(wt, 'gate', 'reviewed', '001', '--yes');
+      ok(wt, 'gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0');
+      for (const cwd of [wt, root]) for (const gate of ['reviewed', 'code-reviewed']) ok(cwd, 'gate', 'check', gate, '001');
+
+      const copy = read(wt, `${SPEC}/spec.md`);
+      expect(read(wt, `${SPEC}/tasks.md`)).toContain('- [x] T1 ·');
+      expect(parseClaims(copy).claims.map((c) => c.id)).toEqual(['ISC-1', 'ISC-2', 'ISC-3']);
+      expect(read(wt, 'ISA.md')).toContain('ISC-3');
+      expect(copy).toContain('The digest is Markdown.');
+      expect(parseFrontmatter(copy).data.stage).toBe('review');
+      expect(read(wt, `${SPEC}/events.jsonl`)).toContain('"to":"build"');
+      const mark = JSON.parse(read(wt, `${SPEC}/.gates/code-reviewed.json`)) as { tree: string; branch: string };
+      expect(mark.branch).toBe('feature/001-digest');
+      expect(mark.tree).toBe(treeOf(wt));
+      expect(read(wt, '.gitignore')).toContain('.gates/');
+
+      // allocate from the worktree: the new folder in its specs/, numbered past every source.
+      expect(json(ok(wt, 'allocate', 'feature', 'export', '--goal', 'One export.', '--json'))).toMatchObject({ dir: 'specs/002-export' });
+      expect(existsSync(join(wt, 'specs/002-export/spec.md'))).toBe(true);
+      // archive from the worktree: the move in the worktree's index, never the main checkout's.
+      ok(wt, 'archive', '001', '--reason', 'a fixture');
+      expect(existsSync(join(wt, 'specs/archive/001-digest/spec.md'))).toBe(true);
+      expect(git(wt, 'status', '--porcelain', '--', 'specs')).toContain('RM specs/001-digest/spec.md -> specs/archive/001-digest/spec.md');
+
+      expect(snapshot(root)).toEqual(before);
+      expect(git(root, 'status', '--porcelain', '--', 'specs', 'ISA.md', '.gitignore')).toBe('');
+      // A later allocation from the main checkout skips the number only the worktree carries.
+      expect(json(ok(root, 'allocate', 'feature', 'import', '--goal', 'One import.', '--json'))).toMatchObject({ dir: 'specs/003-import' });
+    }, 30_000); // seventeen CLI processes, each with its git reads
+
+    test('worktree writes: with ISA.md untracked, mint and verify write the main checkout master and the worktree copy', () => {
+      const { root, wt } = forked(false);
+      const before = snapshot(join(root, 'specs'));
+      expect(run(wt, 'mint', '001', '--feature', 'F1', '--claims', claimsFile('The digest exports as one file.')).code).toBe(0);
+      expect(run(wt, 'verify', '001', 'ISC-3', 'test', 'bun test src/export.test.ts — 1 pass').code).toBe(0);
+      expect(existsSync(join(wt, 'ISA.md'))).toBe(false);
+      expect(read(root, 'ISA.md')).toContain('ISC-3');
+      expect(parseClaims(read(wt, `${SPEC}/spec.md`)).claims.find((c) => c.id === 'ISC-3')?.checked).toBe(true);
+      expect(snapshot(join(root, 'specs'))).toEqual(before);
+    });
+
+    // A linked `specs/` reads from the main checkout, yet the mark names the spec worktree's tree, as the app reads it
+    // (spec 041, ISC-211): set from either checkout, it is the worktree's tree and fresh in both.
+    test('worktree writes: with a linked specs/, a code-reviewed mark set from either checkout names the spec worktree tree', () => {
+      const root = minted();
+      const wt = join(root, WORKTREE);
+      git(root, 'worktree', 'add', '-q', wt, '-b', 'feature/001-digest');
+      symlinkSync(join(root, 'specs'), join(wt, 'specs'));
+      for (const cwd of [root, wt]) {
+        expect(run(cwd, 'gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0').code).toBe(0);
+        const mark = JSON.parse(read(root, `${SPEC}/.gates/code-reviewed.json`)) as { tree: string; branch: string };
+        expect(mark.branch).toBe('feature/001-digest');
+        expect(mark.tree).toBe(treeOf(wt));
+        for (const at of [root, wt]) expect(run(at, 'gate', 'check', 'code-reviewed', '001').code).toBe(0);
+      }
+    }, 30_000);
   });
 });
 

@@ -10,7 +10,9 @@
 // from a linked worktree lists the main checkout's `specs/` and reads and writes its `ISA.md` and `.spectant/`, as the
 // app does. Each active spec's folder is read where the app reads it (spec 062, ISC-438, `worktree-source.ts`): the copy
 // in its live spec worktree when git tracks `specs/NNN-slug` there, else the main checkout, whichever checkout the call
-// comes from. It writes only under that root, reads nothing outside it but the claims file it is handed, and calls no
+// comes from, and every write for a spec lands there too (spec 062, ISC-439): its files, a tracked `ISA.md` beside the
+// copy, the `.gitignore` line, the tree a code-reviewed mark names and an archive's `git mv` all belong to the checkout
+// holding the copy (`holderOf`); `.spectant/` stays at the root. It writes only under that root, reads nothing outside it but the claims file it is handed, and calls no
 // network host.
 //
 // Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift, a gate open or a run
@@ -29,7 +31,7 @@ import {
 } from '../../core/src/activity-text.ts';
 import { ActivityLogError, appendActivity, appendClaim, appendRelease, appendRunEvent, readActivity, repoRoot } from './activity-log.ts';
 import { runHook } from './hook.ts';
-import { specReadDirs } from './worktree-source.ts';
+import { specReadDirs, specTreeDirs } from './worktree-source.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
@@ -260,6 +262,45 @@ function specText(ctx: Context, ref: SpecRef): string {
 
 const masterPath = (ctx: Context): string => join(ctx.root, 'ISA.md');
 
+/**
+ * The checkout that holds the spec's read source (spec 062, ISC-439): the spec worktree whose copy `ref.dir` is
+ * (`<worktree>/specs/NNN-slug`), else the main checkout. Every write and every git call on the spec's files run there;
+ * `.spectant/` stays at `ctx.root`, and the tree a code-reviewed mark names comes from `treeHolderOf`.
+ */
+function holderOf(ctx: Context, ref: SpecRef): string {
+  const copy = ref.archived ? undefined : readDirs(ctx).get(ref.slug);
+  return copy !== undefined && copy === ref.dir ? dirname(dirname(copy)) : ctx.root;
+}
+
+/** Per command context, the tree folders `treeHolderOf` found. */
+const TREE_DIRS = new WeakMap<Context, ReadonlyMap<string, string>>();
+
+/**
+ * The checkout whose tree a code-reviewed mark of the spec names (spec 041, ISC-211; spec 062, ISC-439): the spec's
+ * first live spec worktree inside the repository, whatever `specs/` tracks there, else the main checkout, as the app's
+ * `specSourceFor` computes `read.tree`. Read once per command, and only where a tree is needed (`specTreeDirs`).
+ */
+function treeHolderOf(ctx: Context, ref: SpecRef): string {
+  if (ref.archived) return ctx.root;
+  let dirs = TREE_DIRS.get(ctx);
+  if (dirs === undefined) {
+    dirs = specTreeDirs(ctx.root, listSpecs(ctx.root));
+    TREE_DIRS.set(ctx, dirs);
+  }
+  return dirs.get(ref.slug) ?? ctx.root;
+}
+
+/**
+ * The master `ISA.md` a write for the spec goes to (spec 062, ISC-439): the one in the checkout holding the spec's
+ * copy when git tracks `ISA.md` there, else the main checkout's. ⟨?: verify, a one-spec drift and an archive's
+ * reference scan follow the same master as mint, so a claim minted into the worktree's master is verified there too ⟩
+ */
+function masterPathFor(ctx: Context, ref: SpecRef): string {
+  const holder = holderOf(ctx, ref);
+  if (holder === ctx.root) return masterPath(ctx);
+  return (git(holder, ['-c', 'core.fsmonitor=false', 'ls-files', '--', 'ISA.md']) ?? '').trim() === '' ? masterPath(ctx) : join(holder, 'ISA.md');
+}
+
 async function locksOf(ctx: Context): Promise<LockReading> {
   return readLockSources({ repoRoot: ctx.root });
 }
@@ -292,6 +333,35 @@ function branchNumbers(root: string): number[] {
   return specNumbersOf(names.flatMap((name) => name.trim().split('/').slice(1)));
 }
 
+/** The spec folder names (`NNN-slug`) directly under `dir`; empty when it cannot be read. */
+function specFoldersIn(dir: string): string[] {
+  try {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() && specIdOf(e.name) !== null ? [e.name] : []));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Where an allocation goes and which folders it must not collide with (spec 062, ISC-439). A call from a linked
+ * worktree whose branch tracks `specs/` creates the folder in that worktree's `specs/`, else in the main checkout's.
+ * The taken folders are the main checkout's (active and archived) and those under every other listed worktree's
+ * `specs/` and `specs/archive/`, so two worktrees never hand out one number. ⟨?: the worktrees' folders are read from
+ * disk, not through core's `worktreeOnlySpecs` over `ls-files`: a superset that also counts a folder allocated but
+ * not yet committed in another worktree, at one `git worktree list` instead of one `ls-files` per worktree ⟩
+ */
+function allocationSite(ctx: Context): { at: string; taken: string[] } {
+  const top = git(ctx.cwd, ['rev-parse', '--show-toplevel'])?.trim() ?? '';
+  const linked = top !== '' && resolve(top) !== resolve(ctx.root);
+  const tracks = linked && (git(top, ['-c', 'core.fsmonitor=false', 'ls-files', '--', 'specs/']) ?? '').trim() !== '';
+  const porcelain = git(ctx.root, ['worktree', 'list', '--porcelain']) ?? '';
+  const worktrees = porcelain.split('\n').flatMap((line) => (line.startsWith('worktree ') ? [line.slice('worktree '.length)] : []));
+  const taken = worktrees
+    .filter((w) => resolve(w) !== resolve(ctx.root))
+    .flatMap((w) => [...specFoldersIn(join(w, 'specs')), ...specFoldersIn(join(w, 'specs', 'archive'))]);
+  return { at: tracks ? top : ctx.root, taken };
+}
+
 function allocate(ctx: Context, args: Args): number {
   const type = required(args, 0, 'the spec type');
   const slug = required(args, 1, 'the slug');
@@ -299,8 +369,9 @@ function allocate(ctx: Context, args: Args): number {
   const listed = listSpecs(ctx.root);
   const clash = listed.find((s) => specSlugOf(s.slug) === slug);
   if (clash) throw bad(`a spec folder for "${slug}" exists already: ${rel(ctx, clash.dir)}`);
+  const site = allocationSite(ctx);
 
-  const number = nextSpecNumber([...specNumbersOf(listed.map((s) => s.slug)), ...branchNumbers(ctx.root)]);
+  const number = nextSpecNumber([...specNumbersOf([...listed.map((s) => s.slug), ...site.taken]), ...branchNumbers(ctx.root)]);
   const title = args.values.get('title') ?? titleOf(slug);
   const goal = args.values.get('goal');
   const feature = args.values.get('feature');
@@ -314,8 +385,8 @@ function allocate(ctx: Context, args: Args): number {
     now: ctx.now,
     actor: args.values.get('actor') ?? 'a:claude:spec-check',
   });
-  const dir = join(ctx.root, ...plan.dir.split('/'));
-  if (existsSync(dir)) throw bad(`${plan.dir} exists already`);
+  const dir = join(site.at, ...plan.dir.split('/'));
+  if (existsSync(dir)) throw bad(`${rel(ctx, dir)} exists already`);
   mkdirSync(dir, { recursive: true });
   const files = Object.keys(plan.files) as Array<keyof typeof plan.files>;
   for (const name of files) writeFileSync(join(dir, name), plan.files[name]);
@@ -372,10 +443,13 @@ function claimInputs(path: string): ClaimInput[] {
 
 const ISC_NUMBER = /^ISC-(\d+)/u; // single-core: allow — the number of an ID parseClaims already parsed; no line is read
 
-/** One past the highest top-level `ISC-N` any spec folder's claim lines carry: the next ID without a master. */
-function nextIdAcrossSpecs(root: string): number {
+/**
+ * One past the highest top-level `ISC-N` any spec folder's claim lines carry, each active one at its read source
+ * (spec 062, ISC-439): the next ID without a master.
+ */
+function nextIdAcrossSpecs(ctx: Context): number {
   let highest = 0;
-  for (const ref of listSpecs(root)) {
+  for (const ref of specsOf(ctx)) {
     const text = readIfExists(join(ref.dir, 'spec.md'));
     if (text === null) continue;
     for (const c of parseClaims(text).claims) highest = Math.max(highest, Number(ISC_NUMBER.exec(c.id)?.[1] ?? 0));
@@ -396,11 +470,12 @@ function mint(ctx: Context, args: Args): number {
   const why = args.values.get('why');
   const specPath = join(ref.dir, 'spec.md');
   const spec = specText(ctx, ref);
-  const master = readIfExists(masterPath(ctx));
+  const masterFile = masterPathFor(ctx, ref);
+  const master = readIfExists(masterFile);
 
   if (master === null) {
     // No master: the IDs are numbered across every spec folder, and the claims go into the spec alone.
-    let next = nextIdAcrossSpecs(ctx.root);
+    let next = nextIdAcrossSpecs(ctx);
     const numbered = claims.map((c) => (c.id === undefined ? { ...c, id: `ISC-${next++}` } : c));
     const planned = mintClaimsText(spec, feature, numbered, rows);
     writeFileSync(specPath, planned.text);
@@ -421,10 +496,10 @@ function mint(ctx: Context, args: Args): number {
     claims.map((c, i) => ({ ...c, id: minted.ids[i] ?? '' })),
     rows,
   );
-  writeFileSync(masterPath(ctx), minted.text);
+  writeFileSync(masterFile, minted.text);
   writeFileSync(specPath, projected);
   emit(ctx, args, { ids: minted.ids, master: true, spec: rel(ctx, specPath) }, [
-    `minted ${minted.ids.join(', ')} into ISA.md (${feature}), then projected them into ${rel(ctx, specPath)}`,
+    `minted ${minted.ids.join(', ')} into ${rel(ctx, masterFile)} (${feature}), then projected them into ${rel(ctx, specPath)}`,
   ]);
   return EXIT.ok;
 }
@@ -438,7 +513,8 @@ function verify(ctx: Context, args: Args): number {
   const stub = required(args, 3, 'the one-line stub');
   const specPath = join(ref.dir, 'spec.md');
   const nextSpec = appendVerificationText(specText(ctx, ref), id, type, stub, ctx.now);
-  const master = readIfExists(masterPath(ctx));
+  const masterFile = masterPathFor(ctx, ref);
+  const master = readIfExists(masterFile);
   let nextMaster: string | null = null;
   if (master !== null) {
     if (!parseClaims(master).claims.some((c) => c.id === id)) {
@@ -448,8 +524,8 @@ function verify(ctx: Context, args: Args): number {
   }
   // The spec first, then the master; each text carries its evidence line before its checkmark.
   writeFileSync(specPath, nextSpec);
-  if (nextMaster !== null) writeFileSync(masterPath(ctx), nextMaster);
-  const files = [rel(ctx, specPath), ...(nextMaster === null ? [] : ['ISA.md'])];
+  if (nextMaster !== null) writeFileSync(masterFile, nextMaster);
+  const files = [rel(ctx, specPath), ...(nextMaster === null ? [] : [rel(ctx, masterFile)])];
   emit(ctx, args, { id, files }, [`verified ${id} in ${files.join(' and ')}`]);
   return EXIT.ok;
 }
@@ -495,7 +571,8 @@ function drift(ctx: Context, args: Args): number {
   const listed = specsOf(ctx);
   const one = args.positional[0];
   const targets = one === undefined ? listed.filter((s) => !s.archived) : [specRef(ctx, one)];
-  const master = readIfExists(masterPath(ctx));
+  // One spec is audited against the master its writes go to (spec 062, ISC-439); the repository-wide run, the main's.
+  const master = readIfExists(one === undefined || targets[0] === undefined ? masterPath(ctx) : masterPathFor(ctx, targets[0]));
   const masterDoc = master === null ? null : parseClaims(master);
   const held = new Map(listed.map((s) => [s.slug, idsOf(readIfExists(join(s.dir, 'spec.md')))]));
 
@@ -531,22 +608,44 @@ function partitionView(p: ClaimPartition): Record<string, unknown> {
  * mark is fresh (spec 044). Hashing the checkout costs a pass over every file, so it is skipped (null) when no spec
  * carries a code-reviewed mark: without a mark the tree decides nothing.
  */
-function worktreeTreeOf(ctx: Context, specs: readonly SpecFiles[]): string | null {
+function worktreeTreeOf(ctx: Context, specs: readonly SpecFiles[], at: string = ctx.root): string | null {
   if (!specs.some((f) => f.texts.gateCodeReviewed !== undefined)) return null;
-  return checkoutOf(ctx.cwd)?.tree ?? null;
+  return checkoutOf(at)?.tree ?? null;
+}
+
+/**
+ * Per spec with a live spec worktree that carries a code-reviewed mark, the tree id of that worktree (spec 062,
+ * ISC-439), as the app's `specSourceFor` hands `read.tree` to core (`DashboardInput.perSpec`); every other spec keeps
+ * the main checkout's `worktreeTree`.
+ */
+function perSpecTrees(ctx: Context, refs: readonly SpecRef[], specs: readonly SpecFiles[]): Record<string, { tree: string | null }> {
+  const perSpec: Record<string, { tree: string | null }> = {};
+  for (const ref of refs) {
+    const files = specs.find((f) => f.folder === ref.slug);
+    if (files?.texts.gateCodeReviewed === undefined) continue;
+    const holder = treeHolderOf(ctx, ref);
+    if (holder !== ctx.root) {
+      const tree = worktreeTreeOf(ctx, [files], holder);
+      if (tree !== null) perSpec[ref.slug] = { tree };
+    }
+  }
+  return perSpec;
 }
 
 /** The dashboard's input over every spec folder of the root, as the app builds it, with the checkout's tree id. */
 function dashboardInput(ctx: Context, locks: LockReading): DashboardInput {
   const listed = specsOf(ctx);
-  const specs = listed.filter((s) => !s.archived).map(specFiles);
+  const active = listed.filter((s) => !s.archived);
+  const specs = active.map(specFiles);
+  const perSpec = perSpecTrees(ctx, active, specs);
   return {
     master: readIfExists(masterPath(ctx)),
     constitution: readIfExists(join(ctx.root, 'specs', 'constitution.md')),
     tldr: readIfExists(join(ctx.root, 'specs', 'tldr.md')),
     specs,
     archived: listed.filter((s) => s.archived).map(specFiles),
-    worktreeTree: worktreeTreeOf(ctx, specs),
+    worktreeTree: worktreeTreeOf(ctx, specs.filter((f) => perSpec[f.folder] === undefined)),
+    ...(Object.keys(perSpec).length === 0 ? {} : { perSpec }),
     locks,
     workflow: parseWorkflow(readIfExists(join(ctx.root, 'specs', 'workflow.md'))),
   };
@@ -694,7 +793,7 @@ function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: s
     actor,
     now: ctx.now,
     reviewed,
-    codeReviewed: gateState('code-reviewed', codeMark, { worktreeTree: worktreeTreeOf(ctx, [files]) }).state,
+    codeReviewed: gateState('code-reviewed', codeMark, { worktreeTree: worktreeTreeOf(ctx, [files], files.texts.gateCodeReviewed === undefined ? ctx.root : treeHolderOf(ctx, ref)) }).state,
     partition: {
       takeable: takeable.length,
       open: partition.open.length - takeable.length,
@@ -1293,7 +1392,7 @@ function gateCheckOf(ctx: Context, ref: SpecRef, gate: Gate): { check: GateCheck
   const reading = text === null ? null : readGateMark(gate, text);
   const problems = reading !== null && reading.mark === null ? reading.diagnostics.map((d) => d.message) : [];
   if (gate === 'reviewed') return { check: reviewedGate(specFiles(ref).texts).check, problems };
-  const checkout = checkoutOf(ctx.cwd);
+  const checkout = checkoutOf(treeHolderOf(ctx, ref));
   const check = gateState(gate, reading?.mark ?? null, { worktreeTree: checkout?.tree ?? null });
   if (check.state !== 'stale') return { check, problems };
   if (checkout?.tree == null) return { check, problems: [...problems, 'the tree id of the working tree could not be computed'] };
@@ -1392,7 +1491,8 @@ async function gateCodeReviewed(ctx: Context, args: Args, ref: SpecRef): Promise
   const code = countValue(args, 'code');
   const security = countValue(args, 'security');
   specText(ctx, ref);
-  if (checkoutOf(ctx.cwd) === null) throw bad('not inside a git checkout: a code-reviewed mark names a git tree; nothing written');
+  const holder = treeHolderOf(ctx, ref);
+  if ((git(holder, ['rev-parse', '--show-toplevel'])?.trim() ?? '') === '') throw bad('not inside a git checkout: a code-reviewed mark names a git tree; nothing written');
   const at = ctx.now.toISOString();
   const actor = args.values.get('actor') ?? CLI_SESSION;
   const row = buildDashboard(dashboardInput(ctx, await locksOf(ctx))).specs.find((r) => r.slug === ref.slug);
@@ -1403,7 +1503,7 @@ async function gateCodeReviewed(ctx: Context, args: Args, ref: SpecRef): Promise
   const line = event === null ? null : checkedEvent(event);
   const gitignore = ensureGatesIgnored(ref);
   if (line !== null) appendEventLine(ref.dir, line);
-  const checkout = checkoutOf(ctx.cwd);
+  const checkout = checkoutOf(holder);
   if (checkout?.tree == null) throw bad(`the tree id of the working tree could not be computed${line === null ? '' : ' after the event line was appended'}; no mark written`);
   const note = args.values.get('note');
   const mark = codeReviewedMarkText({ at, actor, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, ...(note === undefined ? {} : { note }) });
@@ -1449,6 +1549,8 @@ interface ArchiveReference {
 /** The planned move of one folder: where from, where to, and the `.md` texts as they will stand there. */
 interface FolderMove {
   readonly ref: SpecRef;
+  /** The checkout holding the folder (spec 062, ISC-439); `from` and `to` are relative to it. */
+  readonly at: string;
   readonly from: string;
   readonly to: string;
   readonly texts: ReadonlyMap<string, string>;
@@ -1529,14 +1631,15 @@ function archiveBlockers(text: string, ref: SpecRef, listed: readonly SpecRef[],
 }
 
 /** Every line outside `specs/` that still names `specs/<slug>`: the master ISA.md and the tracked files. */
-function archiveReferences(ctx: Context, slug: string): ArchiveReference[] {
+function archiveReferences(ctx: Context, ref: SpecRef, at: string): ArchiveReference[] {
+  const slug = ref.slug;
   const needle = new RegExp(`(?<!archive/)specs/${slug.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}(?![\\w-])`, 'u');
   const out: ArchiveReference[] = [];
   const add = (file: string, line: number, text: string): void => {
     if (needle.test(text)) out.push({ file, line, text: text.trim().slice(0, 160) });
   };
-  (readIfExists(masterPath(ctx)) ?? '').split('\n').forEach((text, i) => add('ISA.md', i + 1, text));
-  const grep = git(ctx.root, ['grep', '-n', '-I', '-F', '-e', `specs/${slug}`, '--', '.', ':!specs', ':!ISA.md']) ?? '';
+  (readIfExists(masterPathFor(ctx, ref)) ?? '').split('\n').forEach((text, i) => add('ISA.md', i + 1, text));
+  const grep = git(at, ['grep', '-n', '-I', '-F', '-e', `specs/${slug}`, '--', '.', ':!specs', ':!ISA.md']) ?? '';
   for (const hit of grep.split('\n')) {
     const m = /^([^:]+):(\d+):(.*)$/u.exec(hit);
     if (m) add(m[1] ?? '', Number(m[2]), m[3] ?? '');
@@ -1545,15 +1648,15 @@ function archiveReferences(ctx: Context, slug: string): ArchiveReference[] {
 }
 
 /** Moves the folder (`git mv` when tracked, so untracked files move along; a plain rename otherwise), then writes its texts. */
-function performMove(ctx: Context, move: FolderMove): void {
-  mkdirSync(dirname(join(ctx.root, move.to)), { recursive: true });
-  const tracked = (git(ctx.root, ['ls-files', '--', move.from]) ?? '').trim() !== '';
+function performMove(move: FolderMove): void {
+  mkdirSync(dirname(join(move.at, move.to)), { recursive: true });
+  const tracked = (git(move.at, ['ls-files', '--', move.from]) ?? '').trim() !== '';
   if (tracked) {
-    if (git(ctx.root, ['mv', move.from, move.to]) === null) throw bad(`git mv ${move.from} ${move.to} failed`);
+    if (git(move.at, ['mv', move.from, move.to]) === null) throw bad(`git mv ${move.from} ${move.to} failed`);
   } else {
-    renameSync(join(ctx.root, move.from), join(ctx.root, move.to));
+    renameSync(join(move.at, move.from), join(move.at, move.to));
   }
-  for (const [name, text] of move.texts) writeFileSync(join(ctx.root, move.to, name), text);
+  for (const [name, text] of move.texts) writeFileSync(join(move.at, move.to, name), text);
 }
 
 async function archive(ctx: Context, args: Args): Promise<number> {
@@ -1565,7 +1668,7 @@ async function archive(ctx: Context, args: Args): Promise<number> {
   if (reason !== null && (reason.trim() === '' || /[\r\n]/u.test(reason))) throw bad('--reason needs one line of text');
   if (restore && reason !== null) throw bad('archive restore takes no --reason');
 
-  const listed = listSpecs(ctx.root);
+  const listed = specsOf(ctx);
   const active = listed.filter((s) => !s.archived);
   const archived = listed.filter((s) => s.archived);
   const pool = restore ? archived : active;
@@ -1582,10 +1685,9 @@ async function archive(ctx: Context, args: Args): Promise<number> {
 
   if (restore) return archiveRestore(ctx, args, refs, dry);
 
-  const master = readIfExists(masterPath(ctx));
   const locks = await locksOf(ctx);
   const verdicts = refs.map((ref) => {
-    const blockers = archiveBlockers(specText(ctx, ref), ref, listed, master, locks);
+    const blockers = archiveBlockers(specText(ctx, ref), ref, listed, readIfExists(masterPathFor(ctx, ref)), locks);
     const ok = blockers.every((b) => !b.hard) && (blockers.length === 0 || reason !== null);
     return { spec: ref.slug, from: rel(ctx, ref.dir), to: `specs/archive/${ref.slug}`, ok, blockers, ref };
   });
@@ -1593,7 +1695,7 @@ async function archive(ctx: Context, args: Args): Promise<number> {
     `${v.spec}  ${v.ok ? (v.blockers.length === 0 ? 'ok' : 'ok with --reason') : 'blocked'}`,
     ...v.blockers.map((b) => `    ${b.hard ? 'hard' : 'soft'}: ${b.detail}${b.hard ? '' : ' (--reason lifts it)'}`),
   ]);
-  const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: v.to, ok: v.ok, blockers: v.blockers }));
+  const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: rel(ctx, join(holderOf(ctx, v.ref), v.to)), ok: v.ok, blockers: v.blockers }));
   const refused = verdicts.filter((v) => !v.ok);
   if (refused.length > 0) {
     return refuse(ctx, args, EXIT.drift, 'blocked', { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
@@ -1606,11 +1708,14 @@ async function archive(ctx: Context, args: Args): Promise<number> {
   const date = ctx.now.toISOString().slice(0, 10);
   const moves = verdicts.map((v) => {
     const why = v.blockers.length === 0 ? null : reason;
-    return { move: { ref: v.ref, from: v.from, to: v.to, texts: plannedTexts(ctx, v.ref, true, date, why) }, reason: why };
+    const at = holderOf(ctx, v.ref);
+    const from = relative(at, v.ref.dir).split(sep).join('/');
+    return { move: { ref: v.ref, at, from, to: v.to, texts: plannedTexts(ctx, v.ref, true, date, why) }, reason: why };
   });
   const report = moves.map(({ move, reason: why }) => {
-    if (!dry) performMove(ctx, move);
-    return { spec: move.ref.slug, from: move.from, to: move.to, reason: why, references: archiveReferences(ctx, move.ref.slug) };
+    if (!dry) performMove(move);
+    const to = rel(ctx, join(move.at, move.to));
+    return { spec: move.ref.slug, from: rel(ctx, move.ref.dir), to, reason: why, references: archiveReferences(ctx, move.ref, move.at) };
   });
   const lines = [
     ...verdictLines,
@@ -1626,8 +1731,8 @@ async function archive(ctx: Context, args: Args): Promise<number> {
 
 function archiveRestore(ctx: Context, args: Args, refs: readonly SpecRef[], dry: boolean): number {
   const rows = listArchive(refs.map(specFiles));
-  const moves: FolderMove[] = refs.map((ref) => ({ ref, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
-  for (const move of moves) if (!dry) performMove(ctx, move);
+  const moves: FolderMove[] = refs.map((ref) => ({ ref, at: ctx.root, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
+  for (const move of moves) if (!dry) performMove(move);
   const restored = moves.map((m) => {
     const row = rows.find((r) => r.slug === m.ref.slug);
     return { spec: m.ref.slug, from: m.from, to: m.to, archived: row?.archived ?? null, archivedReason: row?.archivedReason ?? null };

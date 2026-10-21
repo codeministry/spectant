@@ -17,7 +17,17 @@
 import { existsSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SpecRef } from '../../core/src/resolve.ts';
-import { type WorktreeView, assignWorktrees, copyDirFor, isSpecBranch, liveWorktrees, mainBranchOf } from '../../core/src/worktrees.ts';
+import type { Worktree } from '../../core/src/files.ts';
+import {
+  type LiveWorktrees,
+  type WorktreeAssignment,
+  type WorktreeView,
+  assignWorktrees,
+  copyDirFor,
+  isSpecBranch,
+  liveWorktrees,
+  mainBranchOf,
+} from '../../core/src/worktrees.ts';
 
 const NO_FSMONITOR = ['-c', 'core.fsmonitor=false'];
 
@@ -66,6 +76,27 @@ function trackedSpecPaths(root: string): string[] {
   return (git(root, [...NO_FSMONITOR, 'ls-files', '-z', '--', 'specs/']) ?? '').split('\0').filter((path) => path !== '');
 }
 
+/** The listing of the main checkout at `root`, assigned to the spec folders of `refs`, and the worktrees of a spec. */
+function assigned(root: string, refs: readonly SpecRef[]): { porcelain: string; assignment: WorktreeAssignment; ofSpec: Worktree[] } {
+  const porcelain = git(root, ['worktree', 'list', '--porcelain']) ?? '';
+  const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
+  return { porcelain, assignment, ofSpec: assignment.worktrees.filter((w) => w.kind === 'spec' && w.spec !== null) };
+}
+
+/** The worktrees of `assignment` split by the rule "ended" (`liveWorktrees`), over the git facts read for `ofSpec`. */
+function split(root: string, assignment: WorktreeAssignment, ofSpec: readonly Worktree[]): LiveWorktrees {
+  const merged = mergedOf(root, [...new Set(ofSpec.flatMap((w) => (w.branch !== null && isSpecBranch(w.branch) ? [w.branch] : [])))]);
+  const present = ofSpec.flatMap((w) => (w.path !== null && hasOwnGit(join(root, w.path)) ? [w.path] : []));
+  const dirty = ofSpec.flatMap((w) =>
+    w.path !== null && present.includes(w.path) && w.branch !== null && merged.includes(w.branch) && isDirty(join(root, w.path)) ? [w.path] : [],
+  );
+  return liveWorktrees(assignment, { merged, present, dirty });
+}
+
+/** The first live spec worktree of the spec `id` inside the repository, in git's order, as the app's view finds it. */
+const liveOf = (live: readonly Worktree[], id: string): Worktree | null =>
+  live.find((w) => w.kind === 'spec' && w.spec === id && w.path !== null && w.path !== '..' && !w.path.startsWith('../')) ?? null;
+
 /**
  * Per active spec of `refs` (the main checkout's `listSpecs`) whose read source is a live spec worktree's copy, the
  * absolute folder of that copy, by spec folder name; a spec not in the answer reads from `ref.dir`. `root` is the main
@@ -77,29 +108,41 @@ export function specReadDirs(root: string, refs: readonly SpecRef[]): Map<string
   const dirs = new Map<string, string>();
   const active = refs.filter((ref) => !ref.archived);
   if (active.length === 0) return dirs;
-  const porcelain = git(root, ['worktree', 'list', '--porcelain']) ?? '';
-  const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
-  const ofSpec = assignment.worktrees.filter((w) => w.kind === 'spec' && w.spec !== null);
+  const { porcelain, assignment, ofSpec } = assigned(root, refs);
   if (ofSpec.length === 0) return dirs;
   const paths = trackedSpecPaths(root);
   const trackedOf = (slug: string): string[] => paths.filter((path) => path.startsWith(`specs/${slug}/`));
   if (!active.some((ref) => ofSpec.some((w) => w.spec === ref.id) && trackedOf(ref.slug).length > 0)) return dirs;
-  const merged = mergedOf(root, [...new Set(ofSpec.flatMap((w) => (w.branch !== null && isSpecBranch(w.branch) ? [w.branch] : [])))]);
-  const present = ofSpec.flatMap((w) => (w.path !== null && hasOwnGit(join(root, w.path)) ? [w.path] : []));
-  const dirty = ofSpec.flatMap((w) =>
-    w.path !== null && present.includes(w.path) && w.branch !== null && merged.includes(w.branch) && isDirty(join(root, w.path)) ? [w.path] : [],
-  );
-  const split = liveWorktrees(assignment, { merged, present, dirty });
+  const { live, ended } = split(root, assignment, ofSpec);
   // `ls-files` for each active spec with a live spec worktree inside the repository, as the app's view lists it.
   const tracked: Record<string, readonly string[]> = {};
   for (const ref of active) {
-    const live = split.live.some((w) => w.kind === 'spec' && w.spec === ref.id && w.path !== null);
-    if (live) tracked[ref.slug] = trackedOf(ref.slug);
+    if (live.some((w) => w.kind === 'spec' && w.spec === ref.id && w.path !== null)) tracked[ref.slug] = trackedOf(ref.slug);
   }
-  const view: WorktreeView = { assignment, live: split.live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
+  const view: WorktreeView = { assignment, live, ended, mainBranch: mainBranchOf(porcelain), tracked };
   for (const ref of active) {
     const copy = copyDirFor(root, ref, view);
     if (copy !== null && existsSync(join(copy, 'spec.md'))) dirs.set(ref.slug, copy);
+  }
+  return dirs;
+}
+
+/**
+ * Per active spec of `refs` with a live spec worktree inside the repository, that worktree's absolute folder, by spec
+ * folder name: the checkout whose tree a code-reviewed mark names, whatever `specs/` tracks there (spec 041, ISC-211;
+ * spec 062, ISC-439), as the app's `specSourceFor` computes `read.tree`. A spec not in the answer names the main
+ * checkout's tree. Read only where a tree is needed, since it reads the merge state of every spec worktree.
+ */
+export function specTreeDirs(root: string, refs: readonly SpecRef[]): Map<string, string> {
+  const dirs = new Map<string, string>();
+  const active = refs.filter((ref) => !ref.archived);
+  if (active.length === 0) return dirs;
+  const { assignment, ofSpec } = assigned(root, refs);
+  if (ofSpec.length === 0) return dirs;
+  const { live } = split(root, assignment, ofSpec);
+  for (const ref of active) {
+    const worktree = liveOf(live, ref.id);
+    if (worktree?.path != null) dirs.set(ref.slug, join(root, worktree.path));
   }
   return dirs;
 }
