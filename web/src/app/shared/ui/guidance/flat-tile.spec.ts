@@ -40,7 +40,7 @@ describe('UiFlatTile', () => {
     expect(TILE_DENSITY_MIN).toBe(560);
   });
 
-  it('renders one stretched link around the id with the given name, target and hint', async () => {
+  it('renders one link over the whole tile with the given name, target and hint', async () => {
     const host = await render();
     const links = host.querySelectorAll('ui-flat-tile a');
 
@@ -49,7 +49,19 @@ describe('UiFlatTile', () => {
     expect(link.getAttribute('href')).toBe('/w/harbor/s/064#claims');
     expect(link.getAttribute('aria-label')).toBe('064 Flat tiles · T2 · waiting 2 d');
     expect(link.getAttribute('title')).toBe('Take care of T2 yourself');
-    expect(link.querySelector('.t-id')?.textContent).toBe('064');
+    expect(link.classList.contains('cover')).toBe(true);
+  });
+
+  // The link is the tile's cover and carries the global focus ring itself (ISC-64), so it holds no visible content:
+  // the id stands in its own cell, hidden from assistive tech because the link's name already starts with it.
+  it('draws the id in its own cell beside the link, hidden from assistive tech', async () => {
+    const host = await render();
+    const id = host.querySelector('.t-id');
+
+    expect(id?.textContent).toBe('064');
+    expect(id?.closest('a')).toBeNull();
+    expect(id?.closest('.id')?.getAttribute('aria-hidden')).toBe('true');
+    expect(host.querySelector('ui-flat-tile a')?.textContent.trim()).toBe('');
   });
 
   it('wires the description to the link through aria-describedby', async () => {

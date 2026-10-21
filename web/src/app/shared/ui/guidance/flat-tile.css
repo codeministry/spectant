@@ -16,6 +16,7 @@
   gap: 4px 8px;
   align-content: center;
   align-items: center;
+  overflow: visible;
   block-size: 72px;
   padding-inline: 12px;
 }
@@ -35,26 +36,17 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 20px;
-  text-decoration: none;
 }
 
-/* The stretched link: the whole tile is the target; the aside stands above it. */
-.id::after {
-  content: '';
+/*
+ * The tile's one link is its cover: an empty, absolutely placed `<a>` over the whole card, border included, so the
+ * whole tile is the target and the link itself carries the global focus ring (primitives.css, ISC-64) around the
+ * tile. The aside stands above it (z-index 1); the card's clip is lifted so ring and halo show outside the border.
+ */
+.cover {
   position: absolute;
-  inset: 0;
-}
-
-/* The ring moves to the tile. */
-.id:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-.tile:has(.id:focus-visible) {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--focus-halo);
+  inset: -1px;
+  border-radius: inherit;
 }
 
 .main {
@@ -97,7 +89,7 @@
 }
 
 @media (hover: hover) {
-  .tile:has(.id:hover) .main {
+  .tile:has(.cover:hover) .main {
     text-decoration: underline;
   }
 }

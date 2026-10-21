@@ -186,7 +186,7 @@ describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
     // Every tile is built the same: mark (the waiting glyph), ID, main text, meta.
     for (const tile of tilesOf(host)) {
       expect(tile.querySelector('.mark ui-glyph[state="waiting"]')).not.toBeNull();
-      expect(tile.querySelector('a.id [data-tile-id]')).not.toBeNull();
+      expect(tile.querySelector('.id [data-tile-id]')).not.toBeNull();
       expect(tile.querySelector('.main .title')).not.toBeNull();
       expect(text(tile.querySelector('.meta ui-relative-time'))).toMatch(/^waiting \d+ (s|min|h|d)$/);
     }
@@ -197,17 +197,17 @@ describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
     const tiles = tilesOf(host);
     const titles = tiles.map((tile) => text(tile.querySelector('.main .title')));
     expect(titles).toEqual([LONG, TITLES['002'], TITLES['002'], WAITS[4].title]);
-    expect(tiles.map((tile) => tile.querySelector('a.id')?.getAttribute('title'))).toEqual(titles);
+    expect(tiles.map((tile) => tile.querySelector('a.cover')?.getAttribute('title'))).toEqual(titles);
     // The claim's and the task's own text never stand in the tile.
     expect(text(host)).not.toContain(WAITS[1].title);
     expect(text(host)).not.toContain(WAITS[2].title);
-    expect(tiles[0].querySelector('a.id')?.getAttribute('href')).toBe('/w/harbor/s/006');
+    expect(tiles[0].querySelector('a.cover')?.getAttribute('href')).toBe('/w/harbor/s/006');
   });
 
   it('the reason sentence is no visible text, only the tile\'s accessible description', async () => {
     const host = await render(FOUR, { form: 'tiles', titles: TITLES });
     for (const tile of tilesOf(host)) {
-      const id = tile.querySelector('a.id')?.getAttribute('aria-describedby') ?? '';
+      const id = tile.querySelector('a.cover')?.getAttribute('aria-describedby') ?? '';
       expect(id).not.toBe('');
       const description = text(tile.querySelector(`[id="${id}"]`));
       expect(description.length).toBeGreaterThan(0);
@@ -220,17 +220,17 @@ describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
     const tiles = tilesOf(host);
     expect(tiles.map((tile) => tile.querySelector('.aside ui-command-chip') !== null)).toEqual([true, false, true, true]);
     expect(chips(host)).toEqual(['/spec review 006', '/spec implement 002', '/spec review 005']);
-    expect(tiles.map((tile) => text(tile.querySelector('a.id ui-chip')))).toEqual(['', 'ISC-77', 'T31', '']);
+    expect(tiles.map((tile) => text(tile.querySelector('.id ui-chip')))).toEqual(['', 'ISC-77', 'T31', '']);
   });
 
   it('names each tile "<id> <title> · <ref> · waiting <time>", the parts it lacks dropped', async () => {
     const host = await render(FOUR, { form: 'tiles', titles: TITLES });
-    const names = tilesOf(host).map((tile) => tile.querySelector('a.id')?.getAttribute('aria-label') ?? '');
+    const names = tilesOf(host).map((tile) => tile.querySelector('a.cover')?.getAttribute('aria-label') ?? '');
     expect(names[0]).toMatch(new RegExp(`^006 ${LONG} · waiting \\d+ (s|min|h|d)$`));
     expect(names[1]).toMatch(/^002 Sync history that explains itself · ISC-77 · waiting \d+ (s|min|h|d)$/);
     TestBed.resetTestingModule();
     const undated = await render([{ ...WAITS[4], since: null }], { form: 'tiles' });
-    expect(tilesOf(undated)[0].querySelector('a.id')?.getAttribute('aria-label')).toBe(`005 ${WAITS[4].title}`);
+    expect(tilesOf(undated)[0].querySelector('a.cover')?.getAttribute('aria-label')).toBe(`005 ${WAITS[4].title}`);
     expect(tilesOf(undated)[0].querySelector('ui-relative-time')).toBeNull();
   });
 

@@ -17,7 +17,9 @@
 /*
  * Section form, folded (spec 064, T32): the h2 holds one full-width button row of at least 44 px, title 600 16/24 as
  * the section header, the summary right, the chevron last; it turns 180° when open, by motion tokens only. The card
- * stands 8 px under the row when open (spec 058, T46); the hidden region leaves no space when closed.
+ * stands 8 px under the row when open (spec 058, T46); the hidden region leaves no space when closed. The button's
+ * class is `fold`, never `toggle`: daisyUI's switch `.toggle` is global and would add its knob as a flex item, centre
+ * the row, hide the chevron and push the row past the main column at 600 px.
  */
 .head {
   margin: 0;
@@ -26,7 +28,7 @@
   line-height: 24px;
 }
 
-.toggle {
+.fold {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -78,7 +80,7 @@
   transition: rotate var(--motion-duration-base) var(--motion-ease-standard);
 }
 
-.toggle[aria-expanded="true"] .chevron {
+.fold[aria-expanded="true"] .chevron {
   rotate: 180deg;
 }
 

@@ -1,14 +1,15 @@
 <ui-card class="tile" [padding]="0">
   <span class="mark"><ng-content select="[tileMark]" /></span>
+  <span class="id" aria-hidden="true"><ng-content select="[tileId]" /></span>
+  <span class="main"><ng-content select="[tileMain]" /></span>
   <a
-    class="id"
+    class="cover"
     [routerLink]="link()"
     [fragment]="fragment()"
     [attr.aria-label]="name()"
     [attr.aria-describedby]="description() ? descriptionId : null"
     [attr.title]="hint() ?? null"
-  ><ng-content select="[tileId]" /></a>
-  <span class="main"><ng-content select="[tileMain]" /></span>
+  ></a>
   <span class="end">
     <span class="aside"><ng-content select="[tileAside]" /></span>
     <span class="meta"><ng-content select="[tileMeta]" /></span>

@@ -98,7 +98,7 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     const rows = standing(section);
     expect(rows).toHaveLength(TILE_LIMIT);
     expect(rows.map(idOf)).toEqual(HARBOR.slice(0, 3).map((e) => e.spec));
-    expect(rows[0]?.querySelector('a.id')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
+    expect(rows[0]?.querySelector('a.cover')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
     // The spec's title is the main text, from the caller's titles where the entry is a claim or task.
     expect(rows.map((tile) => text(tile.querySelector('.main')))).toEqual([HARBOR[0]?.title, titles['002'], titles['002']]);
     const fold = section?.querySelector('ui-disclosure[data-show-all]');

@@ -19,7 +19,8 @@ let nextId = 0;
  * Content slots (projected by attribute):
  *
  * - `[tileMark]`: the 16 px mark (`ui-glyph`, `ui-agent-dot`); the caller hides it from assistive tech;
- * - `[tileId]`: the id text inside the link, mono 13/20 600 tabular-nums in `--disp-ink`, at least 3ch wide;
+ * - `[tileId]`: the id text in its own cell, mono 13/20 600 tabular-nums in `--disp-ink`, at least 3ch wide, hidden
+ *   from assistive tech (the link's name starts with it);
  * - `[tileMain]`: the main text (the spec title), one line, cut with an ellipsis; underlined while the tile is hovered;
  * - `[tileAside]`: a copy chip or the agent; it stands above the stretched link (`position: relative; z-index: 1`),
  *   so a button there is never inside the link and takes its own clicks;
@@ -27,14 +28,15 @@ let nextId = 0;
  *
  * Inputs:
  *
- * - `link` (required): the router commands or URL of the tile's one link, an `<a>` around the id whose `::after`
- *   spans the tile (`inset: 0`), so the whole tile is the target;
+ * - `link` (required): the router commands or URL of the tile's one link, an empty `<a class="cover">` placed over
+ *   the whole card (`inset: -1px`, border included), so the whole tile is the target;
  * - `fragment`: the fragment that link lands on;
  * - `name` (required): the link's accessible name (`aria-label`); the caller builds it from its catalogue;
  * - `description`: a sentence rendered visually hidden and referenced by the link's `aria-describedby`;
  * - `hint`: the link's `title`.
  *
- * The focus ring sits on the tile (`:has(a:focus-visible)`), never on the id alone; no motion, no shadow at rest.
+ * The focus ring is the global one (ISC-64) on the cover link itself, so it outlines the whole tile; the card's clip
+ * is lifted for it. No motion, no shadow at rest.
  * Under forced colors the border is `CanvasText` and the id `LinkText`.
  */
 @Component({
