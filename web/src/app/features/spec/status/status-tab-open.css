@@ -1,0 +1,128 @@
+/*
+ * Status partial (spec 061 split it off `status-tab.css`, the next stylesheet of the tab, so the order holds): the gate
+ * card icons, the open groups with their claim glyph, the fog line, the held tasks, the activity rows and the empty state.
+ */
+
+/* T43: the prototype's gate-card icon, the open groups with their claim glyph, the fog line and the activity icons. */
+.gate-icon {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+.gate:is([data-tone='accent'], [data-tone='warning']) .gate-icon {
+  color: var(--gate-edge);
+}
+
+.open-group {
+  display: grid;
+  gap: 4px;
+}
+
+.open-group + .open-group {
+  margin-block-start: 8px;
+}
+
+.glyph {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+  inline-size: 18px;
+  color: var(--muted-ink);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.glyph[data-glyph='takeable'] {
+  color: var(--clos-text);
+}
+
+.glyph[data-glyph='taken'] {
+  color: var(--hover-text);
+}
+
+.dep {
+  padding: 4px 7px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--muted-ink);
+  font: 500 11px/1 var(--font-mono);
+  white-space: nowrap;
+}
+
+.fog-row {
+  padding: 8px 12px;
+  border-inline-start: 3px solid var(--ques-text);
+  border-radius: 0 var(--radius-field) var(--radius-field) 0;
+  background: var(--ques-t);
+}
+
+.fog-row .fog-icon {
+  color: var(--ques-text);
+}
+
+.act-icon {
+  flex: none;
+  align-self: center;
+  color: var(--muted-ink);
+}
+
+/* The prototype's `.o-line.held`: a held task, its clock and its reason in muted ink. */
+.held-row {
+  color: var(--muted-ink);
+}
+
+.held-icon {
+  align-self: center;
+}
+
+.held-row .ref {
+  color: inherit;
+}
+
+/* Prototype `.act-line`: 13 px muted rows, 10 px gaps; `.round-sum` 14 px above them. */
+.activity-row {
+  gap: 4px 10px;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+.activity-row .row-text {
+  color: inherit;
+}
+
+.round-sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.round-sum b {
+  font-weight: 600;
+}
+
+/* Prototype `.status-empty`: "All claims closed, no fog" with the green check, then "Ready for <command>". */
+.status-empty {
+  display: grid;
+  gap: 8px;
+  padding: 16px 12px;
+}
+
+.status-empty-title {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.status-empty-title ui-icon {
+  color: var(--done-text);
+}

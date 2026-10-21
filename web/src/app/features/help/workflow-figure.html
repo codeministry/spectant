@@ -1,0 +1,59 @@
+
+    @if (legend()) {
+      <ul class="legend" data-workflow-legend aria-hidden="true">
+        <li><i class="swatch" data-role="moving"></i>{{ 'help.workflow.legend.moving' | transloco }}</li>
+        <li><i class="swatch" data-role="waits"></i>{{ 'help.workflow.legend.waits' | transloco }}</li>
+        <li><i class="swatch" data-role="done"></i>{{ 'help.workflow.legend.done' | transloco }}</li>
+        <li><i class="swatch" data-role="detour"></i>{{ 'help.workflow.legend.detour' | transloco }}</li>
+        <li><i class="swatch" data-role="optional"></i>{{ 'help.workflow.legend.optional' | transloco }}</li>
+        <li><ui-icon name="shield-check" [size]="14" />{{ 'help.workflow.legend.gate' | transloco }}</li>
+      </ul>
+    }
+    <div class="canvas">
+      <svg
+        data-icon-exempt
+        role="img"
+        focusable="false"
+        [attr.aria-label]="label()"
+        [attr.viewBox]="viewBox()"
+        [attr.width]="layout().size.width"
+        [attr.height]="layout().size.height"
+        [style.--wf-width.px]="layout().size.width"
+      >
+        @for (edge of layout().edges; track $index) {
+          <g class="edge" [attr.data-edge]="edge.from + ' ' + edge.to" [attr.data-kind]="edge.kind">
+            <path class="line" [attr.d]="edge.path" />
+            <polygon class="head" [attr.points]="edge.head" />
+          </g>
+        }
+        @for (node of layout().nodes; track node.stage) {
+          <g
+            class="node"
+            [attr.data-stage]="node.stage"
+            [attr.data-role]="node.role"
+            [attr.data-detour]="node.detour ? '' : null"
+            [attr.data-optional]="node.optional ? '' : null"
+            [attr.data-gate]="node.gate"
+            [style.--edge]="node.edge"
+          >
+            <rect class="box" rx="8" [attr.x]="node.x" [attr.y]="node.y" [attr.width]="node.width" [attr.height]="node.height" />
+            @if (node.gate) {
+              <rect class="frame" rx="5" [attr.x]="node.x + 3" [attr.y]="node.y + 3" [attr.width]="node.width - 6" [attr.height]="node.height - 6" />
+            }
+            <rect class="bar" width="3" rx="1.5" [attr.x]="node.x + 7" [attr.y]="node.y + 8" [attr.height]="node.height - 16" />
+            <text text-anchor="middle" dominant-baseline="central" [attr.x]="node.textX" [attr.y]="node.textY">{{ node.label }}</text>
+          </g>
+        }
+        @for (gate of layout().gates; track gate.stage) {
+          <g class="gate" [attr.data-gate-note]="gate.kind">
+            <g class="glyph" [attr.transform]="'translate(' + gate.iconX + ' ' + gate.iconY + ') scale(' + iconScale + ')'">
+              @for (d of shield; track $index) {
+                <path [attr.d]="d" />
+              }
+            </g>
+            <text class="gate-label" dominant-baseline="central" [attr.x]="gate.textX" [attr.y]="gate.textY">{{ gate.label }}</text>
+          </g>
+        }
+      </svg>
+    </div>
+  

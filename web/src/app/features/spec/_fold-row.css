@@ -1,0 +1,20 @@
+/*
+ * The closing rows of a filtered spec list (spec 061), shared by the Tasks, Claims and Timeline tabs: the prototype's
+ * `.none-match` (one muted line with Clear beside it, when no row matches the filter) and the `details.fold-row`
+ * summary without the browser's disclosure marker. A tab whose markup has no such row leaves the rule unused. No other
+ * rule of those tabs matches these elements, so where the `@import` stands in their cascade changes no computed value.
+ */
+.none-match {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fold-row > summary::-webkit-details-marker {
+  display: none;
+}

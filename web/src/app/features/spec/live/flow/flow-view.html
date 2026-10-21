@@ -41,6 +41,6 @@
     <p class="empty" data-empty>{{ 'board.flow.empty' | transloco }}</p>
   }
   @if (steps(); as steps) {
-    <app-your-steps class="span" [cards]="steps" />
+    <app-your-steps class="span" [cards]="steps" [rows]="stepRows()" [checks]="stepChecks()" [hash]="stepHash()" (toggled)="stepToggled.emit($event)" />
   }
 </div>

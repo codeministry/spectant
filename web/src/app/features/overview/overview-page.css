@@ -1,5 +1,7 @@
 /* Prototype styles.css:463-467 (.overview, workspace-column, ws-head) and the page head. The shell container is named
    `shell` (layout/shell), so the three-column step is the prototype's container query as it stands. */
+@import "./_ws-path.css";
+
 :host {
   display: grid;
   gap: 24px;
@@ -51,18 +53,6 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 24px;
-}
-
-.path,
-.reason {
-  overflow: hidden;
-  min-inline-size: 0;
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Prototype `[data-ui=notice] b` over the muted body. */

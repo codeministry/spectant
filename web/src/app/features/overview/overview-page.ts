@@ -1,4 +1,4 @@
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
@@ -19,7 +19,7 @@ import { WorkspaceColumn } from './workspace-column';
  */
 @Component({
   selector: 'app-overview-page',
-  imports: [TranslocoPipe, UiCard, UiCommandChip, UiIcon, UiNotice, UiPageHead, UiSkeleton, WorkspaceColumn],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiCard, UiCommandChip, UiIcon, UiNotice, UiPageHead, UiSkeleton, WorkspaceColumn],
   providers: [OverviewData],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'overview' },

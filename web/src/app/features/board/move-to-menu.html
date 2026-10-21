@@ -1,0 +1,55 @@
+
+    @if (tier() === 'compact') {
+      <ui-sheet tier="compact" [open]="open()" [heading]="heading()" (openChange)="onOpenChange($event)">
+        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'sheet' }" />
+      </ui-sheet>
+    } @else {
+      <ui-popover class="move-popover" [label]="heading()" (openChange)="onOpenChange($event)">
+        <p class="head" aria-hidden="true">{{ 'board.workspace.move.open' | transloco }}</p>
+        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'popover' }" />
+      </ui-popover>
+    }
+
+    <ng-template #list let-surface>
+      @if (open() && card(); as c) {
+        @if (runRefusal(); as rr) {
+          <app-refusal-notice class="run-notice" data-move-run [refusal]="rr" [dismissible]="false" />
+        }
+        <ul class="entries" role="list" data-move-menu [attr.data-surface]="surface" [attr.data-tier]="tier()">
+          @for (e of entries(); track e.stage) {
+            <li>
+              <button
+                type="button"
+                class="entry"
+                [attr.data-move-to]="e.stage"
+                [attr.data-hint]="e.hint"
+                [attr.aria-current]="e.hint === 'current' ? 'true' : null"
+                [attr.aria-disabled]="e.enabled ? null : 'true'"
+                [attr.data-autofocus]="e.stage === focusStage() ? '' : null"
+                (click)="chose(e)"
+              >
+                <!-- &ngsp; keeps a space between the name and the hint in the button's accessible name. -->
+                <span class="name">{{ 'stages.' + e.stage | transloco }}</span>&ngsp;
+                @switch (e.hint) {
+                  @case ('not-next') {
+                    <span class="hint"><ui-icon name="ban" [size]="14" /><span>{{ 'board.workspace.drag.notNext' | transloco: { stage: fromLabel() } }}</span></span>
+                  }
+                  @case ('gate') {
+                    <span class="hint" data-gate><ui-icon name="shield-check" [size]="14" /><span>{{ 'board.workspace.drag.gate' | transloco }}</span></span>
+                  }
+                  @case ('current') {
+                    <span class="hint">{{ 'board.workspace.drag.current' | transloco }}</span>
+                  }
+                }
+              </button>
+              @if (refusal(); as r) {
+                @if (r.to === e.stage && r.kind !== 'run-locked') {
+                  <app-refusal-notice [refusal]="r" (closed)="dismiss.emit(c.key)" />
+                }
+              }
+            </li>
+          }
+        </ul>
+      }
+    </ng-template>
+  

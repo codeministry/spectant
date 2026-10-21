@@ -1,0 +1,27 @@
+/*
+ * The entry box the priority menu, the reorder menu and the board's "Move to…" (features/board/move-to-menu.css)
+ * share, imported at the top of all three; each adds its own row height and padding (the reorder menu and "Move to…"
+ * through `_menu-list.css`, with their `justify-content`) after the import. No rule of either
+ * stylesheet ahead of the place these rules held matches an `.entry`, every later rule that sets one of these
+ * properties on an `.entry` is more specific (the current, disabled and hover looks), and the compact row height
+ * outranks each menu's own `.entry` height by specificity as before, so moving them first leaves the cascade unchanged.
+ */
+.entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  inline-size: 100%;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--color-base-content);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.entries[data-tier='compact'] .entry {
+  min-block-size: 56px;
+}

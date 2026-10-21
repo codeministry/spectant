@@ -1,0 +1,99 @@
+
+    <ui-card [padding]="0">
+      <div class="c-head">
+        <h2 id="actors-heading">{{ 'settings.actors.title' | transloco }}</h2>
+        <span class="meta">{{ 'settings.actorsTable.found' | transloco: { count: rows().length } }}</span>
+      </div>
+      <div class="card-pad">
+        <p class="intro">{{ 'settings.actors.intro' | transloco }}</p>
+        @if (loading()) {
+          <div data-actors-loading aria-busy="true">
+            @for (i of skeletons; track i) {
+              <div class="skel-row"><ui-skeleton height="12px" /><ui-skeleton height="12px" /><ui-skeleton height="12px" /></div>
+            }
+          </div>
+        } @else if (rows().length === 0) {
+          <p class="empty" data-actors-empty>{{ 'settings.actors.empty' | transloco }}</p>
+        } @else {
+          <div class="actor-head" aria-hidden="true">
+            <span class="eyebrow">{{ 'settings.actorsTable.personId' | transloco }}</span>
+            <span class="eyebrow">{{ 'settings.actors.displayName' | transloco }}</span>
+            <span class="eyebrow">{{ 'settings.actors.gitIdentities' | transloco }}</span>
+            <span></span>
+          </div>
+          <ul class="rows" aria-labelledby="actors-heading">
+            @for (row of rows(); track row.id) {
+              <li class="actor-row" [attr.data-actor-row]="row.id">
+                <span><ui-actor-chip [actor]="actorOf(row.id)" [name]="storedName(row.id)" /></span>
+                <label>
+                  <input
+                    class="field"
+                    type="text"
+                    autocomplete="off"
+                    data-actor-name
+                    [value]="row.displayName"
+                    [attr.placeholder]="'settings.actors.displayName' | transloco"
+                    [attr.aria-label]="'settings.actors.nameFor' | transloco: { id: row.id }"
+                    [attr.aria-invalid]="nameMissing(row) ? 'true' : null"
+                    (input)="edit(row.id, 'displayName', $event)"
+                  />
+                  @if (nameMissing(row)) {
+                    <span class="field-err" data-actor-error
+                      ><ui-icon name="triangle-alert" [size]="12" />{{ 'settings.actorsTable.nameRequired' | transloco }}</span
+                    >
+                  }
+                </label>
+                <label>
+                  <input
+                    class="field mono"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-actor-git
+                    aria-describedby="actors-git-hint"
+                    [value]="row.gitIdentities"
+                    [attr.aria-label]="'settings.actors.gitFor' | transloco: { id: row.id }"
+                    (input)="edit(row.id, 'gitIdentities', $event)"
+                  />
+                  <span class="field-help" aria-hidden="true">{{ 'settings.actors.gitHint' | transloco }}</span>
+                </label>
+                @if (row.displayName.trim() !== '') {
+                  <span class="glyph-ok" [attr.title]="'settings.actorsTable.valid' | transloco"><ui-icon name="check" [size]="16" /></span>
+                } @else {
+                  <span></span>
+                }
+              </li>
+            }
+          </ul>
+          <span class="sr-only" id="actors-git-hint">{{ 'settings.actors.gitHint' | transloco }}</span>
+        }
+      </div>
+      @if (state().kind === 'failed') {
+        <ui-notice tone="error" data-actors-error>
+          <span class="n-title">{{ 'settings.states.failedTitle' | transloco }}</span>
+          <span class="meta">{{ 'settings.actors.failed' | transloco: { status: failedStatus() } }}</span>
+        </ui-notice>
+      } @else if (state().kind === 'conflict') {
+        <ui-notice tone="warning" data-actors-conflict>
+          <span class="n-title">{{ 'settings.states.conflictTitle' | transloco }}</span>
+          <span class="meta">{{ 'settings.states.conflictBody' | transloco }}</span>
+          <button ui-button action type="button" size="sm" data-actors-reload (click)="reload()">
+            <ui-icon name="refresh-cw" [size]="14" />{{ 'settings.states.reload' | transloco }}
+          </button>
+        </ui-notice>
+      }
+      @if (!loading() && rows().length > 0) {
+        <div class="set-foot">
+          <button ui-button variant="primary" type="button" data-actors-save [disabled]="state().kind === 'saving'" (click)="save()">
+            <ui-icon [name]="state().kind === 'saving' ? 'loader-circle' : 'check'" [size]="14" />
+            {{ (state().kind === 'saving' ? 'settings.actors.saving' : 'settings.actors.save') | transloco }}
+          </button>
+          <p class="actors-status" role="status" data-actors-status [attr.data-state]="state().kind">
+            @if (state().kind === 'saved') {
+              <ui-icon name="check" [size]="14" />{{ 'settings.actors.saved' | transloco }}
+            }
+          </p>
+        </div>
+      }
+    </ui-card>
+  

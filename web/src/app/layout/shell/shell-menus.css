@@ -1,5 +1,6 @@
 /* The pickers' lists (the area menu's are area-menu.css). The host takes no grid cell: its panels live in the top layer. */
 @import "../menu-rows.css";
+@import "../../shared/ui/_switch.css";
 
 :host {
   position: absolute;
@@ -227,28 +228,12 @@
   cursor: default;
 }
 
-/* The prototype's `.switch`: 32 × 18, a 14 px knob, `--badge` when on. */
+/* The prototype's `.switch` (shared/ui/_switch.css), `--badge` when on. */
 .switch {
-  position: relative;
-  inline-size: 32px;
-  block-size: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: 9px;
-  background: var(--track);
-  cursor: pointer;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
 .switch::after {
-  position: absolute;
-  inset-block-start: 2px;
-  inset-inline-start: 2px;
-  inline-size: 14px;
-  block-size: 14px;
-  border-radius: 50%;
-  background: var(--color-base-100);
-  content: "";
   transition: translate var(--motion-duration-instant) var(--motion-ease-standard);
 }
 

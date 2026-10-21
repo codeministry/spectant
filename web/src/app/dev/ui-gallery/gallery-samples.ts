@@ -112,7 +112,7 @@ class GallerySpecData {
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [GallerySpecData, { provide: ShellData, useExisting: GallerySpecData }],
   host: { '[attr.data-gate-sample]': 'state()' },
-  template: `<app-gate-button />`,
+  templateUrl: './gallery-gate.html',
 })
 export class GalleryGate {
   readonly state = input.required<GateSample>();

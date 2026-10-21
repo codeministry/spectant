@@ -1,0 +1,29 @@
+
+    @let id = identity();
+    @if (link()) {
+      <a class="ws-cover-link" [routerLink]="href()" [attr.aria-label]="'identity.open' | transloco: { workspace: name() }">
+        <ui-ws-cover data-ws-cover [name]="name()" [accent]="id?.accent ?? null" [image]="id?.image ?? null" [alt]="'identity.screenshot' | transloco: { workspace: name() }" />
+      </a>
+    } @else {
+      <ui-ws-cover data-ws-cover [name]="name()" [accent]="id?.accent ?? null" [image]="id?.image ?? null" [alt]="'identity.screenshot' | transloco: { workspace: name() }" />
+    }
+    <div class="ws-head" data-demo-head>
+      @if (link()) {
+        <a [routerLink]="href()">
+          <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" />
+          <h2>{{ name() }}</h2>
+          <span class="path">{{ pathTail() }}</span>
+        </a>
+      } @else {
+        <span class="ident">
+          <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" />
+          <h2>{{ name() }}</h2>
+          <span class="path">{{ pathTail() }}</span>
+        </span>
+      }
+      <span class="end">
+        <ui-chip variant="demo" />
+        <ng-content />
+      </span>
+    </div>
+  

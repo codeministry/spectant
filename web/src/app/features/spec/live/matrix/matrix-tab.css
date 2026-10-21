@@ -4,6 +4,10 @@
  * 44 × 44 cells. Medium: 64 px ids, 32 × 32 cells. Wide: a 224 px id and claim column, 32 px rows under a 32 px lane
  * header, dispatch 16 px (dimmed), result 28 px, live 40 px, re-cut 8 px hatched. Colours are theme tokens only.
  */
+
+/* The visually hidden rule is shared (its own partial); no other rule styles those elements, so it may lead. */
+@import '../../../../shared/ui/_visually-hidden.css';
+
 :host {
   --matrix-first: 64px;
   --matrix-row: 32px;
@@ -35,15 +39,6 @@
   display: grid;
   gap: 8px;
   min-inline-size: 0;
-}
-
-.visually-hidden {
-  position: absolute;
-  overflow: hidden;
-  inline-size: 1px;
-  block-size: 1px;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .hint,

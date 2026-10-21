@@ -1,24 +1,16 @@
+@import './_idea-outline.css';
+
 :host {
   display: inline-flex;
   min-inline-size: 0;
   max-inline-size: 100%;
 }
 
+/* The outline the board card's idea chip shares comes from `_idea-outline.css`; the pill corner and the link follow. */
 .idea {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  min-inline-size: 0;
-  block-size: 22px;
-  padding-inline: 7px;
-  border: 1px dashed var(--track);
   border-radius: 999px;
-  color: var(--muted-ink);
   font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
   text-decoration: none;
-  white-space: nowrap;
   transition: border-color var(--motion-duration-instant) var(--motion-ease-standard), color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 

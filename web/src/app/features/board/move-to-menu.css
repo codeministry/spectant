@@ -3,6 +3,11 @@
  * the panels live in the top layer. One row per board stage: the current one in the selected surface, disabled ones in
  * the muted ink with the drag's hint, a fixed gate's hint in the question ink as on the board.
  */
+
+/* The row box and the step list the reorder menu shares come from layout/backlog-menu. */
+@import '../../layout/backlog-menu/_menu-entry.css';
+@import '../../layout/backlog-menu/_menu-list.css';
+
 :host {
   display: contents;
 }
@@ -25,37 +30,6 @@
   margin-block: 0 8px;
 }
 
-.entries {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.entry {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  inline-size: 100%;
-  min-block-size: 44px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: var(--radius-field);
-  background: none;
-  color: var(--color-base-content);
-  font-size: 14px;
-  line-height: 20px;
-  text-align: start;
-  cursor: pointer;
-  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
-}
-
-.entries[data-tier='compact'] .entry {
-  min-block-size: 56px;
-}
-
 .entry[aria-current] {
   background: var(--color-base-300);
   color: var(--disp-ink);
@@ -65,19 +39,6 @@
 .entry[aria-disabled='true'] {
   color: var(--muted-ink);
   cursor: default;
-}
-
-@media (hover: hover) {
-  .entry:not([aria-disabled='true']):hover {
-    background: var(--color-base-300);
-  }
-}
-
-.name {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .hint {

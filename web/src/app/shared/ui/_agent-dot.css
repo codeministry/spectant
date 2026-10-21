@@ -1,0 +1,19 @@
+/* The prototype's `.agent-dot`: an orange 8 px dot with a ping ring. The importer names the `agent-ping` keyframes and
+   the dot's place in its row; the ring stops under reduced motion (0ms). */
+.agent-dot {
+  position: relative;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.agent-dot::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-warning);
+  border-radius: 50%;
+  opacity: 0;
+  animation: agent-ping var(--motion-duration-skeleton) var(--motion-ease-standard) infinite;
+  content: '';
+}

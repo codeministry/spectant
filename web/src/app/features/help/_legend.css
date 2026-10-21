@@ -1,0 +1,18 @@
+/* The tone legend of a workflow figure: a wrapping list of 12/16 muted entries, each a swatch or glyph and its name.
+   The importer sets the margin. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  list-style: none;
+}
+
+.legend li {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}

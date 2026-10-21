@@ -1,0 +1,41 @@
+:host {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.stage-line, .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+
+.stage-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-selector);
+  color: var(--disp-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.caption, .muted {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.done {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+.phrase {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 15px;
+  line-height: 24px;
+}

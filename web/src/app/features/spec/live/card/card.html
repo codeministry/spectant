@@ -1,0 +1,49 @@
+
+    @let c = card();
+    <article
+      [attr.aria-label]="'board.card.name' | transloco: { task: c.task, claim: c.claim, state: (stateWord() | transloco), lane: c.lane }"
+      [attr.data-card]="c.task"
+      [attr.data-state]="c.state"
+      [attr.data-lane]="c.lane"
+      [attr.data-edge]="spec().tone"
+      [style.--edge]="edge()"
+      [attr.data-sel]="selected() ? '' : null"
+      [attr.data-changed]="changed() ? '' : null"
+    >
+      <div class="r1">
+        <ui-glyph [state]="glyph()" family="card" [size]="20" />
+        <button type="button" class="id" aria-haspopup="dialog" [attr.aria-label]="'board.card.open' | transloco: { task: c.task }" (click)="openDetail()">{{ c.task }}</button>
+        @if (density() === 'comfortable') {
+          <ui-chip class="claim">{{ c.claim }}</ui-chip>
+        }
+        @if (c.parallel) {<span class="pmark" data-flag="parallel" [attr.title]="'board.card.parallel' | transloco">P</span>}
+        @if (c.seam) {<span class="seam" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}
+        <span class="lane-chip" data-lane-chip><i aria-hidden="true"></i>{{ c.lane }}</span>
+        @if (run() === null) {
+          <ui-state-chip small class="state" [state]="c.state" family="card" />
+        }
+      </div>
+      <p class="text">{{ c.text }}</p>
+      @if (strikeNote(); as note) {
+        <p class="strike-note" data-strike-note>{{ note }}</p>
+      } @else if (strikeNote() === '') {
+        <p class="strike-note" data-strike-note>{{ 'board.card.struck' | transloco }}</p>
+      }
+      @if (run(); as run) {
+        <app-run-chip small class="run-state" [run]="run.state" />
+      }
+      @for (l of latestStep(); track l.key) {
+        <p class="latest-step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
+          <ui-icon [name]="l.icon" [size]="12" [style.color]="l.color" /><span class="sw" data-step-word>{{ 'steps.kind.' + l.word | transloco }}</span><span aria-hidden="true">·</span><ui-time class="st" data-step-time [value]="l.step.ts" form="clock" />
+        </p>
+      }
+      @if (density() === 'comfortable') {
+        <div class="r3">@if (c.builder) {<span class="tag builder" data-builder><ui-icon name="wrench" [size]="12" />{{ c.builder }}</span>}@if (c.reader) {<span class="tag reader" data-reader><ui-icon name="eye" [size]="12" />{{ c.reader }}@if (c.verdict) {<i class="vdot" [attr.data-verdict]="c.verdict" [attr.title]="c.verdict"></i>}</span>}@if (c.tries > 1) {<span class="try" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (agent(); as agent) {<app-agent-chip [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />}</div>
+      } @else if (agent(); as agent) {
+        <div class="r3"><app-agent-chip [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" /></div>
+      }
+    </article>
+    @if (detailOpen()) {
+      <app-card-detail [card]="c" [history]="history()" [(open)]="detailOpen" />
+    }
+  

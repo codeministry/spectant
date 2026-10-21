@@ -1,0 +1,29 @@
+
+    @if (latest(); as latest) {
+      <button
+        type="button"
+        class="steps-toggle"
+        data-steps-toggle
+        [attr.aria-expanded]="open()"
+        [attr.aria-controls]="open() ? panelId() : null"
+        (click)="toggled.emit()"
+      >
+        <ui-icon class="chevron" name="chevron-right" [size]="12" />
+        <span class="vh">{{ 'tasks.steps.lead' | transloco: { task: task() } }}</span>
+        <span class="latest" data-step-latest [attr.data-step-kind]="latest.step.kind" [attr.data-step-result]="latest.step.result ?? null"
+          ><ui-icon [name]="latest.icon" [size]="14" />{{ 'steps.kind.' + latest.word | transloco }}</span
+        >
+        <span aria-hidden="true">·</span>
+        <ui-time class="mono" [value]="latest.step.ts" form="clockSeconds" />
+        <span aria-hidden="true">·</span>
+        <span class="mono" data-steps-count>{{
+          (latest.count === 1 ? 'tasks.steps.count.one' : 'tasks.steps.count.other') | transloco: { count: latest.count }
+        }}</span>
+      </button>
+      @if (open()) {
+        <div class="panel" data-steps [id]="panelId()">
+          <app-step-timeline [steps]="steps()" [task]="task()" />
+        </div>
+      }
+    }
+  

@@ -1,0 +1,44 @@
+
+    <ui-dialog [label]="'shortcuts.title' | transloco" [(open)]="keyboard.sheetOpen">
+      <div class="sheet" data-ui="shortcut-sheet">
+        <div class="sheet-head">
+          <h2>{{ 'shortcuts.title' | transloco }}</h2>
+          <button ui-icon-button icon="x" size="sm" [label]="'common.close' | transloco" (click)="keyboard.sheetOpen.set(false)"></button>
+        </div>
+        <div class="sheet-scroll">
+          @if (!singleKeys()) {
+            <p class="off" data-shortcuts-off>{{ 'shortcuts.off' | transloco }}</p>
+          }
+          @for (context of contexts; track context.id) {
+            <section class="context" [attr.data-context]="context.id">
+              <h3>{{ 'shortcuts.contexts.' + context.id | transloco }}</h3>
+              @for (group of context.groups; track group.id) {
+                <section class="group" [attr.data-group]="group.id">
+                  @if (context.titled) {
+                    <h4>{{ 'shortcuts.groups.' + group.id | transloco }}</h4>
+                  }
+                  <div class="keys">
+                    @for (binding of group.bindings; track binding.id) {
+                      <div class="row" [attr.data-binding]="binding.id">
+                        <span class="action">{{ binding.label | transloco: { target: binding.target ? (binding.target | transloco) : '' } }}</span>
+                        <span class="k">
+                          @for (key of binding.keys; track $index) {
+                            <ui-kbd>{{ keyLabel(key) }}</ui-kbd>
+                          }
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              }
+            </section>
+          }
+          <p class="sheet-footer">
+            <a routerLink="/help" data-sheet-help (click)="keyboard.sheetOpen.set(false)"
+              >{{ 'settings.keyboard.guide' | transloco }}<ui-icon name="arrow-right" [size]="14"
+            /></a>
+          </p>
+        </div>
+      </div>
+    </ui-dialog>
+  

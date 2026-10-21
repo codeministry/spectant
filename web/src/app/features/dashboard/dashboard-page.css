@@ -3,6 +3,8 @@
  * the head to the KPI band, between the KPI band and the TL;DR and before the footnote; 24 px before every block with
  * a section header (Waits on you, Next up, the warnings).
  */
+@import "./_workspace-page.css";
+
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -22,33 +24,8 @@
   margin-block-start: 24px;
 }
 
-/* Prototype `.footer-note`: 12 px muted, closing the page. */
-.footer-note {
-  margin: 0;
-  color: var(--muted-ink);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-/* Prototype `page-head h1`: the 22 px workspace badge, "Dashboard", then "· <ws>" in muted 400. */
+/* Prototype `page-head h1`: the 22 px workspace badge, "Dashboard", then "· <ws>" in muted 400 (_workspace-page.css,
+   with the prototype's `.footer-note`), 10 px apart. */
 .h1-row {
-  display: flex;
   gap: 10px;
-  align-items: center;
-  min-inline-size: 0;
-}
-
-.page-mark {
-  flex: none;
-}
-
-.h1-row h1 {
-  min-inline-size: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.h1-ws {
-  color: var(--muted-ink);
-  font-weight: 400;
 }

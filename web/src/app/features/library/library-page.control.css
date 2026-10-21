@@ -26,11 +26,8 @@ app-library-page .lib-ctl {
   align-content: center;
   min-block-size: 56px;
   padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--color-base-100);
-  color: var(--color-base-content);
-  font: inherit;
+
+  /* border, border-radius, background, color and font: the field surface in `library-page.css`. */
   text-align: start;
   cursor: pointer;
   transition: background-color var(--dur-hover) var(--ease);
@@ -120,15 +117,20 @@ app-library-page .lib-archived {
 }
 
 /* A missing row is dimmed by colour and form, never by opacity (DS-APP-33): the title in muted ink, the type tag
-   transparent with a dashed edge in the track colour instead of its family colour; the chip stays fully opaque. */
-app-library-page .lib-row[data-state='missing'] .lib-title {
+   transparent with a dashed edge in the track colour instead of its family colour; the chip stays fully opaque.
+   The absent tech.md (`data-library-placeholder`) is dimmed the same way, without the flag. Its rules moved here from
+   `library-page.heads.css`: a placeholder row carries no `data-state`, so the two selectors never meet one element,
+   and no rule between the two places sets these properties on `.lib-title` or `.lib-type` at this specificity. */
+app-library-page .lib-row[data-state='missing'] .lib-title,
+app-library-page .lib-row[data-library-placeholder] .lib-title {
   color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 500;
 }
 
-app-library-page .lib-row[data-state='missing'] .lib-type {
+app-library-page .lib-row[data-state='missing'] .lib-type,
+app-library-page .lib-row[data-library-placeholder] .lib-type {
   border: 1px dashed var(--line);
   border-inline-start: 3px dashed var(--track);
   background: transparent;

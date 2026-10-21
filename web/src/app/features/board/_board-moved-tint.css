@@ -1,0 +1,14 @@
+/*
+ * An accepted move (T126, spec 037 ISC-200.1): the changed-value tint (1200 ms) fades over a card's list item or a
+ * band head's sticky label, paint only. The card list and the band head import this partial; emulated encapsulation
+ * scopes each copy, and the other selector matches nothing there.
+ */
+:host li[data-moved]::after,
+:host([data-moved]) .band-sticky::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-box);
+  content: '';
+  pointer-events: none;
+  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
+}

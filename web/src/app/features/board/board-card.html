@@ -1,0 +1,97 @@
+
+    @let c = card();
+    <ui-card [attr.data-selected]="look()" [padding]="12" side [dashed]="c.kind === 'idea'" [style.--edge]="edge()" [style.--reason-ink]="ink()">
+      <article>
+        <div class="main">
+          <div class="r1">
+            <ui-type-glyph [type]="glyph()" />
+            @if (c.kind === 'idea') {
+              <span class="idea"><ui-icon name="lightbulb" [size]="12" /><span class="slug">{{ c.slug }}</span></span>
+            } @else {
+              <span class="num">{{ c.id }}</span>
+            }
+            <ui-priority [value]="c.priority" />
+          </div>
+
+          @let stage = 'stages.' + c.stage | transloco;
+          @let type = c.type === null ? ('common.noValue' | transloco) : ('types.' + c.type | transloco);
+          <a
+            class="title"
+            [attr.href]="href()"
+            [attr.data-ref]="ref()"
+            (click)="open($event)"
+            [attr.aria-label]="
+              c.kind === 'idea'
+                ? ('board.workspace.card.ideaName' | transloco: { title: c.title, priority: c.priority })
+                : ('board.workspace.card.name' | transloco: { id: c.id, type, title: c.title, priority: c.priority, stage })
+            "
+            [attr.aria-describedby]="describedByList()"
+            >{{ c.title }}</a
+          >
+
+          @if (c.feature || c.milestone || c.assignee || c.worktree) {
+            <div class="r3">
+              @if (c.feature; as feature) {
+                <span class="chip feat" [title]="'board.workspace.card.feature' | transloco: { id: feature, name: c.featureName ?? feature }"
+                  ><span>{{ feature }}</span></span
+                >
+              }
+              @if (c.milestone; as milestone) {
+                <span class="chip ms"><ui-icon name="flag" [size]="12" /><span>{{ milestone }}</span></span>
+              }
+              @if (c.worktree || c.assignee) {
+                <span class="who">
+                  @if (c.worktree; as worktree) {
+                    <ui-worktree-chip [worktree]="worktree" [compact]="true" [interactive]="false" [mismatch]="c.worktreeMismatch" />
+                  }
+                  @if (c.assignee; as assignee) {
+                    <ui-actor-chip [actor]="assignee" [name]="c.assigneeName" />
+                  }
+                </span>
+              }
+            </div>
+          }
+
+          <!-- Spec 020 (T13, ISC-237.1): the spec's guidance entry reads its catalogue sentence; without one, the phrase. -->
+          @if (waits(); as phrase) {
+            @let reason = c.guidance | guidanceReason: phrase;
+            <span class="vh" [id]="describedBy()">{{ 'board.workspace.card.waits' | transloco: { reason } }}</span>
+          }
+          <!-- Spec 020 (T23, ISC-240): the spec's own entry stands in guidance.waits: the marker row right above the state line. -->
+          @if (c.marked) {
+            <div class="mark" data-card-marker [id]="markId()">
+              <ui-chip tone="secondary" icon="user-round">{{ 'guidance.marker' | transloco }}</ui-chip>
+            </div>
+          }
+          @if (c.state || c.waits || waits()) {
+            <div class="r4" data-card-state [attr.data-run]="c.state?.run ? c.state?.state : null">
+              @if (c.state; as state) {
+                <ui-item-state [info]="withReason(state, c.guidance | guidanceReason: state.reason)" [ws]="ws()" reasoned />
+              }
+              @if (holdShown() && c.waits; as wait) {
+                <ui-waits-chip data-card-waits [id]="holdId()" [wait]="wait" [ws]="ws()" [titles]="c.waitTitles" />
+              }
+              @if (!c.state && waits(); as reason) {
+                <ui-reason [compact]="true" [phrase]="reason" [guidance]="c.guidance ?? null" [command]="c.command" />
+              }
+            </div>
+          }
+        </div>
+        <button
+          type="button"
+          class="grip"
+          cdkDragHandle
+          data-grip
+          aria-haspopup="dialog"
+          [attr.data-locked]="locked() ? '' : null"
+          [attr.aria-label]="'board.workspace.card.move' | transloco: { id: c.id ?? c.slug }"
+          (pointerdown)="onGripPress($event, grip)"
+          (click)="onGripClick($event, grip)"
+          #grip
+        >
+          <ui-icon class="i-grip" [name]="locked() ? 'lock' : 'grip-vertical'" [size]="16" />
+          <ui-icon class="i-move" name="ellipsis" [size]="16" />
+        </button>
+      </article>
+    </ui-card>
+  

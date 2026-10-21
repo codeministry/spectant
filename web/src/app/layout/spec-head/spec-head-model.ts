@@ -93,10 +93,8 @@ export function gateInHead(stage: string): boolean {
   return HEAD_GATE_STAGES.has(stage);
 }
 
-/** A path cut after each `/`, so the template can offer a line break there (`<wbr>`) and nowhere else. */
-export function pathSegments(path: string): readonly string[] {
-  return path.split(/(?<=\/)/u).filter((segment) => segment.length > 0);
-}
+/** A path cut after each `/` (`<wbr>` there and nowhere else); it lives in core, which `code[ui-path-breaks]` shares. */
+export { pathSegments } from '../../core/model/path-segments';
 
 /** The first twelve hex digits of a hash for display; null for a file that does not exist. */
 export function shortHash(hash: string | null): string | null {

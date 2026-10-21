@@ -8,3 +8,6 @@ export const isLoose = (value: unknown): value is Loose => typeof value === 'obj
 
 /** `value` when it is a string, else null. */
 export const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+/** A finite number as served, 0 otherwise (a count the body may lack). */
+export const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);

@@ -1,11 +1,14 @@
 /* Drag and drop on the workspace board, split from board-page.css for the per-file style budget (T125, T126). */
+@import './_board-count-morph.css';
+@import './_board-drag-slot.css';
 
 /*
  * Drag and drop (T125, T126, ISC-130; design 008 § Drag, Drop und die Alternativen). While a card is lifted every list
  * carries `data-drop`: the columns the workflow allows get a dashed primary outline, `not-next` and `gate` columns are
  * muted under their hint, which overlays the column top so nothing shifts under the pointer. The lifted card follows
  * the pointer with a 2 px primary outline; its slot stays as a dashed placeholder (the CDK anchor), and a placeholder
- * entering a stub, the strip or a tray slot is hidden, so their fixed tracks never change. No glow, tokens only.
+ * entering a stub, the strip or a tray slot is hidden, so their fixed tracks never change. No glow, tokens only. The
+ * card's own drag rules live with its list (`board-cards.css`), the slot outline in `_board-drag-slot.css`.
  */
 .col,
 .stub,
@@ -72,37 +75,21 @@
   display: none;
 }
 
-.cdk-drag-preview {
-  border-radius: var(--radius-box);
-  outline: 2px solid var(--color-primary);
-}
-
-.cdk-drag-anchor,
-.cdk-drag-placeholder {
-  position: relative;
-}
-
-.cdk-drag-anchor::after,
-.cdk-drag-placeholder::after {
-  position: absolute;
-  inset: 0;
-  border: 1px dashed var(--muted-ink);
-  border-radius: var(--radius-box);
-  background: var(--color-base-200);
-  content: '';
-}
-
-.stub .cdk-drag-placeholder,
-.slot .cdk-drag-placeholder,
-.cell.stubcell .cdk-drag-placeholder {
+/*
+ * A card's placeholder is a clone of the card element that `app-board-cards` renders, so it carries that component's
+ * scope, not the page's. In a stub, a tray slot or a stub cell (lists the page owns) it is hidden; only a pierced
+ * selector reaches it there, held to this page's own lists by `:host`.
+ */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+:host :is(.stub, .slot, .cell.stubcell) ::ng-deep .cdk-drag-placeholder {
   display: none;
 }
 
 /*
  * Feature bands (spec 037, T35, ISC-197): the preview is the head alone, a card-surface strip with a 2 px primary
  * outline, at most 480 px; the band stays as a dashed primary outline. The drop line is 2 px primary over the board's
- * width at the top of the head after the gap, with a dot at its start. Other milestones' bands dim like locked columns
- * and their head names why.
+ * width at the top of the head after the gap, with a dot at its start (`band-header.css`). Other milestones' bands dim
+ * like locked columns; their cells dim here, their head in `band-header.css`.
  */
 .band-drag {
   position: relative;
@@ -122,105 +109,28 @@
   background: none;
 }
 
-.band-head[data-drop-line]::before,
-.band-head[data-drop-line] .band-sticky::before {
+.band-head[data-drop-line]::before {
   position: absolute;
   z-index: 2;
-  content: '';
-  pointer-events: none;
-}
-
-.band-head[data-drop-line]::before {
   inset-block-start: -1px;
   inset-inline: 0;
   block-size: 2px;
   background: var(--color-primary);
+  content: '';
+  pointer-events: none;
 }
 
-.band-head[data-drop-line] .band-sticky::before {
-  inset-block-start: -4px;
-  inset-inline-start: 0;
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: var(--radius-selector);
-  background: var(--color-primary);
-}
-
-.band-head[data-band-lock] .bh,
-.band-head[data-band-lock] .band-grip,
 :host .cell[data-band-lock] .cards {
   opacity: 0.55;
 }
 
-.band-lock {
-  flex: none;
-  padding: 0 8px;
-  border-radius: var(--radius-selector);
-  background: var(--color-base-200);
-  color: var(--muted-ink);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 20px;
-  white-space: nowrap;
-}
-
-/* An accepted move: the counts morph in, the card carries the changed-value tint (1200 ms) over its surface. */
-.count[data-morph] {
-  animation: board-count-in var(--motion-duration-slow) var(--motion-ease-standard);
-}
-
-@keyframes board-count-in {
-  from {
-    opacity: 0;
-    transform: translateY(-25%);
-  }
-}
-
-.cards li {
-  position: relative;
-}
-
-.cards li[data-moved]::after {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-box);
-  content: '';
-  pointer-events: none;
-  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
-}
-
-/* The confirmation after a band move (ISC-200.1): the head's tint fades, paint only; under reduced motion a static 4 px
- * dot at its start instead, as in the tree. */
-.band-head[data-moved] .band-sticky::after {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-box);
-  content: '';
-  pointer-events: none;
-  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .band-head[data-moved] .band-sticky::after {
-    inset: calc(50% - 2px) auto auto 2px;
-    inline-size: 4px;
-    block-size: 4px;
-    border-radius: var(--radius-selector);
-    background: var(--color-primary);
-    animation: none;
-  }
-}
-
 @media (forced-colors: active) {
   :host([data-dragging]) [data-drop='allowed'],
-  .cdk-drag-preview,
   .band-preview {
     outline-color: Highlight;
   }
 
-  .band-head[data-drop-line]::before,
-  .band-head[data-drop-line] .band-sticky::before {
+  .band-head[data-drop-line]::before {
     background: Highlight;
   }
 }
-

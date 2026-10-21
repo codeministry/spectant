@@ -70,19 +70,6 @@
   display: grid;
 }
 
-.barrow .prev {
-  transform: scaleX(-1);
-}
-
-.barname {
-  gap: 8px;
-  justify-content: center;
-  min-inline-size: 0;
-  block-size: 44px;
-  font-weight: 600;
-}
-
-.barname .sl,
 .slot .sl {
   min-inline-size: 0;
   overflow: hidden;
@@ -90,7 +77,6 @@
   white-space: nowrap;
 }
 
-.barname .count,
 .slot .count {
   font-family: var(--font-mono);
   font-size: 13px;

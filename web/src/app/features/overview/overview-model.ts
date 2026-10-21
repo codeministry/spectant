@@ -1,6 +1,7 @@
 import type { GuidanceEntry } from '../../../../../core/src/files';
 import { guidanceOfBody } from '../../core/model/guidance-entry';
 import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
+import { count, isLoose, type Loose, text } from '../../layout/shell/loose';
 
 /** How many Next up rows a workspace column shows (tiles.md § index.html: "up to 3"). */
 export const NEXT_UP_LIMIT = 3;
@@ -46,10 +47,6 @@ export interface OverviewColumn {
   readonly loadedAt: number;
 }
 
-type Loose = Readonly<Record<string, unknown>>;
-const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
-const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
-const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 const fraction = (value: unknown): Fraction | null =>
   isLoose(value) ? { closed: count(value['closed']), total: count(value['total']) } : null;
 

@@ -147,17 +147,24 @@ app-library-page .lib-select {
   min-inline-size: 160px;
 }
 
+/* The selects and the control counts (`library-page.control.css`) share one field surface. The control counts' part
+   moved up here from that sheet: no rule between the two places sets these properties on `.lib-ctl`, and the select's
+   own rule below still sets its font size after the `font` shorthand. */
+app-library-page .lib-select select,
+app-library-page .lib-ctl {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font: inherit;
+}
+
 /* A select is as wide as its longest option (a long spec slug); held to its cell so the gap between the two stays. */
 app-library-page .lib-select select {
   inline-size: 100%;
   min-inline-size: 0;
   block-size: 34px;
   padding-inline: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--color-base-100);
-  color: var(--color-base-content);
-  font: inherit;
   font-size: 13px;
 }
 

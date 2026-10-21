@@ -1,0 +1,33 @@
+@if (data.workspaceMissing()) {
+  <app-not-found />
+} @else if (data.workspaceUnavailable()) {
+  <ui-notice>{{ 'shell.unavailable' | transloco }}</ui-notice>
+} @else {
+  <!-- Spec 058: eyebrow `WS · SPECS · n active · m archived`, the page's menu summary as its third segment. -->
+  <ui-page-head [segments]="[page.ws(), ('shell.pages.specs' | transloco), ('shell.pages.summary.specs' | transloco: summary())]">
+    <div class="h1-row" ngProjectAs="h1">
+      <ui-ws-badge class="page-mark" size="page" [name]="page.ws()" aria-hidden="true" />
+      <h1 class="type-page-title">{{ 'shell.pages.specs' | transloco }} <span class="h1-ws">· {{ page.ws() }}</span></h1>
+    </div>
+  </ui-page-head>
+  <app-spec-table
+    [ws]="page.ws()"
+    [rows]="held().shown"
+    [archivedCount]="page.view()?.kpis.archived ?? null"
+    [counts]="listCounts()"
+    [guidance]="page.view()?.guidance"
+    [changed]="refresh.changedRows()"
+    [pending]="held().pending"
+    (showPending)="showPending()"
+    [archive]="archive()"
+    [query]="query()"
+    [preview]="previewId()"
+    (queryChange)="setQuery($event)"
+  />
+  @if (ideas().count > 0) {
+    <app-ideas-panel [ws]="page.ws()" [ideas]="ideas()" />
+  }
+  @if (page.pathTail()) {
+    <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: page.pathTail() } }}</p>
+  }
+}

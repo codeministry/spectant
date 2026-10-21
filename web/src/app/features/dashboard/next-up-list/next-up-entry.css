@@ -1,0 +1,110 @@
+
+    /* Spec 020 (T25): a row as wide as the 820 px dashboard keeps the chip right, top-aligned. */
+    :host {
+      display: block;
+      min-inline-size: 0;
+      container: next-entry / inline-size;
+    }
+
+    .title {
+      display: block;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+
+    .more {
+      position: relative;
+      justify-self: start;
+      min-block-size: 24px;
+      padding: 2px 0;
+      border: 0;
+      background: none;
+      color: var(--ques-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 20px;
+      cursor: pointer;
+    }
+
+    /* The toggle on the title line, its 24 px box pulled to the 20 px line so the row stays 20 tall. */
+    .next-row .more {
+      grid-column: 3;
+      grid-row: 1;
+      margin-block: -2px;
+    }
+
+    @media (hover: hover) { .more:hover { text-decoration: underline; } }
+
+    /* Spec 021 (T31): a 44 px hit area (WCAG 2.5.8) around the 24 px toggle under a coarse pointer, as ui-button and
+       the worktree chip grow theirs: an invisible ::before, so the row keeps its height. */
+    @media (pointer: coarse) { .more::before {
+   position: absolute;
+   inset: min(0px, (100% - 44px) / 2);
+   content: '';
+ } }
+
+    .text-link {
+      border-radius: var(--radius-field);
+      color: var(--color-base-content);
+      text-decoration: none;
+    }
+
+    .text-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .next-row {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      gap: 4px 8px;
+      align-items: baseline;
+      padding: 8px 12px;
+      border-inline-start: 3px solid var(--color-primary);
+    }
+
+    .next-row .text-link {
+      min-inline-size: 0;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 20px;
+    }
+
+    .next-row .cmd {
+      grid-column: 2 / -1;
+      min-inline-size: 0;
+    }
+
+    /* Spec 020 (T25): the sentence in 13/20 over the chip, wrapping on whole words and never clamped; the ring of
+       "open" in its own tone (secondary). place-items: start is the former justify-items and align-items, both start. */
+    .guide {
+      display: grid;
+      gap: 8px;
+      place-items: start;
+      min-inline-size: 0;
+    }
+
+    .sentence {
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+      min-inline-size: 0;
+      color: var(--color-base-content);
+      font-size: 13px;
+      line-height: 20px;
+      overflow-wrap: break-word;
+    }
+    .sentence ui-glyph { padding-block-start: 3px; }
+
+    @container next-entry (min-inline-size: 560px) {
+      .guide {
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 16px;
+      }
+    }
+
+    @media (forced-colors: active) {
+      .next-row { border-inline-start-color: CanvasText; }
+    }
+  

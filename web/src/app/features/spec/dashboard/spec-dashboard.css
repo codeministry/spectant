@@ -2,34 +2,13 @@
  * The spec dashboard (design.md § Spec dashboard, spec 024 § Across viewports; the prototype's `.spec-kpis`,
  * `.dash-2`, `.sblock`). One column of blocks in prototype order on every tier: key numbers, the idea, next step beside
  * lanes (from 900), the TL;DR, the area tiles and, below 1120, the Spec context. Partials: `spec-dashboard-tiles.css`
- * (lanes, tiles), `spec-context.css` (Waiting on you, Warnings, Gates). Colours are tokens only.
+ * (lanes, tiles), `spec-context.css` (Waiting on you, Warnings, Gates); the page frame comes from `_spec-tab-page.css`,
+ * the idea card's eyebrow from `_spec-context.css`. Colours are tokens only.
  */
-:host {
-  display: block;
-}
-
-.page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
-}
+@import '../_spec-tab-page.css';
 
 .section-card {
   position: relative;
-  display: grid;
-  gap: 16px;
-  align-content: start;
-  min-inline-size: 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  color: var(--color-base-content);
-}
-
-.muted {
-  margin: 0;
-  color: var(--muted-ink);
 }
 
 /* KPI band (`.spec-kpis`, spec 024 T78): below 1120 the claims hero fills the first row (ring, value, meta; the meta at
@@ -54,17 +33,6 @@
   border-start-start-radius: 0;
   border-end-start-radius: 0;
 }
-
-.eyebrow {
-  margin: 0;
-  color: var(--muted-ink);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 16px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 
 /* Next step beside lanes (`.dash-2`, 1.4fr 1fr from 900). */
 .dash-2 {

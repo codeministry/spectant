@@ -1,0 +1,9 @@
+@let d = divider();
+<span class="band-divider-text">
+  <ui-icon name="flag" [size]="12" />
+  <span>{{ d.name ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
+  @if (d.target) {
+    <span aria-hidden="true">·</span>
+    <ui-time class="mono" form="day" [value]="d.target" />
+  }
+</span>

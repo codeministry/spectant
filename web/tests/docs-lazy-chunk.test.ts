@@ -89,7 +89,7 @@ describe("the spec page stays a lazy chunk", () => {
 // The not-found page is a lazy chunk (spec 024 review, spec 057): `app.routes.ts` imports `spec-area.routes.ts`
 // statically, so a static `NotFound` import there pulls the page into the initial bundle.
 describe("the notfound page stays a lazy chunk", () => {
-  const ROUTE_FILES = [join(SRC, "app", "app.routes.ts"), join(SRC, "app", "features", "spec", "spec-area.routes.ts")];
+  const ROUTE_FILES = [join(SRC, "app", "app.routes.ts"), join(SRC, "app", "spec-area.routes.ts")];
 
   test("notfound: the route files load it through import(), never a static import", () => {
     for (const file of ROUTE_FILES) {

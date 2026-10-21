@@ -297,15 +297,7 @@
     (click)="open(row.doc.path)"
   >
     <span class="lib-type" [attr.data-type]="row.doc.type"><ui-icon [name]="typeIcon(row.doc)" [size]="12" />{{ 'library.types.' + row.doc.type | transloco }}</span>
-    <span class="lib-title">
-      @for (run of row.title; track $index) {
-        @if (run.hit) {
-          <mark>{{ run.text }}</mark>
-        } @else {
-          <ng-container>{{ run.text }}</ng-container>
-        }
-      }
-    </span>
+    <span class="lib-title"><ng-container [ngTemplateOutlet]="runsTpl" [ngTemplateOutletContext]="{ $implicit: row.title }" /></span>
     <span class="lib-flags">
       <span class="lib-slot">
         @if (row.doc.state === 'stale') {
@@ -330,15 +322,20 @@
       </span>
     </span>
     @if (row.meta; as meta) {
-      <span class="lib-snippet" data-library-meta [attr.data-library-snippet]="row.snippet ? '' : null">
-        @for (run of meta; track $index) {
-          @if (run.hit) {
-            <mark>{{ run.text }}</mark>
-          } @else {
-            <ng-container>{{ run.text }}</ng-container>
-          }
-        }
-      </span>
+      <span class="lib-snippet" data-library-meta [attr.data-library-snippet]="row.snippet ? '' : null"
+        ><ng-container [ngTemplateOutlet]="runsTpl" [ngTemplateOutletContext]="{ $implicit: meta }"
+      /></span>
     }
   </button>
+</ng-template>
+
+<!-- A highlighted text (title or meta line): each run plain, the search match as `<mark>`. -->
+<ng-template #runsTpl let-runs>
+  @for (run of runs; track $index) {
+    @if (run.hit) {
+      <mark>{{ run.text }}</mark>
+    } @else {
+      <ng-container>{{ run.text }}</ng-container>
+    }
+  }
 </ng-template>

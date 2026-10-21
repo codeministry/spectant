@@ -1,4 +1,6 @@
-/* Not encapsulated (the prose is [innerHTML]): every selector starts with ui-doc-prose. */
+/* Not encapsulated (the prose is [innerHTML]): every selector starts with ui-doc-prose; the diagram toolbar's anatomy,
+   shared with the planning graph, starts with ui-diagram-toolbar (`_diagram-toolbar.css`). */
+@import './_diagram-toolbar.css';
 ui-doc-prose { display: block; }
 
 ui-doc-prose .docs-layout {
@@ -245,12 +247,6 @@ ui-doc-prose .docs-prose figure.mermaid-figure > ui-diagram-toolbar {
 }
 
 ui-doc-prose .diagram-toolbar {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
   background: var(--page-glass);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
   -webkit-backdrop-filter: blur(12px);
@@ -267,54 +263,18 @@ ui-doc-prose figure.mermaid-figure:is(:hover, :focus-within) .diagram-toolbar { 
 }
 
 ui-doc-prose .diagram-tool {
-  display: inline-grid;
-  place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
   transition:
     background-color var(--dur-hover) var(--ease),
     color var(--dur-hover) var(--ease);
 }
 
-ui-doc-prose .diagram-tool:hover:not([aria-disabled='true']) {
-  background: var(--color-base-300);
-  color: var(--color-base-content);
-}
-
-ui-doc-prose .diagram-tool[aria-disabled='true'] {
-  opacity: 0.4;
-  cursor: default;
-}
-
-@media (pointer: coarse) {
-  ui-doc-prose .diagram-tool {
-    inline-size: 44px;
-    block-size: 44px;
-  }
-}
-
 ui-doc-prose .diagram-zoom-level {
-  min-inline-size: 6ch;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
   line-height: 16px;
-  text-align: center;
   white-space: nowrap;
 }
 
 ui-doc-prose .diagram-tool-rule {
-  inline-size: 1px;
-  block-size: 16px;
   margin-inline: 2px;
-  background: var(--line);
 }
 
 /* Zoomed (zoomDiagram): the SVG has its own width, the frame scrolls both ways, a mouse drag pans (panWithMouse). */

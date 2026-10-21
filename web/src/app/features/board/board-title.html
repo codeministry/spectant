@@ -1,0 +1,14 @@
+<ui-page-head [segments]="segments()">
+  <!-- The prototype head (spec 024): the workspace badge, "Board" and the muted "· <ws>" suffix outside the h1. -->
+  <div class="h1-row" ngProjectAs="h1">
+    <ui-ws-badge class="page-mark" size="page" data-board-badge [name]="name()" aria-hidden="true" />
+    <h1 class="type-page-title" id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+    <span class="ws-suffix" aria-hidden="true">· {{ name() }}</span>
+  </div>
+</ui-page-head>
+@if (source(); as src) {
+  <!-- The workflow the columns come from (ISC-122): the workspace's own table, or the default one when the file is missing. -->
+  <span class="source" [class.mono]="src === 'file'" [attr.data-source]="src">{{
+    (src === 'file' ? 'board.workspace.source.custom' : 'board.workspace.source.default') | transloco
+  }}</span>
+}

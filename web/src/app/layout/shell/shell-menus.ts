@@ -15,6 +15,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { KeyboardService } from './keyboard.service';
+import { chooseLanguage } from '../../core/language-choice';
 import { LanguageService } from '../../core/language.service';
 import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
@@ -279,10 +280,7 @@ export class ShellMenus {
   }
 
   protected setLanguage(lang: string | undefined): void {
-    const next = LANGS.find((key) => key === lang);
-    if (next === undefined) return;
-    this.language.set(next);
-    void this.settings.update({ language: next });
+    chooseLanguage(lang, this.language, this.settings);
   }
 
   protected toggleSingleKeys(): void {

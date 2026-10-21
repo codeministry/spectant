@@ -20,45 +20,8 @@ import { UiWsCover } from '../../shared/ui/ws-badge/ws-cover';
   imports: [RouterLink, TranslocoPipe, UiChip, UiWsBadge, UiWsCover],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { [DEMO_BLOCK_ATTR]: '' },
-  template: `
-    @let id = identity();
-    @if (link()) {
-      <a class="ws-cover-link" [routerLink]="href()" [attr.aria-label]="'identity.open' | transloco: { workspace: name() }">
-        <ui-ws-cover data-ws-cover [name]="name()" [accent]="id?.accent ?? null" [image]="id?.image ?? null" [alt]="'identity.screenshot' | transloco: { workspace: name() }" />
-      </a>
-    } @else {
-      <ui-ws-cover data-ws-cover [name]="name()" [accent]="id?.accent ?? null" [image]="id?.image ?? null" [alt]="'identity.screenshot' | transloco: { workspace: name() }" />
-    }
-    <div class="ws-head" data-demo-head>
-      @if (link()) {
-        <a [routerLink]="href()">
-          <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" />
-          <h2>{{ name() }}</h2>
-          <span class="path">{{ pathTail() }}</span>
-        </a>
-      } @else {
-        <span class="ident">
-          <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" />
-          <h2>{{ name() }}</h2>
-          <span class="path">{{ pathTail() }}</span>
-        </span>
-      }
-      <span class="end">
-        <ui-chip variant="demo" />
-        <ng-content />
-      </span>
-    </div>
-  `,
-  styles: `
-    :host { display: flex; flex-direction: column; gap: 8px; min-inline-size: 0; }
-    .ws-cover-link { display: block; border-radius: var(--radius-card); }
-    .ws-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; min-block-size: 56px; border-block-end: 1px solid var(--line); }
-    .ws-head a, .ident { display: inline-flex; gap: 8px; align-items: center; min-inline-size: 0; border-radius: var(--radius-field); color: inherit; text-decoration: none; }
-    h2 { overflow: hidden; margin: 0; font-size: 18px; font-weight: 600; line-height: 24px; text-overflow: ellipsis; white-space: nowrap; }
-    .ws-head a:hover h2 { color: var(--disp-text); }
-    .path { overflow: hidden; min-inline-size: 0; color: var(--muted-ink); font-family: var(--font-mono); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
-    .end { display: inline-flex; flex: none; gap: 8px; align-items: center; white-space: nowrap; }
-  `,
+  templateUrl: './ws-identity.html',
+  styleUrl: './ws-identity.css',
 })
 export class WsIdentity {
   /** The workspace name as core reports it. */

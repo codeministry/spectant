@@ -9,7 +9,7 @@ import golden from '../../../../../../../core/fixtures/harbor.claim-view.golden.
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import type { NoteCounts } from '../../../../../../../server/src/contracts/notes.contract';
 import { ApiClient, type ApiResult } from '../../../../core/api.service';
-import { SPEC_AREA_ROUTES } from '../../spec-area.routes';
+import { SPEC_AREA_ROUTES } from '../../../../spec-area.routes';
 
 const HARBOR_002 = (golden as unknown as Record<string, ClaimViewModel>)['specs/002-web-console'];
 

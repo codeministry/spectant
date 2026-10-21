@@ -1,0 +1,119 @@
+/* Claims tab, after `claims-tab.css` (spec 061): the claim card, its state chip, lock and run lines, fold row. */
+@import '../../_fold-row.css';
+
+/* Sweep 2 (ISC-149): the prototype's claim card, probe row, verification line and search field. */
+
+.claim-card[data-state='taken'] {
+  border-color: var(--color-warning);
+}
+
+.claim-card[data-state='takeable'] .glyph,
+.claim-card[data-state='closed'] .glyph {
+  color: var(--clos-text);
+}
+
+.claim-card[data-state='taken'] .glyph {
+  color: var(--hover-text);
+}
+
+/* Prototype `stateChip`: the claim's state as an `st-*` chip at the end of the top row. */
+.head > .st {
+  margin-inline-start: auto;
+}
+
+.notes + .st {
+  margin-inline-start: 0;
+}
+
+.head > .st[data-st='closed'],
+.head > .st[data-st='takeable'] {
+  background: var(--clos-t);
+  color: var(--clos-ink);
+}
+
+.head > [data-chip='blocked'] {
+  background: var(--color-base-300);
+  color: var(--muted-ink);
+}
+
+/* Prototype `.taken-line`: agent dot, session in mono, since. */
+.taken-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 0 0 0 26px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Spec 040 (T51): a run's band in its state's tint; the state line sits at the end of the head otherwise. */
+.taken-line.band {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--disp-t);
+}
+
+.taken-line.band[data-state='aborted'] {
+  background: var(--hover-t);
+}
+
+.item-state {
+  margin-inline-start: auto;
+}
+
+.agent-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.search:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.search input {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  outline: 0;
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 14px;
+}
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Prototype `.fold` / `.fold-row`: a muted summary line; opened, the closed cards follow it. */
+.fold-row > summary {
+  padding: 4px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fold-row > summary:focus-visible {
+  border-radius: var(--radius-field);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.fold-body {
+  display: grid;
+  gap: 8px;
+  padding-block-start: 8px;
+}

@@ -4,6 +4,8 @@
  * the agent banner; the context line (breadcrumb and chip row) is `spec-head.context.css`, the compact tier and the
  * one-column row under 800 px `spec-head.compact.css`.
  */
+@import "../../shared/ui/_agent-dot.css";
+
 :host {
   display: grid;
   gap: 10px;
@@ -299,23 +301,9 @@ h1 {
   margin: 0;
 }
 
+/* The agent dot (shared/ui/_agent-dot.css), kept at its size in the banner line. */
 .agent-dot {
-  position: relative;
   flex: none;
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: 50%;
-  background: var(--color-warning);
-}
-
-.agent-dot::after {
-  position: absolute;
-  inset: -4px;
-  border: 2px solid var(--color-warning);
-  border-radius: 50%;
-  opacity: 0;
-  animation: agent-ping var(--motion-duration-skeleton) var(--motion-ease-standard) infinite;
-  content: '';
 }
 
 @keyframes agent-ping {

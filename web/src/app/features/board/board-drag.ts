@@ -1,4 +1,4 @@
-import { CDK_DRAG_CONFIG, type CdkDragDrop, type DragDropConfig } from '@angular/cdk/drag-drop';
+import { CDK_DRAG_CONFIG, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { DOCUMENT } from '@angular/common';
 import { computed, DestroyRef, inject, Injectable, type Provider, signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
@@ -12,21 +12,8 @@ import { ApiClient } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import type { BoardRefusal } from '../../shared/ui/refusal-notice/refusal';
 import { ToastService } from '../../shared/ui/toast/toast';
+import { BOARD_DRAG_CONFIG } from '../../shared/ui/drag-config';
 import type { BoardCard } from '../../core/model/board-types';
-
-/**
- * The one drag configuration of the workspace board (spec 008, T125, ISC-130; design 008 § Drag, Drop und die
- * Alternativen; plan DS-APP-23): a touch lifts a card after a 350 ms press, so a swipe keeps scrolling; a mouse lifts it
- * at once. Sorting is off everywhere: a card's place in its column comes from the files, so a drop never reorders.
- */
-export const BOARD_DRAG_DELAY = { touch: 350, mouse: 0 } as const;
-
-export const BOARD_DRAG_CONFIG: DragDropConfig = {
-  dragStartDelay: BOARD_DRAG_DELAY,
-  // Spec 026 (T26, ISC-171): the card lifts only after 4 px of movement, so a click selects and a drag still moves.
-  dragStartThreshold: 4,
-  sortingDisabled: true,
-};
 
 /** What a column (stub, strip segment, tray slot) says while a card is dragged over the board. */
 export type DropHint = 'current' | 'allowed' | 'gate' | 'not-next';
@@ -86,6 +73,8 @@ export function withMoves(planning: PlanningModel, moves: readonly BoardMove[]):
  * notice in shared/ui since spec 037 (T21) and is re-exported here for the board.
  */
 export type { BoardRefusal };
+/** The board's drag configuration lives in `shared/ui/drag-config.ts`; the planning tree lifts its rows with it too. */
+export { BOARD_DRAG_CONFIG, BOARD_DRAG_DELAY } from '../../shared/ui/drag-config';
 
 /**
  * What one move from any path came to (T127): `moved` on a 200, `refused` when a refusal now stands for the card,

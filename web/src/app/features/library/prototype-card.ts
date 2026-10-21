@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { LibraryDoc } from '../../../../../core/src/files';
-import { ApiClient } from '../../core/api.service';
+import { libraryAssetUrl, prototypeUrl } from '../../core/api/library.client';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiCard } from '../../shared/ui/card/card';
 
@@ -29,8 +29,8 @@ export interface PrototypePage {
  * § 2c, § Across viewports): inside a `ui-card`, the preview (only when core names a screenshot in the spec's
  * `.design/`, through the library's file route, the figure gone without a placeholder when it does not load), the
  * eyebrow "Pages" with the count, and one row per HTML page: `app-window`, the file name in mono, `external-link`.
- * Each row is an `<a target="_blank" rel="noopener">` on the server's prototype read route (`ApiClient.prototypeUrl`),
- * at least 44 px high on every width; the list has two columns from 1120 px (shell container), one below. A footer
+ * Each row is an `<a target="_blank" rel="noopener">` on the server's prototype read route (`prototypeUrl`, the
+ * stateless URL builder `ApiClient` wraps, so the card injects no client), at least 44 px high on every width; the list has two columns from 1120 px (shell container), one below. A footer
  * with `lock` says the page opens read-only from local files. No iframe, no edit control (Out of Scope).
  *
  * The reader's head carries the type tag, path and folder title; the card holds only what a prototype adds.
@@ -44,8 +44,6 @@ export interface PrototypePage {
   styleUrl: './prototype-card.css',
 })
 export class PrototypeCard {
-  private readonly api = inject(ApiClient);
-
   /** The workspace slug the routes name. */
   readonly workspace = input.required<string>();
   /** The `prototype` catalog document. */
@@ -56,7 +54,7 @@ export class PrototypeCard {
     const ws = this.workspace();
     const doc = this.doc();
     return pageOrder(doc.pages ?? []).flatMap((file) => {
-      const href = this.api.prototypeUrl(ws, doc, file);
+      const href = prototypeUrl(ws, doc, file);
       return href === null ? [] : [{ file, href }];
     });
   });
@@ -69,6 +67,6 @@ export class PrototypeCard {
     const doc = this.doc();
     const path = doc.preview ?? null;
     if (path === null || this.previewFailed()) return null;
-    return { src: this.api.libraryAssetUrl(this.workspace(), path), caption: specRelative(path, doc.spec) };
+    return { src: libraryAssetUrl(this.workspace(), path), caption: specRelative(path, doc.spec) };
   });
 }

@@ -1,8 +1,6 @@
-import { booleanAttribute, ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { FrameCard, LiveCard, RunState } from '../../../../../../../core/src/files';
-import { ApiClient } from '../../../../core/api.service';
-import { ShellState } from '../../../../layout/shell/shell-state.service';
+import type { FrameCard, LiveCard } from '../../../../../../../core/src/files';
 import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
@@ -18,42 +16,10 @@ import { lookOf } from '../steps/step-timeline';
 import { AgentChip } from '../this-frame/agent-chip';
 import { CardContext } from './card-context';
 import { CardDetail } from './card-detail';
+import { RunChip } from './run-chip';
 import { cardHistory, type HistoryFrame } from './card-history';
 
 export type CardDensity = 'comfortable' | 'compact' | 'step';
-
-/**
- * A task's run chip (spec 027, ISC-179.1, design.md decision 3), on the live board's card and in the Tasks tab: the run
- * state's glyph from `CARD_GLYPHS` (`runGlyphState`) and its word from `states.run.*` as visible text, never a
- * tooltip, tinted by the glyph's one tone. `small` is the board card's one-line form, the word alone, since the card
- * already leads with the same glyph. A change cross-fades the tint through the motion tokens (none under reduced
- * motion); nothing pulses.
- */
-@Component({
-  selector: 'app-run-chip',
-  imports: [TranslocoPipe, UiChip, UiGlyph],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-run]': 'run()' },
-  styles: `
-    :host { display: inline-flex; min-inline-size: 0; max-inline-size: 100%; }
-    ui-chip { transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard), color var(--motion-duration-highlight) var(--motion-ease-standard); }
-  `,
-  template: `
-    <ui-chip [tone]="tone()" [variant]="small() ? 'small' : 'status'">
-      @if (!small()) {
-        <ui-glyph [state]="glyph()" family="card" [size]="14" />
-      }
-      <span>{{ 'states.run.' + run() | transloco }}</span>
-    </ui-chip>
-  `,
-})
-export class RunChip {
-  readonly run = input.required<RunState>();
-  readonly small = input(false, { transform: booleanAttribute });
-
-  protected readonly glyph = computed(() => runGlyphState(this.run()));
-  protected readonly tone = computed(() => glyphSpec(this.glyph(), 'card').tone);
-}
 
 /**
  * One board card (design.md § Live, card anatomy; ISC-88), the same in the Lanes and the Flow view: an `<article>`
@@ -76,133 +42,14 @@ export class RunChip {
   selector: 'app-board-card',
   imports: [AgentChip, CardDetail, RunChip, TranslocoPipe, UiChip, UiGlyph, UiIcon, UiStateChip, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: block; min-inline-size: 0; }
-    article { display: grid; gap: 4px; min-inline-size: 0; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-inline-start: 4px solid var(--edge); border-radius: var(--radius-field); background: var(--color-base-100); }
-    article:hover { background: var(--color-base-300); }
-    :host([data-density='compact']) article { gap: 2px; padding: 6px 10px 6px 12px; }
-    /* spec 024: the operator lane's checklist card, one 36 px row (design.md § Live · Operator lane (Principal 2026-10-13)). */
-    :host([data-density='step']) article { display: flex; gap: 6px; align-items: center; min-block-size: 36px; padding: 4px 10px 4px 12px; }
-    :host([data-density='step']) .r1 { display: contents; }
-    :host([data-density='step']) .text { display: block; flex: 1; order: 1; min-inline-size: 0; white-space: nowrap; text-overflow: ellipsis; }
-    :host([data-density='step']) .state { order: 2; }
-    :host([data-density='step']) .strike-note { display: none; }
-    .r1, .r3 { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
-    /* The header stays one line, as the prototype's .r1: the state word never shrinks, the claim chip gives way. */
-    .r1 { flex-wrap: nowrap; gap: 6px; }
-    .r1 > ui-glyph, .r1 > .id { flex: none; }
-    .r1 > .claim { min-inline-size: 0; overflow: hidden; }
-    .id { min-block-size: 24px; padding: 0 4px; border: 0; border-radius: 4px; background: none; color: var(--color-base-content); font-family: var(--font-mono); font-size: 13px; font-weight: 600; cursor: pointer; }
-    .id:hover { text-decoration: underline; }
-    .state { flex: none; margin-inline-start: auto; }
-    /* Flow at the medium tier (four narrow columns), as the prototype's .flow-grid: no claim chip, the word stays readable. */
-    @container shell (640px <= width < 1120px) {
-      :host([data-flow-card]) .claim { display: none; }
-    }
-    .text { display: -webkit-box; overflow: hidden; margin: 0; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-    .r3 { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-    .r3:empty { display: none; }
-    /* spec 024: the prototype marks (.pmark, .seam), role tags with icon (.tag, .vdot) and the try chip (.try). */
-    .pmark, .seam { flex: none; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font: 600 10px/14px var(--font-mono); }
-    .seam { padding: 0 5px; border-color: var(--color-primary); background: repeating-linear-gradient(135deg, var(--disp-t) 0 3px, transparent 3px 6px); color: var(--disp-text); }
-    .tag { display: inline-flex; gap: 3px; align-items: center; color: var(--muted); font-size: 11px; }
-    .vdot { display: inline-block; inline-size: 7px; block-size: 7px; margin-inline-start: 2px; border-radius: 50%; background: var(--muted); }
-    .vdot[data-verdict="pass"] { background: var(--color-accent); }
-    .vdot[data-verdict="concerns"] { background: var(--conc); }
-    .vdot[data-verdict="fail"] { background: var(--color-error); }
-    .vdot[data-verdict="skipped"] { border: 1.5px solid var(--muted); background: none; }
-    .try { padding: 0 5px; border-radius: 4px; background: var(--hover-t); color: var(--hover-text); font-family: var(--font-mono); font-size: 10px; }
-    .session { font-family: var(--font-mono); overflow-wrap: anywhere; }
-    /* spec 024: the prototype .lane-chip (dot + lane), drawn only on a Flow card, hidden in Flow's narrow columns. */
-    .lane-chip { display: none; flex: none; gap: 4px; align-items: center; color: var(--muted); font-size: 11px; }
-    .lane-chip i { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--lane-c, var(--muted)); }
-    :host([data-flow-card]) .lane-chip { display: inline-flex; }
-    @container shell (width < 1120px) { :host([data-flow-card]) .lane-chip { display: none; } }
-    /* spec 024: the prototype .tcard.sel (2 px cyan outline) and .tcard.changed (a 1200 ms cyan tint after a frame change). */
-    article[data-sel] { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-    article[data-changed] { animation: card-tint var(--motion-duration-highlight) var(--motion-ease-standard); }
-    @keyframes card-tint { from { background: var(--disp-t); } }
-    @media (prefers-reduced-motion: reduce) { article[data-changed] { animation: none; } }
-    .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
-    .strike-note { margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
-    /* spec 027: a card of the round wears its run chip where the state chip stood, top right; below 320 px of card
-       width on a line of its own under the text, left (design.md § Across viewports, live board). */
-    :host([data-run]) { container: live-card / inline-size; }
-    :host([data-run]) article { grid-template-columns: minmax(0, 1fr) auto; }
-    :host([data-run]) .r1 { grid-area: 1 / 1; }
-    :host([data-run]) .run-state { grid-area: 1 / 2; align-self: center; }
-    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .latest-step, :host([data-run]) .r3 { grid-column: 1 / -1; }
-    /* spec 015: the latest agent step, a text line and no chip; a new step swaps it with a fade (0 ms under reduce). */
-    .latest-step { display: flex; gap: 6px; align-items: center; min-inline-size: 0; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; white-space: nowrap; animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard); }
-    .latest-step .sw { overflow: hidden; font-weight: 600; text-overflow: ellipsis; }
-    .latest-step ui-icon, .latest-step .st { flex: none; }
-    .latest-step .st { font: 11px/16px var(--font-mono); font-variant-numeric: tabular-nums; }
-    @keyframes step-in { from { opacity: 0; } }
-    @container live-card (width < 320px) {
-      :host([data-run]) .run-state { grid-area: auto / 1 / auto / -1; justify-self: start; }
-    }
-    @media (forced-colors: active) {
-      article { border-inline-start-color: CanvasText; }
-    }
-  `,
+  styleUrl: './card.css',
   host: {
     '[attr.data-density]': 'density()',
     '[attr.data-run]': 'run()?.state ?? null',
   },
-  template: `
-    @let c = card();
-    <article
-      [attr.aria-label]="'board.card.name' | transloco: { task: c.task, claim: c.claim, state: (stateWord() | transloco), lane: c.lane }"
-      [attr.data-card]="c.task"
-      [attr.data-state]="c.state"
-      [attr.data-lane]="c.lane"
-      [attr.data-edge]="spec().tone"
-      [style.--edge]="edge()"
-      [attr.data-sel]="selected() ? '' : null"
-      [attr.data-changed]="changed() ? '' : null"
-    >
-      <div class="r1">
-        <ui-glyph [state]="glyph()" family="card" [size]="20" />
-        <button type="button" class="id" aria-haspopup="dialog" [attr.aria-label]="'board.card.open' | transloco: { task: c.task }" (click)="openDetail()">{{ c.task }}</button>
-        @if (density() === 'comfortable') {
-          <ui-chip class="claim">{{ c.claim }}</ui-chip>
-        }
-        @if (c.parallel) {<span class="pmark" data-flag="parallel" [attr.title]="'board.card.parallel' | transloco">P</span>}
-        @if (c.seam) {<span class="seam" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}
-        <span class="lane-chip" data-lane-chip><i aria-hidden="true"></i>{{ c.lane }}</span>
-        @if (run() === null) {
-          <ui-state-chip small class="state" [state]="c.state" family="card" />
-        }
-      </div>
-      <p class="text">{{ c.text }}</p>
-      @if (strikeNote(); as note) {
-        <p class="strike-note" data-strike-note>{{ note }}</p>
-      } @else if (strikeNote() === '') {
-        <p class="strike-note" data-strike-note>{{ 'board.card.struck' | transloco }}</p>
-      }
-      @if (run(); as run) {
-        <app-run-chip small class="run-state" [run]="run.state" />
-      }
-      @for (l of latestStep(); track l.key) {
-        <p class="latest-step" data-card-latest-step [attr.data-step-kind]="l.step.kind" [attr.data-step-result]="l.step.result ?? null">
-          <ui-icon [name]="l.icon" [size]="12" [style.color]="l.color" /><span class="sw" data-step-word>{{ 'steps.kind.' + l.word | transloco }}</span><span aria-hidden="true">·</span><ui-time class="st" data-step-time [value]="l.step.ts" form="clock" />
-        </p>
-      }
-      @if (density() === 'comfortable') {
-        <div class="r3">@if (c.builder) {<span class="tag builder" data-builder><ui-icon name="wrench" [size]="12" />{{ c.builder }}</span>}@if (c.reader) {<span class="tag reader" data-reader><ui-icon name="eye" [size]="12" />{{ c.reader }}@if (c.verdict) {<i class="vdot" [attr.data-verdict]="c.verdict" [attr.title]="c.verdict"></i>}</span>}@if (c.tries > 1) {<span class="try" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (agent(); as agent) {<app-agent-chip [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />}</div>
-      } @else if (agent(); as agent) {
-        <div class="r3"><app-agent-chip [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" /></div>
-      }
-    </article>
-    @if (detailOpen()) {
-      <app-card-detail [card]="c" [history]="history()" [(open)]="detailOpen" />
-    }
-  `,
+  templateUrl: './card.html',
 })
 export class BoardCard {
-  private readonly api = inject(ApiClient);
-  private readonly shell = inject(ShellState);
-
   readonly card = input.required<FrameCard | LiveCard>();
   readonly density = input<CardDensity>('comfortable');
 
@@ -248,20 +95,11 @@ export class BoardCard {
     return 'stale' in c && c.stale === true;
   });
 
+  private readonly source = inject(LiveSource);
   /** The live frame the board and the matrix read too: one shared read per refresh tick (ISC-371). */
-  private readonly live = inject(LiveSource).attach(() => this.detailOpen());
+  private readonly live = this.source.attach(() => this.detailOpen());
   /** The history frames, read only while the detail is open; the live frame comes from `LiveSource`. */
-  private readonly historyFrames = resource({
-    params: () => {
-      const ws = this.shell.ws();
-      const id = this.shell.specId();
-      return this.detailOpen() && ws !== null && id !== null ? { ws, id } : undefined;
-    },
-    loader: async ({ params }): Promise<readonly HistoryFrame[]> => {
-      const history = await this.api.frames(params.ws, params.id);
-      return history.kind === 'ok' ? history.body : [];
-    },
-  });
+  private readonly historyFrames = this.source.history(() => this.detailOpen());
   /** Every frame on the scrubber, history then live, once the detail's history is read. */
   private readonly frames = computed<readonly HistoryFrame[] | undefined>(() => {
     const history = this.historyFrames.value();

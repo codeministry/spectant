@@ -1,41 +1,9 @@
 /*
  * The workspace board's prototype parity (spec 024, ISC-151; design § Workspace board and § Across viewports
  * "Kanban stays"; prototype `workspace-board.html`), split from board-page.css for the per-file style budget: the
- * workspace badge and the muted suffix beside the h1, the swimlane head's mini meter, the position fades' arrows and
+ * swimlane head's mini meter, the position fades' arrows and
  * the compact sheet bar with its "Needs you" sheet.
  */
-.h1-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  min-inline-size: 0;
-}
-
-.page-mark {
-  flex: none;
-}
-
-.ws-suffix {
-  min-inline-size: 0;
-  overflow: hidden;
-  color: var(--muted-ink);
-  font-family: var(--font-brand);
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 32px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-:host([data-tier='compact']) .ws-suffix {
-  display: none;
-}
-
-/* The swimlane head's mini meter (design § Desktop "mini bar"): the band's done cards of all its cards. */
-.bmeter {
-  flex: none;
-  inline-size: 48px;
-}
 
 /* The position fades' arrows (design § Tablet: "btn-icon ghost mit chevronDown nach links und rechts gedreht"). */
 .lstep {
@@ -137,42 +105,4 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.needs-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0 8px;
-  align-content: center;
-  min-block-size: 44px;
-  padding: 6px 8px;
-  border-radius: var(--radius-field);
-  color: var(--color-base-content);
-  font-size: 13px;
-  line-height: 20px;
-  text-decoration: none;
-}
-
-.needs-row:hover {
-  background: var(--color-base-300);
-}
-
-.needs-row .mono {
-  color: var(--disp-text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.needs-row .nt {
-  overflow: hidden;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.needs-row .nr {
-  grid-column: 2;
-  color: var(--muted-ink);
-  font-size: 12px;
-  line-height: 16px;
 }

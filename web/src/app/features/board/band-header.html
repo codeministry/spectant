@@ -1,0 +1,31 @@
+@let key = band().key;
+<span class="band-sticky">
+  @if (band().moveGroup !== null) {
+    <button
+      #grip
+      type="button"
+      class="band-grip"
+      cdkDragHandle
+      [attr.data-band-grip]="key"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="expanded()"
+      [attr.aria-label]="label()"
+      [attr.aria-disabled]="writer.busy() ? 'true' : null"
+      (click)="open.emit(grip)"
+      (keydown.alt.arrowup)="step.emit({ step: 'up', event: $event })"
+      (keydown.alt.arrowdown)="step.emit({ step: 'down', event: $event })"
+    >
+      <ui-icon name="grip-vertical" [size]="16" />
+    </button>
+  } @else if (group() === 'feature') {
+    <span class="grip-gap" aria-hidden="true"></span>
+  }
+  <!-- eslint-disable-next-line @angular-eslint/template/elements-content -- the heading's content is app-band-head's template -->
+  <h3 class="bh" app-band-head [band]="band()" [group]="group()"></h3>
+  @if (locked()) {
+    <span class="band-lock" data-band-lock-hint>{{ 'backlog.board.otherMilestone' | transloco }}</span>
+  }
+</span>
+@if (key !== null && writer.refusalOf(key); as refusal) {
+  <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="writer.dismiss(key)" />
+}

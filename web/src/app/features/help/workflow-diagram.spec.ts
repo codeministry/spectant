@@ -1,6 +1,6 @@
 import type { WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
 import { defaultWorkflowRow } from '../../../../../core/src/stage';
-import { CARD_EDGE } from '../board/board-card';
+import { CARD_EDGE } from '../../shared/ui/stage-edge';
 import {
   type DiagramLabels,
   FIGURE,

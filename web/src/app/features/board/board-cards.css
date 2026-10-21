@@ -1,0 +1,23 @@
+/*
+ * A card list's own rules (T125, T126; moved from board-page.drag.css with the markup, spec 061). The `<ul>` keeps the
+ * page's `.cards` rules. The placeholder, the anchor and the preview are clones of the card element and carry this
+ * component's scope, so the slot partial and the preview's outline live here; hiding a placeholder that entered a stub,
+ * a tray slot or a stub cell stays with the page, which owns those lists.
+ */
+@import './_board-drag-slot.css';
+@import './_board-moved-tint.css';
+
+.cdk-drag-preview {
+  border-radius: var(--radius-box);
+  outline: 2px solid var(--color-primary);
+}
+
+:host li {
+  position: relative;
+}
+
+@media (forced-colors: active) {
+  .cdk-drag-preview {
+    outline-color: Highlight;
+  }
+}

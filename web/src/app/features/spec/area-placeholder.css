@@ -1,0 +1,22 @@
+:host {
+  display: block;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+p + p {
+  margin-block-start: 8px;
+  color: var(--muted-ink);
+  font-size: 13px;
+}

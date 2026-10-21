@@ -1,5 +1,6 @@
 import type { Priority, SpecWait } from '../../../../../../core/src/files';
 import type { Tone } from '../../../shared/ui/tone';
+import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
 
 /**
  * The Specs panel's view of the dashboard model (T63, ISC-61). Nothing here counts or derives a spec's state: every
@@ -124,12 +125,8 @@ export interface SpecListCounts {
   readonly byType: Readonly<Record<string, number>>;
 }
 
-type Loose = Readonly<Record<string, unknown>>;
-const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
-const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
 const priorityOf = (value: unknown): Priority | null => PRIORITIES.find((level) => level === value) ?? null;
-const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 const listOf = (body: unknown, key: string): Loose[] => {
   const list = isLoose(body) ? body[key] : null;
   return Array.isArray(list) ? list.filter(isLoose) : [];

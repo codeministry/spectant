@@ -1,0 +1,8 @@
+/* The divider's text sticks to the scroller's start (moved from board-page.css with the markup). */
+.band-divider-text {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}

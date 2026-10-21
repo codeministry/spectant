@@ -1,0 +1,26 @@
+/*
+ * The frame of a spec tab page (spec 061): the host block, the one-column page grid with 24 px between blocks, the
+ * section card (16 px gap) and the muted line. The spec dashboard and the Status tab import it as their first rule
+ * and add their own on top (the dashboard's card is `position: relative`, the Status grid aligns its items to the
+ * start); the rules stand where both stylesheets had them, so the cascade is unchanged.
+ */
+@import './_spec-card.css';
+
+:host {
+  display: block;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.section-card {
+  gap: 16px;
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted-ink);
+}

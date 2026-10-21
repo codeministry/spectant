@@ -1,0 +1,79 @@
+/*
+ * The spec context (spec 061): what the spec dashboard's Spec context (`spec-context.css`), the spec rail and its
+ * guide share, each under its own class names: the rail card's 12 px gap, the block head, the uppercase eyebrow (also
+ * the dashboard's idea card), the gate rows and the key line. Each of the three stylesheets imports it as its first
+ * rule; emulated encapsulation scopes the copy per component, and none of the rules it now precedes styles the same
+ * elements, so the move changes no cascade.
+ */
+.sr-card {
+  gap: 12px;
+}
+
+.block-head,
+.sr-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eyebrow,
+.block-head h2,
+.sr-eyebrow {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gate-row,
+.sr-gate {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-block-size: 28px;
+  font-size: 13px;
+}
+
+.gate-icon,
+.sr-gate-icon {
+  color: var(--muted-ink);
+}
+
+.gate-row[data-tone='accent'] .gate-icon,
+.sr-gate[data-tone='accent'] .sr-gate-icon {
+  color: var(--done-ink);
+}
+
+.gate-row[data-tone='warning'] .gate-icon,
+.sr-gate[data-tone='warning'] .sr-gate-icon {
+  color: var(--hover-ink);
+}
+
+.gate-name,
+.sr-gate-name {
+  flex: 1;
+}
+
+.gate-value,
+.sr-gate-value {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.step-hint,
+.sr-kbd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+  font-size: 12px;
+}
