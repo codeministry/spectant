@@ -8,14 +8,14 @@ import { type AreaId, areaById, areaPath, specLink } from '../../../layout/shell
 import { RailContent } from '../../../layout/shell/rail-content';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { OverlapLines } from '../../../layout/spec-head/overlap-lines';
-import { overlapLines, overlapsIn } from '../../dashboard/warnings-panel/overlap';
+import { overlapLines, overlapsIn } from '../../../core/model/overlap';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiTimeLabel } from '../../../shared/time';
 import { UiTerm } from '../../../shared/ui/term/term';
 import type { IconName } from '../../../shared/icons/icons';
 import { UiChip } from '../../../shared/ui/chip/chip';
-import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf } from '../../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import { UiWaitsBlock } from '../../../shared/ui/guidance/waits-block';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';

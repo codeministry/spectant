@@ -6,7 +6,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiGlyph } from '../../shared/ui/glyph/glyph';
-import { guidanceEntryOf } from '../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf } from '../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../shared/ui/guidance/guidance-reason.pipe';
 import type { AreaId, TabId } from '../shell/areas';
 import { specLink } from '../shell/areas';

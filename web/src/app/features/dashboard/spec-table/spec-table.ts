@@ -26,7 +26,7 @@ import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
-import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf } from '../../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { UiRovingCompanion, UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';

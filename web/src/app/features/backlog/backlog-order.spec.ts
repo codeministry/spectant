@@ -1,7 +1,8 @@
 import type { PlanningModel } from '../../../../../core/src/planning';
 import backlogGolden from '../../../../../core/fixtures/backlog-ranks.planning.golden.json';
 import harborGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
-import { beforeFor, edgeBefore, featureOrder, gapsFor, groupOf, positionOf, stepBefore, type FeatureGroup } from './backlog-order';
+import { beforeFor, edgeBefore, gapsFor, groupOf, positionOf, stepBefore } from './backlog-order';
+import { featureOrder, type FeatureGroup } from '../../core/model/feature-order';
 
 // T7 · ISC-194: the feature order per milestone and for the "No milestone" group, read from the planning model that
 // carries the rank of `specs/backlog.md` (spec 036). The goldens are typed as JSON; the served bodies are the core type.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Guidance, GuidanceEntry, ItemStateInfo } from '../../../../../../core/src/files';
+import type { Guidance, GuidanceEntry, ItemStateInfo } from '../../../../../core/src/files';
 import { guidanceEntryOf, guidanceOfBody, withReason } from './guidance-entry';
 
 // Spec 020 (T13, ISC-237.1): every surface finds its spec's own entry here, so the same item reads the same sentence.

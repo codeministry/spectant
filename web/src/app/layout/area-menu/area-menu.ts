@@ -5,7 +5,9 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { ApiClient, type PlanningBody } from '../../core/api.service';
 import { DASHBOARD_GO_KEY } from '../shell/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
-import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
+import { boardRowsOf } from '../../core/model/board-rows';
+import { planningCounts } from '../../core/model/planning-counts';
+import { boardSummaryOf, buildBoard } from '../../core/model/board';
 import { UiIcon } from '../../shared/icons/icon';
 import { type UiTimeForm, UiTimeLabel } from '../../shared/time';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
@@ -22,7 +24,6 @@ import {
   workspaceLink,
   workspacePageById,
 } from '../shell/areas';
-import { planningCounts } from '../../features/planning/planning-counts';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 

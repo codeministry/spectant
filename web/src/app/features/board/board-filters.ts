@@ -15,13 +15,13 @@ import {
   type BoardCardType,
   type BoardFilterKey,
   type BoardGroup,
-  type BoardModel,
   type BoardQueryState,
-  cardFilterValue,
   NO_FEATURE,
   NO_MILESTONE,
   UNASSIGNED,
-} from './board-model';
+} from '../../core/model/board-query';
+import { type BoardModel } from '../../core/model/board-types';
+import { cardFilterValue } from '../../core/model/board';
 
 /** The chip that clears one filter key ("All"); no filter value is blank, so it never collides. */
 export const ALL = '';

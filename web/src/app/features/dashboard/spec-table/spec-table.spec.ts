@@ -9,7 +9,7 @@ import { type Density, SETTINGS_URL, SettingsService } from '../../../core/setti
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
-import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf } from '../../../core/model/guidance-entry';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, parseListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';

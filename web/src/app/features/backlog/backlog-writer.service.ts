@@ -5,7 +5,7 @@ import { ApiClient, type BacklogOp } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { BacklogRefusal } from '../../shared/ui/refusal-notice/refusal';
-import { featureOrder } from './backlog-order';
+import { featureOrder } from '../../core/model/feature-order';
 
 export type { BacklogRefusal };
 

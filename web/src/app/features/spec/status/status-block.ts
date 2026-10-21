@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { Guidance, ItemStateInfo, SpecHead, SpecNextStep, Workflow } from '../../../../../../core/src/files';
-import { guidanceEntryOf, withReason } from '../../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf, withReason } from '../../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import type { ActorMapping } from '../../../../../../server/src/contracts/spec-routes.contract';
 import { RunRelease } from '../../../layout/run-release/run-release';

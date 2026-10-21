@@ -2,7 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { OverlapLine } from '../../features/dashboard/warnings-panel/overlap';
+import type { OverlapLine } from '../../core/model/overlap';
 import { UiIcon } from '../../shared/icons/icon';
 import { OPEN_PARAM, OpenState, serializeOpen } from '../../shared/open-state';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';

@@ -5,7 +5,7 @@ import type { BacklogEvent } from '../../../../../core/src/backlog';
 import { ApiClient, type BacklogOp, type PlanningBody, type WriteResult } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
-import { featureOrder } from './backlog-order';
+import { featureOrder } from '../../core/model/feature-order';
 import { BACKLOG_WRITE_TIMEOUT, BacklogWriter } from './backlog-writer.service';
 
 // T17 / T18 · ISC-195, ISC-196: the one backlog write of the tree and the board. A move and a priority send the hash

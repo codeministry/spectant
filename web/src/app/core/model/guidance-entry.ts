@@ -1,4 +1,4 @@
-import type { Guidance, GuidanceEntry, ItemStateInfo } from '../../../../../../core/src/files';
+import type { Guidance, GuidanceEntry, ItemStateInfo } from '../../../../../core/src/files';
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => typeof value === 'object' && value !== null;
 

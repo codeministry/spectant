@@ -14,7 +14,9 @@ import { ApiClient, type ApiResult, type PlanningBody, type WriteResult } from '
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { ToastService } from '../../shared/ui/toast/toast';
-import { type BoardCard, boardRowsOf, buildBoard } from './board-model';
+import { boardRowsOf } from '../../core/model/board-rows';
+import { type BoardCard } from '../../core/model/board-types';
+import { buildBoard } from '../../core/model/board';
 import { stepTarget } from './move-to-menu';
 
 // T127 · ISC-130: the single-pointer and keyboard path to a move (WCAG 2.5.7). A click on the grip opens "Move to…"

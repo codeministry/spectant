@@ -11,7 +11,7 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { BacklogWriter } from '../backlog/backlog-writer.service';
-import { planningCounts } from './planning-counts';
+import { planningCounts } from '../../core/model/planning-counts';
 import { PlanningGantt } from './planning-gantt/planning-gantt';
 import { PlanningGraph } from './planning-graph/planning-graph';
 import { PlanningOverview } from './planning-overview';

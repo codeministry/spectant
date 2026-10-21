@@ -1,5 +1,5 @@
-import harbor from '../../../../../../core/fixtures/harbor.golden.json';
-import type { SpecOverlap, SpecWarning } from '../../../../../../core/src/files';
+import harbor from '../../../../../core/fixtures/harbor.golden.json';
+import type { SpecOverlap, SpecWarning } from '../../../../../core/src/files';
 import { edgeDiagnostic, edgeFor, overlapLines, overlapOf, overlapsIn, pathSuffixes } from './overlap';
 
 // Spec 025 T28/T29 (ISC-164.1): the overlap pieces the Warnings list, the spec head and the spec context share.

@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { Priority, SpecPageModel, SpecType } from '../../../../../core/src/files';
 import type { Stage } from '../../../../../core/src/stage';
-import { monogram } from '../../features/overview/overview-model';
+import { wsMonogram as monogram } from '../../shared/ui/ws-badge/ws-identity';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiChip } from '../../shared/ui/chip/chip';
@@ -28,7 +28,7 @@ import { ShellState } from '../shell/shell-state.service';
 import { GateButton } from './gate-button';
 import { OverlapLines } from './overlap-lines';
 import { SpecGuideCard } from './spec-guide';
-import { overlapLines, overlapsIn } from '../../features/dashboard/warnings-panel/overlap';
+import { overlapLines, overlapsIn } from '../../core/model/overlap';
 import {
   type FeaturePlace,
   featurePlace,

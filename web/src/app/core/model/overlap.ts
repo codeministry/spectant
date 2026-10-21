@@ -1,4 +1,4 @@
-import type { SpecOverlap, SpecWarning } from '../../../../../../core/src/files';
+import type { SpecOverlap, SpecWarning } from '../../../../../core/src/files';
 
 /**
  * Spec 025 (ISC-164.1): the pieces of a `spec-overlap` warning the Warnings list, the spec head and the spec context

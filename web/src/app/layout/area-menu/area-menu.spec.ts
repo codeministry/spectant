@@ -13,7 +13,8 @@ import { UiTimeLabel } from '../../shared/time';
 import { AreaMenu, milestonesLine } from './area-menu';
 import DASHBOARD_GOLDEN from '../../../../../core/fixtures/harbor.golden.json';
 import PLANNING_GOLDEN from '../../../../../core/fixtures/harbor.planning.golden.json';
-import { boardRowsOf, buildBoard } from '../../features/board/board-model';
+import { boardRowsOf } from '../../core/model/board-rows';
+import { buildBoard } from '../../core/model/board';
 
 @Component({ selector: 'app-blank', template: '' })
 class Blank {}

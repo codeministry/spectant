@@ -8,8 +8,7 @@
  * since the split (T61) it is a plain `test` and must stay clean.
  *
  * `-t layers` selects ISC-424 (spec 060): the web entry's layer order on one fixture root per forbidden direction and
- * a clean one. The app case runs the rule on the web entry of `scripts/architecture/web.entry.ts`; it is a
- * `test.failing` until the base layers of the web app keep the order.
+ * a clean one. The app case runs the rule on the web entry of `scripts/architecture/web.entry.ts`.
  *
  * `-t routes` selects ISC-412: the route families `spectant serve` joins (`routeFamilies` in `server/src/cli/`) name
  * every route once, and the set of method and route they answer equals the one the golden master recorded
@@ -211,7 +210,7 @@ describe("layers", () => {
   });
 
   // Red until the base layers of web/src/app keep the order (spec 060); then a plain `test`.
-  test.failing("the app: web/src/app keeps core ← shared ← layout ← features", () => {
+  test("the app: web/src/app keeps core ← shared ← layout ← features", () => {
     expect(layers(web, REPO_ROOT)).toEqual([]);
   });
 });

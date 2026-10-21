@@ -16,7 +16,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { Relation, RelationRef } from '../../../../../core/src/relations';
-import { boardRowsOf } from '../../features/board/board-model';
+import { boardRowsOf } from '../../core/model/board-rows';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiButton } from '../../shared/ui/button/button';
