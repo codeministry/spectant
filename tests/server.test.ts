@@ -13,7 +13,7 @@ import { LOOPBACK_HOST, serve } from "../server/src/http.ts";
 /** The only addresses ISC-1 allows the server to listen on. */
 const LOOPBACK_ADDRESSES = ["127.0.0.1", "::1"];
 const CONNECT_TIMEOUT_MS = 500;
-const SERVER_SOURCES = ["server/src/infra/http/server.ts", "server/src/cli.ts"];
+const SERVER_SOURCES = ["server/src/infra/http/server.ts", "server/src/cli/serve.ts", "server/src/cli/usage.ts"];
 const REPO_ROOT = join(import.meta.dir, "..");
 
 let dir: string;

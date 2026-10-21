@@ -26,11 +26,8 @@
  * after the same guard. Without `options.db` the board query and the favourites are declined, so the server's JSON 404
  * applies.
  *
- * The actor names (spec 008 T91, ISC-119.2): `actorsApi` serves `GET`/`HEAD`/`PUT /api/actors` (`ACTORS_PATH`), a
- * route of its own like `/api/settings`, under the same loopback guard. GET lists the `actor` table's rows as
- * `ActorMapping[]` ordered by id; an id without a row is never invented, so the web shows an unmapped id raw. PUT
- * replaces the whole mapping (`isActorMappings`, each id a person by core's `parseActor`; 400 `invalid-body`
- * otherwise), `updatedAt` from the server clock, and answers the list as stored.
+ * The actor names (spec 008 T91, ISC-119.2): `actorsApi`, `GET`/`HEAD`/`PUT /api/actors`, lives in the `settings/`
+ * slice (`settings/actors.ts`) and is re-exported here for its importers.
  * The allocation route (spec 008 T87, ISC-130.2): `POST /api/workspaces/:ws/ideas/:slug/allocate` → `IdeaAllocated`,
  * the family's one write, matched by the same `matchWorkspacePath`: 403, then 405 with `Allow: POST` for any other
  * method, 404 unknown workspace, 409 with the summary when the folder cannot be read, otherwise `writes/routes.ts`
@@ -53,22 +50,12 @@
  * No absolute path leaves this module (ISC-3): a workspace is its slug, its name and `pathTail`, the last path segment;
  * the unreadable codes replace OS messages, which would name the path.
  */
-import { parseActor } from "../../core/src/actor.ts";
-import type { Db } from "./infra/db/db.ts";
-import { listActors, replaceActors } from "./infra/db/prefs-store.ts";
 import type { ApiHandler } from "./http.ts";
-import { json, readJson } from "./infra/http/json.ts";
+import { json } from "./infra/http/json.ts";
 import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import { libraryRoutes } from "./library/index.ts";
 import { planningRoutes, prefsRoutes } from "./planning/index.ts";
-import {
-  ACTORS_ALLOW,
-  ACTORS_PATH,
-  type ActorsResponse,
-  allowForWorkspace,
-  isActorMappings,
-  matchWorkspacePath,
-} from "./spec-routes.contract.ts";
+import { allowForWorkspace, matchWorkspacePath } from "./spec-routes.contract.ts";
 import {
   type DashboardApiOptions,
   DASHBOARD_PATH,
@@ -81,6 +68,7 @@ import { workspaceAdminAllowFor } from "./workspace-admin.contract.ts";
 import { workspaceWriteRoutes } from "./writes/index.ts";
 
 export { composeApi, json } from "./infra/http/json.ts";
+export { actorsApi } from "./settings/index.ts";
 export {
   type DashboardApiOptions,
   type ImagesOf,
@@ -153,35 +141,5 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       return json(req, 404, { error: "not-found" });
     }
     return dashboard(req, slug);
-  };
-}
-
-function actorList(db: Db): ActorsResponse {
-  return listActors(db).map(({ id, displayName, gitIdentities }) => ({ id, displayName, gitIdentities }));
-}
-
-/**
- * `GET` / `HEAD` / `PUT /api/actors` as an `ApiHandler` over the `actor` table (T91, ISC-119.2; header); `null` for
- * any other path, so the server's JSON 404 applies. The answers carry ids, names and addresses only, never a path.
- */
-export function actorsApi(db: Db): ApiHandler {
-  const put = async (req: Request): Promise<Response> => {
-    const body = await readJson(req);
-    // Only a person has a row: an agent id, a legacy value or a repeated id refuses the whole list.
-    if (!isActorMappings(body) || !body.every((actor) => parseActor(actor.id).kind === "person")) {
-      return json(req, 400, { error: "invalid-body" });
-    }
-    const updatedAt = new Date().toISOString();
-    replaceActors(db, body.map((actor) => ({ ...actor, updatedAt })));
-    return json(req, 200, actorList(db));
-  };
-
-  return (req, url) => {
-    if (url.pathname !== ACTORS_PATH) return null;
-    const refused = loopbackRefusal(req);
-    if (refused !== null) return refused;
-    if (req.method === "GET" || req.method === "HEAD") return json(req, 200, actorList(db));
-    if (req.method === "PUT") return put(req);
-    return methodNotAllowed(req, ACTORS_ALLOW);
   };
 }
