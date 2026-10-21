@@ -8,7 +8,7 @@ import { DEMO_WORKSPACES, type DemoWorkspaceRow } from './fixtures/workspaces';
  * (workspace management until 016, the assistant until 012/015, workspace identity images; the Library left with
  * spec 017) reads its fixture here and nowhere else.
  *
- * Rules, held by `web/tests/demo-readonly.test.ts` (the static half; `parity.spec.ts` group `demo` is the e2e half):
+ * Rules, held by `web/tests/demo-readonly.test.ts` (the static half; `web/e2e/demo.spec.ts` is the e2e half):
  *
  * - **Read only.** Fixtures are frozen, the service hands out read-only signals and lookups; it has no write, save,
  *   put, post, delete, update or upload method.

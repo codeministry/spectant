@@ -12,8 +12,14 @@
 // - `primitives`: the computed-style anatomy of the app's primitives per theme, written by the browser tier; this
 //   module keeps that part untouched.
 //
-// Run directly: `bun web/tests/look-snapshot.ts` writes `tokens` and `icons`; `--check` writes nothing and exits 1
-// when either part differs from a fresh resolution or the file is missing.
+// The command `bun run look:snapshot` (this module run directly) records the app's look after a deliberate change:
+// - no flag: writes `tokens` and `icons`, then the `primitives` part by running the browser tier's write mode
+//   (`LOOK_SNAPSHOT=write bun run test:browser -- primitives`; `E2E_BASE_URL` is passed through when set, otherwise
+//   Playwright builds and serves the app itself). Equal sources give a byte-identical file, so a second run changes
+//   nothing. Exits with the browser run's code when that step fails.
+// - `--no-primitives`: writes `tokens` and `icons` only.
+// - `--check`: writes nothing; exits 1 when `tokens` or `icons` differs from a fresh resolution or the file is
+//   missing, 0 otherwise. `primitives` is held by `web/e2e/browser/primitives.spec.ts`, not here.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ICON_KEY_MAP } from "../src/app/shared/icons/icon-map";
@@ -237,5 +243,19 @@ if (import.meta.main) {
   } else {
     writeParts(fresh);
     console.log(`look snapshot: wrote tokens and icons to ${SNAPSHOT_PATH}`);
+    if (!process.argv.includes("--no-primitives")) {
+      // The browser write mode reads this file, replaces only `primitives` and writes it back with the same serialiser.
+      const child = Bun.spawn(["bun", "run", "test:browser", "--", "primitives"], {
+        cwd: join(import.meta.dir, ".."),
+        env: { ...process.env, LOOK_SNAPSHOT: "write" },
+        stdio: ["inherit", "inherit", "inherit"],
+      });
+      const code = await child.exited;
+      if (code !== 0) {
+        console.error(`look snapshot: the primitives step failed (exit ${String(code)}); tokens and icons are written`);
+        process.exit(code);
+      }
+      console.log(`look snapshot: wrote primitives to ${SNAPSHOT_PATH}`);
+    }
   }
 }

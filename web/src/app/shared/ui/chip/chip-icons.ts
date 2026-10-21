@@ -35,7 +35,7 @@ export const CHIP_ICON = {
 
 export type ChipIconKey = keyof typeof CHIP_ICON;
 
-/** The icon of a chip key, `undefined` for a key the prototype shows without one (a mono chip, an ID). */
+/** The icon of a chip key, `undefined` for a key whose chip shows none (a mono chip, an ID). */
 export const chipIcon = (key: string): IconName | undefined =>
   Object.hasOwn(CHIP_ICON, key) ? CHIP_ICON[key as ChipIconKey] : undefined;
 

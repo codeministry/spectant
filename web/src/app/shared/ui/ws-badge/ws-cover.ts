@@ -5,7 +5,7 @@ import { WS_ACCENT_TOKENS, type WsAccent, wsAccent, wsLocalImage, wsPattern } fr
 export type WsCoverShape = 'card' | 'thumb';
 
 /**
- * The workspace cover (prototype `styles.css` `.ws-cover`, `identity.js` `cover`): a 16:5 card on the accent's 12 %
+ * The workspace cover: a 16:5 card on the accent's 12 %
  * tint with a 3 px top edge in the accent, holding the screenshot (top left, cover fit) or, without one, the name
  * pattern: an open arc in the accent and a violet dot, placed from the name hash. The badge stands beside the name,
  * never on the cover. Display only; the caller decides whether the image is a mock and marks it so. The image is a

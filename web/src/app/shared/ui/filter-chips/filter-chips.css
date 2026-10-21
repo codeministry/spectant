@@ -11,7 +11,7 @@
       scrollbar-width: none;
     }
 
-    /* Prototype [data-ui=filter-chips] button: 28 px, 0 10 px, gap 6, 1 px --border (app --line), --radius-sm, 13 px muted. */
+    /* Each chip button: 28 px, 0 10 px, gap 6, 1 px --line, --radius-sm, 13 px muted. */
     .chip {
       --btn-border: var(--line); --btn-fg: var(--muted-ink);
 
@@ -32,14 +32,14 @@
       border-radius: 50%;
     }
 
-    /* Prototype b: the count in --text 600. */
+    /* The count (b) in --text 600. */
     .count {
       color: var(--color-base-content);
       font-variant-numeric: tabular-nums;
       font-weight: 600;
     }
 
-    /* The selected chip is the prototype's --raised (spec 024: prototype background (principal 2026-10-13)); its count
+    /* The selected chip is on --raised (spec 024 background decision, principal 2026-10-13); its count
      * stays muted, the neutral-chip pair of web/tests/contrast-exceptions.ts. */
     @container shell (width < 640px) {
       .row {

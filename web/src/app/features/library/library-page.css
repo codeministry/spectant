@@ -1,6 +1,6 @@
-/* The Library page (spec 024, T51; on the real catalog since spec 017, T27): prototype `styles.css` § Library, with
-   the app's token names (`web/tests/prototype-token-map.ts`). Not encapsulated (the type tag `.lib-type` serves the
-   reader's head too): every selector starts with `app-library-page`. The reader's own rules are `library-reader.css`. */
+/* The Library page (spec 024, T51; on the real catalog since spec 017, T27), on the app's tokens. Not encapsulated
+   (the type tag `.lib-type` serves the reader's head too): every selector starts with `app-library-page`. The
+   reader's own rules are `library-reader.css`. */
 
 app-library-page {
   display: grid;
@@ -20,7 +20,7 @@ app-library-page .lib-page-head ui-page-head {
   flex: 0 1 auto;
 }
 
-/* Prototype `page-head`: the workspace badge in front of the h1, the workspace in muted ink after the page name. */
+/* Page head: the workspace badge in front of the h1, the workspace in muted ink after the page name. */
 app-library-page .lib-h1 {
   display: flex;
   gap: 10px;
@@ -37,7 +37,7 @@ app-library-page .lib-unavailable {
   color: var(--muted-ink);
 }
 
-/* Prototype `.lib-types`: from 640 px the type pills wrap onto a second row instead of scrolling out of the column. */
+/* Type pills (`[data-library-types]`): from 640 px they wrap onto a second row instead of scrolling out of the column. */
 app-library-page [data-library-types] .row {
   flex-wrap: wrap;
   overflow-x: visible;

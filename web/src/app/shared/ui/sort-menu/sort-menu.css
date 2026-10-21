@@ -6,7 +6,7 @@
   display: inline-flex;
 }
 
-/* Prototype `.t-head .sort`: a bordered `.btn` (32 px, --border, --radius, --card) with `arrow-up-down`. */
+/* The trigger: a bordered 32 px button on the card surface with `arrow-up-down`. */
 .trigger {
   --btn-bg: var(--color-base-100);
   --btn-border: var(--line);
@@ -18,7 +18,7 @@
   border-style: solid;
 }
 
-/* The list, in the popover and the sheet (prototype `.pop-item`). The prototype popover is at least 240 px wide; the panel's 8 px padding is part of that. */
+/* The list, in the popover and the sheet The popover is at least 240 px wide; the panel's 8 px padding is part of that. */
 .sort-menu {
   display: grid;
   gap: 2px;

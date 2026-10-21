@@ -4,7 +4,7 @@
       min-inline-size: 0;
     }
 
-    /* The card is the tile (the prototype's .kpi-tile): a column, 6 px apart, the meta line pushed to the foot. */
+    /* The card is the tile: a column, 6 px apart, the meta line pushed to the foot. */
     ui-card {
       display: flex;
       flex-direction: column;

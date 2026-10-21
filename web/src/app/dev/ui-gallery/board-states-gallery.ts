@@ -22,7 +22,7 @@ import {
 } from './gallery-samples';
 
 /**
- * The board state gallery (T55; prototype `board-states.html`, `board.js` `statesPage`) as the section
+ * The board state gallery (spec 024 T55) as the section
  * `[data-gallery="board-states"]` of `/__ui`: no rounds yet, nothing in flight, a stale agent, the agent states, the
  * re-cut marker, filtered to nothing, every card state, the compact tier's frame bar and reduced motion, rendered with
  * the board's own components (card, scrubber, agent chip, frame bar) and static sample inputs. Dev-only strings.
@@ -35,7 +35,7 @@ import {
   styleUrl: './state-galleries.css',
 })
 export class BoardStatesGallery {
-  /** The spec's Live tab bar over the gallery, as the prototype's `tabBar(h, s, "board")`; the tabs stay on `/__ui`. */
+  /** The spec's Live tab bar over the gallery, as the board page shows it; the tabs stay on `/__ui`. */
   protected readonly specTabs: readonly PageTab[] = (['board', 'matrix'] as const).map((id) => ({ id, labelKey: `shell.tabs.${id}`, link: ['/__ui'] }));
   protected readonly idleFrames = IDLE_FRAMES;
   protected readonly idleValue = signal(0);

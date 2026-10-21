@@ -8,7 +8,7 @@
 export type Tone = 'neutral' | 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error' | 'concern';
 
 const COLOR: Record<Tone, string> = {
-  neutral: 'var(--muted)', // #706b6e: the prototype's --muted; --held (#8a8489) gives 2.99:1 as a dot on the neutral --raised ground (spec 024)
+  neutral: 'var(--muted)', // #706b6e: --muted; --held (#8a8489) gives 2.99:1 as a dot on the neutral --raised ground (spec 024)
   primary: 'var(--color-primary)',
   secondary: 'var(--color-secondary)',
   accent: 'var(--color-accent)',
@@ -18,9 +18,9 @@ const COLOR: Record<Tone, string> = {
   concern: 'var(--conc)',
 };
 
-// `warning` takes the prototype's orange tint `--hover-t` (`--orange-t`, spec 024 ISC-148: stale and warn chips).
+// `warning` takes the orange tint `--hover-t` (spec 024 ISC-148: stale and warn chips).
 const TINT: Record<Tone, string> = {
-  neutral: 'var(--color-base-300)', // the prototype's --raised, the neutral chip's ground (spec 024 ISC-148)
+  neutral: 'var(--color-base-300)', // --raised, the neutral chip's ground (spec 024 ISC-148)
   primary: 'var(--disp-t)',
   secondary: 'var(--ques-t)',
   accent: 'var(--clos-t)',
@@ -31,7 +31,7 @@ const TINT: Record<Tone, string> = {
 };
 
 const INK: Record<Tone, string> = {
-  neutral: 'var(--muted-ink)', // the prototype's --muted on the neutral chip's --raised (spec 024 ISC-148; DS-APP-32/33 pair)
+  neutral: 'var(--muted-ink)', // the muted ink on the neutral chip's --raised (spec 024 ISC-148; DS-APP-32/33 pair)
   primary: 'var(--disp-ink)',
   secondary: 'var(--ques-ink)',
   accent: 'var(--clos-ink)',

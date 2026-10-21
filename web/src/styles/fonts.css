@@ -54,8 +54,8 @@
 
 /*
  * Unlayered, so these win over the Tailwind theme layer; the `font-sans` / `font-mono` utilities follow them. The
- * stacks are the prototype's, under its names and with its values (spec 024, ISC-146; the faces carry the prototype's
- * family names for that). `--font-sans` (Tailwind's name) and `--font-display` (the app's) alias them.
+ * stacks are the app's (spec 024, ISC-146), held by the snapshot `web/tests/fixtures/look-snapshot.json`; the faces
+ * above carry the family names they list. `--font-sans` (Tailwind's name) and `--font-display` (the app's) alias them.
  */
 :root {
   --font-ui: "Manrope", system-ui, sans-serif;

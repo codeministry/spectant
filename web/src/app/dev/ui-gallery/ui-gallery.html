@@ -153,9 +153,9 @@
   </section>
 
   <!--
-    Prototype anatomy (ISC-148, spec 024 T24): one 640 px block per part of the prototype fixture, keyed by the part's name with '.' as '-'
-    (web/tests/fixtures/prototype-reference.json → primitives), with the extractor's placeholder content, so
-    content-dependent sizes compare. Measured by web/e2e/browser/primitives.spec.ts, which maps each part to its element.
+    Anatomy (ISC-148, spec 024 T24): one 640 px block per primitive part of the look snapshot, keyed by the part's name with '.' as '-'
+    (web/tests/fixtures/look-snapshot.json → primitives), with fixed placeholder content, so content-dependent sizes
+    stay stable. Measured by web/e2e/browser/primitives.spec.ts, which maps each part to its element and compares it with the snapshot.
   -->
   <section class="gallery-group" aria-labelledby="g-anatomy">
     <h2 id="g-anatomy">Anatomy</h2>
@@ -195,7 +195,7 @@
     <div class="gallery-anatomy" data-anatomy="section-head"><ui-section-header heading="Ag" /></div>
   </section>
 
-  <!-- State galleries (spec 024 T55): prototype states.html and board-states.html, with the app's own components. -->
+  <!-- State galleries (spec 024 T55): loading, empty, conflict and board states, with the app's own components. -->
   <app-states-gallery />
   <app-board-states-gallery />
 

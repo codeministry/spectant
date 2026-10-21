@@ -47,7 +47,7 @@ export type GlyphShape =
 export interface GlyphSpec {
   readonly shape: GlyphShape;
   readonly tone: Tone;
-  /** The glyph's own ink where the prototype draws it apart from the state chip (`.glyph.taken` is orange). */
+  /** The glyph's own ink where it differs from the state chip's (the taken glyph is orange). */
   readonly ink?: Tone;
 }
 

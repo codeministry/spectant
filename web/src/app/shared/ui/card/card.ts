@@ -6,8 +6,8 @@ const optionalFlag = (value: boolean | string | undefined): boolean | undefined 
   value === undefined ? undefined : booleanAttribute(value);
 
 /**
- * The inherited card anatomy (design.md): 12 px radius, 1 px `--line` border, card surface, and the prototype's two
- * variants (`styles.css:116-123`, master decision 2026-09-29 "top edge yes, glow yes, as in the prototype"):
+ * The inherited card anatomy (design.md): 12 px radius, 1 px `--line` border, card surface, and two
+ * variants (master decision 2026-09-29: top edge yes, glow yes):
  *
  * - `edge`: a 3 px top bar in `--edge`;
  * - `glow`: a 140 px corner glow, `--edge` at 14 % fading out, at .7 opacity and 1 on an `interactive` card's hover

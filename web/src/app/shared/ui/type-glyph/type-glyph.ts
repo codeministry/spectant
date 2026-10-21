@@ -9,9 +9,9 @@ import { CHIP_ICON } from '../chip/chip-icons';
 export type TypeGlyphKind = SpecType | 'idea';
 
 /**
- * One Lucide icon per type (spec 008, ISC-129). The four types the prototype names take its `CHIP_ICON` icon (spec 024,
+ * One Lucide icon per type (spec 008, ISC-129). The four types `CHIP_ICON` names take its icon (spec 024,
  * design.md § Fundament, Icons): feature the sparkles, bug the bug (`bugfix`), refactor the shuffle, spike the flask.
- * The rest have no prototype icon and keep theirs; `chore` takes the broom, not a wrench: the task board's builder tag
+ * The rest have no chip icon and keep theirs; `chore` takes the broom, not a wrench: the task board's builder tag
  * owns the wrench, and two meanings must not share a shape.
  */
 export const TYPE_GLYPHS: Readonly<Record<TypeGlyphKind, IconName>> = {
@@ -27,8 +27,8 @@ export const TYPE_GLYPHS: Readonly<Record<TypeGlyphKind, IconName>> = {
 
 /**
  * The type glyph of a board card, a dashboard row, the palette and the Features / Milestones chips (DS-APP-26). It
- * draws in `currentColor` at stroke 2, as the prototype's `.icon`, so the consumer's ink decides the tone; 12 px is the
- * prototype's chip icon (`[data-ui=chip] .icon`). By default the icon is an image named by the type
+ * draws in `currentColor` at stroke 2, like every icon, so the consumer's ink decides the tone; 12 px is the
+ * chip icon's size. By default the icon is an image named by the type
  * word from `types.*`; set `decorative` where the word stands visibly beside it (a filter chip), so it is not read twice.
  */
 @Component({

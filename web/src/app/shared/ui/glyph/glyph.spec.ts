@@ -86,7 +86,7 @@ describe('UiGlyph', () => {
     expect(takeable.host.getAttribute('data-family')).toBe('claim');
   });
 
-  it('takes its colour from the tone ink and sizes to 14 px in the prototype glyph, 20 px on cards, 14 px in cells', async () => {
+  it('takes its colour from the tone ink and sizes to 14 px in the default glyph, 20 px on cards, 14 px in cells', async () => {
     const glyph = await render('fail');
     const card = await render('fail', undefined, 20);
     const cell = await render('fail', undefined, 14);

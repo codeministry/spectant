@@ -9,8 +9,17 @@
 //
 // The mutation case proves the guard bites: it feeds the resolver the app's sources with one token value changed in
 // memory (nothing on disk is touched) and expects the comparison to report exactly that token.
+//
+// The icon part holds ISC-452: every Lucide name of the app's icon key map (`icon-map.ts`) exists in the pinned
+// `lucide-static` (an alias file there counts as its canonical icon) and in `ICON_NAMES`, so `<ui-icon>` can render
+// it, and the map key → name equals the snapshot's `icons` part exactly. Its mutation cases change one name and invent
+// one in memory and expect each to be reported.
 import { describe, expect, test } from "bun:test";
-import { readSnapshot, readSource, resolveTokens, type SourceReader, THEMES } from "./look-snapshot";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { lucideDir } from "../src/app/shared/icons/generate-icons";
+import { ICON_NAMES } from "../src/app/shared/icons/icon-names";
+import { iconKeys, readSnapshot, readSource, resolveTokens, type SourceReader, THEMES } from "./look-snapshot";
 
 /** One line per key whose value differs between the snapshot part and the app: missing, extra or changed. */
 function differences(label: string, expected: Record<string, string>, actual: Record<string, string>): string[] {
@@ -53,5 +62,54 @@ describe("look snapshot: tokens", () => {
     expect(diff[0]).toStartWith("light --track: snapshot ");
     // The other theme reads the same mutated sources and stays equal: the change sits in the `spec-light` rule.
     expect(differences("dark", snapshot?.tokens?.dark ?? {}, resolveTokens("dark", reader))).toEqual([]);
+  });
+});
+
+/** The names of the pinned `lucide-static`: one `icons/<name>.svg` per icon, alias files included. */
+const lucideNames = new Set(readdirSync(join(lucideDir(), "icons")).map((file) => file.replace(/\.svg$/, "")));
+
+/** One line per map entry whose Lucide name is not a file of the pinned package. */
+const outsideLucide = (map: Record<string, string>, available: ReadonlySet<string>): string[] =>
+  Object.entries(map)
+    .filter(([, name]) => !available.has(name))
+    .map(([key, name]) => `${key} -> ${name}: not in lucide-static`);
+
+describe("look snapshot: icons", () => {
+  const icons = iconKeys();
+
+  test("the installed lucide-static is the version web/package.json pins, and the map is not empty", () => {
+    type Manifest = { version?: string; devDependencies?: Record<string, string> };
+    const read = (path: string) => JSON.parse(readFileSync(path, "utf8")) as Manifest;
+    const pinned = read(join(import.meta.dir, "..", "package.json")).devDependencies?.["lucide-static"];
+    expect(pinned).toBeString();
+    expect(read(join(lucideDir(), "package.json")).version).toBe(pinned);
+    expect(Object.keys(icons).length).toBeGreaterThan(0);
+  });
+
+  test("every Lucide name of the map exists in the pinned lucide-static", () => {
+    expect(outsideLucide(icons, lucideNames)).toEqual([]);
+  });
+
+  test("every Lucide name of the map is in ICON_NAMES, so <ui-icon> can render it", () => {
+    const names = new Set<string>(ICON_NAMES);
+    expect(Object.entries(icons).filter(([, name]) => !names.has(name))).toEqual([]);
+  });
+
+  test("the map key → name equals the snapshot", () => {
+    const expected = snapshot?.icons ?? {};
+    expect(Object.keys(expected).length).toBeGreaterThan(0);
+    expect(differences("icons", expected, icons)).toEqual([]);
+  });
+
+  test("mutation: a changed name and a name lucide-static lacks are each reported", () => {
+    const [key, name] = Object.entries(icons).sort()[0] ?? ["", ""];
+    const other = name === "anchor" ? "bot" : "anchor";
+    const changed = { ...icons, [key]: other };
+    expect(differences("icons", snapshot?.icons ?? {}, changed)).toEqual([
+      `icons ${key}: snapshot ${JSON.stringify(name)}, app ${JSON.stringify(other)}`,
+    ]);
+
+    const invented = { ...icons, [key]: "no-such-icon" };
+    expect(outsideLucide(invented, lucideNames)).toEqual([`${key} -> no-such-icon: not in lucide-static`]);
   });
 });

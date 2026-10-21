@@ -3,12 +3,12 @@
  *
  * The only file allowed to spell a literal duration: stylelint's `declaration-property-value-disallowed-list` forbids
  * one in any other `transition` / `animation` declaration, and `web/tests/motion.test.ts` mirrors that rule. Everything
- * else writes `var(--motion-duration-*)` / `var(--motion-ease-*)` or the prototype's `var(--dur-*)` / `var(--ease)`, so the reduced-motion block below is the one
+ * else writes `var(--motion-duration-*)` / `var(--motion-ease-*)` or the base `var(--dur-*)` / `var(--ease)`, so the reduced-motion block below is the one
  * switch that stops motion everywhere. Nothing moves on hover; glow intensifies under `(hover: hover)` only.
  */
 
 :root {
-  /* The prototype names and values (spec 024, ISC-146); `web/tests/prototype-tokens.test.ts` compares them. */
+  /* The base durations and easing (spec 024, ISC-146); `web/tests/look-snapshot.test.ts` holds their values. */
   --dur-hover: 80ms; /* hover and press colour */
   --dur-pop: 160ms; /* popover in and out, row selection, copy → check swap */
   --dur-sheet: 240ms; /* palette and dialog entry, sheet, inspector swap, disclosure */
@@ -16,15 +16,15 @@
   --dur-tint: 1200ms; /* changed-value tint fade after a refresh */
   --ease: cubic-bezier(0.2, 0, 0, 1); /* default for anything that moves or morphs in place */
 
-  /* The app's names, which components write; each prototype value is an alias, so there is one source. */
-  --motion-duration-instant: var(--dur-hover); /* prototype --dur-hover */
-  --motion-duration-fast: var(--dur-pop); /* prototype --dur-pop */
-  --motion-duration-base: var(--dur-sheet); /* prototype --dur-sheet */
-  --motion-duration-slow: var(--dur-morph); /* prototype --dur-morph */
-  --motion-duration-highlight: var(--dur-tint); /* prototype --dur-tint */
-  --motion-duration-skeleton: 1600ms; /* skeleton sweep, one pass (the prototype has no skeleton) */
-  --motion-duration-pulse: 1600ms; /* prototype `.pulse-mk`: a running marker's ring, one beat */
-  --motion-ease-standard: var(--ease); /* prototype --ease */
+  /* The app's names, which components write; each aliases a base value above, so there is one source. */
+  --motion-duration-instant: var(--dur-hover); /* hover and press colour */
+  --motion-duration-fast: var(--dur-pop); /* popovers, row selection */
+  --motion-duration-base: var(--dur-sheet); /* palette, dialog, sheet, disclosure */
+  --motion-duration-slow: var(--dur-morph); /* ring and meter value morph */
+  --motion-duration-highlight: var(--dur-tint); /* changed-value tint fade */
+  --motion-duration-skeleton: 1600ms; /* skeleton sweep, one pass */
+  --motion-duration-pulse: 1600ms; /* `.pulse-mk`: a running marker's ring, one beat */
+  --motion-ease-standard: var(--ease); /* default easing for anything that moves or morphs */
   --motion-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1); /* entries: palette, dialog, sheet, popover in */
   --motion-ease-exit: cubic-bezier(0.3, 0, 1, 1); /* exits: dialog, sheet, popover out */
 }

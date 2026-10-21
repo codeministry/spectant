@@ -44,7 +44,7 @@ ui-doc-prose .docs-toc-list {
 }
 ui-doc-prose .docs-toc-list [data-level='3'] { padding-inline-start: 16px; }
 
-/* The prototype's [data-ui="toc"] a: muted, a 2 px rule on the left; hover in the cyan text tone. */
+/* The table of contents' links: muted, a 2 px rule on the left; hover in the cyan text tone. */
 ui-doc-prose .docs-toc-list a {
   display: block;
   padding: 2px 0 2px 10px;
@@ -145,7 +145,7 @@ ui-doc-prose .docs-prose :is(th, td) {
   vertical-align: top;
 }
 
-/* The prototype's .tbl th: an 11 px muted eyebrow on the card, no header fill. */
+/* Table headers: an 11 px muted eyebrow on the card, no header fill. */
 ui-doc-prose .docs-prose th {
   color: var(--muted-ink);
   font-size: 11px;

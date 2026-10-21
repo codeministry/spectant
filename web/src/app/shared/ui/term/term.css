@@ -61,7 +61,7 @@ dfn {
   }
 }
 
-/* Guide mode (prototype `.term-pop p` + `.open-link`): the hint, 8 px, then the cyan link to the glossary row. */
+/* Guide mode: the hint, 8 px, then the cyan link to the glossary row. */
 .hint-text {
   display: block;
 }

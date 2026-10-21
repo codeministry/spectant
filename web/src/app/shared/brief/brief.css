@@ -1,5 +1,5 @@
 /*
- * app-brief, ported from the prototype's `[data-ui="brief"]` (`styles.css:342-349`). Not encapsulated because the
+ * app-brief, the workspace's TL;DR card under the KPI band. Not encapsulated because the
  * prose is `[innerHTML]`: every selector starts with `app-brief`. A `ui-card` without top edge or glow, with the violet
  * (`--color-secondary`) 3 px left border; a real border, so forced colours keep it. The header wraps at 390 px, the
  * command chip pushed to the end; the body clips to two lines until "More" expands it.

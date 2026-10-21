@@ -5,14 +5,14 @@ import { GateButton } from '../../layout/spec-head/gate-button/gate-button';
 import type { ScrubberFrame, ScrubberMarker } from '../../shared/ui/scrubber/scrubber';
 
 /**
- * Static sample inputs for the state galleries of `/__ui` (T55; prototype `states.html`, `board-states.html`). The
+ * Static sample inputs for the state galleries of `/__ui` (spec 024 T55; `states-gallery.ts`, `board-states-gallery.ts`). The
  * gallery is a dev surface, not a product page: these are literal inputs to the app's own components, never read from
  * a workspace, never written anywhere, and they carry no demo chip.
  */
 
 const MINUTE = 60_000;
 
-/** One board card in the given state; the other fields are the prototype's T12 sample. */
+/** One board card in the given state; the other fields are one fixed sample task. */
 export function sampleCard(task: string, state: CardState, extra: Partial<FrameCard> = {}): FrameCard {
   return {
     task,
@@ -27,7 +27,7 @@ export function sampleCard(task: string, state: CardState, extra: Partial<FrameC
   };
 }
 
-/** Every card state, in the order of the prototype's "Every task state" mini, then the four the app adds. */
+/** Every card state for the "Every task state" mini: the seven task states, then the four the app adds. */
 export const EVERY_CARD_STATE: readonly CardState[] = [
   'waiting',
   'dispatched',
@@ -50,7 +50,7 @@ export const LANDED_CARDS: readonly FrameCard[] = ['T3', 'T9', 'T11'].map((task)
   sampleCard(task, 'done', { lane: 'core', text: 'Parser reads the stage line', builder: 'Engineer' }),
 );
 
-/** A running card whose lock is older than the stale threshold (prototype "Stale agent"). */
+/** A running card whose lock is older than the stale threshold (the "Stale agent" mini). */
 export const STALE_CARD: LiveCard = {
   ...sampleCard('T22', 'running', { claim: 'ISC-336', builder: 'Engineer', lock: { source: 'activity', session: 'spec-002-ISC-336' } }),
   since: new Date(Date.now() - 47 * MINUTE).toISOString(),

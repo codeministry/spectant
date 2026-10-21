@@ -56,7 +56,7 @@ const toMs = (value: string): number => {
  *
  * `id` names the `<dfn>`; the hint is `<id>-hint` (`hintId`), for a consumer that wants to describe another element by it.
  *
- * With `guide` (a glossary key, spec 024: the prototype's `.term-pop` closing `.open-link`) the hint ends in a link to
+ * With `guide` (a glossary key, spec 024) the hint ends in a link to
  * the glossary row `/help#term-<key>`, labelled `guideLabel`. A popover with a link is no tooltip: the term becomes a
  * disclosure button (`aria-expanded`, `aria-controls`), Enter or Space opens it and moves focus to the link, Tab from
  * the term reaches the link too, Esc closes it and returns focus to the term, and focus leaving both closes it.

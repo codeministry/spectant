@@ -20,8 +20,8 @@
 }
 
 /*
- * The prototype's `.btn`: 32 px tall, 0 12 px, an 8 px gap, radius 8 (`size="md"`, the default). `size="sm"` is the
- * prototype's small control step, 28 px and 0 10 px. daisyUI's `--size` height is overridden here, unlayered.
+ * The text button: 32 px tall, 0 12 px, an 8 px gap, radius 8 (`size="md"`, the default). `size="sm"` is the
+ * small control step, 28 px and 0 10 px. daisyUI's `--size` height is overridden here, unlayered.
  */
 :host(.ui-button) {
   gap: var(--space-2);
@@ -36,8 +36,8 @@
 }
 
 /*
- * The prototype's icon buttons. `size="md"` is `.btn-icon`: 40 x 40, 1 px `--line` border, radius 8, `--card`,
- * `--raised` on hover (the secondary variant below). `size="sm"` is `.quiet-icon`: 32 x 32, no border, radius 6,
+ * The icon buttons. `size="md"` is the bordered one: 40 x 40, 1 px `--line` border, radius 8, `--card`,
+ * `--raised` on hover (the secondary variant below). `size="sm"` is the quiet one: 32 x 32, no border, radius 6,
  * `--muted` at rest, an 8 % tint of the text colour and the text colour on hover.
  */
 :host(.ui-icon-button) {
@@ -94,7 +94,7 @@
   font-weight: 600;
 }
 
-/* The prototype's `.btn.primary:hover`: the fill mixed 15 % toward the text colour. */
+/* The primary button's hover: the fill mixed 15 % toward the text colour. */
 @media (hover: hover) {
   :host([data-variant="primary"]:not([data-tone], [aria-disabled="true"]):hover) {
     --btn-bg: color-mix(in srgb, var(--primary-fill) 85%, var(--color-base-content));
