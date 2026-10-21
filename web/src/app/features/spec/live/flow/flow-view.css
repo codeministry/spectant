@@ -14,7 +14,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* spec 024: the prototype .flow-grid: a 112 px lane column, then four columns; the heads on the lane ground with a
+/* spec 024: the .flow-grid: a 112 px lane column, then four columns; the heads on the lane ground with a
    3 px underline in the column's colour; each band a row of cells under a hairline. */
 .flow {
   display: grid;

@@ -1,5 +1,5 @@
 /*
- * The closing rows of a filtered spec list (spec 061), shared by the Tasks, Claims and Timeline tabs: the prototype's
+ * The closing rows of a filtered spec list (spec 061), shared by the Tasks, Claims and Timeline tabs: the
  * `.none-match` (one muted line with Clear beside it, when no row matches the filter) and the `details.fold-row`
  * summary without the browser's disclosure marker. A tab whose markup has no such row leaves the rule unused. No other
  * rule of those tabs matches these elements, so where the `@import` stands in their cascade changes no computed value.

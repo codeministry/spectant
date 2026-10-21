@@ -185,7 +185,7 @@
   }
 }
 
-/* The toolbar search (spec 024; prototype `.bsearch`): 32 px, `--line` border on `--color-base-100`, the kbd hint muted. */
+/* The toolbar search (spec 024; `.bsearch`): 32 px, `--line` border on `--color-base-100`, the kbd hint muted. */
 .bsearch {
   display: inline-flex;
   gap: 6px;

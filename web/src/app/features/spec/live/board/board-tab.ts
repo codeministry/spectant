@@ -135,7 +135,7 @@ export class BoardTab {
       onCleanup(() => clearTimeout(timer));
     });
 
-    // spec 024 (prototype board.js render): the frame label for the card detail, the .changed tint for the cards whose
+    // spec 024: the frame label for the card detail, the .changed tint for the cards whose
     // state changed with a frame change, and a FLIP of the Lanes view's cards over `--motion-duration-base` (none under reduced motion).
     const context = inject(CardContext);
     const host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -191,7 +191,7 @@ export class BoardTab {
     return taskActorsOf(card) !== null;
   }
 
-  /** `o` opens This frame / Needs you below wide (prototype `.sheet-bar kbd`); `f` is the shell's search key. */
+  /** `o` opens This frame / Needs you below wide; `f` is the shell's search key. */
   protected onKey(event: KeyboardEvent): void {
     if (barKey(event, this.wide(), this.state.zen())) this.live.barOpen.set(true);
   }

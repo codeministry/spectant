@@ -3,7 +3,7 @@
 } @else if (unavailable()) {
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
-  <!-- Prototype `page-head`: eyebrow `<WS> · PLANNING · n MILESTONES`, the workspace badge, h1 "Planning", the meta. -->
+  <!-- The page head: eyebrow `<WS> · PLANNING · n MILESTONES`, the workspace badge, h1 "Planning", the meta. -->
   <ui-page-head
     [segments]="[name(), ('shell.pages.planning' | transloco), counts() === null ? '' : ((counts()?.milestones === 1 ? 'planning.page.eyebrowCount.one' : 'planning.page.eyebrowCount.other') | transloco: { count: counts()?.milestones })]"
   >

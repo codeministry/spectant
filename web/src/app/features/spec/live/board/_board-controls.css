@@ -59,7 +59,7 @@
   flex: none;
 }
 
-/* The prototype's `.legend` wraps: every pill stays whole, none is cut off or scrolled away. */
+/* The `.legend` wraps: every pill stays whole, none is cut off or scrolled away. */
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -277,7 +277,7 @@
   align-items: center;
 }
 
-/* spec 024: the replay's frame label is the plain .flabel (no live pulse), then the prototype .hist-chip and the
+/* spec 024: the replay's frame label is the plain .flabel (no live pulse), then the .hist-chip and the
    "Back to live" .tb-btn (32 px, card ground, hairline shadow). */
 .hist-chip {
   padding: 3px 8px;
@@ -300,7 +300,7 @@
   font-size: 13px;
 }
 
-/* The prototype .empty-state: centred, 32 px, dashed. */
+/* The .empty-state: centred, 32 px, dashed. */
 .empty {
   display: grid;
   gap: 8px;
@@ -314,7 +314,7 @@
   line-height: 20px;
 }
 
-/* From 640: the prototype's `lanes-board`, 300 px columns running sideways in one scroller. */
+/* From 640: the lanes board, 300 px columns running sideways in one scroller. */
 .lanes {
   display: grid;
   grid-auto-columns: 300px;

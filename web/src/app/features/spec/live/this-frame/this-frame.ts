@@ -8,7 +8,7 @@ import { AgentChip } from './agent-chip';
 
 /**
  * "This frame" (T88, ISC-87; design.md § Live, Rail): the collapsible event list of the frame on screen, i.e. the
- * cards new in it or in another state than in the previous frame (`frameEvents`), each as the prototype's compact
+ * cards new in it or in another state than in the previous frame (`frameEvents`), each as the compact
  * `.fevents` line (`T9 → closed · ISC-330`) that opens the card detail, then, for the live frame, the lock
  * source the reading names and one agent chip per session holding a lock (T85, ISC-90). The rail block at wide and the
  * first tab of the bottom bar's sheet below wide; in the sheet the segment names it, so it renders without the fold.

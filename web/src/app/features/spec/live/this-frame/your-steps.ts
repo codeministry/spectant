@@ -16,8 +16,8 @@ export interface StepToggle {
 }
 
 /**
- * "Your steps" (T88, ISC-87; design.md § Live · Operator lane (Principal 2026-10-13)): the operator lane at wide as the
- * prototype draws it, its own lane in the grid (`.lane.op`; in Flow the row across all columns, `.op.span`): the lane
+ * "Your steps" (T88, ISC-87; design.md § Live · Operator lane (Principal 2026-10-13)): the operator lane at wide as
+ * its own lane in the grid (`.lane.op`; in Flow the row across all columns, `.op.span`): the lane
  * head (dot, `operator`, "Your steps · n of m done"), then one checklist row per step, a box and the step as a compact
  * 36 px card (`density="step"`: glyph, id, text, state chip, 4 px edge), so every frame card stays an
  * `article[data-card]` (ISC-88). Each box is the guarded task write of T80: the board's store runs the same

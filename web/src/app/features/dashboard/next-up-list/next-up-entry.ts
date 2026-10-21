@@ -12,8 +12,7 @@ import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
 import { UiReason } from '../../../shared/ui/reason/reason';
 
 /**
- * One Next up entry, ported from the prototype (`app.js` nextCard / wsColumn, `styles.css` `.next-card` l.356-358,
- * `.next-row` l.480-481): a next-row inside the list's card — the cyan left edge, the ID in a 36 px column beside the
+ * One Next up entry (T90): a next-row inside the list's card — the cyan left edge, the ID in a 36 px column beside the
  * one-line title and its toggle, the compact reason line below it. The phrase is the dashboard row's (ISC-122.3).
  */
 @Component({

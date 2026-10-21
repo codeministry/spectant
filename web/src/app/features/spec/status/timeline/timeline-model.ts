@@ -2,7 +2,7 @@ import type { TimelineEntry, TimelineKind } from '../../../../../../../core/src/
 import { localDayKey } from '../../../../shared/time';
 
 /**
- * The sources in chip order (design.md § Status, tablet; prototype `tabTimeline`): the files' five, then the server's
+ * The sources in chip order (design.md § Status, tablet): the files' five, then the server's
  * joins; `worktree` last, after Agent (spec 027 design.md § Across viewports 5), its pill shown only while the
  * strand holds a worktree entry or the filter names it.
  */

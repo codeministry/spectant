@@ -117,7 +117,7 @@ export class HelpPage {
   protected readonly steps = START_STEPS;
   protected readonly keyContexts = KEY_CONTEXTS;
   protected readonly keyLabel = keyLabel;
-  /** The About meta row (prototype `.meta-row`): the app version and the loopback address this page is served from. */
+  /** The About meta row (`.meta-row`): the app version and the loopback address this page is served from. */
   protected readonly version = version;
   protected readonly address = inject(DOCUMENT).location.host;
 

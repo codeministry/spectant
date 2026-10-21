@@ -1,7 +1,7 @@
 /* Claims tab, after `claims-tab.css` (spec 061): the claim card, its state chip, lock and run lines, fold row. */
 @import '../../_fold-row.css';
 
-/* Sweep 2 (ISC-149): the prototype's claim card, probe row, verification line and search field. */
+/* Sweep 2 (ISC-149): the claim card, probe row, verification line and search field. */
 
 .claim-card[data-state='taken'] {
   border-color: var(--color-warning);
@@ -16,7 +16,7 @@
   color: var(--hover-text);
 }
 
-/* Prototype `stateChip`: the claim's state as an `st-*` chip at the end of the top row. */
+/* The state chip: the claim's state as an `st-*` chip at the end of the top row. */
 .head > .st {
   margin-inline-start: auto;
 }
@@ -36,7 +36,7 @@
   color: var(--muted-ink);
 }
 
-/* Prototype `.taken-line`: agent dot, session in mono, since. */
+/* `.taken-line`: agent dot, session in mono, since. */
 .taken-line {
   display: flex;
   flex-wrap: wrap;
@@ -96,7 +96,7 @@
   white-space: nowrap;
 }
 
-/* Prototype `.fold` / `.fold-row`: a muted summary line; opened, the closed cards follow it. */
+/* `.fold` / `.fold-row`: a muted summary line; opened, the closed cards follow it. */
 .fold-row > summary {
   padding: 4px;
   color: var(--muted-ink);

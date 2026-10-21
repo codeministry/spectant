@@ -205,7 +205,7 @@ describe('applyListQuery', () => {
     expect(ids(applyListQuery(rows, query({ takeable: true })))).toEqual(['002']);
   });
 
-  it('offers the prototype sort menu: Stage, ID, Progress', () => {
+  it('offers the sort menu: Stage, ID, Progress', () => {
     expect(SORT_MENU).toEqual(['stage', 'id', 'progress']);
   });
 

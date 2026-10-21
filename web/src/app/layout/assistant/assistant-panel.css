@@ -1,6 +1,6 @@
 /*
- * The assistant "dot" (prototype `styles.css` `[data-ui="assistant"]`, `.as-*`; spec 024 T53, design.md § Assistent).
- * App tokens for the prototype's names (web/tests/prototype-token-map.ts): --card = --color-base-100, --page =
+ * The assistant "dot" (`.as-*`; spec 024 T53, design.md § Assistent).
+ * The colour roles named in these comments and their app tokens: --card = --color-base-100, --page =
  * --color-base-200, --raised = --color-base-300, --border = --line, --violet = --color-secondary, --cyan-text =
  * --disp-text, --cyan = --color-primary.
  */
@@ -8,7 +8,7 @@
   display: contents;
 }
 
-/* The popover's UA box reset, then the prototype's floating panel: right 16, bottom 16, 400 × min(660, 100dvh − 96). */
+/* The popover's UA box reset, then the floating panel: right 16, bottom 16, 400 × min(660, 100dvh − 96). */
 .as-panel {
   position: fixed;
   inset: auto 16px 16px auto;

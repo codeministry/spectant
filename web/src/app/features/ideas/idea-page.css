@@ -23,8 +23,8 @@
       list-style: none;
     }
 
-    /* Prototype spec-head-unified: the path left and the labels right, the h1 directly under them; below 640 the labels
-       stack under the path (the prototype's compact rule). */
+    /* The unified spec head: the path left and the labels right, the h1 directly under them; below 640 the labels
+       stack under the path (the compact rule). */
     .sh-context {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -102,7 +102,7 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* Prototype command-chip, as selectable text: mono on the lane surface with the hairline (no copy button here). */
+    /* The command chip, as selectable text: mono on the lane surface with the hairline (no copy button here). */
     .cmd {
       display: inline-flex;
       align-items: center;
@@ -138,7 +138,7 @@
       min-inline-size: 0;
     }
 
-    /* Prototype idea-quote big: the violet 3 px edge, the Goal sentence in the display face. */
+    /* The big idea quote: the violet 3 px edge, the Goal sentence in the display face. */
     .idea-quote {
       display: grid;
       gap: 6px;

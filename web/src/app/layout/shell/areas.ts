@@ -32,8 +32,8 @@ export interface SpecArea {
   readonly icon: IconName;
   readonly built: boolean;
   /**
-   * The second key of the area's `g` sequence (ISC-97, the prototype's shortcut sheet: `g s` `g l` `g d` `g o` `g n`), shown
-   * as a hint in the area menu. The binding is T102's; the dashboard has none yet (the prototype names none).
+   * The second key of the area's `g` sequence (ISC-97, the shortcut sheet: `g s` `g l` `g d` `g o` `g n`), shown
+   * as a hint in the area menu. The binding is T102's; the dashboard has none yet.
    */
   readonly goKey: string | null;
   /**
@@ -42,7 +42,7 @@ export interface SpecArea {
    */
   readonly singleTabBar?: true;
   /**
-   * The area runs without the context column (prototype `no-rail`, spec 017 design.md § Across viewports), so
+   * The area runs without the context column (spec 017 design.md § Across viewports), so
    * the Library's list and reader have the width of the workspace Library.
    */
   readonly noRail?: true;
@@ -126,7 +126,7 @@ export interface WorkspacePage {
   /**
    * The second key of the page's `g` sequence, read by `SHORTCUTS`: Board's `g b` (spec 008, T117), Features' `g f`
    * and Milestones' `g m` (spec 024, T58, ISC-150.1), Library's `g o` (spec 017, T41, ISC-157.1: the key that opens
-   * the documents inside a spec, the Library area since T45, opens them at workspace scope; the prototype's `g b` is the app's Board).
+   * the documents inside a spec, the Library area since T45, opens them at workspace scope; `g b` is the Board's).
    * The dashboard and Specs have none: `g s` is Status inside a spec and no workspace-scope binding exists.
    */
   readonly goKey: string | null;

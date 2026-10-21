@@ -25,7 +25,7 @@ import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
  * Tiers (design.md § Live, Matrix): compact 64 px ids and 44 × 44 cells; medium 64 px ids and 32 × 32 cells; wide a
  * 224 px id and claim column, 32 px rows, dispatch 16 px (dimmed), result 28 px, live 40 px, re-cut 8 px.
  *
- * The prototype renders the matrix inside the round board (`board-matrix.html`), so it keeps the board's rail and
+ * The matrix belongs to the round board, so it keeps the board's rail and
  * bottom bar (`app-live-rail`): This frame and Needs you of the scrubbed frame in the shell rail at wide, the 48 px bar
  * with Kbd `o` and its sheet below wide and in zen.
  */
@@ -57,10 +57,10 @@ export class MatrixTab {
     return this.matrix().columns.map((column) => this.columnName(column));
   });
 
-  /** The scrubber over the matrix (prototype `board-matrix.html`): it marks the current frame's column. */
+  /** The scrubber over the matrix: it marks the current frame's column. */
   private readonly picked = signal<number | null>(null);
   protected readonly playing = signal(false);
-  /** The legend row under the grid: glyph and word per state, in the prototype's order. */
+  /** The legend row under the grid: glyph and word per state, in state order. */
   protected readonly legendStates: readonly CardState[] = ['waiting', 'dispatched', 'question', 'concerns', 'fail', 'done', 'closed'];
   protected readonly stateKey = stateKey;
   protected readonly wide = computed(() => this.state.tier() === 'wide');
@@ -71,7 +71,7 @@ export class MatrixTab {
     registerLiveRail(this.rail, this.live.railBadges);
   }
 
-  /** `o` opens This frame / Needs you below wide (prototype `.sheet-bar kbd`), as on the board. */
+  /** `o` opens This frame / Needs you below wide, as on the board. */
   protected onKey(event: KeyboardEvent): void {
     if (barKey(event, this.wide(), this.state.zen())) this.live.barOpen.set(true);
   }

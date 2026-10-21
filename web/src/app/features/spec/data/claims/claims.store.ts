@@ -36,7 +36,7 @@ export interface FeatureGroup {
   readonly why: string | null;
   /** The cards shown; on the folded All view the feature's claims that are not closed. */
   readonly claims: readonly ClaimView[];
-  /** The All view without a search only (prototype `.fold`): the closed claims behind the `+ N more` row. */
+  /** The All view without a search only (`.fold`): the closed claims behind the `+ N more` row. */
   readonly closed: readonly ClaimView[];
 }
 
@@ -151,7 +151,7 @@ export class ClaimsStore {
     if (!model) return [];
     const visible = this.visible();
     const known = new Set(model.features.map((f) => f.id));
-    // Prototype `.fold`: only the unfiltered All view folds the closed claims; any filter or search shows every match.
+    // `.fold`: only the unfiltered All view folds the closed claims; any filter or search shows every match.
     const fold = this.state() === 'all' && this.kind() === 'all' && this.search().trim() === '';
     // Principal 2026-10-13: a group folds only from six closed claims, and its last three
     // closed ones (file order) stay in view, so the click path to a claim (ISC-139.1) keeps its budget.

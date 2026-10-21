@@ -112,7 +112,7 @@
   inline-size: 8px;
 }
 
-/* The prototype's `.agent-dot` (shared/ui/_agent-dot.css) as an inline block in the track cell. */
+/* The shared `.agent-dot` (shared/ui/_agent-dot.css) as an inline block in the track cell. */
 .agent-dot {
   display: inline-block;
 }

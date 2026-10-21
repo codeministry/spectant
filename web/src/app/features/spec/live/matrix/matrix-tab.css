@@ -207,7 +207,7 @@ td[data-kind='dispatch'] ui-glyph {
   }
 }
 
-/* Spec 024, T45: the prototype's scrubber over the matrix, the current frame's column, lane dots, the legend row. */
+/* Spec 024, T45: the scrubber over the matrix, the current frame's column, lane dots, the legend row. */
 .mx-scrubber {
   min-inline-size: 0;
 }
@@ -244,7 +244,7 @@ th[data-current] {
   align-items: center;
 }
 
-/* spec 024: the prototype .matrix: Task (fixed), Claim, the lane marker and Lane as columns, the frames after them;
+/* spec 024: the .matrix: Task (fixed), Claim, the lane marker and Lane as columns, the frames after them;
    the heads 11 px muted, the frame on screen raised; a struck cell hatched on the raised ground; the legend a meta line. */
 
 .grid > thead > tr > th {

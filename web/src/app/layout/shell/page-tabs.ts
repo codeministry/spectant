@@ -13,9 +13,9 @@ export interface PageTab {
   /** The tab's route, as a router link. */
   readonly link: readonly string[];
   readonly count?: string;
-  /** The tab opens a new group: the bar draws the prototype's `tab-sep` before it (spec 024, ISC-149). */
+  /** The tab opens a new group: the bar draws a `tab-sep` before it (spec 024, ISC-149). */
   readonly sep?: true;
-  /** The tab has no content yet (a doc the spec does not have): the prototype's dimmed `muted-tab` (spec 024, ISC-149). */
+  /** The tab has no content yet (a doc the spec does not have): the dimmed `muted-tab` (spec 024, ISC-149). */
   readonly muted?: true;
   /** An icon before the label (the planning lenses, spec 026). */
   readonly icon?: IconName;

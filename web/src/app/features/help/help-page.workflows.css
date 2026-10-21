@@ -92,7 +92,7 @@ figcaption {
   font-weight: 600;
 }
 
-/* Prototype `.gloss dt:target`: the term a link lands on lights up in the cyan tint. */
+/* A glossary row as `:target`: the term a link lands on lights up in the cyan tint. */
 .glossary tr:target {
   background: var(--disp-t);
 }

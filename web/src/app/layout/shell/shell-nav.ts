@@ -89,7 +89,7 @@ export class ShellNav {
   protected readonly inWorkspace = computed(() => this.state.ws() !== null);
   protected readonly row = this.data.currentRow;
   /**
-   * The open spec's short name (prototype `.specs-select`: `002` + `web-console`, spec 024 T74): the folder slug without
+   * The open spec's short name (`002` + `web-console`, spec 024 T74): the folder slug without
    * its `NNN-` prefix, else the title for a row without a slug. The full title stays the pill's tooltip.
    */
   protected readonly specName = computed(() => {
@@ -116,7 +116,7 @@ export class ShellNav {
   readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);
   /** The deferred menus have mounted and `toggle` opens them; before that a click takes its fallback. */
   protected readonly menusMounted = computed(() => this.menus() !== undefined);
-  /** From 1120 px (the wide tier) the full prototype header: the area pill sits on the rail. */
+  /** From 1120 px (the wide tier) the full header: the area pill sits on the rail. */
   protected readonly wide = computed(() => this.state.tier() === 'wide');
 
   /** The overflow menu's area entry, the same two states as the wide select; null off a spec page. */

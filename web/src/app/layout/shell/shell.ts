@@ -32,7 +32,7 @@ import { tierFor } from './tier';
     '[class.tier-wide]': "state.tier() === 'wide'",
     '[attr.data-zen]': "state.zen() ? '' : null",
     '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
-    // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`); the
+    // Outside a workspace (the overview `/`, settings) the page has no rail column at all; the
     // workspace board (spec 008), the Library and a spec area marked `noRail` (the spec's
     // Library, spec 017) have nothing for the rail either and take the full width.
     '[attr.data-no-rail]': "noRail() ? '' : null",
@@ -66,7 +66,7 @@ export class ShellComponent {
       !this.data.workspaceUnavailable(),
   );
 
-  /** No rail column at all (prototype `no-rail`): outside a workspace, on the full-width workspace pages, in a `noRail` area. */
+  /** No rail column at all: outside a workspace, on the full-width workspace pages, in a `noRail` area. */
   protected readonly noRail = computed(() => {
     const page = this.state.wsPage();
     // Spec 026: the planning page's graph takes the full width too, and the Gantt (spec 038) until a selection docks the

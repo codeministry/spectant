@@ -12,8 +12,8 @@ import { NeedsYou } from './needs-you';
 import { ThisFrame } from './this-frame';
 
 /**
- * This frame and Needs you of a live tab (T88), the same on the Board and the Matrix (the prototype renders the matrix
- * inside the round board, `board-matrix.html`): the two rail blocks and the 48 px bottom bar as templates the tab
+ * This frame and Needs you of a live tab (T88), the same on the Board and the Matrix (the matrix belongs to the
+ * round board): the two rail blocks and the 48 px bottom bar as templates the tab
  * hands to the shell (`registerLiveRail`), the bar drawn here below wide outside zen, and the bar's sheet below wide
  * and in zen, where the zen footer renders the bar, so there is one bar. The host draws no box (`display: contents`).
  */
@@ -79,7 +79,7 @@ export function registerLiveRail(rail: Signal<LiveRail | undefined>, badges: Sig
 }
 
 /**
- * `o` opens This frame / Needs you below wide and in zen (prototype `.sheet-bar kbd`); `f` is the shell's search key.
+ * `o` opens This frame / Needs you below wide and in zen; `f` is the shell's search key.
  * True when the key is taken (its default prevented); never inside a field.
  */
 export function barKey(event: KeyboardEvent, wide: boolean, zen: boolean): boolean {

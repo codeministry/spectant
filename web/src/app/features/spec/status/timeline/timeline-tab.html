@@ -37,7 +37,7 @@
     <ui-empty-state icon="file-text" [heading]="'timeline.unserved.heading' | transloco" [body]="'timeline.unserved.body' | transloco" />
   }
   @case ('error') {
-    <!-- Spec 024 (prototype states gallery): the inline error notice, red edge, Retry in its slot. -->
+    <!-- Spec 024: the inline error notice, red edge, Retry in its slot. -->
     <ui-notice tone="error" data-timeline-error>
       <strong>{{ 'timeline.error.heading' | transloco }}</strong> {{ 'timeline.error.body' | transloco }}
       <button action ui-button size="sm" type="button" (click)="store.reload()">{{ 'timeline.error.retry' | transloco }}</button>
@@ -154,7 +154,7 @@
                         </span>
                         <div class="body">
                           @if (hasQa(row.entry) && row.entry.question; as q) {
-                            <!-- Prototype `.tl-body .qa`: From · Offered · Chosen · Landed in, the files as chips. -->
+                            <!-- The `.qa` list: From · Offered · Chosen · Landed in, the files as chips. -->
                             <dl class="qa" data-decision-qa>
                               @if (q.from; as from) {
                                 <dt>{{ 'docs.decisions.from' | transloco }}</dt>
@@ -216,7 +216,7 @@
         }
       </ol>
       @if (store.derivedOnly()) {
-        <!-- Prototype `.tl.empty-tl`: only the derived stage stands on a dashed strand, the empty state below it. -->
+        <!-- The empty strand: only the derived stage stands on a dashed strand, the empty state below it. -->
         <ui-empty-state icon="clock" data-derived-only [heading]="'timeline.empty.heading' | transloco" [body]="'timeline.empty.body' | transloco">
           <a class="open-link" data-empty-link routerLink="/help" fragment="moves">{{ 'timeline.empty.link' | transloco }}</a>
         </ui-empty-state>

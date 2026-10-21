@@ -136,7 +136,7 @@ export function alertParts(sentence: string, session: string, claims: readonly s
   templateUrl: './needs-you.html',
 })
 export class NeedsYou {
-  /** The open operator steps (prototype "Your steps" in the Needs you card); each row points at its step on the board. */
+  /** The open operator steps ("Your steps" in the Needs you card); each row points at its step on the board. */
   readonly steps = input<readonly FrameCard[]>([]);
 
   protected showStep(task: string): void {

@@ -13,7 +13,7 @@ import { activeLang, claimsRatio, specModel, stageTrack } from '../spec-view';
 import { SpecRailGuide } from './spec-rail-guide';
 
 /**
- * The spec rail (spec 024, the prototype's spec-detail `context-rail`: `whereCard` and the key line). Spec 020 (T20,
+ * The spec rail (spec 024: the spec-detail context rail, Where it stands and the key line). Spec 020 (T20,
  * ISC-239) makes it the guidance spot of every tab it serves from 1120 px: on top `app-spec-rail-guide` (Next step and
  * the spec's own Waits on you, shared with the spec dashboard's rail). Below them Where it stands (stage track, ring,
  * first takeable claim, warnings, gate rows) and `[ ] previous / next spec · Esc`. `SpecPage` registers it with `RailContent` from 1120 px for every tab of the
@@ -33,7 +33,7 @@ import { SpecRailGuide } from './spec-rail-guide';
 export class SpecRail {
   private readonly transloco = inject(TranslocoService);
 
-  /** The first takeable claim, the rail's `take` chip (prototype: "takeable ISC-334"); null hides the chip. */
+  /** The first takeable claim, the rail's `take` chip (e.g. "takeable ISC-334"); null hides the chip. */
   readonly takeable = input<string | null>(null);
   /** Whether the claims behind the take chip still load. */
   readonly busy = input(false);

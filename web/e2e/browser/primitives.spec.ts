@@ -1,38 +1,26 @@
 /**
- * ISC-148: the shared primitives carry the anatomy of their prototype counterpart in both themes (spec 024, T24).
+ * ISC-148, ISC-451: the shared primitives keep their anatomy in both themes, held against the app's own look snapshot
+ * (spec 024 T24, spec 063 T8).
  *
  *   bun run test:browser -- primitives
  *
- * The reference is `web/tests/fixtures/prototype-reference.json` → `primitives`: 41 parts, each measured by
- * `scripts/extract-prototype.ts` on a harness page that renders the prototype's markup with placeholder content
- * ("Ag", "12/3", "o", "K") inside a 640 px block, read with `getComputedStyle` per theme and normalised (whole px,
- * letter-spacing to 0.01 px, rgb()/rgba() as hex, long decimals to three places). This spec renders the app's
- * counterpart of every part in the primitives gallery (`/__ui?theme=light|dark`, section "Prototype anatomy", one
- * 640 px block `[data-anatomy="<part with . as ->"]` per part (a literal `.glow` in a template trips web/tests/no-glow.test.ts) with the same placeholder content), reads the same properties from
- * the same element (or pseudo-element) and normalises them by the same rules.
+ * The reference is `web/tests/fixtures/look-snapshot.json` → `primitives`: 39 parts, each a computed-style
+ * measurement of the app itself per theme. This spec renders every part in the primitives gallery
+ * (`/__ui?theme=light|dark`, section "Anatomy", one 640 px block `[data-anatomy="<part with . as ->"]` per part, with
+ * the placeholder content "Ag", "12/3", "o", "K"; a literal `.glow` in a template trips web/tests/no-glow.test.ts),
+ * reads every property the snapshot holds for that part from the same element (or pseudo-element) and normalises it
+ * (whole px, letter-spacing to 0.01 px, `rgb()`/`rgba()`, `oklch()` and `color(srgb …)` as hex, long decimals to three
+ * places).
  *
- * Compared: everything the claim names — radius, padding and gap, border, shadow, font family, size and weight —
- * plus the box the content sets (height, min-width, width where the fixture has it, line-height, letter-spacing,
- * text-transform), the surface (background-color, background-image: tints, the edge bar and the glow), opacity and
- * the text `color`: every `--*-ink` aliases the prototype's `--*-text`, so text colour matches the prototype too.
- * `border-style` and `border-color` are compared only where the fixture draws a border (a non-zero `border-width`):
- * with no width the style paints nothing (Tailwind's preflight resets every element to `0 solid`, the prototype
- * leaves `none`) and the colour is `currentColor`, the text colour above.
- *
- * Not compared: the fixture parts `seam-badge` and `seam-badge.seam`. ISC-148 does not name them; they are the
- * live-board card's seam flag (`features/spec/live/card`, no shared primitive), checked with that card in the parity
- * inventory, so they are left out here.
- *
- * Colours: the app's tokens are OKLCH (web/CLAUDE.md § Design system), which Chromium serialises as `oklch()`, and
- * `color-mix()` resolves to `color(srgb …)`; both are converted to sRGB hex here like the extractor's `rgb()`, and
- * a colour matches within 2 per channel (alpha included), the rounding of a hex value written as OKLCH
- * with three decimals (the focus spec allows 3). Everything around the colours must match exactly.
+ * Measured: radius, padding and gap, border (width, style, colour), shadow, font family, size and weight, the box the
+ * content sets (height, min-width, width on the fixed-size parts, line-height, letter-spacing, text-transform), the
+ * surface (background-color, background-image: tints, the edge bar and the glow), opacity and the text `color`.
  *
  * Part → app element (the selector inside the part's gallery block; a pseudo-element comes from the part's name):
  *
- * | fixture part                  | app element                                                        |
+ * | part                          | app element                                                        |
  * |-------------------------------|--------------------------------------------------------------------|
- * | card, card.edge, card.glow    | `ui-card` with `padding="0"` (the prototype `.card` has none), `edge` / `glow` |
+ * | card, card.edge, card.glow    | `ui-card` with `padding="0"`, `edge` / `glow`                      |
  * | card.edge::before             | `ui-card[edge]::before` (the 3 px bar)                             |
  * | card.glow::after              | `ui-card[glow]::after` (the 140 px spot)                           |
  * | chip                          | `ui-chip` (neutral, icon)                                          |
@@ -44,7 +32,7 @@
  * | chip .icon                    | the `svg` inside a building `ui-chip`                              |
  * | command-chip                  | `ui-command-chip` → `.chip` with command `ab`                      |
  * | pill                          | `ui-chip variant="pill"` (secondary)                               |
- * | badge (prototype .count-badge)| `ui-chip variant="count"` (secondary), content `3`                 |
+ * | badge                         | `ui-chip variant="count"` (secondary), content `3`                 |
  * | kpi-tile (+ .eyebrow, .val, .val small) | `ui-kpi-tile` label `Ag`, value 12, denominator 3, meta `Ag` in a 960 px band of 120 px rows → its `ui-card` (the tile), `.eyebrow`, `.figure`, `.den` (T27) |
  * | glyph, glyph.take / taken / closed | `ui-glyph` claim states open / takeable / taken / closed (T28)   |
  * | glyph .icon                   | the `svg` inside the taken `ui-glyph` (T28)                        |
@@ -52,15 +40,17 @@
  * | kbd                           | `ui-kbd` → its `kbd`, content `K` (T28)                            |
  * | section-head                  | `ui-section-header` heading `Ag` → its `h2` (T28)                  |
  *
- * Threshold: zero differing properties on every part in both themes. Each part is its own soft assertion, so one run
- * lists every part that differs, with fixture and app values side by side.
+ * Threshold: zero differing properties on every part in both themes, compared exactly (the measurement is
+ * deterministic, so no tolerance). Each part is its own soft assertion, so one run lists every part that differs,
+ * with snapshot and app values side by side. A mutation case injects a changed `ui-card` radius into the gallery and
+ * expects the comparison to name exactly that property, so the guard is shown to bite.
  *
- * Write mode (spec 063): `LOOK_SNAPSHOT=write bun run test:browser -- primitives` skips the comparison and records
- * the app's own anatomy instead. One test measures every part above in both themes (same selectors, pseudo-elements,
- * property set and normalisation; the RETONED colours too, since the snapshot holds what the app paints) and writes
- * `{ <part>: { light, dark } }` as the `primitives` part of `web/tests/fixtures/look-snapshot.json`. Every other part
- * of that file is kept; the whole file is written back with sorted keys, two-space indent and a trailing newline, so
- * the output is byte-stable.
+ * Updating the reference after an intended change of a primitive: `LOOK_SNAPSHOT=write bun run test:browser --
+ * primitives` skips the comparison and records the app's anatomy instead. One test measures every part above in both
+ * themes (same selectors, pseudo-elements, property set and normalisation) and writes `{ <part>: { light, dark } }`
+ * as the `primitives` part of the snapshot. Every other part of that file is kept; the whole file is written back
+ * with sorted keys, two-space indent and a trailing newline, so the output is byte-stable. The `tokens` and `icons`
+ * parts are written by `bun run look:snapshot` (web/tests/look-snapshot.ts).
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -68,11 +58,89 @@ import type { Page } from '@playwright/test';
 import { awaitReady, expect, test } from '../fixtures';
 
 type Measurement = Record<string, string>;
-type Fixture = { primitives: Record<string, { light: Measurement; dark: Measurement }> };
+type Primitives = Record<string, { light: Measurement; dark: Measurement }>;
+type Theme = 'light' | 'dark';
 
-const FIXTURE = JSON.parse(
-  readFileSync(fileURLToPath(new URL('../../tests/fixtures/prototype-reference.json', import.meta.url)), 'utf8'),
-) as Fixture;
+/** Every part the gallery renders for the guard, in gallery order. */
+const PARTS: readonly string[] = [
+  'card',
+  'card.edge',
+  'card.edge::before',
+  'card.glow',
+  'card.glow::after',
+  'chip',
+  'chip.building',
+  'chip.scoping',
+  'chip.done',
+  'chip.stale',
+  'chip.warn',
+  'chip.plain',
+  'chip.take',
+  'chip.mono-chip',
+  'chip.st-closed',
+  'chip.st-takeable',
+  'chip.st-taken',
+  'chip.st-blocked',
+  'chip.st-concerns',
+  'chip.st-question',
+  'chip.st-fail',
+  'chip .icon',
+  'command-chip',
+  'pill',
+  'badge',
+  'kpi-tile',
+  'kpi-tile .eyebrow',
+  'kpi-tile .val',
+  'kpi-tile .val small',
+  'glyph',
+  'glyph.take',
+  'glyph.taken',
+  'glyph.closed',
+  'glyph .icon',
+  'seg',
+  'seg button',
+  'seg button[aria-pressed]',
+  'kbd',
+  'section-head',
+];
+
+/** The computed properties read from every part. */
+const PROPS: readonly string[] = [
+  'background-color',
+  'background-image',
+  'border-color',
+  'border-radius',
+  'border-style',
+  'border-width',
+  'box-shadow',
+  'color',
+  'font-family',
+  'font-size',
+  'font-weight',
+  'gap',
+  'height',
+  'letter-spacing',
+  'line-height',
+  'min-width',
+  'opacity',
+  'padding',
+  'text-transform',
+];
+
+/** The fixed-size parts, whose `width` is set by the primitive rather than by the content, also record it. */
+const WITH_WIDTH = new Set([
+  'badge',
+  'card.edge::before',
+  'card.glow::after',
+  'chip .icon',
+  'glyph',
+  'glyph .icon',
+  'glyph.closed',
+  'glyph.take',
+  'glyph.taken',
+  'kbd',
+]);
+const propsOf = (part: string): readonly string[] => (WITH_WIDTH.has(part) ? [...PROPS, 'width'] : PROPS);
 
 /** The element measured inside each part's gallery block. */
 const SELECTOR: Record<string, string> = {
@@ -103,21 +171,7 @@ const SELECTOR: Record<string, string> = {
 const selectorOf = (part: string): string => SELECTOR[part] ?? 'ui-chip';
 const pseudoOf = (part: string): string | null => /::(before|after)$/.exec(part)?.[0] ?? null;
 
-/** The fixture parts this spec leaves out (see the header): the live-board card's seam flag. */
-const NOT_PRIMITIVES = new Set(['seam-badge', 'seam-badge.seam']);
-
-/**
- * Re-toned on purpose by spec 040 (ISC-224): the claim words that name an item state share that state's glyph in the
- * family `item` (`ITEM_ALIASES`, web/src/app/shared/ui/glyph/states.ts), so claim `open` reads secondary and `taken`
- * (now "running") primary, where the prototype drew them neutral and warning. Only their text colour is left out here;
- * shape, size and every other property still match the prototype.
- */
-const RETONED: Readonly<Record<string, readonly string[]>> = { glyph: ['color'], 'glyph.taken': ['color'], 'glyph .icon': ['color'] };
-
 const round = (n: number, places: number): number => Math.round(n * 10 ** places) / 10 ** places;
-
-/** Per-channel tolerance (0–255) for a colour, the OKLCH round-trip of a token written with three decimals. */
-const TOLERANCE = 2;
 
 const hexOf = (rgb: readonly number[], alpha: number): string => {
   const h = (n: number): string => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0');
@@ -144,7 +198,7 @@ function oklchToRgb(l: number, c: number, hDeg: number): number[] {
 const num = (v: string): number => (v.endsWith('%') ? Number(v.slice(0, -1)) / 100 : Number(v));
 const alphaOf = (a: string | undefined): number => (a === undefined ? 1 : num(a));
 
-/** `oklch()` and `color(srgb …)` as hex, so both sides spell colours alike. */
+/** `oklch()` and `color(srgb …)` as hex, so every colour is spelled alike. */
 function hexColours(value: string): string {
   return value
     .replace(/oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+|none)(?:\s*\/\s*([\d.]+%?))?\s*\)/g, (_m, l: string, c: string, h: string, a?: string) =>
@@ -155,28 +209,7 @@ function hexColours(value: string): string {
     );
 }
 
-const HEX = /#[0-9a-f]{6}(?:[0-9a-f]{2})?\b/g;
-const channels = (hex: string): number[] => {
-  const out = [1, 3, 5, 7].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  out[3] = Number.isNaN(out[3]) ? 255 : (out[3] ?? 255);
-  return out;
-};
-
-/** Equal outside the colours, and every colour within the tolerance. */
-function same(expected: string, actual: string): boolean {
-  if (expected.replace(HEX, '#') !== actual.replace(HEX, '#')) return false;
-  const e = expected.match(HEX) ?? [];
-  const a = actual.match(HEX) ?? [];
-  return e.every((hex, i) => {
-    const other = a[i];
-    if (other === undefined) return false;
-    const x = channels(hex);
-    const y = channels(other);
-    return x.every((v, k) => Math.abs(v - (y[k] ?? -1)) <= TOLERANCE);
-  });
-}
-
-/** The normalisation of `scripts/extract-prototype.ts` (`normaliseValue`), so both sides read alike. */
+/** Whole px, letter-spacing to 0.01 px, every colour as hex, long decimals to three places. */
 function normalise(prop: string, value: string): string {
   const h = (n: number): string => Math.round(n).toString(16).padStart(2, '0');
   let v = hexColours(value).replace(
@@ -188,12 +221,13 @@ function normalise(prop: string, value: string): string {
   return v.replace(/(?<![#\w])(-?\d+\.\d{4,})/g, (_m, n: string) => String(round(Number(n), 3)));
 }
 
-/** A border is drawn when any side's width is not zero. */
-const draws = (width: string | undefined): boolean => (width ?? '0px').split(/\s+/).some((w) => w !== '0px');
-
 /** `LOOK_SNAPSHOT=write` records the app's anatomy into the look snapshot instead of comparing it. */
 const WRITE = process.env['LOOK_SNAPSHOT'] === 'write';
 const SNAPSHOT = fileURLToPath(new URL('../../tests/fixtures/look-snapshot.json', import.meta.url));
+
+/** The `primitives` part of the snapshot on disk, empty when the file or the part is missing. */
+const readPrimitives = (): Primitives =>
+  existsSync(SNAPSHOT) ? ((JSON.parse(readFileSync(SNAPSHOT, 'utf8')) as { primitives?: Primitives }).primitives ?? {}) : {};
 
 /** Keys sorted at every level, so the same data always serialises to the same bytes. */
 function sortKeys(value: unknown): unknown {
@@ -205,26 +239,25 @@ function sortKeys(value: unknown): unknown {
 const stableStringify = (value: unknown): string => `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 
 /** Replaces only the `primitives` part of the look snapshot, keeping every other part. */
-function writePrimitives(primitives: Record<string, { light: Measurement; dark: Measurement }>): void {
+function writePrimitives(primitives: Primitives): void {
   const current = existsSync(SNAPSHOT) ? (JSON.parse(readFileSync(SNAPSHOT, 'utf8')) as Record<string, unknown>) : {};
   writeFileSync(SNAPSHOT, stableStringify({ ...current, primitives }));
 }
 
-/** The raw computed values of every part's properties in the gallery, or null where the block or element is missing. */
-async function measure(page: Page, theme: 'light' | 'dark', parts: readonly string[]): Promise<Record<string, Measurement | null>> {
+/**
+ * The normalised computed values of every part's properties in the gallery, or null where the block or element is
+ * missing. `css`, when given, is injected into the page before measuring (the mutation case).
+ */
+async function measure(page: Page, theme: Theme, parts: readonly string[], css?: string): Promise<Record<string, Measurement | null>> {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/__ui?theme=${theme}`);
   await awaitReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+  if (css !== undefined) await page.addStyleTag({ content: css });
   await page.evaluate(() => document.fonts.ready.then(() => true));
 
-  const request = parts.map((part) => ({
-    part,
-    selector: selectorOf(part),
-    pseudo: pseudoOf(part),
-    props: Object.keys(FIXTURE.primitives[part]?.[theme] ?? {}),
-  }));
-  return page.evaluate((req) => {
+  const request = parts.map((part) => ({ part, selector: selectorOf(part), pseudo: pseudoOf(part), props: [...propsOf(part)] }));
+  const raw = await page.evaluate((req) => {
     const out: Record<string, Record<string, string> | null> = {};
     for (const r of req) {
       const block = [...document.querySelectorAll('[data-anatomy]')].find((el) => el.getAttribute('data-anatomy') === r.part.replaceAll('.', '-'));
@@ -238,28 +271,44 @@ async function measure(page: Page, theme: 'light' | 'dark', parts: readonly stri
     }
     return out;
   }, request);
+  return Object.fromEntries(
+    Object.entries(raw).map(([part, got]) => [
+      part,
+      got && Object.fromEntries(Object.entries(got).map(([prop, value]) => [prop, normalise(prop, value)])),
+    ]),
+  );
+}
+
+/** Every property of `want` the app paints differently, as `<prop>: snapshot <value> · app <value>`. */
+function differences(want: Measurement, got: Measurement | null): string[] {
+  if (!got) return ['no app element'];
+  return Object.entries(want)
+    .filter(([prop, expected]) => got[prop] !== expected)
+    .map(([prop, expected]) => `${prop}: snapshot ${expected} · app ${got[prop] ?? '(not measured)'}`);
 }
 
 test.describe('primitives', () => {
-  const measured = Object.keys(FIXTURE.primitives);
-  const parts = measured.filter((part) => !NOT_PRIMITIVES.has(part));
-
-  test('the fixture holds the 41 measured parts, 39 of them primitives', () => {
-    expect(measured.length).toBe(41);
-    expect(parts.length).toBe(39);
+  test('the snapshot holds every gallery part with the properties the guard reads', () => {
+    test.skip(WRITE, 'LOOK_SNAPSHOT=write records the snapshot instead');
+    const snapshot = readPrimitives();
+    expect(Object.keys(snapshot).sort()).toEqual([...PARTS].sort());
+    for (const part of PARTS) {
+      for (const theme of ['light', 'dark'] as const) {
+        expect(Object.keys(snapshot[part]?.[theme] ?? {}).sort(), `${theme} · ${part}`).toEqual([...propsOf(part)].sort());
+      }
+    }
   });
 
   test('writes the primitives part of the look snapshot', async ({ page }) => {
     test.skip(!WRITE, 'only under LOOK_SNAPSHOT=write');
-    const snapshot: Record<string, { light: Measurement; dark: Measurement }> = {};
+    const snapshot: Primitives = {};
     for (const theme of ['light', 'dark'] as const) {
-      const rows = await measure(page, theme, parts);
-      const missing = parts.filter((part) => !rows[part]);
+      const rows = await measure(page, theme, PARTS);
+      const missing = PARTS.filter((part) => !rows[part]);
       expect(missing, `${theme}: parts without an app element`).toEqual([]);
-      for (const part of parts) {
-        const got = rows[part] ?? {};
+      for (const part of PARTS) {
         const entry = (snapshot[part] ??= { light: {}, dark: {} });
-        entry[theme] = Object.fromEntries(Object.entries(got).map(([prop, value]) => [prop, normalise(prop, value)]));
+        entry[theme] = rows[part] ?? {};
       }
     }
     writePrimitives(snapshot);
@@ -267,25 +316,15 @@ test.describe('primitives', () => {
   });
 
   for (const theme of ['light', 'dark'] as const) {
-    test(`anatomy of every primitive matches the prototype · ${theme}`, async ({ page }) => {
+    test(`anatomy of every primitive matches the look snapshot · ${theme}`, async ({ page }) => {
       test.skip(WRITE, 'LOOK_SNAPSHOT=write records the snapshot instead');
+      const snapshot = readPrimitives();
+      const parts = Object.keys(snapshot);
       const rows = await measure(page, theme, parts);
 
       const summary: string[] = [];
       for (const part of parts) {
-        const want = FIXTURE.primitives[part]?.[theme] ?? {};
-        const got = rows[part];
-        const diffs: string[] = [];
-        if (!got) diffs.push('no app element');
-        else {
-          for (const [prop, expected] of Object.entries(want)) {
-            if ((prop === 'border-color' || prop === 'border-style') && !draws(want['border-width'])) continue;
-            if (RETONED[part]?.includes(prop)) continue;
-            const wanted = normalise(prop, expected);
-            const actual = normalise(prop, got[prop] ?? '');
-            if (!same(wanted, actual)) diffs.push(`${prop}: prototype ${expected} · app ${actual}`);
-          }
-        }
+        const diffs = differences(snapshot[part]?.[theme] ?? {}, rows[part] ?? null);
         summary.push(`${diffs.length === 0 ? 'PASS' : 'FAIL'} ${part} (${String(diffs.length)})`);
         expect.soft(diffs, `${theme} · ${part}`).toEqual([]);
       }
@@ -293,4 +332,17 @@ test.describe('primitives', () => {
       console.log(`[primitives ${theme}]\n${summary.join('\n')}`);
     });
   }
+
+  test('a changed radius without a new snapshot is reported (mutation case)', async ({ page }) => {
+    test.skip(WRITE, 'LOOK_SNAPSHOT=write records the snapshot instead');
+    const snapshot = readPrimitives();
+    const want = snapshot['card']?.light ?? {};
+    expect(want['border-radius'], 'the snapshot records the card radius').toBe('12px');
+
+    const intact = await measure(page, 'light', ['card']);
+    expect(differences(want, intact['card'] ?? null)).toEqual([]);
+
+    const mutated = await measure(page, 'light', ['card'], '[data-anatomy="card"] ui-card { border-radius: 3px !important; }');
+    expect(differences(want, mutated['card'] ?? null)).toEqual(['border-radius: snapshot 12px · app 3px']);
+  });
 });

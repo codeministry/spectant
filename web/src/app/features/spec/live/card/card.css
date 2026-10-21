@@ -42,7 +42,7 @@ article:hover {
   min-inline-size: 0;
 }
 
-/* The header stays one line, as the prototype's .r1: the state word never shrinks, the claim chip gives way. */
+/* The header stays one line, as the .r1: the state word never shrinks, the claim chip gives way. */
 .r1 {
   flex-wrap: nowrap;
   gap: 6px;
@@ -80,7 +80,7 @@ article:hover {
   margin-inline-start: auto;
 }
 
-/* Flow at the medium tier (four narrow columns), as the prototype's .flow-grid: no claim chip, the word stays readable. */
+/* Flow at the medium tier (four narrow columns), as the .flow-grid: no claim chip, the word stays readable. */
 @container shell (640px <= width < 1120px) {
   :host([data-flow-card]) .claim {
     display: none;
@@ -109,7 +109,7 @@ article:hover {
   display: none;
 }
 
-/* spec 024: the prototype marks (.pmark, .seam), role tags with icon (.tag, .vdot) and the try chip (.try). */
+/* spec 024: the marks (.pmark, .seam), role tags with icon (.tag, .vdot) and the try chip (.try). */
 .pmark, .seam {
   flex: none;
   padding: 0 4px;
@@ -162,7 +162,7 @@ article:hover {
   overflow-wrap: anywhere;
 }
 
-/* spec 024: the prototype .lane-chip (dot + lane), drawn only on a Flow card, hidden in Flow's narrow columns. */
+/* spec 024: the .lane-chip (dot + lane), drawn only on a Flow card, hidden in Flow's narrow columns. */
 .lane-chip {
   display: none;
   flex: none;
@@ -189,7 +189,7 @@ article:hover {
   }
 }
 
-/* spec 024: the prototype .tcard.sel (2 px cyan outline) and .tcard.changed (a 1200 ms cyan tint after a frame change). */
+/* spec 024: the .tcard.sel (2 px cyan outline) and .tcard.changed (a 1200 ms cyan tint after a frame change). */
 article[data-sel] {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;

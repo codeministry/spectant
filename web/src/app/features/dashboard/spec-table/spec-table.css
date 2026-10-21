@@ -1,5 +1,5 @@
 /*
- * The Specs panel, ported from the prototype (styles.css 362-400): the head as one wrapping line (heading, meta,
+ * The Specs panel (T89): the head as one wrapping line (heading, meta,
  * phase chips, sort at the inline end), the 8 px phase strip, the rows full-bleed with hairlines, the archived footer.
  * `container: specs` is what the rows' forms query (spec-row.css).
  */
@@ -39,7 +39,7 @@
   min-inline-size: 0;
 }
 
-/* The sort control (`ui-sort-menu`, which draws the prototype's bordered `.t-head .sort` button) sits at the inline end. */
+/* The sort control (`ui-sort-menu`, which draws the bordered `.t-head .sort` button) sits at the inline end. */
 .sort {
   margin-inline-start: auto;
 }
@@ -94,7 +94,7 @@
   border-radius: 999px;
 }
 
-/* One equal segment per active spec (prototype `.phase-strip i`): 8 px tall, 2 px apart, 2 px radius. */
+/* One equal segment per active spec (`.phase-strip i`): 8 px tall, 2 px apart, 2 px radius. */
 .phase-strip {
   display: flex;
   gap: 2px;
@@ -252,7 +252,7 @@
   block-size: 0;
 }
 
-/* Prototype `.new-pill`: 28 px on the badge fill, 12/500, fading in on the popover token. */
+/* The `.new-pill`: 28 px on the badge fill, 12/500, fading in on the popover token. */
 .pending-pill {
   position: absolute;
   z-index: 2;

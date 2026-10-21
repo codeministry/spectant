@@ -1,5 +1,5 @@
 /*
- * Spec dashboard partial: the Spec context (018-B14, the prototype's `.rail-card`, `.count-badge`, `.gate-rows`,
+ * Spec dashboard partial: the Spec context (018-B14: `.rail-card`, `.count-badge`, `.gate-rows`,
  * `.step-hint`). The template is declared here and rendered by the shell's rail slot from 1120 px, so these rules
  * reach it there too. Below 1120 it is `#waiting` at the end of the main column, clear of the sticky header.
  */
@@ -75,7 +75,7 @@
   border-block-start: 1px solid var(--line);
 }
 
-/* The prototype's `mini-box`: the operator step's box in the violet ink, square, not dimmed while read-only. */
+/* The operator step's mini box: in the violet ink, square, not dimmed while read-only. */
 .wait-line .checkbox,
 .wait-line .checkbox:disabled {
   border: 1.5px solid var(--ques-ink);

@@ -1,5 +1,5 @@
 <!--
-  Prototype `.section-head` over a `.card` of `.next-row`s (app.js l.395): the section header, then one unpadded card
+  A section head over a card of `.next-row`s: the section header, then one unpadded card
   of next-rows flush with its edges, under hairlines.
 -->
 <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
@@ -25,7 +25,7 @@
       </ui-disclosure>
     }
   } @else {
-    <!-- Prototype `emptySmall("Nothing ready to build", …, "clock")`: icon, 15/24 title and the muted hint in a card. -->
+    <!-- The small empty state "Nothing ready to build" with the `clock` icon: icon, 15/24 title and the muted hint in a card. -->
     <div class="empty" data-next-empty>
       <ui-icon class="empty-icon" name="clock" [size]="16" />
       <h3 class="empty-title">{{ 'nextUp.empty' | transloco }}</h3>

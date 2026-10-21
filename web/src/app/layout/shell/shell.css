@@ -42,7 +42,7 @@
 @container shell (width >= 1120px) {
   .shell-body {
     grid-template-columns: minmax(0, 1fr) 352px;
-    column-gap: 32px; /* prototype `.page` gap `--space-5` beside `--rail` */
+    column-gap: 32px; /* the `--space-5` gap beside the `--rail` column */
     align-items: start;
     padding-inline: 32px;
     transition:
@@ -55,7 +55,7 @@
     inset-block-start: 88px;
   }
 
-  /* Prototype `.rail-tools`: the `›` sits just outside the rail's top-left edge, the rail content starts at its top. */
+  /* The rail tools: the `›` sits just outside the rail's top-left edge, the rail content starts at its top. */
   .rail-toggle:not([data-collapsed]) {
     position: absolute;
     inset-block-start: 0;
@@ -63,7 +63,7 @@
     z-index: 2;
   }
 
-  /* Prototype `html.rail-off`: the 32 px track (`--rail-space`) with the 8 px gap (`--rail-gap`), the `‹` tab sticky at 96 px. */
+  /* Rail folded: the 32 px track (`--rail-space`) with the 8 px gap (`--rail-gap`), the `‹` tab sticky at 96 px. */
   :host([data-rail-collapsed]) .shell-body {
     grid-template-columns: minmax(0, 1fr) 32px;
     column-gap: var(--space-2);

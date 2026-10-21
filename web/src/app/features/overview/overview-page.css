@@ -1,5 +1,5 @@
-/* Prototype styles.css:463-467 (.overview, workspace-column, ws-head) and the page head. The shell container is named
-   `shell` (layout/shell), so the three-column step is the prototype's container query as it stands. */
+/* The overview grid (.overview, workspace-column, ws-head) and the page head. The shell container is named
+   `shell` (layout/shell), so the three-column step is a container query on it. */
 @import "./_ws-path.css";
 
 :host {
@@ -22,7 +22,7 @@
   gap: 24px;
 }
 
-/* Capped at three columns from 1300 px (the prototype's three workspaces); with fewer workspaces auto-fit stretches the
+/* Capped at three columns from 1300 px (three workspaces side by side); with fewer workspaces auto-fit stretches the
    columns over the width instead of leaving an empty track. */
 @container shell (min-width: 1300px) {
   .overview {
@@ -55,7 +55,7 @@
   line-height: 24px;
 }
 
-/* Prototype `[data-ui=notice] b` over the muted body. */
+/* The notice's `[data-ui=notice] b` over the muted body. */
 .notice-title {
   display: block;
 }
@@ -67,13 +67,13 @@
   overflow-wrap: anywhere;
 }
 
-/* The h1's muted count, as the prototype's `h1 span` (`Workspaces · 3`). */
+/* The h1's muted count, an `h1 span` (`Workspaces · 3`). */
 .h1-sub {
   color: var(--muted-ink);
   font-weight: 400;
 }
 
-/* Prototype `[data-ui=empty-state]`: start-aligned, 48 × 24 px inset, 12 px gaps, at most 520 px wide. */
+/* The `[data-ui=empty-state]`: start-aligned, 48 × 24 px inset, 12 px gaps, at most 520 px wide. */
 .empty {
   display: grid;
   justify-items: start;
@@ -108,7 +108,7 @@
   margin: 0;
 }
 
-/* Prototype `.footer-note`: 12 px muted, below the columns. */
+/* The footer note: 12 px muted, below the columns. */
 .footer-note {
   margin: 0;
   color: var(--muted-ink);

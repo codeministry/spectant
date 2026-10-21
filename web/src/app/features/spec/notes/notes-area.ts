@@ -85,7 +85,7 @@ export class NotesArea {
     return this.sanitizer.bypassSecurityTrustHtml(html);
   });
 
-  /** The anchor picker (prototype `anchor-pop`): a popover from 640 px, the bottom sheet below (design.md § Across viewports). */
+  /** The anchor picker: a popover from 640 px, the bottom sheet below (design.md § Across viewports). */
   protected readonly pickerOpen = signal(false);
   protected readonly popOpen = signal(false);
   private readonly anchorPop = viewChild<UiPopover>('anchorPop');

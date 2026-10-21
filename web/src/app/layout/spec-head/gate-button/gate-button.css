@@ -4,7 +4,7 @@
   min-inline-size: 0;
 }
 
-/* Prototype .gate-btn: the button with its 11 px hint under it, right-aligned in the head, left in a column. */
+/* .gate-btn: the button with its 11 px hint under it, right-aligned in the head, left in a column. */
 .gate-btn {
   display: inline-flex;
   flex-direction: column;
@@ -37,14 +37,14 @@
   --btn-fg: var(--primary-fill-ink);
 }
 
-/* stale: prototype orange (--orange edge, --orange-t fill, --orange-text ink). */
+/* stale: orange (--orange edge, --orange-t fill, --orange-text ink). */
 .gate-button.stale {
   --btn-bg: var(--hover-t);
   --btn-border: var(--color-warning);
   --btn-fg: var(--hover-ink);
 }
 
-/* done: the prototype's muted "Re-mark". */
+/* done: a muted "Re-mark". */
 .gate-button.done {
   --btn-fg: var(--muted-ink);
 
@@ -133,7 +133,7 @@
   --btn-fg: var(--done-ink);
 }
 
-/* Prototype [data-ui=confirm-dialog]: 520 px, 96 px from the top, card, radius-card, scrim with blur 4. */
+/* The confirm dialog: 520 px, 96 px from the top, card, radius-card, scrim with blur 4. */
 ui-dialog {
   --ui-dialog-size: 520px;
   --ui-dialog-top: 96px;
@@ -205,7 +205,7 @@ ui-dialog {
   font-weight: 600;
 }
 
-/* The prototype's "You confirm" checklist (spec-review-gate.html): three ticks before the mark can be written. */
+/* The "You confirm" checklist: three ticks before the mark can be written. */
 .checklist {
   display: grid;
   gap: 8px;
@@ -251,7 +251,7 @@ ui-dialog {
   justify-content: flex-end;
 }
 
-/* Prototype .btn: 1 px --border on the card for the secondary "Not yet". */
+/* A plain button: 1 px --border on the card for the secondary "Not yet". */
 .dlg-actions [data-not-yet] {
   --btn-bg: var(--color-base-100);
   --btn-border: var(--line);

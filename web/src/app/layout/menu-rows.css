@@ -1,6 +1,6 @@
 /*
  * The rows the area menu (area-menu/area-menu.css) and the pickers (shell/shell-menus.css) share, imported at the top
- * of both: the prototype's `.pop-head eyebrow` and the entry's box. Each stylesheet adds its own columns, row height,
+ * of both: the menu's eyebrow head and the entry's box. Each stylesheet adds its own columns, row height,
  * current tint and disabled look after the import. No rule of either stylesheet ahead of the place these rules held
  * matches their elements with these properties at the same or a lower specificity, so moving them first leaves the
  * cascade unchanged.

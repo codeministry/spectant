@@ -1,5 +1,5 @@
 <header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()">
-  <!-- The brand rail's bordered field (prototype `.brand-rail`): behind brand and rail-selects at wide, the logo below. -->
+  <!-- The brand rail's bordered field: behind brand and rail-selects at wide, the logo below. -->
   <span class="rail-field" aria-hidden="true"></span>
 
   <app-shell-brand class="brand" />
@@ -33,7 +33,7 @@
     (click)="state.toggleZen()"
   ></button>
 
-  <!-- The assistant dot (prototype `assistant-toggle`, spec 024 T53): opens the mocked panel, `aria-pressed` while open. -->
+  <!-- The assistant dot (spec 024 T53): opens the mocked panel, `aria-pressed` while open. -->
   <button
     #dotTrigger
     type="button"

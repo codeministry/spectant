@@ -36,7 +36,7 @@ const SECTIONS: readonly HelpSection[] = [
   { id: 'about', heading: 'settings-about', label: 'settings.nav.about' },
 ];
 
-/** The most used shortcuts (prototype `settings.html`, card Keyboard); the fifth row, `?`, opens the sheet. */
+/** The most used shortcuts (card Keyboard); the fifth row, `?`, opens the sheet. */
 const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: string }> = [
   { keys: ['⌘K'], label: 'settings.keyboard.palette' },
   { keys: ['g', 'd'], label: 'settings.keyboard.dashboard' },
@@ -45,7 +45,7 @@ const KEYS: ReadonlyArray<{ readonly keys: readonly string[]; readonly label: st
 ];
 
 /**
- * `/settings` (spec 024, T60; design.md § Settings and the static prototype `settings.html`): the page head, the
+ * `/settings` (spec 024, T60; design.md § Settings): the page head, the
  * anchor pills (the Help nav), then six cards. Appearance holds theme, language and density (spec 021, ISC-254: the
  * default of board, flow view and spec row; `?density=` overrides it for one view and never changes it here) as stored
  * settings; reduced motion is not stored yet, so it sits alone in a disabled demo block. Actors, Board (the claim

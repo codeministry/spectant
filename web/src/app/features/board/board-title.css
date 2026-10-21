@@ -1,5 +1,5 @@
 /*
- * The board's page head (T163, ISC-140; spec 024 parity; moved from board-page.css and board-page.parity.css with the
+ * The board's page head (T163, ISC-140; spec 024; moved from board-page.css and board-page.layout.css with the
  * markup, spec 061): the eyebrow over the h1 row with the workspace badge and the muted suffix, then the workflow source
  * chip. The host `<div class="title-row">` keeps the page's row rule.
  */

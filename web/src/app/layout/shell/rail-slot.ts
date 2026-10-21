@@ -10,8 +10,8 @@ import { ShellState } from './shell-state.service';
 /**
  * The context rail's slot: the blocks the current view registered with `RailContent` (the board's This frame, Needs
  * you and Your steps, T88; the spec rail of every spec-detail tab, spec 024), else at wide an empty placeholder card for
- * a view that registers nothing. Below 1120 px a view without blocks shows nothing here (the prototype's rail is
- * `only-wide`; each tab keeps its own inline blocks). While a docking page (the tree lens, the workspace dashboard)
+ * a view that registers nothing. Below 1120 px a view without blocks shows nothing here (the rail is
+ * wide-only; each tab keeps its own inline blocks). While a docking page (the tree lens, the workspace dashboard)
  * has an object selected at wide, the detail sidebar (spec 026, T14) takes the slot in place of the blocks.
  */
 @Component({

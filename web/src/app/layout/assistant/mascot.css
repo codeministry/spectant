@@ -5,7 +5,7 @@
   block-size: var(--m-size);
 }
 
-/* The prototype's mascot keeps its own colours in both themes (#a6e22e, #78dce8, #ab9df2, #221f22). */
+/* The mascot keeps its own colours in both themes (#a6e22e, #78dce8, #ab9df2, #221f22). */
 .mascot {
   --m-lime: oklch(84.1% 0.2044 127.3);
   --m-cyan: oklch(83.8% 0.095 205.7);

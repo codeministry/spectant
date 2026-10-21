@@ -189,7 +189,7 @@ export class NotesStore {
     return { value, label: label?.text ?? value };
   });
   readonly anchorChip = computed(() => anchorLabel(this.draft().anchor, this.spec()));
-  /** The return button's spec (prototype `note-return`): the anchor's spec, else this one. */
+  /** The return button's spec: the anchor's spec, else this one. */
   readonly returnSpec = computed(() => this.draft().anchor?.spec ?? this.spec());
   readonly pickerSearch = signal('');
   readonly pickerGroups = computed(() => {

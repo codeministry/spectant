@@ -22,8 +22,8 @@ import { TimelineStore } from './timeline.store';
 export { groupByDay, parseKinds, TIMELINE_KINDS, type TimelineDay, type TimelineRow } from './timeline-model';
 
 /**
- * One marker colour per source (prototype `.mk.*`): stage → disp, decision → ques, round → conc, gate → clos, commit →
- * track, note → a ques ring on its tint (the tint is the CSS's), agent → the prototype's orange (`--color-warning`),
+ * One marker colour per source (`.mk.*`): stage → disp, decision → ques, round → conc, gate → clos, commit →
+ * track, note → a ques ring on its tint (the tint is the CSS's), agent → the orange (`--color-warning`),
  * worktree → neutral (spec 027).
  */
 const MARKER: Record<TimelineKind, string> = {
@@ -82,12 +82,12 @@ export class TimelineTab {
   protected fileTab(part: string): string | null {
     return FILE_TABS[part] ?? null;
   }
-  /** A running agent's minutes since its lock (prototype `· running 4 min`), at render time, never below 0. */
+  /** A running agent's minutes since its lock (`· running 4 min`), at render time, never below 0. */
   protected runningMinutes(ts: string): number {
     const since = Date.parse(ts);
     return Number.isFinite(since) ? Math.max(0, Math.floor((Date.now() - since) / 60_000)) : 0;
   }
-  /** A decision's structured body: shown as the prototype's `.qa` list when the question records any field. */
+  /** A decision's structured body: shown as the `.qa` list when the question records any field. */
   protected hasQa(entry: TimelineEntry): boolean {
     const q = entry.question;
     return q !== undefined && (q.from !== null || q.offered.length > 0 || q.chosen !== null || q.landedIn.length > 0);

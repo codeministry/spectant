@@ -16,7 +16,7 @@ import { PlanningStore } from './planning.store';
 
 /**
  * The planning page `/w/:ws/planning/<lens>` (spec 026, T15, ISC-167; design.md § Across viewports): one
- * workspace page in place of Features and Milestones, with the lenses Gantt (spec 038, where the Matrix stood), Tree and Graph in the prototype
+ * workspace page in place of Features and Milestones, with the lenses Gantt (spec 038, where the Matrix stood), Tree and Graph in the
  * `tab-bar` (sticky under the header, route links with `aria-current="page"`, a switch keeps `?sel=` and `?m=`).
  * `/w/:ws/planning` redirects to the Gantt lens. One instance stays across lens switches: the lens routes are componentless
  * children, so the body follows `ShellState.route().lens` and no `<router-outlet>` is involved.
