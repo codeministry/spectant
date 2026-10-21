@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
@@ -32,7 +33,7 @@ export function nearestSpecs(rows: readonly SpecRowView[], id: string, count = 3
  */
 @Component({
   selector: 'app-not-found',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiIcon, UiKbd, UiPageHead],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiIcon, UiKbd, UiPageHead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'not-found' },
   styleUrl: './not-found.css',

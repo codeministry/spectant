@@ -1,0 +1,28 @@
+/*
+ * WCAG 2.5.8 (target size): under a coarse pointer an invisible `::before` grows the hit area to at least 44 × 44
+ * around the visual box (the prototype's `.btn-icon::after`), which itself keeps its visible size (design.md,
+ * Tablet). Fine pointers keep the visual box as the target.
+ *
+ * Imported at the top of button/button.css (ui-button, ui-icon-button), star-toggle/star-toggle.css and
+ * waits-chip/waits-chip.css. Emulated encapsulation scopes the imported copy per component, so each selector meets
+ * only its own component's element: the button hosts are `a` or `button` elements, the waits chip's host is
+ * `ui-waits-chip` and its target the `.waits` link inside, which no button template holds. `:where()` adds nothing to
+ * the specificity, so each selector keeps that of the rule it came from (`:host`, `:host::before`, `.waits::before`),
+ * and no rule of the three stylesheets sets these properties on those elements, so moving them first leaves the
+ * cascade unchanged. In a joined button group the pseudo keeps the segment's width (button-group.css).
+ */
+@media (pointer: coarse) {
+  :host(:where(a, button)) {
+    position: relative;
+  }
+
+  :host(:where(a, button))::before,
+  .waits::before {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    inline-size: max(100%, 44px);
+    block-size: max(100%, 44px);
+  }
+}

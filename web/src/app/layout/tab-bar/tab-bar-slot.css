@@ -1,3 +1,6 @@
+/* The page glass (background and backdrop blur) comes from the partial the zen footer's bar shares. */
+@import '../_glass-bar.css';
+
 :host {
   position: sticky;
   inset-block-start: 64px;
@@ -6,11 +9,6 @@
   min-inline-size: 0;
   margin-block-end: 24px;
   border-block-end: 1px solid var(--line);
-  background: var(--page-glass);
-
-  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
 }
 
 :host(:empty) {

@@ -1,7 +1,7 @@
 // check-architecture (spec 059, ISC-415, ISC-413, ISC-414): the guard runs as the CLI over fixture configurations.
 // The oversize fixture is red on `size` and names only its 401-line file, the clone fixture is red on `duplicates`
-// and names the copied block, a configuration with both lanes checks both from their entries alone, a clean root is
-// green, and a bad flag is a usage error. The web fixtures (spec 060, ISC-423) run the web entry of
+// and names the copied block (and is green when a `duplicates.allow` entry names its two files), a configuration
+// with both lanes checks both from their entries alone, a clean root is green, and a bad flag is a usage error. The web fixtures (spec 060, ISC-423) run the web entry of
 // `scripts/architecture/web.entry.ts` over a fixture root: a 401-line stylesheet and a block copied between two
 // templates are red, the same files under `features/` are ignored, and a clean template and stylesheet are green.
 import { describe, expect, test } from "bun:test";
@@ -46,6 +46,16 @@ describe("check-architecture", () => {
     expect(run.exit).toBe(1);
     expect(violations(run)).toEqual([CLONE_LINE]);
     expect(run.stderr).toContain("architecture: 1 violations, 1 entries (fixture-clone)");
+  });
+
+  test("a named duplicates exception: the allowed pair is not reported, the same clone without it is", () => {
+    const allowed = guard("--config", `${FIXTURES}/clone/allowed.config.ts`);
+    expect(allowed.exit).toBe(0);
+    expect(allowed.stderr).toBe("");
+    expect(allowed.stdout).toContain("architecture: 0 violations, 1 entries (fixture-clone-allowed)");
+    const plain = guard("--config", `${FIXTURES}/clone/architecture.config.ts`);
+    expect(plain.exit).toBe(1);
+    expect(violations(plain)).toEqual([CLONE_LINE]);
   });
 
   test("a second lane entry with its own root is checked without a change to the guard", () => {

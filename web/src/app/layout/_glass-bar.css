@@ -1,0 +1,15 @@
+/*
+ * The frosted page glass the sticky bars share: the tab bar slot (tab-bar/tab-bar-slot.css, emulated, its host) and
+ * the zen footer's bar (zen/zen-footer.css, unencapsulated, `app-zen-footer .zen-bar`), imported at the top of both.
+ * Each selector meets only its own component's element: the emulated copy scopes `app-zen-footer .zen-bar` to the
+ * slot's own view, where no such element exists, and `:host` outside a shadow tree or an emulated sheet matches
+ * nothing. Each selector keeps the specificity of the rule it came from, and no rule of either stylesheet sets these
+ * properties on those elements, so moving them first leaves the cascade unchanged.
+ */
+:host,
+app-zen-footer .zen-bar {
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}

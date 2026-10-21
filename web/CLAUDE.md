@@ -22,6 +22,38 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
 - RxJS only at the I/O boundary (HTTP, polling timer, `matchMedia`), bridged with `toSignal`. Reason: components read
   signals; a stream in a template brings back `| async` and manual subscriptions.
 
+## Layers and files
+
+- `src/app` has four layers, lowest first: `core/` (services without UI; `core/api.service.ts` is the facade over the
+  clients in `core/api/`, the pure board, planning and guidance derivations live in `core/model/`), `shared/` (the UI
+  primitives in `shared/ui/` and small helpers), `layout/` (the frame: shell, spec head, tab bar, menus, palette,
+  sidebars; the keyboard and refresh services sit in `layout/shell/`) and `features/` (the routed views). A layer
+  imports only itself and the layers before it: `core` nothing above it, `shared` only `core`, `layout` `core` and
+  `shared`, `features` all three. The files directly in `src/app` (`app.ts`, `app.config.ts`, `app.routes.ts`) and the
+  developer gallery `dev/` belong to no layer. Imports name the file; no `index.ts` barrels. Reason: a lower layer that
+  reaches up makes the frame depend on a view; the rule `layers` of `bun run check:architecture` reports every such
+  import, type-only ones included, and `bun test tests/architecture.test.ts -t layers` holds the app to it.
+- Every component in `core/`, `shared/` and `layout/` keeps its template and styles in files of their own beside the
+  `.ts`, same base name: `templateUrl: './x.html'`, `styleUrl: './x.css'`, never `template:` or `styles:`. ESLint
+  enforces it there with `@angular-eslint/component-max-inline-declarations` (`template: 0`, `styles: 0`), guarded by
+  `web/tests/inline-declarations.test.ts`; `features/` follows with the third spec of F25, and a test host component
+  inside a `*.spec.ts` may stay inline. Reason: the size and duplicate guards see markup and CSS only as files, and a
+  review reads one concern per file.
+- The web entry of `bun run check:architecture` (`scripts/architecture/web.entry.ts`, listed in
+  `scripts/architecture.config.ts`, part of `bun run check:static`) checks `web/src/app` without tests and generated
+  files: at most 400 lines per `.ts`, `.html` and `.css` file, no copied block of 50 tokens or more (jscpd
+  `typescript`, `markup`, `css`), and the layers above. `features/**` and `dev/**` are outside size and duplicates for
+  now; the third spec of F25 removes the `features/**` pattern. A clone that has no shared rule without changing the
+  DOM or a computed value is a named exception in the entry's `duplicates.allow`, its two files and a `why`; code is
+  never reordered just to slip under jscpd. Reason: small files without copies keep every change reviewable, and an
+  exception is visible with its reason instead of hidden.
+- A rule two components share lives in a CSS partial (`shared/ui/overlay/_overlay-surface.css`,
+  `shared/ui/_visually-hidden.css`, `layout/menu-rows.css`) that each component's stylesheet pulls in with a relative
+  `@import`, so Angular scopes it per component like the rest of that stylesheet. A stylelint hit on rule order
+  (`no-descending-specificity`, `no-duplicate-selectors`) is fixed by reordering or merging rules whose cascade cannot
+  change, with a short CSS comment saying why, never by a `stylelint-disable` comment. Reason: one copy of the rule
+  without a global selector, and the computed styles stay what the visual baselines hold.
+
 ## State
 
 - Router-driven, never in-memory: `/` all workspaces, `/w/:ws` a dashboard, `/w/:ws/s/:id` a spec open. Filters, sort

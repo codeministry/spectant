@@ -1,3 +1,6 @@
+/* The bar's page glass (background and backdrop blur) comes from the partial the tab bar slot shares. */
+@import '../_glass-bar.css';
+
 app-shell[data-zen] app-spec-page .spec-head {
   display: none;
 }
@@ -17,10 +20,6 @@ app-zen-footer .zen-bar {
   padding-inline: 16px;
   padding-block-end: env(safe-area-inset-bottom);
   border-block-start: 1px solid var(--line);
-  background: var(--page-glass);
-  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   color: var(--muted);
   font-size: 12px;
   line-height: 16px;

@@ -8,6 +8,9 @@
  * history or baseline flag is ever passed, and tips are off. `.gitignore` is not honoured, so fixtures under ignored
  * folders are seen as well; what the rule skips is exactly the entry's ignore list.
  *
+ * A clone between the two files of a `duplicates.allow` entry (paths relative to the entry's root, in either order) is
+ * a named exception with its reason in the configuration, not a violation.
+ *
  * A jscpd that is missing, fails or writes no report throws `DuplicatesToolError`: the guard could not run, which is a
  * usage error (exit 2), never "0 clones".
  */
@@ -103,12 +106,14 @@ export const duplicates: Rule = (entry, repoRoot) => {
   if (minTokens === undefined) return [];
   const root = join(repoRoot, entry.root);
   const clones = runJscpd(repoRoot, root, minTokens, formatsOf(entry.extensions), entry.ignore);
-  const where = (side: CloneSide): string => {
-    const file = relPath(repoRoot, isAbsolute(side.name) ? side.name : join(root, side.name));
-    return `${file}:${side.start}-${side.end}`;
-  };
+  const absolute = (side: CloneSide): string => (isAbsolute(side.name) ? side.name : join(root, side.name));
+  const where = (side: CloneSide): string => `${relPath(repoRoot, absolute(side))}:${side.start}-${side.end}`;
+  const pair = (a: string, b: string): string => [a, b].sort().join("\n");
+  const allowed = new Set((entry.duplicates?.allow ?? []).map(({ files: [a, b] }) => pair(a, b)));
+  const isAllowed = (clone: Clone): boolean =>
+    allowed.has(pair(relPath(root, absolute(clone.firstFile)), relPath(root, absolute(clone.secondFile))));
   // The first side's range stands in the file column, so the line reads `<fileA>:<s>-<e> = <fileB>:<s>-<e> (…)`.
-  const violations: Violation[] = clones.map((clone) => ({
+  const violations: Violation[] = clones.filter((clone) => !isAllowed(clone)).map((clone) => ({
     rule: "duplicates",
     file: where(clone.firstFile),
     detail: `= ${where(clone.secondFile)} (${clone.tokens} tokens)`,

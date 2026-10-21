@@ -32,10 +32,7 @@
               </ul>
             }
             <div class="set-foot">
-              <a ui-button variant="primary" routerLink="/"><ui-icon name="layers" [size]="14" />{{ 'notFound.back' | transloco }}</a>
-              <button ui-button type="button" data-action="search" (click)="keyboard.openPalette()">
-                <ui-icon name="search" [size]="14" />{{ 'notFound.search' | transloco }}<ui-kbd>⌘K</ui-kbd>
-              </button>
+              <ng-container [ngTemplateOutlet]="homeAndSearch" />
             </div>
           </ui-card>
         </section>
@@ -52,10 +49,7 @@
                 <p>{{ 'notFound.body' | transloco }}</p>
               }
               <div class="nf-actions">
-                <a ui-button variant="primary" routerLink="/"><ui-icon name="layers" [size]="14" />{{ 'notFound.back' | transloco }}</a>
-                <button ui-button type="button" data-action="search" (click)="keyboard.openPalette()">
-                  <ui-icon name="search" [size]="14" />{{ 'notFound.search' | transloco }}<ui-kbd>⌘K</ui-kbd>
-                </button>
+                <ng-container [ngTemplateOutlet]="homeAndSearch" />
                 @if (workspace(); as workspace) {
                   <a class="text-link" [routerLink]="['/w', workspace.slug]">{{
                     'notFound.backWorkspace' | transloco: { workspace: workspace.name }
@@ -67,4 +61,11 @@
         </section>
       }
     </div>
+    <!-- All workspaces and Search: the same pair in the spec variant's foot and in the empty state's actions. -->
+    <ng-template #homeAndSearch>
+      <a ui-button variant="primary" routerLink="/"><ui-icon name="layers" [size]="14" />{{ 'notFound.back' | transloco }}</a>
+      <button ui-button type="button" data-action="search" (click)="keyboard.openPalette()">
+        <ui-icon name="search" [size]="14" />{{ 'notFound.search' | transloco }}<ui-kbd>⌘K</ui-kbd>
+      </button>
+    </ng-template>
   

@@ -1,8 +1,11 @@
 /*
  * Spec 052 T14: the favorite toggle (design.md § Across viewports). A quiet icon box like `ui-icon-button size="sm"`
  * (button.css): no chrome, radius 6, an 8 % tint of the text colour on hover. Its own stylesheet keeps the three
- * consumers' sheets under the 8 kB component budget.
+ * consumers' sheets under the 8 kB component budget. The coarse-pointer hit area (WCAG 2.5.8, at least 44 × 44 around
+ * the 28 / 32 px box) comes from the partial button.css shares.
  */
+@import '../_hit-area.css';
+
 :host {
   display: inline-grid;
   flex: none;
@@ -57,24 +60,5 @@
   :host,
   :host([aria-pressed="true"]) {
     color: ButtonText;
-  }
-}
-
-/*
- * WCAG 2.5.8, as button.css: under a coarse pointer an invisible `::before` grows the hit area to at least 44 × 44
- * around the visual box, which stays 28 / 32 px. Fine pointers keep the visual box as the target.
- */
-@media (pointer: coarse) {
-  :host {
-    position: relative;
-  }
-
-  :host::before {
-    content: "";
-    position: absolute;
-    inset: 50% auto auto 50%;
-    translate: -50% -50%;
-    inline-size: max(100%, 44px);
-    block-size: max(100%, 44px);
   }
 }
