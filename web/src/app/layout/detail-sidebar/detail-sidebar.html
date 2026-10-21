@@ -108,6 +108,12 @@
         <ui-icon name="arrow-up-right" [size]="16" />{{ 'sidebar.openSpec' | transloco }}
       </a>
     </div>
+  } @else if (ideaPage(); as page) {
+    <div class="foot">
+      <a ui-button variant="primary" data-open-idea [routerLink]="page">
+        <ui-icon name="arrow-up-right" [size]="16" />{{ 'sidebar.openIdea' | transloco }}
+      </a>
+    </div>
   }
 </ng-template>
 

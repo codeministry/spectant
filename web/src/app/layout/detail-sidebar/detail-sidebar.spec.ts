@@ -204,6 +204,19 @@ describe('DetailSidebar', () => {
     expect(q(hostOf(fixture), 'a[data-open-spec]')).toBeNull();
   });
 
+  it('opens the idea page from an idea and keeps it off a spec (ISC-486)', async () => {
+    await go('/w/harbor/specs?sel=idea:graph-zoom');
+    const fixture = await render();
+    const open = q(hostOf(fixture), 'a[data-open-idea]');
+    expect(open?.getAttribute('href')).toBe('/w/harbor/ideas/graph-zoom');
+    expect(open?.textContent.trim()).toBe('Open idea');
+    expect(q(hostOf(fixture), 'a[data-open-spec]')).toBeNull();
+    await go('/w/harbor/specs?sel=spec:025');
+    await fixture.whenStable();
+    expect(q(hostOf(fixture), 'a[data-open-spec]')?.getAttribute('href')).toBe('/w/harbor/s/025');
+    expect(q(hostOf(fixture), 'a[data-open-idea]')).toBeNull();
+  });
+
   it('shows an archived spec with the archived chip and an idea with its own type', async () => {
     await go('/w/harbor?sel=spec:003');
     const fixture = await render();

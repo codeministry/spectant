@@ -147,6 +147,13 @@ export class DetailSidebar {
     return spec ? specLink(ws, spec.slice('spec:'.length)) : null;
   });
 
+  /** The idea page an idea opens from the foot (ISC-486): at compact the sheet covers the row, so this link leads there. */
+  protected readonly ideaPage = computed(() => {
+    const entry = this.shown();
+    const ws = this.state.ws();
+    return entry?.type === 'idea' && ws !== null ? ['/w', ws, 'ideas', entry.id] : null;
+  });
+
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   constructor() {
