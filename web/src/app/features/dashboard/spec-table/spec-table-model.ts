@@ -71,7 +71,7 @@ export interface ArchiveRow {
 
 export const SORT_KEYS = ['stage', 'next', 'id', 'progress'] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
-/** The sorts the panel's sort menu offers (prototype: Stage / ID / Progress); `?sort=next` still parses. */
+/** The sorts the panel's sort menu offers (Stage / ID / Progress); `?sort=next` still parses. */
 export const SORT_MENU: readonly SortKey[] = ['stage', 'id', 'progress'];
 
 /**

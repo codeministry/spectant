@@ -1,7 +1,7 @@
 /* The Help page's About section: the third of its styleUrls, after help-page.workflows.css. */
 
 /*
- * About (prototype help `.about-grid`, `.about-visual`, `.about-logo`, `.shot`, `.meta-row`; spec 024 sweep): the text
+ * About (`.about-grid`, `.about-visual`, `.about-logo`, `.shot`, `.meta-row`; spec 024 sweep): the text
  * with its mono meta row, and beside it from 640 px the logo lock-up over two screenshots of the app in this theme.
  */
 .about-grid {

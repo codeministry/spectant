@@ -178,7 +178,7 @@
     }
     .grip:active { cursor: grabbing; }
 
-    /* The prototype's wb-grip (spec 024): shown on hover and focus where a fine pointer can hover; always on touch. */
+    /* The drag grip (spec 024): shown on hover and focus where a fine pointer can hover; always on touch. */
     @media (hover: hover) and (pointer: fine) {
       .grip {
         opacity: 0;
@@ -194,7 +194,7 @@
       cursor: not-allowed;
     }
 
-    /* Below 640 the prototype hides the drag grip and shows the card menu "Move to" (quiet-icon wb-move, ellipsis). */
+    /* Below 640 the board hides the drag grip and shows the card menu "Move to" (quiet-icon wb-move, ellipsis). */
     .i-move { display: none; }
 
     :host-context([data-tier='compact']) .grip {

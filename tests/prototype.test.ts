@@ -325,7 +325,7 @@ describe("prototype route module", () => {
   });
 
   test("module: in headless Chromium the fixture page runs its module script and .mjs import, no answer is 403", async () => {
-    // The repository's pinned Playwright (web's `@playwright/test`), loaded as `scripts/extract-prototype.ts` loads it.
+    // The repository's pinned Playwright (web's `@playwright/test`), loaded from web's node_modules by path.
     type Page = {
       on(event: "response", listener: (res: { url(): string; status(): number }) => void): void;
       goto(url: string): Promise<unknown>;

@@ -8,11 +8,11 @@ export interface MeterSegment {
 }
 
 /**
- * A bar meter, the prototype's `[data-ui="meter"]` (spec 024 design.md § Fundament: "Meter"): single (`value / max`;
+ * A bar meter (spec 024 design.md § Fundament: "Meter"): single (`value / max`;
  * the fill is solid cyan, lime once the meter is full, or a tone, and morphs `transform` only) or split (proportional
  * `segments` with 2 px gaps on no track, each segment rounded 3 px, e.g. specs per phase). 6 px tall, 4 px `mini` (the
- * prototype's `thin`), 8 px `lg` (`size`; the `mini` boolean stays and wins), radius 3. The track is the
- * prototype's `--track` mixed 45 % into transparent (spec 024: prototype background (principal 2026-10-13)); it paints
+ * thin form), 8 px `lg` (`size`; the `mini` boolean stays and wins), radius 3. The track is
+ * `--track` mixed 45 % into transparent (spec 024 background decision, principal 2026-10-13); it paints
  * below the 3:1 mark line, and `web/tests/contrast-exceptions.ts` lists the pairs. Pass `label` (translated): it names the meter for assistive technology, and
  * `valueText` (translated, single mode only) for `aria-valuetext`, e.g. "3 of 4 claims closed".
  *
@@ -58,7 +58,7 @@ export class UiMeter {
     const max = this.max();
     return max > 0 ? Math.min(1, Math.max(0, this.value() / max)) : 0;
   });
-  /** The prototype's `lime` fill: a meter whose value reached its max. */
+  /** The `lime` fill: a meter whose value reached its max. */
   protected readonly full = computed(() => this.ratio() === 1);
   protected readonly transform = computed(() => `scaleX(${this.ratio()})`);
 }

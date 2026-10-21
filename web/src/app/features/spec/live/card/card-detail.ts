@@ -21,8 +21,8 @@ import { CardContext } from './card-context';
 const DETAIL_STEPS = 8;
 
 /**
- * The card detail (design.md § Live, card detail; ISC-88; spec 024: the prototype `.cdetail`): a `ui-dialog`, full
- * screen at the compact tier and centred above it. The head is the prototype's `.cd-head` (glyph, mono id and claim,
+ * The card detail (design.md § Live, card detail; ISC-88; spec 024): a `ui-dialog`, full
+ * screen at the compact tier and centred above it. The head is the `.cd-head` (glyph, mono id and claim,
  * state chip, `lane · frame`, close), then the full text, the task's path chips (`.cd-paths`, from the tasks.md line
  * core parsed) and the `.cd-dl`: reason, builder and reader with their icons and verdict dot, tries, note, the probe of
  * the claim's mapping row, the agent holding the lock; the state history across the frames (`card-history.ts`); last
@@ -73,7 +73,7 @@ export class CardDetail {
     return stateKey(step.state, 'card');
   }
 
-  /** `←` / `→`: the previous or next card in board order (the prototype's `cardOrder`), opened in its place. */
+  /** `←` / `→`: the previous or next card in board order, opened in its place. */
   protected onKey(event: KeyboardEvent): void {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;

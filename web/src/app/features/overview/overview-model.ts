@@ -90,7 +90,7 @@ export function readColumn(
   return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, loadedAt, logo, screenshot };
 }
 
-/** The workspace badge's monogram (prototype `identity.js` `mono`): first letters of two words, else two letters. */
+/** The workspace badge's monogram (`wsMonogram`): first letters of two words, else two letters. */
 export function monogram(name: string): string {
   return wsMonogram(name);
 }

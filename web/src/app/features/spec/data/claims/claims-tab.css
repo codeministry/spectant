@@ -79,7 +79,7 @@
   color: var(--muted-ink);
 }
 
-/* Aligned columns (ISC-149, prototype `.cc-top`): glyph | ID | the rest; the rows below line up under the text. */
+/* Aligned columns (ISC-149): glyph | ID | the rest; the rows below line up under the text. */
 .head {
   display: flex;
   flex-wrap: wrap;

@@ -3,7 +3,7 @@
   <ui-live-region data-run-announcer />
 
   @if (live.frame(); as f) {
-    <!-- The prototype's `board-sticky`: toolbar `btool` (view switch, legend pills, Filter, search with Kbd f, density),
+    <!-- The sticky controls: the toolbar (view switch, legend pills, Filter, search with Kbd f, density),
          then the round scrubber with the frame label and the progress line. -->
     <div class="controls" data-board-controls>
       <div class="toolbar" role="group" [attr.aria-label]="'board.toolbar' | transloco">
@@ -28,7 +28,7 @@
         } @else {
           <div class="legend grow" role="group" data-legend [attr.aria-label]="'board.legend' | transloco">
             <ng-container [ngTemplateOutlet]="legendChips" />
-            <!-- spec 024: the prototype counts "n of m cards" and clears inside the legend (.legend .meta, .btn-icon.sm). -->
+            <!-- spec 024: the count "n of m cards" and the clear sit inside the legend (.legend .meta, .btn-icon.sm). -->
             @if (board.filtered()) {
               <ng-container [ngTemplateOutlet]="filteredTpl" />
             }

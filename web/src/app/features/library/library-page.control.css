@@ -84,7 +84,7 @@ app-library-page .lib-ctl[aria-disabled='true'] .lib-ctl-icon {
 }
 
 /* The state chips of slot 1 (design.md 017 § Across viewports): outdated on the orange tint with
-   `triangle-alert` (prototype `.lib-stale`), missing on the violet scoping tint with `file-x`; word and icon tell them
+   `triangle-alert`, missing on the violet scoping tint with `file-x`; word and icon tell them
    apart without colour. Ink on its own tint is the `--*-ink` (ISC-65). An archived document (spec 034, ISC-187.1)
    carries a neutral chip with `archive`: no tint, a line edge and the muted ink, since it is never a state to act on. */
 app-library-page .lib-stale,

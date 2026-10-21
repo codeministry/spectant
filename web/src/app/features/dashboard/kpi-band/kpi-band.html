@@ -7,7 +7,7 @@
 <!-- The ring alone carries the master percent; the line below it names closed and open only (ISC-245.1). -->
 @let masterMeta = master === null ? undefined : ('kpi.closedOpen' | transloco: { closed: master.closed, open: k.masterOpen ?? noValue });
 <!--
-  The prototype's kpi-band (app.js pageWorkspace): six tiles, each a ui-card with explicit edge and glow. Each shows its
+  The dashboard's KPI band: six tiles, each a ui-card with explicit edge and glow. Each shows its
   number with a reference (a fraction, or "in n of N specs" in the meta line) and a statement line (spec 021, ISC-245).
 -->
 <div class="band">
@@ -118,7 +118,7 @@
 </div>
 
 <!--
-  The prototype's Pulse card, the band's compact form: the master row and the spec claims over a 2 × 2 grid. In the
+  The Pulse card, the band's compact form: the master row and the spec claims over a 2 × 2 grid. In the
   master row and in every cell the eyebrow and the number share one line; the reference and the statement run below
   as one text of at most two lines (spec 021, P3 heights).
 -->

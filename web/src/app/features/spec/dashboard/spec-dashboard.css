@@ -1,6 +1,6 @@
 /*
- * The spec dashboard (design.md § Spec dashboard, spec 024 § Across viewports; the prototype's `.spec-kpis`,
- * `.dash-2`, `.sblock`). One column of blocks in prototype order on every tier: key numbers, the idea, next step beside
+ * The spec dashboard (design.md § Spec dashboard, spec 024 § Across viewports: `.spec-kpis`,
+ * `.dash-2`, `.sblock`). One column of blocks in a fixed order on every tier: key numbers, the idea, next step beside
  * lanes (from 900), the TL;DR, the area tiles and, below 1120, the Spec context. Partials: `spec-dashboard-tiles.css`
  * (lanes, tiles), `spec-context.css` (Waiting on you, Warnings, Gates); the page frame comes from `_spec-tab-page.css`,
  * the idea card's eyebrow from `_spec-context.css`. Colours are tokens only.
@@ -40,7 +40,7 @@
   gap: 16px;
 }
 
-/* Prototype `.why`: 18 px indent, 6 px gap, cyan markers; the eyebrow heads the card (`.next-step`). */
+/* The why list (`.why`): 18 px indent, 6 px gap, cyan markers; the eyebrow heads the card (`.next-step`). */
 .reasons {
   display: grid;
   gap: 6px;

@@ -1,5 +1,5 @@
 /*
- * The living ring and the wordmark (prototype `.brand-mark`, `.logo`, `.wm-accent`; spec 024 T34): a 27 px ring, the
+ * The living ring and the wordmark (spec 024 T34): a 27 px ring, the
  * Sora wordmark 16/650 with "ant" in the violet-to-lime gradient (resting on lime, sweeping to violet on hover or
  * keyboard focus). Below 640 px the ring stands alone, centred in its 40 px rail.
  */
@@ -28,7 +28,7 @@
   stroke-width: 3;
 }
 
-/* The prototype's ring has no track: the gap stays open around the dot (`logo-path.js`). */
+/* The ring has no track: the gap stays open around the dot. */
 .mark-track {
   stroke: none;
 }
@@ -37,7 +37,7 @@
   stroke-linecap: round;
 }
 
-/* The logo's fixed brand colours on both themes (prototype `#sweep-h` #a6e22e → #78dce8, dot #ab9df2). */
+/* The logo's fixed brand colours on both themes (ring #a6e22e → #78dce8, dot #ab9df2). */
 .mark-arc-a {
   stroke: oklch(84.1% 0.2044 127.3);
   stroke-dasharray: 40 60;

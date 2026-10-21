@@ -41,7 +41,7 @@ export class DashboardPage {
   protected readonly refresh = inject(RefreshService);
 
   /**
-   * The open workspace, its path tail for the prototype's footnote (spec 024) and the dashboard body read through the
+   * The open workspace, its path tail for the page's footnote (spec 024) and the dashboard body read through the
    * narrow structural views the components declare (`view`): core's model type is not importable under the web
    * tsconfig (see `DashboardBody`), so each component names only the fields it reads.
    */

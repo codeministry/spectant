@@ -1,12 +1,12 @@
 /*
- * The shell header's grid (spec 024 T34, T76; design.md § Across viewports; prototype `[data-ui="header"]`). The
+ * The shell header's grid (spec 024 T34, T76; design.md § Across viewports). The
  * host is sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
  *
  * One 64 px row on every width (principal 2026-10-13), every element 40 px tall (44 px at `pointer: coarse`).
- * From 1120 px the prototype header unchanged: brand rail (brand · rail-selects on one bordered field), the palette (a
+ * From 1120 px the full header: brand rail (brand · rail-selects on one bordered field), the palette (a
  * field in a minmax(240px, 360px) track; the 40 px icon on spec pages below 1560 px), then status group, zen, dot,
  * settings, help. Below 1120 px: the brand rail with the Workspace and Spec selects, the palette icon, the status group
- * and the overflow menu `⋯`. The bottom hairline only after the page has scrolled (prototype `.scrolled`).
+ * and the overflow menu `⋯`. The bottom hairline only after the page has scrolled (`.scrolled`).
  */
 :host {
   position: sticky;
@@ -35,7 +35,7 @@
   border-block-end-color: var(--line);
 }
 
-/* The bordered brand rail: 40 px, radius 10, 78 % card (prototype `.brand-rail`). */
+/* The bordered brand rail: 40 px, radius 10, 78 % card. */
 .rail-field {
   z-index: 0;
   grid-row: 1;
@@ -100,7 +100,7 @@
   }
 }
 
-/* The icon form (prototype `.palette-icon`): on spec pages below 1560 px (and below 1120 px, further down). */
+/* The icon form: on spec pages below 1560 px (and below 1120 px, further down). */
 @container shell (width < 1560px) {
   .on-spec {
     grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
@@ -134,7 +134,7 @@
   grid-area: help;
 }
 
-/* The dot trigger: a prototype `.btn-icon` with the mascot, 24 px. */
+/* The dot trigger: an icon button with the mascot, 24 px. */
 .assistant {
   display: inline-grid;
   grid-area: assistant;
@@ -159,7 +159,7 @@
   }
 }
 
-/* Every element 44 px tall on a coarse pointer (prototype rule), not by width. */
+/* Every element 44 px tall on a coarse pointer, not by width. */
 @media (pointer: coarse) {
   .rail-field,
   .palette,
@@ -210,7 +210,7 @@
   display: none;
 }
 
-/* The prototype's pressed zen toggle (`html.zen [data-ui=zen-toggle]`): cyan border and ink, at the row's end. */
+/* The pressed zen toggle: cyan border and ink, at the row's end. */
 :host([data-zen]) .zen {
   grid-area: help;
 }

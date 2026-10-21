@@ -10,7 +10,7 @@
 <app-help-nav [sections]="sections" />
 
 <section id="about" class="section" aria-labelledby="help-about">
-  <!-- The About card (prototype help `.about-grid`, spec 024 sweep): the text with its meta row, beside the logo and two screenshots. -->
+  <!-- The About card (`.about-grid`, spec 024 sweep): the text with its meta row, beside the logo and two screenshots. -->
   <ui-card class="about-grid" [padding]="24">
     <div class="about-text">
       <h2 id="help-about" tabindex="-1">{{ 'help.nav.about' | transloco }}</h2>
@@ -46,7 +46,7 @@
 <section id="moves" class="section" aria-labelledby="help-moves">
   <h2 class="section-head" id="help-moves" tabindex="-1">{{ 'help.nav.moves' | transloco }}</h2>
   <app-help-lifecycle />
-  <!-- Prototype type table (`.card` > `.tbl`): which of spec.md, plan.md and tasks.md each type has (core TYPE_NEEDS). -->
+  <!-- The type table (`.card` > `.tbl`): which of spec.md, plan.md and tasks.md each type has (core TYPE_NEEDS). -->
   <ui-card class="tbl-card" [padding]="0">
     <table class="tbl" data-type-table role="table">
       <caption class="vh">{{ 'help.types.caption' | transloco }}</caption>

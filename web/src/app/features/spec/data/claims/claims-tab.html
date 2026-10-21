@@ -32,7 +32,7 @@
   </div>
 
   @if (store.groups().length === 0) {
-    <!-- Prototype `.none-match`: one muted line, Clear beside it. -->
+    <!-- `.none-match`: one muted line, Clear beside it. -->
     <p class="none-match" data-none-match>
       {{ 'claims.noneMatch' | transloco }}
       <button ui-button variant="ghost" size="sm" type="button" class="clear" (click)="store.clear()">{{ 'claims.clear' | transloco }}</button>
@@ -201,7 +201,7 @@
           <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ $implicit: claim }" />
         }
         @if (group.closed.length > 0) {
-          <!-- Prototype `.fold`: the All view folds a feature's closed claims into one row, so open work stays in view. -->
+          <!-- `.fold`: the All view folds a feature's closed claims into one row, so open work stays in view. -->
           <details class="fold-row" data-fold [open]="store.foldOpen(group)">
             <summary>{{ 'claims.fold' | transloco: { n: group.closed.length } }}</summary>
             <div class="fold-body">

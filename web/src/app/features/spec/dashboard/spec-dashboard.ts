@@ -116,7 +116,7 @@ export class SpecDashboard {
     return GATE_TONE[state];
   }
 
-  /** The prototype's gate-row icon: passed checks, stale or warning alerts, absent crosses. */
+  /** The gate-row icon: passed checks, stale or warning alerts, absent crosses. */
   protected gateIcon(state: GateState): IconName {
     return GATE_ICON[state];
   }

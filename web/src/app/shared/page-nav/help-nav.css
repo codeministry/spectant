@@ -14,11 +14,11 @@
   display: block;
   border-block-end: 1px solid var(--line);
 
-  /* Prototype `.help-nav` spans the viewport: the hairline runs past the 1080 px column (ink overflow only). */
+  /* The nav spans the viewport: the hairline runs past the 1080 px column (ink overflow only). */
   border-image: linear-gradient(var(--line), var(--line)) 0 0 1 0 / 0 0 1px 0 / 0 100vw;
 }
 
-/* The prototype numbers its chips "0 · About" … ; the number is generated content, so the link's name stays the label. */
+/* The chips are numbered "0 · About" … ; the number is generated content, so the link's name stays the label. */
 ul {
   counter-reset: help-chip -1;
   display: flex;

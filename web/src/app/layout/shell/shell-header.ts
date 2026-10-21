@@ -18,12 +18,12 @@ import { ShellState } from './shell-state.service';
  * The shell header (ISC-73, spec 024 T34, T76): one `<header>`, one 64 px row on every width (principal 2026-10-13,
  * design.md § Across viewports), every element in it 40 px tall (44 px at `pointer: coarse`).
  *
- * From 1120 px (the wide tier) the prototype header unchanged: the brand rail (logo, wordmark, Workspace · Page · Spec ·
+ * From 1120 px (the wide tier) the full header: the brand rail (logo, wordmark, Workspace · Page · Spec ·
  * Area rail-selects with their labels; spec 024 T80), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status
  * group, zen, the assistant dot (`AssistantPanel`, T53), settings (the settings popover, T40) and help. Below 1120 px the row is shortened: the
  * logo rail (ring only below 640 px) with the Workspace, Page and Spec selects without visible labels, the palette icon, the
  * status group and the overflow menu `⋯` with Area, Zen, Assistant, Settings and Help (`ShellMenus`). The bottom
- * hairline shows only once the page has scrolled (prototype `[data-ui="header"].scrolled`).
+ * hairline shows only once the page has scrolled (`.scrolled`).
  *
  * Every control carries `data-control` (in the overflow menu its entry does) so later tasks replace it in place; the
  * tools spec 024 adds (refresh, assistant, help, more) carry `data-tool`, keeping the `data-control` set of
@@ -49,13 +49,13 @@ export class ShellHeader {
   private readonly data = inject(ShellData);
   private readonly view = inject(DOCUMENT).defaultView;
 
-  /** From 1120 px the full prototype header; below it the shortened row with the overflow menu. */
+  /** From 1120 px the full header; below it the shortened row with the overflow menu. */
   protected readonly wide = computed(() => this.state.tier() === 'wide');
 
-  /** The page has scrolled: the header's bottom hairline shows (prototype `.scrolled`). */
+  /** The page has scrolled: the header's bottom hairline shows (`.scrolled`). */
   protected readonly scrolled = signal((this.view?.scrollY ?? 0) > 0);
 
-  /** A spec page: the palette stays the 40 px icon there below 1560 px, as the prototype does with an area select. */
+  /** A spec page: the palette stays the 40 px icon there below 1560 px. */
   protected readonly specPage = computed(() => this.state.specId() !== null && !this.data.specMissing());
 
   /** The Live area of the open spec (its first tab), or null: without a spec the indicator is a plain status. */

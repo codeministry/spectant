@@ -1,6 +1,6 @@
 /*
- * The spec head, the prototype's `spec-head-unified` (spec 024 design.md § Spec head; `styles.css` `.spec-head-unified`,
- * `.pill`, `[data-ui="agent-banner"]`, `.agent-dot`). This file holds the title row, description, meta, actions and
+ * The spec head as one unified block (spec 024 design.md § Spec head).
+ * This file holds the title row, description, meta, actions and
  * the agent banner; the context line (breadcrumb and chip row) is `spec-head.context.css`, the compact tier and the
  * one-column row under 800 px `spec-head.compact.css`.
  */

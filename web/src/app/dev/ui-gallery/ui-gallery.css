@@ -86,7 +86,7 @@
   display: inline-flex;
 }
 
-/* The prototype harness's block (scripts/extract-prototype.ts): 640 px wide, 8 px apart; the KPI band is 960 px. */
+/* The anatomy block primitives.spec.ts measures in: 640 px wide, 8 px apart; the KPI band is 960 px. */
 .gallery-anatomy {
   inline-size: 640px;
   margin: 8px;

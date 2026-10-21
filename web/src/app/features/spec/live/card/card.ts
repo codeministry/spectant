@@ -23,7 +23,7 @@ export type CardDensity = 'comfortable' | 'compact' | 'step';
 
 /**
  * One board card (design.md § Live, card anatomy; ISC-88), the same in the Lanes and the Flow view: an `<article>`
- * named "T14, ISC-333, in flight, web" with a 4 px inline-start edge (prototype `.tcard`) in the state's tone. Every one of the eleven
+ * named "T14, ISC-333, in flight, web" with a 4 px inline-start edge (`.tcard`) in the state's tone. Every one of the eleven
  * states carries its glyph, its chip word (`states.card.*`) and its tone; no two share a (shape, tone) pair.
  *
  * Two densities, from the board's `?density` param:
@@ -55,7 +55,7 @@ export class BoardCard {
 
   private readonly context = inject(CardContext, { optional: true });
   protected readonly detailOpen = signal(false);
-  /** The lock's agent, drawn as the prototype's .agent chip on the card (live frames only carry locks). */
+  /** The lock's agent, drawn as the .agent chip on the card (live frames only carry locks). */
   protected readonly agent = computed(() => (this.card().state === 'running' ? agentOfCard(this.card()) : null));
   protected readonly selected = computed(() => this.detailOpen() || this.context?.selected() === this.card().task);
   protected readonly changed = computed(() => this.context?.changed().has(this.card().task) === true);

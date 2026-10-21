@@ -9,7 +9,7 @@ import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec, stateKey } f
  * `states.claim.*` or `states.item.*` (spec 040), tinted by the state's one tone. The same table drives the glyph, so
  * glyph, word and colour can never disagree; `aborted` is the warning chip on `--hover-t`.
  *
- * `small`: the board card's form (the prototype's `.schip`): the word alone in the 10 px `small` chip, since the card
+ * `small`: the board card's form: the word alone in the 10 px `small` chip, since the card
  * already leads with the state's glyph; it never wraps and ends in an ellipsis when the card header runs out of room.
  */
 @Component({

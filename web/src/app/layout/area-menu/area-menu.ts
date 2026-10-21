@@ -82,7 +82,7 @@ export function milestonesLine(milestones: PlanningBody['milestones']): SummaryL
  * T41, ISC-157.1), the catalog read once per workspace on the menu's first open, a static line until it answers. Milestones is
  * absent, not disabled, while no spec carries a milestone (ISC-104). The pages show no `g`-key hint.
  *
- * **Prototype anatomy (spec 024, T57, ISC-150.1).** The prototype's `.area-pop`: a card with an eyebrow head naming the
+ * **Anatomy (spec 024, T57, ISC-150.1).** The menu is a card with an eyebrow head naming the
  * scope (`Spec 002 · areas`, `<workspace> · pages`, `[data-menu-head]`), then the rows, the name bold over its meta line,
  * the current row on the raised tint; 44 px rows (56 in the compact sheet).
  *
@@ -109,7 +109,7 @@ export class AreaMenu {
   protected readonly areas = SPEC_AREAS;
   protected readonly compact = computed(() => this.state.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
-  /** The dashboard has no `goKey` of its own; `g h` reaches it, and the prototype's pop-area names it. */
+  /** The dashboard has no `goKey` of its own; `g h` reaches it, and the area menu names it. */
   protected readonly dashboardKey = (id: string): string | null => (id === 'dashboard' ? DASHBOARD_GO_KEY : null);
   protected readonly currentArea = computed(() => this.state.area() ?? 'dashboard');
   private readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());

@@ -71,7 +71,7 @@ describe('TabBar with a given tab list', () => {
       ['four', '0'],
     ]);
     expect(root.querySelector('nav')?.getAttribute('aria-label')).toBe('Demo tabs');
-    // Spec 024 (ISC-149): the prototype anatomy, the area eyebrow first and one `tab-sep` before the group it opens.
+    // Spec 024 (ISC-149): the bar's anatomy, the area eyebrow first and one `tab-sep` before the group it opens.
     expect(root.querySelector('nav > [data-area-eyebrow]')?.textContent.trim()).toBe('Demo');
     expect(root.querySelectorAll('.tab-sep')).toHaveLength(1);
     expect(root.querySelector('.tab-sep + a')?.getAttribute('data-tab')).toBe('three');

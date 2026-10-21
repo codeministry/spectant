@@ -1,6 +1,6 @@
 /*
- * The two state galleries of `/__ui` (states-gallery.ts, board-states-gallery.ts): the prototype's `.gallery` /
- * `.bstates` grid of mini cards (eyebrow, note, body). Layout only; every colour is a theme token. The `sg-` prefix keeps
+ * The two state galleries of `/__ui` (states-gallery.ts, board-states-gallery.ts): a grid of mini cards
+ * (eyebrow, note, body). Layout only; every colour is a theme token. The `sg-` prefix keeps
  * clear of daisyUI's global component classes, as the gallery's own `gallery-` prefix does.
  */
 :host {
@@ -236,7 +236,7 @@
   line-height: 20px;
 }
 
-/* Released: the chip stays readable (text contrast); the prototype fades it out over 1200 ms, the label says so. */
+/* Released: the chip stays readable (text contrast) instead of fading out; the strike-through and label say so. */
 .sg-released app-agent-chip {
   text-decoration: line-through;
 }
@@ -295,7 +295,7 @@
   font-weight: 600;
 }
 
-/* The notice's second line in the prototype's notice-warn ink (`--orange-text`, app `--hover-ink`): muted text on the
+/* The notice's second line in the warning notice's ink (`--hover-ink`): muted text on the
    `--hover-t` tint stays under 4.5 in dark. */
 .sg-notice-body .sg-meta {
   color: var(--hover-ink);

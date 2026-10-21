@@ -257,7 +257,7 @@ export class TasksStore {
     return null;
   }
 
-  /** Prototype `.t-reason`: the reason line leads with `flag` on the principal's own step, `lock` on a hold. */
+  /** The reason line leads with `flag` on the principal's own step, `lock` on a hold. */
   subIcon(row: TaskRowView): 'flag' | 'lock' | null {
     if (row.state === 'struck') return null;
     if (row.lane === 'operator' && row.state === 'open' && !(REASONED.has(row.status) && row.reason !== null)) return 'flag';

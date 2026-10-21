@@ -1,6 +1,6 @@
 @import './_rail-block.css';
 
-/* spec 024: the prototype .fevents: 13 px lines, a 6 px cyan dot, the task id in mono 600 12 px; a line stays a
+/* spec 024: the .fevents: 13 px lines, a 6 px cyan dot, the task id in mono 600 12 px; a line stays a
          button (24 px, 44 px on a coarse pointer) that opens the card detail. */
 .fevents {
   display: grid;

@@ -7,7 +7,7 @@ app-notes-area {
   min-inline-size: 0;
 }
 
-/* The prototype's notepad card (`.notepad`): one card, list above the editor; from 1120 px a 320 px list beside it. */
+/* The notepad card (`.notepad`): one card, list above the editor; from 1120 px a 320 px list beside it. */
 app-notes-area .notes-card {
   display: flex;
   flex-direction: column;
@@ -65,7 +65,7 @@ app-notes-area .notes-search input {
   color: var(--color-base-content);
 }
 
-/* Filter chips as the prototype's `[data-ui="filter-chips"]`: 28 px, radius-sm, framed, wrapping. */
+/* Filter chips as the `[data-ui="filter-chips"]`: 28 px, radius-sm, framed, wrapping. */
 app-notes-area[data-view] ui-filter-chips .row {
   flex-wrap: wrap;
   padding-inline: 0;
@@ -98,7 +98,7 @@ app-notes-area .notes-rows {
   list-style: none;
 }
 
-/* A row as the prototype's `.np-row`: title, then anchor chip and time, then the body's first line. */
+/* A row: title, then anchor chip and time, then the body's first line. */
 app-notes-area .notes-row {
   display: grid;
   gap: 4px;
@@ -164,7 +164,7 @@ app-notes-area .notes-top {
   align-items: center;
 }
 
-/* The prototype's `.ne-title`: borderless, Sora 600 20/28. */
+/* The editor title: borderless, Sora 600 20/28. */
 app-notes-area .notes-title {
   flex: 1;
   min-inline-size: 0;
@@ -204,7 +204,7 @@ app-notes-area .notes-return {
   color: var(--disp-text);
 }
 
-/* The prototype's `.badge-local`: a framed 12 px pill. */
+/* The local badge: a framed 12 px pill. */
 app-notes-area .notes-local {
   padding: 3px 8px;
   border: 1px solid var(--line);
@@ -238,7 +238,7 @@ app-notes-area .notes-body[data-view='split'] {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-/* The prototype's `#ne-body`: framed, lane-coloured, mono 14/22. */
+/* The editor body: framed, lane-coloured, mono 14/22. */
 app-notes-area .notes-textarea {
   inline-size: 100%;
   min-block-size: 360px;

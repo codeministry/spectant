@@ -139,7 +139,7 @@ export class GateButton {
   }
 
   /** The "You confirm" checklist: UI confirmation only; the write path below is unchanged and runs once all three are ticked. */
-  /** A hashed file the stale mark names as changed (prototype chip `changed` in the dialog's file rows). */
+  /** A hashed file the stale mark names as changed (the `changed` chip in the dialog's file rows). */
   protected changedFile(m: SpecPageModel, name: string): boolean {
     return m.gates.reviewed.state === 'stale' && (m.gates.reviewed.files ?? []).some((file) => file === name || file.endsWith(`/${name}`));
   }

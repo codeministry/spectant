@@ -14,23 +14,18 @@
  *   roadmap   spectant-produktideen.md
  *   outline   specs/notes/outline.md
  *   notes     specs/notes/notizen.md
- *   view      specs/001-app-skeleton/.design/prototype/spectant-ui/*.html          (the directory's files, not deeper)
- *   doc       specs/001-app-skeleton/.design/prototype/spectant-ui/docs/0[123]-*.md (docs 01 to 03)
- *
- * view and doc fall back to specs/archive/001-app-skeleton/… once spec 001 is archived; the active folder wins.
  *
  * The entries of a markdown source are its headings: every line of up to three spaces, one to six `#` and a space,
  * outside fenced code blocks and outside a leading frontmatter block. A heading is normalised by dropping the `#`s
  * (leading and closing), a checkbox marker `- [ ]` / `- [x]`, everything from the first ` · ` on (the annotation),
- * collapsing whitespace and lower-casing. The entries of `view` and `doc` are file basenames, lower-cased; their
- * "line" in the output is the 1-based position in the sorted listing.
+ * collapsing whitespace and lower-casing.
  *
  * Mapping: specs/008-spectant-complete/artifacts/coverage.md (or specs/archive/008-spectant-complete/… once the spec is
  * archived; the active folder wins) holds a markdown table with the header `| Source | Entry | Target | Reason |`
  * (other tables in the file are ignored). Per row:
  *
- *   Source  one of roadmap, outline, notes, view, doc
- *   Entry   the heading text (normalised as above, so the full heading line may be pasted) or the file basename;
+ *   Source  one of roadmap, outline, notes
+ *   Entry   the heading text (normalised as above, so the full heading line may be pasted);
  *           a literal pipe is written `\|`; surrounding backticks are dropped
  *   Target  one or more of `F<n>`, `story:<slug>`, `decision:<YYYY-MM-DD>`, `spec:<NNN>`, `drop`, comma-separated
  *   Reason  free text, required when a target is `drop`
@@ -67,13 +62,10 @@ import { parseFrontmatter } from '../core/src/frontmatter.ts';
 import { TABLE_SEP, tableCells } from '../core/src/markdown.ts';
 import { SPEC_FOLDER, specRefMatches } from '../core/src/spec-ref.ts';
 
-export type SourceName = 'roadmap' | 'outline' | 'notes' | 'view' | 'doc';
+export type SourceName = 'roadmap' | 'outline' | 'notes';
 export type Entry = { line: number; entry: string };
 export type CoverageRow = { line: number; source: SourceName; entry: string };
 
-const PROTOTYPE = 'specs/001-app-skeleton/.design/prototype/spectant-ui';
-// Once spec 001 is archived, the prototype moves one level down with its folder.
-const ARCHIVED_PROTOTYPE = 'specs/archive/001-app-skeleton/.design/prototype/spectant-ui';
 const COVERAGE = 'specs/008-spectant-complete/artifacts/coverage.md';
 // Once spec 008 is archived, its folder and the mapping move one level down.
 const ARCHIVED_COVERAGE = 'specs/archive/008-spectant-complete/artifacts/coverage.md';
@@ -86,12 +78,11 @@ const HEADING_SOURCES: ReadonlyArray<readonly [SourceName, string]> = [
   ['outline', 'specs/notes/outline.md'],
   ['notes', 'specs/notes/notizen.md'],
 ];
-const SOURCE_NAMES: readonly SourceName[] = ['roadmap', 'outline', 'notes', 'view', 'doc'];
+const SOURCE_NAMES: readonly SourceName[] = ['roadmap', 'outline', 'notes'];
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
 const TARGET = /^(?:F\d+|story:[a-z0-9][a-z0-9-]*|decision:\d{4}-\d{2}-\d{2}|spec:\d{3}|drop)$/;
-const DOC = /^0[123]-.*\.md$/;
 const YAML_KEY = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -174,8 +165,7 @@ export function parseCoverage(text: string): { rows: CoverageRow[]; problems: st
       problems.push(`coverage.md:${line}: unknown source`);
       return;
     }
-    const entryCell = unquote(cells[1] ?? '');
-    const entry = first === 'view' || first === 'doc' ? entryCell.trim().toLowerCase() : normaliseHeading(entryCell);
+    const entry = normaliseHeading(unquote(cells[1] ?? ''));
     const targets = (cells[2] ?? '').split(',').map((t) => unquote(t.trim()));
     if (entry === '') {
       problems.push(`coverage.md:${line}: empty entry`);
@@ -206,14 +196,6 @@ function isDir(path: string): boolean {
   }
 }
 
-function listFiles(dir: string, match: (name: string) => boolean): Entry[] {
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isFile() && match(d.name))
-    .map((d) => d.name)
-    .sort()
-    .map((name, i) => ({ line: i + 1, entry: name.toLowerCase() }));
-}
-
 /** The entries of every source that exists under `root`; null for an absent source. */
 function readSources(root: string): Map<SourceName, Entry[] | null> {
   const sources = new Map<SourceName, Entry[] | null>();
@@ -221,10 +203,6 @@ function readSources(root: string): Map<SourceName, Entry[] | null> {
     const file = join(root, path);
     sources.set(name, existsSync(file) ? headingsOf(readFileSync(file, 'utf8')) : null);
   }
-  const proto = [PROTOTYPE, ARCHIVED_PROTOTYPE].map((p) => join(root, p)).find((p) => isDir(p)) ?? join(root, PROTOTYPE);
-  sources.set('view', isDir(proto) ? listFiles(proto, (n) => n.endsWith('.html')) : null);
-  const docs = join(proto, 'docs');
-  sources.set('doc', isDir(docs) ? listFiles(docs, (n) => DOC.test(n)) : null);
   return sources;
 }
 
@@ -406,7 +384,7 @@ function freeSpecs(root: string): number {
 const USAGE = `Usage: bun run check:coverage
        bun scripts/check-coverage.ts [--root DIR] [--free-specs]
 
-Checks that every heading of the planning sources and every prototype view and doc 01 to 03 is mapped in
+Checks that every heading of the planning sources (roadmap, outline, notes) is mapped in
 ${COVERAGE}; with --free-specs, that every Free story under specs/ideas/ has its spec folder.
 Prints "sources absent" and exits 0 where the sources are missing. Exit 0 clean, 1 on a finding, 2 on a usage error.`;
 

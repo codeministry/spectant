@@ -37,7 +37,7 @@ async function starOnHarbor(page: Page, request: APIRequestContext, session: str
   }
 }
 const TIERS = [
-  // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+  // spec 024: the tab bar under the header on every width (principal 2026-10-12, design.md)
   { width: 390, tier: 'compact', tabBar: 'main' },
   { width: 820, tier: 'medium', tabBar: 'main' },
   { width: 1440, tier: 'wide', tabBar: 'main' },
@@ -67,7 +67,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.goto('/w/harbor/s/002/status');
       await expect(page.locator('app-tab-bar')).toHaveCount(1);
       await expect(page.locator(`${tabBar} app-tab-bar`)).toHaveCount(1);
-      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      // spec 024: the tab bar under the header on every width (principal 2026-10-12, design.md)
       await expect(page.locator('header app-tab-bar')).toHaveCount(0);
       const band = page.locator('app-tab-bar-slot');
       await expect(band).toHaveCSS('position', 'sticky');
@@ -122,7 +122,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(areaTrigger).toBeFocused();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
 
-      // spec 024 T40: the indicator opens the live popover (prototype `pop-live`); its round-board entry leads there.
+      // spec 024 T40: the indicator opens the live popover; its round-board entry leads there.
       await control('live').click();
       await page.locator('[data-live-board]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
@@ -201,9 +201,9 @@ for (const { width, tier, tabBar } of TIERS) {
         expect(Math.abs(part.y + part.height / 2 - (head.y + 32)), selector).toBeLessThan(1.5);
       }
       const palette = await box('header [data-control="palette"]');
-      // spec 024: prototype palette rule (principal 2026-10-12): a spec page keeps the 40 px icon below 1560
+      // spec 024: the palette rule (principal 2026-10-12): a spec page keeps the 40 px icon below 1560
       expect(Math.round(palette.width)).toBe(40);
-      // spec 024: prototype palette rule (principal 2026-10-12)
+      // spec 024: the palette rule (principal 2026-10-12)
       await expect(page.locator('header .palette-key')).toBeHidden();
     });
 
@@ -270,10 +270,10 @@ test.describe('header', () => {
           const palette = header.locator('[data-control="palette"]');
           await expect(palette).toHaveAttribute('aria-label', /\S/);
           await expect(palette.locator('ui-icon')).toBeVisible();
-          // spec 024: prototype palette rule (principal 2026-10-12): the field at wide off spec pages, the icon on spec pages below 1560
+          // spec 024: the palette rule (principal 2026-10-12): the field at wide off spec pages, the icon on spec pages below 1560
           const field = wide && !SPEC_OPEN.has(route);
           await expect(palette.locator('.palette-text')).toBeVisible({ visible: field });
-          // spec 024: prototype palette rule (principal 2026-10-12)
+          // spec 024: the palette rule (principal 2026-10-12)
           await expect(palette.locator('.palette-key')).toBeVisible({ visible: field });
 
           await expect(header.locator('[data-control="settings"]')).toHaveAttribute('aria-label', /help/i);
@@ -353,10 +353,10 @@ test.describe('zen', () => {
       await expect(footer.locator('[data-zen-part="title"]')).toHaveText('Web console');
       await expect(footer.locator('[data-zen-part="claims"]')).toContainText('25/30');
       await expect(footer.locator('ui-command-chip')).toContainText('/spec implement 002');
-      // The bar slides in from 8 px below (prototype `zen-statusbar`); measure it once its entry has finished.
+      // The bar slides in from 8 px below; measure it once its entry has finished.
       await footer.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
       const box = await footer.boundingBox();
-      // spec 024: prototype value (principal: the prototype wins) — the prototype `zen-statusbar` is 36 px.
+      // spec 024: the zen status bar (`zen-statusbar`) is 36 px.
       expect(box?.height).toBe(36);
       expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(900);
       // The main column takes the full width once the rail is gone (1440 - 2 × 32).
@@ -380,8 +380,8 @@ test.describe('zen', () => {
       const shell = page.locator('app-shell');
       const collapse = page.locator('aside.shell-rail [data-control="rail-collapse"]');
       await expect(collapse).toHaveAttribute('aria-expanded', 'true');
-      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): the `›` sits just outside the
-      // rail's top-left edge (prototype `.rail-tools`), not above the rail's content.
+      // spec 024: the rail fold with the app's counts (principal 2026-10-13): the `›` sits just outside the
+      // rail's top-left edge, not above the rail's content.
       const [tool, rail] = await Promise.all([collapse.boundingBox(), page.locator('aside.shell-rail').boundingBox()]);
       expect((tool?.x ?? 0) + (tool?.width ?? 0)).toBeLessThanOrEqual(rail?.x ?? 0);
       expect(tool?.y ?? 0).toBeCloseTo(rail?.y ?? 0, 0);
@@ -394,10 +394,10 @@ test.describe('zen', () => {
       const strip = page.locator('aside.shell-rail[data-rail-strip]');
       await expect(strip).toBeVisible();
       await expect(page.locator('app-rail-slot')).toHaveCount(0);
-      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): focus moves to the `‹` tab.
+      // spec 024: the rail fold with the app's counts (principal 2026-10-13): focus moves to the `‹` tab.
       await expect(page.locator('aside.shell-rail [data-control="rail-expand"]')).toBeFocused();
-      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): the column eases over 240 ms
-      // (`--dur-sheet`); poll until it settles at the prototype's 32 px track (`--rail-space`).
+      // spec 024: the rail fold with the app's counts (principal 2026-10-13): the column eases over 240 ms
+      // (`--dur-sheet`); poll until it settles at the 32 px track (`--rail-space`).
       await expect.poll(async () => (await strip.boundingBox())?.width).toBe(32);
 
       await page.reload();
@@ -407,7 +407,7 @@ test.describe('zen', () => {
 
       await expand.click();
       await expect(shell).not.toHaveAttribute('data-rail-collapsed');
-      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): focus moves back to the `›`.
+      // spec 024: the rail fold with the app's counts (principal 2026-10-13): focus moves back to the `›`.
       await expect(collapse).toBeFocused();
       await expect(page.locator('app-rail-slot')).toBeVisible();
       await page.reload();
@@ -427,7 +427,7 @@ test.describe('zen', () => {
       await zen.click();
       await expect(page.locator('app-spec-page .spec-head')).toBeHidden();
       for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
-      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      // spec 024: the tab bar under the header on every width (principal 2026-10-12, design.md)
       await expect(page.locator('main app-tab-bar')).toBeVisible();
       const footer = page.locator('[data-zen-footer]');
       await expect(footer).toBeVisible();

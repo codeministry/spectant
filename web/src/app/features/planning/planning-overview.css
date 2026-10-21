@@ -1,4 +1,4 @@
-/* The planning overview (spec 026, T15): the old Milestones page's rail (prototype `context-rail`, `next-ms`). */
+/* The planning overview (spec 026, T15): the old Milestones page's rail (`context-rail`, `next-ms`). */
 :host {
   display: grid;
   gap: 24px;
@@ -99,7 +99,7 @@
   text-align: end;
 }
 
-/* The decorative 6 px bar on the track at 45 % (prototype `meter thin`); the row's name carries the numbers. */
+/* The decorative 6 px bar on the track at 45 % (`meter thin`); the row's name carries the numbers. */
 .bar {
   display: block;
   block-size: 6px;

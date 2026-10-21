@@ -98,7 +98,7 @@ import { NeedsList } from './needs-list';
     './board-page.drag.css',
     './board-page.fill.css',
     './board-page.hidden.css',
-    './board-page.parity.css',
+    './board-page.layout.css',
   ],
 })
 export class BoardPage {

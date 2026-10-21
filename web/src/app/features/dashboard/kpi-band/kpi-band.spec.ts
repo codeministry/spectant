@@ -277,7 +277,7 @@ describe('KpiBand', () => {
     });
   });
 
-  it('ports the prototype tiles: hero ring 112 below wide, lime claims meter, "Takeable now", no reserved slot', async () => {
+  it('draws the tiles: hero ring 112 below wide, lime claims meter, "Takeable now", no reserved slot', async () => {
     const { fixture, host, tile, text } = await render();
     const claimsMeter = tile('claims')?.querySelector('ui-meter');
     TestBed.inject(ShellState).tier.set('medium');
@@ -290,7 +290,7 @@ describe('KpiBand', () => {
     expect(host.querySelector('[data-kpi="activity"]')).toBeNull();
   });
 
-  it('gives every tile the prototype edge and glow: hero glow only, then lime, cyan, cyan, orange, violet', async () => {
+  it('gives every tile its edge and glow: hero glow only, then lime, cyan, cyan, orange, violet', async () => {
     const { card } = await render();
     const look = (kpi: string) => ({
       edge: card(kpi)?.hasAttribute('data-edge'),

@@ -40,11 +40,11 @@ interface PaletteOption {
   readonly status: { readonly word: string; readonly dot: string } | null;
   /** An idea (spec 008): the chip takes the idea chip's look. */
   readonly idea: boolean;
-  /** The prototype's lead icon for the row (palette-icons.ts), or null where the chip leads. */
+  /** The lead icon for the row (palette-icons.ts), or null where the chip leads. */
   readonly icon: IconName | null;
-  /** Next up and Services set their labels in mono, as the prototype does. */
+  /** Next up and Services set their labels in mono. */
   readonly mono: boolean;
-  /** A spec's phase chip (prototype `chip(x.chip, x.chip)`): its word, tone and icon; null on any other row. */
+  /** A spec's phase chip: its word, tone and icon; null on any other row. */
   readonly phase: { readonly label: string; readonly tone: Tone; readonly icon: IconName | undefined } | null;
   /** Next up leads with `terminal`, not the id chip. */
   readonly showChip: boolean;

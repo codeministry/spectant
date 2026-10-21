@@ -53,7 +53,7 @@ export class LiveBoardStore {
   private readonly live = inject(LiveStore);
 
   private readonly query = toSignal(this.route.queryParamMap, { requireSync: true });
-  /** The prototype lane-quiet hint names the next command for this spec (spec 024: `next /spec implement 002`, the plugin's form since spec 031). */
+  /** The lane-quiet hint names the next command for this spec (spec 024: `next /spec implement 002`, the plugin's form since spec 031). */
   readonly nextCommand = computed(() => {
     const id = this.state.specId();
     return id === null ? null : `/spec implement ${id}`;
@@ -62,7 +62,7 @@ export class LiveBoardStore {
 
   /** The clock the Live label reads, every 10 s like the header's "Updated 12 s ago". */
   private readonly now = signal(Date.now());
-  /** "Live · updated 12 s ago" (prototype `.flabel`): whole units since the refresh service's last refresh. */
+  /** "Live · updated 12 s ago" (`.flabel`): whole units since the refresh service's last refresh. */
   readonly ago = computed(() => relativeParts(this.refresher.lastRefresh(), Math.max(this.now(), this.refresher.lastRefresh())));
 
   readonly view = computed(() => (this.query().get('view') === 'flow' ? 'flow' : 'lanes'));
@@ -158,7 +158,7 @@ export class LiveBoardStore {
       return { key: l.name, label: l.name, icon: 'clock', ariaLabel };
     });
   });
-  /** Lanes hidden with the lane filter: a stub "core · hidden · show" in their place (prototype `.lane-stub`). */
+  /** Lanes hidden with the lane filter: a stub "core · hidden · show" in their place (`.lane-stub`). */
   readonly hiddenLaneNames = computed(() => this.order().filter((lane) => this.hiddenLanes().has(lane)));
   /** Landed sections the viewer opened past the first five cards. */
   readonly landedAll = signal<ReadonlySet<string>>(new Set());
@@ -245,7 +245,7 @@ export class LiveBoardStore {
     this.toggled.update((map) => new Map(map).set(key, open));
   }
 
-  /** The lane dot: the prototype's lane colours in constitution order (cyan, violet, yellow, green, orange). */
+  /** The lane dot: the lane colours in constitution order (cyan, violet, yellow, green, orange). */
   laneColor(lane: string): string {
     if (lane === OPERATOR_LANE) return 'var(--muted-ink)';
     const i = Math.max(0, this.order().indexOf(lane));

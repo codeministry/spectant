@@ -95,7 +95,7 @@ code {
   gap: 6px;
 }
 
-/* Prototype `.why`: 6 px between the reasons, the disc marker in cyan. */
+/* The why list (`.why`): 6 px between the reasons, the disc marker in cyan. */
 
 .reasons li::marker {
   color: var(--color-primary);

@@ -16,7 +16,7 @@ export const SECTION_ORDER: readonly BoardSection[] = ['needsYou', 'inFlight', '
 
 export const OPERATOR_LANE = 'operator';
 
-/** The lane dots in constitution order: the prototype's cyan, violet, yellow, green, orange. */
+/** The lane dots in constitution order: the cyan, violet, yellow, green, orange. */
 export const LANE_COLORS = ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'] as const;
 
 /**

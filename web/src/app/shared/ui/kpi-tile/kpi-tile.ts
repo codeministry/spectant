@@ -7,13 +7,13 @@ import { UiCard } from '../card/card';
 import type { Tone } from '../tone';
 
 /**
- * A KPI tile (design.md § Desktop Soll, KPI band; the prototype's `.kpi-tile`, spec 024 ISC-148): the card itself is
+ * A KPI tile (design.md § Desktop Soll, KPI band; spec 024 ISC-148): the card itself is
  * the tile, 16 px padding (24 for the hero), a column 6 px apart: eyebrow label (600 11/16 .08em uppercase, muted),
  * the tabular value (600 32/40 -.02em) with an optional denominator (16/500, muted), a meta line at the foot, a
  * projected visual (`[visual]`, e.g. a `ui-ring`, which puts the column beside it) and trailing content (a meter).
  * With `href` (plus optional `queryParams` and `fragment`) the whole tile is one router link (the anchor is the
  * card's whole box, so the padding is clickable too) and hover raises the card glow. The fraction never wraps and steps down one size past six digits, so live numbers cannot reflow the band
- * (ISC-62.1). `accent`, `edge` and `glow` go to the card as they are: `edge` / `glow` set the prototype's variants
+ * (ISC-62.1). `accent`, `edge` and `glow` go to the card as they are: `edge` / `glow` set the card's variants
  * explicitly (a hero glows without an edge), and an `accent` alone keeps `ui-card`'s rule of turning both on.
  */
 @Component({

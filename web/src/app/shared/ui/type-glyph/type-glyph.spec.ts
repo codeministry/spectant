@@ -24,7 +24,7 @@ describe('UiTypeGlyph (ISC-129)', () => {
     return { fixture, host: fixture.nativeElement as HTMLElement };
   }
 
-  it('maps each spec type and idea to its own Lucide icon, the prototype CHIP_ICON where it names one', () => {
+  it('maps each spec type and idea to its own Lucide icon, the CHIP_ICON one where it names one', () => {
     expect(TYPE_GLYPHS).toEqual({
       feature: 'sparkles',
       bug: 'bug',

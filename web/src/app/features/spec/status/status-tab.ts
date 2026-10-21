@@ -32,8 +32,8 @@ const ANCHORS = ['waiting', 'gates'] as const;
  * card (two columns from 900); wide is the bento (Why this next step and Progress by lane beside Gates and What is
  * open, Activity across both), the rail holding Where it stands (stage track, ring, next command, first takeable claim,
  * warnings, gate rows), Waiting on you and the key line: the shared `app-spec-rail`, which `SpecPage` registers for every
- * spec-detail tab (spec 024: the prototype's `whereCard` and `waitingCard`). What is open ends with the held tasks and
- * their hold reason from the Tasks route (the prototype's `.o-line.held`). The gate button and its dialog are the shared
+ * spec-detail tab (spec 024: Where it stands and Waiting on you). What is open ends with the held tasks and
+ * their hold reason from the Tasks route (the `.o-line.held`). The gate button and its dialog are the shared
  * `app-gate-button` (T78); the agent banner lives in the spec head above every area.
  */
 @Component({
@@ -76,19 +76,19 @@ export class StatusTab {
   readonly tasks = this.store.tasks;
   readonly timeline = this.store.timeline;
 
-  /** The prototype's claim glyph: ◐ takeable, ○ blocked or open; a taken claim shows the lock icon instead. */
+  /** The claim glyph: ◐ takeable, ○ blocked or open; a taken claim shows the lock icon instead. */
   protected glyph(state: string): string {
     return state === 'takeable' ? '◐' : '○';
   }
 
-  /** The prototype's gate-card icon: check passed, alert stale or warning, flag for a missing review mark, x otherwise. */
+  /** The gate-card icon: check passed, alert stale or warning, flag for a missing review mark, x otherwise. */
   protected gateIcon(name: string, state: GateState): 'check' | 'triangle-alert' | 'flag' | 'x' {
     if (state === 'ok' || state === 'fresh') return 'check';
     if (state === 'stale' || state === 'warn') return 'triangle-alert';
     return name === 'reviewed' && state === 'missing' ? 'flag' : 'x';
   }
 
-  /** The prototype's activity icons: clock for a round, server for an agent, file for a note or decision, git otherwise. */
+  /** The activity icons: clock for a round, server for an agent, file for a note or decision, git otherwise. */
   protected activityIcon(kind: string): 'clock' | 'server' | 'file' | 'git-commit-horizontal' {
     if (kind === 'round') return 'clock';
     if (kind === 'agent') return 'server';

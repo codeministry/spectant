@@ -5,17 +5,17 @@ import { RailContent } from '../shell/rail-content';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
-/** Counts that ask for the reader's attention take the prototype's orange text tone; the rest stay muted. */
+/** Counts that ask for the reader's attention take the orange text tone; the rest stay muted. */
 const ATTENTION = new Set(['needsYou', 'waiting']);
 
 /**
- * The rail's fold control at wide (ISC-75, T38; spec 024 aligns it with the prototype's rail fold, principal
- * 2026-10-13). Expanded, it is the prototype's `.rail-tools`: a quiet `›` (`chevron-right`) sitting just outside the
- * rail's top-left edge (shell.css positions the host). Collapsed, the rail column shrinks to the prototype's 32 px
+ * The rail's fold control at wide (ISC-75, T38; spec 024 sets the rail fold, principal
+ * 2026-10-13). Expanded, it is the rail's tools: a quiet `›` (`chevron-right`) sitting just outside the
+ * rail's top-left edge (shell.css positions the host). Collapsed, the rail column shrinks to a 32 px
  * track and this is its quiet `‹` (`chevron-left`) tab, sticky with the rail, sliding in; under it the app's own
  * counts stay as small mono numbers (waiting on you and warnings, or a view's own badges such as the board's This
- * frame and Needs you), so the folded rail still signals open work. Both icons are colour-only on hover (prototype
- * "Panel toggles: pure icon"). A toggle hands focus to the counterpart control. The choice is `railCollapsed` in
+ * frame and Needs you), so the folded rail still signals open work. Both icons are colour-only on hover (pure
+ * icons). A toggle hands focus to the counterpart control. The choice is `railCollapsed` in
  * `/api/settings` (`ShellState.toggleRail`) and survives a reload.
  */
 @Component({

@@ -102,7 +102,7 @@ describe("local", () => {
 
   test("fonts.css sets the text, display and mono stacks and tabular numbers on the body", () => {
     const css = read("src", "styles", "fonts.css");
-    // The prototype's stacks and names (spec 024, ISC-146); the app's names alias them.
+    // The base stacks hold the families (spec 024, ISC-146); the names the components write alias them.
     expect(css).toMatch(/--font-ui:\s*"Manrope",/);
     expect(css).toMatch(/--font-brand:\s*"Sora",/);
     expect(css).toMatch(/--font-mono:\s*"JetBrains Mono",/);

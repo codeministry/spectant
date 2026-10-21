@@ -1,5 +1,5 @@
 /*
- * The KPI band, ported from the prototype (`styles.css` kpi-band and Pulse, design.md § Prototype port), six tiles
+ * The KPI band (the wide band and its compact Pulse card, spec 024 design.md), six tiles
  * since spec 021 (ISC-245). The form follows the tier the shell measures on its container (`data-tier`, compact < 640,
  * medium 640–1119, wide ≥ 1120), never the viewport, so the band keeps its form in a 600 px cmux panel and
  * full-window alike (ISC-63). Only placement and the band's own markup live here; the tile anatomy is

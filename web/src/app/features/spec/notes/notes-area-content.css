@@ -1,7 +1,7 @@
 /* NotesArea's second stylesheet, after notes-area.css in styleUrls: the preview, the delete dialog, the anchor
  * picker and the empty states. Not encapsulated like the first: every selector starts with app-notes-area. */
 
-/* The preview as the prototype's `.md`: 15/26, Sora headings, code on raised, pre on lane. */
+/* The preview: 15/26, Sora headings, code on raised, pre on lane. */
 app-notes-area .notes-preview {
   max-inline-size: 72ch;
   min-inline-size: 0;
@@ -97,14 +97,14 @@ app-notes-area .notes-none-hint {
   color: var(--muted-ink);
 }
 
-/* The prototype's `.btn.danger`: red tint, red ink, red frame. */
+/* The `.btn.danger`: red tint, red ink, red frame. */
 app-notes-area .notes-danger {
   border-color: var(--color-error);
   background: var(--fail-t);
   color: var(--fail-text);
 }
 
-/* The anchor picker as the prototype's `.anchor-pop` (search on lane, `.pop-item` rows, id in mono). */
+/* The anchor picker: search on lane, `.pop-item` rows, id in mono. */
 app-notes-area .notes-anchor-pop {
   --ui-popover-width: 280px;
 }
@@ -191,7 +191,7 @@ app-notes-area .notes-pick-group {
 }
 
 
-/* The prototype's small `[data-ui="empty-state"]` in the list and the editor: start-aligned, bare muted icon, 15/24. */
+/* The small `[data-ui="empty-state"]` in the list and the editor: start-aligned, bare muted icon, 15/24. */
 app-notes-area[data-view] ui-empty-state {
   gap: 8px;
   justify-items: start;

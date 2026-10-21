@@ -301,7 +301,7 @@ const WORKSPACE_NAMES = ['harbor', 'lantern'];
 const CATALOG_KEY = /\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+\b/u;
 
 /**
- * A segment is the route's workspace, the catalog value at a key, a literal, or (spec 024: the prototype eyebrows carry
+ * A segment is the route's workspace, the catalog value at a key, a literal, or (spec 024: the page eyebrows carry
  * a count, `HARBOR · BOARD · 12 CARDS`) a count with an optional unit word; `null` asserts only "no workspace named".
  */
 type Segment = { ws: true } | { key: string } | { literal: string } | { count: true };
@@ -313,7 +313,7 @@ interface EyebrowPage {
   /** The visible h1, where design.md fixes it. */
   readonly h1?: RegExp;
   /**
-   * Spec 024 (prototype `spec-head-unified`): below 640 the idea's labels stack between the path and the h1, so at the
+   * Spec 024 (the unified head `spec-head-unified`): below 640 the idea's labels stack between the path and the h1, so at the
    * compact tier the eyebrow-to-h1 gap leaves out this element's box and its 8 px row gap.
    */
   readonly compactBetween?: string;
@@ -324,9 +324,9 @@ const EYEBROW_PAGES: readonly EyebrowPage[] = [
   // spec 058: the dashboard's eyebrow reads `WS · DASHBOARD` without a count, its h1 "Dashboard · <ws>".
   { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.dashboard' }], h1: /^\s*Dashboard\s*·\s*\S+\s*$/u },
   // spec 058: the Specs page's eyebrow ends in `shell.pages.summary.specs` (`6 ACTIVE · 2 ARCHIVED`), its h1 reads
-  // "Specs · <ws>" (spec 024 prototype value).
+  // "Specs · <ws>" (spec 024).
   { name: 'specs', path: `/w/${WORKSPACE}/specs`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }, { count: true }], h1: /^\s*Specs\s*·\s*\S+\s*$/u },
-  // spec 024: the prototype eyebrows of board, features and milestones end in their count; the idea's ends in its slug.
+  // spec 024: the eyebrows of board, features and milestones end in their count; the idea's ends in its slug.
   { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { count: true }] },
   {
     name: 'idea',
@@ -334,7 +334,7 @@ const EYEBROW_PAGES: readonly EyebrowPage[] = [
     segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }, { literal: IDEA }],
     compactBetween: '[data-idea-chips]',
   },
-  // spec 024: prototype value (principal: the prototype wins) — the help eyebrow reads SPECTANT · GUIDE.
+  // spec 024: the help eyebrow reads SPECTANT · GUIDE.
   { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.eyebrow' }] },
   { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
 ];

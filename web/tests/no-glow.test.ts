@@ -1,11 +1,11 @@
-// Glow guard for design.md § Surfaces (spec 002), as amended by the master decision of 2026-09-29 ("top edge yes,
-// glow yes, as in the prototype"): surfaces stay flat, with one exception, the prototype's corner glow (`.card.glow`,
-// `styles.css:118-123`) on the card primitive's glow variant. This guard reads every stylesheet and every component
+// Glow guard for design.md § Surfaces (spec 002), as amended by the master decision of 2026-09-29 (cards keep their
+// top edge and corner glow): surfaces stay flat, with one exception, the corner glow (`:host([data-glow])::after`)
+// on the card primitive's glow variant. This guard reads every stylesheet and every component
 // (inline `styles` and templates) under `web/src` and fails on:
 //
 // - a class named `glow`, as a selector or in a template (the glow is `ui-card`'s `glow` input, never a class);
 // - a `box-shadow` layer outside the flat set: `none`, the inherited hairline `var(--shadow)` (never on a card), the
-//   prototype's `var(--shadow-hair)` (0 1px 2px, the pressed segment; spec 024 ISC-148), the focus halo `0 0 0 4px var(--focus-halo)` (ISC-64) and blur-free `inset` edges;
+//   hairline `var(--shadow-hair)` (0 1px 2px, the pressed segment; spec 024 ISC-148), the focus halo `0 0 0 4px var(--focus-halo)` (ISC-64) and blur-free `inset` edges;
 // - a `text-shadow` or a `drop-shadow()` filter;
 // - a `radial-gradient()` anywhere but in `ui-card`'s glow variant, the `:host([data-glow])::after` rule (a scroll
 //   region's edge fade is a `linear-gradient`, spec 002 design.md § Tables).

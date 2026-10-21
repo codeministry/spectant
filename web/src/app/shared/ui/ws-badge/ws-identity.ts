@@ -1,16 +1,16 @@
 /**
- * Workspace identity, the display half (spec 024 T54, prototype `identity.js`): the accent names, the monogram, the
+ * Workspace identity, the display half (spec 024 T54): the accent names, the monogram, the
  * name hash and the name pattern that stands in where no screenshot exists. Pure functions only; where an identity
  * comes from (core's workspace name, or the demo fixture through `DemoData`) is the caller's business.
  */
 
-/** The prototype's accent token names (`identity.js` `TOKENS`). */
+/** The accent names a workspace identity picks from. */
 export type WsAccent = 'teal' | 'cyan' | 'lime' | 'violet' | 'orange' | 'yellow' | 'green' | 'red';
 
 const ACCENTS: readonly WsAccent[] = ['teal', 'cyan', 'lime', 'violet', 'orange', 'yellow', 'green', 'red'];
 
 /**
- * Each prototype accent on the app's tokens (`web/tests/prototype-token-map.ts`): `mark` is the colour itself (tint,
+ * Each accent on the app's tokens: `mark` is the colour itself (tint,
  * ring, cover edge), `ink` its contrast-tuned text (`--*-text`; teal has none, its ink is `--teal-content`).
  */
 export const WS_ACCENT_TOKENS: Readonly<Record<WsAccent, { readonly mark: string; readonly ink: string }>> = {
@@ -24,19 +24,19 @@ export const WS_ACCENT_TOKENS: Readonly<Record<WsAccent, { readonly mark: string
   red: { mark: 'var(--color-error)', ink: 'var(--fail-text)' },
 };
 
-/** FNV-1a over the name, as the prototype's `hash`. */
+/** FNV-1a over the name, 32 bit. */
 export function wsHash(name: string): number {
   let h = 2166136261;
   for (const c of name) h = Math.imul(h ^ (c.codePointAt(0) ?? 0), 16777619);
   return h >>> 0;
 }
 
-/** The accent a name gets without a stored one: one of the first five tokens by its hash (prototype `accent`). */
+/** The accent a name gets without a stored one: one of the first five tokens by its hash. */
 export function wsAccent(name: string): WsAccent {
   return ACCENTS[wsHash(name) % 5] ?? 'cyan';
 }
 
-/** Two initials: the first letters of the first two words, else the first two letters (prototype `mono`). */
+/** Two initials: the first letters of the first two words, else the first two letters. */
 export function wsMonogram(name: string): string {
   const words = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
   if (words.length === 0) return '?';

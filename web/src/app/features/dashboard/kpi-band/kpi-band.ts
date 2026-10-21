@@ -87,12 +87,12 @@ export function kpiTileOf(path: string): KpiTile | null {
 }
 
 /**
- * The dashboard's KPI band (T61, ported in T87 from the prototype's `app.js` kpiBand and `styles.css` kpi-band /
- * Pulse; six tiles since spec 021, ISC-245): Master claims with its ring (112 px, 88 at wide), Spec claims with a lime
+ * The dashboard's KPI band (T61, reworked in T87 into the wide band and the compact Pulse card; six tiles since
+ * spec 021, ISC-245): Master claims with its ring (112 px, 88 at wide), Spec claims with a lime
  * meter, Specs (complete of all, with the stage-group split; its legend below wide only), Takeable now (of the open claims), Warnings and Open
  * fog (each with the specs it sits in). Every tile shows its number with a reference, a fraction or "of N", and a
  * statement line that says in words which direction is good; the archived count lives in the spec list's head. Every
- * tile is a `ui-card` with the prototype's explicit edge and glow (hero glow only). The shell's tier (`data-tier`)
+ * tile is a `ui-card` with an explicit edge and glow (hero glow only). The shell's tier (`data-tier`)
  * places them: wide one row with a wider master tile, medium three columns by two rows, compact the Pulse card (the
  * master row and the spec-claims meter over a 2 × 2 grid). Both forms live in the DOM and the tier shows one. Tiles
  * with a destination are links: Specs, Takeable and Fog on the Specs page `/w/:ws/specs` with their query state, Warnings

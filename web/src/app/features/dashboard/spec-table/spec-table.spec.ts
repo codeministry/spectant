@@ -71,7 +71,7 @@ beforeEach(() => {
   TestBed.configureTestingModule({ providers: [{ provide: ShellData, useClass: FakeShellData }] });
 });
 
-describe('SpecTable (prototype port, T89)', () => {
+describe('SpecTable (T89)', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [

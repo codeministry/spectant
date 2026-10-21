@@ -1,7 +1,7 @@
-// Type-scale guard for ISC-17 (T86): the prototype's type scale (spec 001 design.md § Prototype port,
-// `.design/prototype/prototyp/public/spectant-ui/styles.css`, lines named per step below) lives in `web/src/styles.css`
-// as Tailwind `@utility type-*` classes the ported components use. Each step is checked declaration by declaration,
-// so a drifted size, leading, weight or tracking fails here before a visual baseline has to catch it.
+// Type-scale guard for ISC-17 (T86): the app's type scale (spec 001 design.md; the element each step sets is named
+// per step below) lives in `web/src/styles.css` as Tailwind `@utility type-*` classes the components use. Each step
+// is checked declaration by declaration, so a drifted size, leading, weight or tracking fails here before a visual
+// baseline has to catch it.
 // The steps reuse the self-hosted font variables of `styles/fonts.css`; none may bring a font URL (ISC-67, ISC-74).
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -9,9 +9,9 @@ import { join } from "node:path";
 
 const STYLES = readFileSync(join(import.meta.dir, "..", "src", "styles.css"), "utf8");
 
-/** The prototype's steps: utility name → the declarations it must carry, verbatim. */
+/** The scale's steps: utility name → the declarations it must carry, verbatim. */
 const SCALE: Record<string, Record<string, string>> = {
-  // `.eyebrow` l.64; secondary text reads in `--muted-ink` (ISC-65), the prototype's `--muted` value here.
+  // Eyebrow labels; secondary text reads in `--muted-ink` (ISC-65), the contrast-safe ink, not `--muted`.
   "type-eyebrow": {
     "font-size": "11px",
     "line-height": "16px",
@@ -20,9 +20,9 @@ const SCALE: Record<string, Record<string, string>> = {
     "text-transform": "uppercase",
     color: "var(--muted-ink)",
   },
-  // `.meta` l.65
+  // Meta lines
   "type-meta": { "font-size": "12px", "line-height": "16px", color: "var(--muted-ink)" },
-  // `.page-head h1` l.184; the page title is the one Sora heading (fonts.css, design.md "Tokens and type").
+  // The page head's `h1`; the page title is the one Sora heading (fonts.css, design.md "Tokens and type").
   "type-page-title": {
     "font-family": "var(--font-display)",
     "font-size": "24px",
@@ -30,30 +30,30 @@ const SCALE: Record<string, Record<string, string>> = {
     "font-weight": "600",
     "letter-spacing": "-0.01em",
   },
-  // `.section-head` l.100, `.spec-table .t-head h2` l.364
+  // Section heads and the spec table's head `h2`
   "type-section-title": { "font-size": "16px", "line-height": "24px", "font-weight": "600" },
-  // `.c-head h3, .sblock h3` l.570: `600 15px/24px var(--font-brand)`; the brand face is `--font-display` here.
+  // Card and block `h3` titles: `600 15px/24px` in the brand face, written as `--font-display` here.
   "type-card-title": {
     "font-family": "var(--font-display)",
     "font-size": "15px",
     "line-height": "24px",
     "font-weight": "600",
   },
-  // `[data-ui="kpi-tile"] .val` l.301
+  // A KPI tile's value
   "type-kpi-value": { "font-size": "32px", "line-height": "40px", "font-weight": "600", "letter-spacing": "-0.02em" },
-  // `.hero-val` l.309
+  // The hero value
   "type-hero-value": { "font-size": "40px", "line-height": "48px", "font-weight": "600", "letter-spacing": "-0.02em" },
-  // `[data-ui="kpi-strip"] .val` l.473 over the kpi-tile `.val` it refines (weight and tracking cascade from l.301).
+  // A KPI strip's value, a smaller KPI tile value (same weight and tracking).
   "type-strip-value": {
     "font-size": "22px",
     "line-height": "28px",
     "font-weight": "600",
     "letter-spacing": "-0.02em",
   },
-  // `[data-ui="ring"] .pct` l.274 and `.sm .pct` l.276
+  // The progress ring's percentage, full size and small
   "type-ring-pct": { "font-size": "22px", "line-height": "1", "font-weight": "600" },
   "type-ring-pct-sm": { "font-size": "15px", "line-height": "1", "font-weight": "600" },
-  // `[data-ui="chip"]` l.253
+  // Chips
   "type-chip": {
     "font-size": "11px",
     "font-weight": "600",

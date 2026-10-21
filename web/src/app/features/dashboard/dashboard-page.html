@@ -5,7 +5,7 @@
 } @else {
   <!-- Eyebrow `WS · DASHBOARD` without a count (spec 058, design.md § Across viewports). -->
   <ui-page-head [segments]="[page.ws(), ('shell.pages.dashboard' | transloco)]">
-    <!-- Prototype `page-head` h1: the workspace badge (`ws-badge page-mark`), "Dashboard" and the muted "· <ws>". -->
+    <!-- The page head's h1: the workspace badge (`ws-badge page-mark`), "Dashboard" and the muted "· <ws>". -->
     <div class="h1-row" ngProjectAs="h1">
       <ui-ws-badge class="page-mark" size="page" [name]="page.ws()" [logo]="data.wsImages().logo" aria-hidden="true" />
       <h1 class="type-page-title">{{ 'shell.pages.dashboard' | transloco }} <span class="h1-ws">· {{ page.ws() }}</span></h1>
@@ -28,7 +28,7 @@
     <ui-skeleton class="skeleton-kpi" data-skeleton="kpi-band" height="96px" />
     <ui-skeleton class="skeleton-next-up" data-skeleton="next-up" height="160px" />
   }
-  <!-- Prototype `.footer-note` of `pageWorkspace` (spec 024): where the page is read from. -->
+  <!-- The workspace page's footer note (spec 024): where the page is read from. -->
   @if (page.pathTail()) {
     <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: page.pathTail() } }}</p>
   }

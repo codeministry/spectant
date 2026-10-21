@@ -37,7 +37,7 @@ export interface BriefModel {
 }
 
 /**
- * The Brief (T62, ported in T88 from the prototype's `[data-ui="brief"]`, `styles.css:342-349`): the workspace's TL;DR
+ * The Brief (T62, restyled in T88): the workspace's TL;DR
  * under the KPI band, a card with a violet 3 px left edge. The header reads "TL;DR" (mono), "as of <date>" from
  * `generated:` and, when the model says so, a "stale" chip. No command chip: the Spec plugin has no command that writes
  * `specs/tldr.md` (spec 031, ISC-265), so the card names none. The

@@ -28,7 +28,7 @@
  *
  * Every failing element is reported as `<data-gallery or text snippet>: <ratio> (<fg> on <bg>)`, plus the colour it
  * was painted from when opacity or alpha changed it. Zero failures is the threshold, except the pairs the DS-APP-32/33
- * adaptation names (ISC-146.1: the prototype's value wins over a contrast correction): a sample below the line passes
+ * adaptation names (ISC-146.1: the token value is kept over a contrast correction): a sample below the line passes
  * only when its painted foreground and surface match an entry of `web/tests/contrast-exceptions.ts` for its theme and
  * line, each channel within 1. That list is the one `web/tests/tokens.test.ts` holds exact against the tokens; the
  * accepted samples are printed as annotations. The two known-narrow values (design.md § Contrast: muted text ≈ 4.6:1,
@@ -268,7 +268,7 @@ function scan(target: 'gallery' | 'header'): Scan {
   for (const meter of root.querySelectorAll('ui-meter[data-gallery^="meter"]')) {
     const name = meter.getAttribute('data-gallery') ?? 'meter';
     // The track is the meter's own background, so it is painted once, on top of the parent's chain: sampled at the
-    // meter it would be painted twice, which a translucent track (the prototype's 45 %, spec 024) cannot afford.
+    // meter it would be painted twice, which a translucent track (45 %, spec 024) cannot afford.
     const s = sample(`${name} track`, 'track', getComputedStyle(meter).backgroundColor, meter.parentElement ?? meter, meter.parentElement);
     if (s) samples.push(s);
     for (const [i, part] of [...meter.querySelectorAll('.fill, .seg')].filter(sized).entries()) {
@@ -288,7 +288,7 @@ function scan(target: 'gallery' | 'header'): Scan {
     for (const [i, bar] of [...track.querySelectorAll('.bar')].filter(sized).entries()) {
       const state = bar.getAttribute('data-state') ?? bar.parentElement?.getAttribute('data-state') ?? '?';
       // Painted once on the parent's chain, like the meter track: the segment's colour is its own background, and the
-      // pending segment is translucent (the prototype's 55 %, spec 024).
+      // pending segment is translucent (55 %, spec 024).
       const s = sample(`${name} segment ${String(i)} (${state})`, 'segment', getComputedStyle(bar).backgroundColor, bar.parentElement ?? bar, bar.parentElement);
       if (s) samples.push(s);
     }

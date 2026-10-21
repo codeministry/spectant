@@ -1,4 +1,4 @@
-/* The library's reader (spec 017, T34; design.md 017 § 7 Reader): prototype `lib-reader`, 24 px padding, 20 px gap.
+/* The library's reader (spec 017, T34; design.md 017 § 7 Reader): 24 px padding, 20 px gap.
    The type tag `.lib-type` is the list's, styled by the page; the prose is `ui-doc-prose`'s own. */
 
 :host {

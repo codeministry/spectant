@@ -46,7 +46,7 @@ export const ICON_NAMES = [
   'search',
   'x',
   'chevron-right',
-  'chevron-left', // spec 024: the prototype's rail tab (`‹`, "Show side panel")
+  'chevron-left', // spec 024: the rail tab (`‹`, "Show side panel")
   'folder-plus',
   'archive',
   'keyboard',
@@ -92,7 +92,7 @@ export const ICON_NAMES = [
   // Spec 008, folding a board column by hand.
   'fold-horizontal',
   'unfold-horizontal',
-  // Spec 024: the prototype's icons not covered above, by the names of `prototype-map.ts` (ISC-147).
+  // Spec 024: the icon keys not covered above, by the names of `icon-map.ts` (ISC-147).
   'anchor',
   'arrow-down-up',
   'arrow-right',
@@ -128,7 +128,7 @@ export const ICON_NAMES = [
   'zoom-in',
   'zoom-out',
   'rotate-ccw',
-  // Spec 024: the unheld claim line of the Features page (prototype `claim-line`).
+  // Spec 024: the unheld claim line of the Features page.
   'circle',
   // Spec 027: the timeline's worktree markers, merged into main and worktree removed (ISC-175.1).
   'git-merge',

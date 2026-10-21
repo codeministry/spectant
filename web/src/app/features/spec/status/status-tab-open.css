@@ -3,7 +3,7 @@
  * card icons, the open groups with their claim glyph, the fog line, the held tasks, the activity rows and the empty state.
  */
 
-/* T43: the prototype's gate-card icon, the open groups with their claim glyph, the fog line and the activity icons. */
+/* T43: the gate-card icon, the open groups with their claim glyph, the fog line and the activity icons. */
 .gate-icon {
   flex: none;
   color: var(--muted-ink);
@@ -67,7 +67,7 @@
   color: var(--muted-ink);
 }
 
-/* The prototype's `.o-line.held`: a held task, its clock and its reason in muted ink. */
+/* The `.o-line.held`: a held task, its clock and its reason in muted ink. */
 .held-row {
   color: var(--muted-ink);
 }
@@ -80,7 +80,7 @@
   color: inherit;
 }
 
-/* Prototype `.act-line`: 13 px muted rows, 10 px gaps; `.round-sum` 14 px above them. */
+/* The activity lines: 13 px muted rows, 10 px gaps; `.round-sum` 14 px above them. */
 .activity-row {
   gap: 4px 10px;
   color: var(--muted-ink);
@@ -105,7 +105,7 @@
   font-weight: 600;
 }
 
-/* Prototype `.status-empty`: "All claims closed, no fog" with the green check, then "Ready for <command>". */
+/* `.status-empty`: "All claims closed, no fog" with the green check, then "Ready for <command>". */
 .status-empty {
   display: grid;
   gap: 8px;

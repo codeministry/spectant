@@ -7,8 +7,8 @@
 // - declare no method, function or export named like a write (`write`, `save`, `put`, `post`, `delete`, `update`, …);
 //
 // and no file outside the folder imports a fixture module directly: features go through `DemoData`
-// (`shared/demo/demo-data.ts`). The e2e half (no write, no non-loopback request from a mock) is `parity.spec.ts`
-// group `demo` (T47).
+// (`shared/demo/demo-data.ts`). The e2e half (no write, no non-loopback request from a mock) is `web/e2e/demo.spec.ts`
+// (T47).
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";

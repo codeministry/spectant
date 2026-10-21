@@ -90,7 +90,7 @@ export function workspacesSource(): PaletteSource {
       data.workspaceList().map((ws) => ({
         id: ws.slug,
         label: ws.name,
-        // The prototype's meta "6 specs"; the path tail stays a search key.
+        // The meta is the spec count ("6 specs"); the path tail stays a search key.
         meta: specCountOf(ws.counts) === null ? ws.pathTail : t(specCountOf(ws.counts) === 1 ? 'palette.wsSpecs.one' : 'palette.wsSpecs.other', { count: specCountOf(ws.counts) }),
         link: ['/w', ws.slug],
         keywords: [ws.slug, ws.pathTail],

@@ -8,7 +8,7 @@ import { openClaims } from './status-model';
 
 /** Timeline entries shown under Activity; the Timeline tab holds the rest. */
 const ACTIVITY_LIMIT = 5;
-/** What is open, grouped as the prototype does: takeable, taken, blocked, then anything else still open. */
+/** What is open, grouped in this order: takeable, taken, blocked, then anything else still open. */
 const OPEN_ORDER: readonly string[] = ['takeable', 'taken', 'blocked', 'open'];
 
 /**
@@ -43,7 +43,7 @@ export class StatusStore {
     return result?.kind === 'ok' ? { claims: openClaims(result.body.claims), fog: result.body.fog } : null;
   });
 
-  /** The prototype's held line (`T16 held · seam T14 not landed`): every task a round held, with the round's reason. */
+  /** The held line (`T16 held · seam T14 not landed`): every task a round held, with the round's reason. */
   readonly held = computed(() => {
     const result = this.tasks.value();
     return result?.kind === 'ok' && result.body !== null ? result.body.tasks.filter((task) => task.status === 'held') : [];
@@ -60,7 +60,7 @@ export class StatusStore {
     return result?.kind === 'ok' ? result.body.slice(0, ACTIVITY_LIMIT) : null;
   });
 
-  /** The prototype's `round-sum`: the newest round entry, its lead ("Round 3") bold, the rest after a middle dot. */
+  /** The `round-sum`: the newest round entry, its lead ("Round 3") bold, the rest after a middle dot. */
   readonly roundSummary = computed(() => {
     const round = this.activity()?.find((entry) => entry.kind === 'round');
     if (!round) return null;

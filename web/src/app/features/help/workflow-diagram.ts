@@ -90,7 +90,7 @@ export const ROLE_EDGE: Readonly<Record<StageRole, string>> = {
 
 /**
  * A node's left edge per stage: the same token the board's card carries (`CARD_EDGE`, board-card.ts), held equal by
- * the spec. Spec 024: the prototype board colours a blocked column red, so blocked leaves its detour role's grey.
+ * the spec. Spec 024: the board colours a blocked column red, so blocked leaves its detour role's grey.
  */
 export const STAGE_EDGE: Readonly<Record<WorkflowStage, string>> = {
   ...(Object.fromEntries(Object.entries(ROLE).map(([stage, role]) => [stage, ROLE_EDGE[role]])) as Record<WorkflowStage, string>),

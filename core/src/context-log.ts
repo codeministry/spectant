@@ -1,6 +1,6 @@
-// The structured reading of two Docs tab files (spec 024, ISC-149; the prototype's Decisions and Constitution tabs):
+// The structured reading of two Docs tab files (spec 024, ISC-149; the Decisions and Constitution tabs):
 // context.md's question rounds and the constitution's lanes and gate tiers. The Docs tabs still render the whole
-// file through `markdown-docs.ts`; this module adds the blocks the prototype shows as cards above or instead of the
+// file through `markdown-docs.ts`; this module adds the blocks the tabs show as cards above or instead of the
 // prose. Pure and deterministic, no Bun or Node API: the web bundle may import it. The `##`/`###` block split is the
 // one timeline.ts uses for its decision entries.
 import type { ConstitutionLane, ConstitutionView, DecisionLog, DecisionOption, DecisionQuestion, GateTier } from './files.ts';

@@ -116,7 +116,7 @@ describe('ClaimsTab (ISC-81)', () => {
   describe('against the harbor 002 golden', () => {
     beforeEach(() => setUp(HARBOR_002));
 
-    // spec 024: prototype value (principal: the prototype wins) — the All view folds each feature's closed claims behind
+    // spec 024: the All view folds each feature's closed claims behind
     // its `+ N more` row (from six closed, the last three stay), so a group lists the rest first, then the folded ones.
     it('renders one card per claim of the golden, per feature in file order with the closed ones folded last', async () => {
       const { root } = await open('/w/harbor/s/002/claims');

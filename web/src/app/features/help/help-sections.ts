@@ -60,7 +60,7 @@ export type KeyContext = ShortcutSheetContext;
 /** `SHORTCUTS` grouped by context and group exactly as the `?` sheet lists them: the one table, never a copy. */
 export const KEY_CONTEXTS: readonly KeyContext[] = SHORTCUT_SHEET;
 
-/** A node colour of the lifecycle bands (prototype `WFC`): start, files written, your gate, agents at work, done. */
+/** A node colour of the lifecycle bands: start, files written, your gate, agents at work, done. */
 export type LifecycleTone = 'start' | 'files' | 'gate' | 'agents' | 'done';
 
 /**
@@ -69,7 +69,7 @@ export type LifecycleTone = 'start' | 'files' | 'gate' | 'agents' | 'done';
  */
 export type LifecycleStep = WorkflowStage | 'design' | 'archive';
 
-/** One node of the lifecycle bands (prototype help `wf-node`, spec 024 sweep): a step of a feature, in order. */
+/** One node of the lifecycle bands (`wf-node`, spec 024 sweep): a step of a feature, in order. */
 export interface LifecycleNode {
   readonly stage: LifecycleStep;
   /** The step's name: `stages.<stage>`, or `help.lifecycle.steps.<step>` for a step that is no stage. */
@@ -124,7 +124,7 @@ const step = (stage: 'design' | 'archive', command: string, file: string, tone: 
 });
 
 /**
- * The lifecycle in two bands (prototype help "How a spec moves": "Shape & plan", "Build & finish"): a feature's
+ * The lifecycle in two bands (Help "How a spec moves": "Shape & plan", "Build & finish"): a feature's
  * stages with the command core's stage table names for each, and the files those commands write. Every option shows:
  * the design pass for a UI spec before the plan, the code review as optional (per spec, once per feature or voluntary,
  * as the workspace's `specs/workflow.md` says; spec 028) and the archive after done.
@@ -157,10 +157,10 @@ export const LIFECYCLE: readonly LifecycleBand[] = [
 /** The chain under the bands: every step of the lifecycle in order, the optional ones marked. */
 export const STAGE_CHAIN: readonly LifecycleNode[] = LIFECYCLE.flatMap((band) => band.nodes);
 
-/** The lifecycle legend (prototype `.wf-legend`), one swatch per tone. */
+/** The lifecycle legend (`.wf-legend`), one swatch per tone. */
 export const LIFECYCLE_TONES: readonly LifecycleTone[] = ['start', 'files', 'gate', 'agents', 'done'];
 
-/** One row of the prototype type table (help "How a spec moves"): which of spec.md, plan.md and tasks.md a type has. */
+/** One row of the type table (help "How a spec moves"): which of spec.md, plan.md and tasks.md a type has. */
 export interface HelpTypeFiles {
   readonly type: SpecType;
   readonly plan: boolean;
@@ -175,7 +175,7 @@ export const HELP_TYPE_FILES: readonly HelpTypeFiles[] = WORKFLOW_TYPES.map((typ
   return { type, plan, tasks, skips: [...(plan ? [] : ['plan']), ...(tasks ? [] : ['tasks'])] };
 });
 
-/** A command row of the prototype commands table: what it needs, what it writes and the command after it. */
+/** A command row of the commands table: what it needs, what it writes and the command after it. */
 export interface HelpCommandRow extends HelpCommand {
   readonly needs: string | null;
   readonly writes: string | null;

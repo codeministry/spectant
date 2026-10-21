@@ -130,7 +130,7 @@ export class UiGallery {
   ];
   protected readonly segment = signal('light');
 
-  // Prototype anatomy (ISC-148): the fixture's chip parts and the app chip that stands for each (primitives.spec.ts).
+  // Anatomy (ISC-148): the snapshot's chip parts and the app chip that stands for each (primitives.spec.ts).
   protected readonly chipIcon = chipIcon;
   protected readonly anatomyChips: ReadonlyArray<{ part: string; tone: Tone; variant: ChipVariant; icon: ReturnType<typeof chipIcon> }> = [
     { part: 'chip', tone: 'neutral', variant: 'status', icon: chipIcon('lane-chip') },

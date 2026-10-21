@@ -1,5 +1,5 @@
 /*
- * The lifecycle bands (prototype help `.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted canvas, two bands of five
+ * The lifecycle bands (`.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted canvas, two bands of five
  * nodes with a 3 px top edge in the node's tone, arrows between them, the loops and the tone legend underneath. An
  * optional step is dotted all round, its arrow too.
  */

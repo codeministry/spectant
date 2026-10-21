@@ -4,7 +4,7 @@
   max-inline-size: 100%;
 }
 
-/* spec 024: the prototype .agent: a pill on the lime tint, its dot pulsing; stale on the orange tint, the dot still. */
+/* spec 024: the .agent: a pill on the lime tint, its dot pulsing; stale on the orange tint, the dot still. */
 .chip {
   display: inline-flex;
   flex-wrap: wrap;

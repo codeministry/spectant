@@ -52,7 +52,7 @@
   overflow-wrap: anywhere;
 }
 
-/* spec 024: the prototype .needs-card, a 3 px edge in orange on the card. */
+/* spec 024: the .needs-card, a 3 px edge in orange on the card. */
 .needs-card {
   border-inline-start: 3px solid var(--color-warning);
 }
