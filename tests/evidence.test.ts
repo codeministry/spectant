@@ -13,11 +13,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { docsRenderOptions } from "../core/src/evidence.ts";
 import { specAsset } from "../core/src/markdown.ts";
-import { evidenceFileResponse } from "../server/src/evidence.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { evidenceFileHeaders, specRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { evidenceFileResponse } from "../server/src/infra/http/file-response.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { evidenceFileHeaders, specRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const HOST = { Host: "127.0.0.1:7717" };

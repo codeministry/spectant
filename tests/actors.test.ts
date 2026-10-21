@@ -8,10 +8,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { actorsApi } from "../server/src/api.ts";
-import { getActor, listActors, openDatabase } from "../server/src/db.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { ACTORS_ALLOW, ACTORS_PATH, type ActorMapping, JSON_ANSWER } from "../server/src/spec-routes.contract.ts";
+import { actorsApi } from "../server/src/settings/index.ts";
+import { getActor, listActors, openDatabase } from "../server/src/infra/db/db.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { ACTORS_ALLOW, ACTORS_PATH, type ActorMapping, JSON_ANSWER } from "../server/src/contracts/spec-routes.contract.ts";
 
 const HOST = { Host: "127.0.0.1:7717" };
 const HARBOR: ActorMapping = { id: "u:3f9c0a7d", displayName: "Harbor Master", gitIdentities: ["harbor@example.org"] };

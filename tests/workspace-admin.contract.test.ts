@@ -2,7 +2,7 @@
 // image type comes from magic bytes alone (SVG and text never), the status follows from the read, the sort keys order
 // the page, and the body parsers admit exactly the documented shapes.
 import { describe, expect, test } from "bun:test";
-import { SPEC_API_ROOT } from "../server/src/spec-routes.contract.ts";
+import { SPEC_API_ROOT } from "../server/src/contracts/spec-routes.contract.ts";
 import {
   DEFAULT_WORKSPACE_SORT,
   IMAGE_KINDS,
@@ -22,7 +22,7 @@ import {
   workspaceAdminRoutes,
   workspaceSortKeyOf,
   workspaceStatusOf,
-} from "../server/src/workspace-admin.contract.ts";
+} from "../server/src/contracts/workspace-admin.contract.ts";
 
 const bytes = (...values: number[]): Uint8Array => new Uint8Array(values);
 const ascii = (text: string): number[] => Array.from(new TextEncoder().encode(text));

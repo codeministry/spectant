@@ -6,9 +6,9 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SCHEMA_VERSION } from "../server/src/db.ts";
-import { dbPath } from "../server/src/paths.ts";
-import { openRegistry, type Registry, RegistryError } from "../server/src/registry.ts";
+import { SCHEMA_VERSION } from "../server/src/infra/db/db.ts";
+import { dbPath } from "../server/src/infra/paths.ts";
+import { openRegistry, type Registry, RegistryError } from "../server/src/infra/db/registry.ts";
 
 let root: string;
 let data: string;

@@ -15,12 +15,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { actorIdOf } from "../core/src/actor-id.ts";
 import { activityReading } from "../core/src/locks.ts";
-import { dashboardApi } from "../server/src/api.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { ACTIVITY_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { ACTIVITY_PATH, WRITE_PATHS, writeAnswerOf } from "../server/src/writes.contract.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { ACTIVITY_HASH_HEADER, specRoutes, workspaceRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
+import { ACTIVITY_PATH, WRITE_PATHS, writeAnswerOf } from "../server/src/contracts/writes.contract.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const HOST = { Host: "127.0.0.1:7717" };

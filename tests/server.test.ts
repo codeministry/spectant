@@ -7,8 +7,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { createConnection } from "node:net";
 import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EmbeddedManifest } from "../server/src/assets.contract.ts";
-import { LOOPBACK_HOST, serve } from "../server/src/http.ts";
+import type { EmbeddedManifest } from "../server/src/contracts/assets.contract.ts";
+import { LOOPBACK_HOST, serve } from "../server/src/infra/http/server.ts";
 
 /** The only addresses ISC-1 allows the server to listen on. */
 const LOOPBACK_ADDRESSES = ["127.0.0.1", "::1"];

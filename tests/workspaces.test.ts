@@ -9,8 +9,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import type { EmbeddedManifest } from "../server/src/assets.contract.ts";
-import { run } from "../server/src/cli.ts";
+import type { EmbeddedManifest } from "../server/src/contracts/assets.contract.ts";
+import { run } from "../server/src/cli/index.ts";
 
 // The workspace commands never serve, so they never read the manifest.
 const manifest: EmbeddedManifest = { generatedAt: "2026-09-29T00:00:00.000Z", index: "", assets: [] };

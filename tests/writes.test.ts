@@ -19,11 +19,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { validateEventLine } from "../core/src/events.ts";
 import { readGateMark, reviewedGate } from "../core/src/gates.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { REVIEWED_HASHES_HEADER, type ReviewedHashes, SPEC_HASH_HEADER, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { readSpecFiles, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { REVIEWED_HASHES_HEADER, type ReviewedHashes, SPEC_HASH_HEADER, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
+import { readSpecFiles, readWorkspaceInput } from "../server/src/workspace/index.ts";
 import { buildDashboard } from "../core/src/dashboard.ts";
 import { actorIdOf } from "../core/src/actor-id.ts";
 import type { WorkflowStage } from "../core/src/files.ts";
@@ -31,7 +31,7 @@ import { parseFrontmatter } from "../core/src/frontmatter.ts";
 import { allocationOf } from "../core/src/allocate.ts";
 import { parseClaims } from "../core/src/claims.ts";
 import { readIdeas } from "../core/src/ideas.ts";
-import { gateHashes, writeAllocate, writeTransition } from "../server/src/writes.ts";
+import { gateHashes, writeAllocate, writeTransition } from "../server/src/writes/index.ts";
 import {
   NO_AGENT_SOURCE,
   REVIEWED_EVENT,
@@ -40,8 +40,8 @@ import {
   hasAgentSource,
   reviewedMarkText,
   writeAnswerOf,
-} from "../server/src/writes.contract.ts";
-import type { ApiHandler } from "../server/src/http.ts";
+} from "../server/src/contracts/writes.contract.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
 import { SPEC_FOLDER, SPEC_WORKTREE, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");

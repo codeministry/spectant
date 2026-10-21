@@ -5,9 +5,9 @@
 import { expect, spyOn } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type EmbeddedManifest, embeddedAssetFor } from "../../server/src/assets.contract.ts";
-import { run } from "../../server/src/cli.ts";
-import { EVENTS_PATH, LIVE_EVENT, type LiveUpdate, isLiveUpdate } from "../../server/src/spec-routes.contract.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../../server/src/contracts/assets.contract.ts";
+import { run } from "../../server/src/cli/index.ts";
+import { EVENTS_PATH, LIVE_EVENT, type LiveUpdate, isLiveUpdate } from "../../server/src/contracts/spec-routes.contract.ts";
 
 /** The claim's bound: change on disk to frame at the client. */
 export const LIVE_MS = 2_000;

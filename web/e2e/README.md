@@ -43,7 +43,8 @@ already running instead.
 ## The stub API
 
 `serve-dist.ts` answers `/api` with `stubApi()` from `stub-api.ts`: the same paths, shapes, status codes, headers and
-ETags as `server/src/api.ts` and `server/src/settings.ts`, but fed from files. A dashboard body is the golden
+ETags as the server's routes (`server/src/cli/routes.ts` lists them, `server/src/infra/http/json.ts` answers the JSON
+and its ETag, `server/src/settings/routes.ts` the settings), but fed from files. A dashboard body is the golden
 snapshot `core/fixtures/<fixture>.golden.json` as the server serializes it; the list's `counts` are that golden's
 `kpis`. `stub-api.test.ts` sends the same requests to the stub and to the real handlers and compares them byte for
 byte, so a server contract change fails there first.
@@ -58,7 +59,7 @@ byte, so a server contract change fails there first.
 | `GET/HEAD …/:slug/library/search?q=` | the `LibrarySearchResult` over the catalog's documents; `{query: '', hits: []}` for a blank `q` |
 | `GET/HEAD …/:slug/library/asset?path=` | the fixture tree's image under `specs/` (harbor `tech/overview.png`) with `evidenceFileHeaders` of core's `mediaTypeOf` and a strong ETag over the bytes; 403 for a path that leaves `specs/` (`..`, absolute, backslash, a second encoding layer, a symlink out) or a file that is not an image, 404 for no file |
 | `GET/HEAD /proto/:ws/:spec/:folder/*` | one file of a catalog prototype through core's resolver, every answer with `PROTOTYPE_CSP` (forwarded by `serve-dist.ts`) |
-| `GET/HEAD …/:ws/specs/:id` and every read route of `SPEC_ROUTE_TABLE` (`server/src/spec-routes.contract.ts`) | the per-spec value of the route's golden family, `core/fixtures/<tree>.<family>.golden.json` (`GOLDEN_FAMILY`, plus `live`); `:id` is `NNN`, the folder or the bare slug, archived specs too |
+| `GET/HEAD …/:ws/specs/:id` and every read route of `SPEC_ROUTE_TABLE` (`server/src/contracts/spec-routes.contract.ts`) | the per-spec value of the route's golden family, `core/fixtures/<tree>.<family>.golden.json` (`GOLDEN_FAMILY`, plus `live`); `:id` is `NNN`, the folder or the bare slug, archived specs too |
 | `…/evidence/file?path=` | core's `resolveEvidencePath` over the fixture tree's real `artifacts/` and `.evidence/`; the file with `evidenceFileHeaders`, 403 for what confinement refuses, 404 for no file |
 | `POST …/gate/reviewed`, `POST …/tasks/:tid/check` | the two writes, validated with the contract's `is…Request` (400), outcome scripted per request (below) |
 | `GET/HEAD /api/lifeos` | `{present}`: true only under the `frontier` lock fixture |

@@ -29,8 +29,8 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // The one import list of `server/src/` in this suite, so a module move touches one spot.
-import type { EmbeddedManifest } from "../server/src/assets.contract.ts";
-import { type RunOptions, run } from "../server/src/cli.ts";
+import type { EmbeddedManifest } from "../server/src/contracts/assets.contract.ts";
+import { type RunOptions, run } from "../server/src/cli/index.ts";
 
 const FILE = join(import.meta.dir, "fixtures", "golden", "cli.json");
 const RECORD = process.env.GOLDEN_RECORD === "1";

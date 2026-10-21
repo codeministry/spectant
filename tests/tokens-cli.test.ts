@@ -29,8 +29,8 @@ import { dirname, join, relative } from "node:path";
 import * as tls from "node:tls";
 import { EVENT_STAGES } from "../core/src/events.ts";
 import { BASELINE_COMMAND_KEYS, TOKEN_COUNTERS, TOKEN_ROW_KEYS, TOKEN_ROW_KINDS, type TokenRowKind } from "../core/src/tokens.ts";
-import * as paths from "../server/src/paths.ts";
-import { TOKENS_PATH, discoverTranscripts, encodeProjectPath, tokensCommand } from "../server/src/tokens-cli.ts";
+import * as paths from "../server/src/infra/paths.ts";
+import { TOKENS_PATH, discoverTranscripts, encodeProjectPath, tokensCommand } from "../server/src/tokens/index.ts";
 
 const HARBOR_SPECS = join(import.meta.dir, "..", "core", "fixtures", "harbor", "specs");
 const TRANSCRIPTS = join(import.meta.dir, "..", "core", "tests", "fixtures", "transcripts");

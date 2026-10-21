@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { API_ERRORS, SPEC_API_ROOT } from "../server/src/spec-routes.contract.ts";
+import { API_ERRORS, SPEC_API_ROOT } from "../server/src/contracts/spec-routes.contract.ts";
 import {
   ANCHOR_KINDS,
   NOTE_ERRORS,
@@ -27,7 +27,7 @@ import {
   parseNoteDraft,
   parseNotesQuery,
   validateNote,
-} from "../server/src/notes.contract.ts";
+} from "../server/src/contracts/note-routes.contract.ts";
 
 const ID = "3f2b8c1e-4a5d-4e6f-9a7b-1c2d3e4f5a6b";
 const NOW = "2026-09-29T10:00:00.000Z";

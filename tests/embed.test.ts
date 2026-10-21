@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ensureEmbedded } from "../scripts/dev.ts";
 import { manifestStatus } from "../scripts/embed.ts";
-import { EMBED_MANIFEST_PATH, WEB_OUTPUT_DIR, type EmbeddedManifest } from "../server/src/assets.contract.ts";
-import { manifestFailure, manifestHint } from "../server/src/manifest-load.ts";
+import { EMBED_MANIFEST_PATH, WEB_OUTPUT_DIR, type EmbeddedManifest } from "../server/src/contracts/assets.contract.ts";
+import { manifestFailure, manifestHint } from "../server/src/infra/manifest-load.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "scripts", "embed.ts");
 

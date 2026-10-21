@@ -31,8 +31,9 @@ import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/
 import type { PlanningModel } from "../core/src/planning.ts";
 import type { TechSectionHead, TechSectionKey } from "../core/src/tech.ts";
 import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
-import { WORKSPACES_PATH, type WorkspaceSummary, dashboardApi } from "../server/src/api.ts";
-import type { ActorRow } from "../server/src/db.ts";
+import { WORKSPACES_PATH, type WorkspaceSummary, type UnreadableCode as LoaderUnreadableCode } from "../server/src/workspace/index.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import type { ActorRow } from "../server/src/infra/db/db.ts";
 import {
   ACTORS_ALLOW,
   ACTORS_PATH,
@@ -116,8 +117,7 @@ import {
   specRoutes,
   workspaceRoutes,
   REVIEWED_HASH_FILES,
-} from "../server/src/spec-routes.contract.ts";
-import type { UnreadableCode as LoaderUnreadableCode } from "../server/src/workspace-loader.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const FIXTURES = join(ROOT, "core", "fixtures");

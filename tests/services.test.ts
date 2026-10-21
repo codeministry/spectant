@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type DevService, type HttpProbe, listServices, type LsofRun, probeHttp } from "../server/src/services.ts";
+import { type DevService, type HttpProbe, listServices, type LsofRun, probeHttp } from "../server/src/workspace/index.ts";
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {

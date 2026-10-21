@@ -24,11 +24,11 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { run } from "../server/src/cli.ts";
-import { dataDir, dbPath } from "../server/src/paths.ts";
-import { DEFAULT_SETTINGS } from "../server/src/settings.ts";
-import { IMAGE_KINDS, type WorkspaceImages, workspaceAdminRoutes } from "../server/src/workspace-admin.contract.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { run } from "../server/src/cli/index.ts";
+import { dataDir, dbPath } from "../server/src/infra/paths.ts";
+import { DEFAULT_SETTINGS } from "../server/src/settings/index.ts";
+import { IMAGE_KINDS, type WorkspaceImages, workspaceAdminRoutes } from "../server/src/contracts/workspace-admin.contract.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const NAMES = ["harbor", "lantern"] as const;

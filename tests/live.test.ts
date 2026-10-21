@@ -15,8 +15,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, cpSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { WORKSPACES_PATH, type WorkspaceSummary } from "../server/src/api.ts";
-import { EVENTS_ALLOW, EVENTS_PATH, type LiveUpdate, SPEC_API_ROOT, specRoutes } from "../server/src/spec-routes.contract.ts";
+import { WORKSPACES_PATH, type WorkspaceSummary } from "../server/src/workspace/index.ts";
+import { EVENTS_ALLOW, EVENTS_PATH, type LiveUpdate, SPEC_API_ROOT, specRoutes } from "../server/src/contracts/spec-routes.contract.ts";
 import { LIVE_MS, changeAndWait as changeAndWaitAt, openStream, serve } from "./fixtures/live-stream.ts";
 import { type PlantedWorktreeRepo, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 

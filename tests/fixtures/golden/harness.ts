@@ -20,9 +20,9 @@ import { expect, setSystemTime, spyOn } from "bun:test";
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type EmbeddedManifest, embeddedAssetFor } from "../../../server/src/assets.contract.ts";
-import { run } from "../../../server/src/cli.ts";
-import { WRITE_PATHS } from "../../../server/src/writes.contract.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../../../server/src/contracts/assets.contract.ts";
+import { run } from "../../../server/src/cli/index.ts";
+import { WRITE_PATHS } from "../../../server/src/contracts/writes.contract.ts";
 import { plantWorktreeRepo } from "../worktree-repo.ts";
 
 /** The write-path constant the write recording pins (re-exported, so the suite imports `server/src/` only here). */

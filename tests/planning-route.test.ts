@@ -16,16 +16,16 @@ import { join } from "node:path";
 import type { PlanningModel } from "../core/src/planning.ts";
 // The day every planning golden is built at: one constant, so moving the goldens' clock moves this route test with it.
 import { PLANNING_NOW } from "../core/tests/helpers/planning-model.ts";
-import { dashboardApi } from "../server/src/api.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
 import {
   GOLDEN_FAMILY,
   type WorkspaceRouteError,
   type WorkspaceRouteResponses,
   allowForWorkspace,
   workspaceRoutes,
-} from "../server/src/spec-routes.contract.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HOST = { Host: "127.0.0.1:7717" };

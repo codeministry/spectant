@@ -4,8 +4,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CACHE_CONTROL, type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { DEFAULT_PORT, LOOPBACK_HOST, serve } from "../server/src/http.ts";
+import { CACHE_CONTROL, type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { DEFAULT_PORT, LOOPBACK_HOST, serve } from "../server/src/infra/http/server.ts";
 
 const INDEX_HTML = "<!doctype html><title>spectant</title><script src=\"/main-ABCDEFGH.js\"></script>";
 const MAIN_JS = "console.log('spectant');\n";

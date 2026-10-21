@@ -24,8 +24,8 @@ import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathS
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveEdges } from "../core/src/spec-edges.ts";
-import { type GitRunner, MergeCache, defaultGitRunner, mergedSpecBranches } from "../server/src/git.ts";
-import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { type GitRunner, MergeCache, defaultGitRunner, mergedSpecBranches } from "../server/src/infra/git/index.ts";
+import { readWorkspaceInput } from "../server/src/workspace/index.ts";
 
 const DATE = "2026-03-08T12:00:00Z";
 

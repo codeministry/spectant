@@ -7,9 +7,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { openDatabase } from "../server/src/db.ts";
-import { type RunningServer, serve } from "../server/src/http.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { openDatabase } from "../server/src/infra/db/db.ts";
+import { type RunningServer, serve } from "../server/src/infra/http/server.ts";
 import {
   DEFAULT_SETTINGS,
   type Settings,
@@ -17,7 +17,7 @@ import {
   SettingsSchema,
   openSettings,
   settingsApi,
-} from "../server/src/settings.ts";
+} from "../server/src/settings/index.ts";
 
 let root: string;
 let data: string;

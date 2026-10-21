@@ -23,9 +23,9 @@ import {
   schemaVersion,
   setBoardQuery,
   upsertActor,
-} from "../server/src/db.ts";
-import { dbPath } from "../server/src/paths.ts";
-import { DEFAULT_SETTINGS, openSettings } from "../server/src/settings.ts";
+} from "../server/src/infra/db/db.ts";
+import { dbPath } from "../server/src/infra/paths.ts";
+import { DEFAULT_SETTINGS, openSettings } from "../server/src/settings/index.ts";
 
 let root: string;
 let data: string;

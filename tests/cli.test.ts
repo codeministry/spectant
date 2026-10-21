@@ -2,20 +2,20 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, te
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
-import { run } from "../server/src/cli.ts";
-import { DEFAULT_PORT, PORT_ATTEMPTS } from "../server/src/http.ts";
-import { openBrowser } from "../server/src/open-browser.ts";
-import { dataDir, dbPath, ensureDataDir } from "../server/src/paths.ts";
-import { DEFAULT_SETTINGS } from "../server/src/settings.ts";
+import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/contracts/assets.contract.ts";
+import { run } from "../server/src/cli/index.ts";
+import { DEFAULT_PORT, PORT_ATTEMPTS } from "../server/src/infra/http/server.ts";
+import { openBrowser } from "../server/src/infra/process/open-browser.ts";
+import { dataDir, dbPath, ensureDataDir } from "../server/src/infra/paths.ts";
+import { DEFAULT_SETTINGS } from "../server/src/settings/index.ts";
 import {
   TranscriptFolderError,
   claudeConfigDir,
   defaultTranscriptFolder,
   discoverTranscripts,
   encodeProjectPath,
-} from "../server/src/tokens-cli.ts";
-import { VERSION } from "../server/src/version.ts";
+} from "../server/src/tokens/index.ts";
+import { VERSION } from "../server/src/infra/version.ts";
 
 describe("data dir", () => {
   const made: string[] = [];

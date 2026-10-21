@@ -29,9 +29,9 @@ import {
   trackedSpecPaths,
   userEmail,
   worktreeList,
-} from "../server/src/git.ts";
+} from "../server/src/infra/git/index.ts";
 import { REPO_SOURCE_PATHS } from "../core/src/repo-source.ts";
-import { loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { loadDashboard, readWorkspaceInput } from "../server/src/workspace/index.ts";
 import { DATES, plantWorktreeRepo, type PlantedWorktreeRepo, SPEC_FOLDER, UNCOMMITTED } from "./fixtures/worktree-repo.ts";
 
 const FOLDER = "specs/010-x";

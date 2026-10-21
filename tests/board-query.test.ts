@@ -7,10 +7,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dashboardApi } from "../server/src/api.ts";
-import { getBoardQuery, openDatabase } from "../server/src/db.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
+import { dashboardApi } from "../server/src/cli/index.ts";
+import { getBoardQuery, openDatabase } from "../server/src/infra/db/db.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
 import {
   BOARD_QUERY_MAX,
   JSON_ANSWER,
@@ -18,7 +18,7 @@ import {
   allowForWorkspace,
   matchWorkspacePath,
   workspaceRoutes,
-} from "../server/src/spec-routes.contract.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HOST = { Host: "127.0.0.1:7717" };

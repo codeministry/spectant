@@ -19,12 +19,12 @@ import { parseActor } from "../core/src/actor.ts";
 import { EVENT_STAGES, parseEvents } from "../core/src/events.ts";
 import type { TimelineEntry } from "../core/src/files.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
-import type { ApiHandler } from "../server/src/http.ts";
-import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
-import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { specRoutes } from "../server/src/spec-routes.contract.ts";
-import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { readSpecFiles, readWorkspaceInput, readWorktreeView } from "../server/src/workspace-loader.ts";
+import type { ApiHandler } from "../server/src/infra/http/server.ts";
+import { LIFEOS_ABSENT } from "../server/src/infra/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
+import { specRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec/index.ts";
+import { readSpecFiles, readWorkspaceInput, readWorktreeView } from "../server/src/workspace/index.ts";
 import { DATES, IDENTITY, type PlantedWorktreeRepo, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, type WorktreeRepoOptions, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");

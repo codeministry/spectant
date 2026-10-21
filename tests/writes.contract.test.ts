@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { parseActor } from "../core/src/actor.ts";
 import { validateEventLine } from "../core/src/events.ts";
 import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
-import { TOKENS_PATH } from "../server/src/tokens-cli.ts";
+import { TOKENS_PATH } from "../server/src/tokens/index.ts";
 import {
   REVIEWED_FILES,
   hashForGate,
@@ -27,7 +27,7 @@ import {
   matchSpecRoute,
   specRoutes,
   type ReviewedHashes,
-} from "../server/src/spec-routes.contract.ts";
+} from "../server/src/contracts/spec-routes.contract.ts";
 import {
   EVENTS_PATH,
   NO_AGENT_SOURCE,

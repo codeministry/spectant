@@ -4,8 +4,8 @@
  * `-t layout` selects ISC-409, `-t imports` ISC-410, `-t io` ISC-411 (no other test name holds "io"). Each rule
  * runs on one fixture root per clause under
  * `tests/fixtures/architecture/`, with the server entry's own `layout` and `imports` sections, and must return exactly
- * the expected violations. The app case runs the rule on the real server entry of `scripts/architecture.config.ts`; it
- * stays `test.failing` while `server/src` is flat and turns into a plain `test` when the split is done (T61).
+ * the expected violations. The app case runs the rule on the real server entry of `scripts/architecture.config.ts`;
+ * since the split (T61) it is a plain `test` and must stay clean.
  *
  * `-t routes` selects ISC-412: the route families `spectant serve` joins (`routeFamilies` in `server/src/cli/`) name
  * every route once, and the set of method and route they answer equals the one the golden master recorded
@@ -74,7 +74,7 @@ describe("layout", () => {
     expect(layout(entry, REPO_ROOT)).toEqual([]);
   });
 
-  test.failing("the app: server/src has only main.ts on top and every slice has index.ts", () => {
+  test("the app: server/src has only main.ts on top and every slice has index.ts", () => {
     expect(layout(app, REPO_ROOT)).toEqual([]);
   });
 });
