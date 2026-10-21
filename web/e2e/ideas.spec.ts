@@ -3,8 +3,8 @@
  * by the stub API (`core/fixtures/harbor.planning.golden.json`, `harbor.golden.json`). `bun run e2e -- ideas`.
  *
  * - The Features page shows each story on its feature block (F2, F7), the Milestones page on its milestone (Harbor 1.0;
- *   the other story names a milestone the master does not hold), the dashboard in the "Ideas · n" disclosure, collapsed
- *   until opened, and the palette in its Ideas group.
+ *   the other story names a milestone the master does not hold), the Specs page (spec 058) in the "Ideas · n" disclosure,
+ *   collapsed until opened, and the palette in its Ideas group.
  * - The idea page `/w/harbor/ideas/console-audit-log` renders the chips, the heading and the body read-only: the page
  *   sends only GET or HEAD to the story route and holds no form, input, textarea, select or button. An unknown slug is
  *   the not-found page (ISC-71).
@@ -58,7 +58,7 @@ test.afterEach(async ({ request }) => {
 
 test.describe('ideas on the dashboard', () => {
   test('the disclosure "Ideas · 2" is collapsed, then lists both stories when opened', async ({ page }) => {
-    await page.goto('/w/harbor');
+    await page.goto('/w/harbor/specs');
     const panel = page.locator('app-ideas-panel');
     await expect(panel).toHaveAttribute('data-ideas', String(dashboard.ideas.count));
     await expect(panel.locator('[data-ideas-title]')).toHaveText(template(en.specs.ideas.title, { count: dashboard.ideas.count }));

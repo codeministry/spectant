@@ -1517,14 +1517,21 @@ test.describe('redirect', () => {
   const TECH_DOC = '[data-library-reader] [data-library-prose] .docs-prose';
   const FOGGY = techGolden(WS).specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
   const MARK = 'spectantE2eNoReload';
-  const PAGE_IDS = ['specs', 'board', 'planning', 'library'] as const;
+  // spec 058: the page menu lists the Dashboard before Specs.
+  const PAGE_IDS = ['dashboard', 'specs', 'board', 'planning', 'library'] as const;
   const pageName = (id: string): string => REDIRECT_EN.shell.pages[id] ?? id;
   const heading = (page: Page): Locator => page.locator('app-library-page h1#library');
 
-  /** The workspace page, rendered: the page every navigation below starts from and every step back returns to. */
+  /**
+   * The workspace page, rendered: the page every navigation below starts from and every step back returns to. Since
+   * spec 058 it is the Dashboard, without the spec list; its KPI band shows it rendered.
+   */
+  const dashboardRendered = async (page: Page): Promise<void> => {
+    await expect(page.locator('[data-page="workspace"] app-kpi-band')).toBeVisible();
+  };
   async function atWorkspace(page: Page): Promise<void> {
     await page.goto(WORKSPACE);
-    await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+    await dashboardRendered(page);
   }
 
   /** An in-app navigation to `path`: a history push the router follows, with no page load (the mark survives it). */
@@ -1597,7 +1604,7 @@ test.describe('redirect', () => {
   async function expectBackToWorkspace(page: Page, redirect: TechRedirect): Promise<void> {
     await page.goBack();
     await expect(page, `back from ${OLD}${redirect.from}`).toHaveURL((url) => url.pathname === WORKSPACE && url.search === '' && url.hash === '');
-    await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+    await dashboardRendered(page);
     expect(new URL(page.url()).pathname).toBe(WORKSPACE);
   }
 
@@ -1633,7 +1640,7 @@ test.describe('redirect', () => {
     }
   });
 
-  test('the PAGE select names Specs, Board, Planning and Library with its catalog counts, no Tech', async ({ page, request }) => {
+  test('the PAGE select names Dashboard, Specs, Board, Planning and Library with its catalog counts, no Tech', async ({ page, request }) => {
     // The menu counts the whole catalog, the archived specs' documents included; the list's filter does not reach it.
     const catalog = await servedCatalogOf(request);
     await page.goto(OLD);

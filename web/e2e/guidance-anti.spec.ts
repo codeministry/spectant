@@ -2,7 +2,7 @@
  * Spec 020 (next-step guidance), the anti-claim against the stub API (T31, ISC-243):
  * `bun run --cwd web e2e -- -g "guidance anti"`.
  *
- * On the four surfaces — the start `/`, the workspace dashboard (`#waiting`, Next up, the Specs table's guide rows), the
+ * On the four surfaces — the start `/`, the workspace dashboard (`#waiting`, Next up) with the Specs page's table guide rows (spec 058), the
  * workspace board and the spec page (its rail, the dashboard tab's spot, the compact guide card) — every guidance entry
  * the UI shows is collected with its spec, its reference, its sentence and its place, and compared with the API body
  * the page renders: the dashboard's `guidance` per workspace, the spec page's own slice. Zero entries the API does not
@@ -123,8 +123,7 @@ test.describe('guidance anti', () => {
       await page.context().setExtraHTTPHeaders(headers);
       for (const ws of await workspacesOf(request, headers)) {
         const { body, guidance } = await dashboardOf(request, ws, headers);
-        // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
-        await page.goto(`/w/${ws}?open=specs#waiting`);
+        await page.goto(`/w/${ws}#waiting`);
         const section = page.locator('#waiting');
         await expect(section, `${ws}: the #waiting section`).toBeVisible();
 
@@ -156,6 +155,12 @@ test.describe('guidance anti', () => {
         );
         expect(shownNext, `${ws}: Next up lists the API's next, in order`).toEqual(next.map((e) => ({ ...shownOf(e, 'workspace'), marked: false })));
 
+        // The dashboard carries no "Waits on you" mark: the marks stand on the Specs page's rows alone.
+        await expect(page.locator('main [data-waits-mark], main [data-card-marker]'), `${ws}: marks on the dashboard`).toHaveCount(0);
+
+        // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
+        // Spec 058: the list stands on the Specs page.
+        await page.goto(`/w/${ws}/specs?open=specs`);
         // Specs table (spec 021, R1): a guided row exactly for each spec with its own entry, its kind and its reason the
         // API's. The reason is the row link's description (the hidden `why-<id>`), the row shows only the mark or ring.
         await expect(page.locator('app-spec-table [data-spec-row]').first(), `${ws}: the list rows render`).toBeVisible();

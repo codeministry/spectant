@@ -4,13 +4,16 @@
  * runs that group alone.
  *
  * - dashboard (T49 · ISC-246, `bun run e2e -- density -g dashboard`): against the dense stub (`DENSE_HEADER: on`, harbor
- *   with 22 specs and a fresh, sectioned TL;DR) the TL;DR card shows its first section and folds the rest; the spec list
- *   shows its head with the counters and its first `SPEC_ROW_CAP` rows; "show all N" opens the rest, writes
- *   `open=specs` into the address, a reload keeps it open, and closing it removes the key.
+ *   with 22 specs and a fresh, sectioned TL;DR) the dashboard's TL;DR card shows its first section and folds the rest;
+ *   the spec list, on the Specs page `/w/<ws>/specs` since spec 058 (the dashboard holds none), shows its head with the
+ *   counters and its first `SPEC_ROW_CAP` rows; "show all N" opens the rest, writes `open=specs` into the address, a
+ *   reload keeps it open, and closing it removes the key.
  * - names (T51 · ISC-248, `bun run e2e -- density -g names`): against the dense stub, whose long titles and goals give
- *   every Next-up entry, the spec rows and the spec head of `STUB_DENSE.goalSpec` a "More…" through overflow, the
- *   dashboard and that spec page at 1440, 600 and 390 px carry no two visible interactive targets with the same
- *   accessible name, and every "More…" / "Less" / "Show all" / "Show whole" toggle names its object beyond its word.
+ *   the Next-up entries, the spec rows and the spec head of `STUB_DENSE.goalSpec` a "More…" through overflow, the
+ *   dashboard, the Specs page and that spec page at 1440, 600 and 390 px carry no two visible interactive targets with
+ *   the same accessible name, and every "More…" / "Less" / "Show all" / "Show whole" toggle names its object beyond its
+ *   word. Since spec 058 the dashboard is one column without the list and the rail, so at 1440 its Next-up titles fit
+ *   their line and only the narrower widths give them a "More…".
  *   The names are Chromium's own (the CDP accessibility tree), not a re-implementation of the name computation.
  *
  * Expected texts come from the stub's own fixture (`STUB_DENSE`), never from a literal copy of it.
@@ -48,10 +51,17 @@ function openKeys(page: Page): string[] {
   return value === null || value === '' ? [] : value.split(',');
 }
 
-/** Open the dense harbor dashboard and wait until its spec list rendered. */
-async function openDense(page: Page, query = ''): Promise<void> {
+/** Open the dense harbor dashboard and wait until its TL;DR card rendered. */
+async function openDenseDashboard(page: Page): Promise<void> {
   await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on' });
-  await page.goto(`/w/${STUB_DENSE.workspace.slug}${query}`);
+  await page.goto(`/w/${STUB_DENSE.workspace.slug}`);
+  await expect(page.locator('[data-ui="brief"]')).toBeVisible();
+}
+
+/** Open the dense harbor Specs page (spec 058: the spec list's own page) and wait until its spec list rendered. */
+async function openDenseSpecs(page: Page): Promise<void> {
+  await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on' });
+  await page.goto(`/w/${STUB_DENSE.workspace.slug}/specs`);
   await expect(specRows(page).first()).toBeVisible();
 }
 
@@ -64,9 +74,11 @@ for (const width of WIDTHS) {
     test.use(atWidth(width));
 
     test(`density dashboard folds the TL;DR to its first section at ${width}`, async ({ page }) => {
-      await openDense(page);
+      await openDenseDashboard(page);
       const card = page.locator('[data-ui="brief"]');
       await expect(card).toBeVisible();
+      // Spec 058: the dashboard carries no spec list.
+      await expect(specTable(page)).toHaveCount(0);
 
       const first = card.locator('[data-brief-first]');
       await expect(first).toBeVisible();
@@ -81,8 +93,8 @@ for (const width of WIDTHS) {
       expect(openKeys(page)).not.toContain('tldr');
     });
 
-    test(`density dashboard spec list shows its head and ${ROW_CAP} rows at ${width}`, async ({ page }) => {
-      await openDense(page);
+    test(`density dashboard: the Specs page's spec list shows its head and ${ROW_CAP} rows at ${width}`, async ({ page }) => {
+      await openDenseSpecs(page);
       const table = specTable(page);
       await expect(table.locator('#specs')).toBeVisible();
       const counts = table.locator('[data-counts]');
@@ -100,8 +112,8 @@ for (const width of WIDTHS) {
       expect(openKeys(page)).not.toContain('specs');
     });
 
-    test(`density dashboard show all opens, a reload keeps it, closing removes the key at ${width}`, async ({ page }) => {
-      await openDense(page);
+    test(`density dashboard: the Specs page's show all opens, a reload keeps it, closing removes the key at ${width}`, async ({ page }) => {
+      await openDenseSpecs(page);
       const toggle = showAll(page);
       await expect(specRows(page)).toHaveCount(ROW_CAP);
 
@@ -249,7 +261,7 @@ async function scrollThrough(page: Page): Promise<void> {
   });
 }
 
-/** The overflow toggles of the view: Next up and the spec rows on the dashboard, the goal in the spec head. */
+/** The overflow toggles of the view: Next up on the dashboard, the spec rows on the Specs page, the goal in the spec head. */
 const overflowToggles = (page: Page): Locator => page.locator('[data-next-more], app-spec-table [data-more], app-spec-head [data-more]');
 
 /** Wait until the clamp measured: the view's overflow toggles are there and their count holds still. */
@@ -271,8 +283,15 @@ const NAME_VIEWS = [
   {
     view: 'dashboard',
     path: `/w/${STUB_DENSE.workspace.slug}`,
-    // Every Next-up entry's title overflows under the dense stub (T34), so its "More…" is the clamp's sign of life.
-    ready: (page: Page): Locator => page.locator('[data-next-more]').nth(STUB_DENSE.next - 1),
+    // The last Next-up entry's link: in the one column (spec 058) its title overflows only below the wide tier, so the
+    // settle poll of `togglesSettled` waits for the clamp, not for a "More…" that 1440 does not show.
+    ready: (page: Page): Locator => page.locator('[data-next-link]').nth(STUB_DENSE.next - 1),
+  },
+  {
+    view: 'specs page',
+    path: `/w/${STUB_DENSE.workspace.slug}/specs`,
+    // The list's "Show all N" fold stands once its rows rendered; the rows' "More…" follow from the clamp.
+    ready: (page: Page): Locator => page.locator('app-spec-table [data-fold="specs"] button.summary'),
   },
   {
     view: 'spec page',

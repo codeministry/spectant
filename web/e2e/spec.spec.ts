@@ -237,7 +237,8 @@ for (const width of [390, 1440] as const) {
     test.use(atWidth(width));
 
     test('priority: the dashboard rows show P1, P2 and P3 in full', async ({ page }) => {
-      await page.goto('/w/harbor');
+      // spec 058: the spec rows live on the Specs page.
+      await page.goto('/w/harbor/specs');
       for (const { id, level, why } of PRIORITY_CASES) {
         await expectPriorityChip(page.locator(ROW_PRIORITY(id)), level, `row ${id} (${why})`);
       }
@@ -269,7 +270,7 @@ test.describe('priority warning', () => {
     const warnings = model.diagnostics.filter(({ diagnostic }) => diagnostic.code === 'frontmatter-priority');
     expect(warnings.map(({ file, diagnostic }) => [file, diagnostic.severity])).toEqual([['specs/005-config-format-choice/spec.md', 'warning']]);
 
-    await page.goto('/w/harbor');
+    await page.goto('/w/harbor/specs');
     await expectPriorityChip(page.locator(ROW_PRIORITY('005')), 'P3', 'row 005 beside its warning');
   });
 });

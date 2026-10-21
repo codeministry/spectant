@@ -3,7 +3,7 @@
  *
  * - The settings page sets the density through its `ui-segmented[data-setting="density"]`: one `PUT /api/settings`
  *   goes out, and a reload of the settings page shows the stored value.
- * - With the setting at `compact`, the board's cards (Lanes and Flow view) and the dashboard's spec rows render
+ * - With the setting at `compact`, the board's cards (Lanes and Flow view) and the Specs page's spec rows render
  *   compact by default; the spec rows show no description line.
  * - `?density=comfortable` on the board overrides the setting for that view only: the cards render comfortable while
  *   `GET /api/settings` still answers `compact`, and no `PUT /api/settings` goes out. The board head's density switch
@@ -18,7 +18,8 @@ import { atWidth, expect, test } from './fixtures';
 const SESSION = 'X-Spectant-Stub-Session';
 const SETTINGS = '/api/settings';
 const BOARD = '/w/harbor/s/002/board';
-const DASHBOARD = '/w/harbor';
+/** The spec list's page (spec 058: the list left the dashboard for `/w/<ws>/specs`). */
+const SPECS = '/w/harbor/specs';
 const sessionOf = (testId: string): string => `density-setting-${testId}`;
 
 const isSettingsPut = (req: Request): boolean => req.method() === 'PUT' && new URL(req.url()).pathname === SETTINGS;
@@ -47,7 +48,7 @@ async function storeDensity(page: Page, session: string, density: 'comfortable' 
 }
 
 /**
- * The task cards of the board (Lanes) and of the flow view, and the dashboard's spec rows; with `notAt`, only those
+ * The task cards of the board (Lanes) and of the flow view, and the Specs page's spec rows; with `notAt`, only those
  * NOT at that density. The operator steps' cards keep their own fixed `step` density whatever the setting, so they
  * are left out.
  */
@@ -105,14 +106,14 @@ test.describe('density setting', () => {
     await expect(flowCards(page).first()).toBeVisible();
     await expect(flowCards(page, 'compact')).toHaveCount(0);
 
-    await page.goto(DASHBOARD);
+    await page.goto(SPECS);
     await expect(specRows(page).first()).toBeVisible();
     expect(await specRows(page).count()).toBeGreaterThan(0);
     await expect(specRows(page, 'compact')).toHaveCount(0);
     await expect(page.locator('app-spec-row .d[id^="desc-"]')).toHaveCount(0);
 
     // The same rows carry a description line at comfortable, so its absence above is the density's doing.
-    await page.goto(`${DASHBOARD}?density=comfortable`);
+    await page.goto(`${SPECS}?density=comfortable`);
     await expect(specRows(page).first()).toHaveAttribute('data-density', 'comfortable');
     expect(await page.locator('app-spec-row .d[id^="desc-"]').count()).toBeGreaterThan(0);
 

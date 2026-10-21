@@ -321,7 +321,11 @@ interface EyebrowPage {
 
 const EYEBROW_PAGES: readonly EyebrowPage[] = [
   { name: 'workspaces', path: '/', segments: null },
-  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }] /* spec 024: prototype value (principal: the prototype wins) */, h1: /^\s*Specs\s*·\s*\S+\s*$/u /* spec 024: prototype value (principal: the prototype wins) */ },
+  // spec 058: the dashboard's eyebrow reads `WS · DASHBOARD` without a count, its h1 "Dashboard · <ws>".
+  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.dashboard' }], h1: /^\s*Dashboard\s*·\s*\S+\s*$/u },
+  // spec 058: the Specs page's eyebrow ends in `shell.pages.summary.specs` (`6 ACTIVE · 2 ARCHIVED`), its h1 reads
+  // "Specs · <ws>" (spec 024 prototype value).
+  { name: 'specs', path: `/w/${WORKSPACE}/specs`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }, { count: true }], h1: /^\s*Specs\s*·\s*\S+\s*$/u },
   // spec 024: the prototype eyebrows of board, features and milestones end in their count; the idea's ends in its slug.
   { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { count: true }] },
   {
@@ -371,15 +375,17 @@ async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language):
   expect((await h1.textContent()) ?? '', `${entry.name}: no catalog key in the h1`).not.toMatch(CATALOG_KEY);
   const actual = segmentsOf(text);
   const global = entry.segments === null || entry.segments.every((segment) => !('ws' in segment));
-  const counted = entry.segments?.findIndex((segment) => 'count' in segment) ?? -1;
-  if (counted >= 0) expect(actual[counted] ?? '', `${entry.name}: the eyebrow ends in a count`).toMatch(COUNT_SEGMENT);
+  // Spec 058: the Specs page's eyebrow ends in two counts (`6 ACTIVE · 2 ARCHIVED`); every count segment is checked.
+  (entry.segments ?? []).forEach((segment, index) => {
+    if ('count' in segment) expect(actual[index] ?? '', `${entry.name}: the eyebrow segment ${String(index)} is a count`).toMatch(COUNT_SEGMENT);
+  });
   if (global) for (const name of WORKSPACE_NAMES) expect(actual, `${entry.name}: no workspace in the eyebrow`).not.toContain(name);
   if (entry.segments === null) return;
 
-  const expected = entry.segments.map((segment) => {
+  const expected = entry.segments.map((segment, index) => {
     if ('ws' in segment) return WORKSPACE;
     if ('literal' in segment) return segment.literal;
-    if ('count' in segment) return actual[counted] ?? '';
+    if ('count' in segment) return actual[index] ?? '';
     const value = lookup(catalogs[language], segment.key);
     expect(value, `${entry.name}: the ${language} catalog holds ${segment.key}`).toBeDefined();
     return (value ?? '').toLowerCase();
@@ -472,6 +478,16 @@ const PILL_PAGES: readonly PillPage[] = [
   {
     name: 'workspace page',
     path: `/w/${WORKSPACE}`,
+    pills: {
+      workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      // spec 058: the workspace address is the Dashboard; the page pill names it.
+      page: { label: 'shell.pills.page', value: { key: 'shell.pages.dashboard' } },
+      spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
+    },
+  },
+  {
+    name: 'specs page',
+    path: `/w/${WORKSPACE}/specs`,
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
       page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },

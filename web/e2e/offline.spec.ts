@@ -5,14 +5,14 @@
  * One scripted session per theme (light, dark), each at 1440 in its own stub session (reset first), under the stub's
  * default outcomes (`two-workspaces`, `activity` locks, `ok` writes):
  *
- * - every route: `/`, `/w/harbor`, `/settings`, harbor 002's dashboard and each tab of `TAB_IDS` (status, timeline,
+ * - every route: `/`, `/w/harbor`, `/w/harbor/specs`, `/settings`, harbor 002's dashboard and each tab of `TAB_IDS` (status, timeline,
  *   board, matrix, claims, tasks, evidence, plan, design, decisions, constitution, notes, notes/:id), and an unknown path;
  * - the worktree views (spec 027, ISC-182, T42): with the stub's worktree overlay on, harbor 002's spec page (head
  *   chip and source note, the Tasks tab's run chips), the workspace board's card chips, 002's live board with its
  *   in-round group, and 007's timeline with the derived merged entry;
  * - the spec edges (spec 025, ISC-165, T31): with the stub's edges variant `waiting` on (README § The spec edges), the
- *   workspace board with 009 in Blocked, the dashboard with the waits chips and the overlap and spec-edge warnings, the
- *   spec heads of 009 (waits chip) and 002 (waits chip and overlap line), and the planning graph's spec-edge arrows;
+ *   workspace board with 009 in Blocked, the dashboard with the overlap and spec-edge warnings, the Specs page with the
+ *   waits chips (spec 058), the spec heads of 009 (waits chip) and 002 (waits chip and overlap line), and the planning graph's spec-edge arrows;
  * - the planning page (spec 026, ISC-173): the tree, board and graph lenses each with `?sel=` (the detail sidebar open,
  *   the graph drawn by mermaid), the redirects of `/w/harbor/features#F2` and `/w/harbor/milestones#m-…` to the tree
  *   with the object selected, and the workspace board with a selected card;
@@ -53,6 +53,7 @@ const isLegacy = (tab: string): boolean => (LEGACY_TAB_IDS as readonly string[])
 const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/' },
   { path: '/w/harbor' },
+  { path: '/w/harbor/specs' },
   { path: '/w/harbor/library' },
   { path: '/settings' },
   { path: '/settings/workspaces' },
@@ -228,11 +229,14 @@ for (const theme of ['light', 'dark'] as const) {
 
         await page.goto('/w/harbor');
         await rendered(page, '/w/harbor');
-        for (const { spec, on } of [full, partial]) {
-          await expect(waits(`app-spec-row:has(a.row-link[data-spec-row="${spec}"]) ui-waits-chip`, on), `${spec} row`).toHaveCount(1);
-        }
         for (const kind of ['spec-overlap', 'spec-edge']) {
           await expect(page.locator(`[data-warning-spec="${partial.spec}"] [data-warning-kind="${kind}"]`), kind).toHaveCount(1);
+        }
+        // Spec 058: the spec list, and with it the rows' waits chips, stands on the Specs page.
+        await page.goto('/w/harbor/specs');
+        await rendered(page, '/w/harbor/specs');
+        for (const { spec, on } of [full, partial]) {
+          await expect(waits(`app-spec-row:has(a.row-link[data-spec-row="${spec}"]) ui-waits-chip`, on), `${spec} row`).toHaveCount(1);
         }
 
         for (const { spec, on } of [full, partial]) {

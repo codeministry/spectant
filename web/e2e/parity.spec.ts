@@ -33,8 +33,8 @@
  *                                        gates (`core/src/spec.ts`), so nothing in it is a mock.
  *
  *   Warnings list, workspace dashboard `/w/:ws`
- *   - `[data-warnings-list]`             the list root: below 1120 px in the main column after Next up
- *                                        (`[data-next-up]`), from 1120 px in the rail after Next up.
+ *   - `[data-warnings-list]`             the list root: in the main column after Next up (`[data-next-up]`) on every
+ *                                        width. Spec 058 (ISC-394): the dashboard has no rail at any tier.
  *   - `[data-warning-spec]`              one group per spec with warnings (value: the spec id), holding the spec link
  *                                        `[data-warning-link]` (text: the id), each `[data-warning-text]` and the
  *                                        command as `ui-command-chip`.
@@ -250,10 +250,12 @@ test.describe('elements', () => {
         await page.goto('/w/harbor');
         await expect(page.locator('app-shell')).toHaveAttribute('data-tier', tier);
 
-        const at = home(page, rail);
+        // Spec 058 (ISC-394): one column at every tier, no rail on the dashboard; the list sits in the main column.
+        const at = page.locator('main#main');
         const list = at.locator('[data-warnings-list]');
         await expect(list).toBeVisible();
-        await expect(home(page, !rail).locator('[data-warnings-list]:visible')).toHaveCount(0);
+        await expect(page.locator('aside.shell-rail')).toHaveCount(0);
+        await expect(page.locator('[data-warnings-list]:visible')).toHaveCount(1);
 
         const nextUp = at.locator('[data-next-up]');
         await expect(nextUp).toBeVisible();
@@ -341,7 +343,7 @@ const ICON_PLACES: readonly IconPlace[] = [
   // Workspace dashboard: spec table, warnings list, palette (the prototype's Inspector rows)
   // Spec 050 (T10, ISC-289): the archived link footer `[data-fold="archive"]` (`layers`) is gone; its pin moved to the
   // list head's Show archived toggle, marked `archive` (design.md 050). Harbor has an archived spec, so it renders.
-  { section: WORKSPACE_VIEW, place: 'spec table archived toggle', route: '/w/harbor', at: '[data-panel="specs"] [data-control="archived"]', icon: 'archive' },
+  { section: WORKSPACE_VIEW, place: 'spec table archived toggle', route: '/w/harbor/specs', at: '[data-panel="specs"] [data-control="archived"]', icon: 'archive' },
   { section: WORKSPACE_VIEW, place: 'warnings list line', route: '/w/harbor', at: '[data-warnings-list] [data-warning-spec] [data-warning-kind]', icon: 'triangle-alert' },
   { section: WORKSPACE_VIEW, place: 'warnings list empty', route: '/w/lantern', at: '[data-warnings-list] [data-warnings-empty]', icon: 'circle-check' },
   { section: WORKSPACE_VIEW, place: 'palette input', route: '/w/harbor', open: openPalette, at: '[data-ui="command-palette"] .p-input', icon: 'search' },
@@ -682,7 +684,8 @@ const tab = (id: string): ((page: Page) => Promise<void>) => follow(`app-tab-bar
 const VIEWS: readonly ViewPlace[] = [
   { view: 'index.html', route: '/', hook: 'app-overview-page h1', link: { from: '/w/harbor', follow: follow('header [data-control="brand"]'), lands: '/' } },
   { view: 'workspace.html', route: '/w/harbor', hook: 'app-dashboard-page h1', link: { from: '/', follow: follow('main a[href="/w/harbor"]'), lands: '/w/harbor' } },
-  { view: 'spec.html', route: '/w/harbor/s/002', hook: 'app-spec-dashboard', link: { from: '/w/harbor', follow: openSpecRow('002'), lands: '/w/harbor/s/002' } },
+  // Spec 058 (ISC-394): the spec table moved from the workspace root to the Specs page.
+  { view: 'spec.html', route: '/w/harbor/s/002', hook: 'app-spec-dashboard', link: { from: '/w/harbor/specs', follow: openSpecRow('002'), lands: '/w/harbor/s/002' } },
   { view: 'spec-detail.html', route: '/w/harbor/s/002/status', hook: 'app-status-tab', link: { from: '/w/harbor/s/002', follow: follow('[data-area-tile="status"] a, a[data-area-tile="status"]'), lands: '/w/harbor/s/002/status' } },
   { view: 'spec-review-gate.html', route: '/w/harbor/s/003/status', open: follow('app-spec-head [data-gate-action]'), hook: 'app-spec-head [data-gate-dialog]' },
   { view: 'spec-tasks.html', route: '/w/harbor/s/002/tasks', hook: 'app-tasks-tab', link: { from: '/w/harbor/s/002/claims', follow: tab('tasks'), lands: '/w/harbor/s/002/tasks' } },
@@ -788,13 +791,16 @@ test.describe('routes', () => {
  *   - `[data-menu-head]`                 the menu's eyebrow head (prototype `.area-pop .pop-head`), naming the scope.
  *   - `[data-page="<id>"]`               one entry per workspace page, in registry order, with `ui-icon[data-icon]`,
  *                                        `.entry-name` and the summary `.sub`; `[data-area="<id>"]` per spec area.
- *   - palette `[data-entry]`             `harbor` (Specs), `action/open-board`, `feature-F0`, `milestone-harbor-0-9`,
+ *   - palette `[data-entry]`             `harbor` (the dashboard), `page/harbor/dashboard` and `page/harbor/specs`
+ *                                        (spec 058 T23, the Pages group), `action/open-board`, `feature-F0`, `milestone-harbor-0-9`,
  *                                        `action/open-library`, `action/settings-workspaces` (spec 017 T43, ISC-157.1:
  *                                        no Tech entry any more, Tech went into the Library).
  *   - shortcut sheet `[data-binding]`    `go-board`, `go-features`, `go-milestones` in the workspace context.
  */
 const MENU_PAGES = [
-  { id: 'specs', icon: 'file-text', name: 'Specs', lands: (path: string) => path === '/w/harbor' },
+  // Spec 058 (ISC-394): the dashboard is the workspace root and first in the menu; the spec list is Specs, second.
+  { id: 'dashboard', icon: 'layout-dashboard', name: 'Dashboard', lands: (path: string) => path === '/w/harbor' },
+  { id: 'specs', icon: 'file-text', name: 'Specs', lands: (path: string) => path === '/w/harbor/specs' },
   { id: 'board', icon: 'square-kanban', name: 'Board', lands: (path: string) => path === '/w/harbor/board' },
   // spec 026 (T15, ISC-167): one Planning entry replaces Features and Milestones and lands on the tree lens.
   { id: 'planning', icon: 'list-tree', name: 'Planning', lands: (path: string) => path === '/w/harbor/planning/gantt' },
@@ -814,6 +820,8 @@ const SPEC_MENU_AREAS = [
 
 const PALETTE_PLACES = [
   { entry: 'harbor', query: 'harbor', lands: (path: string) => path === '/w/harbor' },
+  { entry: 'page/harbor/dashboard', query: 'dashboard', lands: (path: string) => path === '/w/harbor' },
+  { entry: 'page/harbor/specs', query: 'specs', lands: (path: string) => path === '/w/harbor/specs' },
   { entry: 'action/open-board', query: 'board', lands: (path: string) => path === '/w/harbor/board' },
   { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/planning/tree' },
   { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/planning/tree' },
@@ -860,7 +868,8 @@ test.describe('navigation', () => {
           await expect(row.locator('.sub'), entry.id).toHaveText(/\S/u);
         }
         await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
-        await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'specs');
+        // Spec 058 (ISC-394): `/w/harbor` is the dashboard.
+        await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'dashboard');
       });
 
       test('each workspace page entry navigates, and the menu then marks that page current', async ({ page }) => {
@@ -884,7 +893,7 @@ test.describe('navigation', () => {
         await page.goto('/w/lantern');
         // spec 024: PAGE select (principal 2026-10-13); spec 026: Planning in place of Features and Milestones
         const menu = await openPageMenu(page);
-        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
+        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['dashboard', 'specs', 'board', 'planning', 'library']);
       });
 
       test('the spec area menu lists the six spec areas, each navigating', async ({ page }) => {
@@ -982,23 +991,31 @@ test.describe('navigation', () => {
       await expect(page.locator('header [data-menu="more"] [data-control="area"]')).toHaveCount(1);
     });
 
-    for (const [key, path] of [
-      ['b', '/w/harbor/board'],
-      ['f', '/w/harbor/planning/gantt'],
-      ['m', '/w/harbor/planning/gantt'],
-    ] as const) {
-      test(`g ${key} navigates to ${path} from the workspace`, async ({ page }) => {
-        await page.goto('/w/harbor');
-        await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
-        await page.keyboard.press('g');
-        await page.keyboard.press(key);
-        await expect(page).toHaveURL((url) => url.pathname === path);
-      });
+    // Spec 058 (ISC-394): the workspace has two pages, the dashboard at its root and the spec list at `/specs`; the
+    // workspace keys work from both, each once the page has rendered.
+    const WORKSPACE_PAGES_READY = [
+      { from: '/w/harbor', ready: 'app-dashboard-page [data-next-up]' },
+      { from: '/w/harbor/specs', ready: '[data-panel="specs"] [data-spec-row]' },
+    ] as const;
+    for (const { from, ready } of WORKSPACE_PAGES_READY) {
+      for (const [key, path] of [
+        ['b', '/w/harbor/board'],
+        ['f', '/w/harbor/planning/gantt'],
+        ['m', '/w/harbor/planning/gantt'],
+      ] as const) {
+        test(`g ${key} navigates to ${path} from ${from}`, async ({ page }) => {
+          await page.goto(from);
+          await expect(page.locator(ready).first()).toBeVisible();
+          await page.keyboard.press('g');
+          await page.keyboard.press(key);
+          await expect(page).toHaveURL((url) => url.pathname === path);
+        });
+      }
     }
 
     test('the shortcut sheet lists g b, g f and g m in the workspace context', async ({ page }) => {
       await page.goto('/w/harbor');
-      await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+      await expect(page.locator('app-dashboard-page [data-next-up]').first()).toBeVisible();
       await page.keyboard.press('?');
       const workspace = page.locator('app-shortcut-sheet dialog [data-context="workspace"]');
       await expect(workspace).toBeVisible();

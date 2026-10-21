@@ -4,7 +4,7 @@
  * never from a hand-typed list. One describe per group, so `-g "guidance <group>"` selects it.
  *
  * - `bun run --cwd web e2e -- -g "guidance board"` (T27, ISC-240): on the workspace board and the workspace dashboard,
- *   the "Waits on you" marker stands exactly on the cards and Specs-table rows whose spec's own entry (`item: 'spec'`)
+ *   the "Waits on you" marker stands exactly on the cards and Specs-table rows (the Specs page since spec 058) whose spec's own entry (`item: 'spec'`)
  *   is in `guidance.waits`; every open card, every guided row and every Next up entry carries the entry's catalogue
  *   sentence, and no Next item carries the marker.
  */
@@ -170,7 +170,8 @@ test.describe('guidance board', () => {
       const waiting = waitingSpecs(guidance);
 
       // Spec 021: the spec list folds behind its first five rows; `?open=specs` opens it so every guide row renders.
-      await page.goto(`/w/${ws}?open=specs`);
+      // Spec 058: the list stands on the Specs page, Next up on the dashboard.
+      await page.goto(`/w/${ws}/specs?open=specs`);
       await expect(page.locator('app-spec-table [data-spec-row]').first()).toBeVisible();
       // Spec 021 (R1): no guide line, sentence or command chip in the list rows; they stand in Waits on you and Next up.
       await expect(page.locator('app-spec-table :is(app-spec-row-guide, [data-guide-sentence], ui-command-chip)'), `${ws}: no guide line in the list`).toHaveCount(0);
@@ -190,6 +191,9 @@ test.describe('guidance board', () => {
       }
 
       // Next up: every entry of guidance.next, in order, each with its sentence and never the marker.
+      await page.goto(`/w/${ws}`);
+      await expect(page.locator('app-next-up-list app-next-up-entry').first(), `${ws}: Next up renders`).toBeVisible();
+      await expect(page.locator('app-spec-table'), `${ws}: no spec list on the dashboard`).toHaveCount(0);
       const fold = page.locator('app-next-up-list [data-show-all] button').first();
       if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
       const expected = nextUpEntries(guidance, body.specs);
