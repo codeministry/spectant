@@ -7,8 +7,11 @@
 // needs, writes the texts core planned and prints the result.
 //
 // The repository root is the folder that holds the common git directory (`git rev-parse --git-common-dir`), so a call
-// from a linked worktree reads and writes the main checkout's `specs/`, `ISA.md` and `.spectant/`, as the app does. It
-// writes only under that root, reads nothing outside it but the claims file it is handed, and calls no network host.
+// from a linked worktree lists the main checkout's `specs/` and reads and writes its `ISA.md` and `.spectant/`, as the
+// app does. Each active spec's folder is read where the app reads it (spec 062, ISC-438, `worktree-source.ts`): the copy
+// in its live spec worktree when git tracks `specs/NNN-slug` there, else the main checkout, whichever checkout the call
+// comes from. It writes only under that root, reads nothing outside it but the claims file it is handed, and calls no
+// network host.
 //
 // Exit codes: 0 ok · 1 bad arguments (or a plan core refused; nothing was written) · 3 drift, a gate open or a run
 // lock (`gate reviewed` under another session's running run; nothing was written) · 4 lock lost. `--json` prints one
@@ -26,6 +29,7 @@ import {
 } from '../../core/src/activity-text.ts';
 import { ActivityLogError, appendActivity, appendClaim, appendRelease, appendRunEvent, readActivity, repoRoot } from './activity-log.ts';
 import { runHook } from './hook.ts';
+import { specReadDirs } from './worktree-source.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
@@ -210,12 +214,40 @@ function specFiles(ref: Pick<SpecRef, 'dir' | 'slug'>): SpecFiles {
   return { folder: ref.slug, texts };
 }
 
-/** The spec a ref names: `001`, `001-slug`, `slug`, or a path ending in the folder (`specs/001-slug/`). */
-function specRef(root: string, arg: string): SpecRef {
+/** Per command context, the read source folders `readDirs` found. */
+const READ_DIRS = new WeakMap<Context, ReadonlyMap<string, string>>();
+
+/**
+ * The folder of each active spec whose read source is a live spec worktree's copy, by folder name, read once per
+ * command (spec 062, ISC-438): the app's rule per spec, whichever checkout the call comes from (`specReadDirs`).
+ */
+function readDirs(ctx: Context): ReadonlyMap<string, string> {
+  let dirs = READ_DIRS.get(ctx);
+  if (dirs === undefined) {
+    dirs = specReadDirs(ctx.root, listSpecs(ctx.root));
+    READ_DIRS.set(ctx, dirs);
+  }
+  return dirs;
+}
+
+/** `ref` with `dir` at its read source: the worktree copy when the app reads the spec from it, else as listed. */
+function sourced(ctx: Context, ref: SpecRef): SpecRef {
+  const dir = ref.archived ? undefined : readDirs(ctx).get(ref.slug);
+  return dir === undefined ? ref : { ...ref, dir };
+}
+
+/** The main checkout's spec folders (`listSpecs`), each active one at its read source (spec 062, ISC-438). */
+const specsOf = (ctx: Context): SpecRef[] => listSpecs(ctx.root).map((ref) => sourced(ctx, ref));
+
+/**
+ * The spec a ref names: `001`, `001-slug`, `slug`, or a path ending in the folder (`specs/001-slug/`), at its read
+ * source (spec 062, ISC-438).
+ */
+function specRef(ctx: Context, arg: string): SpecRef {
   const name = basename(arg.replace(/[\\/]+$/u, ''));
-  const ref = resolveSpec(root, name);
+  const ref = resolveSpec(ctx.root, name);
   if (ref.kind === 'not_found') throw bad(`no spec folder matches "${arg}" (${ref.reason})`, 'unknown-spec');
-  return ref;
+  return sourced(ctx, ref);
 }
 
 const rel = (ctx: Context, path: string): string => relative(ctx.root, path).split(sep).join('/');
@@ -352,7 +384,7 @@ function nextIdAcrossSpecs(root: string): number {
 }
 
 function mint(ctx: Context, args: Args): number {
-  const ref = specRef(ctx.root, required(args, 0, 'the spec'));
+  const ref = specRef(ctx, required(args, 0, 'the spec'));
   const feature = args.values.get('feature');
   if (feature === undefined || !/^F\d+(?:\.\d+)?$/u.test(feature)) throw bad('--feature F<n> is required');
   const claimsFile = args.values.get('claims');
@@ -400,7 +432,7 @@ function mint(ctx: Context, args: Args): number {
 // ── verify, decide ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 function verify(ctx: Context, args: Args): number {
-  const ref = specRef(ctx.root, required(args, 0, 'the spec'));
+  const ref = specRef(ctx, required(args, 0, 'the spec'));
   const id = required(args, 1, 'the claim ID');
   const type = required(args, 2, 'the verification type');
   const stub = required(args, 3, 'the one-line stub');
@@ -430,7 +462,7 @@ function decisionFile(ctx: Context, arg: string): string {
     if (inside.startsWith('..') || resolve(ctx.root, inside) !== candidate) throw bad(`${arg} lies outside the repository`);
     return candidate;
   }
-  return join(specRef(ctx.root, arg).dir, 'spec.md');
+  return join(specRef(ctx, arg).dir, 'spec.md');
 }
 
 function decide(ctx: Context, args: Args): number {
@@ -460,9 +492,9 @@ function driftLines(slug: string, report: DriftReport): string[] {
 }
 
 function drift(ctx: Context, args: Args): number {
-  const listed = listSpecs(ctx.root);
+  const listed = specsOf(ctx);
   const one = args.positional[0];
-  const targets = one === undefined ? listed.filter((s) => !s.archived) : [specRef(ctx.root, one)];
+  const targets = one === undefined ? listed.filter((s) => !s.archived) : [specRef(ctx, one)];
   const master = readIfExists(masterPath(ctx));
   const masterDoc = master === null ? null : parseClaims(master);
   const held = new Map(listed.map((s) => [s.slug, idsOf(readIfExists(join(s.dir, 'spec.md')))]));
@@ -506,7 +538,7 @@ function worktreeTreeOf(ctx: Context, specs: readonly SpecFiles[]): string | nul
 
 /** The dashboard's input over every spec folder of the root, as the app builds it, with the checkout's tree id. */
 function dashboardInput(ctx: Context, locks: LockReading): DashboardInput {
-  const listed = listSpecs(ctx.root);
+  const listed = specsOf(ctx);
   const specs = listed.filter((s) => !s.archived).map(specFiles);
   return {
     master: readIfExists(masterPath(ctx)),
@@ -521,7 +553,7 @@ function dashboardInput(ctx: Context, locks: LockReading): DashboardInput {
 }
 
 async function status(ctx: Context, args: Args): Promise<number> {
-  const one = args.positional[0] === undefined ? null : specRef(ctx.root, args.positional[0]);
+  const one = args.positional[0] === undefined ? null : specRef(ctx, args.positional[0]);
   if (one?.archived) throw bad(`${rel(ctx, one.dir)} is archived`);
   const locks = await locksOf(ctx);
   const input = dashboardInput(ctx, locks);
@@ -553,7 +585,7 @@ async function status(ctx: Context, args: Args): Promise<number> {
 }
 
 async function frontier(ctx: Context, args: Args): Promise<number> {
-  const ref = specRef(ctx.root, required(args, 0, 'the spec'));
+  const ref = specRef(ctx, required(args, 0, 'the spec'));
   const files = specFiles(ref);
   const text = files.texts.spec;
   if (text === undefined) throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
@@ -631,7 +663,7 @@ function holdsFeatureOpen(files: SpecFiles): boolean {
  * the edges are read without merges.
  */
 function transitionInput(ctx: Context, ref: SpecRef, to: WorkflowStage, actor: string, locks: LockReading): TransitionInput {
-  const listed = listSpecs(ctx.root);
+  const listed = specsOf(ctx);
   const active = listed.filter((s) => !s.archived).map(specFiles);
   const archived = listed.filter((s) => s.archived).map(specFiles);
   const files = active.find((f) => f.folder === ref.slug) ?? specFiles(ref);
@@ -693,7 +725,7 @@ function refusal(ref: SpecRef, plan: { readonly from: string; readonly reason: s
  * same transition called twice), nothing is written and the command exits 0 with "already there".
  */
 async function transition(ctx: Context, args: Args): Promise<number> {
-  const ref = specRef(ctx.root, required(args, 0, 'the spec'));
+  const ref = specRef(ctx, required(args, 0, 'the spec'));
   const to = required(args, 1, 'the target stage');
   if (!isWorkflowStage(to)) throw bad(`"${to}" is no stage (${WORKFLOW_STAGES.join(', ')})`);
   specText(ctx, ref);
@@ -1039,7 +1071,7 @@ function roundUnits(ref: SpecRef, claims: readonly Claim[]): { units: RoundUnit[
  * outcomes and spec.md and tasks.md as they stand; it never writes them, takes no lock and starts no agent.
  */
 function roundsRecord(ctx: Context, args: Args): number {
-  const ref = specRef(ctx.root, required(args, 1, 'the spec'));
+  const ref = specRef(ctx, required(args, 1, 'the spec'));
   const doc = parseClaims(specText(ctx, ref));
   const mode = args.values.get('mode') ?? 'agent';
   if (!ROUND_MODES.includes(mode)) throw bad(`--mode "${mode}" is none of ${ROUND_MODES.join(', ')}`);
@@ -1273,7 +1305,7 @@ function gateCheckOf(ctx: Context, ref: SpecRef, gate: Gate): { check: GateCheck
 function gateCheck(ctx: Context, args: Args): number {
   const gate = required(args, 1, 'the gate (reviewed or code-reviewed)');
   if (gate !== 'reviewed' && gate !== 'code-reviewed') throw bad(`"${gate}" is no gate (reviewed, code-reviewed)`);
-  const ref = specRef(ctx.root, required(args, 2, 'the spec'));
+  const ref = specRef(ctx, required(args, 2, 'the spec'));
   specText(ctx, ref);
   const { check, problems } = gateCheckOf(ctx, ref, gate);
   const next = check.state === 'fresh' ? null : nextFor(ref, gate);
@@ -1390,7 +1422,7 @@ async function gateCommand(ctx: Context, args: Args): Promise<number> {
   const sub = required(args, 0, 'check, reviewed or code-reviewed');
   if (sub === 'check') return gateCheck(ctx, args);
   if (sub !== 'reviewed' && sub !== 'code-reviewed') throw bad(`"${sub}" is neither check, reviewed nor code-reviewed`);
-  const ref = specRef(ctx.root, required(args, 1, 'the spec'));
+  const ref = specRef(ctx, required(args, 1, 'the spec'));
   if (ref.archived) throw bad(`${rel(ctx, ref.dir)} is archived; nothing written`);
   return sub === 'reviewed' ? gateReviewed(ctx, args, ref) : gateCodeReviewed(ctx, args, ref);
 }
@@ -1632,7 +1664,7 @@ function packLines(pack: Pack): string[] {
  * pack's size is defined on the compact form, so it never goes through `emit`'s pretty print.
  */
 function pack(ctx: Context, args: Args): number {
-  const ref = specRef(ctx.root, required(args, 0, 'spec'));
+  const ref = specRef(ctx, required(args, 0, 'spec'));
   const task = required(args, 1, 'task (T<k>)');
   const tasks = readIfExists(join(ref.dir, 'tasks.md'));
   if (tasks === null) throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, 'missing-file');
@@ -1664,7 +1696,7 @@ function pack(ctx: Context, args: Args): number {
  * (`unknown-task`), exit 1, nothing written. tasks.md is the only file it writes. `--json`: `{spec, task, result}`.
  */
 function tick(ctx: Context, args: Args): number {
-  const ref = specRef(ctx.root, required(args, 0, 'spec'));
+  const ref = specRef(ctx, required(args, 0, 'spec'));
   const task = required(args, 1, 'task (T<k>)');
   const path = join(ref.dir, 'tasks.md');
   const text = readIfExists(path);

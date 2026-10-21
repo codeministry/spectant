@@ -2,8 +2,8 @@
 // @bun
 
 // plugin/src/spec-check.ts
-import { appendFileSync as appendFileSync2, existsSync, lstatSync, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync3, readlinkSync, renameSync as renameSync2, statSync, writeFileSync as writeFileSync2 } from "fs";
-import { basename, dirname as dirname2, join as join5, relative, resolve as resolve4, sep as sep2 } from "path";
+import { appendFileSync as appendFileSync2, existsSync as existsSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync3, readlinkSync, renameSync as renameSync2, statSync, writeFileSync as writeFileSync2 } from "fs";
+import { basename, dirname as dirname2, join as join6, relative, resolve as resolve4, sep as sep2 } from "path";
 
 // core/src/actor.ts
 var PERSON = /^u:[0-9a-f]{8}$/;
@@ -708,6 +708,220 @@ function runHook(stdin, env, now) {
     process.stderr.write(`spec-check hook: ${error instanceof Error ? error.message : String(error)}; nothing written
 `);
   }
+}
+
+// plugin/src/worktree-source.ts
+import { existsSync, lstatSync } from "fs";
+import { join as join4 } from "path";
+
+// core/src/worktrees.ts
+var SPEC_WORKTREES = ".worktrees";
+var BUILDER_WORKTREES = ".claude/worktrees/";
+var SPEC_BRANCH = /^(?:feature|fix|spike|infra)\/([^/]+)$/u;
+function isSpecBranch(branch) {
+  const name = SPEC_BRANCH.exec(branch)?.[1];
+  return name !== undefined && SPEC_FOLDER.test(name);
+}
+var BRANCH_REF = "refs/heads/";
+var MISMATCH = "worktree-branch-mismatch";
+function parseRecords(porcelain) {
+  const records = [];
+  porcelain.split(`
+`).forEach((raw, index) => {
+    const text = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    if (text.startsWith("worktree ")) {
+      records.push({ path: text.slice("worktree ".length), branch: null, line: index + 1, prunable: false });
+      return;
+    }
+    const current = records.at(-1);
+    if (current === undefined)
+      return;
+    if (text.startsWith("branch ")) {
+      const ref = text.slice("branch ".length);
+      current.branch = ref.startsWith(BRANCH_REF) ? ref.slice(BRANCH_REF.length) : ref;
+    } else if (text === "prunable" || text.startsWith("prunable ")) {
+      current.prunable = true;
+    }
+  });
+  return records;
+}
+function segments(path) {
+  const out = [];
+  for (const part of path.split("/")) {
+    if (part === "" || part === ".")
+      continue;
+    if (part === "..")
+      out.pop();
+    else
+      out.push(part);
+  }
+  return out;
+}
+function relativeTo(root, path) {
+  const from = segments(root);
+  const to = segments(path);
+  if (to.length < from.length || from.some((part, index) => to[index] !== part))
+    return null;
+  return to.slice(from.length).join("/") || ".";
+}
+function knownSpec(name, numbers) {
+  const id = SPEC_FOLDER.exec(name)?.[1];
+  return id !== undefined && numbers.has(id) ? id : null;
+}
+function specOfPath(path, numbers) {
+  const parts = path.split("/");
+  return parts.length === 2 && parts[0] === SPEC_WORKTREES ? knownSpec(parts[1] ?? "", numbers) : null;
+}
+function specOfBranch(branch, numbers) {
+  const name = branch === null ? undefined : SPEC_BRANCH.exec(branch)?.[1];
+  return name === undefined ? null : knownSpec(name, numbers);
+}
+function mismatch(record, path, pathSpec, branchSpec) {
+  return {
+    severity: "warning",
+    code: MISMATCH,
+    line: record.line,
+    subject: pathSpec,
+    message: `Worktree ${path} is on branch ${record.branch ?? ""}, which names spec ${branchSpec}; ` + `its path names spec ${pathSpec}, and the path wins.`
+  };
+}
+function assignWorktrees(porcelain, specs) {
+  const numbers = new Set(specs.map(specIdOf).filter((id) => id !== null));
+  const [main, ...others] = parseRecords(porcelain);
+  if (main === undefined)
+    return { worktrees: [], builders: 0, diagnostics: [] };
+  const worktrees = [];
+  const diagnostics = [];
+  let builders = 0;
+  for (const record of others) {
+    const path = relativeTo(main.path, record.path);
+    if (path?.startsWith(BUILDER_WORKTREES) === true) {
+      builders += 1;
+      worktrees.push({ path, branch: record.branch, spec: null, ahead: null, dirty: null, kind: "builder" });
+      continue;
+    }
+    const pathSpec = path === null ? null : specOfPath(path, numbers);
+    const branchSpec = specOfBranch(record.branch, numbers);
+    if (path !== null && pathSpec !== null && branchSpec !== null && pathSpec !== branchSpec) {
+      diagnostics.push(mismatch(record, path, pathSpec, branchSpec));
+    }
+    const spec = pathSpec ?? branchSpec;
+    const base = { path, branch: record.branch, spec, ahead: null, dirty: null, kind: "spec" };
+    worktrees.push(record.prunable ? { ...base, prunable: true } : base);
+  }
+  return { worktrees, builders, diagnostics };
+}
+function mainBranchOf(porcelain) {
+  return parseRecords(porcelain)[0]?.branch ?? null;
+}
+var SPECS = "specs";
+function specSourceOf({ folder, worktree, lsFiles }) {
+  const own = worktree !== null && worktree.kind === "spec" && worktree.spec !== null && worktree.spec === specIdOf(folder);
+  const under = `${SPECS}/${folder}/`;
+  return own && lsFiles.some((path) => path.startsWith(under)) ? "worktree" : "main";
+}
+function liveWorktrees(assignment, facts) {
+  const merged = new Set(facts.merged);
+  const present = new Set(facts.present);
+  const dirty = new Set(facts.dirty);
+  const live = [];
+  const ended = [];
+  for (const worktree of assignment.worktrees) {
+    const reason = worktree.kind !== "spec" || worktree.spec === null ? null : endOf(worktree, merged, present, dirty);
+    if (reason === null)
+      live.push(worktree);
+    else
+      ended.push({ worktree, reason });
+  }
+  return { live, ended };
+}
+function endOf(worktree, merged, present, dirty) {
+  if (worktree.branch !== null && merged.has(worktree.branch) && (worktree.path === null || !dirty.has(worktree.path)))
+    return "merged";
+  if (worktree.prunable === true)
+    return "prunable";
+  if (worktree.path !== null && !present.has(worktree.path))
+    return "removed";
+  return null;
+}
+function copyDirFor(root, ref, view) {
+  const worktree = view.live.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
+  if (worktree?.path == null || worktree.path === ".." || worktree.path.startsWith("../"))
+    return null;
+  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
+  return source === "worktree" ? [root.replace(/\/+$/u, ""), worktree.path, SPECS, ref.slug].join("/") : null;
+}
+
+// plugin/src/worktree-source.ts
+var NO_FSMONITOR = ["-c", "core.fsmonitor=false"];
+function git(cwd, args) {
+  const r = Bun.spawnSync(["git", "-C", cwd, ...args], { stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
+  return r.exitCode === 0 ? r.stdout.toString() : null;
+}
+function hasOwnGit(folder) {
+  try {
+    lstatSync(join4(folder, ".git"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function mergedOf(root, branches) {
+  if (branches.length === 0)
+    return [];
+  const main = git(root, ["rev-parse", "--verify", "-q", "refs/heads/main^{commit}"])?.trim() ?? "";
+  if (main === "")
+    return [];
+  const firstParent = new Set((git(root, ["rev-list", "--first-parent", main, "--"]) ?? "").split(`
+`).filter((sha) => sha !== ""));
+  return branches.filter((branch) => {
+    const tip = git(root, ["rev-parse", "--verify", "-q", `refs/heads/${branch}^{commit}`])?.trim() ?? "";
+    if (tip === "" || firstParent.has(tip))
+      return false;
+    return git(root, ["merge-base", "--is-ancestor", tip, main]) !== null;
+  });
+}
+function isDirty(folder) {
+  const names = (git(folder, ["config", "--name-only", "--get-regexp", "^filter\\."]) ?? "").split(`
+`).flatMap((key) => key.startsWith("filter.") && key.lastIndexOf(".") > "filter.".length ? [key.slice("filter.".length, key.lastIndexOf("."))] : []);
+  const drivers = [...new Set(names)].flatMap((name) => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`]);
+  const out = git(folder, [...NO_FSMONITOR, ...drivers, "status", "--porcelain", "-z", "--ignore-submodules=all", "--untracked-files=normal"]);
+  return out !== null && out !== "";
+}
+function trackedSpecPaths(root) {
+  return (git(root, [...NO_FSMONITOR, "ls-files", "-z", "--", "specs/"]) ?? "").split("\x00").filter((path) => path !== "");
+}
+function specReadDirs(root, refs) {
+  const dirs = new Map;
+  const active = refs.filter((ref) => !ref.archived);
+  if (active.length === 0)
+    return dirs;
+  const porcelain = git(root, ["worktree", "list", "--porcelain"]) ?? "";
+  const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
+  const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
+  if (ofSpec.length === 0)
+    return dirs;
+  const paths = trackedSpecPaths(root);
+  const trackedOf = (slug) => paths.filter((path) => path.startsWith(`specs/${slug}/`));
+  if (!active.some((ref) => ofSpec.some((w) => w.spec === ref.id) && trackedOf(ref.slug).length > 0))
+    return dirs;
+  const merged = mergedOf(root, [...new Set(ofSpec.flatMap((w) => w.branch !== null && isSpecBranch(w.branch) ? [w.branch] : []))]);
+  const present = ofSpec.flatMap((w) => w.path !== null && hasOwnGit(join4(root, w.path)) ? [w.path] : []);
+  const dirty = ofSpec.flatMap((w) => w.path !== null && present.includes(w.path) && w.branch !== null && merged.includes(w.branch) && isDirty(join4(root, w.path)) ? [w.path] : []);
+  const split = liveWorktrees(assignment, { merged, present, dirty });
+  const tracked = {};
+  for (const ref of active) {
+    const live = split.live.some((w) => w.kind === "spec" && w.spec === ref.id && w.path !== null);
+    if (live)
+      tracked[ref.slug] = trackedOf(ref.slug);
+  }
+  const view = { assignment, live: split.live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
+  for (const ref of active) {
+    const copy = copyDirFor(root, ref, view);
+    if (copy !== null && existsSync(join4(copy, "spec.md")))
+      dirs.set(ref.slug, copy);
+  }
+  return dirs;
 }
 
 // core/src/claims.ts
@@ -1721,13 +1935,13 @@ function treeIdOf(entries) {
   for (const entry of entries) {
     if (!MODES.has(entry.mode))
       throw new RangeError(`treeIdOf: unsupported mode ${entry.mode} for ${entry.path}`);
-    const segments = entry.path.split("/");
-    if (segments.some((s) => s === "" || s === "." || s === ".." || s.includes("\x00"))) {
+    const segments2 = entry.path.split("/");
+    if (segments2.some((s) => s === "" || s === "." || s === ".." || s.includes("\x00"))) {
       throw new RangeError(`treeIdOf: invalid path ${JSON.stringify(entry.path)}`);
     }
-    const name = segments.pop() ?? "";
+    const name = segments2.pop() ?? "";
     let dir = root;
-    for (const segment of segments) {
+    for (const segment of segments2) {
       if (dir.files.has(segment))
         throw new RangeError(`treeIdOf: ${entry.path} lies under a file`);
       let sub = dir.dirs.get(segment);
@@ -2925,35 +3139,35 @@ function parseBody(rest, warn) {
   const body = rest.replace(/^\s*\u00B7\s*/, "");
   const mask = codeMask(body);
   const dash = indexesOutside(body, " \u2014 ", mask)[0];
-  let segments;
+  let segments2;
   let textPart;
   if (dash === undefined) {
     warn("task-malformed", "The task line has no ` \u2014 ` between its head (claim, flags, lane) and its text.");
     const parts = body.split(" \xB7 ");
     const first = (parts[0] ?? "").trim();
-    segments = CLAIM_ID2.test(first) ? [first] : [];
+    segments2 = CLAIM_ID2.test(first) ? [first] : [];
     textPart = CLAIM_ID2.test(first) ? parts.slice(1).join(" \xB7 ") : body;
   } else {
-    segments = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
+    segments2 = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
     textPart = body.slice(dash + 3);
   }
   let claim = "";
-  if (segments.length > 0 && CLAIM_ID2.test(segments[0] ?? ""))
-    claim = segments.shift() ?? "";
+  if (segments2.length > 0 && CLAIM_ID2.test(segments2[0] ?? ""))
+    claim = segments2.shift() ?? "";
   else if (dash !== undefined) {
-    warn("task-no-claim", `The task line names no claim ID: "${segments[0] ?? ""}".`);
-    if (segments.length > 1)
-      segments.shift();
+    warn("task-no-claim", `The task line names no claim ID: "${segments2[0] ?? ""}".`);
+    if (segments2.length > 1)
+      segments2.shift();
   }
   let parallel = false;
   let seam = false;
   let lane = "";
-  const last = segments[segments.length - 1];
+  const last = segments2[segments2.length - 1];
   if (last !== undefined && !FLAG.test(last) && LANE_TOKEN.test(last))
-    lane = segments.pop() ?? "";
+    lane = segments2.pop() ?? "";
   else if (dash !== undefined)
     warn("task-no-lane", "The task line has no lane token before ` \u2014 `.");
-  for (const seg of segments) {
+  for (const seg of segments2) {
     if (seg === "[P]")
       parallel = true;
     else if (seg === "[seam]")
@@ -3659,9 +3873,9 @@ function specRow(f, ctx, diagnostics) {
   note("gateCodeReviewed", codeMark?.diagnostics ?? []);
   const { specType: type, phase } = fm.data;
   const next = nextCommandWithReason(stageInput);
-  const mismatch = stageMismatchOf(stageInput, fm.keyLines.stage);
-  if (mismatch !== null)
-    note("spec", [mismatch]);
+  const mismatch2 = stageMismatchOf(stageInput, fm.keyLines.stage);
+  if (mismatch2 !== null)
+    note("spec", [mismatch2]);
   const drift = ctx.master === null ? null : driftReport({ frontmatter: fm, spec: doc, master: ctx.master, heldElsewhere: heldElsewhere(ctx, f.folder) });
   const diagrams = diagramVerdict({ type, phase, spec, plan });
   const fog = doc.fog.length;
@@ -3890,10 +4104,10 @@ function buildDashboard(input) {
     master = parseClaims(input.master);
     masterFog = master.fog.length;
     note(MASTER_FILE, [...fm.diagnostics, ...master.diagnostics]);
-    const mismatch = fm.present && master.section !== null ? masterProgressMismatch(fm, master, MASTER_FILE) : null;
-    if (mismatch) {
+    const mismatch2 = fm.present && master.section !== null ? masterProgressMismatch(fm, master, MASTER_FILE) : null;
+    if (mismatch2) {
       note(MASTER_FILE, [
-        { severity: "warning", code: "master-progress-mismatch", message: `progress ${mismatch.declared ?? "(none)"} disagrees with the recount ${mismatch.counted}.` }
+        { severity: "warning", code: "master-progress-mismatch", message: `progress ${mismatch2.declared ?? "(none)"} disagrees with the recount ${mismatch2.counted}.` }
       ]);
     }
   }
@@ -4187,7 +4401,7 @@ function capPack(pack, limit = PACK_LIMIT) {
 
 // core/src/resolve.ts
 import { readdirSync as readdirSync2 } from "fs";
-import { join as join4, resolve as resolve3, sep } from "path";
+import { join as join5, resolve as resolve3, sep } from "path";
 function listSpecs(workspaceRoot) {
   return scan(workspaceRoot) ?? [];
 }
@@ -4219,7 +4433,7 @@ function scan(workspaceRoot) {
   const active = folders(specsDir);
   if (active === null)
     return null;
-  const archiveDir = join4(specsDir, "archive");
+  const archiveDir = join5(specsDir, "archive");
   return [...refs(specsDir, active, false), ...refs(archiveDir, folders(archiveDir) ?? [], true)];
 }
 function refs(parent, names3, archived) {
@@ -4228,7 +4442,7 @@ function refs(parent, names3, archived) {
     const match = SPEC_FOLDER.exec(name);
     if (match?.[1] === undefined)
       continue;
-    out.push({ kind: "spec", id: match[1], slug: name, dir: join4(parent, name), archived });
+    out.push({ kind: "spec", id: match[1], slug: name, dir: join5(parent, name), archived });
   }
   return out.sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
 }
@@ -5007,7 +5221,7 @@ function required(args, index, what) {
     throw bad(`missing ${what}`);
   return value;
 }
-function git(cwd, args) {
+function git2(cwd, args) {
   const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
 }
@@ -5024,27 +5238,41 @@ var FOLDER_KINDS = Object.keys(FILE_KINDS).filter((kind) => !FILE_KINDS[kind].di
 function specFiles(ref) {
   const texts = {};
   for (const kind of FOLDER_KINDS) {
-    const text2 = readIfExists2(join5(ref.dir, FILE_KINDS[kind].path));
+    const text2 = readIfExists2(join6(ref.dir, FILE_KINDS[kind].path));
     if (text2 !== null)
       texts[kind] = text2;
   }
   return { folder: ref.slug, texts };
 }
-function specRef(root, arg) {
+var READ_DIRS = new WeakMap;
+function readDirs(ctx) {
+  let dirs = READ_DIRS.get(ctx);
+  if (dirs === undefined) {
+    dirs = specReadDirs(ctx.root, listSpecs(ctx.root));
+    READ_DIRS.set(ctx, dirs);
+  }
+  return dirs;
+}
+function sourced(ctx, ref) {
+  const dir = ref.archived ? undefined : readDirs(ctx).get(ref.slug);
+  return dir === undefined ? ref : { ...ref, dir };
+}
+var specsOf = (ctx) => listSpecs(ctx.root).map((ref) => sourced(ctx, ref));
+function specRef(ctx, arg) {
   const name = basename(arg.replace(/[\\/]+$/u, ""));
-  const ref = resolveSpec(root, name);
+  const ref = resolveSpec(ctx.root, name);
   if (ref.kind === "not_found")
     throw bad(`no spec folder matches "${arg}" (${ref.reason})`, "unknown-spec");
-  return ref;
+  return sourced(ctx, ref);
 }
 var rel = (ctx, path) => relative(ctx.root, path).split(sep2).join("/");
 function specText(ctx, ref) {
-  const text2 = readIfExists2(join5(ref.dir, "spec.md"));
+  const text2 = readIfExists2(join6(ref.dir, "spec.md"));
   if (text2 === null)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`, "missing-file");
   return text2;
 }
-var masterPath = (ctx) => join5(ctx.root, "ISA.md");
+var masterPath = (ctx) => join6(ctx.root, "ISA.md");
 async function locksOf(ctx) {
   return readLockSources({ repoRoot: ctx.root });
 }
@@ -5062,7 +5290,7 @@ function titleOf(slug) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 function branchNumbers(root) {
-  const names3 = (git(root, ["branch", "-a", "--format=%(refname:short)"]) ?? "").split(`
+  const names3 = (git2(root, ["branch", "-a", "--format=%(refname:short)"]) ?? "").split(`
 `);
   return specNumbersOf(names3.flatMap((name) => name.trim().split("/").slice(1)));
 }
@@ -5089,13 +5317,13 @@ function allocate(ctx, args) {
     now: ctx.now,
     actor: args.values.get("actor") ?? "a:claude:spec-check"
   });
-  const dir = join5(ctx.root, ...plan.dir.split("/"));
-  if (existsSync(dir))
+  const dir = join6(ctx.root, ...plan.dir.split("/"));
+  if (existsSync2(dir))
     throw bad(`${plan.dir} exists already`);
   mkdirSync3(dir, { recursive: true });
   const files = Object.keys(plan.files);
   for (const name of files)
-    writeFileSync2(join5(dir, name), plan.files[name]);
+    writeFileSync2(join6(dir, name), plan.files[name]);
   emit(ctx, args, { dir: plan.dir, number, files }, [
     `allocated ${plan.dir} (${files.join(", ")})`,
     ...goal === undefined ? ["no --goal given: the goal reads as the title; confirm it in spec.md and context.md"] : []
@@ -5148,7 +5376,7 @@ var ISC_NUMBER2 = /^ISC-(\d+)/u;
 function nextIdAcrossSpecs(root) {
   let highest = 0;
   for (const ref of listSpecs(root)) {
-    const text2 = readIfExists2(join5(ref.dir, "spec.md"));
+    const text2 = readIfExists2(join6(ref.dir, "spec.md"));
     if (text2 === null)
       continue;
     for (const c of parseClaims(text2).claims)
@@ -5157,7 +5385,7 @@ function nextIdAcrossSpecs(root) {
   return highest + 1;
 }
 function mint(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 0, "the spec"));
+  const ref = specRef(ctx, required(args, 0, "the spec"));
   const feature = args.values.get("feature");
   if (feature === undefined || !/^F\d+(?:\.\d+)?$/u.test(feature))
     throw bad("--feature F<n> is required");
@@ -5169,7 +5397,7 @@ function mint(ctx, args) {
   const rows = inputs.map((i) => i.row);
   const featureName = args.values.get("feature-name");
   const why = args.values.get("why");
-  const specPath = join5(ref.dir, "spec.md");
+  const specPath = join6(ref.dir, "spec.md");
   const spec = specText(ctx, ref);
   const master = readIfExists2(masterPath(ctx));
   if (master === null) {
@@ -5196,11 +5424,11 @@ function mint(ctx, args) {
   return EXIT.ok;
 }
 function verify(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 0, "the spec"));
+  const ref = specRef(ctx, required(args, 0, "the spec"));
   const id = required(args, 1, "the claim ID");
   const type = required(args, 2, "the verification type");
   const stub = required(args, 3, "the one-line stub");
-  const specPath = join5(ref.dir, "spec.md");
+  const specPath = join6(ref.dir, "spec.md");
   const nextSpec = appendVerificationText(specText(ctx, ref), id, type, stub, ctx.now);
   const master = readIfExists2(masterPath(ctx));
   let nextMaster = null;
@@ -5219,14 +5447,14 @@ function verify(ctx, args) {
 }
 function decisionFile(ctx, arg) {
   for (const candidate of [resolve4(ctx.cwd, arg), resolve4(ctx.root, arg)]) {
-    if (!existsSync(candidate) || !statSync(candidate).isFile())
+    if (!existsSync2(candidate) || !statSync(candidate).isFile())
       continue;
     const inside = relative(ctx.root, candidate);
     if (inside.startsWith("..") || resolve4(ctx.root, inside) !== candidate)
       throw bad(`${arg} lies outside the repository`);
     return candidate;
   }
-  return join5(specRef(ctx.root, arg).dir, "spec.md");
+  return join6(specRef(ctx, arg).dir, "spec.md");
 }
 function decide(ctx, args) {
   const path = decisionFile(ctx, required(args, 0, "the file"));
@@ -5254,15 +5482,15 @@ function driftLines(slug, report) {
   return lines.length === 0 ? [] : [`${slug}:`, ...lines];
 }
 function drift(ctx, args) {
-  const listed2 = listSpecs(ctx.root);
+  const listed2 = specsOf(ctx);
   const one = args.positional[0];
-  const targets = one === undefined ? listed2.filter((s) => !s.archived) : [specRef(ctx.root, one)];
+  const targets = one === undefined ? listed2.filter((s) => !s.archived) : [specRef(ctx, one)];
   const master = readIfExists2(masterPath(ctx));
   const masterDoc = master === null ? null : parseClaims(master);
-  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists2(join5(s.dir, "spec.md")))]));
+  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists2(join6(s.dir, "spec.md")))]));
   const specs = [];
   for (const ref of targets) {
-    const text2 = readIfExists2(join5(ref.dir, "spec.md"));
+    const text2 = readIfExists2(join6(ref.dir, "spec.md"));
     if (text2 === null)
       continue;
     const heldElsewhere2 = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
@@ -5291,21 +5519,21 @@ function worktreeTreeOf(ctx, specs) {
   return checkoutOf(ctx.cwd)?.tree ?? null;
 }
 function dashboardInput(ctx, locks) {
-  const listed2 = listSpecs(ctx.root);
+  const listed2 = specsOf(ctx);
   const specs = listed2.filter((s) => !s.archived).map(specFiles);
   return {
     master: readIfExists2(masterPath(ctx)),
-    constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
-    tldr: readIfExists2(join5(ctx.root, "specs", "tldr.md")),
+    constitution: readIfExists2(join6(ctx.root, "specs", "constitution.md")),
+    tldr: readIfExists2(join6(ctx.root, "specs", "tldr.md")),
     specs,
     archived: listed2.filter((s) => s.archived).map(specFiles),
     worktreeTree: worktreeTreeOf(ctx, specs),
     locks,
-    workflow: parseWorkflow(readIfExists2(join5(ctx.root, "specs", "workflow.md")))
+    workflow: parseWorkflow(readIfExists2(join6(ctx.root, "specs", "workflow.md")))
   };
 }
 async function status(ctx, args) {
-  const one = args.positional[0] === undefined ? null : specRef(ctx.root, args.positional[0]);
+  const one = args.positional[0] === undefined ? null : specRef(ctx, args.positional[0]);
   if (one?.archived)
     throw bad(`${rel(ctx, one.dir)} is archived`);
   const locks = await locksOf(ctx);
@@ -5337,7 +5565,7 @@ async function status(ctx, args) {
   return EXIT.ok;
 }
 async function frontier(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 0, "the spec"));
+  const ref = specRef(ctx, required(args, 0, "the spec"));
   const files = specFiles(ref);
   const text2 = files.texts.spec;
   if (text2 === undefined)
@@ -5345,7 +5573,7 @@ async function frontier(ctx, args) {
   const claims = [...parseClaims(text2).claims];
   const reviewed = reviewedGate(files.texts).check.state;
   const locks = (await locksOf(ctx)).locks;
-  const constitution = readIfExists2(join5(ctx.root, "specs", "constitution.md"));
+  const constitution = readIfExists2(join6(ctx.root, "specs", "constitution.md"));
   const tasks = files.texts.tasks === undefined ? null : parseTaskLines({
     tasks: files.texts.tasks,
     ...constitution === null ? {} : { constitution },
@@ -5395,7 +5623,7 @@ function holdsFeatureOpen2(files) {
   return parseFrontmatter(spec).data.phase !== "complete" && parseClaims(spec).claims.some((c) => !c.checked && !c.dropped);
 }
 function transitionInput(ctx, ref, to, actor, locks) {
-  const listed2 = listSpecs(ctx.root);
+  const listed2 = specsOf(ctx);
   const active = listed2.filter((s) => !s.archived).map(specFiles);
   const archived = listed2.filter((s) => s.archived).map(specFiles);
   const files = active.find((f) => f.folder === ref.slug) ?? specFiles(ref);
@@ -5404,14 +5632,14 @@ function transitionInput(ctx, ref, to, actor, locks) {
   const reviewed = reviewedGate(files.texts).check.state;
   const partition = partitionClaims(parseClaims(spec).claims, locks.locks, reviewed);
   const codeMark = files.texts.gateCodeReviewed === undefined ? null : readGateMark("code-reviewed", files.texts.gateCodeReviewed).mark;
-  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")) }, []);
+  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists2(join6(ctx.root, "specs", "constitution.md")) }, []);
   const edgeHeld = specEdgeHolds(partition.takeable, edges.edges.filter((e) => e.fromSpec === id));
   const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
   const feature = mainFeatureOf(parseFrontmatter(spec).data.isaFeature);
   const siblings = feature === null ? [] : active.filter((f) => f.texts.spec !== undefined && mainFeatureOf(parseFrontmatter(f.texts.spec).data.isaFeature) === feature && holdsFeatureOpen2(f)).map((f) => specIdOf(f.folder) ?? f.folder).filter((sibling) => sibling !== id).sort();
   return {
     files,
-    workflow: parseWorkflow(readIfExists2(join5(ctx.root, "specs", "workflow.md"))),
+    workflow: parseWorkflow(readIfExists2(join6(ctx.root, "specs", "workflow.md"))),
     to,
     actor,
     now: ctx.now,
@@ -5433,7 +5661,7 @@ function refusal(ref, plan) {
   return new CliError(EXIT.drift, `${ref.slug} stays in ${plan.from}: ${plan.reason}${next}; nothing written`, "refused");
 }
 async function transition(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 0, "the spec"));
+  const ref = specRef(ctx, required(args, 0, "the spec"));
   const to = required(args, 1, "the target stage");
   if (!isWorkflowStage(to))
     throw bad(`"${to}" is no stage (${WORKFLOW_STAGES.join(", ")})`);
@@ -5458,7 +5686,7 @@ async function transition(ctx, args) {
   }
   const event = { ...plan.event, command: args.values.get("command") ?? pluginCommand2(plan.event.command) };
   const line = checkedEvent(event);
-  writeFileSync2(join5(ref.dir, "spec.md"), plan.specText);
+  writeFileSync2(join6(ref.dir, "spec.md"), plan.specText);
   appendEventLine(ref.dir, line);
   emit(ctx, args, { spec: ref.slug, from: plan.from, to: plan.to, event }, [`${ref.slug}: ${plan.from} \u2192 ${plan.to} (${event.command})`]);
   return EXIT.ok;
@@ -5682,7 +5910,7 @@ function pairs(args, name) {
   });
 }
 function roundUnits(ref, claims) {
-  const tasks = readIfExists2(join5(ref.dir, "tasks.md"));
+  const tasks = readIfExists2(join6(ref.dir, "tasks.md"));
   if (tasks === null) {
     const units2 = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
     return { units: units2, hasTasks: false };
@@ -5700,7 +5928,7 @@ function roundUnits(ref, claims) {
   return { units, hasTasks: true };
 }
 function roundsRecord(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 1, "the spec"));
+  const ref = specRef(ctx, required(args, 1, "the spec"));
   const doc = parseClaims(specText(ctx, ref));
   const mode = args.values.get("mode") ?? "agent";
   if (!ROUND_MODES.includes(mode))
@@ -5728,7 +5956,7 @@ function roundsRecord(ctx, args) {
     if (!outcomes.reader.has(task))
       outcomes.reader.set(task, r);
   const { units, hasTasks } = roundUnits(ref, doc.claims);
-  const logPath = join5(ref.dir, "rounds.jsonl");
+  const logPath = join6(ref.dir, "rounds.jsonl");
   const existing = readIfExists2(logPath);
   const prev = roundLines(existing ?? undefined).at(-1);
   const prevById = new Map;
@@ -5845,7 +6073,7 @@ function rounds(ctx, args) {
     throw bad(`"${sub}" is no rounds command (record)`);
   return roundsRecord(ctx, args);
 }
-var gatePath = (ref, gate) => join5(ref.dir, ".gates", `${gate}.json`);
+var gatePath = (ref, gate) => join6(ref.dir, ".gates", `${gate}.json`);
 var numberOf = (ref) => specIdOf(ref.slug) ?? ref.slug;
 var nextFor = (ref, gate) => gate === "reviewed" ? `/spec review ${numberOf(ref)}` : `/spec review ${numberOf(ref)} code`;
 function checkedEvent(event) {
@@ -5855,7 +6083,7 @@ function checkedEvent(event) {
   return line;
 }
 function appendEventLine(dir, line) {
-  const path = join5(dir, "events.jsonl");
+  const path = join6(dir, "events.jsonl");
   const existing = readIfExists2(path);
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
@@ -5864,13 +6092,13 @@ function appendEventLine(dir, line) {
 `);
 }
 function ensureGatesIgnored(ref) {
-  const top = git(ref.dir, ["rev-parse", "--show-toplevel"])?.trim();
+  const top = git2(ref.dir, ["rev-parse", "--show-toplevel"])?.trim();
   if (top === undefined || top === "")
     return "no-git";
   const probe = relative(top, gatePath(ref, "reviewed")).split(sep2).join("/");
-  if (git(top, ["-c", "core.fsmonitor=false", "check-ignore", "-q", "--", probe]) !== null)
+  if (git2(top, ["-c", "core.fsmonitor=false", "check-ignore", "-q", "--", probe]) !== null)
     return "ignored";
-  const path = join5(top, ".gitignore");
+  const path = join6(top, ".gitignore");
   const have = readIfExists2(path) ?? "";
   const lead = have === "" || have.endsWith(`
 `) ? "" : `
@@ -5881,10 +6109,10 @@ function ensureGatesIgnored(ref) {
   return "added";
 }
 function treeEntry(root, path) {
-  const absolute = join5(root, path);
+  const absolute = join6(root, path);
   let stat2;
   try {
-    stat2 = lstatSync(absolute);
+    stat2 = lstatSync2(absolute);
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
@@ -5899,23 +6127,23 @@ function treeEntry(root, path) {
 }
 var listedPaths = (out) => [...new Set((out ?? "").split("\x00"))].filter((p) => p !== "" && !p.endsWith("/"));
 function checkoutOf(cwd) {
-  const root = git(cwd, ["rev-parse", "--show-toplevel"])?.trim();
+  const root = git2(cwd, ["rev-parse", "--show-toplevel"])?.trim();
   if (root === undefined || root === "")
     return null;
   const word = (out) => {
     const value = out?.trim() ?? "";
     return value === "" ? null : value;
   };
-  const head = word(git(root, ["rev-parse", "--verify", "-q", "HEAD"]));
-  const branch = word(git(root, ["rev-parse", "--abbrev-ref", "HEAD"]));
-  const paths = git(root, ["-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
+  const head = word(git2(root, ["rev-parse", "--verify", "-q", "HEAD"]));
+  const branch = word(git2(root, ["rev-parse", "--abbrev-ref", "HEAD"]));
+  const paths = git2(root, ["-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
   if (paths === null)
     return { root, tree: null, head, branch };
   return { root, tree: treeIdOf(listedPaths(paths).flatMap((p) => treeEntry(root, p) ?? [])), head, branch };
 }
 function changedSince(checkout, head) {
-  const tracked = head === null ? null : git(checkout.root, ["-c", "core.fsmonitor=false", "diff", "--name-only", "-z", head, "--"]);
-  const untracked = git(checkout.root, ["-c", "core.fsmonitor=false", "ls-files", "-z", "--others", "--exclude-standard"]);
+  const tracked = head === null ? null : git2(checkout.root, ["-c", "core.fsmonitor=false", "diff", "--name-only", "-z", head, "--"]);
+  const untracked = git2(checkout.root, ["-c", "core.fsmonitor=false", "ls-files", "-z", "--others", "--exclude-standard"]);
   return [...new Set([...listedPaths(tracked), ...listedPaths(untracked)])].sort();
 }
 function gateCheckOf(ctx, ref, gate) {
@@ -5937,7 +6165,7 @@ function gateCheck(ctx, args) {
   const gate = required(args, 1, "the gate (reviewed or code-reviewed)");
   if (gate !== "reviewed" && gate !== "code-reviewed")
     throw bad(`"${gate}" is no gate (reviewed, code-reviewed)`);
-  const ref = specRef(ctx.root, required(args, 2, "the spec"));
+  const ref = specRef(ctx, required(args, 2, "the spec"));
   specText(ctx, ref);
   const { check, problems } = gateCheckOf(ctx, ref, gate);
   const next = check.state === "fresh" ? null : nextFor(ref, gate);
@@ -5983,7 +6211,7 @@ function gateReviewed(ctx, args, ref) {
   const line = checkedEvent(event);
   const mark = reviewedMarkText(at, files);
   const gitignore = ensureGatesIgnored(ref);
-  mkdirSync3(join5(ref.dir, ".gates"), { recursive: true });
+  mkdirSync3(join6(ref.dir, ".gates"), { recursive: true });
   writeFileSync2(gatePath(ref, "reviewed"), mark);
   appendEventLine(ref.dir, line);
   const ignored = gitignore === "added" ? "; .gitignore: added .gates/" : "";
@@ -6021,7 +6249,7 @@ async function gateCodeReviewed(ctx, args, ref) {
     throw bad(`the tree id of the working tree could not be computed${line === null ? "" : " after the event line was appended"}; no mark written`);
   const note = args.values.get("note");
   const mark = codeReviewedMarkText({ at, actor, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, ...note === undefined ? {} : { note } });
-  mkdirSync3(join5(ref.dir, ".gates"), { recursive: true });
+  mkdirSync3(join6(ref.dir, ".gates"), { recursive: true });
   writeFileSync2(gatePath(ref, "code-reviewed"), mark);
   const on = checkout.branch === null ? "" : ` on ${checkout.branch}`;
   const moved = event === null ? "" : "; code-review \u2192 close";
@@ -6037,7 +6265,7 @@ async function gateCommand(ctx, args) {
     return gateCheck(ctx, args);
   if (sub !== "reviewed" && sub !== "code-reviewed")
     throw bad(`"${sub}" is neither check, reviewed nor code-reviewed`);
-  const ref = specRef(ctx.root, required(args, 1, "the spec"));
+  const ref = specRef(ctx, required(args, 1, "the spec"));
   if (ref.archived)
     throw bad(`${rel(ctx, ref.dir)} is archived; nothing written`);
   return sub === "reviewed" ? gateReviewed(ctx, args, ref) : gateCodeReviewed(ctx, args, ref);
@@ -6082,7 +6310,7 @@ function stampedText(spec, date, reason) {
 function plannedTexts(ctx, ref, down, date, reason) {
   const texts = new Map;
   for (const name of readdirSync3(ref.dir).filter((n) => n.endsWith(".md"))) {
-    const before = readFileSync3(join5(ref.dir, name), "utf8");
+    const before = readFileSync3(join6(ref.dir, name), "utf8");
     let after = shiftedText(before, down);
     if (name === "spec.md")
       after = stampedText(after, date, reason);
@@ -6097,7 +6325,7 @@ function archiveBlockers(text2, ref, listed2, master, locks) {
   const blockers = [];
   const fm = parseFrontmatter(text2);
   const spec = parseClaims(text2);
-  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join5(s.dir, "spec.md")))]));
+  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join6(s.dir, "spec.md")))]));
   const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere: heldElsewhere2 });
   if (hasDrift(report))
     blockers.push({ kind: "drift", hard: true, detail: `drift against the master: run spec-check drift ${ref.id} and repair it first` });
@@ -6121,7 +6349,7 @@ function archiveReferences(ctx, slug) {
   };
   (readIfExists2(masterPath(ctx)) ?? "").split(`
 `).forEach((text2, i) => add("ISA.md", i + 1, text2));
-  const grep = git(ctx.root, ["grep", "-n", "-I", "-F", "-e", `specs/${slug}`, "--", ".", ":!specs", ":!ISA.md"]) ?? "";
+  const grep = git2(ctx.root, ["grep", "-n", "-I", "-F", "-e", `specs/${slug}`, "--", ".", ":!specs", ":!ISA.md"]) ?? "";
   for (const hit of grep.split(`
 `)) {
     const m = /^([^:]+):(\d+):(.*)$/u.exec(hit);
@@ -6131,16 +6359,16 @@ function archiveReferences(ctx, slug) {
   return out;
 }
 function performMove(ctx, move) {
-  mkdirSync3(dirname2(join5(ctx.root, move.to)), { recursive: true });
-  const tracked = (git(ctx.root, ["ls-files", "--", move.from]) ?? "").trim() !== "";
+  mkdirSync3(dirname2(join6(ctx.root, move.to)), { recursive: true });
+  const tracked = (git2(ctx.root, ["ls-files", "--", move.from]) ?? "").trim() !== "";
   if (tracked) {
-    if (git(ctx.root, ["mv", move.from, move.to]) === null)
+    if (git2(ctx.root, ["mv", move.from, move.to]) === null)
       throw bad(`git mv ${move.from} ${move.to} failed`);
   } else {
-    renameSync2(join5(ctx.root, move.from), join5(ctx.root, move.to));
+    renameSync2(join6(ctx.root, move.from), join6(ctx.root, move.to));
   }
   for (const [name, text2] of move.texts)
-    writeFileSync2(join5(ctx.root, move.to, name), text2);
+    writeFileSync2(join6(ctx.root, move.to, name), text2);
 }
 async function archive(ctx, args) {
   const restore = args.positional[0] === "restore";
@@ -6238,9 +6466,9 @@ function packLines(pack) {
   ];
 }
 function pack(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 0, "spec"));
+  const ref = specRef(ctx, required(args, 0, "spec"));
   const task = required(args, 1, "task (T<k>)");
-  const tasks = readIfExists2(join5(ref.dir, "tasks.md"));
+  const tasks = readIfExists2(join6(ref.dir, "tasks.md"));
   if (tasks === null)
     throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
   let value;
@@ -6249,8 +6477,8 @@ function pack(ctx, args) {
       slug: ref.slug,
       spec: specText(ctx, ref),
       tasks,
-      plan: readIfExists2(join5(ref.dir, "plan.md")),
-      constitution: readIfExists2(join5(ctx.root, "specs", "constitution.md")),
+      plan: readIfExists2(join6(ref.dir, "plan.md")),
+      constitution: readIfExists2(join6(ctx.root, "specs", "constitution.md")),
       task
     });
     value = capPack(uncapped, PACK_LIMIT);
@@ -6264,9 +6492,9 @@ function pack(ctx, args) {
   return EXIT.ok;
 }
 function tick(ctx, args) {
-  const ref = specRef(ctx.root, required(args, 0, "spec"));
+  const ref = specRef(ctx, required(args, 0, "spec"));
   const task = required(args, 1, "task (T<k>)");
-  const path = join5(ref.dir, "tasks.md");
+  const path = join6(ref.dir, "tasks.md");
   const text2 = readIfExists2(path);
   if (text2 === null)
     throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");

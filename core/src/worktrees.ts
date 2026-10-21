@@ -67,6 +67,15 @@ const BUILDER_WORKTREES = '.claude/worktrees/';
 /** A spec branch: one of the four work prefixes, a slash and a spec folder name, `feature/027-worktree-live-view`. */
 const SPEC_BRANCH = /^(?:feature|fix|spike|infra)\/([^/]+)$/u;
 
+/**
+ * Whether `branch` (without `refs/heads/`) has the spec branch shape: one of the four work prefixes and a spec folder
+ * name, the only branches whose merge state ends a worktree (spec 062, ISC-438; `mergedSpecBranches` reads the same).
+ */
+export function isSpecBranch(branch: string): boolean {
+  const name = SPEC_BRANCH.exec(branch)?.[1];
+  return name !== undefined && SPEC_FOLDER.test(name);
+}
+
 const BRANCH_REF = 'refs/heads/';
 
 const MISMATCH = 'worktree-branch-mismatch' satisfies WarningKind;

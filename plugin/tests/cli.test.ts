@@ -3,7 +3,7 @@
 // chain the claim names: `allocate` a feature spec, `mint` two claims (master first, then the spec), `verify` one,
 // `decide`, `drift` clean, `status --json` lists the spec, `frontier` names the open claim takeable.
 import { afterEach, describe, expect, test } from 'bun:test';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseClaims } from '../../core/src/claims.ts';
@@ -379,7 +379,88 @@ describe('spec-check: allocate', () => {
     expect(run(root, 'allocate', 'feature', 'x', '--bogus').code).toBe(1);
   });
 
-  test('from a linked worktree the root is the main checkout', () => {
+});
+
+// The read source of a spec (spec 062, ISC-438): status, drift, frontier, pack and gate check read each spec where the
+// app reads it, the copy in its live spec worktree when git tracks `specs/NNN-slug` there, else the main checkout,
+// whichever checkout they are called from. Each fixture carries one change only in the worktree's copy: ISC-1 ticked,
+// a new goal and a reviewed mark over the changed spec.md.
+describe('spec-check: worktree source', () => {
+  const SPEC = 'specs/001-digest';
+  const WORKTREE = '.worktrees/001-digest';
+  const TASKS = '# Tasks 001 — Digest\n\n- [ ] T1 · ISC-1 · core — Digest model · `core/src/digest.ts`\n';
+
+  /** A repository with spec 001 minted (ISC-1, ISC-2) and one task; nothing committed yet. */
+  function minted(): string {
+    const root = repo();
+    expect(run(root, 'allocate', 'feature', 'digest', '--goal', 'One digest.', '--feature', 'F1').code).toBe(0);
+    expect(run(root, 'mint', '001', '--feature', 'F1', '--claims', writeClaims(root)).code).toBe(0);
+    rmSync(join(root, '.claims.json'));
+    writeFileSync(join(root, SPEC, 'tasks.md'), TASKS);
+    return root;
+  }
+
+  /** The change only the worktree's copy at `dir` (relative to `root`) carries: ISC-1 ticked, a new goal, a mark. */
+  function changeCopy(root: string, dir: string): void {
+    const path = join(root, dir, 'spec.md');
+    const text = readFileSync(path, 'utf8');
+    const changed = text.replace('- [ ] ISC-1:', '- [x] ISC-1:').replace('One digest.', 'The worktree digest.'); // single-core: allow — a fixture edit, not a reader
+    expect(changed).not.toBe(text);
+    writeFileSync(path, changed);
+    const files = { 'spec.md': hashForGate('spec.md', changed), 'plan.md': null, 'tasks.md': hashForGate('tasks.md', TASKS) };
+    mkdirSync(join(root, dir, '.gates'), { recursive: true });
+    writeFileSync(join(root, dir, '.gates', 'reviewed.json'), JSON.stringify({ gate: 'reviewed', at: '2026-03-04T08:00:00Z', files }));
+  }
+
+  /** What the five reads show for spec 001, called from `cwd`. */
+  function reads(cwd: string): Record<string, unknown> {
+    const status = json(run(cwd, 'status', '--json')) as { specs: Array<{ progress: string; reviewed: string }> };
+    const front = json(run(cwd, 'frontier', '001', '--json')) as { takeable: string[]; reviewed: string };
+    const pack = json(run(cwd, 'pack', '001', 'T1', '--json')) as { goal: string };
+    return {
+      status: status.specs.map((s) => `${s.progress} ${s.reviewed}`),
+      drift: run(cwd, 'drift', '001').code,
+      frontier: `${front.reviewed} ${front.takeable.join(',')}`,
+      goal: pack.goal.trim(),
+      gate: run(cwd, 'gate', 'check', 'reviewed', '001').code,
+    };
+  }
+
+  const MAIN = { status: ['0/2 missing'], drift: 0, frontier: 'missing ', goal: 'One digest.', gate: 3 };
+  const COPY = { status: ['1/2 fresh'], drift: 3, frontier: 'fresh ISC-2', goal: 'The worktree digest.', gate: 0 };
+
+  test('worktree source: a spec worktree with tracked specs/ reads its copy, from the worktree and from the main checkout', () => {
+    const root = minted();
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'spec 001');
+    expect(reads(root)).toEqual(MAIN);
+    git(root, 'worktree', 'add', '-q', join(root, WORKTREE), '-b', 'feature/001-digest');
+    changeCopy(root, `${WORKTREE}/${SPEC}`);
+    expect(reads(join(root, WORKTREE))).toEqual(COPY);
+    expect(reads(root)).toEqual(COPY);
+    expect(read(root, `${SPEC}/spec.md`)).toContain('- [ ] ISC-1:');
+  });
+
+  test('worktree source: a spec worktree with a linked specs/ reads the main checkout', () => {
+    const root = minted();
+    git(root, 'worktree', 'add', '-q', join(root, WORKTREE), '-b', 'feature/001-digest');
+    symlinkSync(join(root, 'specs'), join(root, WORKTREE, 'specs'));
+    expect(reads(join(root, WORKTREE))).toEqual(MAIN);
+    expect(reads(root)).toEqual(MAIN);
+  });
+
+  test('worktree source: a spec worktree without specs/ reads the main checkout', () => {
+    const root = minted();
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'spec 001');
+    git(root, 'worktree', 'add', '-q', join(root, WORKTREE), '-b', 'feature/001-digest');
+    git(join(root, WORKTREE), 'rm', '-r', '-q', 'specs');
+    expect(existsSync(join(root, WORKTREE, 'specs'))).toBe(false);
+    expect(reads(join(root, WORKTREE))).toEqual(MAIN);
+    expect(reads(root)).toEqual(MAIN);
+  });
+
+  test('worktree source: a worktree without tracked specs/ reads the main checkout', () => {
     const root = repo();
     expect(run(root, 'allocate', 'feature', 'digest', '--goal', 'One digest.').code).toBe(0);
     git(root, 'worktree', 'add', '-q', join(root, '.worktrees', 'side'), '-b', 'side');
