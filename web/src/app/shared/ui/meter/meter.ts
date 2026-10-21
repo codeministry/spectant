@@ -35,28 +35,8 @@ export interface MeterSegment {
     '[attr.data-split]': 'segments() ? "" : null',
     '[attr.data-full]': '!segments() && !tone() && full() ? "" : null',
   },
-  styles: `
-    :host { display: flex; overflow: hidden; min-inline-size: 0; block-size: 6px; border-radius: 3px; background: var(--ui-meter-track, color-mix(in srgb, var(--track) 45%, transparent)); }
-    :host([data-mini]) { block-size: 4px; }
-    :host([data-size="lg"]) { block-size: 8px; }
-    :host([data-split]) { gap: 2px; background: none; }
-    .fill { flex: 1; background: var(--ui-meter-fill, var(--color-primary)); transform-origin: left center; transition: transform var(--motion-duration-slow) var(--motion-ease-standard); }
-    :host([data-full]) .fill { background: var(--ui-meter-fill, var(--color-accent)); }
-    .seg { min-inline-size: 0; border-radius: 3px; }
-    @media (forced-colors: active) {
-      :host { border: 1px solid CanvasText; }
-      .fill, .seg { background: CanvasText; }
-    }
-  `,
-  template: `
-    @if (segments(); as parts) {
-      @for (part of parts; track part.key) {
-        <span class="seg" [style.flex-grow]="part.count" [style.background]="color(part.tone)"></span>
-      }
-    } @else {
-      <span class="fill" [style.transform]="transform()" [style.background]="fillColor()"></span>
-    }
-  `,
+  styleUrl: './meter.css',
+  templateUrl: './meter.html',
 })
 export class UiMeter {
   readonly value = input(0);

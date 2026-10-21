@@ -1,0 +1,8 @@
+
+    <span class="icon"><ui-icon [name]="icon()" [size]="24" /></span>
+    <p class="title">{{ heading() }}</p>
+    @if (body()) {
+      <p class="body">{{ body() }}</p>
+    }
+    <div class="slot"><ng-content /></div>
+  

@@ -1,0 +1,45 @@
+
+    <span class="chip" [attr.data-locked]="lockedBy() ? '' : null">
+      <code #code>{{ command() }}</code>
+      @if (lockedBy()) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs btn-square copy"
+          data-locked
+          aria-disabled="true"
+          [attr.aria-label]="lockedName()"
+          [title]="lockedHint()"
+          (click)="hintOpen.set(!hintOpen())"
+        >
+          <ui-icon name="lock" [size]="14" />
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs btn-square copy"
+          [attr.data-copied]="state() === 'copied' ? '' : null"
+          [attr.aria-label]="state() === 'copied' ? copiedLabel() : context() ? ('orientation.copyCommandFor' | transloco: { command: command(), context: context() }) : ('orientation.copyCommand' | transloco: { command: command() })"
+          [title]="copyLabel()"
+          (click)="copy()"
+          (blur)="onBlur()"
+        >
+          @if (state() === 'copied') {
+            <ui-icon name="check" [size]="14" />
+          } @else {
+            <ui-icon name="copy" [size]="14" />
+          }
+        </button>
+      }
+    </span>
+    @if (state() === 'manual') {
+      <span class="hint">{{ manualHint() }}</span>
+    }
+    @if (lockedBy()) {
+      @if (hintOpen()) {
+        <span class="hint" data-locked-hint>{{ lockedHint() }}</span>
+      }
+    } @else {
+      <!-- A locked chip copies nothing, so it carries no live region (an item-state line has none, spec 040). -->
+      <ui-live-region data-copy-announcer />
+    }
+  

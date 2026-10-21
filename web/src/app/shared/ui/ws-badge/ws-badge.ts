@@ -23,24 +23,8 @@ export type WsBadgeSize = 'sm' | 'md' | 'page' | 'lg';
     '[style.--ws]': 'tokens().mark',
     '[style.--ws-ink]': 'tokens().ink',
   },
-  styles: `
-    :host { display: inline-grid; flex: none; place-items: center; overflow: hidden; inline-size: 22px; block-size: 22px; border-radius: var(--radius-sm); background: color-mix(in oklab, var(--ws) 22%, transparent); border: 1px solid color-mix(in oklab, var(--ws) 45%, transparent); color: var(--ws-ink); font: 700 10px/1 var(--font-display); letter-spacing: 0.02em; }
-    :host([data-size='sm']) { inline-size: 18px; block-size: 18px; border-radius: 5px; font-size: 9px; }
-    :host([data-size='page']) { inline-size: 24px; block-size: 24px; font-size: 10px; }
-    :host([data-size='lg']) { inline-size: 30px; block-size: 30px; border-radius: 8px; font-size: 12px; }
-    :host([data-logo]) { background: none; }
-    img { display: block; inline-size: 100%; block-size: 100%; border-radius: inherit; object-fit: cover; }
-    @media (forced-colors: active) {
-      :host { border: 1px solid CanvasText; color: CanvasText; }
-    }
-  `,
-  template: `
-    @if (src(); as url) {
-      <img [src]="url" alt="" />
-    } @else {
-      {{ initials() }}
-    }
-  `,
+  styleUrl: './ws-badge.css',
+  templateUrl: './ws-badge.html',
 })
 export class UiWsBadge {
   /** The workspace name; the initials and the default accent derive from it. */

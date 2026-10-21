@@ -20,7 +20,7 @@ export const TIME_SENTINEL = '';
   selector: 'ui-time-label',
   imports: [UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `{{ parts().before }}<ui-time [value]="value()" [form]="form()" />{{ parts().after }}`,
+  templateUrl: './time-label.html',
 })
 export class UiTimeLabel {
   readonly key = input.required<string>();

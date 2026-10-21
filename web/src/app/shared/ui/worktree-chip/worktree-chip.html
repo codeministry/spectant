@@ -1,0 +1,74 @@
+
+    <ng-template #face>
+      <ui-chip class="face" variant="plain" aria-hidden="true" [tone]="mismatch() ? 'warning' : 'neutral'">
+        <ui-icon name="git-branch" [size]="compact() ? 12 : 14" />
+        <span class="branch">
+          @if (branch(); as parts) {
+            <span class="prefix">{{ parts.prefix }}</span><span class="num">{{ parts.num }}</span><span class="tail">{{ parts.tail }}</span>
+          } @else {
+            <span class="tail">{{ 'worktreeChip.detached' | transloco }}</span>
+          }
+        </span>
+        @if (worktree().ahead !== null) {
+          <span class="sep">{{ mark.sep }}</span>
+          <span class="ahead">{{ mark.ahead }}{{ worktree().ahead }}</span>
+        }
+        @if (worktree().dirty) {
+          <span class="dirty">{{ mark.dirty }}</span>
+        }
+      </ui-chip>
+    </ng-template>
+
+    <ng-template #details>
+      <dl class="details">
+        @if (worktree().path; as path) {
+          <div>
+            <dt>{{ 'worktreeChip.path' | transloco }}</dt>
+            <dd class="path">
+              <span class="mono">{{ path }}</span>
+              <button ui-icon-button class="copy" icon="copy" size="sm" [label]="'worktreeChip.copyPath' | transloco" (click)="copyPath()"></button>
+            </dd>
+          </div>
+        }
+        <div>
+          <dt>{{ 'worktreeChip.branch' | transloco }}</dt>
+          <dd class="mono">{{ worktree().branch ?? ('worktreeChip.detached' | transloco) }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'worktreeChip.commits' | transloco }}</dt>
+          <dd class="count">{{ aheadText() }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'worktreeChip.changes' | transloco }}</dt>
+          <dd>{{ changesText() }}</dd>
+        </div>
+        @if (source() === 'worktree') {
+          <div>
+            <dt>{{ 'worktreeChip.source' | transloco }}</dt>
+            <dd>{{ 'worktreeChip.sourceWorktree' | transloco }}</dd>
+          </div>
+        }
+      </dl>
+    </ng-template>
+
+    @if (!interactive()) {
+      <span class="static" [attr.title]="label()">
+        <span class="vh">{{ name() }}</span>
+        <ng-container [ngTemplateOutlet]="face" />
+      </span>
+    } @else if (tier() === 'compact') {
+      <button type="button" class="trigger" aria-haspopup="dialog" [attr.aria-label]="name()" [attr.aria-expanded]="sheetOpen()" (click)="sheetOpen.set(true)">
+        <ng-container [ngTemplateOutlet]="face" />
+      </button>
+      <ui-sheet tier="compact" [(open)]="sheetOpen" [heading]="'worktreeChip.details' | transloco">
+        <ng-container [ngTemplateOutlet]="details" />
+      </ui-sheet>
+    } @else {
+      <button type="button" class="trigger" aria-haspopup="dialog" [attr.aria-label]="name()" [uiPopoverTrigger]="pop">
+        <ng-container [ngTemplateOutlet]="face" />
+      </button>
+      <ui-popover #pop [label]="'worktreeChip.details' | transloco">
+        <ng-container [ngTemplateOutlet]="details" />
+      </ui-popover>
+    }
+  

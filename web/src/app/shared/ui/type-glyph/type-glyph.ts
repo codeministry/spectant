@@ -36,16 +36,8 @@ export const TYPE_GLYPHS: Readonly<Record<TypeGlyphKind, IconName>> = {
   imports: [TranslocoPipe, UiIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-type]': 'type()' },
-  styles: `
-    :host { display: inline-flex; flex: none; line-height: 0; }
-  `,
-  template: `
-    @if (decorative()) {
-      <ui-icon [name]="icon()" [size]="size()" />
-    } @else {
-      <ui-icon [name]="icon()" [size]="size()" [label]="'types.' + type() | transloco" />
-    }
-  `,
+  styleUrl: './type-glyph.css',
+  templateUrl: './type-glyph.html',
 })
 export class UiTypeGlyph {
   readonly type = input.required<TypeGlyphKind>();

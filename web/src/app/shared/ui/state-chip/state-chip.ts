@@ -20,17 +20,8 @@ import { type GlyphFamily, type GlyphState, glyphFamily, glyphSpec, stateKey } f
     '[attr.data-state]': 'state()',
     '[attr.data-family]': 'resolved()',
   },
-  styles: `
-    :host { display: inline-flex; min-inline-size: 0; max-inline-size: 100%; }
-  `,
-  template: `
-    <ui-chip [tone]="tone()" [variant]="small() ? 'small' : 'status'">
-      @if (!small()) {
-        <ui-glyph [state]="state()" [family]="resolved()" [size]="14" />
-      }
-      <span>{{ key() | transloco }}</span>
-    </ui-chip>
-  `,
+  styleUrl: './state-chip.css',
+  templateUrl: './state-chip.html',
 })
 export class UiStateChip {
   readonly state = input.required<GlyphState>();

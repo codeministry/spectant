@@ -1,0 +1,12 @@
+:host {
+  display: inline-flex;
+  min-inline-size: 0;
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+.name {
+  font-family: var(--font-mono);
+}

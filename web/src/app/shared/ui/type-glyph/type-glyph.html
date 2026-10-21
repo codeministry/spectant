@@ -1,0 +1,7 @@
+
+    @if (decorative()) {
+      <ui-icon [name]="icon()" [size]="size()" />
+    } @else {
+      <ui-icon [name]="icon()" [size]="size()" [label]="'types.' + type() | transloco" />
+    }
+  

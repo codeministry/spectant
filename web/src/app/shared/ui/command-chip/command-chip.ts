@@ -82,65 +82,8 @@ function highlightMs(doc: Document): number {
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TranslocoPipe, UiIcon, UiLiveRegion],
-  styles: `
-    :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
-    /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. A host may round it
-       through --ui-command-chip-radius (the spec head, spec 045), and the copy button follows. */
-    .chip { display: inline-flex; gap: 2px; align-items: center; min-inline-size: 0; block-size: 28px; padding-inline: 8px 0; border: 1px solid var(--line); border-radius: var(--ui-command-chip-radius, var(--radius-sm)); background: var(--lane); font-family: var(--font-mono); font-size: 12px; font-weight: 400; line-height: 12px; }
-    code { overflow: hidden; color: var(--color-base-content); font: inherit; text-overflow: ellipsis; white-space: nowrap; }
-    .copy { inline-size: 26px; block-size: 26px; min-block-size: 26px; padding: 0; border-radius: var(--ui-command-chip-radius, 5px); color: var(--muted-ink); }
-    .copy[data-copied] { color: var(--done-ink); }
-    .hint { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-    .chip[data-locked] { background: var(--color-base-300); }
-    .chip[data-locked] code { color: var(--muted-ink); }
-    /* daisyUI drops pointer events on an aria-disabled .btn; the locked button stays pressable for its hint line. */
-    .copy[data-locked] { pointer-events: auto; cursor: not-allowed; }
-  `,
-  template: `
-    <span class="chip" [attr.data-locked]="lockedBy() ? '' : null">
-      <code #code>{{ command() }}</code>
-      @if (lockedBy()) {
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs btn-square copy"
-          data-locked
-          aria-disabled="true"
-          [attr.aria-label]="lockedName()"
-          [title]="lockedHint()"
-          (click)="hintOpen.set(!hintOpen())"
-        >
-          <ui-icon name="lock" [size]="14" />
-        </button>
-      } @else {
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs btn-square copy"
-          [attr.data-copied]="state() === 'copied' ? '' : null"
-          [attr.aria-label]="state() === 'copied' ? copiedLabel() : context() ? ('orientation.copyCommandFor' | transloco: { command: command(), context: context() }) : ('orientation.copyCommand' | transloco: { command: command() })"
-          [title]="copyLabel()"
-          (click)="copy()"
-          (blur)="onBlur()"
-        >
-          @if (state() === 'copied') {
-            <ui-icon name="check" [size]="14" />
-          } @else {
-            <ui-icon name="copy" [size]="14" />
-          }
-        </button>
-      }
-    </span>
-    @if (state() === 'manual') {
-      <span class="hint">{{ manualHint() }}</span>
-    }
-    @if (lockedBy()) {
-      @if (hintOpen()) {
-        <span class="hint" data-locked-hint>{{ lockedHint() }}</span>
-      }
-    } @else {
-      <!-- A locked chip copies nothing, so it carries no live region (an item-state line has none, spec 040). -->
-      <ui-live-region data-copy-announcer />
-    }
-  `,
+  styleUrl: './command-chip.css',
+  templateUrl: './command-chip.html',
 })
 export class UiCommandChip {
   readonly command = input.required<string>();

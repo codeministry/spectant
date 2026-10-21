@@ -26,10 +26,8 @@ const ENGLISH: RelativeFormat = (value, unit) => `${value} ${unit} ago`;
 @Component({
   selector: 'ui-relative-time',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  `,
-  template: `<time aria-hidden="true" [attr.datetime]="iso()">{{ text() }}</time>`,
+  styleUrl: './relative-time.css',
+  templateUrl: './relative-time.html',
 })
 export class UiRelativeTime {
   readonly date = input.required<Date | string | number>();

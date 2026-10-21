@@ -1,0 +1,38 @@
+
+    :host {
+      display: inline-grid;
+      flex: none;
+      place-items: center;
+      min-inline-size: 0;
+      inline-size: 18px;
+      block-size: 20px;
+      color: var(--glyph-color);
+      font-size: 15px;
+    }
+
+    :host([data-size]) {
+      display: inline-flex;
+      inline-size: auto;
+      block-size: auto;
+      line-height: 0;
+    }
+
+    svg {
+      fill: none;
+      stroke: currentcolor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .fill {
+      fill: currentcolor;
+      stroke: none;
+    }
+    .ko { stroke: var(--color-base-100); }
+
+    @media (forced-colors: active) {
+      :host { color: CanvasText; }
+      .ko { stroke: Canvas; }
+    }
+  

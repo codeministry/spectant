@@ -1,0 +1,28 @@
+
+    @if (agent()) {
+      <ui-icon name="bot" [size]="14" />
+      <span class="vh">{{ 'actors.agent' | transloco }}</span>
+    }
+    <span class="chip-label" [class.mono]="mono()">{{ text() }}</span>
+    @if (actor().task; as task) {
+      <span class="task">{{ task }}</span>
+    }
+    @if (actor().legacy) {
+      <span class="suffix">{{ 'actors.legacy' | transloco }}</span>
+    }
+    @if (isActive() || stale()) {
+      <span class="dot" aria-hidden="true"></span>
+    }
+    @if (isActive()) {
+      <span class="vh">{{ 'actors.active' | transloco }}</span>
+    }
+    @if (stale()) {
+      <span class="stale">
+        @if (staleAge(); as age) {
+          {{ 'actors.staleFor' | transloco: { age } }}
+        } @else {
+          {{ 'actors.stale' | transloco }}
+        }
+      </span>
+    }
+  

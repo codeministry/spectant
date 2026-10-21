@@ -1,0 +1,47 @@
+
+    <div class="step-buttons">
+      <button type="button" class="btn btn-square step-button" data-step="previous" [attr.aria-label]="'scrubber.previous' | transloco" [disabled]="value() <= 0" (click)="go(value() - 1)">
+        <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.5 3.5 4.5 8l6 4.5z" /></svg>
+      </button>
+      <button type="button" class="btn btn-square step-button" data-step="play" [attr.aria-label]="'scrubber.play' | transloco" [attr.aria-pressed]="playing()" (click)="playing.set(!playing())">
+        <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 2.5v11l9-5.5z" /></svg>
+      </button>
+      <button type="button" class="btn btn-square step-button" data-step="next" [attr.aria-label]="'scrubber.next' | transloco" [disabled]="value() >= max()" (click)="go(value() + 1)">
+        <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5.5 3.5 6 4.5-6 4.5z" /></svg>
+      </button>
+    </div>
+    <div class="rail" [style.--progress]="progress()">
+      <span class="track"></span>
+      <span class="fill"></span>
+      <div class="ticks" aria-hidden="true">
+        @for (frame of frames(); track $index) {
+          <span class="tick" [attr.data-kind]="frame.kind" [attr.data-current]="$index === value() ? '' : null" [style.inset-inline-start.%]="position($index)" [style.--tick-color]="tickColor(frame)"></span>
+        }
+        @for (marker of markers(); track marker.before) {
+          <span class="marker" data-kind="recut" [style.inset-inline-start.%]="position(marker.before - 0.5)"></span>
+        }
+      </div>
+      <div class="ticks captions">
+        @for (frame of frames(); track $index) {
+          @if (frame.caption; as caption) {
+            <span class="caption" [attr.data-current]="$index === value() ? '' : null" [style.inset-inline-start.%]="position($index)">{{ caption }}</span>
+          }
+        }
+        @for (marker of markers(); track marker.before) {
+          <span class="marker-label" data-recut-label [attr.data-recut-before]="marker.before" [attr.title]="marker.title ?? null" [attr.aria-label]="marker.title ?? null" [style.inset-inline-start.%]="position(marker.before - 0.5)">{{ marker.label }}</span>
+        }
+      </div>
+      <input
+        type="range"
+        min="0"
+        step="1"
+        [max]="max()"
+        [value]="value()"
+        [disabled]="frames().length === 0"
+        [attr.aria-label]="ariaLabel() ?? ('scrubber.label' | transloco)"
+        [attr.aria-valuetext]="valueText()"
+        (input)="onInput($event)"
+        (keydown)="onKey($event)"
+      />
+    </div>
+  

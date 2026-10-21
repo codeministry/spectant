@@ -1,0 +1,60 @@
+
+    :host {
+      position: relative;
+      isolation: isolate;
+      display: block;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      background: var(--color-base-100);
+      color: var(--color-base-content);
+    }
+
+    /* An accent tone becomes the edge colour; a --edge set inline on the element still wins. */
+    :host([data-accent]) {
+      --edge: var(--card-tone);
+    }
+
+    :host([data-edge])::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto;
+      block-size: 3px;
+      background: var(--edge, var(--color-primary));
+      pointer-events: none;
+    }
+
+    :host([data-glow])::after {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset: -40px -40px auto auto;
+      inline-size: 140px;
+      block-size: 140px;
+      background: radial-gradient(closest-side, color-mix(in srgb, var(--edge, var(--color-primary)) 14%, transparent), transparent);
+      opacity: 0.7;
+      pointer-events: none;
+      transition: opacity var(--motion-duration-instant) var(--motion-ease-standard);
+    }
+
+    :host([data-side]) {
+      border-inline-start: 4px solid var(--edge, var(--line));
+    }
+
+    :host([data-dashed]) {
+      border-style: dashed;
+    }
+
+    @media (hover: hover) {
+      :host([data-interactive]:hover)::after {
+        opacity: 1;
+      }
+    }
+
+    @media (forced-colors: active) {
+      :host::before,
+      :host::after {
+        display: none;
+      }
+    }
+  

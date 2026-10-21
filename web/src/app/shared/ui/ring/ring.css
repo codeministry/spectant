@@ -1,0 +1,53 @@
+
+    :host {
+      display: inline-grid;
+      flex-shrink: 0;
+      place-items: center;
+      inline-size: var(--ring-size);
+      block-size: var(--ring-size);
+    }
+
+    svg {
+      grid-area: 1 / 1;
+      transform: rotate(-90deg);
+    }
+
+    .track {
+      fill: none;
+      stroke: var(--track);
+      opacity: 0.45;
+    }
+
+    .bar {
+      fill: none;
+      transition: stroke-dashoffset var(--motion-duration-slow) var(--motion-ease-standard);
+    }
+    .from { stop-color: var(--color-accent); }
+    .to { stop-color: var(--color-primary); }
+
+    .text {
+      grid-area: 1 / 1;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .unit {
+      color: var(--muted-ink);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    :host([data-size='112']) .text { font-size: 22px; }
+    :host([data-size='40']) .text { font-size: 11px; }
+    :host([data-size='40']) .unit { font-size: 0.75em; }
+
+    @media (forced-colors: active) {
+      .bar { stroke: CanvasText; }
+
+      .track {
+        stroke: GrayText;
+        opacity: 1;
+      }
+    }
+  

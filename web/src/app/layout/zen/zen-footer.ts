@@ -7,7 +7,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
-import { areaById, areaPath, specLink } from '../shell/areas';
+import { notesLinkOf } from '../spec-head/notes-link';
 import { RailContent } from '../shell/rail-content';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
@@ -149,9 +149,5 @@ export class ZenFooter {
   });
   protected readonly command = computed(() => this.body()?.head.nextCommand ?? null);
   protected readonly notes = computed(() => this.body()?.areas.notes.count ?? null);
-  protected readonly notesLink = computed(() => {
-    const ws = this.state.ws();
-    const id = this.state.specId();
-    return ws === null || id === null ? null : specLink(ws, id, areaPath(areaById('notes')));
-  });
+  protected readonly notesLink = computed(() => notesLinkOf(this.state.ws(), this.state.specId()));
 }

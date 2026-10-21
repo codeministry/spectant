@@ -1,13 +1,13 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
-import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
-import specGolden from '../../../../../core/fixtures/harbor.spec.golden.json';
-import type { SpecPageModel } from '../../../../../core/src/files';
-import { ApiClient } from '../../core/api.service';
-import { formatInstant, formatInstantShort } from '../../shared/time';
-import { ShellData } from '../shell/shell-data.service';
-import { ShellState } from '../shell/shell-state.service';
+import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import specGolden from '../../../../../../core/fixtures/harbor.spec.golden.json';
+import type { SpecPageModel } from '../../../../../../core/src/files';
+import { ApiClient } from '../../../core/api.service';
+import { formatInstant, formatInstantShort } from '../../../shared/time';
+import { ShellData } from '../../shell/shell-data.service';
+import { ShellState } from '../../shell/shell-state.service';
 import { GateButton } from './gate-button';
 
 // T10 · ISC-114.1: the gate button's three times (`status.gate.done`, `status.gate.hint.stale`, `status.gate.written`)

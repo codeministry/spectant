@@ -1,0 +1,8 @@
+
+    <ui-chip [tone]="tone()" [variant]="small() ? 'small' : 'status'">
+      @if (!small()) {
+        <ui-glyph [state]="state()" [family]="resolved()" [size]="14" />
+      }
+      <span>{{ key() | transloco }}</span>
+    </ui-chip>
+  

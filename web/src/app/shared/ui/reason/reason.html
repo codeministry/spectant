@@ -1,0 +1,28 @@
+
+    @let text = guidance() | guidanceReason: phrase();
+    <span class="line">
+      <ui-icon [name]="icon()" [size]="14" [label]="'reason.glyph' | transloco" />
+      @if (block()) {
+        <span class="phrase">{{ text }}</span>
+      } @else {
+        <span class="visually-hidden">{{ text }}</span>
+        <span
+          class="phrase"
+          aria-hidden="true"
+          [uiClamp]="text"
+          [uiClampLines]="lines()"
+          #clamp="uiClamp"
+          [attr.title]="clamp.cut() ? text : null"
+        ></span>
+      }
+    </span>
+    @if (command(); as cmd) {
+      <ui-command-chip
+        [command]="cmd"
+        [copyLabel]="'common.copyCommand' | transloco"
+        [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+        [manualHint]="'common.copyFallback' | transloco"
+        (copied)="copied.emit($event)"
+      />
+    }
+  

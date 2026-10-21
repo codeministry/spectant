@@ -46,11 +46,7 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
     '[attr.data-placement]': 'placement()',
     '(keydown.escape)': 'onEscape($event)',
   },
-  template: `
-    <div #panel class="panel" popover="auto" role="dialog" tabindex="-1" [id]="id" [attr.aria-label]="label() ?? null" (toggle)="onToggle($event)">
-      <ng-content />
-    </div>
-  `,
+  templateUrl: './popover.html',
 })
 export class UiPopover {
   readonly open = model(false);

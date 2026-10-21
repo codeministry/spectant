@@ -1,0 +1,14 @@
+
+    @if (dot()) {
+      <span class="dot" aria-hidden="true"></span>
+    }
+    @if (demo()) {
+      <ui-icon name="flask-conical" [size]="12" />
+      {{ 'demo.chip' | transloco }}<span class="visually-hidden"> {{ 'demo.description' | transloco }}</span>
+    } @else {
+      @if (icon(); as name) {
+        <ui-icon [name]="name" [size]="12" />
+      }
+      <ng-content />
+    }
+  

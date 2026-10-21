@@ -12,32 +12,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'ui-section-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-end: 16px; }
-    .text { flex: 0 1 auto; min-inline-size: 0; }
-    .text, .meta { align-self: last baseline; }
-    .title { display: flex; gap: 8px; align-items: baseline; min-inline-size: 0; }
-    .heading-text { overflow: hidden; min-inline-size: 0; text-overflow: ellipsis; white-space: nowrap; }
-    .eyebrow { margin: 0; color: var(--muted-ink); font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: 0.08em; text-transform: uppercase; }
-    .title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
-    .meta { flex: none; color: var(--muted-ink); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 400; line-height: 16px; }
-    .meta:empty, .actions:empty { display: none; }
-    .actions { display: flex; gap: 8px; align-items: center; margin-inline-start: auto; }
-  `,
-  template: `
-    <div class="text">
-      @if (eyebrow()) {
-        <p class="eyebrow">{{ eyebrow() }}</p>
-      }
-      @if (level() === 2) {
-        <h2 class="title" tabindex="-1" [attr.id]="headingId() ?? null"><span class="heading-text">{{ heading() }}</span></h2>
-      } @else {
-        <h3 class="title" tabindex="-1" [attr.id]="headingId() ?? null"><span class="heading-text">{{ heading() }}</span></h3>
-      }
-    </div>
-    <div class="meta"><ng-content select="[meta]" /></div>
-    <div class="actions"><ng-content select="[actions]" /></div>
-  `,
+  styleUrl: './section-header.css',
+  templateUrl: './section-header.html',
 })
 export class UiSectionHeader {
   readonly heading = input.required<string>();

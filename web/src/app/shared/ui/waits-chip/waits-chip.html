@@ -1,0 +1,23 @@
+
+    @for (blocker of visible(); track blocker.id) {
+      @if (blocker.link; as link) {
+        <a class="waits" data-waits [attr.data-blocker]="blocker.id" [routerLink]="link" [attr.aria-label]="blocker.name" [attr.title]="blocker.name">
+          <ui-icon name="clock" [size]="12" />{{ prefix() }} <span class="num">{{ blocker.id }}</span>
+        </a>
+      } @else {
+        <span class="waits" data-waits data-unknown [attr.data-blocker]="blocker.id" [attr.title]="blocker.name">
+          <ui-icon name="clock" [size]="12" /><span class="chip-label" aria-hidden="true">{{ prefix() }} <span class="num">{{ blocker.id }}</span></span>
+          <span class="visually-hidden">{{ blocker.name }}</span>
+        </span>
+      }
+    }
+    @if (rest(); as rest) {
+      <span class="waits more" data-waits-more [attr.title]="rest.name">
+        <span aria-hidden="true">+{{ rest.count }}</span>
+        <span class="visually-hidden">{{ rest.name }}</span>
+      </span>
+    }
+    @if (metaText(); as text) {
+      <span class="meta" data-waits-meta>· {{ text }}</span>
+    }
+  

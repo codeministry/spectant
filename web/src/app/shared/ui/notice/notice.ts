@@ -23,20 +23,8 @@ const TONE: Record<NoticeTone, Tone> = { warning: 'warning', error: 'error', inf
     '[style.--notice-tint]': 'colors().tint',
     '[style.--notice-ink]': 'colors().ink',
   },
-  styles: `
-    :host { display: flex; gap: 8px 16px; align-items: center; padding: 8px 16px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--notice-tint); box-shadow: inset 3px 0 0 var(--notice-color); font-size: 14px; line-height: 20px; }
-    .icon { display: inline-flex; color: var(--notice-ink); }
-    .message { flex: 1; min-inline-size: 0; }
-    .action:empty { display: none; }
-    @media (forced-colors: active) {
-      :host { box-shadow: none; border-inline-start: 3px solid CanvasText; }
-    }
-  `,
-  template: `
-    <span class="icon"><ui-icon [name]="icon()" [size]="16" /></span>
-    <div class="message"><ng-content /></div>
-    <div class="action"><ng-content select="[action]" /></div>
-  `,
+  styleUrl: './notice.css',
+  templateUrl: './notice.html',
 })
 export class UiNotice {
   readonly tone = input<NoticeTone>('warning');

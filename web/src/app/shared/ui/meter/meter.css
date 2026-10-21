@@ -1,0 +1,35 @@
+
+    :host {
+      display: flex;
+      overflow: hidden;
+      min-inline-size: 0;
+      block-size: 6px;
+      border-radius: 3px;
+      background: var(--ui-meter-track, color-mix(in srgb, var(--track) 45%, transparent));
+    }
+    :host([data-mini]) { block-size: 4px; }
+    :host([data-size="lg"]) { block-size: 8px; }
+
+    :host([data-split]) {
+      gap: 2px;
+      background: none;
+    }
+
+    .fill {
+      flex: 1;
+      background: var(--ui-meter-fill, var(--color-primary));
+      transform-origin: left center;
+      transition: transform var(--motion-duration-slow) var(--motion-ease-standard);
+    }
+    :host([data-full]) .fill { background: var(--ui-meter-fill, var(--color-accent)); }
+
+    .seg {
+      min-inline-size: 0;
+      border-radius: 3px;
+    }
+
+    @media (forced-colors: active) {
+      :host { border: 1px solid CanvasText; }
+      .fill, .seg { background: CanvasText; }
+    }
+  

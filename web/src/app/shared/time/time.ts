@@ -16,10 +16,8 @@ export type UiTimeForm = 'instant' | 'instantShort' | 'date' | 'clock' | 'clockS
 @Component({
   selector: 'ui-time',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { font-variant-numeric: tabular-nums; }
-  `,
-  template: `@if (valid()) {<time [attr.datetime]="value()">{{ text() }}</time>} @else {{{ value() }}}`,
+  styleUrl: './time.css',
+  templateUrl: './time.html',
 })
 export class UiTime {
   readonly value = input.required<string>();

@@ -1,0 +1,9 @@
+
+    @if (segments(); as parts) {
+      @for (part of parts; track part.key) {
+        <span class="seg" [style.flex-grow]="part.count" [style.background]="color(part.tone)"></span>
+      }
+    } @else {
+      <span class="fill" [style.transform]="transform()" [style.background]="fillColor()"></span>
+    }
+  

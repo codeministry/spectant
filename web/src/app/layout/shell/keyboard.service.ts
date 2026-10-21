@@ -8,17 +8,18 @@ import { ShellState, stepSpec } from './shell-state.service';
 import { PaletteIndex } from '../command-palette/palette-index';
 import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
 import { ToastService } from '../../shared/ui/toast/toast';
+import { altTyped, type DashboardSection, G_WINDOW_MS, GO_PREFIX, type Shortcut, type ShortcutAction, type ShortcutContext } from './keyboard-bindings';
+import { type BindingMap, chord, chordKey, goKey, inTypingTarget, MOD, overlayOpen, pickBinding, singleKey } from './keyboard-keys';
 import {
-  altTyped,
-  type DashboardSection,
-  G_WINDOW_MS,
-  GO_PREFIX,
-  GROUP_CONTEXT,
-  type Shortcut,
-  type ShortcutAction,
-  type ShortcutContext,
-  SHORTCUTS,
-} from './keyboard-bindings';
+  awaitSectionHeading,
+  focusHeading,
+  focusSearch,
+  focusSectionHeading,
+  sectionLink,
+  selectedSpecRow,
+  specsPanelHasFocus,
+  stepColumn,
+} from './keyboard-focus';
 import { RefreshService } from './refresh.service';
 import { SettingsService } from '../../core/settings.service';
 
@@ -30,49 +31,6 @@ export const KEYBOARD_CLOCK = new InjectionToken<() => number>('KEYBOARD_CLOCK',
   providedIn: 'root',
   factory: () => () => performance.now(),
 });
-
-/** Typing targets: a key pressed here is text, never a shortcut (as `UiRovingList` and `ShellState`). */
-const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
-/** How many frames a section jump waits for the new view's H2 before it settles for the page's H1. */
-const HEADING_FRAMES = 30;
-
-/** The overview's workspace columns and their spec rows (`features/overview`), for `h` / `l`. */
-const COLUMN = '[data-ui="workspace-column"]';
-const COLUMN_ROW = 'a.d-row';
-/** The dashboard's Specs panel and its selected row (`features/dashboard/spec-table`), for `c` and `1`–`3`. */
-const SPECS_PANEL = '[data-panel="specs"]';
-const SELECTED_ROW = `${SPECS_PANEL} [data-spec-row][data-selected]`;
-
-const MOD = 'Mod+';
-
-/** The page that holds `section` (the Specs page for the list, else the dashboard) as router link and URL path. */
-function sectionLink(ws: string, section: DashboardSection): { link: string[]; path: string } {
-  const link = workspaceLink(ws, section === 'specs' ? 'specs' : 'dashboard');
-  return { link, path: ['/w', ...link.slice(1).map(encodeURIComponent)].join('/') };
-}
-
-/** The bindings of `list` by their `key`; one key holds one binding per context (`GROUP_CONTEXT`). */
-function byKey(list: readonly Shortcut[], key: (binding: Shortcut) => string | undefined): ReadonlyMap<string, readonly Shortcut[]> {
-  const map = new Map<string, Shortcut[]>();
-  for (const binding of list) {
-    const k = key(binding);
-    if (k !== undefined) map.set(k, [...(map.get(k) ?? []), binding]);
-  }
-  return map;
-}
-
-const chord = byKey(
-  SHORTCUTS.filter((b) => b.keys.length === 1 && b.keys[0]?.startsWith(MOD)),
-  (b) => b.keys[0],
-);
-const singleKey = byKey(
-  SHORTCUTS.filter((b) => b.keys.length === 1 && !b.keys[0]?.startsWith(MOD)),
-  (b) => b.keys[0],
-);
-const goKey = byKey(
-  SHORTCUTS.filter((b) => b.keys.length === 2 && b.keys[0] === GO_PREFIX),
-  (b) => b.keys[1],
-);
 
 /**
  * The app's keyboard (ISC-97, T102): one document `keydown` handler, called by the shell, dispatching the bindings of
@@ -136,11 +94,11 @@ export class KeyboardService {
       if (event.ctrlKey || event.metaKey) return event.altKey || event.shiftKey ? false : this.onChord(event);
       if (event.altKey) return false;
     }
-    if (event.target instanceof Element && event.target.closest(TYPING)) {
+    if (inTypingTarget(event)) {
       this.goAt = null;
       return false;
     }
-    if (this.overlayOpen()) return false;
+    if (overlayOpen(this.document)) return false;
     if (event.key === 'Escape') return this.fire(this.pick(singleKey, 'Escape'), event);
     if (!this.settings.settings().singleKeyShortcuts) return false;
 
@@ -167,12 +125,8 @@ export class KeyboardService {
   }
 
   /** The binding `key` has in the current context, else its `any` one. */
-  private pick(map: ReadonlyMap<string, readonly Shortcut[]>, key: string): Shortcut | undefined {
-    const here = this.context();
-    return map.get(key)?.find((binding) => {
-      const context = GROUP_CONTEXT[binding.group];
-      return context === 'any' || context === here;
-    });
+  private pick(map: BindingMap, key: string): Shortcut | undefined {
+    return pickBinding(map, key, this.context());
   }
 
   /**
@@ -183,7 +137,7 @@ export class KeyboardService {
     const binding = this.pick(chord, `${MOD}${chordKey(event)}`);
     if (binding === undefined) return false;
     // In a text field on macOS Ctrl+K is the editing chord "kill to end of line"; there only ⌘K opens the palette.
-    if (event.ctrlKey && !event.metaKey && this.mac && event.target instanceof Element && event.target.closest(TYPING)) {
+    if (event.ctrlKey && !event.metaKey && this.mac && inTypingTarget(event)) {
       return false;
     }
     if (binding.action.kind === 'open-palette' && this.paletteOpen()) {
@@ -191,7 +145,7 @@ export class KeyboardService {
       event.preventDefault();
       return true;
     }
-    if (this.overlayOpen()) return false;
+    if (overlayOpen(this.document)) return false;
     return this.fire(binding, event);
   }
 
@@ -216,7 +170,7 @@ export class KeyboardService {
         this.openPalette();
         return true;
       case 'focus-search':
-        return this.focusSearch();
+        return focusSearch(this.document);
       case 'go-all':
         // Everywhere but on the all-workspaces page itself.
         if (this.router.url.split(/[?#]/u)[0] === '/') return false;
@@ -255,9 +209,9 @@ export class KeyboardService {
     const ws = this.workspace();
     if (ws === null) return false;
     const { link, path } = sectionLink(ws, section);
-    if (this.router.url.split(/[?#]/u)[0] === path) return this.focusSectionHeading(section);
+    if (this.router.url.split(/[?#]/u)[0] === path) return focusSectionHeading(this.document, section);
     void this.router.navigate(link).then((done) => {
-      if (done) this.awaitSectionHeading(section);
+      if (done) awaitSectionHeading(this.document, section);
     });
     return true;
   }
@@ -270,7 +224,7 @@ export class KeyboardService {
   followSectionLink(event: MouseEvent, ws: string, section: DashboardSection): void {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     if (this.router.url.split(/[?#]/u)[0] === sectionLink(ws, section).path) {
-      this.awaitSectionHeading(section);
+      awaitSectionHeading(this.document, section);
       return;
     }
     this.router.events
@@ -280,23 +234,8 @@ export class KeyboardService {
         ),
       )
       .subscribe((e) => {
-        if (e instanceof NavigationEnd) this.awaitSectionHeading(section);
+        if (e instanceof NavigationEnd) awaitSectionHeading(this.document, section);
       });
-  }
-
-  private focusSectionHeading(section: DashboardSection): boolean {
-    const heading = this.document.getElementById(section);
-    if (heading === null) return false;
-    if (!heading.hasAttribute('tabindex') && heading.tagName !== 'SUMMARY') heading.setAttribute('tabindex', '-1');
-    heading.focus();
-    return this.document.activeElement === heading;
-  }
-
-  /** After a navigation: the section heading once the page has rendered it, for up to `HEADING_FRAMES` frames. */
-  private awaitSectionHeading(section: DashboardSection, frames = 0): void {
-    this.document.defaultView?.requestAnimationFrame(() => {
-      if (!this.focusSectionHeading(section) && frames < HEADING_FRAMES) this.awaitSectionHeading(section, frames + 1);
-    });
   }
 
   /** `c`: copy the selected spec's next command — the one in the detail sidebar (`?sel=spec:`), else the Specs panel's selection. */
@@ -304,10 +243,7 @@ export class KeyboardService {
     if (this.workspace() === null) return false;
     const sel: unknown = this.router.parseUrl(this.router.url).queryParams['sel'];
     const preview: unknown = typeof sel === 'string' && sel.startsWith('spec:') ? sel.slice('spec:'.length) : undefined;
-    const id =
-      typeof preview === 'string' && preview !== ''
-        ? preview
-        : (this.document.querySelector(SELECTED_ROW)?.getAttribute('data-spec-row') ?? null);
+    const id = typeof preview === 'string' && preview !== '' ? preview : selectedSpecRow(this.document);
     const command = id === null ? null : (this.index.current()?.specs.find((row) => row.id === id)?.nextCommand ?? null);
     if (command === null) return false;
     void writeClipboard(command, this.document).then((done) => {
@@ -319,26 +255,13 @@ export class KeyboardService {
   /** `h` `l` on `/`: the same row index in the previous / next workspace column (the first column from nowhere). */
   private stepColumn(delta: -1 | 1): boolean {
     if (this.state.ws() !== null) return false;
-    const columns = [...this.document.querySelectorAll<HTMLElement>(COLUMN)];
-    const active = this.document.activeElement;
-    const current = active?.closest<HTMLElement>(COLUMN) ?? null;
-    const from = current === null ? -1 : columns.indexOf(current);
-    const to = from < 0 ? 0 : from + delta;
-    // `at` reads a negative index from the end; `h` in the first column must stop, not wrap.
-    const target = to < 0 ? undefined : columns.at(to);
-    if (target === undefined) return false;
-    const row = current === null ? 0 : Math.max(0, [...current.querySelectorAll(COLUMN_ROW)].indexOf(active as Element));
-    const rows = [...target.querySelectorAll<HTMLElement>(COLUMN_ROW)];
-    const next = (rows.length > 0 ? rows.at(Math.min(row, rows.length - 1)) : undefined) ?? target.querySelector<HTMLElement>('a[href]');
-    if (next === null) return false;
-    next.focus();
-    return true;
+    return stepColumn(this.document, delta);
   }
 
   /** `1`–`3` while the Specs panel has focus: its `phase` query param (All removes it). */
   private phaseFilter(phase: string | null): boolean {
     const ws = this.workspace();
-    if (ws === null || this.document.querySelector(SPECS_PANEL)?.contains(this.document.activeElement) !== true) return false;
+    if (ws === null || !specsPanelHasFocus(this.document)) return false;
     // Spec 058 (ISC-395): the phase filter belongs to the spec list, on the Specs page.
     void this.router.navigate(workspaceLink(ws, 'specs'), { queryParams: { phase }, queryParamsHandling: 'merge' });
     return true;
@@ -398,36 +321,9 @@ export class KeyboardService {
   /** A section jump: navigate, then move focus to the new view's heading. */
   private jump(link: string[]): boolean {
     void this.router.navigate(link).then((done) => {
-      if (done) this.focusHeading();
+      if (done) focusHeading(this.document);
     });
     return true;
-  }
-
-  private focusHeading(frames = 0): void {
-    const view = this.document.defaultView;
-    if (!view) return;
-    view.requestAnimationFrame(() => {
-      // A dialog's heading (the gate sheet in the spec head) is never a section heading.
-      const section = this.document.querySelector<HTMLElement>('main h2:not(dialog h2)');
-      if (section === null && frames < HEADING_FRAMES) {
-        this.focusHeading(frames + 1);
-        return;
-      }
-      const heading = section ?? this.document.querySelector<HTMLElement>('main h1');
-      if (heading === null) return;
-      if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
-      heading.focus();
-    });
-  }
-
-  /** `f`: the page's search field, else the palette trigger once it can take focus. */
-  private focusSearch(): boolean {
-    const target =
-      this.document.querySelector<HTMLElement>('main input[type="search"]') ??
-      this.document.querySelector<HTMLElement>('[data-control="palette"]');
-    if (target === null) return false;
-    target.focus();
-    return this.document.activeElement === target;
   }
 
   private spec(): { ws: string; id: string } | null {
@@ -435,21 +331,4 @@ export class KeyboardService {
     const id = this.state.specId();
     return ws === null || id === null ? null : { ws, id };
   }
-
-  /** An open `<dialog>` or popover owns the keyboard; `:popover-open` throws where it is unknown. */
-  private overlayOpen(): boolean {
-    try {
-      return this.document.querySelector('dialog[open], [popover]:popover-open') !== null;
-    } catch {
-      return this.document.querySelector('dialog[open]') !== null;
-    }
-  }
-}
-
-/**
- * The letter of a chord from the physical key (`KeyK` → `k`), so a non-Latin layout (`л`, `κ`) still reaches the
- * binding its `aria-keyshortcuts` announces; any other key falls back to its produced value.
- */
-function chordKey(event: KeyboardEvent): string {
-  return /^Key[A-Z]$/u.test(event.code) ? event.code.slice(3).toLowerCase() : event.key.toLowerCase();
 }

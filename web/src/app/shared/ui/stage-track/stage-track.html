@@ -1,0 +1,38 @@
+
+    @if (size() === 'mini') {
+      <span class="mini" role="img" [attr.aria-label]="name()">
+        @for (seg of segments(); track seg.key) {
+          <span class="bar" [attr.data-state]="seg.state"></span>
+        }
+        @if (blockedLabel(); as word) {
+          <span class="mini-word" data-blocked>{{ word }}</span>
+        }
+      </span>
+    } @else {
+      <ol [attr.aria-label]="name()">
+        @for (seg of segments(); track seg.key; let i = $index, count = $count) {
+          <li
+            [attr.data-stage]="rowMode() ? seg.key : null"
+            [attr.data-state]="seg.state"
+            [attr.data-detour]="seg.current && detour() ? detour() : null"
+            [attr.data-align]="i >= count / 2 ? 'end' : null"
+            [attr.aria-current]="seg.current ? 'step' : null"
+          >
+            <span class="bar"></span>
+            @if (size() === 'compact') {
+              @if (seg.current) {
+                <span class="word">{{ seg.label }}@if (detourLabel(); as word) { · <span class="detour">{{ word }}</span>}</span>
+              } @else {
+                <span class="vh">{{ seg.label }}</span>
+              }
+            } @else {
+              <span class="seg-label">{{ seg.label }}</span>
+              @if (seg.current && detourLabel(); as word) {
+                <span class="detour">{{ word }}</span>
+              }
+            }
+          </li>
+        }
+      </ol>
+    }
+  

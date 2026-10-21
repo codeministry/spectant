@@ -15,20 +15,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     '[style.inline-size]': 'width()',
     '[style.block-size]': 'height()',
   },
-  styles: `
-    :host {
-      display: block;
-      border-radius: var(--radius-field);
-      background: linear-gradient(90deg, var(--color-base-300) 0%, var(--lane) 50%, var(--color-base-300) 100%);
-      background-position: 150% 0;
-      background-size: 200% 100%;
-      animation: ui-shimmer var(--motion-duration-skeleton) linear infinite;
-    }
-    @media (forced-colors: active) {
-      :host { border: 1px solid GrayText; }
-    }
-  `,
-  template: ``,
+  styleUrl: './skeleton.css',
+  templateUrl: './skeleton.html',
 })
 export class UiSkeleton {
   readonly width = input('100%');

@@ -29,28 +29,7 @@ export type SheetTier = 'compact' | 'medium' | 'wide';
     '(pointerdown)': 'modal.pointerDown($event)',
     '(click)': 'modal.click($event)',
   },
-  template: `
-    <dialog
-      #dialog
-      class="sheet"
-      [attr.aria-labelledby]="heading() ? headingId : null"
-      [attr.aria-label]="heading() ? null : (label() ?? null)"
-      (close)="modal.closed()"
-    >
-      @if (tier() === 'compact') {
-        <div class="grip">
-          <ng-content select="[uiSheetHandle]"><span class="handle" aria-hidden="true"></span></ng-content>
-        </div>
-      }
-      @if (heading(); as heading) {
-        <div class="head">
-          <h2 class="title" [id]="headingId">{{ heading }}</h2>
-          <button ui-icon-button icon="x" size="sm" [label]="'common.close' | transloco" (click)="open.set(false)"></button>
-        </div>
-      }
-      <div class="body"><ng-content /></div>
-    </dialog>
-  `,
+  templateUrl: './sheet.html',
 })
 export class UiSheet {
   readonly open = model(false);

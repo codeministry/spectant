@@ -1,0 +1,62 @@
+
+    :host {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-block-end: 16px;
+    }
+
+    .text {
+      flex: 0 1 auto;
+      min-inline-size: 0;
+    }
+    .text, .meta { align-self: last baseline; }
+
+    .title {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      min-inline-size: 0;
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 24px;
+    }
+
+    .heading-text {
+      overflow: hidden;
+      min-inline-size: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--muted-ink);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 16px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .meta {
+      flex: none;
+      color: var(--muted-ink);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 400;
+      line-height: 16px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-inline-start: auto;
+    }
+
+    /* Outranks `.meta` and `.actions` by specificity, so its display wins wherever it stands. */
+    .meta:empty, .actions:empty { display: none; }
+  
