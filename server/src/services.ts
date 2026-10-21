@@ -21,9 +21,10 @@
  * When `lsof` is not on PATH, fails to spawn or exits non-zero, the result is `[]`, never a throw: a missing tool must
  * not break the dashboard.
  */
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
+import { realpathOrNull } from "./infra/fs/exists.ts";
 import { defaultLsof, type LsofRun } from "./infra/process/lsof.ts";
 
 export type { LsofRun };
@@ -196,11 +197,8 @@ function parseCwds(stdout: string): Map<number, string> {
 /** The repo root as given and as realpath, since `lsof` reports resolved working directories. */
 function repoRoots(repoRoot: string): string[] {
   const given = resolve(repoRoot);
-  try {
-    return [...new Set([given, realpathSync(given)])];
-  } catch {
-    return [given];
-  }
+  const real = realpathOrNull(given);
+  return real === null ? [given] : [...new Set([given, real])];
 }
 
 /** Where a listener's process runs: whether in a worktree, and the spec number a spec worktree's folder names. */

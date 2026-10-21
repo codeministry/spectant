@@ -1,4 +1,4 @@
-import type { Note } from '../../../../../../server/src/notes.contract';
+import type { Note } from '../../../../../../server/src/contracts/notes.contract';
 import {
   anchorFromValue,
   anchorLabel,

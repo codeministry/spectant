@@ -1,8 +1,7 @@
 // The identity and the numbers given out: `config --get` (`userEmail`) and `for-each-ref` plus `log` over `specs`
 // (`takenSpecNumbers`), all of which read and never touch the index, take a lock or write an object.
-import { lstatSync } from "node:fs";
-import { join } from "node:path";
 import { specNumbersOf } from "../../../../core/src/allocate.ts";
+import { hasGit } from "../fs/read.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, defaultGitRunner, firstLine, gitEnv, messageOf, readWithin } from "./runner.ts";
 
 // ── the identity (T77, ISC-119) ──────────────────────────────────────────────────────────────────────────────────
@@ -21,11 +20,7 @@ export interface UserEmailOptions {
  */
 export async function userEmail(root: string, options: UserEmailOptions = {}): Promise<string | null> {
   const runner = options.runner ?? defaultGitRunner;
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return null;
-  }
+  if (!hasGit(root)) return null;
   return readWithin(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
     const run = await runner(["-C", root, "config", "--get", "user.email"], gitEnv(root), signal);
     // No git (null), exit 1 ("not set") and any other failure all read as no address.
@@ -65,11 +60,7 @@ export async function takenSpecNumbers(root: string, options: UserEmailOptions =
   const runner = options.runner ?? defaultGitRunner;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const nothing = (diagnostic: string): TakenNumbers => ({ numbers: [], source: "none", diagnostic });
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return nothing("not a git repository root");
-  }
+  if (!hasGit(root)) return nothing("not a git repository root");
   const read = async (signal: AbortSignal): Promise<TakenNumbers> => {
     const env = gitEnv(root);
     const refs = await runner(["-C", root, "for-each-ref", "--format=%(refname)", "refs/heads/", "refs/remotes/"], env, signal);

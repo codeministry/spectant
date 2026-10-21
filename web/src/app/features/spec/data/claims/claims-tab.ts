@@ -12,7 +12,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { ClaimGlyphState, ClaimView, ClaimViewModel, ItemStateInfo } from '../../../../../../../core/src/files';
-import { type NoteCounts, noteCountFor } from '../../../../../../../server/src/notes.contract';
+import { type NoteCounts, noteCountFor } from '../../../../../../../server/src/contracts/notes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';

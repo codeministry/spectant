@@ -4,9 +4,8 @@
 //
 // Bounded: at most `limit` commits, one deadline for the whole call (the child is killed, the call answers `none`),
 // and a cache keyed by root and folder that skips `git log` while `HEAD` is unchanged.
-import { lstatSync } from "node:fs";
-import { join } from "node:path";
 import type { CommitRecord } from "../../../../core/src/files.ts";
+import { hasGit } from "../fs/read.ts";
 import { repoStateOf } from "./repo-state.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, SHA, defaultGitRunner, firstLine, gitEnv, messageOf, normalizeFolder, readWithin } from "./runner.ts";
 
@@ -121,11 +120,7 @@ export async function commitsFor(root: string, folder: string, options: CommitsO
 
   const rel = normalizeFolder(folder);
   if (rel === null) return none("folder is not a relative path inside the repository");
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return none("not a git repository root");
-  }
+  if (!hasGit(root)) return none("not a git repository root");
 
   return readWithin(
     timeoutMs,

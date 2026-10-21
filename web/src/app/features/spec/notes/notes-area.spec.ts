@@ -5,7 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
-import type { Note } from '../../../../../../server/src/notes.contract';
+import type { Note } from '../../../../../../server/src/contracts/notes.contract';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { ApiClient, type ApiResult } from '../../../core/api.service';
 import { SettingsService } from '../../../core/settings.service';

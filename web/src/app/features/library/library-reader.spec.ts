@@ -8,7 +8,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
 import techContract from '../../../../../core/fixtures/tech-sections.contract.json';
-import type { LibraryDocPage } from '../../../../../server/src/spec-routes.contract';
+import type { LibraryDocPage } from '../../../../../server/src/contracts/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';

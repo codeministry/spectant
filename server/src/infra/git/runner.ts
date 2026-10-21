@@ -8,8 +8,8 @@
 // repository's fsmonitor hook nor starts a monitor daemon that would leave its socket in `.git/`; `config -z
 // --get-regexp ^filter\.` (the filter driver names, `filterDrivers`) reads the configuration and never writes it
 // (spec 041, ISC-216.2).
-import { lstatSync } from "node:fs";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, isAbsolute } from "node:path";
+import { hasGit } from "../fs/read.ts";
 
 export interface GitRun {
   readonly code: number;
@@ -113,13 +113,7 @@ export async function filterDrivers(path: string, runner: GitRunner, env: Record
 
 /** An absolute path with its own `.git` (a linked worktree's is a file): the root rule of the worktree reads. */
 export function hasOwnGit(path: string): boolean {
-  if (!isAbsolute(path)) return false;
-  try {
-    lstatSync(join(path, ".git"));
-    return true;
-  } catch {
-    return false;
-  }
+  return isAbsolute(path) && hasGit(path);
 }
 
 /** Revision syntax, whitespace and control characters: what a plain branch name never holds (git-check-ref-format). */

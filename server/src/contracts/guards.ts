@@ -1,6 +1,6 @@
 /**
  * The guards every contract shares (spec 059): the segments of a pathname below a root and their once-decode, the
- * plain-record check of a body and the lowercase sha256 hex pattern. The contracts, `settings.ts` and `cli-notes.ts`
+ * plain-record check of a body, the JSON parse of a request text and the lowercase sha256 hex pattern. The contracts, `settings.ts` and `cli-notes.ts`
  * import these instead of keeping copies. Browser-safe: this file imports nothing. Internal: no contract barrel
  * re-exports it.
  */
@@ -30,3 +30,12 @@ export const isRecord = (value: unknown): value is Record<string, unknown> => ty
 
 /** A sha256 digest as 64 lowercase hex digits. */
 export const HEX64 = /^[0-9a-f]{64}$/;
+
+/** A request text parsed as JSON, or `undefined` when it is not JSON; the body validators refuse `undefined`. */
+export function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}

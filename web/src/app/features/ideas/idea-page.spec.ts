@@ -7,7 +7,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import harborPlanning from '../../../../../core/fixtures/harbor.planning.golden.json';
 import type { IdeaRef } from '../../../../../core/src/files';
 import { renderDocsMarkdown } from '../../../../../core/src/markdown-docs';
-import type { IdeaPage as IdeaPageBody } from '../../../../../server/src/spec-routes.contract';
+import type { IdeaPage as IdeaPageBody } from '../../../../../server/src/contracts/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';

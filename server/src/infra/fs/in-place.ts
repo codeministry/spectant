@@ -32,7 +32,10 @@ export function appendInPlace(path: string, data: string): void {
   }
 }
 
-/** Whether anything (a file, a folder, a link) already has this name; never follows a link. */
+/**
+ * Whether anything (a file, a folder, a link) already has this name; never follows a link. Unlike `existsNoFollow`
+ * (`exists.ts`) any failure but ENOENT throws, so a write never takes an unreadable name for a free one.
+ */
 export function pathTaken(path: string): boolean {
   try {
     lstatSync(path);

@@ -6,7 +6,7 @@ import planningGolden from '../../../../../../core/fixtures/harbor.planning.gold
 import specGolden from '../../../../../../core/fixtures/harbor.spec.golden.json';
 import beaconGolden from '../../../../../../core/fixtures/beacon.spec.golden.json';
 import beaconPlanning from '../../../../../../core/fixtures/beacon.planning.golden.json';
-import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../../server/src/contracts/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { formatInstant } from '../../../shared/time';
 import { StatusBlock } from './status-block';

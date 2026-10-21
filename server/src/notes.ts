@@ -13,6 +13,7 @@
  * parsers before the database is touched, 201 on create, 204 on delete, and the GETs carry `json()`'s strong ETag.
  */
 import { json } from "./api.ts";
+import { readJson } from "./infra/http/json.ts";
 import type { ApiHandler } from "./http.ts";
 import type { NoteStore } from "./infra/db/notes-store.ts";
 import {
@@ -36,14 +37,6 @@ export type NotesApiOptions = {
 };
 
 const notFound = (req: Request): Response => json(req, 404, { error: "not-found" });
-
-async function readBody(req: Request): Promise<unknown> {
-  try {
-    return (await req.json());
-  } catch {
-    return undefined; // the contract's parsers answer `invalid-body` for it
-  }
-}
 
 /** The notes routes as an `ApiHandler`; `null` for every path that is no notes route. */
 export function notesApi(options: NotesApiOptions): ApiHandler {
@@ -69,13 +62,13 @@ export function notesApi(options: NotesApiOptions): ApiHandler {
         return query.ok ? json(req, 200, store.counts(ws, query.value.spec)) : json(req, 400, { error: query.error });
       }
       case "create":
-        return readBody(req).then((body) => {
+        return readJson(req).then((body) => {
           const note = parseNewNote(ws, body);
           return note.ok ? json(req, 201, store.create(note.value)) : json(req, 400, { error: note.error });
         });
       case "update": {
         const { id } = match.params;
-        return readBody(req).then((body) => {
+        return readJson(req).then((body) => {
           const draft = parseNoteDraft(body);
           if (!draft.ok) return json(req, 400, { error: draft.error });
           const note = isNoteId(id) ? store.update(ws, id, draft.value) : undefined;

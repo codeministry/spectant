@@ -1,4 +1,4 @@
-import type { ActorMapping } from '../../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../../server/src/contracts/spec-routes.contract';
 import type { ClaimView, SpecHead, SpecPageModel, Workflow } from '../../../../../../core/src/files';
 import dashboardGolden from '../../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../../core/fixtures/harbor.planning.golden.json';

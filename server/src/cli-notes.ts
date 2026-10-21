@@ -27,12 +27,13 @@
  * `db rollback <version>` applies `db.ts`'s documented reversals down to `version`, newest first. Without `--yes` it
  * only says what would be lost and exits 1. Nothing here touches a registered repository (ISC-15).
  */
-import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute } from "node:path";
 import { isRecord } from "./contracts/guards.ts";
 import { SCHEMA_VERSION, openDatabase, openDatabaseUnmigrated, rollback, schemaVersion } from "./db.ts";
 import type { Db } from "./infra/db/db.ts";
 import { type RollbackLoss, inTransaction, openNotes, rollbackLossCount } from "./infra/db/notes-store.ts";
+import { realpathOrNull } from "./infra/fs/exists.ts";
 import { NOTE_TITLE_MAX, type Note, type NoteAnchor, isNoteId, parseAnchor } from "./notes.contract.ts";
 import { openRegistry } from "./registry.ts";
 
@@ -89,11 +90,7 @@ export function importedNoteId(oldId: string): string {
 }
 
 function realpathOrSelf(path: string): string {
-  try {
-    return realpathSync(path);
-  } catch {
-    return path;
-  }
+  return realpathOrNull(path) ?? path;
 }
 
 function workspaceFor(repo: unknown, workspaces: readonly WorkspaceRef[]): string | null {

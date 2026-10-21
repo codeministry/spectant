@@ -23,6 +23,7 @@
 import { lstatSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
+import { existsNoFollow } from "../fs/exists.ts";
 
 const statOf = (path: string): string => {
   try {
@@ -38,15 +39,6 @@ const textOf = (path: string): string => {
     return readFileSync(path, "utf8").trim();
   } catch {
     return "-";
-  }
-};
-
-const exists = (path: string): boolean => {
-  try {
-    lstatSync(path);
-    return true;
-  } catch {
-    return false;
   }
 };
 
@@ -125,8 +117,8 @@ export function repoStateOf(checkout: string): string | null {
       textOf(join(dir, "HEAD")),
       statOf(join(dir, "index")),
       target,
-      folder !== null && exists(join(folder, ".git")) ? "present" : "gone",
-      exists(join(dir, "locked")) ? "locked" : "",
+      folder !== null && existsNoFollow(join(folder, ".git")) ? "present" : "gone",
+      existsNoFollow(join(dir, "locked")) ? "locked" : "",
     );
   }
   return parts.join("\0");

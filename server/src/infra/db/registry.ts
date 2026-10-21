@@ -15,8 +15,9 @@
  * workspace is appended at the end.
  */
 import type { Database } from "bun:sqlite";
-import { realpathSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { realpathOrNull } from "../fs/exists.ts";
 import { openDatabase } from "./db.ts";
 
 export type Workspace = {
@@ -68,12 +69,8 @@ function toWorkspace(row: Row): Workspace {
 }
 
 function resolveDirectory(path: string): string {
-  let real: string;
-  try {
-    real = realpathSync(resolve(path));
-  } catch {
-    throw new RegistryError("not-a-directory", `${path} does not exist`);
-  }
+  const real = realpathOrNull(resolve(path));
+  if (real === null) throw new RegistryError("not-a-directory", `${path} does not exist`);
   if (!statSync(real).isDirectory()) throw new RegistryError("not-a-directory", `${path} is not a directory`);
   return real;
 }
@@ -81,11 +78,8 @@ function resolveDirectory(path: string): string {
 /** The stored path a remove reference could mean: its realpath when it still exists, else the plain absolute path. */
 function candidatePaths(ref: string): string[] {
   const absolute = resolve(ref);
-  try {
-    return [...new Set([realpathSync(absolute), absolute])];
-  } catch {
-    return [absolute];
-  }
+  const real = realpathOrNull(absolute);
+  return real === null ? [absolute] : [...new Set([real, absolute])];
 }
 
 /** Opens the registry in `dataDir`, creating the directory and `spectant.db` on first use. */

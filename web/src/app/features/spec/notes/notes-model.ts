@@ -1,4 +1,4 @@
-import type { AnchorKind, Note, NoteAnchor, NoteDraft } from '../../../../../../server/src/notes.contract';
+import type { AnchorKind, Note, NoteAnchor, NoteDraft } from '../../../../../../server/src/contracts/notes.contract';
 
 /**
  * The Notes area's pure helpers (T100, ISC-95): the list filter, the anchor chip and select value, the row excerpt and

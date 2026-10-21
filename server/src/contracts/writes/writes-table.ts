@@ -39,6 +39,7 @@
  * `writeAnswerOf` directly (spec 008, T111).
  */
 import { FILE_KINDS } from '../../../../core/src/files.ts';
+import { parseJson } from '../guards.ts';
 import {
   ACTIVITY_HASH_HEADER,
   REVIEWED_HASHES_HEADER,
@@ -233,12 +234,7 @@ export type ParsedWriteBody<R extends WriteRoute> =
 /** The request text as the route's body, or the 400 `invalid-body` answer. Never throws. */
 export function parseWriteBody<R extends WriteRoute>(route: R, text: string): ParsedWriteBody<R> {
   const invalid = { ok: false, error: { error: 'invalid-body' } } as const;
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    return invalid;
-  }
+  const data = parseJson(text);
   const valid =
     route === 'gateReviewed' ? isGateReviewedRequest(data) : route === 'taskCheck' ? isTaskCheckRequest(data) : isTransitionRequest(data);
   return valid ? { ok: true, body: data as WriteRequests[R] } : invalid;

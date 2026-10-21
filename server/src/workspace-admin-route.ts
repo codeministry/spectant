@@ -35,12 +35,13 @@
  *
  * No answer carries an absolute path: a summary names `pathTail` only.
  */
-import { createHash } from "node:crypto";
-import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { json, type WorkspaceListSummary } from "./api.ts";
+import { strongEtag } from "./infra/http/etag.ts";
+import { readJson } from "./infra/http/json.ts";
 import { type ApiHandler, matchesIfNoneMatch } from "./http.ts";
 import { type Registry, RegistryError, type Workspace } from "./registry.ts";
+import { realpathOrNull } from "./infra/fs/exists.ts";
 import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import type { WatchHub } from "./watch.ts";
 import {
@@ -71,15 +72,6 @@ export interface WorkspaceAdminApiOptions {
 /** The admin routes this server answers; any other admin path passes on until its task lands. */
 const SERVED: ReadonlySet<WorkspaceAdminRouteName> = new Set(["add", "rename", "rescan", "remove", "putImage", "getImage"]);
 
-/** The request body as JSON, or `undefined` when it is none; the contract's parser refuses that as `invalid-body`. */
-async function bodyOf(req: Request): Promise<unknown> {
-  try {
-    return await req.json();
-  } catch {
-    return undefined;
-  }
-}
-
 export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler {
   const { registry } = options;
 
@@ -97,17 +89,13 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
 
   /** The slug of the entry registered under `path`'s real path, as `registry.add` compared it; "" if it vanished meanwhile. */
   const slugOfPath = (path: string): string => {
-    let real: string;
-    try {
-      real = realpathSync(resolve(path));
-    } catch {
-      return "";
-    }
+    const real = realpathOrNull(resolve(path));
+    if (real === null) return "";
     return registry.list().find((w) => w.path === real)?.slug ?? "";
   };
 
   const add = async (req: Request): Promise<Response> => {
-    const parsed = parseAddWorkspaceRequest(await bodyOf(req));
+    const parsed = parseAddWorkspaceRequest(await readJson(req));
     if (!parsed.ok) return json(req, 400, { error: parsed.error });
     let workspace: Workspace;
     try {
@@ -123,7 +111,7 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
   };
 
   const rename = async (req: Request, ws: string): Promise<Response> => {
-    const parsed = parseRenameWorkspaceRequest(await bodyOf(req));
+    const parsed = parseRenameWorkspaceRequest(await readJson(req));
     if (!parsed.ok) return json(req, 400, { error: parsed.error });
     const workspace = registry.rename(ws, parsed.value.name);
     if (workspace === undefined) return json(req, 404, { error: "not-found" });
@@ -172,7 +160,7 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
       "Content-Type": IMAGE_TYPES[image.type].contentType,
       "Cache-Control": "no-cache",
       "X-Content-Type-Options": "nosniff",
-      ETag: `"${createHash("sha256").update(image.bytes).digest("base64url")}"`,
+      ETag: strongEtag(image.bytes),
     };
     if (matchesIfNoneMatch(req.headers.get("If-None-Match"), headers.ETag)) return new Response(null, { status: 304, headers });
     return new Response(req.method === "HEAD" ? null : image.bytes, { status: 200, headers });

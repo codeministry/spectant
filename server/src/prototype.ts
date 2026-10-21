@@ -34,13 +34,12 @@
  * opaque origin and cannot call the app's API; `connect-src 'none'`) and `X-Content-Type-Options: nosniff`. No answer
  * carries a path (ISC-3). Read-only: `realpath`, `lstat`, `stat` and one open for reading (ISC-15).
  */
-import { statSync } from "node:fs";
 import { basename } from "node:path";
 import { prototypeMediaTypeOf, resolvePrototypePath } from "../../core/src/evidence.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
 import { json } from "./api.ts";
 import type { ApiHandler } from "./http.ts";
-import { matchesIfNoneMatch } from "./http.ts";
+import { fileAnswer, fileVersion } from "./infra/http/file-response.ts";
 import type { Registry } from "./registry.ts";
 import { isLoopbackHost, isLoopbackOrigin, methodNotAllowed } from "./infra/http/guard.ts";
 import {
@@ -129,29 +128,17 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
     const mediaType = prototypeMediaTypeOf(basename(hit.path));
     const html = isHtmlType(mediaType);
     if (opaque && html) return forbidden(req);
-    let size: number;
-    let etag: string;
-    try {
-      const stat = statSync(hit.absolute);
-      if (!stat.isFile()) return notFound(req);
-      size = stat.size;
-      etag = `W/"${size.toString(36)}-${Math.trunc(stat.mtimeMs).toString(36)}"`;
-    } catch {
-      // Gone between the check and the stat.
-      return notFound(req);
-    }
+    const version = fileVersion(hit.absolute);
+    if (version === null) return notFound(req);
     const headers: Record<string, string> = {
       ...evidenceFileHeaders(mediaType),
       "Content-Disposition": "inline",
       ...ALWAYS,
-      ETag: etag,
+      ETag: version.etag,
       ...(html ? {} : { Vary: OPAQUE_VARY }),
       ...(opaque ? { "Access-Control-Allow-Origin": "*" } : {}),
     };
-    if (matchesIfNoneMatch(req.headers.get("If-None-Match"), etag)) return new Response(null, { status: 304, headers });
-    if (req.method === "HEAD") return new Response(null, { status: 200, headers: { ...headers, "Content-Length": String(size) } });
-    // Bun sets Content-Length from the file it opens, so a file that changed since the stat is never cut short.
-    return new Response(Bun.file(hit.absolute), { status: 200, headers });
+    return fileAnswer(req, hit.absolute, version, headers);
   };
 
   return (req, url) => {

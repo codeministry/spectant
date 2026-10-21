@@ -1,7 +1,7 @@
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, resource, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { IdeaPage as IdeaPageBody } from '../../../../../server/src/spec-routes.contract';
+import type { IdeaPage as IdeaPageBody } from '../../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { DetailSelection, selectedLook } from '../../layout/detail-sidebar/selection';
 import { NotFound } from '../../layout/not-found/not-found';

@@ -29,7 +29,6 @@
  * data directory), the working directory and the browser runner, and stop `serve` with a signal; all default to the
  * process's own.
  */
-import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { actorsApi, composeApi, dashboardApi, workspaceSummaryReader } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
@@ -39,6 +38,7 @@ import { tokensCommand } from "./tokens-cli.ts";
 import { SCHEMA_VERSION, openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
 import { CommitCache } from "./git.ts";
+import { realpathOrNull } from "./infra/fs/exists.ts";
 import { detectLifeos, lifeosApi } from "./lifeos.ts";
 import { notesApi, openNotes } from "./notes.ts";
 import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
@@ -290,11 +290,8 @@ function pathTail(workspace: Workspace): string {
 
 /** The stored paths `ref` could mean: its realpath when it exists, and the plain absolute path. */
 function candidatePaths(absolute: string): string[] {
-  try {
-    return [realpathSync(absolute), absolute];
-  } catch {
-    return [absolute];
-  }
+  const real = realpathOrNull(absolute);
+  return real === null ? [absolute] : [real, absolute];
 }
 
 function add(registry: Registry, arg: string, cwd: string): number {

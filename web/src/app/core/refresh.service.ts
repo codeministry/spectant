@@ -1,6 +1,6 @@
 import { DestroyRef, DOCUMENT, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
-import type { LiveUpdate } from '../../../../server/src/spec-routes.contract';
+import type { LiveUpdate } from '../../../../server/src/contracts/spec-routes.contract';
 import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
 import { ApiClient } from './api.service';

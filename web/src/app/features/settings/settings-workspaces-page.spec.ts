@@ -4,7 +4,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import type { WorkspaceAdminSummary } from '../../../../../server/src/workspace-admin.contract';
+import type { WorkspaceAdminSummary } from '../../../../../server/src/contracts/workspace-admin.contract';
 import { ApiClient, type ApiResult, type WorkspaceAdminResult, type WorkspaceListEntry } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { DemoData } from '../../shared/demo/demo-data';

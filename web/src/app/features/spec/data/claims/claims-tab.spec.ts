@@ -7,7 +7,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { ClaimView, ClaimViewModel } from '../../../../../../../core/src/files';
 import golden from '../../../../../../../core/fixtures/harbor.claim-view.golden.json';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
-import type { NoteCounts } from '../../../../../../../server/src/notes.contract';
+import type { NoteCounts } from '../../../../../../../server/src/contracts/notes.contract';
 import { ApiClient, type ApiResult } from '../../../../core/api.service';
 import { SPEC_AREA_ROUTES } from '../../spec-area.routes';
 

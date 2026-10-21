@@ -1,5 +1,5 @@
 import type { Priority, WorkflowStage } from '../../../../../../core/src/files';
-import type { AllocateRefused } from '../../../../../../server/src/spec-routes.contract';
+import type { AllocateRefused } from '../../../../../../server/src/contracts/spec-routes.contract';
 
 /**
  * Why a drop did not move its card (spec 008, T126), shown by `app-refusal-notice` under the card. `stage` is the

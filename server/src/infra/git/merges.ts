@@ -1,9 +1,8 @@
 // The merge state: `for-each-ref`, `rev-list --first-parent` and `merge-base --is-ancestor` (`mergedSpecBranches`)
 // and `log --ancestry-path` (`mergeCommitOf`), whether and where a merge brought a spec branch into `main`; all read
 // refs and objects only, never touch the index, never take a lock and never write an object.
-import { lstatSync } from "node:fs";
-import { join } from "node:path";
 import { SPEC_FOLDER } from "../../../../core/src/spec-ref.ts";
+import { hasGit } from "../fs/read.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
 import type { UserEmailOptions } from "./refs.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, SHA, defaultGitRunner, firstLine, gitEnv, isPlainBranchName, readWithin } from "./runner.ts";
@@ -103,11 +102,7 @@ export async function mergedSpecBranches(root: string, options: MergedBranchesOp
   const runner = options.runner ?? defaultGitRunner;
   const cache = options.cache ?? MERGE_CACHE;
   const nothing = (diagnostic: string): SpecBranches => ({ branches: [], source: "none", diagnostic });
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return nothing("not a git repository root");
-  }
+  if (!hasGit(root)) return nothing("not a git repository root");
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   return readWithin(timeoutMs, nothing(`git timed out after ${timeoutMs} ms`), async (signal) => {
     const env = gitEnv(root);
@@ -181,11 +176,7 @@ export interface MergeCommit {
  */
 export async function mergeCommitOf(root: string, branch: string, options: UserEmailOptions = {}): Promise<MergeCommit | null> {
   if (!isPlainBranchName(branch)) return null;
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return null;
-  }
+  if (!hasGit(root)) return null;
   // An injected runner reads afresh: its caller counts or scripts the runs.
   if (options.runner !== undefined) return mergeCommitNow(root, branch, options.runner, options.timeoutMs);
   return MERGE_COMMITS.get(`${root}\0${branch}`, repoStateOf(root), () => mergeCommitNow(root, branch, defaultGitRunner, options.timeoutMs));

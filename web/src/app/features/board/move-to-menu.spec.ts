@@ -7,7 +7,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
 import type { WorkflowStage } from '../../../../../core/src/files';
-import type { WriteAnswer } from '../../../../../server/src/writes.contract';
+import type { WriteAnswer } from '../../../../../server/src/contracts/writes.contract';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult, type PlanningBody, type WriteResult } from '../../core/api.service';

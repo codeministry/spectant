@@ -1,5 +1,5 @@
 import { DestroyRef, inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { EVENTS_PATH, isLiveUpdate, LIVE_EVENT, type LiveUpdate } from '../../../../server/src/spec-routes.contract';
+import { EVENTS_PATH, isLiveUpdate, LIVE_EVENT, type LiveUpdate } from '../../../../server/src/contracts/spec-routes.contract';
 
 /** The part of a browser `EventSource` the live stream uses. */
 export interface LiveSource extends EventTarget {

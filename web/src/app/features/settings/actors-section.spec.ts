@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import type { ActorMapping } from '../../../../../server/src/spec-routes.contract';
+import type { ActorMapping } from '../../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient, type ApiResult, type PutResult } from '../../core/api.service';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ActorsSection } from './actors-section';

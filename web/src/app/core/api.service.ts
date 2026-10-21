@@ -38,10 +38,10 @@ import {
   workspaceRoutes,
   type WorkspaceRouteResponses,
   type LibraryDocPage,
-} from '../../../../server/src/spec-routes.contract';
-import { type RunLocked, type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
+} from '../../../../server/src/contracts/spec-routes.contract';
+import { type RunLocked, type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/contracts/writes.contract';
 import type { Priority, WorkflowStage } from '../../../../core/src/files';
-import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
+import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/contracts/note-routes.contract';
 import {
   type AddWorkspaceRequest,
   type ImageKind,
@@ -51,7 +51,7 @@ import {
   type WorkspaceAdminRouteName,
   workspaceAdminRoutes,
   type WorkspaceSummaryAdded,
-} from '../../../../server/src/workspace-admin.contract';
+} from '../../../../server/src/contracts/workspace-admin.contract';
 
 /** The admin writes of spec 016 (every route of the workspace admin contract but the image read). */
 export type WorkspaceAdminWrite = Exclude<WorkspaceAdminRouteName, 'getImage'>;

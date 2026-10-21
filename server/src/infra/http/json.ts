@@ -7,6 +7,9 @@
  */
 import type { ApiHandler } from "./server.ts";
 import { matchesIfNoneMatch } from "./server.ts";
+import { strongEtag } from "./etag.ts";
+
+export { parseJson } from "../../contracts/guards.ts";
 
 /**
  * The first handler that answers wins; `null` from all of them lets the server's JSON 404 apply. A handler declines
@@ -21,10 +24,6 @@ export function composeApi(...handlers: ApiHandler[]): ApiHandler {
     }
     return null;
   };
-}
-
-function strongEtag(body: string): string {
-  return `"${new Bun.CryptoHasher("sha256").update(body).digest("base64url")}"`;
 }
 
 /** A JSON answer with its ETag; 304 for a matching `If-None-Match` on a 200, no body on `HEAD`. `lifeos.ts` shares it. */

@@ -10,6 +10,7 @@
  * (`api.ts`), as on every workspace route.
  */
 import { isBacklogRequest } from "./spec-routes.contract.ts";
+import { parseJson } from "./infra/http/json.ts";
 import type { WriteAnswer } from "./writes.contract.ts";
 import { writeBacklog } from "./writes.ts";
 
@@ -22,12 +23,7 @@ export interface BacklogRouteInput {
 
 /** The answer of one backlog write: 400 for a body that is no `BacklogRequest`, otherwise the write's own answer. */
 export async function backlogAnswer(input: BacklogRouteInput): Promise<WriteAnswer<"backlog">> {
-  let data: unknown;
-  try {
-    data = JSON.parse(input.text);
-  } catch {
-    data = undefined;
-  }
+  const data = parseJson(input.text);
   if (!isBacklogRequest(data)) return { status: 400, body: { error: "invalid-body" } };
   return writeBacklog({ root: input.root, now: input.now, body: data });
 }

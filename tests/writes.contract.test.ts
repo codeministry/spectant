@@ -446,7 +446,7 @@ describe("the five app writes (spec 008, T81; spec 036): the table, the paths ea
 describe("the sixth write path is the one the CLI writes", () => {
   test("`spectant tokens` takes its path from WRITE_PATHS.tokens and names no literal of its own", () => {
     expect(TOKENS_PATH).toBe(WRITE_PATHS.tokens.writes[0]);
-    const source = readFileSync(join(ROOT, "server", "src", "tokens-cli.ts"), "utf8");
+    const source = readFileSync(join(ROOT, "server", "src", "tokens", "command.ts"), "utf8");
     expect(source.includes("WRITE_PATHS.tokens")).toBe(true);
     expect(source.includes('"specs/tokens.jsonl"')).toBe(false);
   });

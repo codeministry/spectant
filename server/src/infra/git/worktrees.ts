@@ -5,8 +5,7 @@
 // any optional lock a future git might take; and `log` over named paths (`lastCommits`). `status` also runs with every
 // filter driver's `clean` and `process` emptied and `required` off and with submodules ignored, so a page read starts
 // no command the repository configures (spec 041, ISC-216.2).
-import { lstatSync } from "node:fs";
-import { join } from "node:path";
+import { hasGit } from "../fs/read.ts";
 import type { UserEmailOptions } from "./refs.ts";
 import {
   DEFAULT_TIMEOUT_MS,
@@ -32,11 +31,7 @@ import {
  */
 export async function worktreeList(root: string, options: UserEmailOptions = {}): Promise<string> {
   const runner = options.runner ?? defaultGitRunner;
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return "";
-  }
+  if (!hasGit(root)) return "";
   return readWithin(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, "", async (signal) => {
     const run = await runner(["-C", root, "worktree", "list", "--porcelain"], gitEnv(root), signal);
     // No git (null), a non-zero exit and an aborted run all read as no listing; a partial text is never handed on.
@@ -57,11 +52,7 @@ export async function worktreeList(root: string, options: UserEmailOptions = {})
 export async function trackedSpecPaths(root: string, folder: string, options: UserEmailOptions = {}): Promise<string[]> {
   if (folder.includes("/") || normalizeFolder(folder) === null) return [];
   const runner = options.runner ?? defaultGitRunner;
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return [];
-  }
+  if (!hasGit(root)) return [];
   return readWithin<string[]>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, [], async (signal) => {
     // `ls-files` asks a configured fsmonitor hook for changes as it reads the index (ISC-216.2): off for this read.
     const run = await runner(["-C", root, ...NO_FSMONITOR, "ls-files", "-z", "--", `specs/${folder}`], gitEnv(root), signal);

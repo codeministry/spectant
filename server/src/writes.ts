@@ -37,7 +37,7 @@ import { backlogFeatures, planBacklogMove, planBacklogPriority } from "../../cor
 import { parseClaims } from "../../core/src/claims.ts";
 import { type ClaimLock, type LockReading, type LockSource, type MergeState, type SpecFiles, type Workflow, type WorkflowStage, repoFilePath } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
-import { gateState, hashForGate, readGateMark, reviewedGate } from "../../core/src/gates.ts";
+import { gateState, readGateMark, reviewedGate } from "../../core/src/gates.ts";
 import { type RunLockTarget, runLockOf } from "../../core/src/item-state.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
 import { activityReading, readLockSources } from "../../core/src/locks.ts";
@@ -52,8 +52,8 @@ import { Unreadable } from "./infra/fs/errno.ts";
 import { appendInPlace, fsyncDir, pathTaken, writeInPlace } from "./infra/fs/in-place.ts";
 import { readBytesIfExists, readIfExists } from "./infra/fs/read.ts";
 import { rawSha256 } from "./infra/hash.ts";
-import type { AllocateRequest, BacklogRequest, NotFound, ReviewedHashes, TransitionRequest } from "./spec-routes.contract.ts";
-import { readIdeaFiles, readSpecFiles, readWorkspaceInput, viewerActorOf } from "./workspace-loader.ts";
+import type { AllocateRequest, BacklogRequest, NotFound, TransitionRequest } from "./spec-routes.contract.ts";
+import { readIdeaFiles, readSpecFiles, readWorkspaceInput, viewerActorOf } from "./workspace/index.ts";
 import {
   ACTIVITY_PATH,
   BACKLOG_EVENTS_PATH,
@@ -82,12 +82,7 @@ import {
 
 export { appendInPlace, writeInPlace } from "./infra/fs/in-place.ts";
 export { rawSha256 } from "./infra/hash.ts";
-
-/** The three gate hashes of a spec folder's texts (`hashForGate`); null for a file that does not exist. */
-export function gateHashes(texts: SpecFiles["texts"]): ReviewedHashes {
-  const hash = (file: "spec.md" | "plan.md" | "tasks.md", text: string | undefined): string | null => (text === undefined ? null : hashForGate(file, text));
-  return { spec: hash("spec.md", texts.spec), plan: hash("plan.md", texts.plan), tasks: hash("tasks.md", texts.tasks) };
-}
+export { gateHashes } from "./workspace/index.ts";
 
 /** Creates `<specDir>/.gates/` when missing (that directory only, never a parent) and returns its path. */
 export function ensureGatesDir(specDir: string): string {

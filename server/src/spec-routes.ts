@@ -62,6 +62,7 @@ import type { LifeosDetection } from "./lifeos.ts";
 import type { NoteStore } from "./notes.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
+import { strongEtag } from "./infra/http/etag.ts";
 import {
   type NotFound,
   REVIEWED_HASHES_HEADER,
@@ -149,7 +150,7 @@ const withConstitution = (files: SpecFiles, constitution: string | null): SpecFi
 
 /** The timeline's strong ETag: sha256 over the exact body and `HEAD`, base64url, quoted as `json()` quotes its own. */
 export function timelineEtag(timeline: unknown, head: string): string {
-  return `"${new Bun.CryptoHasher("sha256").update(JSON.stringify(timeline)).update("\0").update(head).digest("base64url")}"`;
+  return strongEtag(JSON.stringify(timeline), "\0", head);
 }
 
 export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {

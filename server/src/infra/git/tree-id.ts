@@ -12,6 +12,7 @@
 import { lstatSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../../../core/src/gates.ts";
+import { hasGit } from "../fs/read.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
 
 /**
@@ -70,11 +71,7 @@ const LISTED_PATHS = new StateMemo<string[] | null>();
  * (`core.autocrlf`, LFS) and submodules are not applied, so such a repository reads as changed, never as reviewed.
  */
 export async function worktreeTreeId(root: string): Promise<string | null> {
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return null;
-  }
+  if (!hasGit(root)) return null;
   try {
     const paths = await LISTED_PATHS.get(root, repoStateOf(root), () => listedPaths(root));
     if (paths === null) return null;

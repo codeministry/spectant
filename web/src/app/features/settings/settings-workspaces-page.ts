@@ -10,7 +10,7 @@ import {
   type WorkspaceStatus,
   workspaceSortKeyOf,
   workspaceStatusOf,
-} from '../../../../../server/src/workspace-admin.contract';
+} from '../../../../../server/src/contracts/workspace-admin.contract';
 import type { WorkspaceListEntry } from '../../core/api.service';
 import { SettingsService } from '../../core/settings.service';
 import { ShellData } from '../../layout/shell/shell-data.service';

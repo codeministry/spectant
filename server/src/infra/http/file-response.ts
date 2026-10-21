@@ -48,23 +48,41 @@ export async function evidenceFileResponse(
       ? json(req, 403, { error: "forbidden" })
       : json(req, 404, { error: "not-found" });
   }
-  let size: number;
-  let etag: string;
-  try {
-    const stat = statSync(hit.absolute);
-    if (!stat.isFile()) return json(req, 404, { error: "not-found" });
-    size = stat.size;
-    etag = `W/"${size.toString(36)}-${Math.trunc(stat.mtimeMs).toString(36)}"`;
-  } catch {
-    // Gone between the check and the stat.
-    return json(req, 404, { error: "not-found" });
-  }
+  const version = fileVersion(hit.absolute);
+  if (version === null) return json(req, 404, { error: "not-found" });
   // The media type of the name asked for, as the listing shows it; a confined symlink serves its target's bytes.
   const mediaType = mediaTypeOf(basename(hit.path));
   if (scope.serves !== undefined && !scope.serves(mediaType)) return json(req, 403, { error: "forbidden" });
-  const headers = { ...evidenceFileHeaders(mediaType), ETag: etag };
-  if (matchesIfNoneMatch(req.headers.get("If-None-Match"), etag)) return new Response(null, { status: 304, headers });
-  if (req.method === "HEAD") return new Response(null, { status: 200, headers: { ...headers, "Content-Length": String(size) } });
+  const headers = { ...evidenceFileHeaders(mediaType), ETag: version.etag };
+  return fileAnswer(req, hit.absolute, version, headers);
+}
+
+/** A regular file's size and weak ETag, `W/"<size>-<mtime ms>"` in base 36, both from one `stat`. */
+export interface FileVersion {
+  readonly size: number;
+  readonly etag: string;
+}
+
+/** The version of the regular file at `absolute`; null when it is no regular file or gone. Never reads the file. */
+export function fileVersion(absolute: string): FileVersion | null {
+  try {
+    const stat = statSync(absolute);
+    if (!stat.isFile()) return null;
+    return { size: stat.size, etag: `W/"${stat.size.toString(36)}-${Math.trunc(stat.mtimeMs).toString(36)}"` };
+  } catch {
+    // Gone between the check and the stat.
+    return null;
+  }
+}
+
+/**
+ * The 200 of the file at `absolute` with `headers` (which carry `version.etag` as `ETag`): 304 when `If-None-Match`
+ * matches, the headers and `Content-Length` alone on `HEAD`, else the file's bytes. The evidence and the prototype
+ * routes share it.
+ */
+export function fileAnswer(req: Request, absolute: string, version: FileVersion, headers: Record<string, string>): Response {
+  if (matchesIfNoneMatch(req.headers.get("If-None-Match"), version.etag)) return new Response(null, { status: 304, headers });
+  if (req.method === "HEAD") return new Response(null, { status: 200, headers: { ...headers, "Content-Length": String(version.size) } });
   // Bun sets Content-Length from the file it opens, so a file that changed since the stat is never cut short.
-  return new Response(Bun.file(hit.absolute), { status: 200, headers });
+  return new Response(Bun.file(absolute), { status: 200, headers });
 }

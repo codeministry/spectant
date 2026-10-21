@@ -10,6 +10,7 @@
  * workspace's 409 are the route layer's (`api.ts`), as on every workspace route.
  */
 import { isAllocateRequest } from "./spec-routes.contract.ts";
+import { parseJson } from "./infra/http/json.ts";
 import { type WriteResult, writeAllocate } from "./writes.ts";
 
 export interface AllocateRouteInput {
@@ -26,12 +27,7 @@ export interface AllocateRouteInput {
 
 /** The answer of one allocation: 400 for a body that is no `AllocateRequest`, otherwise the write's own answer. */
 export async function allocateAnswer(input: AllocateRouteInput): Promise<WriteResult<"allocate">> {
-  let data: unknown;
-  try {
-    data = JSON.parse(input.text);
-  } catch {
-    data = undefined;
-  }
+  const data = parseJson(input.text);
   if (!isAllocateRequest(data)) return { status: 400, body: { error: "invalid-body" } };
   const age = input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs };
   return writeAllocate({ root: input.root, slug: input.slug, stateDir: input.stateDir, now: input.now, body: data, ...age });
