@@ -1,27 +1,17 @@
 <!--
-  Card form (below wide, prototype `.section-head` over a `.card` of `.next-row`s, app.js l.395): the section header,
-  then one unpadded card of next-rows flush with its edges. Rail form (wide, prototype `.rail-block`; spec 021 T79):
-  the eyebrow heading with the count, then the same one card of rows under hairlines.
+  Prototype `.section-head` over a `.card` of `.next-row`s (app.js l.395): the section header, then one unpadded card
+  of next-rows flush with its edges, under hairlines.
 -->
-@if (form() === 'card') {
-  <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
-    @if (total() > 0) {
-      <span meta class="count" data-next-count>{{ total() }}</span>
-    }
-  </ui-section-header>
-} @else {
-  <div class="eyebrow" data-next-eyebrow>
-    <h2 class="type-eyebrow" tabindex="-1" [id]="headingId">{{ 'nextUp.title' | transloco }}</h2>
-    @if (total() > 0) {
-      <span class="type-eyebrow count" data-next-count>{{ total() }}</span>
-    }
-  </div>
-}
+<ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
+  @if (total() > 0) {
+    <span meta class="count" data-next-count>{{ total() }}</span>
+  }
+</ui-section-header>
 <ui-card data-next-card [padding]="0">
   @if (entries().length > 0) {
     <ol class="entries" data-next-primary>
       @for (item of entries(); track item.row.id) {
-        <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [form]="form()" [labels]="stageLabels()" [guidance]="guidance()" /></li>
+        <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [guidance]="guidance()" /></li>
       }
     </ol>
     @if (more().length > 0) {
@@ -29,7 +19,7 @@
         <span uiDisclosureSummary>{{ 'nextUp.showAll' | transloco: { count: total() } }}</span>
         <ol class="entries">
           @for (item of more(); track item.row.id) {
-            <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [form]="form()" [labels]="stageLabels()" [guidance]="guidance()" /></li>
+            <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [guidance]="guidance()" /></li>
           }
         </ol>
       </ui-disclosure>

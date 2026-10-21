@@ -11,10 +11,10 @@ import { UiSectionHeader } from '../../../shared/ui/section-header/section-heade
 import { edgeDiagnostic, overlapOf, pathSuffixes } from './overlap';
 
 /**
- * `rail`: a card in the context rail (wide); `section`: the page section `#warnings` (medium); `callout`: a collapsed
- * `<details>` with the orange edge, rendered only when there is something to say (compact).
+ * `section`: the page section `#warnings` under its section header; `callout`: a collapsed `<details>` with the orange
+ * edge, rendered only when there is something to say.
  */
-export type WarningsForm = 'rail' | 'section' | 'callout';
+export type WarningsForm = 'section' | 'callout';
 
 /** The id the `g w` sequence and the Attention tile move focus to (DS-APP-35). */
 export const WARNINGS_HEADING = 'warnings';
@@ -24,8 +24,8 @@ export const WARNINGS_HEADING = 'warnings';
  * the model's row order — the rows already carry their warnings and fog count, so nothing is regrouped or recounted
  * here. Each warning is one line (alert icon, spec ID link to the preview `?spec=<id>`, text, and the clearing command
  * with copy when it has one); a spec with open fog adds a fog line (cloud icon, violet left edge on the violet tint).
- * The count is the model's `warnings` KPI; "in n specs" counts the specs that carry a warning. The rail form heads the
- * card with the prototype's eyebrow and count, the section form with the section header.
+ * The count is the model's `warnings` KPI; "in n specs" counts the specs that carry a warning. The section form heads
+ * the card with the section header and the count.
  */
 @Component({
   selector: 'app-warnings-panel',

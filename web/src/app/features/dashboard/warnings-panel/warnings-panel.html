@@ -10,15 +10,6 @@
       </details>
     }
   }
-  @case ('rail') {
-    <div class="eyebrow" data-warnings-eyebrow>
-      <h2 class="type-eyebrow" tabindex="-1" [id]="headingId">{{ 'warnings.title' | transloco }}</h2>
-      <span class="type-eyebrow count" data-warnings-count>{{ count() }}</span>
-    </div>
-    <ui-card [padding]="0">
-      <ng-container [ngTemplateOutlet]="lines" />
-    </ui-card>
-  }
   @default {
     <section class="section">
       <ui-section-header [heading]="'warnings.title' | transloco" [headingId]="headingId">

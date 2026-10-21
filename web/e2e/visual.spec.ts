@@ -34,6 +34,8 @@ interface View {
 const VIEWS: readonly View[] = [
   { name: 'overview', path: '/', host: 'app-overview-page', state: 'two-workspaces' },
   { name: 'dashboard', path: '/w/harbor', host: 'app-dashboard-page' },
+  // Spec 058: the spec list left the dashboard for its own page; it keeps its baseline here.
+  { name: 'specs', path: '/w/harbor/specs', host: 'app-specs-page' },
   { name: 'board', path: '/w/harbor/s/002/board', host: 'app-board-tab' },
   // Spec 037 (ISC-201): the workspace board with feature swimlanes, its band heads with grips and milestone dividers.
   {

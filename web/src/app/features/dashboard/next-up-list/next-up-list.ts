@@ -1,21 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe } from '@jsverse/transloco';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import type { DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
-import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { NextUpEntry } from './next-up-entry';
-
-/**
- * `rail` (wide): one card of rows under the eyebrow, each row's sentence above its command and takeable chips, the stage
- * in the title link's name (spec 021, T79); `card` (below wide): one card of rows under the section header.
- */
-export type NextUpForm = 'rail' | 'card';
 
 /** One Next up entry: the spec's row and, with guidance, the `guidance.next` entry it stands for (spec 020). */
 export interface NextUpItem {
@@ -32,8 +24,8 @@ export const NEXT_UP_HEADING = 'next-up';
 /**
  * Next up (T64, design.md § Desktop / Mobile / Tablet): the model's `nextUp` ids resolved to their rows, in the model's
  * order; every further row with a next command sits behind "Show all n" in row order. Each entry links to the spec
- * preview (`?spec=<id>`, T69) and carries its next command with copy; the rail form adds the stage (in the link's name)
- * and the first takeable claim. Nothing is counted or ranked here: the order and the commands are the parser's.
+ * preview (`?spec=<id>`, T69) and carries its next command with copy, as one card of rows under the section header.
+ * Nothing is counted or ranked here: the order and the commands are the parser's.
  * With nothing to run it says so and, when specs wait on fog, links to the fog filter of the Specs page (`/w/:ws/specs?phase=fog`, spec 058).
  */
 @Component({
@@ -42,14 +34,13 @@ export const NEXT_UP_HEADING = 'next-up';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './next-up-list.html',
   styleUrl: './next-up-list.css',
-  host: { 'data-next-up': '', '[attr.data-form]': 'form()' },
+  host: { 'data-next-up': '' },
 })
 export class NextUpList {
   /** The model's active rows (`DashboardModel.specs`), in action order. */
   readonly specs = input.required<readonly DashboardSpecRow[]>();
   /** The model's `nextUp`: the first rows with a next command. */
   readonly ids = input.required<readonly string[]>();
-  readonly form = input<NextUpForm>('card');
   /** The workspace slug: the empty state's fog link targets the Specs page `/w/:ws/specs?phase=fog` (spec 058, ISC-395). */
   readonly ws = input.required<string>();
   /** `DashboardModel.guidance` (spec 020): each entry reads its spec's sentence from it (ISC-237.1). */
@@ -57,9 +48,6 @@ export class NextUpList {
 
   protected readonly headingId = NEXT_UP_HEADING;
   protected readonly showAll = signal(false);
-
-  private readonly transloco = inject(TranslocoService);
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   /**
    * Spec 020 (T25, ISC-240): with guidance, Next up holds `guidance.next` only, in its order, one entry per spec (the
@@ -92,9 +80,4 @@ export class NextUpList {
 
   /** The Specs page as router-link commands, for the fog link of the empty state. */
   protected readonly specsLink = computed(() => ['/w', this.ws(), 'specs']);
-
-  protected readonly stageLabels = computed(() => {
-    this.lang();
-    return TRACK_STAGES.map((stage) => this.transloco.translate(`stages.${stage}`));
-  });
 }

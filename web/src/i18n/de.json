@@ -8,7 +8,6 @@
     "copyCommand": "Befehl kopieren",
     "copied": "{{command}} kopiert",
     "copyFallback": "Drücken Sie ⌘C zum Kopieren",
-    "takeable": "nehmbar {{claim}}",
     "claimsClosed": "{{closed}} von {{total}} Claims geschlossen",
     "noValue": "—"
   },

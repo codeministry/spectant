@@ -96,15 +96,15 @@ describe('WarningsPanel', () => {
     expect(root.querySelector('[data-fog-line]')).toBeNull();
   });
 
-  it('ports the rail from the prototype: an eyebrow heading with the count above one card of lines', async () => {
-    const root = await render(HARBOR, 'rail');
-    expect(root.getAttribute('data-form')).toBe('rail');
-    const eyebrow = root.querySelector('[data-warnings-eyebrow]') as HTMLElement;
-    expect(eyebrow.querySelector('#warnings')?.classList).toContain('type-eyebrow');
-    expect(eyebrow.querySelector('[data-warnings-count]')?.textContent.trim()).toBe(String(HARBOR.kpis.warnings));
-    expect(root.querySelector('ui-section-header')).toBeNull();
-    const card = root.querySelector('ui-card') as HTMLElement;
-    expect(card.querySelectorAll('[data-warning-spec]').length).toBe(withNotes(HARBOR).length);
+  it('renders the section form by default: the section header with the count above one card of lines', async () => {
+    const root = await render(HARBOR);
+    expect(root.getAttribute('data-form')).toBe('section');
+    const header = root.querySelector('section ui-section-header') as HTMLElement;
+    expect(header.querySelector('#warnings')).not.toBeNull();
+    expect(header.querySelector('[data-warnings-count]')?.textContent.trim()).toBe(String(HARBOR.kpis.warnings));
+    const cards = root.querySelectorAll('ui-card');
+    expect(cards.length).toBe(1);
+    expect((cards[0] as HTMLElement).querySelectorAll('[data-warning-spec]').length).toBe(withNotes(HARBOR).length);
   });
 
   it('renders the callout form as a collapsed details element summarising the count', async () => {
