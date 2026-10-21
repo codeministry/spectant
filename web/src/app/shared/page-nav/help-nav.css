@@ -3,6 +3,10 @@
  * row 2 below 1120 scrolls away), on the page colour so the sections scroll under it. Medium and wide wrap the chips; compact keeps one
  * row that scrolls sideways inside the nav, never the page.
  */
+
+/* The host's frosted page glass comes from `_page-glass.css`. */
+@import '../ui/_page-glass.css';
+
 :host {
   position: sticky;
   inset-block-start: 64px;
@@ -12,10 +16,6 @@
 
   /* Prototype `.help-nav` spans the viewport: the hairline runs past the 1080 px column (ink overflow only). */
   border-image: linear-gradient(var(--line), var(--line)) 0 0 1 0 / 0 0 1px 0 / 0 100vw;
-  background: var(--page-glass);
-  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
 }
 
 /* The prototype numbers its chips "0 · About" … ; the number is generated content, so the link's name stays the label. */

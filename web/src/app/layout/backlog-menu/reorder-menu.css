@@ -4,6 +4,7 @@
  * edge) in the muted ink with their reason, the enabled up and down rows with their key cap at the end.
  */
 @import "./_menu-entry.css";
+@import "./_menu-list.css";
 
 :host {
   display: contents;
@@ -31,36 +32,9 @@
   line-height: 16px;
 }
 
-.entries {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.entry {
-  justify-content: space-between;
-  min-block-size: 44px;
-  padding: 8px 12px;
-}
-
 .entry[aria-disabled='true'] {
   color: var(--muted-ink);
   cursor: default;
-}
-
-@media (hover: hover) {
-  .entry:not([aria-disabled='true']):hover {
-    background: var(--color-base-300);
-  }
-}
-
-.name {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .hint {

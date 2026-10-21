@@ -1,0 +1,12 @@
+/*
+ * The frosted page glass with the 12 px blur that the board toolbar (features/board/board-filters.css) and the Help
+ * section nav (shared/page-nav/help-nav.css) give their host, imported at the top of both. Emulated encapsulation
+ * scopes `:host` to each component's own host, the selector keeps the specificity of the rule it came from, and no
+ * other rule of either stylesheet sets these properties on the host, so moving them first leaves the cascade unchanged.
+ */
+:host {
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}

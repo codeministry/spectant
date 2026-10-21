@@ -3,6 +3,10 @@
  * middle, swimlanes, count and Clear at the end. Sticky under the 64 px shell header at medium and wide, the stage
  * strip sticking under it (board-page.css reads its measured height); at compact it wraps in the page flow.
  */
+
+/* The host's frosted page glass comes from `_page-glass.css`. */
+@import '../../shared/ui/_page-glass.css';
+
 :host {
   display: flex;
   flex-wrap: wrap;
@@ -12,10 +16,6 @@
   min-block-size: 48px;
   margin-block-end: 8px;
   padding-block: 8px;
-  background: var(--page-glass);
-  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
 }
 
 .triggers,

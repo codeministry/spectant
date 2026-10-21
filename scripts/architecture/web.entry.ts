@@ -19,10 +19,9 @@ export const web: LaneEntry = {
   name: "web",
   root: "web/src/app",
   extensions: [".ts", ".html", ".css"],
-  // `features/**` stays out of size and duplicates until the third spec of the feature splits it, and that spec
-  // removes this pattern; `layers` still resolves imports into it. `dev/**` (the developer gallery) is no base
-  // layer: ISC-423 covers core/, shared/ and layout/ only (spec 060 decision 2026-10-21).
-  ignore: [...TEST_AND_GENERATED, "features/**", "dev/**"],
+  // `dev/**` (the developer gallery) belongs to no layer and stays out of size and duplicates (spec 060 decision
+  // 2026-10-21); every other file under web/src/app is checked (spec 061, ISC-430).
+  ignore: [...TEST_AND_GENERATED, "dev/**"],
   isolation: webIsolation,
   size: { maxLines: 400 },
   duplicates: {
@@ -185,6 +184,20 @@ export const web: LaneEntry = {
         why:
           "the flat button reset on two different controls in two components (the bar's .main, 44 px flex row; the " +
           "frame event .fev, 24 px block, its own transition); no shared rule without a DOM change (spec 061, T21)",
+      },
+      {
+        files: ["features/board/board-card.css", "shared/ui/id-chip/id-chip.css"],
+        why:
+          "the id type (mono 13/20, weight 600, --disp-ink) on two different selectors: the card's `.num` span and " +
+          "ui-id-chip's `:host`; a shared `:host` rule would style the card's host, and putting ui-id-chip on the span " +
+          "changes the DOM and adds the chip's inline-block and nowrap (spec 061, T21)",
+      },
+      {
+        files: ["features/board/move-to-menu.html", "layout/backlog-menu/reorder-menu.html"],
+        why:
+          "the compact `ui-sheet` / `ui-popover` switch around each menu's own `#list` template; an ng-template " +
+          "cannot cross components, and a shared surface component would add a host element around both panels " +
+          "(a DOM change) (spec 061, T21)",
       },
     ],
   },

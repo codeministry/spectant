@@ -1,4 +1,7 @@
 
+@import '../../shared/ui/_visually-hidden.css';
+@import '../../shared/ui/idea-chip/_idea-outline.css';
+
     /* The card declares no board-card container on purpose (spec 027, principal 2026-10-13): the worktree chip stays
        compact at every width, so a card with a worktree never grows by a line. The full form lives in the spec head. */
     :host {
@@ -57,22 +60,12 @@
       line-height: 20px;
     }
 
+    /* The outline the idea chip shares comes from `_idea-outline.css`; the card's own corner and mono type follow. */
     .idea {
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      min-inline-size: 0;
-      block-size: 22px;
-      padding-inline: 7px;
-      border: 1px dashed var(--track);
       border-radius: var(--radius-selector);
-      color: var(--muted-ink);
       font-family: var(--font-mono);
       font-size: 11px;
-      font-weight: 600;
       letter-spacing: 0.04em;
-      line-height: 16px;
-      white-space: nowrap;
     }
 
     .idea ui-icon {
@@ -217,15 +210,6 @@
     }
     :host-context([data-tier='compact']) .i-grip { display: none; }
     :host-context([data-tier='compact']) .i-move { display: inline-grid; }
-
-    .vh {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
 
     @media (forced-colors: active) {
       .title:focus-visible::after { outline-color: Highlight; }

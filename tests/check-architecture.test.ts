@@ -3,7 +3,7 @@
 // and names the copied block (and is green when a `duplicates.allow` entry names its two files), a configuration
 // with both lanes checks both from their entries alone, a clean root is green, and a bad flag is a usage error. The web fixtures (spec 060, ISC-423) run the web entry of
 // `scripts/architecture/web.entry.ts` over a fixture root: a 401-line stylesheet and a block copied between two
-// templates are red, the same files under `features/` are ignored, and a clean template and stylesheet are green.
+// templates are red, the same files under `dev/` are ignored, and a clean template and stylesheet are green.
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 

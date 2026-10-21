@@ -180,7 +180,7 @@ describe("layers", () => {
     ...at(path, detail, line),
     rule: "layers",
   });
-  /** The web entry over a fixture root under `layers/`: its extensions, ignore list (`features/**`) and order. */
+  /** The web entry over a fixture root under `layers/`: its extensions, ignore list (`dev/**`) and order. */
   const layered = (path: string): LaneEntry => ({ ...web, name: `fixture-layers-${path}`, root: `${FIXTURES}/layers/${path}` });
 
   test("the web entry orders the layers core, shared, layout, features", () => {

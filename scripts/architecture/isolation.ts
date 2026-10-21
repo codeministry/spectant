@@ -9,10 +9,10 @@
  * folder; it counts as a feature of its own, named by its file, so it cannot carry what two features share.
  *
  * The importers are the `.ts` files under `<root>/<area>`, found by a walk of the area itself, not by the entry's file
- * list: the web entry leaves `features/**` out of size and duplicates while the features are split (spec 061), and
- * this rule must see them regardless. Only tests and generated files (`TEST_AND_GENERATED`) stay out, as for every
- * rule. The imports are the ones of the `imports` rule (`importEdges`): static, re-exports, side-effect, type-only and
- * dynamic `import('…')`, because a lazily loaded route of another feature couples the two as a static import does.
+ * list, so an entry that leaves the area out of size and duplicates still has it checked here. Only tests and
+ * generated files (`TEST_AND_GENERATED`) stay out, as for every rule. The imports are the ones of the `imports` rule
+ * (`importEdges`): static, re-exports, side-effect, type-only and dynamic `import('…')`, because a lazily loaded route
+ * of another feature couples the two as a static import does.
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";

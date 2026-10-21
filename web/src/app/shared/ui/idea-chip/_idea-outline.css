@@ -1,0 +1,20 @@
+/*
+ * The dashed outline of an idea chip that ui-idea-chip (`a.idea`) and the board card (`span.idea`,
+ * features/board/board-card.css) share, imported at the top of both; each adds its own corner and type after the
+ * import. No rule of either stylesheet ahead of the place these declarations held matches the `.idea` element, and
+ * every later rule that sets one of them on it (the hover, the forced-colors border) is more specific or still comes
+ * later, so moving them first leaves the cascade unchanged.
+ */
+.idea {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-inline-size: 0;
+  block-size: 22px;
+  padding-inline: 7px;
+  border: 1px dashed var(--track);
+  color: var(--muted-ink);
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}

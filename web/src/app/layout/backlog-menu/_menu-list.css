@@ -1,0 +1,34 @@
+/*
+ * The step list the reorder menu and the board's "Move to…" (features/board/move-to-menu.css) share, imported after
+ * `_menu-entry.css` at the top of both: the grid of rows, the row's height, padding and spread, the hover of an
+ * enabled row and the truncated name. No rule of either stylesheet ahead of the place these rules held matches the
+ * list, a row or its name; the compact row height outranks the row height by specificity as before; and the current
+ * and disabled looks set no property moved here, while the hover (more specific than both) never meets a disabled
+ * row, so moving them first leaves the cascade unchanged.
+ */
+.entries {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  justify-content: space-between;
+  min-block-size: 44px;
+  padding: 8px 12px;
+}
+
+@media (hover: hover) {
+  .entry:not([aria-disabled='true']):hover {
+    background: var(--color-base-300);
+  }
+}
+
+.name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
