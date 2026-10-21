@@ -86,39 +86,30 @@
 }
 
 /*
- * Section form from 640 px of shell (spec 058, T46): the groups in two equal columns (three from 1120 px), an inner
- * grid of hairlines.
- * The first row has no top line; a left cell carries the line between the columns only where a right cell stands
- * beside it, so an odd last group leaves no line beside the empty cell. Grid rows stretch both cells to one height.
+ * Section form from 640 px of shell (spec 058, T46): the groups in equal columns, two from 640 px and three from
+ * 1120 px, under one grid of hairlines that also runs through the empty cells of a short last row (principal review
+ * 2026-10-21). The column lines are the list's background over its whole height; every group draws the line below
+ * it, and the list sits 1 px into the card's bottom edge so the last row's lines meet the border instead of doubling.
  */
 @container shell (width >= 640px) {
   .section .groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-block-end: -1px;
+    background: linear-gradient(to right, transparent calc(50% - 0.5px), var(--line) 0 calc(50% + 0.5px), transparent 0);
   }
 
-  .section .group:nth-child(2) {
-    border-block-start: 0;
-  }
-}
-
-@container shell (640px <= width < 1120px) {
-  .section .group:nth-child(odd):not(:last-child) {
-    border-inline-end: 1px solid var(--line);
+  .section .group {
+    border-block: 0 solid var(--line);
+    border-block-end-width: 1px;
   }
 }
 
-/* From 1120 px of shell (desktop, principal 2026-10-21): three columns, the same inner grid of hairlines. */
 @container shell (width >= 1120px) {
   .section .groups {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .section .group:nth-child(3) {
-    border-block-start: 0;
-  }
-
-  .section .group:not(:nth-child(3n), :last-child) {
-    border-inline-end: 1px solid var(--line);
+    background:
+      linear-gradient(to right, transparent calc(100% / 3 - 0.5px), var(--line) 0 calc(100% / 3 + 0.5px), transparent 0),
+      linear-gradient(to right, transparent calc(200% / 3 - 0.5px), var(--line) 0 calc(200% / 3 + 0.5px), transparent 0);
   }
 }
 

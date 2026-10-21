@@ -188,28 +188,41 @@ test.describe('dashboard card rows (ISC-399)', () => {
         expect(waits.lines).toEqual(['0px', '1px', '1px']);
         expect(waits.foldLast).toBe(true);
 
-        // Warnings: two equal columns from 640 px of shell with an inner grid of hairlines, one column below.
+        // Warnings: equal columns from 640 px of shell (two, three from 1120 px) under one grid of hairlines that also
+        // runs through the empty cells of a short last row; one column below.
         const groups = await page.locator('app-warnings-panel li.group').evaluateAll((items) =>
           items.map((li) => {
             const r = li.getBoundingClientRect();
             const style = getComputedStyle(li);
-            return { left: r.left, top: r.top, width: r.width, topLine: style.borderTopWidth, sideLine: style.borderRightWidth };
+            return { left: r.left, top: r.top, width: r.width, topLine: style.borderTopWidth, sideLine: style.borderRightWidth, bottomLine: style.borderBottomWidth };
           }),
         );
         expect(groups.length).toBeGreaterThanOrEqual(3);
         const [first, second] = groups;
         if (width >= 640) {
-          // Two columns from 640 px of shell, three from 1120 px (desktop).
           const columns = width >= 1120 ? 3 : 2;
           expect(second?.top).toBeCloseTo(first?.top ?? NaN, 0);
           expect(second?.left ?? 0).toBeGreaterThan((first?.left ?? 0) + 100);
           expect(Math.abs((second?.width ?? 0) - (first?.width ?? 0))).toBeLessThanOrEqual(1);
           if (columns === 3) expect(groups[2]?.top).toBeCloseTo(first?.top ?? NaN, 0);
+          // Every group draws the line below it, none above or beside: the rows' lines reach the empty cells' tops.
           groups.forEach((g, i) => {
-            expect(g.topLine, `group ${String(i + 1)}: line above`).toBe(i < columns ? '0px' : '1px');
-            const hasRight = i % columns !== columns - 1 && i + 1 < groups.length;
-            expect(g.sideLine, `group ${String(i + 1)}: line between the columns`).toBe(hasRight ? '1px' : '0px');
+            expect(g.topLine, `group ${String(i + 1)}: no line above`).toBe('0px');
+            expect(g.sideLine, `group ${String(i + 1)}: no own line beside`).toBe('0px');
+            expect(g.bottomLine, `group ${String(i + 1)}: line below`).toBe('1px');
           });
+          // The column lines are the list's background, one per inner boundary, over the list's whole height down to
+          // the card's bottom edge, so an empty cell of the last row is framed like a filled one.
+          const list = await page.locator('app-warnings-panel ul.groups').evaluate((ul) => {
+            const card = ul.closest('ui-card');
+            return {
+              gradients: (getComputedStyle(ul).backgroundImage.match(/linear-gradient/g) ?? []).length,
+              listBottom: Math.round(ul.getBoundingClientRect().bottom),
+              cardBottom: Math.round(card?.getBoundingClientRect().bottom ?? 0),
+            };
+          });
+          expect(list.gradients, 'one column line per inner boundary').toBe(columns - 1);
+          expect(list.listBottom, 'the list reaches the card bottom').toBeGreaterThanOrEqual(list.cardBottom - 1);
         } else {
           expect(second?.left).toBeCloseTo(first?.left ?? NaN, 0);
           expect(second?.top ?? 0).toBeGreaterThan(first?.top ?? 0);
