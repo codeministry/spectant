@@ -144,6 +144,15 @@ for (const width of [1440, 600, 390] as const) {
       await click(column, `workspace ${TARGET.ws}`);
       await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}$`));
 
+      // Spec 058: the workspace root is the dashboard; the list lives on the Specs page, one click away through the KPI
+      // band's Specs figure (the shortest way there, as path P6 measures).
+      // Below 640 px the band's tiles give way to the Pulse card; its Specs cell carries the same link.
+      const specsKpi = page.locator(`app-kpi-band a[href="/w/${TARGET.ws}/specs"]:visible`).first();
+      await expect(specsKpi).toBeVisible();
+      if (!(await wholly(specsKpi))) await steps.scrollTo(specsKpi);
+      await click(specsKpi, 'kpi specs');
+      await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}/specs$`));
+
       // The spec table opens a row in two steps: the first click selects it for the detail sidebar (`?sel=spec:`, spec
       // 026), the second opens the spec: the row again, or below 1120 px the sidebar's "Open spec", which may cover the row.
       const row = page.locator(`[data-panel="specs"] [data-spec-row="${TARGET.spec}"]`);
