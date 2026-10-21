@@ -1,3 +1,5 @@
+@import '../_visually-hidden.css';
+
 :host {
   display: inline-flex;
   gap: 6px;
@@ -43,15 +45,6 @@
   block-size: 6px;
   border-radius: 50%;
   background: var(--actor-mark);
-}
-
-.vh {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 @media (forced-colors: active) {

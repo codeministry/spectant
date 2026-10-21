@@ -89,7 +89,8 @@
       background: var(--tick-color);
     }
 
-    .tick[data-kind='recut'] {
+    /* The recut tick and the recut marker share one hatched bar; nothing between here and `.marker` styles either. */
+    .tick[data-kind='recut'], .marker {
       inline-size: 6px;
       block-size: 16px;
       border-radius: 2px;
@@ -108,10 +109,6 @@
       inset-block-start: 50%;
       box-sizing: border-box;
       translate: -50% -50%;
-      inline-size: 6px;
-      block-size: 16px;
-      border-radius: 2px;
-      background: repeating-linear-gradient(45deg, var(--color-warning) 0 2px, transparent 2px 4px);
     }
 
     .caption, .marker-label {

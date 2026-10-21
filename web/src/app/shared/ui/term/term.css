@@ -1,8 +1,10 @@
 /*
  * ui-term: the glossary `<dfn>` (design 002; ISC-107) and its hint, a native popover in the top layer. Dotted
  * underlines are reserved for glossary terms; links never use them. The hint fades in on the fast token with the
- * emphasized ease and out with the exit ease; without `@starting-style` (WebKit < 17.4) it appears instantly.
+ * emphasized ease and out with the exit ease.
  */
+@import '../overlay/_overlay-surface.css';
+
 :host {
   display: inline;
 }
@@ -21,10 +23,6 @@ dfn {
   inline-size: min(280px, calc(100vw - 16px));
   margin: 0;
   padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  color: var(--color-base-content);
   box-shadow: var(--shadow-hair);
   font-family: inherit;
   font-size: 13px;
@@ -35,16 +33,9 @@ dfn {
   text-transform: none;
   letter-spacing: normal;
   white-space: normal;
-  opacity: 0;
   transition:
     opacity var(--motion-duration-fast) var(--motion-ease-exit),
-    overlay var(--motion-duration-fast) allow-discrete,
-    display var(--motion-duration-fast) allow-discrete;
-}
-
-.hint:popover-open {
-  opacity: 1;
-  transition-timing-function: var(--motion-ease-emphasized);
+    var(--ui-overlay-discrete-fast);
 }
 
 @starting-style {

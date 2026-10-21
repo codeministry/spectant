@@ -66,13 +66,7 @@
             @for (entry of rest(); track key(entry)) {
               <li data-row [attr.data-item]="entry.item">
                 <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
-                  <span class="id">{{ label(entry) }}</span>
-                  @if (kindKey(entry); as kind) {
-                    <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
-                  } @else if (entry.ref) {
-                    <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
-                  }
-                  <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+                  <ng-container [ngTemplateOutlet]="rowBody" [ngTemplateOutletContext]="{ $implicit: entry }" />
                   @if (!chips()) {
                     <ui-icon name="chevron-right" [size]="16" />
                   }
@@ -103,16 +97,20 @@
         </p>
       }
     </section>
+    <!-- The inside of a row's ID link, in both forms: the ID, the kind or ref chip, the reason. -->
+    <ng-template #rowBody let-entry>
+      <span class="id">{{ label(entry) }}</span>
+      @if (kindKey(entry); as kind) {
+        <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+      } @else if (entry.ref) {
+        <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
+      }
+      <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+    </ng-template>
     <!-- One row of the card-rows form: the ID link with the reason, the copy chip beside it. -->
     <ng-template #waitRow let-entry>
       <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
-        <span class="id">{{ label(entry) }}</span>
-        @if (kindKey(entry); as kind) {
-          <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
-        } @else if (entry.ref) {
-          <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
-        }
-        <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+        <ng-container [ngTemplateOutlet]="rowBody" [ngTemplateOutletContext]="{ $implicit: entry }" />
       </a>
       @if (entry.command; as cmd) {
         <ui-command-chip

@@ -1,4 +1,6 @@
 
+    @import '../_visually-hidden.css';
+
     :host {
       display: block;
       min-inline-size: 0;
@@ -110,15 +112,6 @@
       white-space: nowrap;
     }
     li[data-align='end'] > .word { justify-self: end; }
-
-    .vh {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
 
     @media (forced-colors: active) {
       .bar { border: 1px solid CanvasText; }

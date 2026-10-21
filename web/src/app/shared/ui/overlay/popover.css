@@ -1,8 +1,10 @@
 /*
  * ui-popover: a native `popover="auto"` panel in the top layer. The UA centres popovers (`inset: 0; margin: auto`);
  * both are reset and the panel is placed from its trigger. It fades and drops 4 px in on the fast token with the
- * emphasized ease, out with the exit ease; without `@starting-style` (WebKit < 17.4) it appears instantly.
+ * emphasized ease, out with the exit ease.
  */
+@import './_overlay-surface.css';
+
 :host {
   display: contents;
 }
@@ -17,24 +19,11 @@
   margin: 0;
   padding: 8px;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  color: var(--color-base-content);
-  box-shadow: var(--shadow);
-  opacity: 0;
   translate: 0 -4px;
   transition:
     opacity var(--motion-duration-fast) var(--motion-ease-exit),
     translate var(--motion-duration-fast) var(--motion-ease-exit),
-    overlay var(--motion-duration-fast) allow-discrete,
-    display var(--motion-duration-fast) allow-discrete;
-}
-
-.panel:popover-open {
-  opacity: 1;
-  translate: 0;
-  transition-timing-function: var(--motion-ease-emphasized);
+    var(--ui-overlay-discrete-fast);
 }
 
 @starting-style {
