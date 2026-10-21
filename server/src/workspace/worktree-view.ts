@@ -13,7 +13,7 @@ import { REPO_SOURCE_PATHS } from "../../../core/src/repo-source.ts";
 import { type SpecRef, listSpecs } from "../../../core/src/resolve.ts";
 import { specIdOf } from "../../../core/src/spec-ref.ts";
 import { statusToRead, trackedToRead, worktreeFactsToRead, worktreeViewOf } from "../../../core/src/worktree-facts.ts";
-import { type WorktreeView, assignWorktrees, insideRepository, liveWorktrees, worktreeOnlySpecs } from "../../../core/src/worktrees.ts";
+import { type WorktreeView, assignWorktrees, insideRepository, liveWorktrees, withWorktreeOnly, worktreeOnlySpecs } from "../../../core/src/worktrees.ts";
 import {
   type SpecBranch,
   aheadOfMain,
@@ -69,15 +69,8 @@ export interface RepoFacts {
   readonly worktrees: ReadonlyArray<{ readonly path: string; readonly facts: CheckoutFacts }>;
 }
 
-/**
- * The active spec references of `listed` (`listSpecs`) and `worktreeOnly` in number order, then the archived ones, as
- * `listSpecs` orders them (spec 039, ISC-208.1).
- */
-export function withWorktreeOnly(listed: readonly SpecRef[], worktreeOnly: readonly SpecRef[]): SpecRef[] {
-  if (worktreeOnly.length === 0) return [...listed];
-  const active = [...listed.filter((ref) => !ref.archived), ...worktreeOnly].sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : 1));
-  return [...active, ...listed.filter((ref) => ref.archived)];
-}
+/** The worktree-only specs merged into the listing: `core/`'s rule, re-exported for the slice's callers (spec 062, ISC-444). */
+export { withWorktreeOnly };
 
 /** Whether `path` (relative, `/`-separated) is one of the repository files of `REPO_SOURCE_PATHS`. */
 const isRepoFile = (path: string): boolean =>

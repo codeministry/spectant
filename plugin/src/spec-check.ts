@@ -31,7 +31,7 @@ import {
 } from '../../core/src/activity-text.ts';
 import { ActivityLogError, appendActivity, appendClaim, appendRelease, appendRunEvent, readActivity, repoRoot } from './activity-log.ts';
 import { runHook } from './hook.ts';
-import { specReadDirs, specTreeDirs } from './worktree-source.ts';
+import { specReadDirs, specTreeDirs, worktreeListing, worktreeOnlyRefs } from './worktree-source.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
 import type { Claim } from '../../core/src/claims.ts';
@@ -50,6 +50,7 @@ import { PACK_LIMIT, PackError, buildPack, capPack } from '../../core/src/pack.t
 import type { Pack } from '../../core/src/pack.ts';
 import { listSpecs, resolveSpec } from '../../core/src/resolve.ts';
 import type { SpecRef } from '../../core/src/resolve.ts';
+import { withWorktreeOnly } from '../../core/src/worktrees.ts';
 import { resolveEdges } from '../../core/src/spec-edges.ts';
 import { specIdOf, specSlugOf } from '../../core/src/spec-ref.ts';
 import { WORKFLOW_STAGES, isWorkflowStage } from '../../core/src/stage.ts';
@@ -216,6 +217,25 @@ function specFiles(ref: Pick<SpecRef, 'dir' | 'slug'>): SpecFiles {
   return { folder: ref.slug, texts };
 }
 
+/** Per command context, the spec folders `listedOf` found and the worktree listing they were found on. */
+const LISTED = new WeakMap<Context, { readonly refs: readonly SpecRef[]; readonly porcelain: string }>();
+
+/**
+ * Every spec folder of the repository, read once per command (spec 062, ISC-444): the main checkout's `listSpecs` and
+ * the folders only a live spec worktree carries (`worktreeOnlyRefs`, spec 039, ISC-208.1), merged by `core/`'s
+ * `withWorktreeOnly` as the app merges them, with the `git worktree list` the read sources are then decided on.
+ */
+function listedOf(ctx: Context): { readonly refs: readonly SpecRef[]; readonly porcelain: string } {
+  let listed = LISTED.get(ctx);
+  if (listed === undefined) {
+    const main = listSpecs(ctx.root);
+    const porcelain = worktreeListing(ctx.root);
+    listed = { refs: withWorktreeOnly(main, worktreeOnlyRefs(ctx.root, main, porcelain)), porcelain };
+    LISTED.set(ctx, listed);
+  }
+  return listed;
+}
+
 /** Per command context, the read source folders `readDirs` found. */
 const READ_DIRS = new WeakMap<Context, ReadonlyMap<string, string>>();
 
@@ -226,7 +246,8 @@ const READ_DIRS = new WeakMap<Context, ReadonlyMap<string, string>>();
 function readDirs(ctx: Context): ReadonlyMap<string, string> {
   let dirs = READ_DIRS.get(ctx);
   if (dirs === undefined) {
-    dirs = specReadDirs(ctx.root, listSpecs(ctx.root));
+    const { refs, porcelain } = listedOf(ctx);
+    dirs = specReadDirs(ctx.root, refs, porcelain);
     READ_DIRS.set(ctx, dirs);
   }
   return dirs;
@@ -238,8 +259,11 @@ function sourced(ctx: Context, ref: SpecRef): SpecRef {
   return dir === undefined ? ref : { ...ref, dir };
 }
 
-/** The main checkout's spec folders (`listSpecs`), each active one at its read source (spec 062, ISC-438). */
-const specsOf = (ctx: Context): SpecRef[] => listSpecs(ctx.root).map((ref) => sourced(ctx, ref));
+/**
+ * The repository's spec folders (`listedOf`: the main checkout's and those only a worktree carries, ISC-444), each
+ * active one at its read source (spec 062, ISC-438).
+ */
+const specsOf = (ctx: Context): SpecRef[] => listedOf(ctx).refs.map((ref) => sourced(ctx, ref));
 
 /**
  * The spec a ref names: `001`, `001-slug`, `slug`, or a path ending in the folder (`specs/001-slug/`), at its read
@@ -248,7 +272,12 @@ const specsOf = (ctx: Context): SpecRef[] => listSpecs(ctx.root).map((ref) => so
 function specRef(ctx: Context, arg: string): SpecRef {
   const name = basename(arg.replace(/[\\/]+$/u, ''));
   const ref = resolveSpec(ctx.root, name);
-  if (ref.kind === 'not_found') throw bad(`no spec folder matches "${arg}" (${ref.reason})`, 'unknown-spec');
+  if (ref.kind === 'not_found') {
+    // A spec only a worktree carries, named by its number, folder or slug (spec 062, ISC-444).
+    const only = listedOf(ctx).refs.find((s) => !s.archived && s.dir !== join(ctx.root, 'specs', s.slug) && [s.id, s.slug, specSlugOf(s.slug)].includes(name));
+    if (only === undefined) throw bad(`no spec folder matches "${arg}" (${ref.reason})`, 'unknown-spec');
+    return sourced(ctx, only);
+  }
   return sourced(ctx, ref);
 }
 
@@ -284,7 +313,8 @@ function treeHolderOf(ctx: Context, ref: SpecRef): string {
   if (ref.archived) return ctx.root;
   let dirs = TREE_DIRS.get(ctx);
   if (dirs === undefined) {
-    dirs = specTreeDirs(ctx.root, listSpecs(ctx.root));
+    const { refs, porcelain } = listedOf(ctx);
+    dirs = specTreeDirs(ctx.root, refs, porcelain);
     TREE_DIRS.set(ctx, dirs);
   }
   return dirs.get(ref.slug) ?? ctx.root;
@@ -1372,7 +1402,16 @@ function checkoutOf(cwd: string): Checkout | null {
   const branch = word(git(root, ['rev-parse', '--abbrev-ref', 'HEAD']));
   const paths = git(root, ['-c', 'core.fsmonitor=false', 'ls-files', '-z', '--cached', '--others', '--exclude-standard']);
   if (paths === null) return { root, tree: null, head, branch };
-  return { root, tree: treeIdOf(listedPaths(paths).flatMap((p) => treeEntry(root, p) ?? [])), head, branch };
+  // A listing the tree cannot hold (a tracked path under a linked `specs/`) has no tree id, as the app's
+  // `worktreeTreeId` reads it, rather than failing the command (spec 062, ISC-444).
+  let tree: string | null;
+  try {
+    tree = treeIdOf(listedPaths(paths).flatMap((p) => treeEntry(root, p) ?? []));
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    tree = null;
+  }
+  return { root, tree, head, branch };
 }
 
 /**

@@ -635,6 +635,37 @@ function copyDirFor(root, ref, view) {
   const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: view.tracked[ref.slug] ?? [] });
   return source === "worktree" ? [root.replace(/\/+$/u, ""), worktree.path, SPECS, ref.slug].join("/") : null;
 }
+function folderNameOf(worktree) {
+  const parts = worktree.path?.split("/") ?? [];
+  const byPath = parts.length === 2 && parts[0] === SPEC_WORKTREES ? parts[1] ?? "" : "";
+  if (SPEC_FOLDER.test(byPath))
+    return byPath;
+  const byBranch = worktree.branch === null ? undefined : SPEC_BRANCH.exec(worktree.branch)?.[1];
+  return byBranch !== undefined && SPEC_FOLDER.test(byBranch) ? byBranch : null;
+}
+function worktreeOnlySpecs(worktrees, mainFolders, tracked) {
+  const taken = new Set(mainFolders.map(specIdOf).filter((id) => id !== null));
+  const found = new Map;
+  for (const worktree of worktrees) {
+    const path = worktree.path;
+    if (worktree.kind !== "spec" || worktree.spec !== null || path === null || !insideRepository(path))
+      continue;
+    const slug = folderNameOf(worktree);
+    const id = slug === null ? null : specIdOf(slug);
+    if (slug === null || id === null || taken.has(id) || found.has(id))
+      continue;
+    const under = `${SPECS}/${slug}/`;
+    if ((tracked[path] ?? []).some((p) => p.startsWith(under)))
+      found.set(id, { id, slug, worktree: path });
+  }
+  return [...found.values()].sort((a, b) => Number(a.id) - Number(b.id));
+}
+function withWorktreeOnly(listed, worktreeOnly) {
+  if (worktreeOnly.length === 0)
+    return [...listed];
+  const active = [...listed.filter((ref) => !ref.archived), ...worktreeOnly].sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : 1));
+  return [...active, ...listed.filter((ref) => ref.archived)];
+}
 
 // core/src/worktree-facts.ts
 function mainCheckoutFrom({ cwd, commonDir, holdsGit, sameFolder }) {
@@ -942,8 +973,24 @@ function isDirty(folder) {
 function trackedSpecPaths(root) {
   return (git(root, [...NO_FSMONITOR, "ls-files", "-z", "--", "specs/"]) ?? "").split("\x00").filter((path) => path !== "");
 }
-function assigned(root, refs) {
-  const porcelain = git(root, ["worktree", "list", "--porcelain"]) ?? "";
+function worktreeListing(root) {
+  return git(root, ["worktree", "list", "--porcelain"]) ?? "";
+}
+function worktreeOnlyRefs(root, listed, porcelain) {
+  const mainFolders = listed.map((ref) => ref.slug);
+  const { worktrees } = assignWorktrees(porcelain, mainFolders);
+  const tracked = {};
+  for (const w of worktrees) {
+    if (w.kind !== "spec" || w.spec !== null || w.path === null || !insideRepository(w.path) || !holdsGit(join4(root, w.path)))
+      continue;
+    tracked[w.path] = trackedSpecPaths(join4(root, w.path));
+  }
+  if (Object.keys(tracked).length === 0)
+    return [];
+  return worktreeOnlySpecs(worktrees, mainFolders, tracked).map((spec) => ({ kind: "spec", id: spec.id, slug: spec.slug, dir: join4(root, spec.worktree, "specs", spec.slug), archived: false }));
+}
+function assigned(root, refs, listing) {
+  const porcelain = listing ?? worktreeListing(root);
   const assignment = assignWorktrees(porcelain, refs.map((ref) => ref.slug));
   return { porcelain, assignment, facts: worktreeFactsToRead(assignment) };
 }
@@ -953,12 +1000,15 @@ function splitOf(root, assignment, facts) {
   const dirty = statusToRead(facts.ofSpec, merged, present).filter((path) => isDirty(join4(root, path)));
   return liveWorktrees(assignment, { merged, present, dirty });
 }
-function specReadDirs(root, refs) {
+function specReadDirs(root, refs, listing) {
   const dirs = new Map;
   const active = refs.filter((ref) => !ref.archived);
   if (active.length === 0)
     return dirs;
-  const { porcelain, assignment, facts } = assigned(root, refs);
+  for (const ref of active)
+    if (ref.dir !== join4(root, "specs", ref.slug) && existsSync(join4(ref.dir, "spec.md")))
+      dirs.set(ref.slug, ref.dir);
+  const { porcelain, assignment, facts } = assigned(root, refs, listing);
   if (facts.ofSpec.length === 0)
     return dirs;
   const paths = trackedSpecPaths(root);
@@ -969,18 +1019,20 @@ function specReadDirs(root, refs) {
   const tracked = Object.fromEntries(trackedToRead(split.live, active).map((slug) => [slug, trackedOf(slug)]));
   const view = worktreeViewOf({ porcelain, assignment, split, tracked });
   for (const ref of active) {
+    if (dirs.has(ref.slug))
+      continue;
     const copy = copyDirFor(root, ref, view);
     if (copy !== null && existsSync(join4(copy, "spec.md")))
       dirs.set(ref.slug, copy);
   }
   return dirs;
 }
-function specTreeDirs(root, refs) {
+function specTreeDirs(root, refs, listing) {
   const dirs = new Map;
   const active = refs.filter((ref) => !ref.archived);
   if (active.length === 0)
     return dirs;
-  const { assignment, facts } = assigned(root, refs);
+  const { assignment, facts } = assigned(root, refs, listing);
   if (facts.ofSpec.length === 0)
     return dirs;
   const { live } = splitOf(root, assignment, facts);
@@ -5312,11 +5364,23 @@ function specFiles(ref) {
   }
   return { folder: ref.slug, texts };
 }
+var LISTED = new WeakMap;
+function listedOf(ctx) {
+  let listed2 = LISTED.get(ctx);
+  if (listed2 === undefined) {
+    const main = listSpecs(ctx.root);
+    const porcelain = worktreeListing(ctx.root);
+    listed2 = { refs: withWorktreeOnly(main, worktreeOnlyRefs(ctx.root, main, porcelain)), porcelain };
+    LISTED.set(ctx, listed2);
+  }
+  return listed2;
+}
 var READ_DIRS = new WeakMap;
 function readDirs(ctx) {
   let dirs = READ_DIRS.get(ctx);
   if (dirs === undefined) {
-    dirs = specReadDirs(ctx.root, listSpecs(ctx.root));
+    const { refs: refs2, porcelain } = listedOf(ctx);
+    dirs = specReadDirs(ctx.root, refs2, porcelain);
     READ_DIRS.set(ctx, dirs);
   }
   return dirs;
@@ -5325,12 +5389,16 @@ function sourced(ctx, ref) {
   const dir = ref.archived ? undefined : readDirs(ctx).get(ref.slug);
   return dir === undefined ? ref : { ...ref, dir };
 }
-var specsOf = (ctx) => listSpecs(ctx.root).map((ref) => sourced(ctx, ref));
+var specsOf = (ctx) => listedOf(ctx).refs.map((ref) => sourced(ctx, ref));
 function specRef(ctx, arg) {
   const name = basename2(arg.replace(/[\\/]+$/u, ""));
   const ref = resolveSpec(ctx.root, name);
-  if (ref.kind === "not_found")
-    throw bad(`no spec folder matches "${arg}" (${ref.reason})`, "unknown-spec");
+  if (ref.kind === "not_found") {
+    const only = listedOf(ctx).refs.find((s) => !s.archived && s.dir !== join6(ctx.root, "specs", s.slug) && [s.id, s.slug, specSlugOf(s.slug)].includes(name));
+    if (only === undefined)
+      throw bad(`no spec folder matches "${arg}" (${ref.reason})`, "unknown-spec");
+    return sourced(ctx, only);
+  }
   return sourced(ctx, ref);
 }
 var rel = (ctx, path) => relative(ctx.root, path).split(sep2).join("/");
@@ -5351,7 +5419,8 @@ function treeHolderOf(ctx, ref) {
     return ctx.root;
   let dirs = TREE_DIRS.get(ctx);
   if (dirs === undefined) {
-    dirs = specTreeDirs(ctx.root, listSpecs(ctx.root));
+    const { refs: refs2, porcelain } = listedOf(ctx);
+    dirs = specTreeDirs(ctx.root, refs2, porcelain);
     TREE_DIRS.set(ctx, dirs);
   }
   return dirs.get(ref.slug) ?? ctx.root;
@@ -6266,7 +6335,15 @@ function checkoutOf(cwd) {
   const paths = git2(root, ["-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
   if (paths === null)
     return { root, tree: null, head, branch };
-  return { root, tree: treeIdOf(listedPaths(paths).flatMap((p) => treeEntry(root, p) ?? [])), head, branch };
+  let tree;
+  try {
+    tree = treeIdOf(listedPaths(paths).flatMap((p) => treeEntry(root, p) ?? []));
+  } catch (error) {
+    if (!(error instanceof RangeError))
+      throw error;
+    tree = null;
+  }
+  return { root, tree, head, branch };
 }
 function changedSince(checkout, head) {
   const tracked = head === null ? null : git2(checkout.root, ["-c", "core.fsmonitor=false", "diff", "--name-only", "-z", head, "--"]);

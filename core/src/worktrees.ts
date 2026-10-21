@@ -443,3 +443,18 @@ export function worktreeOnlySpecs(
   }
   return [...found.values()].sort((a, b) => Number(a.id) - Number(b.id));
 }
+
+/**
+ * The active spec references of `listed` (`listSpecs`) and `worktreeOnly` (the refs of `worktreeOnlySpecs`, each `dir`
+ * its folder in that worktree) in number order, then the archived ones, as `listSpecs` orders them (spec 039,
+ * ISC-208.1). Here rather than in the app's worktree reading so the plugin CLI lists the same specs (spec 062, ISC-444);
+ * generic over `resolve.ts`' `SpecRef`, whose module reads the file system, so this one stays browser-safe.
+ */
+export function withWorktreeOnly<R extends { readonly id: string; readonly slug: string; readonly archived: boolean }>(
+  listed: readonly R[],
+  worktreeOnly: readonly R[],
+): R[] {
+  if (worktreeOnly.length === 0) return [...listed];
+  const active = [...listed.filter((ref) => !ref.archived), ...worktreeOnly].sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : 1));
+  return [...active, ...listed.filter((ref) => ref.archived)];
+}
