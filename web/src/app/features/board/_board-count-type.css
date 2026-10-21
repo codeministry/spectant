@@ -1,0 +1,14 @@
+/*
+ * The mono count of a stub and of a column head. The board page and the column head import this partial as their first
+ * rule; emulated encapsulation scopes the copy per component, so each one's half of the selector matches only its own
+ * count, and no rule ahead of it there styles those counts.
+ */
+.stub .count,
+:host(.head) .count {
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 20px;
+}

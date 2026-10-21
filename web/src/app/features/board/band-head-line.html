@@ -1,0 +1,27 @@
+@let band = this.band();
+@if (group() === 'feature') {
+  @if (band.key !== null) {
+    <span class="mono">{{ band.key }}</span>
+    <span class="name">{{ band.label }}</span>
+  } @else {
+    <span class="name">{{ 'board.workspace.swimlanes.noFeature' | transloco }}</span>
+  }
+} @else {
+  <ui-icon name="flag" [size]="14" />
+  <span class="name">{{ band.label ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
+  @if (band.target; as target) {
+    <ui-time class="mono muted" form="day" [value]="target" />
+  }
+}
+<span class="n">{{ (band.count === 1 ? 'board.workspace.swimlanes.cards.one' : 'board.workspace.swimlanes.cards.other') | transloco: { count: band.count } }}</span>
+@let done = this.done();
+@if (done !== null) {
+  <ui-meter
+  class="bmeter"
+  data-band-meter
+  [mini]="true"
+  [value]="done"
+  [max]="band.count"
+  [label]="(band.count === 1 ? 'board.workspace.bandMeter.one' : 'board.workspace.bandMeter.other') | transloco: { done: done, count: band.count }"
+  />
+}

@@ -16,25 +16,8 @@
   line-height: 20px;
 }
 
-.overflow .ol,
-.overflow .sep {
-  color: var(--muted-ink);
-}
-
-.overflow .n,
 .lane-hidden {
   font-variant-numeric: tabular-nums;
-}
-
-.overflow .n {
-  font-family: var(--font-mono);
-}
-
-.overflow .jump {
-  margin-inline-start: auto;
-}
-
-.lane-hidden {
   position: sticky;
   z-index: 1;
   inset-inline-start: 4px;

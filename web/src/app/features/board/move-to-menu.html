@@ -26,7 +26,7 @@
                 [attr.aria-current]="e.hint === 'current' ? 'true' : null"
                 [attr.aria-disabled]="e.enabled ? null : 'true'"
                 [attr.data-autofocus]="e.stage === focusStage() ? '' : null"
-                (click)="choose(e)"
+                (click)="chose(e)"
               >
                 <!-- &ngsp; keeps a space between the name and the hint in the button's accessible name. -->
                 <span class="name">{{ 'stages.' + e.stage | transloco }}</span>&ngsp;
@@ -44,7 +44,7 @@
               </button>
               @if (refusal(); as r) {
                 @if (r.to === e.stage && r.kind !== 'run-locked') {
-                  <app-refusal-notice [refusal]="r" (closed)="drag.dismiss(c.key)" />
+                  <app-refusal-notice [refusal]="r" (closed)="dismiss.emit(c.key)" />
                 }
               }
             </li>

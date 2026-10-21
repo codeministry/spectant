@@ -31,12 +31,6 @@
   display: none;
 }
 
-/* The swimlane head's mini meter (design § Desktop "mini bar"): the band's done cards of all its cards. */
-.bmeter {
-  flex: none;
-  inline-size: 48px;
-}
-
 /* The position fades' arrows (design § Tablet: "btn-icon ghost mit chevronDown nach links und rechts gedreht"). */
 .lstep {
   position: absolute;

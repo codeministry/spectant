@@ -1,0 +1,25 @@
+/* A band head's parts (moved from board-page.css with the markup; the host keeps the page's `.bh` rules). */
+:host(.bh) .name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host(.bh) .mono,
+:host(.bh) .n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:host(.bh) .n,
+:host(.bh) .muted {
+  color: var(--muted-ink);
+  font-weight: 500;
+}
+
+/* The swimlane head's mini meter (design § Desktop "mini bar"): the band's done cards of all its cards. */
+.bmeter {
+  flex: none;
+  inline-size: 48px;
+}

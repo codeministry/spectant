@@ -1,18 +1,18 @@
-@if (missing()) {
+@if (store.missing()) {
   <app-not-found />
-} @else if (unavailable()) {
+} @else if (store.unavailable()) {
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
   <div class="title-row">
-    <ui-page-head [segments]="eyebrow()">
+    <ui-page-head [segments]="store.eyebrow()">
       <!-- The prototype head (spec 024): the workspace badge, "Board" and the muted "· <ws>" suffix outside the h1. -->
       <div class="h1-row" ngProjectAs="h1">
-        <ui-ws-badge class="page-mark" size="page" data-board-badge [name]="name()" aria-hidden="true" />
+        <ui-ws-badge class="page-mark" size="page" data-board-badge [name]="store.name()" aria-hidden="true" />
         <h1 class="type-page-title" id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
-        <span class="ws-suffix" aria-hidden="true">· {{ name() }}</span>
+        <span class="ws-suffix" aria-hidden="true">· {{ store.name() }}</span>
       </div>
     </ui-page-head>
-    @if (workflowSource(); as source) {
+    @if (store.workflowSource(); as source) {
       <!-- The workflow the columns come from (ISC-122): the workspace's own table, or the default one when the file is missing. -->
       <span class="source" [class.mono]="source === 'file'" [attr.data-source]="source">{{
         (source === 'file' ? 'board.workspace.source.custom' : 'board.workspace.source.default') | transloco
@@ -20,11 +20,11 @@
     }
   </div>
 
-  @if (board(); as b) {
+  @if (store.board(); as b) {
     @if (b.total === 0) {
       <ui-empty-state
         icon="square-kanban"
-        [heading]="'board.workspace.empty.noSpecs' | transloco: { ws: name() }"
+        [heading]="'board.workspace.empty.noSpecs' | transloco: { ws: store.name() }"
         [body]="'board.workspace.empty.body' | transloco"
       >
         <ui-command-chip command="/spec idea" data-empty-command />
@@ -33,13 +33,30 @@
     } @else {
       <p class="meta">{{ 'board.workspace.summary' | transloco: { cards: b.total, specs: b.specs, ideas: b.ideas } }}</p>
 
-      <app-board-filters #toolbar [board]="b" (queryChange)="setQuery($event)" />
+      <app-board-filters #toolbar [board]="b" (queryChange)="store.setQuery($event)" />
 
       <!-- The single-pointer and keyboard move (T127) and the story's allocation (T128): one of each per board. -->
-      <app-move-to-menu #menu [board]="b" [ws]="ws()" [tier]="tier()" (moved)="followMove($event)" />
-      <app-allocate-dialog [ws]="ws()" (closed)="focusGrip($event)" />
+      <app-move-to-menu
+        #menu
+        [board]="b"
+        [ws]="store.ws()"
+        [tier]="store.tier()"
+        [draggable]="draggable"
+        [refusalOf]="refusalOf"
+        (choose)="moveFromMenu($event)"
+        (dismiss)="drag.dismiss($event)"
+      />
+      <app-allocate-dialog
+        [card]="store.allocating()"
+        [paths]="store.allocPaths()"
+        [hash]="store.allocHash()"
+        [saving]="store.allocSaving()"
+        [unreadable]="store.allocUnreadable()"
+        (confirm)="confirmAllocation()"
+        (dismiss)="cancelAllocation()"
+      />
       <!-- A feature band's "Move" (spec 037, ISC-197): one menu for every band grip, and the polite line after a move. -->
-      @let bandMove = menuState();
+      @let bandMove = store.menuState();
       <app-reorder-menu
         #bandMenu
         [feature]="bandMove.feature"
@@ -50,33 +67,33 @@
         [count]="bandMove.count"
         (step)="bandMenuStep($event)"
       />
-      <p class="vh" aria-live="polite" data-band-live>{{ bandNews() }}</p>
+      <p class="vh" aria-live="polite" data-band-live>{{ store.bandNews() }}</p>
 
       @if (b.shown === 0) {
         <!-- Filtered empty (spec 024, design § Workspace board): the small empty state with "Clear filters". -->
         <ui-card class="no-match" data-no-match [padding]="0">
           <ui-empty-state icon="filter" [heading]="'board.workspace.filter.noMatch' | transloco" [body]="'board.workspace.filter.noMatchBody' | transloco">
-            <button type="button" class="btn btn-sm" data-clear (click)="clearFilters()">
+            <button type="button" class="btn btn-sm" data-clear (click)="store.clearFilters()">
               {{ 'board.workspace.filter.clearAll' | transloco }}
             </button>
           </ui-empty-state>
         </ui-card>
       }
 
-      @if (compact()) {
+      @if (store.compact()) {
         <!-- Compact (T124, ISC-129.2): the wrapping column switch, the sticky bar with the drop tray, one column. -->
         <div #colswitch class="colswitch">
           <ui-segmented
             fill
-            [options]="colOptions()"
+            [options]="store.colOptions()"
             [value]="b.current ?? undefined"
             [label]="'board.workspace.compact.columns' | transloco"
-            (valueChange)="selectColumn($event)"
+            (valueChange)="store.selectColumn($event)"
           />
         </div>
 
         <div class="colbar" data-colbar [attr.data-away]="switchAway() ? '' : null">
-          @if (current(); as c) {
+          @if (store.current(); as c) {
             @let curLabel = 'stages.' + c.stage | transloco;
             <div class="barrow">
               <button
@@ -84,9 +101,9 @@
                 class="prev"
                 icon="chevron-right"
                 data-prev
-                [label]="'board.workspace.compact.prev' | transloco: { stage: neighbours().prev ? ('stages.' + neighbours().prev | transloco) : '' }"
-                [disabled]="neighbours().prev === null"
-                (click)="selectColumn(neighbours().prev)"
+                [label]="'board.workspace.compact.prev' | transloco: { stage: store.neighbours().prev ? ('stages.' + store.neighbours().prev | transloco) : '' }"
+                [disabled]="store.neighbours().prev === null"
+                (click)="store.selectColumn(store.neighbours().prev)"
               ></button>
               <button
                 type="button"
@@ -103,9 +120,9 @@
                 ui-icon-button
                 icon="chevron-right"
                 data-next
-                [label]="'board.workspace.compact.next' | transloco: { stage: neighbours().next ? ('stages.' + neighbours().next | transloco) : '' }"
-                [disabled]="neighbours().next === null"
-                (click)="selectColumn(neighbours().next)"
+                [label]="'board.workspace.compact.next' | transloco: { stage: store.neighbours().next ? ('stages.' + store.neighbours().next | transloco) : '' }"
+                [disabled]="store.neighbours().next === null"
+                (click)="store.selectColumn(store.neighbours().next)"
               ></button>
             </div>
           }
@@ -114,8 +131,8 @@
             data-tray
             role="group"
             [attr.aria-label]="'board.workspace.compact.tray' | transloco"
-            [attr.data-open]="trayOpen() ? '' : null"
-            [attr.aria-hidden]="trayOpen() ? null : 'true'"
+            [attr.data-open]="store.trayOpen() ? '' : null"
+            [attr.aria-hidden]="store.trayOpen() ? null : 'true'"
           >
             @for (column of b.columns; track column.stage) {
               <div
@@ -135,7 +152,7 @@
           </div>
         </div>
 
-        @if (current(); as c) {
+        @if (store.current(); as c) {
           @let stage = c.stage;
           @let label = 'stages.' + stage | transloco;
           <section
@@ -149,13 +166,13 @@
             [style.--role]="edges[stage]"
             [attr.aria-label]="(c.count === 1 ? 'board.workspace.column.name.one' : 'board.workspace.column.name.other') | transloco: { stage: label, count: c.count, waiting: c.waitingOnYou }"
           >
-            <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: c, label: label }" />
+            <header class="head" app-column-head [column]="c" [label]="label" [morph]="drag.morph().includes(c.stage)" (fold)="store.toggleFold(c)"></header>
             @if (c.cards.length === 0) {
               <p class="empty-col">
                 {{ 'board.workspace.column.emptyIn' | transloco: { stage: label } }}
                 @if (c.hidden > 0) {
                   · {{ (c.hidden === 1 ? 'board.workspace.column.hiddenByFilters.one' : 'board.workspace.column.hiddenByFilters.other') | transloco: { count: c.hidden } }} ·
-                  <button type="button" class="btn btn-sm btn-ghost text-link" (click)="clearFilters()">{{ 'board.workspace.filter.clear' | transloco }}</button>
+                  <button type="button" class="btn btn-sm btn-ghost text-link" (click)="store.clearFilters()">{{ 'board.workspace.filter.clear' | transloco }}</button>
                 }
               </p>
             } @else if (c.bands.length === 0) {
@@ -171,7 +188,7 @@
                       (moveMenu)="openMenu(card, $event)"
                       (step)="step(card, $event)"
                       [card]="card"
-                      [ws]="ws()"
+                      [ws]="store.ws()"
                     />
                     @if (drag.refusalOf(card); as refusal) {
                       <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
@@ -182,16 +199,16 @@
             } @else {
               @for (band of c.bands; track band.key; let first = $first) {
                 @if (dividerShown(band, first); as d) {
-                  <ng-container [ngTemplateOutlet]="dividerTpl" [ngTemplateOutletContext]="{ $implicit: d }" />
+                  <p class="band-divider" data-band-divider app-band-divider [divider]="d"></p>
                 }
                 <!-- Compact: the grip moves the band through its menu and Alt+↑/↓; the one column's card list holds no band drag. -->
                 <div
                   class="band-head"
                   [attr.data-band]="band.key ?? ''"
                   [attr.data-move-group]="band.moveGroup"
-                  [attr.data-held]="band.key !== null && writer.pending(band.key) ? '' : null"
-                  [attr.aria-busy]="band.key !== null && writer.pending(band.key) ? 'true' : null"
-                  [attr.data-moved]="band.key !== null && bandMoved() === band.key ? '' : null"
+                  [attr.data-held]="band.key !== null && store.writer.pending(band.key) ? '' : null"
+                  [attr.aria-busy]="band.key !== null && store.writer.pending(band.key) ? 'true' : null"
+                  [attr.data-moved]="band.key !== null && store.bandMoved() === band.key ? '' : null"
                 >
                   <span class="band-sticky">
                     @if (band.moveGroup !== null) {
@@ -202,8 +219,8 @@
                         [attr.data-band-grip]="band.key"
                         aria-haspopup="dialog"
                         [attr.aria-expanded]="menuOpenFor(band.key)"
-                        [attr.aria-label]="gripLabel(band.key)"
-                        [attr.aria-disabled]="writer.busy() ? 'true' : null"
+                        [attr.aria-label]="store.gripLabel(band.key)"
+                        [attr.aria-disabled]="store.writer.busy() ? 'true' : null"
                         (click)="openBandMenu(band.key, cgrip)"
                         (keydown.alt.arrowup)="bandStep(band.key, 'up', $event)"
                         (keydown.alt.arrowdown)="bandStep(band.key, 'down', $event)"
@@ -213,10 +230,11 @@
                     } @else if (b.query.group === 'feature') {
                       <span class="grip-gap" aria-hidden="true"></span>
                     }
-                    <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
+                    <!-- eslint-disable-next-line @angular-eslint/template/elements-content -- the heading's content is app-band-head's template -->
+                    <h3 class="bh" app-band-head [band]="band" [group]="b.query.group"></h3>
                   </span>
-                  @if (band.key !== null && writer.refusalOf(band.key); as refusal) {
-                    <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="writer.dismiss(band.key)" />
+                  @if (band.key !== null && store.writer.refusalOf(band.key); as refusal) {
+                    <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="store.writer.dismiss(band.key)" />
                   }
                 </div>
                 <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
@@ -231,7 +249,7 @@
                       (moveMenu)="openMenu(card, $event)"
                       (step)="step(card, $event)"
                       [card]="card"
-                      [ws]="ws()"
+                      [ws]="store.ws()"
                     />
                     @if (drag.refusalOf(card); as refusal) {
                       <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
@@ -257,20 +275,20 @@
         <!-- Compact (spec 024, design § Mobile "Unteres Sheet Needs you"; prototype `.sheet-bar`): the sticky bottom bar opens the cards waiting on you. -->
         <!-- Spec 020 (T24, ISC-240): "Waits on you n" counts guidance.waits in the secondary tone and links to the dashboard's #waiting. -->
         <div class="sheet-bar" data-sheet-bar>
-          <button type="button" class="bar-open" aria-haspopup="dialog" (click)="needsOpen.set(true)">
+          <button type="button" class="bar-open" aria-haspopup="dialog" (click)="store.needsOpen.set(true)">
             <span class="grab" aria-hidden="true"></span>
             <span>{{ (b.total === 1 ? 'board.workspace.sheetBar.one' : 'board.workspace.sheetBar.other') | transloco: { count: b.total } }}</span>
           </button>
-          <a class="needs-n" data-waits-link [routerLink]="['/w', ws()]" fragment="waiting">{{ 'board.workspace.waitsCount' | transloco: { count: waitsCount() } }}</a>
+          <a class="needs-n" data-waits-link [routerLink]="['/w', store.ws()]" fragment="waiting">{{ 'board.workspace.waitsCount' | transloco: { count: store.waitsCount() } }}</a>
         </div>
-        <ui-sheet [(open)]="needsOpen" [heading]="'guidance.waits.label' | transloco">
-          @if (needsYou().length === 0) {
+        <ui-sheet [(open)]="store.needsOpen" [heading]="'guidance.waits.label' | transloco">
+          @if (store.needsYou().length === 0) {
             <p class="needs-none">{{ 'board.workspace.needsNone' | transloco }}</p>
           } @else {
             <ul class="needs-list" data-needs-list role="list">
-              @for (card of needsYou(); track card.key) {
+              @for (card of store.needsYou(); track card.key) {
                 <li>
-                  <a class="needs-row" [routerLink]="cardLink(card)" (click)="needsOpen.set(false)">
+                  <a class="needs-row" [routerLink]="store.cardLink(card)" (click)="store.needsOpen.set(false)">
                     <span class="mono">{{ card.id ?? card.slug }}</span>
                     <span class="nt">{{ card.title }}</span>
                     <span class="nr">{{ card.reason ?? ('stages.' + card.stage | transloco) }}</span>
@@ -281,48 +299,22 @@
           }
         </ui-sheet>
       } @else {
-        @if (tier() === 'medium') {
+        @if (store.tier() === 'medium') {
           <!-- Medium (spec 024, ISC-151): the lane index over the scroll-snap columns, scrolling sideways, with counts. -->
           <div class="lane-index" data-lane-index>
             <ui-segmented
-              [options]="colOptions()"
-              [value]="firstInView()"
+              [options]="store.colOptions()"
+              [value]="store.firstInView()"
               [label]="'board.workspace.index' | transloco"
               (valueChange)="selectIndex($event)"
             />
           </div>
         }
         <ui-card class="board-card" [padding]="0">
-          @let hidden = hiddenRight();
+          @let hidden = store.hiddenRight();
           @if (hidden.length > 0) {
             <!-- Medium (spec 019, ISC-141.1): the columns with cards right of the scroller box, each a jump to its column. -->
-            <p class="overflow" data-board-hidden>
-              <span class="ol">{{ 'board.workspace.hidden.right' | transloco }}</span>
-              @for (column of hidden; track column.stage; let last = $last) {
-                @let label = 'stages.' + column.stage | transloco;
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-sm entry"
-                  [attr.data-show]="column.stage"
-                  [title]="'board.workspace.hidden.show' | transloco: { stage: label }"
-                  (click)="showColumn(column.stage)"
-                >
-                  {{ label }} <span class="n">{{ column.count }}</span>
-                </button>
-                @if (!last) {
-                  <span class="sep" aria-hidden="true">·</span>
-                }
-              }
-              @if (hidden[0]; as first) {
-                <button
-                  ui-icon-button
-                  icon="chevron-right"
-                  class="jump"
-                  [label]="'board.workspace.hidden.show' | transloco: { stage: ('stages.' + first.stage | transloco) }"
-                  (click)="showColumn(first.stage)"
-                ></button>
-              }
-            </p>
+            <p class="overflow" data-board-hidden app-board-overflow [columns]="hidden" (show)="showColumn($event)"></p>
           }
           <div
             #scroller
@@ -333,7 +325,7 @@
             [attr.aria-label]="'board.workspace.columns' | transloco"
             (scroll)="scrolled()"
           >
-            <div class="grid" [style.grid-template-columns]="tracks()" [attr.data-grouped]="bands().length > 0 ? '' : null">
+            <div class="grid" [style.grid-template-columns]="store.tracks()" [attr.data-grouped]="store.bands().length > 0 ? '' : null">
               @for (column of b.columns; track column.stage; let i = $index) {
                 @let stage = column.stage;
                 @let label = 'stages.' + stage | transloco;
@@ -357,7 +349,7 @@
                       data-fold-toggle
                       aria-expanded="false"
                       [attr.aria-label]="'board.workspace.column.unfold' | transloco: { stage: label }"
-                      (click)="toggleFold(column)"
+                      (click)="store.toggleFold(column)"
                     >
                       <ui-icon name="eye" [size]="14" />
                     </button>
@@ -393,9 +385,9 @@
                     [style.grid-column]="i + 1"
                     [attr.aria-label]="(column.count === 1 ? 'board.workspace.column.name.one' : 'board.workspace.column.name.other') | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
                   >
-                    <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: column, label: label }" />
+                    <header class="head" app-column-head [column]="column" [label]="label" [morph]="drag.morph().includes(stage)" (fold)="store.toggleFold(column)"></header>
                     <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
-                    @if (bands().length === 0) {
+                    @if (store.bands().length === 0) {
                       <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
                         @for (card of column.cards; track card.key) {
                           <li [attr.data-moved]="drag.moved() === card.key ? '' : null">
@@ -408,7 +400,7 @@
                       (moveMenu)="openMenu(card, $event)"
                       (step)="step(card, $event)"
                       [card]="card"
-                      [ws]="ws()"
+                      [ws]="store.ws()"
                     />
                     @if (drag.refusalOf(card); as refusal) {
                       <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
@@ -434,24 +426,24 @@
                   [cdkDropListEnterPredicate]="bandsOnly"
                   (cdkDropListDropped)="bandDropped($event)"
                 >
-                  @for (band of bands(); track band.key) {
-                    @let held = band.key !== null && writer.pending(band.key);
+                  @for (band of store.bands(); track band.key) {
+                    @let held = band.key !== null && store.writer.pending(band.key);
                     <div
                       class="band-head band-drag"
                       cdkDrag
                       cdkDragLockAxis="y"
                       cdkDragPreviewClass="band-preview"
                       [cdkDragData]="band.key"
-                      [cdkDragDisabled]="band.moveGroup === null || writer.busy()"
+                      [cdkDragDisabled]="band.moveGroup === null || store.writer.busy()"
                       (cdkDragStarted)="bandDragStarted(band.moveGroup)"
                       (cdkDragMoved)="bandDragMoved($event)"
                       (cdkDragEnded)="bandDragEnded()"
                       [style.grid-row]="band.row"
                       [attr.data-band]="band.key ?? ''"
                       [attr.data-move-group]="band.moveGroup"
-                      [attr.data-band-lock]="bandLocked(band.moveGroup) ? '' : null"
-                      [attr.data-drop-line]="bandLine() === (band.key ?? '') ? '' : null"
-                      [attr.data-moved]="band.key !== null && bandMoved() === band.key ? '' : null"
+                      [attr.data-band-lock]="store.bandLocked(band.moveGroup) ? '' : null"
+                      [attr.data-drop-line]="store.bandLine() === (band.key ?? '') ? '' : null"
+                      [attr.data-moved]="band.key !== null && store.bandMoved() === band.key ? '' : null"
                       [attr.data-held]="held ? '' : null"
                       [attr.aria-busy]="held ? 'true' : null"
                     >
@@ -465,8 +457,8 @@
                             [attr.data-band-grip]="band.key"
                             aria-haspopup="dialog"
                             [attr.aria-expanded]="menuOpenFor(band.key)"
-                            [attr.aria-label]="gripLabel(band.key)"
-                            [attr.aria-disabled]="writer.busy() ? 'true' : null"
+                            [attr.aria-label]="store.gripLabel(band.key)"
+                            [attr.aria-disabled]="store.writer.busy() ? 'true' : null"
                             (click)="openBandMenu(band.key, grip)"
                             (keydown.alt.arrowup)="bandStep(band.key, 'up', $event)"
                             (keydown.alt.arrowdown)="bandStep(band.key, 'down', $event)"
@@ -476,26 +468,27 @@
                         } @else if (b.query.group === 'feature') {
                           <span class="grip-gap" aria-hidden="true"></span>
                         }
-                        <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
-                        @if (bandLocked(band.moveGroup)) {
+                        <!-- eslint-disable-next-line @angular-eslint/template/elements-content -- the heading's content is app-band-head's template -->
+                        <h3 class="bh" app-band-head [band]="band" [group]="b.query.group"></h3>
+                        @if (store.bandLocked(band.moveGroup)) {
                           <span class="band-lock" data-band-lock-hint>{{ 'backlog.board.otherMilestone' | transloco }}</span>
                         }
                       </span>
-                      @if (band.key !== null && writer.refusalOf(band.key); as refusal) {
-                        <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="writer.dismiss(band.key)" />
+                      @if (band.key !== null && store.writer.refusalOf(band.key); as refusal) {
+                        <app-refusal-notice class="band-notice" data-band-refusal [refusal]="refusal" (closed)="store.writer.dismiss(band.key)" />
                       }
                     </div>
                   }
                 </div>
               </div>
 
-              @for (band of bands(); track band.key) {
+              @for (band of store.bands(); track band.key) {
                 @if (band.divider; as d) {
                   <div class="band-divider-row" [style.grid-row]="band.row - 1">
-                    <ng-container [ngTemplateOutlet]="dividerTpl" [ngTemplateOutletContext]="{ $implicit: d }" />
+                    <p class="band-divider" data-band-divider app-band-divider [divider]="d"></p>
                   </div>
                 }
-                @if (laneHints().get(band.key); as hint) {
+                @if (store.laneHints().get(band.key); as hint) {
                   <!-- A lane whose cards all lie right of view (ISC-141.1) says so in view, sticky at the scroller's start. -->
                   <button type="button" class="btn btn-ghost btn-sm lane-hidden" data-lane-hidden [style.grid-row]="band.row + 1" (click)="showColumn(hint.stage)">
                     {{ hint.text }}
@@ -510,7 +503,7 @@
                     [cdkDropListData]="cell.stage"
                     (cdkDropListDropped)="dropped($event)"
                     [attr.data-drop]="drag.hint(cell.stage)"
-                    [attr.data-band-lock]="bandLocked(band.moveGroup) ? '' : null"
+                    [attr.data-band-lock]="store.bandLocked(band.moveGroup) ? '' : null"
                     [class.stubcell]="cell.stub" [style.grid-row]="band.row + 1" [style.grid-column]="i + 1">
                     @if (!cell.stub && cell.cards.length > 0) {
                       <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
@@ -525,7 +518,7 @@
                       (moveMenu)="openMenu(card, $event)"
                       (step)="step(card, $event)"
                       [card]="card"
-                      [ws]="ws()"
+                      [ws]="store.ws()"
                     />
                     @if (drag.refusalOf(card); as refusal) {
                       <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
@@ -552,105 +545,16 @@
       }
     }
   } @else {
-    <div class="board-loading" aria-hidden="true">
-      <ui-skeleton height="40px" />
-      <div class="skeleton-cols">
-        @for (slot of [0, 1, 2]; track slot) {
-          <ui-card class="skeleton-card" [padding]="12">
-            <ui-skeleton width="40%" height="20px" />
-            <ui-skeleton height="20px" />
-            <ui-skeleton width="70%" />
-          </ui-card>
-        }
-      </div>
-    </div>
+    <div class="board-loading" aria-hidden="true" app-board-loading></div>
   }
 }
-
-<!-- A column head: stage glyph, label, the gate dfn on a fixed gate, the hourglass on a waiting stage, the full count. -->
-<ng-template #head let-raw let-label="label">
-  @let column = asColumn(raw);
-  <header class="head">
-    <ui-icon [name]="glyphs[column.stage]" [size]="16" />
-    <h2 [id]="'col-' + column.stage">{{ label }}</h2>
-    @if (gateOf(column.stage); as gate) {
-      <ui-term class="gate" [id]="'gate-' + column.stage" [hint]="gate | transloco"
-        ><ui-icon name="shield-check" [size]="14" /><span class="vh">{{ 'board.workspace.column.fixedGate' | transloco }}</span></ui-term
-      >
-    }
-    <!-- Spec 020 (T24): a stage that waits on you shows the open ring of 040, no own count; the hourglass stays a wait on others. -->
-    @if (yours(column.stage)) {
-      <span class="wait" data-open-stage><ui-glyph state="open" family="item" [size]="14" /><span class="vh">{{ 'board.workspace.column.openStage' | transloco }}</span></span>
-    } @else if (waiting(column.stage)) {
-      <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
-    }
-    <span class="count" aria-hidden="true" [attr.data-morph]="drag.morph().includes(column.stage) ? '' : null">{{ column.count }}</span>
-    <button
-      type="button"
-      class="btn btn-ghost btn-xs fold"
-      data-fold-toggle
-      aria-expanded="true"
-      [attr.aria-label]="'board.workspace.column.fold' | transloco: { stage: label }"
-      (click)="toggleFold(column)"
-    >
-      <ui-icon name="fold-horizontal" [size]="14" />
-    </button>
-  </header>
-</ng-template>
-
-<!-- A swimlane band head: the mono F-ID and name, or the flag, milestone name and target date; then the card count. -->
-<ng-template #bandHead let-rawBand let-group="group">
-  @let band = asBand(rawBand);
-  <h3 class="bh">
-    @if (group === 'feature') {
-      @if (band.key !== null) {
-        <span class="mono">{{ band.key }}</span>
-        <span class="name">{{ band.label }}</span>
-      } @else {
-        <span class="name">{{ 'board.workspace.swimlanes.noFeature' | transloco }}</span>
-      }
-    } @else {
-      <ui-icon name="flag" [size]="14" />
-      <span class="name">{{ band.label ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
-      @if (band.target; as target) {
-        <ui-time class="mono muted" form="day" [value]="target" />
-      }
-    }
-    <span class="n">{{ (band.count === 1 ? 'board.workspace.swimlanes.cards.one' : 'board.workspace.swimlanes.cards.other') | transloco: { count: band.count } }}</span>
-    @let done = bandDone(band);
-    @if (done !== null) {
-      <ui-meter
-      class="bmeter"
-      data-band-meter
-      [mini]="true"
-      [value]="done"
-      [max]="band.count"
-      [label]="(band.count === 1 ? 'board.workspace.bandMeter.one' : 'board.workspace.bandMeter.other') | transloco: { done: done, count: band.count }"
-      />
-    }
-  </h3>
-</ng-template>
-
-<!-- The quiet row between two milestones' feature bands (spec 037, decision 6): "⚑ Free · 2026-12-31", not interactive. -->
-<ng-template #dividerTpl let-d>
-  <p class="band-divider" data-band-divider>
-    <span class="band-divider-text">
-      <ui-icon name="flag" [size]="12" />
-      <span>{{ d.name ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
-      @if (d.target) {
-        <span aria-hidden="true">·</span>
-        <ui-time class="mono" form="day" [value]="d.target" />
-      }
-    </span>
-  </p>
-</ng-template>
 
 <!-- The drag hint of one column while a card is lifted (T125): "not next from …", "gate", or "current". -->
 <ng-template #hintTpl let-stage>
   @switch (drag.hint(stage)) {
     @case ('not-next') {
       <span class="drop-hint" data-hint="not-next"
-        ><ui-icon name="ban" [size]="14" /><span class="hl">{{ 'board.workspace.drag.notNext' | transloco: { stage: fromLabel() } }}</span></span
+        ><ui-icon name="ban" [size]="14" /><span class="hl">{{ 'board.workspace.drag.notNext' | transloco: { stage: store.fromLabel() } }}</span></span
       >
     }
     @case ('gate') {

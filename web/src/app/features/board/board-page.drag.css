@@ -1,4 +1,5 @@
 /* Drag and drop on the workspace board, split from board-page.css for the per-file style budget (T125, T126). */
+@import './_board-count-morph.css';
 
 /*
  * Drag and drop (T125, T126, ISC-130; design 008 § Drag, Drop und die Alternativen). While a card is lifted every list
@@ -164,18 +165,7 @@
   white-space: nowrap;
 }
 
-/* An accepted move: the counts morph in, the card carries the changed-value tint (1200 ms) over its surface. */
-.count[data-morph] {
-  animation: board-count-in var(--motion-duration-slow) var(--motion-ease-standard);
-}
-
-@keyframes board-count-in {
-  from {
-    opacity: 0;
-    transform: translateY(-25%);
-  }
-}
-
+/* An accepted move: the card carries the changed-value tint (1200 ms) over its surface (the count's morph is imported). */
 .cards li {
   position: relative;
 }

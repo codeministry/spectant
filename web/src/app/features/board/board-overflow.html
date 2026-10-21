@@ -1,0 +1,25 @@
+<span class="ol">{{ 'board.workspace.hidden.right' | transloco }}</span>
+@for (column of columns(); track column.stage; let last = $last) {
+  @let label = 'stages.' + column.stage | transloco;
+  <button
+    type="button"
+    class="btn btn-ghost btn-sm entry"
+    [attr.data-show]="column.stage"
+    [title]="'board.workspace.hidden.show' | transloco: { stage: label }"
+    (click)="show.emit(column.stage)"
+  >
+    {{ label }} <span class="n">{{ column.count }}</span>
+  </button>
+  @if (!last) {
+    <span class="sep" aria-hidden="true">·</span>
+  }
+}
+@if (columns()[0]; as first) {
+  <button
+    ui-icon-button
+    icon="chevron-right"
+    class="jump"
+    [label]="'board.workspace.hidden.show' | transloco: { stage: ('stages.' + first.stage | transloco) }"
+    (click)="show.emit(first.stage)"
+  ></button>
+}

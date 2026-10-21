@@ -20,8 +20,8 @@
             <p class="warn" role="alert" data-allocate-unreadable>{{ 'board.workspace.allocate.unreadable' | transloco }}</p>
           }
           <div class="actions">
-            <button type="button" ui-button variant="ghost" data-allocate-cancel (click)="cancel()">{{ 'board.workspace.allocate.cancel' | transloco }}</button>
-            <button type="button" ui-button variant="primary" data-allocate-confirm [disabled]="hash() === null || saving()" (click)="confirm()">
+            <button type="button" ui-button variant="ghost" data-allocate-cancel (click)="dismiss.emit()">{{ 'board.workspace.allocate.cancel' | transloco }}</button>
+            <button type="button" ui-button variant="primary" data-allocate-confirm [disabled]="hash() === null || saving()" (click)="confirm.emit()">
               {{ saving() ? ('board.workspace.allocate.saving' | transloco: { slug: c.slug }) : ('board.workspace.allocate.confirm' | transloco) }}
             </button>
           </div>

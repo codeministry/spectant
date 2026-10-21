@@ -1,0 +1,10 @@
+<ui-skeleton height="40px" />
+<div class="skeleton-cols">
+  @for (slot of [0, 1, 2]; track slot) {
+    <ui-card class="skeleton-card" [padding]="12">
+      <ui-skeleton width="40%" height="20px" />
+      <ui-skeleton height="20px" />
+      <ui-skeleton width="70%" />
+    </ui-card>
+  }
+</div>
