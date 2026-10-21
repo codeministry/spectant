@@ -1,48 +1,48 @@
 <ui-live-region data-run-announcer />
-@if (body(); as body) {
+@if (store.body(); as body) {
   <section class="tasks" aria-labelledby="tasks-heading">
     <div class="head">
       <h2 id="tasks-heading">{{ 'shell.tabs.tasks' | transloco }}</h2>
       <!-- spec 021 (T43, ISC-252): one unit, the task row; done is core's landed rows (status done or closed). -->
       <p class="done" data-tasks-done>
-        {{ doneKey() | transloco: { done: done(), count: body.counts.rows } }}
+        {{ store.doneKey() | transloco: { done: store.done(), count: body.counts.rows } }}
       </p>
       <label class="hide-done">
         <input
           type="checkbox"
           class="checkbox checkbox-sm"
           data-hide-done
-          [checked]="hideDone()"
-          (change)="setQuery('hideDone', hideDone() ? null : '1')"
+          [checked]="store.hideDone()"
+          (change)="store.setQuery('hideDone', store.hideDone() ? null : '1')"
         />
         {{ 'tasks.filters.hideDone' | transloco }}
       </label>
     </div>
 
-    @if (specRun(); as run) {
+    @if (store.specRun(); as run) {
       <!-- spec 040 (T52, ISC-225): a run stands on the spec, so every tick is locked until it ends. -->
       <ui-notice tone="info" icon="lock" data-run-notice>{{
-        'itemState.locked.notice' | transloco: { spec: state.specId() ?? '', command: run.command ?? '', duration: runDuration() }
+        'itemState.locked.notice' | transloco: { spec: state.specId() ?? '', command: run.command ?? '', duration: store.runDuration() }
       }}</ui-notice>
     }
 
     <div class="toolbar">
       <ui-filter-chips
         data-filter="lane"
-        [options]="laneOptions()"
-        [value]="lane()"
+        [options]="store.laneOptions()"
+        [value]="store.lane()"
         [label]="'tasks.filters.lane' | transloco"
-        (valueChange)="setQuery('lane', $event ?? 'all')"
+        (valueChange)="store.setQuery('lane', $event ?? 'all')"
       />
       <ui-filter-chips
         data-filter="status"
-        [options]="statusOptions()"
-        [value]="status()"
+        [options]="store.statusOptions()"
+        [value]="store.status()"
         [label]="'tasks.filters.status' | transloco"
-        (valueChange)="setQuery('status', $event ?? 'all')"
+        (valueChange)="store.setQuery('status', $event ?? 'all')"
       />
       <p class="result" aria-live="polite" data-tasks-result>
-        {{ 'tasks.result' | transloco: { shown: rows().length, total: body.counts.rows } }}
+        {{ 'tasks.result' | transloco: { shown: store.rows().length, total: body.counts.rows } }}
       </p>
     </div>
 
@@ -60,18 +60,18 @@
     </div>
 
     <ul class="rows" uiRovingList [attr.aria-label]="'shell.tabs.tasks' | transloco">
-      @for (row of rows(); track row.id) {
+      @for (row of store.rows(); track row.id) {
         <li
           class="row"
           data-task-row
           uiRovingItem
-          [class.is-target]="target() === row.id"
-          [class.is-written]="checkOf(row.id).kind === 'written'"
+          [class.is-target]="store.target() === row.id"
+          [class.is-written]="store.checkOf(row.id).kind === 'written'"
           [id]="'task-' + row.id"
           [attr.data-state]="row.state"
           [attr.data-status]="row.status"
           [attr.data-lane-name]="row.lane"
-          [attr.data-check]="checkOf(row.id).kind"
+          [attr.data-check]="store.checkOf(row.id).kind"
         >
           <span class="box">
             @if (row.state !== 'struck') {
@@ -81,18 +81,18 @@
                   type="checkbox"
                   class="checkbox checkbox-sm"
                   data-task-check
-                  [checked]="isChecked(row)"
-                  [disabled]="blocked(row) || specWait(row) !== null"
+                  [checked]="store.isChecked(row)"
+                  [disabled]="store.blocked(row) || store.specWait(row) !== null"
                   [attr.aria-label]="'tasks.checkbox' | transloco: { id: row.id }"
-                  [attr.aria-disabled]="specRun() ? 'true' : null"
-                  [attr.aria-describedby]="describedBy(row)"
+                  [attr.aria-disabled]="store.specRun() ? 'true' : null"
+                  [attr.aria-describedby]="store.describedBy(row)"
                   (click)="guardRun($event)"
-                  (change)="tick(row, box.checked)"
+                  (change)="store.tick(row, box.checked)"
                 />
-                @if (checkLine(row)?.kind === 'locked' || specRun()) {
+                @if (store.checkLine(row)?.kind === 'locked' || store.specRun()) {
                   <ui-icon class="box-lock" name="lock" [size]="11" aria-hidden="true" />
                 }
-                @if (checkOf(row.id).kind === 'saving') {
+                @if (store.checkOf(row.id).kind === 'saving') {
                   <span
                     class="spinner loading loading-spinner loading-xs"
                     role="status"
@@ -112,7 +112,7 @@
             }
           </span>
           <span class="state">
-            @if (itemOf(row); as item) {
+            @if (store.itemOf(row); as item) {
               <!-- spec 040 (T52): the state word from the model, the fine running state or the strike as its detail. -->
               <span class="tstate" [attr.data-item-state]="item.state" [attr.data-tone]="itemTone[item.state]"
                 ><ui-glyph [state]="item.state" family="item" [size]="14" />{{ 'states.item.' + item.state | transloco }}
@@ -131,7 +131,7 @@
           </span>
           <span class="meta">
           <span class="claim">
-            <a data-claim [routerLink]="[...specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-chip variant="take" icon="hand">{{ row.claim }}</ui-chip></a>
+            <a data-claim [routerLink]="[...store.specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-chip variant="take" icon="hand">{{ row.claim }}</ui-chip></a>
           </span>
           <span class="badges">
             @if (row.flags.parallel) {
@@ -153,7 +153,7 @@
             }
           </span>
           <span class="builder">
-            @if (runOfRow(row.id); as run) {
+            @if (store.runOfRow(row.id); as run) {
               <!-- spec 027: the run chip over the session's short form; below wide it leads the meta line. -->
               <span class="run" data-run-cell>
                 <app-run-chip [run]="run.state" />
@@ -164,23 +164,23 @@
             }
           </span>
           </span>
-          @if (itemOf(row) || row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id) || (specRun() && row.state !== 'struck')) {
+          @if (store.itemOf(row) || row.edges.length > 0 || store.sub(row) !== null || store.specWait(row) !== null || store.checkLine(row) !== null || store.liveCards().has(row.id) || (store.specRun() && row.state !== 'struck')) {
             <span class="extra">
-              @if (itemOf(row); as item) {
+              @if (store.itemOf(row); as item) {
                 <!-- spec 040 (T54, ISC-224): the state's details (command, actor, duration, start, date) under the row. -->
                 <!-- A row with live holders shows them once, through app-task-actors below; the details then leave theirs out. -->
-                <ui-item-state details data-task-item [info]="item" [ws]="state.ws() ?? ''" [noActor]="liveCards().has(row.id)" />
+                <ui-item-state details data-task-item [info]="item" [ws]="state.ws() ?? ''" [noActor]="store.liveCards().has(row.id)" />
               }
-              @if (row.state !== 'struck' && specRun(); as run) {
+              @if (row.state !== 'struck' && store.specRun(); as run) {
                 <span class="check-note" data-check-run-locked [id]="'task-' + row.id + '-run'">
                   <ui-icon name="lock" [size]="13" />{{ 'itemState.locked.checkbox' | transloco: { session: run.session } }}
                 </span>
               }
-              @if (specWait(row); as specs) {
+              @if (store.specWait(row); as specs) {
                 <!-- spec 025 (T26): the held task's reason, `clock` (never `lock`, a session's), the blocker as a link. -->
                 <span class="sub waits" data-task-waits>
                   <ui-icon name="clock" [size]="13" /><span>{{ 'waits.on' | transloco }}&nbsp;@for (id of specs; track id; let last = $last) {
-                    @if (specLinkOf(id); as link) {
+                    @if (store.specLinkOf(id); as link) {
                       <a class="mono tlink" [routerLink]="link" [attr.data-blocker]="id" [attr.aria-label]="'waits.nameBare' | transloco: { id }">{{ id }}</a>
                     } @else {
                       <span class="mono" [attr.data-blocker]="id">{{ id }}</span>
@@ -188,10 +188,10 @@
                   }</span>
                 </span>
               }
-              @if (liveCards().get(row.id); as card) {
+              @if (store.liveCards().get(row.id); as card) {
                 <app-task-actors [card]="card" />
               }
-              @if (checkLine(row); as line) {
+              @if (store.checkLine(row); as line) {
                 @switch (line.kind) {
                   @case ('locked') {
                     <span class="check-note" data-check-locked [id]="'task-' + row.id + '-check'">
@@ -221,30 +221,30 @@
                 <span class="edges">
                   {{ 'tasks.after' | transloco }}
                   @for (edge of row.edges; track edge; let last = $last) {
-                    <a data-edge [routerLink]="[...specLink(), 'tasks']" [fragment]="'task-' + edge" queryParamsHandling="preserve">{{ edge }}</a>{{ last ? '' : ',' }}
+                    <a data-edge [routerLink]="[...store.specLink(), 'tasks']" [fragment]="'task-' + edge" queryParamsHandling="preserve">{{ edge }}</a>{{ last ? '' : ',' }}
                   }
                 </span>
               }
-              @if (sub(row); as sub) {
-                <span class="sub" data-sub>@if (subIcon(row); as icon) {<ui-icon [name]="icon" [size]="13" />}{{ sub.key | transloco: { text: sub.text } }}</span>
+              @if (store.sub(row); as sub) {
+                <span class="sub" data-sub>@if (store.subIcon(row); as icon) {<ui-icon [name]="icon" [size]="13" />}{{ sub.key | transloco: { text: sub.text } }}</span>
               }
             </span>
           }
-          @if (stepsOf(row.id).length > 0) {
+          @if (store.stepsOf(row.id).length > 0) {
             <!-- spec 015 (T23, ISC-232): the latest step as the toggle; ?steps=T4,T14 alone opens a row's timeline. -->
-            <app-task-steps [steps]="stepsOf(row.id)" [task]="row.id" [open]="openSteps().has(row.id)" (toggled)="toggleSteps(row.id)" />
+            <app-task-steps [steps]="store.stepsOf(row.id)" [task]="row.id" [open]="store.openSteps().has(row.id)" (toggled)="store.toggleSteps(row.id)" />
           }
         </li>
       }
     </ul>
 
-    @if (hidden(); as hidden) {
+    @if (store.hidden(); as hidden) {
       <!-- Prototype `details.fold-row`: "+ 16 more done · T1–T11, T20–T26" closes the card; Show brings the rows back. -->
       <details class="fold-row" data-done-hidden>
         <summary>{{ (hidden.count === 1 ? 'tasks.doneHidden.one' : 'tasks.doneHidden.other') | transloco: hidden }}</summary>
         <p class="fold-body">
           {{ 'tasks.doneHiddenBody' | transloco }}
-          <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
+          <button type="button" class="btn btn-xs btn-ghost" (click)="store.setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
         </p>
       </details>
     }
@@ -253,7 +253,7 @@
     <p class="helper" id="tasks-helper"><ui-icon name="lock" [size]="14" />{{ 'tasks.helper' | transloco }}</p>
   </section>
 
-  @if (mapping().length > 0) {
+  @if (store.mapping().length > 0) {
     <section class="mapping" aria-labelledby="tasks-mapping-heading">
       <h3 id="tasks-mapping-heading">{{ 'tasks.mapping.title' | transloco }}</h3>
       <div class="scroll" role="region" tabindex="0" [attr.aria-label]="'tasks.mapping.region' | transloco">
@@ -266,7 +266,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (entry of mapping(); track entry.line) {
+            @for (entry of store.mapping(); track entry.line) {
               <tr data-mapping-row>
                 <td class="mono">{{ entry.taskIds }}</td>
                 <td class="mono">{{ entry.claim }}</td>
@@ -278,13 +278,13 @@
       </div>
     </section>
   }
-} @else if (body() === null) {
+} @else if (store.body() === null) {
   <ui-empty-state
     icon="list-checks"
-    [heading]="type() ? ('tasks.empty.typed' | transloco: { type: type() }) : ('tasks.empty.untyped' | transloco)"
+    [heading]="store.type() ? ('tasks.empty.typed' | transloco: { type: store.type() }) : ('tasks.empty.untyped' | transloco)"
     [body]="'tasks.empty.body' | transloco"
   />
-} @else if (failed()) {
+} @else if (store.failed()) {
   <p class="notice" role="status">{{ (data.specRouteUnserved() ? 'shell.placeholder.specRoute' : 'tasks.error') | transloco }}</p>
 } @else {
   <p class="notice" aria-busy="true">{{ 'tasks.loading' | transloco }}</p>

@@ -1,0 +1,229 @@
+/* Tasks tab, after `tasks-tab.css` (spec 061): the row grid per tier, the card below wide, the row's details. */
+@import '../../_fold-row.css';
+
+/*
+ * Wide: every cell on its own column of the 9-column grid, so the cards below wide can reorder them; the meta group
+ * is no box here (spec 027).
+ */
+.meta { display: contents; }
+.row > .box { grid-area: 1 / 1; }
+.meta > .claim { grid-area: 1 / 3; }
+.meta > .badges { grid-area: 1 / 4; }
+.row > .title { grid-area: 1 / 5; }
+.meta > .lane { grid-area: 1 / 6; }
+.meta > .path { grid-area: 1 / 7; }
+.row > .state { grid-area: 1 / 8; }
+.meta > .builder { grid-area: 1 / 9; }
+
+/*
+ * Below wide: stacked cards, never a sideways-scrolling table (spec 027, design.md § 4). The head is
+ * `auto minmax(0, 1fr) auto` after the checkbox (id · title · state), so the state slot stays inside the card; the
+ * meta line under it wraps with 8 px between lines and leads with the run chip, then claim, flags, lane, path and
+ * builder; then the sub-line. Compact: the title moves to its own line under id and state.
+ */
+@container shell (width < 1120px) {
+  .columns { display: none; }
+
+  .row {
+    grid-template-columns: 40px auto minmax(0, 1fr) auto;
+    gap: 4px 8px;
+    min-inline-size: 0;
+    padding: 8px 12px;
+  }
+
+  .row > .box {
+    grid-area: 1 / 1 / span 3 / 2;
+    align-self: start;
+    min-block-size: 44px;
+  }
+
+  .row > .title { grid-area: 1 / 3; }
+
+  .row > .state {
+    grid-area: 1 / 4;
+    justify-self: end;
+  }
+
+  .row > .meta {
+    display: flex;
+    flex-wrap: wrap;
+    grid-area: 2 / 2 / 3 / -1;
+    gap: 8px;
+    align-items: center;
+    min-inline-size: 0;
+  }
+
+  .meta > .builder { display: contents; }
+  .builder > .run { order: -1; }
+  .run-session { display: none; }
+  .row > .extra { grid-area: 3 / 2 / 4 / -1; }
+
+  .text {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .hit { margin-inline: -2px; }
+}
+
+@container shell (width < 640px) {
+  .row > .box { grid-row: 1 / span 4; }
+  .row > .title { grid-area: 2 / 2 / 3 / -1; }
+  .row > .meta { grid-row: 3; }
+  .row > .extra { grid-row: 4; }
+}
+
+@media (forced-colors: active) {
+  .tstate { border: 1px solid CanvasText; }
+}
+
+
+/* Sweep 2 (ISC-149): the prototype's task list — a card, the 9-column grid with Flags, 10.5 px head, 48 px rows. */
+.task-card {
+  min-inline-size: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+}
+
+.task-card .rows {
+  border-block-start: 0;
+}
+
+.task-card .row:last-child {
+  border-block-end: 0;
+}
+
+/* Prototype `[data-ui="seam-badge"]`: mono 11, muted; a seam in orange text. */
+
+.flag[data-flag='seam'] {
+  color: var(--hover-text);
+}
+
+/* Prototype `[data-ui="chip"].st-*`: 22 px, radius-sm, 11 px versal on a tint. */
+.tstate {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding-inline: 8px;
+  line-height: 16px;
+  white-space: nowrap;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-base-300);
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Prototype `.cbx`: a 20 px box, 2 px track ring, lime when ticked; held dashed; locked and conflict orange. */
+.hit .checkbox {
+  --input-color: var(--color-accent);
+
+  inline-size: 20px;
+  block-size: 20px;
+  border: 2px solid var(--track);
+  border-radius: 5px;
+  background-color: var(--color-base-100);
+  color: var(--color-base-200);
+}
+
+.hit .checkbox:checked {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+}
+
+.hit .checkbox:disabled {
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+.row:has([data-check-locked]) .hit .checkbox {
+  border-style: solid;
+  border-color: var(--color-warning);
+  background-color: var(--hover-t);
+  opacity: 1;
+}
+
+.row[data-check='conflict'] .hit .checkbox {
+  border-color: var(--color-warning);
+  outline: 3px solid var(--hover-t);
+}
+
+.check-alert {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--hover-t);
+  color: var(--hover-text);
+  font-size: 13px;
+}
+
+/* Prototype probe mapping: a card with a 15 px head and the `.tbl` rows. */
+
+.mapping h3 {
+  margin: 0;
+  padding: 12px 16px;
+  border-block-end: 1px solid var(--line);
+  font: 600 15px/24px var(--font-brand);
+}
+
+.mapping th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.mapping th,
+.mapping td {
+  block-size: auto;
+  padding: 10px 16px;
+}
+
+.mapping tr:last-child td {
+  border-block-end: 0;
+}
+
+.box-lock {
+  z-index: 1;
+  color: var(--hover-text);
+  pointer-events: none;
+}
+
+/* Sweep 3 (ISC-149): prototype `.t-reason` (12 px muted, 8 px gap, 13 px leading icon) and `details.fold-row`. */
+.extra .sub,
+.extra .check-note {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fold-row {
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fold-row summary {
+  padding: 12px 16px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.fold-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 8px 16px 16px;
+}

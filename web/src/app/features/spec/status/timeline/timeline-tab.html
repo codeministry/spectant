@@ -1,22 +1,22 @@
 <div class="filters" role="group" [attr.aria-label]="'timeline.filterLabel' | transloco">
-  @for (kind of shownKinds(); track kind) {
+  @for (kind of store.shownKinds(); track kind) {
     <button
       ui-button
       variant="ghost"
       size="sm"
       class="kind-filter"
       [attr.data-filter]="kind"
-      [attr.aria-pressed]="isPressed(kind)"
-      (click)="toggleKind(kind)"
+      [attr.aria-pressed]="store.isPressed(kind)"
+      (click)="store.toggleKind(kind)"
     >
       <span class="dot" aria-hidden="true" [attr.data-kind]="kind" [style.--marker]="markerColor(kind)"></span>
       {{ 'timeline.kinds.' + kind | transloco }}
-      <span class="count">{{ counts()[kind] }}</span>
+      <span class="count">{{ store.counts()[kind] }}</span>
     </button>
   }
 </div>
 
-@switch (view()) {
+@switch (store.view()) {
   @case ('loading') {
     <div class="timeline-skeleton" [attr.aria-label]="'timeline.loading' | transloco" role="status">
       @for (row of [0, 1, 2, 3]; track row) {
@@ -40,18 +40,18 @@
     <!-- Spec 024 (prototype states gallery): the inline error notice, red edge, Retry in its slot. -->
     <ui-notice tone="error" data-timeline-error>
       <strong>{{ 'timeline.error.heading' | transloco }}</strong> {{ 'timeline.error.body' | transloco }}
-      <button action ui-button size="sm" type="button" (click)="reload()">{{ 'timeline.error.retry' | transloco }}</button>
+      <button action ui-button size="sm" type="button" (click)="store.reload()">{{ 'timeline.error.retry' | transloco }}</button>
     </ui-notice>
   }
   @case ('ok') {
-    @if (days().length === 0) {
+    @if (store.days().length === 0) {
       <p class="none-match" data-filtered-none>
         {{ 'timeline.filtered.line' | transloco }}
-        <button ui-button variant="ghost" size="sm" (click)="clearKinds()">{{ 'timeline.filtered.clear' | transloco }}</button>
+        <button ui-button variant="ghost" size="sm" (click)="store.clearKinds()">{{ 'timeline.filtered.clear' | transloco }}</button>
       </p>
     } @else {
-      <ol class="strand" [class.is-dashed]="derivedOnly()" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
-        @for (day of days(); track day.key) {
+      <ol class="strand" [class.is-dashed]="store.derivedOnly()" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
+        @for (day of store.days(); track day.key) {
           <li class="day" [attr.data-day]="day.key">
             <h3 class="day-label">
               @if (day.ts; as ts) {
@@ -70,7 +70,7 @@
                   [attr.data-id]="row.key"
                   [attr.id]="'t-' + row.key"
                   [attr.data-kind]="row.entry.kind"
-                  [attr.data-highlighted]="target() === row.key ? '' : null"
+                  [attr.data-highlighted]="store.target() === row.key ? '' : null"
                   (keydown)="onEntryKey($event, row)"
                 >
                   <span class="time">
@@ -148,7 +148,7 @@
                       </span>
                     </ng-template>
                     @if (row.entry.body; as body) {
-                      <ui-disclosure [open]="isOpen(row.key)" (openChange)="setOpen(row.key, $event)">
+                      <ui-disclosure [open]="store.isOpen(row.key)" (openChange)="store.setOpen(row.key, $event)">
                         <span uiDisclosureSummary class="head">
                           <ng-container [ngTemplateOutlet]="head" />
                         </span>
@@ -199,7 +199,7 @@
                             }
                           }
                           @if (row.entry.kind === 'round') {
-                            <a ui-button size="sm" class="board-link" data-open-board [routerLink]="boardLink()">{{ 'timeline.openBoard' | transloco }}</a>
+                            <a ui-button size="sm" class="board-link" data-open-board [routerLink]="store.boardLink()">{{ 'timeline.openBoard' | transloco }}</a>
                           }
                         </div>
                       </ui-disclosure>
@@ -215,7 +215,7 @@
           </li>
         }
       </ol>
-      @if (derivedOnly()) {
+      @if (store.derivedOnly()) {
         <!-- Prototype `.tl.empty-tl`: only the derived stage stands on a dashed strand, the empty state below it. -->
         <ui-empty-state icon="clock" data-derived-only [heading]="'timeline.empty.heading' | transloco" [body]="'timeline.empty.body' | transloco">
           <a class="open-link" data-empty-link routerLink="/help" fragment="moves">{{ 'timeline.empty.link' | transloco }}</a>
