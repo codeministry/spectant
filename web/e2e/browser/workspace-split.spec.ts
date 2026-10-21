@@ -19,9 +19,14 @@
  *   stand 8 px under their section headers; Waits on you is one card of three 44 px rows under hairlines with the fold
  *   at its bottom; the warning groups stand in equal columns with an inner grid of hairlines, two from 640 px of shell
  *   and three from 1120 px, in one column below.
+ * - ISC-464 (spec 064 T21, `-g "flat tile heights"`): under `X-Spectant-Stub-Locks: working` at 390, 820 and 1440 px
+ *   every item of the Waits on you and the In progress list of the `[data-lists]` row holds one `ui-flat-tile`, all of
+ *   one height per tier (72 px at 390, 48 px at 820 and 1440 where each list is at least 560 px wide); the two lists
+ *   stand side by side at 1440 and stacked below.
  */
 import type { Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from '../fixtures';
+import { LOCKS_HEADER } from '../stub-api';
 
 /** The dashboard's blocks in their binding order (spec 058, design.md § Across viewports). */
 const BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up-list', 'app-warnings-panel'] as const;
@@ -230,6 +235,72 @@ test.describe('dashboard card rows (ISC-399)', () => {
             expect(g.topLine).toBe(i === 0 ? '0px' : '1px');
             expect(g.sideLine).toBe('0px');
           });
+        }
+      });
+    });
+  }
+});
+
+/**
+ * The tile heights per tier (spec 064, `TILE_HEIGHT_STACKED` and `TILE_HEIGHT_LINE` in shared/ui/guidance/tiles.ts):
+ * `stacked` in a list narrower than `TILE_DENSITY_MIN` (560 px), `line` from there on.
+ */
+const TILE_HEIGHT = { stacked: 72, line: 48 } as const;
+const TILE_DENSITY_MIN = 560;
+
+/** Per list of the dashboard's `[data-lists]` row: its box, and per item the tags inside it and the tile's height. */
+async function tileLists(page: Page): Promise<Array<{ list: string; box: Box; items: Array<{ tiles: string[]; height: number }> }>> {
+  return page.locator('app-dashboard-page [data-lists]').evaluate((row) => {
+    const box = (el: Element): Box => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width };
+    };
+    return [...row.children].map((block) => ({
+      list: block.tagName.toLowerCase(),
+      box: box(block),
+      // Only the tiles on screen: the waits' folded rest stands in a closed disclosure.
+      items: [...block.querySelectorAll('ol.tiles > li')]
+        .filter((li) => li.getBoundingClientRect().height > 0)
+        .map((li) => ({
+          tiles: [...li.children].map((c) => c.tagName.toLowerCase()),
+          height: li.querySelector('ui-flat-tile')?.getBoundingClientRect().height ?? NaN,
+        })),
+    }));
+  });
+}
+
+test.describe('flat tile heights (ISC-464)', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use({ ...atWidth(width), extraHTTPHeaders: { [LOCKS_HEADER]: 'working' } });
+
+      test(`flat tile heights (ISC-464): ${String(width)} px, Waits on you and In progress share one tile of one height`, async ({ page }) => {
+        await dashboardReady(page);
+        await expect(page.locator('[data-lists] ui-working-block ui-flat-tile')).toHaveCount(3);
+        const lists = await tileLists(page);
+        expect(lists.map((l) => l.list)).toEqual(['app-waiting-section', 'ui-working-block']);
+        const [waits, working] = lists;
+        expect(waits?.items.length ?? 0, 'waits tiles on screen').toBeGreaterThanOrEqual(1);
+        expect(working?.items).toHaveLength(3);
+
+        // One component: every item of both lists holds exactly one `ui-flat-tile` and nothing else.
+        for (const l of lists) for (const item of l.items) expect(item.tiles, `${l.list}: one flat tile per item`).toEqual(['ui-flat-tile']);
+
+        // One height per tier, 0 px apart across both lists: `line` where the list is 560 px or wider, `stacked` below.
+        const wide = width >= WIDTHS.tablet;
+        for (const l of lists) expect(l.box.width >= TILE_DENSITY_MIN, `${l.list}: ${String(l.box.width)} px wide`).toBe(wide);
+        const expected = wide ? TILE_HEIGHT.line : TILE_HEIGHT.stacked;
+        const heights = lists.flatMap((l) => l.items.map((i) => i.height));
+        expect(new Set(heights), `tile heights at ${String(width)} px`).toEqual(new Set([expected]));
+
+        // The row: side by side at 1440 (same top, Waits on the left), stacked below.
+        const [a, b] = [waits?.box, working?.box];
+        if (width >= WIDTHS.desktop) {
+          expect(b?.top).toBe(a?.top);
+          expect(b?.left ?? 0).toBeGreaterThanOrEqual(a?.right ?? Infinity);
+        } else {
+          expect(b?.top ?? 0).toBeGreaterThanOrEqual(a?.bottom ?? Infinity);
+          expect(b?.left).toBe(a?.left);
         }
       });
     });

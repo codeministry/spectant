@@ -2,6 +2,7 @@
  * ISC-66 (Anti): under `prefers-reduced-motion: reduce` no animation or transition longer than 0 ms runs (T31).
  *
  *   bun run test:browser -- motion
+ *   bun run test:browser -- motion -g "agent dot reduced motion"   (spec 064, ISC-467; at the end of this file)
  *
  * Runs against the primitives gallery (`/__ui?theme=light|dark`), which renders every primitive in every state, with
  * the preference emulated by `page.emulateMedia({ reducedMotion })` before the page loads (the config's browser tier
@@ -28,7 +29,7 @@
  * Zero failures under reduce is the threshold.
  */
 import { awaitReady, expect, test } from '../fixtures';
-import { RESET_PATH, SESSION_HEADER } from '../stub-api';
+import { LOCKS_HEADER, RESET_PATH, SESSION_HEADER } from '../stub-api';
 
 type Page = Parameters<typeof awaitReady>[0];
 type Theme = 'light' | 'dark';
@@ -477,5 +478,48 @@ test.describe('motion: backlog moves (spec 037, ISC-200.1)', () => {
         }
       });
     }
+  }
+});
+
+/**
+ * Spec 064 · T22 · ISC-467 (`bun run test:browser -- motion`, `-g "agent dot reduced motion"`): on `/w/harbor` under
+ * `X-Spectant-Stub-Locks: working` the In progress tiles carry `ui-agent-dot`. Under emulated reduced motion its ring
+ * does not beat (computed `animation-name: none` or a 0 s duration) while the dot itself stays on screen at its 8 px
+ * and full opacity; the control without the preference sees the ring beat on `--motion-duration-pulse` (1.6 s).
+ */
+test.describe('motion: agent dot reduced motion (spec 064, ISC-467)', () => {
+  test.use({ extraHTTPHeaders: { [LOCKS_HEADER]: 'working' } });
+
+  for (const preference of ['reduce', 'no-preference'] as const) {
+    const what = preference === 'reduce' ? 'stands still, the dot visible' : 'beats (control)';
+    test(`agent dot reduced motion (ISC-467): the ring of an In progress tile ${what} · ${preference}`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: preference });
+      await page.goto('/w/harbor');
+      const dot = page.locator('app-dashboard-page [data-lists] ui-working-block ui-flat-tile ui-agent-dot').first();
+      await expect(dot).toBeVisible();
+      const seen = await dot.evaluate((host) => {
+        const own = getComputedStyle(host);
+        const ring = host.querySelector('.ring');
+        const ringStyle = ring === null ? null : getComputedStyle(ring);
+        const r = host.getBoundingClientRect();
+        return {
+          reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+          dot: { width: r.width, height: r.height, opacity: own.opacity, visibility: own.visibility },
+          ringName: ringStyle?.animationName ?? '(no ring)',
+          ringDuration: ringStyle?.animationDuration ?? '(no ring)',
+        };
+      });
+      expect(seen.reduced, 'prefers-reduced-motion as the page sees it').toBe(preference === 'reduce');
+      expect(seen.ringName, 'the ring is rendered').not.toBe('(no ring)');
+      expect(seen.dot, 'the dot').toEqual({ width: 8, height: 8, opacity: '1', visibility: 'visible' });
+      if (preference === 'reduce') {
+        const still = seen.ringName === 'none' || seen.ringDuration === '0s';
+        expect(still, `the ring under reduced motion: animation ${seen.ringName} ${seen.ringDuration}`).toBe(true);
+      } else {
+        // Emulated encapsulation prefixes the keyframes name with the component's scope (`_ngcontent-…_agent-ping`).
+        expect(seen.ringName, 'the ring without the preference').toMatch(/(^|_)agent-ping$/);
+        expect(seen.ringDuration, 'the ring without the preference: one beat of --motion-duration-pulse').toBe('1.6s');
+      }
+    });
   }
 });
