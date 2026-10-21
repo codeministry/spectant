@@ -33,6 +33,7 @@ beforeEach(() => {
           workspaceMissing: () => missing(),
           workspaceUnavailable: () => false,
           workspaceList: () => [{ slug: 'harbor', pathTail: 'code/harbor' }],
+          wsImages: () => ({ logo: null, screenshot: null }),
           // The not-found page names the workspace and, on a spec route, the nearest specs.
           workspaceName: (slug: string) => slug,
           specMissing: () => false,

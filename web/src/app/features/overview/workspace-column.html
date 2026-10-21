@@ -1,6 +1,6 @@
 @let c = column();
 @let k = kpis();
-<app-ws-identity [name]="c.name" [slug]="c.slug" [pathTail]="c.pathTail">
+<app-ws-identity [name]="c.name" [slug]="c.slug" [pathTail]="c.pathTail" [logo]="c.logo" [screenshot]="c.screenshot">
   <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
 </app-ws-identity>
 

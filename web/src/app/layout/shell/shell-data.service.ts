@@ -125,6 +125,13 @@ export class ShellData {
     return result?.kind === 'ok' ? result.body : [];
   });
 
+  /** The open workspace's stored logo and screenshot URLs (spec 016) from the list; null per kind without one. */
+  readonly wsImages = computed(() => {
+    const ws = this.state.ws();
+    const entry = ws === null ? undefined : this.workspaceList().find((item) => item.slug === ws);
+    return { logo: entry?.images?.logo ?? null, screenshot: entry?.images?.screenshot ?? null };
+  });
+
   /** Active specs in the dashboard's row order (the order `[` / `]` walk). */
   readonly specRows = computed(() => {
     const result = this.dashboard.value();

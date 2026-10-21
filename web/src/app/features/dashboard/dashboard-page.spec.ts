@@ -63,6 +63,7 @@ beforeEach(() => {
           workspaceMissing: () => false,
           workspaceUnavailable: () => false,
           workspaceList: () => [{ slug: 'harbor', pathTail: 'code/harbor' }],
+          wsImages: () => ({ logo: null, screenshot: null }),
           dashboard: { value: () => ({ kind: 'ok', body: body() }) },
           planningModel: () => ({ relations }),
           isFavorite: () => false,

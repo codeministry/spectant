@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 
@@ -22,4 +23,8 @@ export class BoardTitle {
   readonly name = input.required<string>();
   /** The workflow's source: the workspace's own table (`file`), the default one, or none read yet. */
   readonly source = input<string | null>(null);
+
+  private readonly shell = inject(ShellData);
+  /** The badge's stored logo (spec 016) for the open workspace, the initials without one. */
+  protected readonly logo = computed(() => this.shell.wsImages().logo);
 }

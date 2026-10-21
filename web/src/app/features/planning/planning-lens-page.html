@@ -8,7 +8,7 @@
     [segments]="[name(), ('shell.pages.planning' | transloco), counts() === null ? '' : ((counts()?.milestones === 1 ? 'planning.page.eyebrowCount.one' : 'planning.page.eyebrowCount.other') | transloco: { count: counts()?.milestones })]"
   >
     <div class="h1-row" ngProjectAs="h1">
-      <ui-ws-badge class="page-mark" size="page" [name]="name()" aria-hidden="true" />
+      <ui-ws-badge class="page-mark" size="page" [name]="name()" [logo]="logo()" aria-hidden="true" />
       <h1 class="type-page-title" id="planning" tabindex="-1">{{ 'shell.pages.planning' | transloco }}</h1>
     </div>
   </ui-page-head>
