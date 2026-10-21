@@ -260,10 +260,14 @@ describe("storage mapping and counts", () => {
   });
 });
 
-test("the module stays browser-safe: its only import is the spec routes contract", () => {
-  const source = readFileSync(join(import.meta.dir, "../server/src/notes.contract.ts"), "utf8");
-  const imports = [...source.matchAll(/^import .* from ['"](.+)['"];$/gm)].map((match) => match[1]);
-  expect(imports).toEqual(["./spec-routes.contract.ts"]);
+test("the module stays browser-safe: the shape imports nothing, the routes only the shape and the spec routes contract", () => {
+  // Re-exports count as imports: `export … from` reaches a module as surely as `import … from`.
+  const importsOf = (file: string): Array<string | undefined> => {
+    const source = readFileSync(join(import.meta.dir, "../server/src/contracts", file), "utf8");
+    return [...source.matchAll(/^(?:import|export) .* from ['"](.+)['"];$/gm)].map((match) => match[1]);
+  };
+  expect(importsOf("notes.contract.ts")).toEqual([]);
+  expect(importsOf("note-routes.contract.ts")).toEqual(["./spec-routes.contract.ts", "./notes.contract.ts", "./notes.contract.ts"]);
   const typed: Note = { id: ID, workspace: "leadgen", anchor: null, title: "", body: "x", pinned: false, created: NOW, updated: NOW };
   expect(validateNote(typed).ok).toBe(true);
 });

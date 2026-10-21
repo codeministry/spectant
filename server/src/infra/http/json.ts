@@ -5,8 +5,8 @@
  * app's polling revalidates every time and transfers only a change; a matching `If-None-Match` on a 200 `GET` or
  * `HEAD` is a 304, and `HEAD` gets the same headers without the body.
  */
-import type { ApiHandler } from "../../http.ts";
-import { matchesIfNoneMatch } from "../../http.ts";
+import type { ApiHandler } from "./server.ts";
+import { matchesIfNoneMatch } from "./server.ts";
 
 /**
  * The first handler that answers wins; `null` from all of them lets the server's JSON 404 apply. A handler declines

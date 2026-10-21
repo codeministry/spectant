@@ -30,7 +30,6 @@
  * The lock sources stay at the repository `root`. A source that switched between render and write needs no rule of its
  * own: the other copy's bytes fail the compare, the plain 409 with `files`. The allocation always targets `root`.
  */
-import { createHash } from "node:crypto";
 import { mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { allocationOf, nextSpecNumber, specNumbersOf } from "../../core/src/allocate.ts";
@@ -49,9 +48,12 @@ import { type ResolvedSpecEdges, resolveEdges } from "../../core/src/spec-edges.
 import { mainFeatureOf, partitionClaims, specEdgeHolds } from "../../core/src/status.ts";
 import { type TransitionInput, planTransition } from "../../core/src/transition.ts";
 import { takenSpecNumbers } from "./git.ts";
+import { Unreadable } from "./infra/fs/errno.ts";
 import { appendInPlace, fsyncDir, pathTaken, writeInPlace } from "./infra/fs/in-place.ts";
+import { readBytesIfExists, readIfExists } from "./infra/fs/read.ts";
+import { rawSha256 } from "./infra/hash.ts";
 import type { AllocateRequest, BacklogRequest, NotFound, ReviewedHashes, TransitionRequest } from "./spec-routes.contract.ts";
-import { readBytesIfExists, readIdeaFiles, readIfExists, readSpecFiles, readWorkspaceInput, viewerActorOf } from "./workspace-loader.ts";
+import { readIdeaFiles, readSpecFiles, readWorkspaceInput, viewerActorOf } from "./workspace-loader.ts";
 import {
   ACTIVITY_PATH,
   BACKLOG_EVENTS_PATH,
@@ -79,11 +81,7 @@ import {
 } from "./writes.contract.ts";
 
 export { appendInPlace, writeInPlace } from "./infra/fs/in-place.ts";
-
-/** sha256 hex of raw bytes: tasks.md's hash (`X-Spectant-Tasks-Hash`). */
-export function rawSha256(bytes: Uint8Array | string): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
+export { rawSha256 } from "./infra/hash.ts";
 
 /** The three gate hashes of a spec folder's texts (`hashForGate`); null for a file that does not exist. */
 export function gateHashes(texts: SpecFiles["texts"]): ReviewedHashes {
@@ -269,7 +267,8 @@ function transitionInput(files: SpecFiles, ctx: WorkspaceContext, locks: LockRea
 export async function writeTransition(input: TransitionWriteInput): Promise<WriteResult<"transition">> {
   const { ref, now, body } = input;
   const reading = await readWorkspaceInput(input.root, input.stateDir);
-  if (!reading.readable) throw Object.assign(new Error(reading.error), { code: errnoOf(reading.error) });
+  // The route layer maps the code to its 409 summary (`unreadableCode`), as it maps an errno thrown by a read.
+  if (!reading.readable) throw new Unreadable(reading.error);
   const ownTree = reading.input.perSpec?.[ref.slug]?.tree;
   const ctx: WorkspaceContext = {
     workflow: reading.workflow,
@@ -400,11 +399,6 @@ export async function writeAllocate(input: AllocateWriteInput): Promise<WriteRes
       };
     },
   });
-}
-
-/** An unreadable workspace's code as the errno its route layer maps back (`unreadableCode`) to the 409 summary. */
-function errnoOf(code: "missing" | "not-a-directory" | "permission-denied" | "unreadable"): string {
-  return { missing: "ENOENT", "not-a-directory": "ENOTDIR", "permission-denied": "EACCES", unreadable: "EIO" }[code];
 }
 
 // ── the backlog (spec 036, ISC-191, ISC-191.1) ───────────────────────────────────────────────────────────────────

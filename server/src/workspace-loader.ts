@@ -32,7 +32,6 @@
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
  */
 import { lstatSync, readFileSync, readlinkSync, readdirSync, statSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { isAbsolute, join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
@@ -68,9 +67,14 @@ import { parseWorkflow } from "../../core/src/workflow.ts";
 import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf, worktreeOnlySpecs } from "../../core/src/worktrees.ts";
 import { type SpecBranch, aheadOfMain, changedPaths, dirty, lastCommits, mapBounded, mergeCommitOf, mergedSpecBranches, trackedPlanningPaths, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
+import type { UnreadableCode } from "./contracts/spec-routes.contract.ts";
+import { rawSha256 } from "./infra/hash.ts";
+import { Unreadable, codeOf, workspaceUnreadable } from "./infra/fs/errno.ts";
+import { hasGit, readBytesIfExists, readIfExists, regularBytes } from "./infra/fs/read.ts";
 
-/** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
-export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
+export type { UnreadableCode } from "./contracts/spec-routes.contract.ts";
+export { unreadableCode, workspaceUnreadable } from "./infra/fs/errno.ts";
+export { readBytesIfExists, readIfExists } from "./infra/fs/read.ts";
 
 /**
  * A readable workspace: the model's input, the workflow table (T78, ISC-122; the default table when `specs/workflow.md`
@@ -121,38 +125,6 @@ const FOLDER_KINDS = (Object.keys(FILE_KINDS) as Array<keyof typeof FILE_KINDS>)
 
 /** The workflow table's repository-relative name, the `file` of its findings: never the absolute path (ISC-3). */
 const WORKFLOW_FILE = repoFilePath("", "workflow");
-
-/** A read failure, carried up to the workspace as its code. */
-class Unreadable extends Error {
-  constructor(readonly code: UnreadableCode) {
-    super(code);
-  }
-}
-
-function codeOf(error: unknown): UnreadableCode {
-  if (error instanceof Unreadable) return error.code;
-  switch ((error as NodeJS.ErrnoException | null)?.code) {
-    case "ENOENT":
-      return "missing";
-    case "ENOTDIR":
-      return "not-a-directory";
-    case "EACCES":
-    case "EPERM":
-      return "permission-denied";
-    default:
-      return "unreadable";
-  }
-}
-
-/** The file's text, or null when it does not exist. Any other failure (permission, a directory) propagates. */
-export function readIfExists(path: string): string | null {
-  try {
-    return readFileSync(path, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-}
 
 /**
  * The story folder `specs/ideas/` of the workspace at `root` as `readIdeas` takes it: every regular `*.md` file directly
@@ -228,32 +200,6 @@ function specFiles(dir: string, folder: string): SpecFiles {
  */
 export function readSpecFiles(ref: Pick<SpecRef, "dir" | "slug">): SpecFiles {
   return specFiles(ref.dir, ref.slug);
-}
-
-/** A file's raw bytes, or null when it does not exist; any other failure throws. For hashes over exact bytes. */
-export function readBytesIfExists(path: string): Buffer | null {
-  try {
-    return readFileSync(path);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-}
-
-/** The code of a workspace that cannot be read at `root`, or null when it is a readable directory. */
-export function workspaceUnreadable(root: string): UnreadableCode | null {
-  try {
-    if (!statSync(root).isDirectory()) return "not-a-directory";
-    readdirSync(root);
-    return null;
-  } catch (error) {
-    return codeOf(error);
-  }
-}
-
-/** The stable code of a read failure (ENOENT, EACCES, …), never the OS message, which names the path (ISC-3). */
-export function unreadableCode(error: unknown): UnreadableCode {
-  return codeOf(error);
 }
 
 /**
@@ -422,15 +368,6 @@ export interface RepoFileReading {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-/** A regular file's bytes, never through a symbolic link; null when absent or anything else. */
-function regularBytes(path: string): Buffer | null {
-  try {
-    return lstatSync(path).isFile() ? readFileSync(path) : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * The repository file `path` (relative to the root, one of `REPO_SOURCE_PATHS`) from its read source (spec 039,
  * ISC-209): the server gathers, for the main checkout and each live spec worktree of a spec inside the repository,
@@ -445,7 +382,7 @@ export async function readRepoFile(root: string, path: string, reading?: Worktre
   // The main checkout read as before spec 039: a failure other than a missing file propagates.
   const mainBytes = readBytesIfExists(mainAbsolute);
   const mainText = mainBytes === null ? null : mainBytes.toString("utf8");
-  const digestOf = (bytes: Buffer | null): string | null => (bytes === null ? null : createHash("sha256").update(bytes).digest("hex"));
+  const digestOf = (bytes: Buffer | null): string | null => (bytes === null ? null : rawSha256(bytes));
   const timeOf = (absolute: string, facts: CheckoutFacts): string | null => {
     if (facts.changed.includes(path)) {
       try {
@@ -697,16 +634,6 @@ interface SpecSourceReading {
 
 /** A worktree path inside the repository: the only ones whose files are read (plan 027 § Risks, external paths). */
 export const insideRepository = (path: string): boolean => !isAbsolute(path) && path !== ".." && !path.startsWith("../");
-
-/** Whether `path` holds its own `.git` (a linked worktree's is a file): a worktree git lists but that is gone is not read. */
-function hasGit(path: string): boolean {
-  try {
-    lstatSync(join(path, ".git"));
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * The spec folder read from two places: the kinds of `WORKTREE_COPY_KINDS` from the worktree's copy `copyDir`, every

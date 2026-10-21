@@ -66,13 +66,15 @@ import {
   type ReviewedMark as ContractReviewedMark,
   type WriteAnswer,
   type WriteRoute,
-} from "../server/src/writes.contract.ts";
+} from "../server/src/contracts/writes.contract.ts";
 
 /** A synthetic viewer id of the actor grammar (`u:` + eight hex digits); no real address behind it. */
 const VIEWER = "u:3f9c0a7d";
 
 const ROOT = resolve(import.meta.dir, "..");
-const CONTRACT = join(ROOT, "server", "src", "writes.contract.ts");
+const CONTRACT = join(ROOT, "server", "src", "contracts", "writes.contract.ts");
+/** The contract barrel and its parts below `contracts/writes/`. */
+const CONTRACT_FILES = [CONTRACT, ...["writes-table.ts", "write-events.ts", "write-answers.ts", "write-answer-check.ts"].map((f) => join(ROOT, "server", "src", "contracts", "writes", f))];
 const HEX_A = hashForGate("spec.md", "# a\n");
 const HEX_B = hashForGate("plan.md", "# b\n");
 const HEX_C = hashForGate("tasks.md", "- [ ] T1 · ISC-1 · core — c\n");
@@ -478,8 +480,11 @@ describe("the writes contract is browser-safe", () => {
       "server/src/contracts/spec-routes/spec-route-table.ts",
       "server/src/contracts/spec-routes/workspace-route-table.ts",
       "server/src/contracts/spec-routes/write-requests.ts",
-      "server/src/spec-routes.contract.ts",
-      "server/src/writes.contract.ts",
+      "server/src/contracts/writes.contract.ts",
+      "server/src/contracts/writes/write-answer-check.ts",
+      "server/src/contracts/writes/write-answers.ts",
+      "server/src/contracts/writes/write-events.ts",
+      "server/src/contracts/writes/writes-table.ts",
     ]);
     const offending = files.filter((file) => {
       const source = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -491,7 +496,7 @@ describe("the writes contract is browser-safe", () => {
   // T111: the web client imports `writeAnswerOf`, and its tsconfig type-checks a type import's module too, so not even
   // a type may come from `gates.ts` (it imports `node:crypto`). The two types re-declared here equal gates.ts' own.
   test("the contract imports nothing from gates.ts, not even a type; its ReviewedFile and ReviewedMark equal gates.ts'", () => {
-    const source = readFileSync(CONTRACT, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const source = CONTRACT_FILES.map((file) => readFileSync(file, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(source).not.toMatch(/from\s+['"][^'"]*gates\.ts['"]/);
     const sameFile: [GateReviewedFile] extends [ContractReviewedFile] ? ([ContractReviewedFile] extends [GateReviewedFile] ? true : false) : false = true;
     const sameMark: [GateReviewedMark] extends [ContractReviewedMark] ? ([ContractReviewedMark] extends [GateReviewedMark] ? true : false) : false = true;

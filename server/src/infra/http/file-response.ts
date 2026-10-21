@@ -25,7 +25,7 @@
 import { statSync } from "node:fs";
 import { basename } from "node:path";
 import { type PathReach, mediaTypeOf, resolveEvidencePath } from "../../../../core/src/evidence.ts";
-import { matchesIfNoneMatch } from "../../http.ts";
+import { matchesIfNoneMatch } from "./server.ts";
 import { evidenceFileHeaders, evidencePathQuery } from "../../contracts/spec-routes.contract.ts";
 import { json } from "./json.ts";
 

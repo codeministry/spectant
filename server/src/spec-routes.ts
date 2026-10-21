@@ -92,7 +92,8 @@ import {
 } from "./workspace-loader.ts";
 import { transitionAnswer } from "./transition-route.ts";
 import { parseWriteBody, writeActorOf } from "./writes.contract.ts";
-import { gateHashes, rawSha256 } from "./writes.ts";
+import { gateHashes } from "./writes.ts";
+import { rawSha256 } from "./infra/hash.ts";
 
 export type SpecRoutesOptions = {
   registry: Pick<Registry, "get">;
@@ -303,7 +304,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         });
         // Each task's step timeline beside the tab (spec 015, ISC-232), over the very text the tab and the hash read.
         const steps = taskSteps(await locksOf(root, now), { ...files, texts: { ...files.texts, tasks } });
-        return json(req, 200, { ...tab, steps } satisfies SpecRouteResponses["tasks"], { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
+        return json(req, 200, { ...tab, steps } satisfies SpecRouteResponses["tasks"], { [TASKS_HASH_HEADER]: rawSha256(bytes) });
       }
       case "evidenceFile":
         return evidenceFileResponse(req, dir, url.search);

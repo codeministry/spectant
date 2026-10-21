@@ -13,7 +13,7 @@ import { LOOPBACK_HOST, serve } from "../server/src/http.ts";
 /** The only addresses ISC-1 allows the server to listen on. */
 const LOOPBACK_ADDRESSES = ["127.0.0.1", "::1"];
 const CONNECT_TIMEOUT_MS = 500;
-const SERVER_SOURCES = ["server/src/http.ts", "server/src/cli.ts"];
+const SERVER_SOURCES = ["server/src/infra/http/server.ts", "server/src/cli.ts"];
 const REPO_ROOT = join(import.meta.dir, "..");
 
 let dir: string;
@@ -193,7 +193,7 @@ describe("loopback", () => {
       const constant = /LOOPBACK_HOST\s*=\s*(["'`])([^"'`]*)\1/.exec(source);
       if (constant) expect(LOOPBACK_ADDRESSES).toContain(constant[2] ?? "");
     }
-    // http.ts is where the server starts; the guard is empty if it ever stops calling Bun.serve there.
-    expect(bunServeArguments(code(readFileSync(join(REPO_ROOT, "server/src/http.ts"), "utf8")))).toHaveLength(1);
+    // infra/http/server.ts is where the server starts; the guard is empty if it ever stops calling Bun.serve there.
+    expect(bunServeArguments(code(readFileSync(join(REPO_ROOT, "server/src/infra/http/server.ts"), "utf8")))).toHaveLength(1);
   });
 });

@@ -17,9 +17,9 @@
  *
  * No answer built from here carries an absolute path: `imagesOf` returns loopback URLs only.
  */
-import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, sep } from "node:path";
+import { rawSha256 } from "./infra/hash.ts";
 import {
   IMAGE_TYPES,
   type ImageKind,
@@ -49,7 +49,7 @@ const TYPE_NAMES = Object.keys(IMAGE_TYPES) as ImageTypeName[];
 
 /** The version of an image: the first 16 hex characters of its sha256, as the e2e stub has it. */
 export function imageVersion(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+  return rawSha256(bytes).slice(0, 16);
 }
 
 /** A slug that names exactly one folder below `workspaces/`. Registry slugs are basenames and always are. */

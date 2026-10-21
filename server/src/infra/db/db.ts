@@ -44,7 +44,7 @@
  * rollback is only for handing the file to an older build.
  */
 import { Database } from "bun:sqlite";
-import { dbPath, ensureDataDir } from "../../paths.ts";
+import { dbPath, ensureDataDir } from "../paths.ts";
 
 /** The SQLite connection type, so a slice types its `db` parameter without importing `bun:sqlite` itself. */
 export type { Database as Db } from "bun:sqlite";
