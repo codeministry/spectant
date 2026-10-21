@@ -198,6 +198,7 @@
       "other": "{{count}} open fog items"
     },
     "agentWorking": "Agent {{session}} working",
+    "workingFilter": "In progress",
     "archivedChip": "Archived",
     "archivedOn": "Archived on {{date}}",
     "showArchived": "Show archived",
@@ -211,6 +212,16 @@
     "ideas": {
       "title": "Ideas · {{count}}",
       "label": "Ideas in the backlog"
+    },
+    "ideasGroup": {
+      "label": "Ideas",
+      "count": {
+        "one": "{{count}} idea",
+        "other": "{{count}} ideas"
+      }
+    },
+    "ideaRow": {
+      "name": "Idea {{title}}"
     }
   },
   "nextUp": {
@@ -237,6 +248,10 @@
     },
     "openFog": "Open fog · {{count}}",
     "empty": "No warnings",
+    "toggle": {
+      "open": "Show warnings",
+      "close": "Hide warnings"
+    },
     "icon": "Warning",
     "link": "{{id}}, warning {{n}} of {{total}}",
     "fogLink": "{{id}}, open fog",
@@ -650,6 +665,7 @@
     "close-pending": "Close-pending"
   },
   "phases": {
+    "idea": "ideas",
     "scoping": "scoping",
     "building": "building",
     "climbing": "climbing",
@@ -2797,7 +2813,13 @@
       "since": "waiting {{time}}",
       "showAll": "Show all {{count}}",
       "waiting": "+{{n}} waiting",
-      "showAllName": "Show all {{count}} · Waits on you"
+      "showAllName": "Show all {{count}} · Waits on you",
+      "tileName": "{{id}} {{title}} · {{ref}} · waiting {{time}}"
+    },
+    "working": {
+      "label": "In progress",
+      "showAllName": "Show all {{count}} · In progress",
+      "tileName": "{{id}} {{title}}, agent {{session}} working"
     },
     "next": {
       "label": "Next",

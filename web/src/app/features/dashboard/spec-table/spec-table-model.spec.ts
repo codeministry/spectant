@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import harbor from '../../../../../../core/fixtures/harbor.golden.json';
+import { workingOf } from '../../../core/model/working';
 import {
   applyArchivedQuery,
   applyListQuery,
@@ -79,6 +81,21 @@ describe('readSpecRows', () => {
     const rows = readSpecRows({ specs: [wire('005', { goal: 'Keeps the manifest in step.', taken: [lock] }), wire('006')] });
     expect(rows[0]).toMatchObject({ description: 'Keeps the manifest in step.', agent: 'spec-005-ISC-3' });
     expect(rows[1]).toMatchObject({ description: null, agent: null });
+  });
+
+  it('carries the agent dot on exactly the specs "In Arbeit" lists, with its session (spec 064, T2, ISC-466)', () => {
+    const lock = (session: unknown) => ({ id: 'ISC-3', session, since: '2026-10-21T09:00:00Z', source: 'activity' });
+    const bodies: unknown[] = [
+      harbor,
+      { specs: [wire('005', { taken: [lock('a:claude:sess-5')] }), wire('006'), wire('007', { taken: [] })] },
+      { specs: [wire('008', { taken: [{ id: 'ISC-1' }, lock('a:claude:sess-8')] }), wire('009', { taken: [lock(7)] })] },
+      { specs: [wire('010', { taken: [null, 'x'] }), { title: 'no id', taken: [lock('a:claude:sess-0')] }] },
+    ];
+    for (const body of bodies) {
+      const dotted = readSpecRows(body).flatMap((row) => (row.agent === null ? [] : [{ id: row.id, session: row.agent }]));
+      expect(dotted).toEqual(workingOf(body).map(({ id, session }) => ({ id, session })));
+    }
+    expect(readSpecRows(bodies[2]).map((row) => row.agent)).toEqual(['a:claude:sess-8', null]);
   });
 
   it('reads nothing from a body that is not a dashboard, and skips rows without an id', () => {

@@ -1,0 +1,14 @@
+/*
+ * The list that holds flat tiles (spec 064, design.md § Across viewports): an `<ol class="tiles">`, one `ui-flat-tile`
+ * per item, 8 px apart, no hairline stack. The list is the container `tiles`, whose inline size picks the tiles'
+ * density (`line` from 560 px, `TILE_DENSITY_MIN` in tiles.ts; `stacked` below). Imported by both blocks, "Waits on
+ * you" and "Working", ahead of their own rules; emulated encapsulation scopes the copy per component.
+ */
+.tiles {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  container: tiles / inline-size;
+}

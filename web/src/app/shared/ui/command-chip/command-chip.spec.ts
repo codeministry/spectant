@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { ToastService } from '../toast/toast';
 import { UiCommandChip } from './command-chip';
 
 describe('UiCommandChip', () => {
@@ -51,6 +52,28 @@ describe('UiCommandChip', () => {
     (fixture.nativeElement as HTMLElement).querySelector('button')?.click();
     await fixture.whenStable();
     expect((fixture.nativeElement as HTMLElement).querySelector('.hint')?.textContent).toBe('Select and press ⌘C');
+    expect(TestBed.inject(ToastService).message(), 'the inline default raises no toast').toBeNull();
+    Reflect.deleteProperty(document, 'execCommand');
+  });
+
+  // Spec 064, T12 · ISC-478: inside a fixed-height tile (`hint="toast"`) the manual hint goes to the app toast instead
+  // of wrapping under the chip; the inline default stays as it was.
+  it('raises the manual hint as the app toast, with no inline hint, when hint is "toast"', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: () => Promise.reject(new Error('denied')) },
+      configurable: true,
+    });
+    Object.defineProperty(document, 'execCommand', { value: () => false, configurable: true });
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec implement 064');
+    fixture.componentRef.setInput('hint', 'toast');
+    await fixture.whenStable();
+
+    (fixture.nativeElement as HTMLElement).querySelector('button')?.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(ToastService).message()).toBe('Select and press ⌘C');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.hint')).toBeNull();
+    TestBed.inject(ToastService).dismiss();
     Reflect.deleteProperty(document, 'execCommand');
   });
 

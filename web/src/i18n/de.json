@@ -198,6 +198,7 @@
       "other": "{{count}} offene Fog-Einträge"
     },
     "agentWorking": "Agent {{session}} arbeitet",
+    "workingFilter": "In Arbeit",
     "archivedChip": "Archiviert",
     "archivedOn": "Archiviert am {{date}}",
     "showArchived": "Archivierte zeigen",
@@ -211,6 +212,16 @@
     "ideas": {
       "title": "Ideen · {{count}}",
       "label": "Ideen im Backlog"
+    },
+    "ideasGroup": {
+      "label": "Ideen",
+      "count": {
+        "one": "{{count}} Idee",
+        "other": "{{count}} Ideen"
+      }
+    },
+    "ideaRow": {
+      "name": "Idee {{title}}"
     }
   },
   "nextUp": {
@@ -237,6 +248,10 @@
     },
     "openFog": "Offener Fog · {{count}}",
     "empty": "Keine Warnungen",
+    "toggle": {
+      "open": "Warnungen anzeigen",
+      "close": "Warnungen ausblenden"
+    },
     "icon": "Warnung",
     "link": "{{id}}, Warnung {{n}} von {{total}}",
     "fogLink": "{{id}}, offener Fog",
@@ -650,6 +665,7 @@
     "close-pending": "Abschluss ausstehend"
   },
   "phases": {
+    "idea": "Ideen",
     "scoping": "scoping",
     "building": "building",
     "climbing": "climbing",
@@ -2797,7 +2813,13 @@
       "since": "seit {{time}}",
       "showAll": "Alle {{count}} anzeigen",
       "waiting": "+{{n}} bei Ihnen",
-      "showAllName": "Alle {{count}} anzeigen · Liegt bei Ihnen"
+      "showAllName": "Alle {{count}} anzeigen · Liegt bei Ihnen",
+      "tileName": "{{id}} {{title}} · {{ref}} · wartet seit {{time}}"
+    },
+    "working": {
+      "label": "In Arbeit",
+      "showAllName": "Alle {{count}} anzeigen · In Arbeit",
+      "tileName": "{{id}} {{title}}, Agent {{session}} arbeitet"
     },
     "next": {
       "label": "Als Nächstes",

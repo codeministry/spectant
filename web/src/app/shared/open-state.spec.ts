@@ -18,6 +18,12 @@ describe('open state', () => {
     it('drops empty entries, blanks, duplicates and unknown keys', () => {
       expect(parseOpen(' specs ,,tldr,specs,board,s-,s-a b,S-x')).toEqual(['specs', 'tldr']);
     });
+
+    // Spec 064, T30 · ISC-473: the dashboard's warnings fold is a fixed key beside the others.
+    it('keeps the fixed key warnings beside the others', () => {
+      expect(parseOpen('tldr,warnings')).toEqual(['tldr', 'warnings']);
+      expect(isOpenKey('warnings')).toBe(true);
+    });
   });
 
   describe('isOpenKey and sectionKey', () => {

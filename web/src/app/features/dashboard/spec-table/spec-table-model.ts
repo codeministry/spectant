@@ -1,4 +1,5 @@
 import type { Priority, SpecWait } from '../../../../../../core/src/files';
+import { holderOf } from '../../../core/model/working';
 import type { Tone } from '../../../shared/ui/tone';
 import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
 
@@ -41,7 +42,10 @@ export interface SpecTableRow {
    * differ from the title after normalizing whitespace and trailing punctuation (ISC-249), so the sentence stands once.
    */
   readonly description: string | null;
-  /** The session holding a lock on one of the spec's claims (the first in claim order); null without locks. */
+  /**
+   * The session holding a lock on one of the spec's claims (the first in claim order); null without locks. Read through
+   * `holderOf`, the source the "In Arbeit" list (`workingOf`) reads too (spec 064, T2, ISC-466).
+   */
   readonly agent: string | null;
   /** What the spec waits on, the row's `waits` (spec 025, T24, ISC-163); null when no open spec edge holds its work. */
   readonly waits: SpecWait | null;
@@ -157,7 +161,6 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
     const progress = isLoose(row['progress']) ? row['progress'] : {};
     const takeable = Array.isArray(row['takeable']) ? row['takeable'].flatMap((claim) => text(claim) ?? []) : [];
     const goal = text(row['goal'])?.trim() ?? '';
-    const holder = Array.isArray(row['taken']) ? row['taken'].find(isLoose) : undefined;
     const title = text(row['title']) ?? id;
     const slug = text(row['slug']);
     return [
@@ -178,7 +181,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         warnings: Array.isArray(row['warnings']) ? row['warnings'].length : 0,
         fog: count(row['fog']),
         description: descriptionOf(goal, title),
-        agent: holder === undefined ? null : text(holder['session']),
+        agent: holderOf(row)?.session ?? null,
         waits: waitsOf(row['waits']),
       },
     ];

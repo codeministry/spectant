@@ -4,17 +4,17 @@ import { queryParamSignal, readQueryParam } from './query-param';
 
 // The address schema of every open/collapsed block of spec 021 (ISC-246): one query param `?open=` holding a
 // comma-separated list of keys, so a reload and the back button land on the same blocks open. The keys are `specs`
-// (the dashboard's full spec list), `tldr` (the TL;DR's further sections), `overlaps` (the spec head's overlaps) and
-// `s-<slug>` (one library section). Every other query param (`?density=`, `?steps=`, `?sel=` …) stays its own and is
+// (the dashboard's full spec list), `tldr` (the TL;DR's further sections), `overlaps` (the spec head's overlaps),
+// `warnings` (the workspace dashboard's warnings, closed by default; spec 064) and `s-<slug>` (one library section). Every other query param (`?density=`, `?steps=`, `?sel=` …) stays its own and is
 // never touched here.
 
 /** The query param that holds the open keys. */
 export const OPEN_PARAM = 'open';
 
 /** A key of one open block: a fixed block, or a library section by its slug. */
-export type OpenKey = 'specs' | 'tldr' | 'overlaps' | `s-${string}`;
+export type OpenKey = 'specs' | 'tldr' | 'overlaps' | 'warnings' | `s-${string}`;
 
-const FIXED_KEYS: ReadonlySet<string> = new Set(['specs', 'tldr', 'overlaps']);
+const FIXED_KEYS: ReadonlySet<string> = new Set(['specs', 'tldr', 'overlaps', 'warnings']);
 /** A section key: `s-` and a slug without whitespace or the list's comma. */
 const SECTION_KEY = /^s-[^\s,]+$/u;
 

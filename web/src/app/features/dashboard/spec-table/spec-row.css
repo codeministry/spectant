@@ -6,7 +6,6 @@
  * meter bar and track. Compact
  * density (ISC-254) renders no description, so the title has the line to itself. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
  */
-@import "../../../shared/ui/_agent-dot.css";
 
 :host {
   display: grid;
@@ -110,23 +109,6 @@
   flex: none;
   place-items: center;
   inline-size: 8px;
-}
-
-/* The prototype's `.agent-dot` (shared/ui/_agent-dot.css) as an inline block in the track cell. */
-.agent-dot {
-  display: inline-block;
-}
-
-@keyframes agent-ping {
-  0% {
-    opacity: 0.8;
-    scale: 0.5;
-  }
-
-  100% {
-    opacity: 0;
-    scale: 1.4;
-  }
 }
 
 .rmeter {
@@ -290,14 +272,6 @@
 }
 
 @media (forced-colors: active) {
-  .agent-dot {
-    background: CanvasText;
-  }
-
-  .agent-dot::after {
-    display: none;
-  }
-
   /* The archive chip keeps its dashed border (the chip's own forced-colors border is solid). */
   .rarchived {
     border-color: CanvasText;
