@@ -1,4 +1,6 @@
 /* The pickers' lists (the area menu's are area-menu.css). The host takes no grid cell: its panels live in the top layer. */
+@import "../menu-rows.css";
+
 :host {
   position: absolute;
   inline-size: 0;
@@ -65,18 +67,7 @@
   vertical-align: -2px;
 }
 
-/* The prototype's `.pop-head eyebrow` and `.pop-sep` (pop-ws, pop-specs). */
-.menu-head {
-  margin: 0;
-  padding: 8px 12px 4px;
-  color: var(--muted-ink);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 16px;
-  text-transform: uppercase;
-}
-
+/* The prototype's `.pop-sep` (pop-ws, pop-specs); its `.pop-head eyebrow` is in menu-rows.css. */
 .picker-sep {
   block-size: 1px;
   margin-block: 4px;
@@ -96,18 +87,8 @@
 }
 
 .entry {
-  display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
-  column-gap: 8px;
-  align-items: center;
   min-block-size: 40px;
-  padding: 8px 12px;
-  border-radius: var(--radius-field);
-  color: var(--color-base-content);
-  font-size: 14px;
-  line-height: 20px;
-  text-decoration: none;
-  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
 .entry[aria-current] {

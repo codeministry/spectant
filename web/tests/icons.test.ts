@@ -25,7 +25,7 @@ type PackageJson = { dependencies?: Record<string, string>; devDependencies?: Re
 const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8")) as PackageJson;
 
 // Files that may spell `<svg` without the exemption: the one renderer and the generator that strips the wrapper.
-const SVG_ALLOWED = new Set(["app/shared/icons/icon.ts", "app/shared/icons/generate-icons.ts"]);
+const SVG_ALLOWED = new Set(["app/shared/icons/icon.html", "app/shared/icons/generate-icons.ts"]);
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })

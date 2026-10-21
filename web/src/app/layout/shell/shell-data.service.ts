@@ -14,6 +14,7 @@ import {
 } from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
 import { ToastService } from '../../shared/ui/toast/toast';
+import { isLoose, text } from './loose';
 import { ShellState } from './shell-state.service';
 
 /**
@@ -38,9 +39,6 @@ export interface SpecRowView {
 
 const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
 
-type Loose = Readonly<Record<string, unknown>>;
-const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
-const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
 function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
   const list = isLoose(body) ? body[key] : null;

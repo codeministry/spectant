@@ -1,8 +1,7 @@
 import { afterNextRender, computed, type DestroyRef, DOCUMENT, inject, Injectable, Injector, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { Router } from '@angular/router';
 import type { Relation, RelationIndex, RelationRef, RelationType } from '../../../../../core/src/relations';
+import { queryParamSignal } from '../../shared/query-param';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
@@ -93,13 +92,7 @@ export class DetailSelection {
   private readonly injector = inject(Injector);
   private readonly docks = signal(0);
 
-  private readonly param = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => this.readParam()),
-    ),
-    { initialValue: this.readParam() },
-  );
+  private readonly param = queryParamSignal(SEL_PARAM);
 
   /** The ref in `?sel=`, whether or not the index holds it. */
   readonly selected = computed(() => parseSel(this.param()));
@@ -141,9 +134,5 @@ export class DetailSelection {
     // still leads to the spec page, ISC-61.1). And the sheet (compact) is a modal dialog: until that render removes it
     // the page is inert, and on its destroy it hands focus back to its opener (the body after a reload).
     afterNextRender(() => this.doc.querySelector<HTMLElement>(refSelector(ref))?.focus(), { injector: this.injector });
-  }
-
-  private readParam(): string | null {
-    return this.router.routerState.snapshot.root.queryParamMap.get(SEL_PARAM);
   }
 }

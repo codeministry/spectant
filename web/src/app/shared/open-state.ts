@@ -1,7 +1,6 @@
 import { computed, inject, Injectable } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { Router } from '@angular/router';
+import { queryParamSignal, readQueryParam } from './query-param';
 
 // The address schema of every open/collapsed block of spec 021 (ISC-246): one query param `?open=` holding a
 // comma-separated list of keys, so a reload and the back button land on the same blocks open. The keys are `specs`
@@ -57,13 +56,7 @@ export function withOpenEach(value: string | null | undefined, entries: Iterable
 export class OpenState {
   private readonly router = inject(Router);
 
-  private readonly param = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => this.readParam()),
-    ),
-    { initialValue: this.readParam() },
-  );
+  private readonly param = queryParamSignal(OPEN_PARAM);
 
   /** The keys in `?open=`, in order. */
   readonly keys = computed(() => parseOpen(this.param()));
@@ -91,6 +84,6 @@ export class OpenState {
   }
 
   private readParam(): string | null {
-    return this.router.routerState.snapshot.root.queryParamMap.get(OPEN_PARAM);
+    return readQueryParam(this.router, OPEN_PARAM);
   }
 }

@@ -14,7 +14,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const SRC = join(import.meta.dir, "..", "src");
-const CARD = "app/shared/ui/card/card.ts";
+const CARD = "app/shared/ui/card/card.css";
 
 /** Every `.css`, `.ts` and `.html` file under `web/src`, specs excluded (they describe behaviour, they paint nothing). */
 function sources(dir = SRC): string[] {

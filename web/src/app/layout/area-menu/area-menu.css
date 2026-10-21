@@ -4,24 +4,14 @@
  * Docs violet, Notes yellow; the dashboard neutral), the same as the trigger's in shell-nav.css. At workspace scope the
  * entries are the workspace pages, an icon in the dot's column (spec 003, T26).
  */
+@import "../menu-rows.css";
+
 :host {
   display: contents;
 }
 
 .area-popover {
   --ui-popover-width: 320px;
-}
-
-/* The prototype's `.pop-head eyebrow`: the scope in 11 px caps, muted, above the rows. */
-.menu-head {
-  margin: 0;
-  padding: 8px 12px 4px;
-  color: var(--muted-ink);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 16px;
-  text-transform: uppercase;
 }
 
 .area-menu ul {
@@ -34,18 +24,8 @@
 
 /* One entry: dot, name and key on the first line; the subline under the name. */
 .entry {
-  display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  column-gap: 8px;
-  align-items: center;
   min-block-size: 44px;
-  padding: 8px 12px;
-  border-radius: var(--radius-field);
-  color: var(--color-base-content);
-  font-size: 14px;
-  line-height: 20px;
-  text-decoration: none;
-  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
 .entry[aria-current] {
