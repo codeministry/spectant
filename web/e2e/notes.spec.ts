@@ -8,7 +8,7 @@
  * Every test gets its own stub session (reset first), so a write never leaks into another test, worker or retry.
  */
 import type { Page, Request } from '@playwright/test';
-import type { Note } from '../../server/src/notes.contract.ts';
+import type { Note } from '../../server/src/contracts/note-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 import { STUB_NOTES } from './stub-api';
 

@@ -60,7 +60,7 @@ import {
   parseReviewedHashes,
   specRoutes,
   workspaceRoutes,
-} from '../../server/src/spec-routes.contract';
+} from '../../server/src/contracts/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
   STEP_PATH,
@@ -1260,9 +1260,9 @@ let real: Record<StubState, Handler> | undefined;
 let realSettings: Handler | undefined;
 
 beforeAll(async () => {
-  const apiModule = (await import(join(SERVER, 'api.ts'))) as ApiModule;
-  const settingsModule = (await import(join(SERVER, 'settings.ts'))) as SettingsModule;
-  const dbModule = (await import(join(SERVER, 'db.ts'))) as DbModule;
+  const apiModule = (await import(join(SERVER, 'cli', 'index.ts'))) as ApiModule;
+  const settingsModule = (await import(join(SERVER, 'settings', 'index.ts'))) as SettingsModule;
+  const dbModule = (await import(join(SERVER, 'infra', 'db', 'db.ts'))) as DbModule;
 
   // The dashboard routes take their model from `loadWorkspace` below; the planning route reads the files itself, so a
   // readable workspace points at its real fixture tree and the unreadable one at a directory that does not exist (the
@@ -2200,9 +2200,9 @@ describe('stub API board seam matches the real handlers (T119)', () => {
   let specs: Handler | undefined;
 
   beforeAll(async () => {
-    ((await import(join(SERVER, 'db.ts'))) as DbModule).migrate(boardDb);
-    const apiModule = (await import(join(SERVER, 'api.ts'))) as BoardApiModule;
-    const routesModule = (await import(join(SERVER, 'spec-routes.ts'))) as SpecRoutesModule;
+    ((await import(join(SERVER, 'infra', 'db', 'db.ts'))) as DbModule).migrate(boardDb);
+    const apiModule = { ...(await import(join(SERVER, 'cli', 'index.ts'))), ...(await import(join(SERVER, 'settings', 'index.ts'))) } as BoardApiModule;
+    const routesModule = (await import(join(SERVER, 'spec', 'index.ts'))) as SpecRoutesModule;
     const workspaces: ServerWorkspace[] = ['harbor', 'lantern'].map((name, position) => ({
       slug: name,
       path: join(FIXTURES, name),

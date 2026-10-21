@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { ClaimViewModel } from '../../core/src/files.ts';
-import { type SpecRouteResponses, specRoutes } from '../../server/src/spec-routes.contract.ts';
+import { type SpecRouteResponses, specRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 
 const GOLDEN = fileURLToPath(new URL('../../core/fixtures/harbor.claim-view.golden.json', import.meta.url));

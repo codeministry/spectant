@@ -11,12 +11,13 @@
  *   poll and its next read say the rest.
  * - A comment line every `HEARTBEAT_MS` keeps the connection under Bun's idle timeout (10 s) and re-syncs the hub's
  *   watchers with the registry and the spec worktrees.
- * - The guard is every route's: a foreign `Host` or `Origin` is 403, any method but `GET` 405 with `EVENTS_ALLOW`.
+ * - The guard is every route's: a foreign `Host` or `Origin` is 403, any method but `GET` 405 with `EVENTS_ALLOW`,
+ *   `HEAD` included; the route is the router's `EVENTS_FAMILY` (spec 059, ISC-412).
  *
  * Read-only: the stream reads what the read routes read and writes nothing (`tests/readonly.test.ts -t live`).
  */
+import { type PathMatch, type RouteHandlers, createRouter, pathFamily } from "../infra/http/router.ts";
 import type { ApiHandler } from "../infra/http/server.ts";
-import { loopbackRefusal, methodNotAllowed } from "../infra/http/guard.ts";
 import {
   EVENTS_ALLOW,
   EVENTS_PATH,
@@ -60,7 +61,11 @@ export function livePathsOf(change: LiveChange): string[] {
 
 const encoder = new TextEncoder();
 
-export function eventsApi(options: EventsApiOptions): ApiHandler {
+/** The stream as the router's family: `/api/events` alone, `GET` only. */
+export const EVENTS_FAMILY = pathFamily("events", EVENTS_PATH, EVENTS_ALLOW);
+
+/** The stream's handler; the router has checked the guard and the method. Each call holds its own open streams. */
+export function eventsHandlers(options: EventsApiOptions): RouteHandlers<PathMatch<"events">> {
   const heartbeatMs = options.heartbeatMs ?? HEARTBEAT_MS;
   const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
   const building = new Map<string, { again: Set<string> | null }>();
@@ -138,11 +143,7 @@ export function eventsApi(options: EventsApiOptions): ApiHandler {
     heartbeat = null;
   };
 
-  return (req, url) => {
-    if (url.pathname !== EVENTS_PATH) return null;
-    const refused = loopbackRefusal(req);
-    if (refused !== null) return refused;
-    if (req.method !== "GET") return methodNotAllowed(req, EVENTS_ALLOW);
+  const events = (req: Request): Response => {
     let self: ReadableStreamDefaultController<Uint8Array> | null = null;
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -171,4 +172,11 @@ export function eventsApi(options: EventsApiOptions): ApiHandler {
       },
     });
   };
+
+  return { events } satisfies RouteHandlers<PathMatch<"events">>;
+}
+
+/** `GET /api/events` alone as an `ApiHandler`; `null` for every other path. */
+export function eventsApi(options: EventsApiOptions): ApiHandler {
+  return createRouter([EVENTS_FAMILY], eventsHandlers(options));
 }

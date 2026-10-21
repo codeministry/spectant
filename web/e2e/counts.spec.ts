@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import type { ClaimViewModel, SpecPageModel } from '../../core/src/files.ts';
-import type { SpecRouteResponses } from '../../server/src/spec-routes.contract.ts';
+import type { SpecRouteResponses } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 
 type TasksBody = NonNullable<SpecRouteResponses['tasks']>;

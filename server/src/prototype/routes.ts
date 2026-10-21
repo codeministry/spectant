@@ -33,6 +33,10 @@
  * Every answer, errors included, carries `PROTOTYPE_CSP` (`sandbox` without `allow-same-origin`: the page runs on an
  * opaque origin and cannot call the app's API; `connect-src 'none'`) and `X-Content-Type-Options: nosniff`. No answer
  * carries a path (ISC-3). Read-only: `realpath`, `lstat`, `stat` and one open for reading (ISC-15).
+ *
+ * The route is the router's `PROTOTYPE_FAMILY` (spec 059, ISC-412) under its `prototype` guard: the router answers the
+ * 403 and the 405 above, and the family owns every `PROTOTYPE_PREFIX` path as its one route, the contract's match
+ * (null params for a path it does not match) taken inside the handler, after the method, as the route always did.
  */
 import { basename } from "node:path";
 import { prototypeMediaTypeOf, resolvePrototypePath } from "../../../core/src/evidence.ts";
@@ -41,14 +45,15 @@ import {
   PROTOTYPE_ALLOW,
   PROTOTYPE_CSP,
   PROTOTYPE_PREFIX,
+  type PrototypeParams,
   evidenceFileHeaders,
   matchPrototypePath,
 } from "../contracts/spec-routes.contract.ts";
 import type { Registry } from "../infra/db/registry.ts";
 import { unreadableCode, workspaceUnreadable } from "../infra/fs/errno.ts";
 import { fileAnswer, fileVersion } from "../infra/http/file-response.ts";
-import { isLoopbackHost, isLoopbackOrigin, methodNotAllowed } from "../infra/http/guard.ts";
 import { json } from "../infra/http/json.ts";
+import { type RouteFamily, type RouteHandlers, createRouter } from "../infra/http/router.ts";
 import type { ApiHandler } from "../infra/http/server.ts";
 import { unavailable } from "../workspace/index.ts";
 
@@ -91,15 +96,28 @@ function renderFetch(req: Request): boolean {
   return req.headers.get("Sec-Fetch-Mode") === "cors" && OPAQUE_DESTINATIONS.has(req.headers.get("Sec-Fetch-Dest") ?? "");
 }
 
-/** `GET`/`HEAD /proto/:ws/:spec/:folder/*` as an `ApiHandler`; `null` for every path outside `PROTOTYPE_PREFIX`. */
-export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
+/** Every `PROTOTYPE_PREFIX` path, with the contract's params, or null ones for a path the contract does not match. */
+export type PrototypeFamilyMatch = { readonly route: "prototype"; readonly params: PrototypeParams | null };
+
+export const PROTOTYPE_FAMILY: RouteFamily<"prototype", PrototypeFamilyMatch> = {
+  name: "prototype",
+  routes: ["prototype"],
+  claims: (pathname) => pathname.startsWith(PROTOTYPE_PREFIX),
+  match: (pathname) => ({ route: "prototype", params: matchPrototypePath(pathname)?.params ?? null }),
+  allow: () => PROTOTYPE_ALLOW,
+  guard: "prototype",
+  respond: refuse,
+  unmatched: "not-found",
+};
+
+/** The handler of `GET`/`HEAD /proto/:ws/:spec/:folder/*`; the router has checked the guard and the method. */
+export function prototypeHandlers(options: PrototypeApiOptions): RouteHandlers<PrototypeFamilyMatch> {
   const { registry } = options;
 
   /** `opaque`: the request came from `Origin: null` as a script, style or font fetch; HTML is refused to it. */
-  const answer = async (req: Request, pathname: string, opaque: boolean): Promise<Response> => {
-    const match = matchPrototypePath(pathname);
-    if (match === null) return notFound(req);
-    const { ws, spec, folder, file } = match.params;
+  const answer = async (req: Request, params: PrototypeParams | null, opaque: boolean): Promise<Response> => {
+    if (params === null) return notFound(req);
+    const { ws, spec, folder, file } = params;
     const workspace = registry.get(ws);
     if (!workspace) return notFound(req);
     const unreadable = workspaceUnreadable(workspace.path);
@@ -137,19 +155,18 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
     return fileAnswer(req, hit.absolute, version, headers);
   };
 
-  return (req, url) => {
-    const { pathname } = url;
-    if (!pathname.startsWith(PROTOTYPE_PREFIX)) return null;
-    const origin = req.headers.get("Origin");
-    const opaque = origin === OPAQUE_ORIGIN;
-    if (!isLoopbackHost(req.headers.get("Host")) || (!opaque && !isLoopbackOrigin(origin))) return forbidden(req);
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      return opaque ? forbidden(req) : methodNotAllowed(req, PROTOTYPE_ALLOW, refuse);
-    }
-    if (!opaque) return answer(req, pathname, false);
+  const prototype = (req: Request, _url: URL, match: PrototypeFamilyMatch): Promise<Response> | Response => {
+    if (req.headers.get("Origin") !== OPAQUE_ORIGIN) return answer(req, match.params, false);
     // `Origin: null` for anything but a script, style or font fetch is refused before the file system is asked.
     if (!renderFetch(req)) return forbidden(req);
     // `Origin: null` learns nothing but a non-HTML file's bytes: every miss, 409 and refusal is the same 403.
-    return answer(req, pathname, true).then((res) => (res.status === 200 || res.status === 304 ? res : forbidden(req)));
+    return answer(req, match.params, true).then((res) => (res.status === 200 || res.status === 304 ? res : forbidden(req)));
   };
+
+  return { prototype } satisfies RouteHandlers<PrototypeFamilyMatch>;
+}
+
+/** `GET`/`HEAD /proto/:ws/:spec/:folder/*` alone as an `ApiHandler`; `null` for every path outside `PROTOTYPE_PREFIX`. */
+export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
+  return createRouter([PROTOTYPE_FAMILY], prototypeHandlers(options));
 }

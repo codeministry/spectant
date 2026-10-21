@@ -53,7 +53,7 @@ import { readFileSync } from 'node:fs';
 import type { APIRequestContext, BrowserContext, Locator, Page, Request, Response } from '@playwright/test';
 
 import type { DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../core/src/files';
-import { type LibrarySearchResult, PROTOTYPE_PREFIX, prototypeFolderOf, prototypeRoute, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { type LibrarySearchResult, PROTOTYPE_PREFIX, prototypeFolderOf, prototypeRoute, workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
 

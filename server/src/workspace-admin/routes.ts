@@ -29,9 +29,10 @@
  *   ETag over the bytes (`"<sha256 base64url>"`, as the e2e stub) and 304 on a match; 404 without a workspace or image.
  *
  * Guard order, as every route: 403 `{error: "forbidden"}` for a foreign `Host` or a cross-site `Origin` before anything
- * else, then 405 with `workspaceAdminAllowFor` for a method the admin path does not take. Reads that are no admin route
- * (`GET` of the collection, of a workspace's dashboard) pass on to `api.ts`, as does every admin route whose task has
- * not landed yet.
+ * else, then 405 with `workspaceAdminAllowFor` for a method the admin path does not take; the router answers both over
+ * `WORKSPACE_ADMIN_FAMILY` (`family.ts`, spec 059, ISC-412). Reads that are no admin route (`GET` of the collection, of
+ * a workspace, of its rescan) are left unclaimed, before the guard, for the workspace family or the server's 404, and
+ * the image routes pass on without an image store.
  *
  * No answer carries an absolute path: a summary names `pathTail` only.
  */
@@ -45,17 +46,16 @@ import {
   sniffImageType,
   type WorkspaceAdminImageParams,
   type WorkspaceAdminRouteMatch,
-  type WorkspaceAdminRouteName,
-  workspaceAdminAllowFor,
   workspaceAdminRoutes,
 } from "../contracts/workspace-admin.contract.ts";
 import { type Registry, RegistryError, type Workspace } from "../infra/db/registry.ts";
 import { realpathOrNull } from "../infra/fs/exists.ts";
 import { strongEtag } from "../infra/http/etag.ts";
-import { loopbackRefusal, methodNotAllowed } from "../infra/http/guard.ts";
 import { json, readJson } from "../infra/http/json.ts";
+import { type RouteHandlers, createRouter } from "../infra/http/router.ts";
 import { type ApiHandler, matchesIfNoneMatch } from "../infra/http/server.ts";
 import type { WorkspaceListSummary } from "../workspace/index.ts";
+import { WORKSPACE_ADMIN_FAMILY, type WorkspaceAdminFamilyMatch } from "./family.ts";
 import type { WorkspaceImageStore } from "./images.ts";
 
 /**
@@ -79,10 +79,8 @@ export interface WorkspaceAdminApiOptions {
   readonly images?: WorkspaceImageStore;
 }
 
-/** The admin routes this server answers; any other admin path passes on until its task lands. */
-const SERVED: ReadonlySet<WorkspaceAdminRouteName> = new Set(["add", "rename", "rescan", "remove", "putImage", "getImage"]);
-
-export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler {
+/** The admin routes' handlers; the router has checked the guard and the method. */
+export function workspaceAdminHandlers(options: WorkspaceAdminApiOptions): RouteHandlers<WorkspaceAdminFamilyMatch> {
   const { registry } = options;
 
   /** Pushes the registry as it now stands to every open stream; a failed push never fails the write. */
@@ -196,16 +194,16 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
     }
   };
 
-  return (req, url) => {
-    const allow = workspaceAdminAllowFor(url.pathname);
-    if (allow === null) return null;
+  /** One handler for every admin path: the method is one the path's `Allow` names, so the table has its route. */
+  const route = (req: Request, url: URL): Promise<Response> | Response | null => {
     const match = matchWorkspaceAdminRoute(url.pathname, req.method);
-    // The collection's and a workspace's reads are the list and dashboard routes of `api.ts`.
-    if ((req.method === "GET" || req.method === "HEAD") && match?.route !== "getImage") return null;
-    if (match !== null && !SERVED.has(match.route)) return null;
-    const refused = loopbackRefusal(req);
-    if (refused !== null) return refused;
-    if (match === null) return methodNotAllowed(req, allow);
-    return dispatch(req, match);
+    return match === null ? null : dispatch(req, match);
   };
+
+  return { adminCollection: route, adminWorkspace: route, adminRescan: route, adminImage: route } satisfies RouteHandlers<WorkspaceAdminFamilyMatch>;
+}
+
+/** The admin routes alone as an `ApiHandler`; `null` for every path or method they leave to another handler. */
+export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler {
+  return createRouter([WORKSPACE_ADMIN_FAMILY], workspaceAdminHandlers(options));
 }

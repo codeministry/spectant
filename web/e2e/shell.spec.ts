@@ -5,7 +5,7 @@
  * an unknown one the not-found page, decided from the dashboard.
  */
 import type { APIRequestContext, Page } from '@playwright/test';
-import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, headerControl, test } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 

@@ -34,7 +34,7 @@
  * rendered inside `app-shell` with content and without the not-found page (except on the unknown path).
  */
 import type { BrowserContext, Page, Request } from '@playwright/test';
-import { prototypeRoute } from '../../server/src/spec-routes.contract.ts';
+import { prototypeRoute } from '../../server/src/contracts/spec-routes.contract.ts';
 import { LEGACY_TAB_IDS, TAB_IDS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test } from './fixtures';
 import { EDGES_HEADER, STUB_EDGES, STUB_LIBRARY, STUB_NOTES, WORKTREES_HEADER } from './stub-api';

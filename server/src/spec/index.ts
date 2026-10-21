@@ -4,5 +4,5 @@
  * timeline's ETag.
  */
 export { SPEC_FAMILY } from "./family.ts";
-export { type SpecReadMatch, specReadHandlers, specRoutesApi } from "./handler.ts";
+export { type SpecReadMatch, specHandlers, specReadHandlers, specRoutesApi } from "./handler.ts";
 export { type SpecRoutesOptions, timelineEtag } from "./reads.ts";

@@ -6,11 +6,18 @@
  * `tests/fixtures/architecture/`, with the server entry's own `layout` and `imports` sections, and must return exactly
  * the expected violations. The app case runs the rule on the real server entry of `scripts/architecture.config.ts`; it
  * stays `test.failing` while `server/src` is flat and turns into a plain `test` when the split is done (T61).
+ *
+ * `-t routes` selects ISC-412: the route families `spectant serve` joins (`routeFamilies` in `server/src/cli/`) name
+ * every route once, and the set of method and route they answer equals the one the golden master recorded
+ * (`tests/fixtures/golden/routes.json`, `writes.json`), every route hit by a recorded request.
  */
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import config, { type LaneEntry } from "../scripts/architecture.config.ts";
+import { routeFamilies } from "../server/src/cli/routes.ts";
+import type { RouteFamily, RouteMatch } from "../server/src/infra/http/router.ts";
 import type { Violation } from "../scripts/architecture/files.ts";
 import { imports } from "../scripts/architecture/imports.ts";
 import { io } from "../scripts/architecture/io.ts";
@@ -155,5 +162,86 @@ describe("io rule", () => {
 
   test("the app: no file outside server/src/infra does direct I/O", () => {
     expect(io(app, REPO_ROOT)).toEqual([]);
+  });
+});
+
+/** One recorded answer of the golden master (`tests/fixtures/golden/routes.json`, `writes.json`'s entries). */
+interface Recorded {
+  readonly name: string;
+  readonly method: string;
+  readonly path: string;
+  readonly status: number;
+  readonly headers: Readonly<Record<string, string>>;
+}
+
+function goldenFile(name: string): unknown {
+  return JSON.parse(readFileSync(resolve(REPO_ROOT, "tests/fixtures/golden", name), "utf8"));
+}
+
+/** The methods an `Allow` header names. */
+function methodsOf(allow: string): string[] {
+  return allow
+    .split(",")
+    .map((method) => method.trim())
+    .filter((method) => method !== "");
+}
+
+describe("routes", () => {
+  // The families exactly as `spectant serve` joins them, the app database included.
+  const families: ReadonlyArray<RouteFamily<string, RouteMatch>> = routeFamilies({ db: true });
+  const familyOf = new Map(families.flatMap((family) => family.routes.map((route) => [route, family] as const)));
+  const recorded = [...(goldenFile("routes.json") as Recorded[]), ...(goldenFile("writes.json") as { entries: Recorded[] }).entries];
+
+  /** The route that answers the method on the path, first claim first, as the router walks the families. */
+  function routeOf(pathname: string, method: string): string | null {
+    for (const family of families) {
+      if (!family.claims(pathname, method)) continue;
+      const match = family.match(pathname);
+      if (match !== null) return `${family.name}/${match.route}`;
+      if (family.unmatched === "not-found") return null;
+    }
+    return null;
+  }
+
+  test("every route is named exactly once across the slices' families", () => {
+    const names = families.flatMap((family) => family.routes);
+    expect(names.filter((name, i) => names.indexOf(name) !== i)).toEqual([]);
+    expect(families.map((family) => family.name)).toEqual(["events", "workspace-admin", "settings", "actors", "lifeos", "workspace", "notes", "spec", "prototype"]);
+  });
+
+  test("the set of method and route equals the golden master's, and every route is hit", () => {
+    const hits = new Map<string, Set<string>>();
+    const unmapped: string[] = [];
+    const golden = new Set<string>();
+    for (const entry of recorded) {
+      const { pathname } = new URL(entry.path, "http://127.0.0.1");
+      const route = routeOf(pathname, entry.method);
+      if (route === null) {
+        const api = pathname.startsWith("/api/") || pathname.startsWith("/proto/");
+        if (api && entry.status !== 404) unmapped.push(`${entry.name}: ${entry.method} ${entry.path} ${entry.status}`);
+        continue;
+      }
+      const name = route.slice(route.indexOf("/") + 1);
+      hits.set(name, (hits.get(name) ?? new Set<string>()).add(pathname));
+      // A 405 names the methods its path takes; a 403 is the guard's, before the method; any other answer took it.
+      if (entry.status === 405) {
+        for (const method of methodsOf(entry.headers.allow ?? "")) golden.add(`${method} ${routeOf(pathname, method) ?? "no route"}`);
+      } else if (entry.status !== 403) {
+        golden.add(`${entry.method} ${route}`);
+      }
+    }
+
+    const answered = new Set<string>();
+    for (const [name, paths] of hits) {
+      const family = familyOf.get(name);
+      if (family === undefined) continue;
+      for (const pathname of paths) {
+        for (const method of methodsOf(family.allow(name, pathname))) answered.add(`${method} ${routeOf(pathname, method) ?? "no route"}`);
+      }
+    }
+
+    expect(unmapped).toEqual([]);
+    expect(families.flatMap((family) => family.routes).filter((name) => !hits.has(name))).toEqual([]);
+    expect([...answered].sort()).toEqual([...golden].sort());
   });
 });

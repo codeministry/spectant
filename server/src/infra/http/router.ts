@@ -20,7 +20,11 @@
  *
  * A family with `unmatched: "decline"` claims only paths it matches: its guard runs on every path it claims, so a
  * broader claim would refuse paths another handler owns. A route the configuration does not serve (a database route
- * without a database) is left out of `claims` the same way, so the request reaches the next handler unguarded.
+ * without a database) is left out of `claims` the same way, so the request reaches the next handler unguarded, and so
+ * is a method a family leaves to another handler on the same path (the admin routes leave the workspace reads to the
+ * list and the dashboard, or to the server's 404).
+ *
+ * `pathFamily` builds the family of one route on one exact path (`/api/settings`, `/api/events`, …).
  *
  * `createRouter` throws when two families, or one family twice, name the same route, when a route has no handler,
  * and when a handler names no route: every route is answered exactly once, by exactly one handler.
@@ -28,6 +32,7 @@
  * infra imports no slice: the families and the handlers come in from the slices.
  */
 import { isLoopbackHost, isLoopbackOrigin, loopbackRefusal, methodNotAllowed, type Responder } from "./guard.ts";
+import { json } from "./json.ts";
 import type { ApiHandler } from "./server.ts";
 
 /** What a family's `match` finds: the route's name and its decoded params (a contract's `…RouteMatch` union). */
@@ -45,8 +50,11 @@ export interface RouteFamily<N extends string, M extends RouteMatch<N> = RouteMa
   readonly name: string;
   /** Every route name `match` can answer, each once: the contract table's `route` column. */
   readonly routes: readonly N[];
-  /** Whether the family owns the path (`URL.pathname`, still percent-encoded): its guard answers it. */
-  claims(pathname: string): boolean;
+  /**
+   * Whether the family owns the path (`URL.pathname`, still percent-encoded) for the method: its guard answers it.
+   * Most families ignore the method; one that leaves some methods of its paths to another handler declines them here.
+   */
+  claims(pathname: string, method: string): boolean;
   /** The route the path names and its params, whatever the method; null for a path no route matches. */
   match(pathname: string): M | null;
   /** The route's `Allow` header (`GET, HEAD`, `POST`, …): the methods it takes, and its 405's header. */
@@ -109,7 +117,7 @@ export function createRouter<const F extends readonly AnyFamily[]>(families: F, 
   return (req, url) => {
     const { pathname } = url;
     for (const family of families) {
-      if (!family.claims(pathname)) continue;
+      if (!family.claims(pathname, req.method)) continue;
       const refused = refusal(family, req);
       if (refused !== null) return refused;
       const match = family.match(pathname);
@@ -128,5 +136,28 @@ export function createRouter<const F extends readonly AnyFamily[]>(families: F, 
       if (answer !== null) return answer;
     }
     return null;
+  };
+}
+
+/** The match of a route without params. */
+export interface PathMatch<N extends string> {
+  readonly route: N;
+  readonly params: Record<string, never>;
+}
+
+/**
+ * The family of one route on one exact path: it claims that path alone, under the loopback guard, with `allow` as its
+ * `Allow` and `respond` for its refusals (`json()` unless the route brings its own headers).
+ */
+export function pathFamily<N extends string>(route: N, path: string, allow: string, respond: Responder = json): RouteFamily<N, PathMatch<N>> {
+  return {
+    name: route,
+    routes: [route],
+    claims: (pathname) => pathname === path,
+    match: (pathname) => (pathname === path ? { route, params: {} } : null),
+    allow: () => allow,
+    guard: "loopback",
+    respond,
+    unmatched: "decline",
   };
 }

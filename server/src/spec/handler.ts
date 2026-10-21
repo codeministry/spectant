@@ -37,9 +37,14 @@ export function specReadHandlers(registry: Pick<Registry, "get">, reads: SpecRea
   } satisfies RouteHandlers<SpecReadMatch>;
 }
 
-export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
+/** Every handler of the spec family: the seven reads and the three writes of `writes/`. */
+export function specHandlers(options: SpecRoutesOptions): RouteHandlers<SpecRouteMatch> {
   const { registry } = options;
   const reads = specReads(options);
   const { stateDir, clock, age } = reads;
-  return createRouter([SPEC_FAMILY], { ...specReadHandlers(registry, reads), ...specWriteHandlers({ registry, stateDir, clock, age }) });
+  return { ...specReadHandlers(registry, reads), ...specWriteHandlers({ registry, stateDir, clock, age }) };
+}
+
+export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
+  return createRouter([SPEC_FAMILY], specHandlers(options));
 }

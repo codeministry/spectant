@@ -1,10 +1,12 @@
 /**
  * `GET` / `HEAD` / `PUT /api/settings` (T43, ISC-18.3; plan 001 § Interfaces) over the store in `schema.ts`. The route
  * keeps its own `no-store` JSON and its weak `ETag` over `Bun.hash`, byte-identical to what it always sent (a
- * recorded decision of spec 059), rather than `infra/http/json.ts`' strong one.
+ * recorded decision of spec 059), rather than `infra/http/json.ts`' strong one. The route is the router's
+ * `SETTINGS_FAMILY` (spec 059, ISC-412), its 403 and 405 in that same JSON.
  */
 import { isRecord } from "../contracts/guards.ts";
-import { loopbackRefusal, methodNotAllowed, type Responder } from "../infra/http/guard.ts";
+import type { Responder } from "../infra/http/guard.ts";
+import { type PathMatch, type RouteHandlers, createRouter, pathFamily } from "../infra/http/router.ts";
 import { type ApiHandler, matchesIfNoneMatch } from "../infra/http/server.ts";
 import { type Settings, SettingsError, type SettingsStore } from "./schema.ts";
 
@@ -36,11 +38,14 @@ function settingsResponse(settings: Settings, req: Request): Response {
   return new Response(req.method === "HEAD" ? null : body, { headers });
 }
 
+/** The settings route as the router's family: `/api/settings` alone, refused in the route's own JSON. */
+export const SETTINGS_FAMILY = pathFamily("settings", SETTINGS_PATH, ALLOW, respond);
+
 /**
- * `GET` / `HEAD` / `PUT /api/settings` as an `ApiHandler` for `serve({ api })`; `null` for any other path, so the
- * server's JSON 404 applies. Responses carry settings values and error codes only, never a path (ISC-3).
+ * The handler of `GET` / `HEAD` / `PUT /api/settings`; the router has checked the guard and the method. Responses
+ * carry settings values and error codes only, never a path (ISC-3).
  */
-export function settingsApi(store: SettingsStore): ApiHandler {
+export function settingsHandlers(store: SettingsStore): RouteHandlers<PathMatch<"settings">> {
   const put = async (req: Request): Promise<Response> => {
     let body: unknown;
     try {
@@ -57,12 +62,12 @@ export function settingsApi(store: SettingsStore): ApiHandler {
     }
   };
 
-  return (req, url) => {
-    if (url.pathname !== SETTINGS_PATH) return null;
-    const refused = loopbackRefusal(req, respond);
-    if (refused !== null) return refused;
-    if (req.method === "GET" || req.method === "HEAD") return settingsResponse(store.get(), req);
-    if (req.method === "PUT") return put(req);
-    return methodNotAllowed(req, ALLOW, respond);
-  };
+  return {
+    settings: (req) => (req.method === "PUT" ? put(req) : settingsResponse(store.get(), req)),
+  } satisfies RouteHandlers<PathMatch<"settings">>;
+}
+
+/** `GET` / `HEAD` / `PUT /api/settings` alone as an `ApiHandler`; `null` for any other path, so the server's 404 applies. */
+export function settingsApi(store: SettingsStore): ApiHandler {
+  return createRouter([SETTINGS_FAMILY], settingsHandlers(store));
 }

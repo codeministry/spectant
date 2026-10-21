@@ -1,8 +1,8 @@
 /**
  * The `live/` slice's one public surface (spec 059): the live update stream `GET /api/events` and the watch hub that
- * reports, per workspace, which specs changed.
+ * reports, per workspace, which specs changed; the stream as the router's family and handler, and alone.
  */
-export { type EventsApiOptions, HEARTBEAT_MS, eventsApi, livePathsOf } from "./events.ts";
+export { EVENTS_FAMILY, type EventsApiOptions, HEARTBEAT_MS, eventsApi, eventsHandlers, livePathsOf } from "./events.ts";
 export {
   type LiveChange,
   type LiveListener,

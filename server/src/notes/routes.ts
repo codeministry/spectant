@@ -8,11 +8,15 @@
  *
  * Store: `openNotes` in `infra/db/notes-store.ts` (its SQL and the `NoteRow` mapping), re-exported by `index.ts`.
  *
- * Routes (`NOTE_ROUTE_TABLE`): a path that is no notes route is `null`, so the chain goes on. Otherwise 403 from the
- * loopback guard, 405 with `noteAllowFor`, 404 for an unknown workspace or note id, 400 `{error}` from the contract's
- * parsers before the database is touched, 201 on create, 204 on delete, and the GETs carry `json()`'s strong ETag.
+ * Routes (`NOTE_ROUTE_TABLE`), as the router's `NOTES_FAMILY` (spec 059, ISC-412): the table's five routes sit on three
+ * paths, so the family's routes are those paths, `notes` (list, create), `note` (update, remove) and `noteCounts`, and
+ * each handler takes the table's route by the method (`matchNoteRoute`). A path that is no notes route is declined, so
+ * the chain goes on. Otherwise 403 from the loopback guard, 405 with `noteAllowFor`, 404 for an unknown workspace or
+ * note id, 400 `{error}` from the contract's parsers before the database is touched, 201 on create, 204 on delete, and
+ * the GETs carry `json()`'s strong ETag.
  */
 import {
+  type NoteRouteParams,
   isNoteId,
   matchNoteRoute,
   noteAllowFor,
@@ -23,8 +27,8 @@ import {
 } from "../contracts/note-routes.contract.ts";
 import type { NoteStore } from "../infra/db/notes-store.ts";
 import type { Registry } from "../infra/db/registry.ts";
-import { loopbackRefusal, methodNotAllowed } from "../infra/http/guard.ts";
 import { json, readJson } from "../infra/http/json.ts";
+import { type RouteFamily, type RouteHandlers, createRouter } from "../infra/http/router.ts";
 import type { ApiHandler } from "../infra/http/server.ts";
 
 export type NotesApiOptions = {
@@ -33,19 +37,42 @@ export type NotesApiOptions = {
   registry: Pick<Registry, "get">;
 };
 
+/** A notes path: the collection, one note, or the counts. */
+export type NotesFamilyMatch =
+  | { readonly route: "notes"; readonly params: NoteRouteParams["list"] }
+  | { readonly route: "note"; readonly params: NoteRouteParams["update"] }
+  | { readonly route: "noteCounts"; readonly params: NoteRouteParams["counts"] };
+
+/** The path a notes route names, whatever the method: its `GET` route, else its `PUT` one. */
+function matchNotesPath(pathname: string): NotesFamilyMatch | null {
+  const read = matchNoteRoute(pathname, "GET");
+  if (read?.route === "list") return { route: "notes", params: read.params };
+  if (read?.route === "counts") return { route: "noteCounts", params: read.params };
+  const item = matchNoteRoute(pathname, "PUT");
+  return item?.route === "update" ? { route: "note", params: item.params } : null;
+}
+
+export const NOTES_FAMILY: RouteFamily<NotesFamilyMatch["route"], NotesFamilyMatch> = {
+  name: "notes",
+  routes: ["notes", "note", "noteCounts"],
+  claims: (pathname) => matchNotesPath(pathname) !== null,
+  match: matchNotesPath,
+  allow: (_route, pathname) => noteAllowFor(pathname) ?? "",
+  guard: "loopback",
+  respond: json,
+  unmatched: "decline",
+};
+
 const notFound = (req: Request): Response => json(req, 404, { error: "not-found" });
 
-/** The notes routes as an `ApiHandler`; `null` for every path that is no notes route. */
-export function notesApi(options: NotesApiOptions): ApiHandler {
+/** The notes routes' handlers; the router has checked the guard and the method. */
+export function notesHandlers(options: NotesApiOptions): RouteHandlers<NotesFamilyMatch> {
   const { store, registry } = options;
 
-  return (req, url) => {
-    const allow = noteAllowFor(url.pathname);
-    if (allow === null) return null;
-    const refused = loopbackRefusal(req);
-    if (refused !== null) return refused;
+  const answer = (req: Request, url: URL): Response | Promise<Response> | null => {
+    // The method is one the path's `Allow` names, so the table has its route.
     const match = matchNoteRoute(url.pathname, req.method);
-    if (match === null) return methodNotAllowed(req, allow);
+    if (match === null) return null;
     const { ws } = match.params;
     if (registry.get(ws) === undefined) return notFound(req);
 
@@ -79,4 +106,11 @@ export function notesApi(options: NotesApiOptions): ApiHandler {
       }
     }
   };
+
+  return { notes: answer, note: answer, noteCounts: answer } satisfies RouteHandlers<NotesFamilyMatch>;
+}
+
+/** The notes routes alone as an `ApiHandler`; `null` for every path that is no notes route. */
+export function notesApi(options: NotesApiOptions): ApiHandler {
+  return createRouter([NOTES_FAMILY], notesHandlers(options));
 }

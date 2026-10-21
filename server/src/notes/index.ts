@@ -1,6 +1,6 @@
 /** The notes slice (spec 002): the notes routes, the store re-exported from `infra/db/`, `import-notes`/`export-notes`. */
 export { type NoteStore, type NoteStoreOptions, openNotes } from "../infra/db/notes-store.ts";
-export { type NotesApiOptions, notesApi } from "./routes.ts";
+export { NOTES_FAMILY, type NotesApiOptions, type NotesFamilyMatch, notesApi, notesHandlers } from "./routes.ts";
 export {
   type ImportResult,
   NotesFileError,

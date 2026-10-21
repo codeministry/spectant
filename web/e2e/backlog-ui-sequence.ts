@@ -13,7 +13,7 @@
  * milestone" as F0, F5, F6, F7, the feature board the bands that have cards: F2, F4 and F0, F5, F6, …
  * (web/CLAUDE.md § Driving the backlog writes from an e2e spec).
  */
-import type { BacklogRequest } from '../../server/src/spec-routes.contract.ts';
+import type { BacklogRequest } from '../../server/src/contracts/spec-routes.contract.ts';
 
 /** A backlog request as the page builds it, before it adds the `backlogHash` it read. */
 export type BacklogUiBody = BacklogRequest extends infer R ? (R extends unknown ? Omit<R, 'hash'> : never) : never;

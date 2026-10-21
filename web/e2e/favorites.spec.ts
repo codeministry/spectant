@@ -14,7 +14,7 @@
  */
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
-import { workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 

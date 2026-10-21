@@ -111,7 +111,7 @@ export function loadBoardCore(): BoardCore {
   const docs = load(join(src, 'markdown-docs.ts')) as Pick<BoardCore, 'renderDocsMarkdown'>;
   const evidence = load(join(src, 'evidence.ts')) as Pick<BoardCore, 'docsRenderOptions'>;
   const stage = load(join(src, 'stage.ts')) as Pick<BoardCore, 'rowTransitions' | 'defaultWorkflowRow' | 'SPEC_RULES' | 'commandWith'>;
-  const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'writes.contract.ts')) as Pick<
+  const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'contracts', 'writes.contract.ts')) as Pick<
     BoardCore,
     'specConflict' | 'ideaConflict' | 'blockingLock' | 'writePathsOf' | 'VIEWER_ACTOR_FALLBACK' | 'backlogConflict'
   >;

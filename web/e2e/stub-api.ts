@@ -263,8 +263,8 @@ import {
   type WorkspaceRouteMatch,
   type WorkspaceRouteName,
   type LibraryDocPage,
-} from '../../server/src/spec-routes.contract';
-import * as AdminContractModule from '../../server/src/workspace-admin.contract';
+} from '../../server/src/contracts/spec-routes.contract';
+import * as AdminContractModule from '../../server/src/contracts/workspace-admin.contract';
 import {
   type Note,
   type NoteCounts,
@@ -275,7 +275,7 @@ import {
   parseNoteCountsQuery,
   parseNoteDraft,
   parseNotesQuery,
-} from '../../server/src/notes.contract';
+} from '../../server/src/contracts/note-routes.contract';
 import type { ApiHandler } from './serve-dist';
 import {
   OVERLAY_GOLDEN,
@@ -1311,7 +1311,7 @@ function loadEdgeCore(): EdgeCore {
     ...['dashboard', 'planning', 'spec', 'claim-view', 'live', 'tasks', 'spec-edges', 'locks', 'gates', 'item-state', 'guidance'].map((name) => at('src', `${name}.ts`)),
   ];
   const [tree, planning, dashboard, plan, spec, claimView, live, tasks, edges, locks, gates, state, guidance] = modules;
-  const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'writes.contract.ts')) as Partial<EdgeCore>;
+  const writes = load(join(import.meta.dir, '..', '..', 'server', 'src', 'contracts', 'writes.contract.ts')) as Partial<EdgeCore>;
   const loaded: Partial<EdgeCore> = {
     readTreeAt: tree?.readTreeAt,
     ideaFilesAt: tree?.ideaFilesAt,
