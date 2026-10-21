@@ -22,6 +22,7 @@ import {
   defaultGitRunner,
   dirty,
   lastCommits,
+  mainCheckoutOf,
   mergeCommitOf,
   type GitRunner,
   takenSpecNumbers,
@@ -565,6 +566,45 @@ describe("worktreeList reads the raw `git worktree list --porcelain` text (spec 
     await worktreeList(dir, { timeoutMs: 1 });
     await worktreeList(join(dir, ".worktrees/027-x"));
     expect(checksum(dir)).toBe(before);
+  });
+});
+
+describe("mainCheckoutOf names the main checkout of the checkout a command line starts in (spec 062, ISC-442)", () => {
+  test("a linked worktree answers the main checkout; the main checkout and a plain folder answer themselves, as given", async () => {
+    const dir = worktreeRepo();
+    expect(await mainCheckoutOf(join(dir, ".worktrees/027-x"))).toBe(git(dir, "2026-01-03T00:00:00Z", "rev-parse", "--show-toplevel"));
+    expect(await mainCheckoutOf(join(dir, ".worktrees/detached"))).toBe(git(dir, "2026-01-03T00:00:00Z", "rev-parse", "--show-toplevel"));
+    expect(await mainCheckoutOf(dir)).toBe(dir);
+    const plain = mkdtempSync(join(root, "main-checkout-plain-"));
+    expect(await mainCheckoutOf(plain)).toBe(plain);
+    // Discovery stops at the folder: a subfolder of a checkout is no checkout of its own and stays as given.
+    expect(await mainCheckoutOf(join(dir, ".worktrees/027-x/specs"))).toBe(join(dir, ".worktrees/027-x/specs"));
+  });
+
+  test("runs only `rev-parse --git-common-dir`, rooted at the folder, under the read-only environment, and changes no byte", async () => {
+    const dir = worktreeRepo();
+    const spec = join(dir, ".worktrees/027-x");
+    const before = checksum(dir);
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    await mainCheckoutOf(spec, { runner });
+    expect(seen.map((s) => s.args)).toEqual([["-C", spec, "rev-parse", "--git-common-dir"]]);
+    expect(seen[0]?.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(spec) });
+    await mainCheckoutOf(spec, { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
+  });
+
+  test("no git, a failing git, a throwing runner or the deadline → the folder itself, never a throw", async () => {
+    const spec = join(worktreeRepo(), ".worktrees/027-x");
+    expect(await mainCheckoutOf(spec, { runner: () => Promise.resolve(null) })).toBe(spec);
+    expect(await mainCheckoutOf(spec, { runner: () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" }) })).toBe(spec);
+    expect(await mainCheckoutOf(spec, { runner: () => Promise.reject(new Error("spawn failed")) })).toBe(spec);
+    expect(await mainCheckoutOf(spec, { runner: () => new Promise(() => undefined), timeoutMs: 20 })).toBe(spec);
+    // A common directory that is no `.git` folder (a bare or submodule layout) is not guessed at.
+    expect(await mainCheckoutOf(spec, { runner: () => Promise.resolve({ code: 0, stdout: "/x/modules/sub\n", stderr: "" }) })).toBe(spec);
   });
 });
 

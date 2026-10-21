@@ -12,6 +12,7 @@ export {
   mergeCommitOf,
   mergedSpecBranches,
 } from "./merges.ts";
+export { mainCheckoutOf } from "./main-checkout.ts";
 export { type TakenNumbers, type UserEmailOptions, takenSpecNumbers, userEmail } from "./refs.ts";
 export { DEFAULT_TIMEOUT_MS, type GitRun, type GitRunner, defaultGitRunner, mapBounded } from "./runner.ts";
 export { aheadOfMain, changedPaths, dirty, lastCommits, trackedPlanningPaths, trackedSpecPaths, worktreeList } from "./worktrees.ts";

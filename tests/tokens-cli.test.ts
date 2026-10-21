@@ -29,6 +29,8 @@ import { dirname, join, relative } from "node:path";
 import * as tls from "node:tls";
 import { EVENT_STAGES } from "../core/src/events.ts";
 import { BASELINE_COMMAND_KEYS, TOKEN_COUNTERS, TOKEN_ROW_KEYS, TOKEN_ROW_KINDS, type TokenRowKind } from "../core/src/tokens.ts";
+import { run } from "../server/src/cli/index.ts";
+import type { EmbeddedManifest } from "../server/src/contracts/assets.contract.ts";
 import * as paths from "../server/src/infra/paths.ts";
 import { TOKENS_PATH, discoverTranscripts, encodeProjectPath, tokensCommand } from "../server/src/tokens/index.ts";
 
@@ -703,5 +705,56 @@ describe("offline", () => {
     expect(fs.readdirSync(xdg)).toEqual([]);
     expect(filesBelow(home)).toEqual(before);
     expect(fs.existsSync(join(home, ".spectant"))).toBe(false);
+  });
+});
+
+// `from worktree` (spec 062, ISC-442): `spectant tokens --yes` without `--root`, started in the main checkout and in a
+// spec worktree of fresh copies of the same repository, writes a byte-identical `specs/tokens.jsonl` at the same place,
+// the main checkout's; an explicit `--root` stays as given. `bun test tests/tokens-cli.test.ts -t "from worktree"`.
+describe("from worktree", () => {
+  const SPEC_WORKTREE = ".worktrees/012-harbor";
+  /** `run` takes the embedded manifest; `tokens` never serves, so an empty one does. */
+  const MANIFEST: EmbeddedManifest = { generatedAt: "2026-10-12T00:00:00.000Z", index: "", assets: [] };
+
+  function git(cwd: string, ...args: string[]): void {
+    const home = temp("spectant-tokens-cli-git-home-");
+    const env = { PATH: process.env.PATH ?? "", HOME: home, LC_ALL: "C", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: join(home, "gitconfig") };
+    const result = Bun.spawnSync(["git", "-C", cwd, "-c", "user.name=t", "-c", "user.email=t@example.test", ...args], { env, stdout: "pipe", stderr: "pipe" });
+    if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${result.stderr.toString()}`);
+  }
+
+  /** The harbor root as a repository with its `specs/` committed and a spec worktree checked out beside it. */
+  function harborRepo(): { main: string; worktree: string } {
+    const main = harborRoot();
+    put(join(main, ".gitignore"), ".worktrees/\n");
+    git(main, "init", "--quiet", "--initial-branch=main");
+    git(main, "add", "-A");
+    git(main, "commit", "--quiet", "-m", "harbor");
+    git(main, "worktree", "add", "--quiet", "-b", "feature/012-harbor", SPEC_WORKTREE);
+    return { main, worktree: join(main, SPEC_WORKTREE) };
+  }
+
+  async function tokensFrom(cwd: "main" | "worktree", root: string[] = []): Promise<{ main: string; worktree: string }> {
+    const repo = harborRepo();
+    const argv = ["tokens", ...root, "--transcripts", transcriptCopy(), "--yes"];
+    expect(await run(argv, MANIFEST, { cwd: repo[cwd], env: {} })).toBe(0);
+    return repo;
+  }
+
+  test("from worktree: the same specs/tokens.jsonl, byte for byte, in the main checkout", async () => {
+    const fromMain = await tokensFrom("main");
+    const fromWorktree = await tokensFrom("worktree");
+    expect(fs.existsSync(join(fromMain.main, TOKENS_PATH))).toBe(true);
+    expect(fs.existsSync(join(fromWorktree.main, TOKENS_PATH))).toBe(true);
+    expect(tokensBytes(fromWorktree.main).equals(tokensBytes(fromMain.main))).toBe(true);
+    // Neither call writes into the worktree's own copy of specs/.
+    expect(fs.existsSync(join(fromMain.worktree, TOKENS_PATH))).toBe(false);
+    expect(fs.existsSync(join(fromWorktree.worktree, TOKENS_PATH))).toBe(false);
+  });
+
+  test("from worktree: an explicit --root is kept as given, the worktree itself", async () => {
+    const repo = await tokensFrom("worktree", ["--root", "."]);
+    expect(fs.existsSync(join(repo.worktree, TOKENS_PATH))).toBe(true);
+    expect(fs.existsSync(join(repo.main, TOKENS_PATH))).toBe(false);
   });
 });
