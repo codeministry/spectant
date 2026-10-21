@@ -116,7 +116,7 @@ describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
       // No rail blocks or strip badges are registered (T13).
       const rail = TestBed.inject(RailContent);
       expect([rail.blocks(), rail.badges()]).toEqual([null, null]);
-      expect(page.querySelector('app-next-up-list')?.getAttribute('data-form')).toBe('card');
+      expect(page.querySelector('app-next-up-list > ui-section-header')).not.toBeNull();
       expect(page.querySelector('app-warnings-panel')?.getAttribute('data-form')).toBe('section');
     });
 

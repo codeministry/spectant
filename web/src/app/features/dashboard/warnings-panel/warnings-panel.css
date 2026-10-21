@@ -1,6 +1,5 @@
 /*
- * Warnings (T64, ported in T90 from the prototype's `styles.css`: `.rail-block > .eyebrow` l.415, warnings-panel
- * `.w-group` / `.w-line` l.403-408, `.fog-line` l.660-663, `.empty-line` l.409-410). Tokens only; spacing on the 8 px
+ * Warnings (T64, ported in T90 from the prototype's `styles.css`: warnings-panel `.w-group` / `.w-line` l.403-408, `.fog-line` l.660-663, `.empty-line` l.409-410). Tokens only; spacing on the 8 px
  * scale; the orange callout edge is the inherited 3 px exception.
  */
 :host {
@@ -13,22 +12,9 @@
   min-inline-size: 0;
 }
 
-/* Section form: 8 px under the section header instead of its 16, as Next up's card form (spec 058, T46). */
+/* Section form: 8 px under the section header instead of its 16, as Next up (spec 058, T46). */
 .section ui-section-header {
   margin-block-end: var(--space-2);
-}
-
-/* Rail form: the eyebrow heading with its count on the right, 12 px above the card. */
-.eyebrow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-block-end: 12px;
-  color: var(--muted-ink);
-}
-
-.eyebrow h2 {
-  margin: 0;
 }
 
 .count {

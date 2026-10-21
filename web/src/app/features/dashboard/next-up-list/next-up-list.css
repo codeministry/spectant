@@ -1,27 +1,13 @@
 /*
- * Next up (T64, ported in T90 from the prototype's `styles.css`: `.rail-block > .eyebrow` l.415, `[data-ui="next-up-list"]`
- * l.353, `.next-row` l.480-481). Tokens only; spacing on the 8 px scale. Spec 021 (T79, P3 heights): both forms are one
- * card of rows under hairlines.
+ * Next up (T64, ported in T90 from the prototype's `styles.css`: `[data-ui="next-up-list"]` l.353, `.next-row`
+ * l.480-481). Tokens only; spacing on the 8 px scale. Spec 021 (T79, P3 heights): one card of rows under hairlines.
  */
 :host {
   display: block;
   min-inline-size: 0;
 }
 
-/* Rail form: the eyebrow heading with its count on the right, 12 px above the card. */
-.eyebrow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-block-end: 12px;
-  color: var(--muted-ink);
-}
-
-.eyebrow h2 {
-  margin: 0;
-}
-
-/* Card form: 8 px under the section header instead of its 16 (spec 021, T79). */
+/* 8 px under the section header instead of its 16 (spec 021, T79). */
 ui-section-header {
   margin-block-end: var(--space-2);
 }

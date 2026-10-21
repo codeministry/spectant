@@ -21,7 +21,7 @@
     @if (view.guidance; as guidance) {
       <app-waiting-section [entries]="guidance.waits" [workspace]="ws()" [level]="2" />
     }
-    <app-next-up-list form="card" [ws]="ws()" [specs]="view.specs" [ids]="view.nextUp" [guidance]="view.guidance" />
+    <app-next-up-list [ws]="ws()" [specs]="view.specs" [ids]="view.nextUp" [guidance]="view.guidance" />
     <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" />
   } @else {
     <!-- Loading: the head alone, a placeholder where the KPI band and Next up will stand. -->

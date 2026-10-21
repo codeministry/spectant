@@ -117,7 +117,9 @@ export class SpecTable {
     const param = this.params().get('density');
     return isDensity(param) ? param : this.settings.settings().density;
   });
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+  // Recomputes the labels once the active language's catalogue has loaded, not only on a language switch: on the
+  // Specs page (spec 058) the list renders before the catalogue arrives, and a label read then stays its raw key.
+  private readonly lang = toSignal(this.transloco.selectTranslation());
 
   readonly ws = input.required<string>();
   readonly rows = input.required<readonly SpecTableRow[]>();
