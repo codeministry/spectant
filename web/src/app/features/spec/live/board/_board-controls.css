@@ -1,0 +1,328 @@
+/*
+ * The Board tab's host, frame and controls (toolbar, legend pills, lane filter, search, scrubber, frame label), pulled
+ * in first by board-tab.css, so the rules keep their order.
+ */
+:host {
+  --board-sticky-top: 108px;
+
+  display: block;
+  min-inline-size: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.board {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.grow {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.controls {
+  position: sticky;
+  z-index: 2;
+  inset-block-start: var(--board-sticky-top);
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  padding-block: 8px 0;
+  border-block-end: 1px solid var(--line);
+  background: var(--page-glass);
+  backdrop-filter: blur(12px);
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: 48px;
+}
+
+.view-switch {
+  flex: none;
+}
+
+/* The prototype's `.legend` wraps: every pill stays whole, none is cut off or scrolled away. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.lchip {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+  block-size: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: none;
+  color: var(--color-base-content);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-pop) var(--ease),
+    opacity var(--dur-pop) var(--ease);
+}
+
+.lchip:hover {
+  background: var(--color-base-300);
+}
+
+.lchip i {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--track);
+}
+
+.lchip[aria-pressed='false'] {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.count {
+  color: var(--muted-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.tool {
+  flex: none;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.tool[aria-pressed='true'] {
+  border-color: var(--track);
+  background: var(--color-base-300);
+}
+
+.lane-pop {
+  position-anchor: --board-lane-filter;
+  inset: auto;
+  inset-block-start: anchor(bottom);
+  inset-inline-end: anchor(right);
+  min-inline-size: 220px;
+  margin: 4px 0 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: var(--shadow-hair);
+}
+
+[data-lane-filter-open] {
+  anchor-name: --board-lane-filter;
+}
+
+.pop-head {
+  padding: 4px 8px 8px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pop-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 36px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.pop-item:hover {
+  background: var(--color-base-300);
+}
+
+.bsearch {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  block-size: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+}
+
+.bsearch:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.bsearch input {
+  inline-size: 150px;
+  border: 0;
+  background: none;
+  color: var(--color-base-content);
+  font-size: 13px;
+  outline: none;
+}
+
+.bsearch-wide {
+  display: flex;
+}
+
+.bsearch-wide input {
+  flex: 1;
+  inline-size: auto;
+}
+
+.density span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.filtered, .stop, .progress-line {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.filtered {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.progress-line {
+  font-family: var(--font-mono);
+}
+
+.scrub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: 56px;
+  padding-block-end: 8px;
+}
+
+.scrubber {
+  flex: 1 1 380px;
+  min-inline-size: 0;
+}
+
+.frame-meta {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.flabel {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-base-300);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.live-i {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: board-live-pulse var(--motion-duration-skeleton) var(--ease) infinite;
+}
+
+@keyframes board-live-pulse {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-i { animation: none; }
+}
+
+.history {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* spec 024: the replay's frame label is the plain .flabel (no live pulse), then the prototype .hist-chip and the
+   "Back to live" .tb-btn (32 px, card ground, hairline shadow). */
+.hist-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--hover-t);
+  color: var(--hover-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+.back {
+  block-size: 32px;
+  min-block-size: 32px;
+  padding-inline: 10px;
+  background: var(--color-base-100);
+  box-shadow: var(--shadow-hair);
+  font-size: 13px;
+}
+
+/* The prototype .empty-state: centred, 32 px, dashed. */
+.empty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin: 0;
+  padding: 32px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-card);
+  color: var(--muted-ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* From 640: the prototype's `lanes-board`, 300 px columns running sideways in one scroller. */
+.lanes {
+  display: grid;
+  grid-auto-columns: 300px;
+  grid-auto-flow: column;
+  gap: 12px;
+  align-items: start;
+  min-inline-size: 0;
+  padding-block-end: 8px;
+  overflow-x: auto;
+}
+

@@ -1,0 +1,13 @@
+/* The loading skeleton's columns (moved from board-page.css with the markup). */
+.skeleton-cols {
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.skeleton-card {
+  display: grid;
+  flex: none;
+  gap: 8px;
+  inline-size: var(--board-col);
+}

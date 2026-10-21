@@ -1,0 +1,225 @@
+/* NotesArea's second stylesheet, after notes-area.css in styleUrls: the preview, the delete dialog, the anchor
+ * picker and the empty states. Not encapsulated like the first: every selector starts with app-notes-area. */
+
+/* The preview as the prototype's `.md`: 15/26, Sora headings, code on raised, pre on lane. */
+app-notes-area .notes-preview {
+  max-inline-size: 72ch;
+  min-inline-size: 0;
+  padding: 4px 0;
+  font-size: 15px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+app-notes-area .notes-preview > :first-child {
+  margin-block-start: 0;
+}
+
+app-notes-area .notes-preview :is(h1, h2, h3, h4) {
+  margin: 24px 0 8px;
+  font-family: var(--font-brand);
+  font-weight: 600;
+}
+
+app-notes-area .notes-preview h1 {
+  font-size: 22px;
+  line-height: 30px;
+}
+
+app-notes-area .notes-preview :is(h2, h3, h4) {
+  font-size: 17px;
+  line-height: 26px;
+}
+
+app-notes-area .notes-preview :is(p, ul, ol, blockquote, pre) {
+  margin: 0 0 12px;
+}
+
+app-notes-area .notes-preview :is(ul, ol) {
+  padding-inline-start: 24px;
+}
+
+app-notes-area .notes-preview ul {
+  list-style: disc;
+}
+
+app-notes-area .notes-preview ol {
+  list-style: decimal;
+}
+
+app-notes-area .notes-preview code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--color-base-300);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+app-notes-area .notes-preview pre {
+  overflow-x: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--lane);
+}
+
+app-notes-area .notes-preview pre code {
+  padding: 0;
+  background: none;
+}
+
+app-notes-area .notes-preview blockquote {
+  padding-inline-start: 16px;
+  border-inline-start: 3px solid var(--line);
+  color: var(--muted-ink);
+}
+
+app-notes-area .notes-preview a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+app-notes-area .notes-confirm-text {
+  margin: 0 0 24px;
+}
+
+app-notes-area .notes-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+app-notes-area .notes-none-hint {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+/* The prototype's `.btn.danger`: red tint, red ink, red frame. */
+app-notes-area .notes-danger {
+  border-color: var(--color-error);
+  background: var(--fail-t);
+  color: var(--fail-text);
+}
+
+/* The anchor picker as the prototype's `.anchor-pop` (search on lane, `.pop-item` rows, id in mono). */
+app-notes-area .notes-anchor-pop {
+  --ui-popover-width: 280px;
+}
+
+app-notes-area .notes-anchor-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  block-size: 34px;
+  margin-block-end: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--lane);
+  color: var(--muted-ink);
+}
+
+app-notes-area .notes-anchor-search input {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  color: var(--color-base-content);
+  outline: 0;
+}
+
+app-notes-area .notes-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-block-size: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+app-notes-area .notes-pick {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+
+app-notes-area .notes-pick:hover,
+app-notes-area .notes-pick[aria-pressed='true'] {
+  background: var(--color-base-300);
+}
+
+app-notes-area .notes-pick-id {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-notes-area .notes-pick-kind {
+  color: var(--muted-ink);
+  font-size: 12px;
+}
+
+app-notes-area .notes-pick-group {
+  padding: 8px 8px 2px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (pointer: coarse) {
+  app-notes-area .notes-pick { min-block-size: 44px; }
+}
+
+
+/* The prototype's small `[data-ui="empty-state"]` in the list and the editor: start-aligned, bare muted icon, 15/24. */
+app-notes-area[data-view] ui-empty-state {
+  gap: 8px;
+  justify-items: start;
+  max-inline-size: 520px;
+  margin-inline: 0;
+  padding: 16px 12px;
+  text-align: start;
+}
+
+app-notes-area[data-view] ui-empty-state .icon {
+  inline-size: auto;
+  block-size: auto;
+  margin: 0;
+  background: none;
+  color: var(--muted-ink);
+}
+
+app-notes-area[data-view] ui-empty-state .title {
+  font-size: 15px;
+  line-height: 24px;
+}
+
+app-notes-area[data-view] .notes-editor ui-empty-state {
+  gap: 12px;
+  padding: 24px 16px;
+}
+
+app-notes-area[data-view] .notes-editor ui-empty-state .title {
+  font-size: 20px;
+  line-height: 28px;
+}

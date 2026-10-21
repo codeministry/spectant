@@ -1,0 +1,44 @@
+/* The settings cards' shared rules: the card head, the card padding, the muted meta lines, the eyebrow and the text
+   field's box. Each importer keeps its own h2 selector and the field's width. */
+.c-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px var(--space-3);
+  border-block-end: 1px solid var(--line);
+}
+
+.card-pad {
+  padding: var(--space-3);
+}
+
+.meta,
+.intro,
+.empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.field {
+  block-size: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--lane);
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 14px;
+}

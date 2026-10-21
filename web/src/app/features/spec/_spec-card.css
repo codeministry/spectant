@@ -1,0 +1,17 @@
+/*
+ * The card surface of the spec pages (spec 061): the tab pages' `.section-card` and the spec rail's `.sr-card`, the
+ * prototype's `.card` with 16 px padding; each sets its own gap. `_spec-tab-page.css` and the rail's stylesheets import
+ * it as their first rule; emulated encapsulation scopes the copy per component, and no element carries a class the
+ * rules it now precedes also style (`:host`, `.page`, `.sr`), so the move changes no cascade.
+ */
+.section-card,
+.sr-card {
+  display: grid;
+  align-content: start;
+  min-inline-size: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}

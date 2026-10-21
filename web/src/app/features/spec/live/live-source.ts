@@ -1,8 +1,9 @@
 import { computed, DestroyRef, effect, inject, Injectable, resource, type ResourceRef, signal, untracked } from '@angular/core';
 import type { SpecRouteResponses } from '../../../../../../server/src/contracts/spec-routes.contract';
-import { type ApiResult, ApiClient } from '../../../core/api.service';
+import { type ApiResult, ApiClient, type TasksResult } from '../../../core/api.service';
 import { RefreshService } from '../../../layout/shell/refresh.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
+import type { HistoryFrame } from './card/card-history';
 
 /** The open spec's `…/live` answer as the views read it. */
 export type LiveAnswer = ApiResult<SpecRouteResponses['live']>;
@@ -52,5 +53,34 @@ export class LiveSource {
     this.readers.update((set) => new Set([...set, wants]));
     inject(DestroyRef).onDestroy(() => this.readers.update((set) => new Set([...set].filter((w) => w !== wants))));
     return this.result;
+  }
+
+  /**
+   * The open spec's history frames (`…/frames`) for a card's state history, read while `wants()` holds (a card only
+   * while its detail is open); a failed read is no history. Each caller owns its read. Call it in an injection context.
+   */
+  history(wants: () => boolean): ResourceRef<readonly HistoryFrame[] | undefined> {
+    return resource({
+      params: () => this.open(wants),
+      loader: async ({ params }): Promise<readonly HistoryFrame[]> => {
+        const history = await this.api.frames(params.ws, params.id);
+        return history.kind === 'ok' ? history.body : [];
+      },
+    });
+  }
+
+  /**
+   * The open spec's tasks.md read (`…/tasks`, core's parse) while `wants()` holds: the card detail's paths and probe,
+   * the operator steps' rows. Each caller owns its read. Call it in an injection context.
+   */
+  tasks(wants: () => boolean): ResourceRef<TasksResult | undefined> {
+    return resource({ params: () => this.open(wants), loader: ({ params }) => this.api.tasks(params.ws, params.id) });
+  }
+
+  /** The open spec while `wants()` holds, else undefined (a resource then stays idle). */
+  private open(wants: () => boolean): { ws: string; id: string } | undefined {
+    const ws = this.shell.ws();
+    const id = this.shell.specId();
+    return wants() && ws !== null && id !== null ? { ws, id } : undefined;
   }
 }

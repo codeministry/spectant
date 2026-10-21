@@ -1,0 +1,18 @@
+@for (card of cards(); track card.key) {
+  <li [attr.data-moved]="drag().moved() === card.key ? '' : null">
+    <app-board-card
+      cdkDrag
+      [cdkDragData]="card"
+      [cdkDragDisabled]="!drag().draggable(card)"
+      (cdkDragStarted)="lifted.emit(card)"
+      (cdkDragEnded)="settled.emit()"
+      (moveMenu)="moveMenu.emit({ card, grip: $event })"
+      (step)="step.emit({ card, dir: $event })"
+      [card]="card"
+      [ws]="ws()"
+    />
+    @if (drag().refusalOf(card); as refusal) {
+      <app-refusal-notice [refusal]="refusal" (closed)="drag().dismiss(card.key)" />
+    }
+  </li>
+}

@@ -1,4 +1,4 @@
-@if (!importDismissed()) {
+@if (!store.importDismissed()) {
   <ui-notice class="notes-import" tone="info" icon="sticky-note" data-notes-import>
     <strong class="notes-import-title">{{ 'notes.import.title' | transloco }}</strong>
     <span class="notes-import-lead">{{ 'notes.import.text' | transloco }}</span>
@@ -8,12 +8,12 @@
       [copiedLabel]="'common.copied' | transloco: { command: importCommand }"
       [manualHint]="'common.copyFallback' | transloco"
     />
-    <button action ui-icon-button icon="x" size="sm" [label]="'notes.import.dismiss' | transloco" (click)="dismissImport()"></button>
+    <button action ui-icon-button icon="x" size="sm" [label]="'notes.import.dismiss' | transloco" (click)="store.dismissImport()"></button>
   </ui-notice>
 }
 
 <div class="notes-card notepad">
-  @if (mode() !== 'editor') {
+  @if (store.mode() !== 'editor') {
     <section class="notes-list" data-notes-list [attr.aria-label]="'notes.list.label' | transloco">
       <div class="notes-list-head">
         <label class="input notes-search">
@@ -21,34 +21,34 @@
           <input
             #searchBox
             type="search"
-            [value]="search()"
+            [value]="store.search()"
             [placeholder]="'notes.list.search' | transloco"
             [attr.aria-label]="'notes.list.search' | transloco"
-            (input)="setSearch(searchBox.value)"
+            (input)="store.setSearch(searchBox.value)"
           />
         </label>
-        <a ui-button class="notes-new" variant="primary" [size]="wide() ? 'sm' : 'md'" [routerLink]="link('new')" queryParamsHandling="preserve" data-notes-new>
+        <a ui-button class="notes-new" variant="primary" [size]="store.wide() ? 'sm' : 'md'" [routerLink]="store.link('new')" queryParamsHandling="preserve" data-notes-new>
           <ui-icon name="plus" [size]="16" />{{ 'notes.list.new' | transloco }}
-          @if (wide()) {
+          @if (store.wide()) {
             <ui-kbd>n</ui-kbd>
           }
         </a>
       </div>
-      <ui-filter-chips data-filter="notes" [options]="filterOptions()" [value]="filter()" (valueChange)="setFilter($event)" [label]="'notes.filter.label' | transloco" />
+      <ui-filter-chips data-filter="notes" [options]="store.filterOptions()" [value]="store.filter()" (valueChange)="store.setFilter($event)" [label]="'notes.filter.label' | transloco" />
 
-      @if (failed()) {
+      @if (store.failed()) {
         <ui-empty-state icon="triangle-alert" [heading]="'notes.list.failed' | transloco" />
-      } @else if (loaded()) {
+      } @else if (store.loaded()) {
         <ul class="notes-rows" role="list">
-          @for (row of rows(); track row.note.id) {
+          @for (row of store.rows(); track row.note.id) {
             <li>
               <a
                 class="notes-row"
                 data-note-row
                 [attr.data-note]="row.note.id"
-                [routerLink]="link(row.note.id)"
+                [routerLink]="store.link(row.note.id)"
                 queryParamsHandling="preserve"
-                [attr.aria-current]="row.note.id === noteId() ? 'page' : null"
+                [attr.aria-current]="row.note.id === store.noteId() ? 'page' : null"
               >
                 <span class="notes-row-title">{{ row.title }}</span>
                 <span class="notes-row-meta">
@@ -76,14 +76,14 @@
     </section>
   }
 
-  @if (mode() !== 'list') {
+  @if (store.mode() !== 'list') {
     <section class="notes-editor" data-notes-editor [attr.aria-label]="'notes.editor.label' | transloco">
-      @if (!wide()) {
-        <a class="notes-back link" [routerLink]="link()" queryParamsHandling="preserve" data-notes-back>
-          <ui-icon name="arrow-left" [size]="14" />{{ 'notes.editor.back' | transloco: { count: notes().length } }}
+      @if (!store.wide()) {
+        <a class="notes-back link" [routerLink]="store.link()" queryParamsHandling="preserve" data-notes-back>
+          <ui-icon name="arrow-left" [size]="14" />{{ 'notes.editor.back' | transloco: { count: store.notes().length } }}
         </a>
       }
-      @if (editing()) {
+      @if (store.editing()) {
         <div class="notes-top">
         <input
           class="notes-title"
@@ -91,12 +91,12 @@
           maxlength="200"
           #titleBox
           data-note-title
-          [value]="draft().title"
+          [value]="store.draft().title"
           [placeholder]="'notes.editor.titlePlaceholder' | transloco"
           [attr.aria-label]="'notes.editor.title' | transloco"
-          (input)="edit({ title: titleBox.value })"
+          (input)="store.edit({ title: titleBox.value })"
         />
-        <ui-segmented class="notes-view" [options]="viewOptions()" [value]="shownView()" (valueChange)="setView($event)" [label]="'notes.editor.view.label' | transloco" />
+        <ui-segmented class="notes-view" [options]="store.viewOptions()" [value]="store.shownView()" (valueChange)="store.setView($event)" [label]="'notes.editor.view.label' | transloco" />
         </div>
 
         <div class="notes-meta">
@@ -110,7 +110,7 @@
             (click)="openPicker($any($event.currentTarget))"
           >
             <ui-icon name="anchor" [size]="16" />
-            @if (anchorChip(); as chip) {
+            @if (store.anchorChip(); as chip) {
               {{ chip.kind === 'spec' ? ('notes.anchor.spec' | transloco: { spec: chip.text }) : chip.text }}
             } @else {
               {{ 'notes.anchor.none' | transloco }}
@@ -119,37 +119,37 @@
           <ui-popover #anchorPop class="notes-anchor-pop" [(open)]="popOpen" [label]="'notes.anchor.pick' | transloco" data-anchor-pop>
             <ng-container [ngTemplateOutlet]="anchorList" />
           </ui-popover>
-          <a ui-button size="sm" class="notes-return" data-notes-return [routerLink]="['/w', ws(), 's', returnSpec()]">
-            <ui-icon name="arrow-left" [size]="16" />{{ 'notes.anchor.spec' | transloco: { spec: returnSpec() } }}
+          <a ui-button size="sm" class="notes-return" data-notes-return [routerLink]="['/w', store.ws(), 's', store.returnSpec()]">
+            <ui-icon name="arrow-left" [size]="16" />{{ 'notes.anchor.spec' | transloco: { spec: store.returnSpec() } }}
           </a>
           <span class="notes-local">{{ 'notes.editor.local' | transloco }}</span>
-          <span class="notes-save" data-save-state [attr.data-state]="saveState().kind" role="status">
-            @if (saveHint(); as hint) {
+          <span class="notes-save" data-save-state [attr.data-state]="store.saveState().kind" role="status">
+            @if (store.saveHint(); as hint) {
               @if (hint.at; as at) {<ui-time-label [key]="hint.key" [value]="at" />} @else {{{ hint.key | transloco }}}
             }
           </span>
           <button type="button" ui-icon-button icon="trash" class="notes-delete" data-note-delete [label]="'notes.editor.delete' | transloco" (click)="confirmOpen.set(true)"></button>
         </div>
 
-        <div class="notes-body" [attr.data-view]="shownView()">
-          @if (shownView() !== 'preview') {
+        <div class="notes-body" [attr.data-view]="store.shownView()">
+          @if (store.shownView() !== 'preview') {
             <textarea
               class="textarea notes-textarea"
               #bodyBox
               data-note-body
-              [value]="draft().body"
+              [value]="store.draft().body"
               [placeholder]="'notes.editor.bodyPlaceholder' | transloco"
               [attr.aria-label]="'notes.editor.body' | transloco"
-              (input)="edit({ body: bodyBox.value })"
+              (input)="store.edit({ body: bodyBox.value })"
             ></textarea>
           }
-          @if (shownView() !== 'edit') {
+          @if (store.shownView() !== 'edit') {
             <div class="notes-preview" data-note-preview [innerHTML]="preview()"></div>
           }
         </div>
-      } @else if (noteId() !== null && loaded()) {
+      } @else if (store.noteId() !== null && store.loaded()) {
         <ui-empty-state icon="sticky-note" [heading]="'notes.editor.missing' | transloco" />
-      } @else if (wide()) {
+      } @else if (store.wide()) {
         <ui-empty-state icon="sticky-note" [heading]="'notes.editor.none' | transloco">
           <p class="notes-none-hint">{{ 'notes.editor.noneBody' | transloco }} <ui-kbd>n</ui-kbd></p>
         </ui-empty-state>
@@ -166,38 +166,38 @@
   </div>
 </ui-dialog>
 
-<ui-sheet [(open)]="pickerOpen" [tier]="tier()" [heading]="'notes.anchor.pick' | transloco" data-anchor-sheet>
+<ui-sheet [(open)]="pickerOpen" [tier]="store.tier()" [heading]="'notes.anchor.pick' | transloco" data-anchor-sheet>
   <ng-container [ngTemplateOutlet]="anchorList" />
 </ui-sheet>
 
 <ng-template #anchorList>
   <label class="notes-anchor-search">
     <ui-icon name="search" [size]="16" />
-    <input #pickerBox type="search" [value]="pickerSearch()" [attr.aria-label]="'notes.anchor.search' | transloco" [placeholder]="'notes.anchor.search' | transloco" (input)="pickerSearch.set(pickerBox.value)" />
+    <input #pickerBox type="search" [value]="store.pickerSearch()" [attr.aria-label]="'notes.anchor.search' | transloco" [placeholder]="'notes.anchor.search' | transloco" (input)="store.pickerSearch.set(pickerBox.value)" />
   </label>
   <ul class="notes-picker" role="list">
     <li>
-      <button type="button" class="notes-pick" data-value="" [attr.aria-pressed]="anchorValue() === ''" (click)="pickAnchor('')">
+      <button type="button" class="notes-pick" data-value="" [attr.aria-pressed]="store.anchorValue() === ''" (click)="pickAnchor('')">
         <span class="notes-pick-id">{{ 'notes.anchor.none' | transloco }}</span>
       </button>
     </li>
     <li>
-      <button type="button" class="notes-pick" [attr.data-value]="'spec:' + spec()" [attr.aria-pressed]="anchorValue() === 'spec:' + spec()" (click)="pickAnchor('spec:' + spec())">
-        <span class="notes-pick-id">{{ spec() }}</span><span class="notes-pick-kind">{{ 'notes.anchor.kindSpec' | transloco }}</span>
+      <button type="button" class="notes-pick" [attr.data-value]="'spec:' + store.spec()" [attr.aria-pressed]="store.anchorValue() === 'spec:' + store.spec()" (click)="pickAnchor('spec:' + store.spec())">
+        <span class="notes-pick-id">{{ store.spec() }}</span><span class="notes-pick-kind">{{ 'notes.anchor.kindSpec' | transloco }}</span>
       </button>
     </li>
-    @if (foreignAnchor(); as other) {
+    @if (store.foreignAnchor(); as other) {
       <li>
         <button type="button" class="notes-pick" [attr.data-value]="other.value" aria-pressed="true" (click)="pickAnchor(other.value)">
           <span class="notes-pick-id">{{ other.label }}</span>
         </button>
       </li>
     }
-    @for (group of pickerGroups(); track group.key) {
+    @for (group of store.pickerGroups(); track group.key) {
       <li class="notes-pick-group">{{ 'notes.anchor.' + group.key | transloco }}</li>
       @for (option of group.options; track option.value) {
         <li>
-          <button type="button" class="notes-pick" [attr.data-value]="option.value" [attr.aria-pressed]="option.value === anchorValue()" (click)="pickAnchor(option.value)">
+          <button type="button" class="notes-pick" [attr.data-value]="option.value" [attr.aria-pressed]="option.value === store.anchorValue()" (click)="pickAnchor(option.value)">
             <span class="notes-pick-id">{{ option.label }}</span>
           </button>
         </li>

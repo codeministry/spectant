@@ -27,21 +27,8 @@ export const WAITING_SHOWN = 3;
   imports: [UiWaitsBlock],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { id: WAITING_FRAGMENT, tabindex: '-1', 'data-ui': 'waiting-section', '[attr.data-count]': 'entries().length' },
-  styles: `
-    :host { display: block; min-inline-size: 0; scroll-margin-block-start: 80px; }
-  `,
-  template: `
-    <ui-waits-block
-      form="card-rows"
-      [entries]="entries()"
-      [workspace]="workspace()"
-      [shown]="shown"
-      [chips]="true"
-      [headingId]="headingId()"
-      [level]="level()"
-      [(open)]="open"
-    />
-  `,
+  styleUrl: './waiting-section.css',
+  templateUrl: './waiting-section.html',
 })
 export class WaitingSection {
   /** `guidance.waits` of the workspace, in core's order (ISC-237). */

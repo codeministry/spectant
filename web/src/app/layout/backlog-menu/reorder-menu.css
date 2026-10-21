@@ -1,0 +1,53 @@
+/*
+ * "Move" for a feature (spec 037, T22): a `ui-popover` at medium and wide, a `ui-sheet` bottom sheet at compact, the
+ * rows of the board's "Move to…". The host takes no box; the panels live in the top layer. Disabled rows (the group's
+ * edge) in the muted ink with their reason, the enabled up and down rows with their key cap at the end.
+ */
+@import "./_menu-entry.css";
+@import "./_menu-list.css";
+
+:host {
+  display: contents;
+}
+
+.reorder-popover {
+  --ui-popover-width: 264px;
+}
+
+.head {
+  margin: 0;
+  padding: 4px 12px 0;
+  color: var(--color-base-content);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.position {
+  margin: 0;
+  padding: 0 12px 8px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.entry[aria-disabled='true'] {
+  color: var(--muted-ink);
+  cursor: default;
+}
+
+.hint {
+  flex: none;
+  max-inline-size: 60%;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+ui-kbd {
+  flex: none;
+}

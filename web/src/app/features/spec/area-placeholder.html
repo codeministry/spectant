@@ -1,0 +1,17 @@
+
+    <ui-card [padding]="24">
+      @if (tabKey(); as tabKey) {
+        <h2>{{ tabKey | transloco }}</h2>
+        <p>{{ 'shell.placeholder.tab' | transloco: { tab: (tabKey | transloco) } }}</p>
+      } @else {
+        <h2>{{ areaKey() | transloco }}</h2>
+        <p>{{ 'shell.placeholder.area' | transloco: { area: (areaKey() | transloco) } }}</p>
+      }
+      @if (!built()) {
+        <p>{{ 'shell.area.unbuilt' | transloco }}</p>
+      }
+      @if (data.specRouteUnserved()) {
+        <p>{{ 'shell.placeholder.specRoute' | transloco }}</p>
+      }
+    </ui-card>
+  

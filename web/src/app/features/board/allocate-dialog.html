@@ -1,0 +1,31 @@
+
+    <ui-dialog [open]="card() !== null" [heading]="'board.workspace.allocate.lead' | transloco" (openChange)="onOpenChange($event)">
+      @if (card(); as c) {
+        <div class="lead" data-allocate-dialog [attr.data-slug]="c.slug">
+          <dl>
+            <dt>{{ 'board.workspace.allocate.creates' | transloco }}</dt>
+            <dd>
+              <code data-allocate-folder>{{ paths().folder }}</code>
+              <ul class="files" role="list">
+                @for (file of paths().files; track file) {
+                  <li><code data-allocate-file>{{ file }}</code></li>
+                }
+              </ul>
+              <p class="note" data-allocate-number>{{ 'board.workspace.allocate.number' | transloco }}</p>
+            </dd>
+            <dt>{{ 'board.workspace.allocate.removes' | transloco }}</dt>
+            <dd><code data-allocate-story>{{ paths().story }}</code></dd>
+          </dl>
+          @if (unreadable()) {
+            <p class="warn" role="alert" data-allocate-unreadable>{{ 'board.workspace.allocate.unreadable' | transloco }}</p>
+          }
+          <div class="actions">
+            <button type="button" ui-button variant="ghost" data-allocate-cancel (click)="dismiss.emit()">{{ 'board.workspace.allocate.cancel' | transloco }}</button>
+            <button type="button" ui-button variant="primary" data-allocate-confirm [disabled]="hash() === null || saving()" (click)="confirm.emit()">
+              {{ saving() ? ('board.workspace.allocate.saving' | transloco: { slug: c.slug }) : ('board.workspace.allocate.confirm' | transloco) }}
+            </button>
+          </div>
+        </div>
+      }
+    </ui-dialog>
+  

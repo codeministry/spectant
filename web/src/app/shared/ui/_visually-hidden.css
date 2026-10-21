@@ -1,7 +1,8 @@
 /*
- * The visually hidden text that ui-actor-chip and ui-stage-track (`.vh`) and ui-reason (`.visually-hidden`) give a
- * screen reader. Each imports this partial as its first rule; emulated encapsulation scopes the copy per component,
- * and no rule of theirs styles those spans, so moving the rule ahead of the others changes no cascade.
+ * The visually hidden text that ui-actor-chip, ui-stage-track and the board card (`.vh`) and ui-reason and
+ * ui-waits-chip (`.visually-hidden`) give a screen reader. Each imports this partial ahead of its own rules; emulated
+ * encapsulation scopes the copy per component, and no rule of theirs styles those spans, so moving the rule ahead of
+ * the others changes no cascade.
  */
 .vh,
 .visually-hidden {

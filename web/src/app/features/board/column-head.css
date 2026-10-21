@@ -1,0 +1,30 @@
+@import '../../shared/ui/_visually-hidden.css';
+@import './_board-count-morph.css';
+@import './_board-count-type.css';
+
+/* The column head's parts (moved from board-page.css with the head's markup; the host keeps the page's `.head` rules). */
+:host(.head) h2 {
+  margin: 0;
+  color: var(--color-base-content);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+:host(.head) .gate {
+  display: inline-flex;
+  color: var(--ques-ink);
+}
+
+:host(.head) .count {
+  margin-inline-start: auto;
+}
+
+/* Folding a column by hand: a small ghost button after the head's count (the stub's lives in board-page.css). */
+.fold {
+  inline-size: 24px;
+  min-block-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  color: var(--muted-ink);
+}

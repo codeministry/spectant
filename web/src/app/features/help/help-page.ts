@@ -19,7 +19,7 @@ import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 import { HelpLifecycle } from './help-lifecycle';
-import { HelpNav } from './help-nav';
+import { HelpNav } from '../../shared/page-nav/help-nav';
 import { version } from '../../../../package.json';
 import {
   HELP_COMMAND_ROWS,
@@ -93,7 +93,7 @@ const sameRow = (a: WorkflowRow, b: WorkflowRow): boolean =>
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',
-  styleUrls: ['./help-page.css', './help-tables.css'],
+  styleUrls: ['./help-page.css', './help-page.workflows.css', './help-page.about.css', './help-tables.css'],
 })
 export class HelpPage {
   private readonly shell = inject(ShellState);

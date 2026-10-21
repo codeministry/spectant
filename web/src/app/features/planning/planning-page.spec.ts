@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, ElementRef, inject, signal } from '
 import { TestBed } from '@angular/core/testing';
 import { afterEach, vi } from 'vitest';
 import type { SpecRowView } from '../../layout/shell/shell-data.service';
-import { installArrival, isStage, planningPageState, stagesByRow, type PlanningPageData } from './planning-page';
+import { isStage, stagesByRow } from './planning-page';
+import { installArrival } from '../../shared/arrival';
+import { planningPageState, type PlanningPageData } from '../../core/model/planning-page-state';
 
 // The pieces the Features and Milestones pages share (spec 003, ISC-103 / ISC-104): the stage map over the dashboard
 // rows, the missing / unavailable pair over ShellData and the fragment arrival. The pages' own specs prove them in

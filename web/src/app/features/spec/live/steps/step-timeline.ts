@@ -60,38 +60,7 @@ interface StepRow extends StepLook {
   imports: [TranslocoPipe, UiIcon, UiTime, UiActorChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './step-timeline.css',
-  template: `
-    <ol class="step-list" data-step-timeline [attr.aria-label]="'steps.timeline.label' | transloco: { task: task() }">
-      @for (row of rows(); track $index) {
-        <li
-          class="step-item"
-          [attr.data-step-kind]="row.step.kind"
-          [attr.data-step-result]="row.step.result ?? null"
-          [attr.data-step-latest]="row.latest ? '' : null"
-          [attr.data-tone]="row.tone"
-        >
-          <span class="mark"><ui-icon [name]="row.icon" [size]="14" /></span>
-          <span class="word" data-step-word>{{ 'steps.kind.' + row.word | transloco }}</span>
-          @if (row.latest) {
-            <span class="vh">{{ 'steps.timeline.latest' | transloco }}</span>
-          }
-          <ui-time class="time" data-step-time [value]="row.step.ts" form="clockSeconds" />
-          <span class="meta">
-            <span class="delta" data-step-delta aria-hidden="true">{{ row.delta }}</span>
-            <span class="vh" data-step-delta-long>{{
-              row.deltaLong ? ('steps.delta.after' | transloco: { duration: row.deltaLong }) : ('steps.delta.first' | transloco)
-            }}</span>
-            @if (row.actor; as actor) {
-              <ui-actor-chip [actor]="actor" />
-            }
-          </span>
-          @if (row.step.text; as text) {
-            <p class="question" data-step-question>{{ text }}</p>
-          }
-        </li>
-      }
-    </ol>
-  `,
+  templateUrl: './step-timeline.html',
 })
 export class StepTimeline {
   readonly steps = input.required<readonly TaskStep[]>();

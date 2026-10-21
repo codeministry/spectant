@@ -17,7 +17,7 @@
           <p class="sr-meta">{{ 'status.rail.claimsClosed' | transloco }}</p>
         </div>
       </div>
-      @if (firstTakeable(); as id) {
+      @if (takeable(); as id) {
         <div class="sr-chips"><ui-chip variant="take" tone="accent" icon="hand" data-rail-take>{{ 'status.rail.take' | transloco: { id } }}</ui-chip></div>
       }
       @for (warning of m.warnings; track $index) {

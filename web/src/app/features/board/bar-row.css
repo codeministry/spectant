@@ -1,0 +1,32 @@
+/*
+ * The compact sticky bar's row (T124, design 008 § Mobile; moved from board-page.compact.css with the markup, spec
+ * 061): ◂ · stage · ▸. The host `<div class="barrow">` keeps the page's rules, which show it once the column switch
+ * has scrolled away; the count morphs in after an accepted move (the partial).
+ */
+@import './_board-count-morph.css';
+
+:host .prev {
+  transform: scaleX(-1);
+}
+
+.barname {
+  gap: 8px;
+  justify-content: center;
+  min-inline-size: 0;
+  block-size: 44px;
+  font-weight: 600;
+}
+
+.barname .sl {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barname .count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}

@@ -1,0 +1,44 @@
+
+    @if (tier() === 'compact') {
+      <ui-sheet tier="compact" [open]="open()" [heading]="heading()" (openChange)="onOpenChange($event)">
+        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'sheet' }" />
+      </ui-sheet>
+    } @else {
+      <ui-popover class="reorder-popover" [label]="heading()" (openChange)="onOpenChange($event)">
+        <p class="head" aria-hidden="true">{{ heading() }}</p>
+        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'popover' }" />
+      </ui-popover>
+    }
+
+    <ng-template #list let-surface>
+      @if (open()) {
+        @if (positionLine(); as line) {
+          <p class="position" data-reorder-position>{{ line }}</p>
+        }
+        <ul class="entries" role="list" uiRovingList data-reorder-menu [attr.data-surface]="surface" [attr.data-tier]="tier()">
+          @for (e of entries(); track e.step) {
+            <li>
+              <button
+                type="button"
+                class="entry"
+                uiRovingItem
+                [attr.data-step]="e.step"
+                [attr.aria-disabled]="e.enabled ? null : 'true'"
+                [attr.aria-keyshortcuts]="e.shortcut"
+                [attr.data-autofocus]="e.step === focusStep() ? '' : null"
+                (click)="choose(e)"
+              >
+                <!-- &ngsp; keeps a space between the label and the reason in the button's accessible name. -->
+                <span class="name">{{ e.label }}</span>&ngsp;
+                @if (e.reason; as reason) {
+                  <span class="hint">{{ reason }}</span>
+                } @else if (e.cap; as cap) {
+                  <ui-kbd aria-hidden="true">{{ cap }}</ui-kbd>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </ng-template>
+  

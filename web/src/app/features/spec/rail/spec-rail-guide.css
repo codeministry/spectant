@@ -1,0 +1,14 @@
+/* The guide's card, head and eyebrow come from the spec rail's partials (spec 061). */
+@import '../_spec-card.css';
+@import '../_spec-context.css';
+
+:host {
+  display: contents;
+}
+
+.sr-sentence {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: break-word;
+}

@@ -1,6 +1,9 @@
 /* Under a coarse pointer the `.waits` link gets a hit area of at least 44 × 44 (WCAG 2.5.8) from `_hit-area.css`. */
 @import '../_hit-area.css';
 
+/* The `.visually-hidden` names of the blockers come from `_visually-hidden.css`. */
+@import '../_visually-hidden.css';
+
 :host {
   display: inline-flex;
   flex-wrap: wrap;
@@ -66,15 +69,6 @@ a.waits:hover .num, a.waits:focus-visible .num {
   color: var(--muted-ink);
   font-size: 12px;
   line-height: 16px;
-}
-
-.visually-hidden {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 @media (forced-colors: active) {

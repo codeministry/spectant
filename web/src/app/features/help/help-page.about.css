@@ -1,0 +1,133 @@
+/* The Help page's About section: the third of its styleUrls, after help-page.workflows.css. */
+
+/*
+ * About (prototype help `.about-grid`, `.about-visual`, `.about-logo`, `.shot`, `.meta-row`; spec 024 sweep): the text
+ * with its mono meta row, and beside it from 640 px the logo lock-up over two screenshots of the app in this theme.
+ */
+.about-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.about-grid > * {
+  min-inline-size: 0;
+}
+
+.about-text {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.about-text h2 {
+  margin: 0;
+}
+
+.meta-row {
+  margin: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.about-visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-base-content);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.about-logo .mark {
+  inline-size: 40px;
+  block-size: 40px;
+  fill: none;
+  stroke-width: 3;
+}
+
+.about-logo .mark-track {
+  stroke: var(--track);
+}
+
+.about-logo .mark-arc {
+  stroke-linecap: round;
+}
+
+.about-logo .mark-arc-a {
+  stroke: var(--clos-text);
+  stroke-dasharray: 40 60;
+}
+
+.about-logo .mark-arc-b {
+  stroke: var(--disp-text);
+  stroke-dasharray: 0 40 40 20;
+}
+
+.about-logo .mark-dot {
+  fill: var(--ques-text);
+}
+
+.wm-accent {
+  color: var(--clos-text);
+}
+
+.shot {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+}
+
+.shot img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+.shot .t-dark,
+.shot-b {
+  display: none;
+}
+
+:host-context([data-theme='spec-dark']) .shot .t-dark {
+  display: block;
+}
+
+:host-context([data-theme='spec-dark']) .shot .t-light {
+  display: none;
+}
+
+@container shell (width >= 640px) {
+  .about-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .about-visual {
+    padding-block-end: 40px;
+  }
+
+  .shot-a {
+    inline-size: 82%;
+  }
+
+  .shot-b {
+    display: block;
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: 0;
+    inline-size: 62%;
+  }
+}

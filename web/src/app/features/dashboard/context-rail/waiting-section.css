@@ -1,0 +1,7 @@
+
+    :host {
+      display: block;
+      min-inline-size: 0;
+      scroll-margin-block-start: 80px;
+    }
+  

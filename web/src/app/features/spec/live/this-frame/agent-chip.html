@@ -1,0 +1,12 @@
+
+    <span class="chip" data-agent-chip [attr.data-session]="session()">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="session" data-agent-session>{{ session() }}</span>
+      @if (elapsed(); as elapsed) {
+        <time data-agent-elapsed [attr.datetime]="since()">{{ elapsed }}</time>
+      }
+      @if (stale()) {
+        <span class="stale" data-agent-stale>{{ 'board.agent.stale' | transloco }}</span>
+      }
+    </span>
+  

@@ -13,7 +13,7 @@ import type { Density } from '../../../core/settings.service';
 import { LanguageService } from '../../../core/language.service';
 import { formatDay } from '../../../shared/time/format';
 import { UiTime } from '../../../shared/time/time';
-import { stageIndex } from '../../spec/dashboard/dashboard-model';
+import { stageIndex } from '../../../core/model/stage-track';
 import { PHASE_TONES, type SpecTableRow } from './spec-table-model';
 
 /** i18n key for the agent dot's name; the English fallback stands until the key lands in both catalogues. */

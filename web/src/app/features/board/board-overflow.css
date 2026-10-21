@@ -1,0 +1,14 @@
+/* The overflow line's parts (moved from board-page.hidden.css with the markup; the host keeps the page's `.overflow`). */
+:host(.overflow) .ol,
+:host(.overflow) .sep {
+  color: var(--muted-ink);
+}
+
+:host(.overflow) .n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:host(.overflow) .jump {
+  margin-inline-start: auto;
+}

@@ -12,7 +12,6 @@ import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
 import { agentKey, staleAgents } from '../live-frame';
 import { AgentChip } from './agent-chip';
-import { RAIL_BLOCK_STYLES } from './rail-block.styles';
 
 /** A Needs you card with its task's open question (spec 015, ISC-232.1). */
 export type QuestionCard = FrameCard & { readonly question: OpenQuestion };
@@ -133,127 +132,8 @@ export function alertParts(sentence: string, session: string, claims: readonly s
   imports: [AgentChip, NgTemplateOutlet, TranslocoPipe, UiGlyph, UiIcon, UiLiveRegion, UiStateChip, UiTime],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-needs-you': '' },
-  styles: [
-    RAIL_BLOCK_STYLES,
-    `
-      .count { font-variant-numeric: tabular-nums; }
-      .op-eb { margin: 8px 0 0; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; line-height: 16px; text-transform: uppercase; }
-      /* The id, then the text, the reason under it: a long reason never squeezes the text to nothing. */
-      .op-mini { display: grid; box-sizing: border-box; grid-template-columns: auto minmax(0, 1fr); min-inline-size: 0; gap: 2px 8px; align-items: start; inline-size: 100%; min-block-size: 32px; padding: 6px 0; border: 0; border-block-start: 1px solid var(--line); background: none; color: inherit; font: inherit; font-size: 13px; text-align: start; cursor: pointer; }
-      .op-mini:hover { background: var(--lane); }
-      .op-mini:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-      .op-mini .why { grid-column: 2; min-inline-size: 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-      /* spec 024: the prototype .needs-card, a 3 px edge in orange on the card. */
-      .needs-card { border-inline-start: 3px solid var(--color-warning); }
-      @media (forced-colors: active) { .needs-card { border-inline-start-color: CanvasText; } }
-      .edge { border-inline-start: 4px solid var(--edge); border-start-start-radius: 0; border-end-start-radius: 0; }
-      /* spec 015: an open question, three lines, the text in full; never a tooltip, never cut. */
-      .q { display: grid; gap: 4px; min-inline-size: 0; padding: 8px; border-radius: var(--radius-field); font-size: 13px; line-height: var(--rail-line); }
-      .q-head, .q-foot { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
-      .q-head ui-icon { flex: none; color: var(--muted-ink); }
-      .q-id { min-block-size: var(--rail-line); padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
-      .q-id:hover { text-decoration: underline; }
-      .q-claim { color: var(--muted-ink); font-family: var(--font-mono); font-size: 12px; }
-      .q-time { margin-inline-start: auto; font-family: var(--font-mono); font-size: 12px; }
-      .q-text { margin: 0; overflow-wrap: anywhere; }
-      .q-kind { color: var(--muted-ink); font-size: 12px; }
-      @media (pointer: coarse) { .q-id { min-block-size: 44px; min-inline-size: 44px; } }
-      .alert { display: flex; gap: 8px; align-items: start; padding: 8px 12px; border: 1px solid var(--line); border-inline-start: 4px solid var(--fail-ink); border-radius: var(--radius-field); background: var(--color-base-200); font-size: 13px; line-height: var(--rail-line); }
-      .alert ui-icon { flex: none; margin-block-start: 2px; color: var(--fail-ink); }
-      .alert-body { display: grid; gap: 4px; min-inline-size: 0; }
-      .alert p { margin: 0; overflow-wrap: anywhere; }
-      .alert .id-run { display: inline-block; max-inline-size: 100%; overflow-wrap: anywhere; }
-      .alert .id { font-family: var(--font-mono); }
-      @media (forced-colors: active) { .edge, .alert { border-inline-start-color: CanvasText; } }
-    `,
-  ],
-  template: `
-    <ui-live-region data-needs-announcer />
-    @if (framed()) {
-      <section class="block needs-card" aria-labelledby="needs-you-heading">
-        <h3 class="head eyebrow-head" id="needs-you-heading">
-          {{ 'board.rail.needsYou' | transloco }}
-          <span class="end count" data-needs-count>{{ cards().length }}</span>
-        </h3>
-        <ng-container [ngTemplateOutlet]="body" />
-      </section>
-    } @else {
-      <ng-container [ngTemplateOutlet]="body" />
-    }
-
-    <ng-template #body>
-      @for (alert of alerts(); track alert.key) {
-        @let agent = alert.agent;
-        <div class="alert" data-stale-agent [attr.data-session]="agent.session" [attr.data-source]="agent.source">
-          <ui-icon name="triangle-alert" [size]="16" />
-          <div class="alert-body">
-            <p>
-              @for (part of alert.parts; track $index) {
-                @if (part.kind === 'run') {
-                  <span class="id-run">
-                    @for (piece of part.pieces; track $index) {
-                      @if (piece.id) {
-                        <span class="id" data-alert-id>{{ piece.text }}</span>
-                      } @else {
-                        <ng-container>{{ piece.text }}</ng-container>
-                      }
-                    }
-                  </span>
-                } @else {
-                  <span>{{ part.text }}</span>
-                }
-              }
-            </p>
-            <app-agent-chip [session]="agent.session" [since]="agent.since" [stale]="true" />
-          </div>
-        </div>
-      }
-      @if (cards().length > 0) {
-        <ul class="rows">
-          @for (c of cards(); track c.task) {
-            @let q = questionOf(c);
-            <li>
-              @if (q !== null) {
-                @let session = sessionOf(c, q);
-                <div class="q edge" [attr.data-needs-question]="c.task" [style.--edge]="questionEdge">
-                  <div class="q-head">
-                    <ui-icon name="message-circle-question" [size]="14" />
-                    <button type="button" class="q-id mono" [attr.data-needs-card]="c.task" [attr.aria-label]="'board.card.open' | transloco: { task: c.task }" (click)="opened.emit(c)">{{ c.task }}</button>
-                    <span class="q-claim">{{ c.claim }}</span>
-                    <ui-time class="q-time" [value]="q.ts" form="clock" />
-                  </div>
-                  <p class="q-text" data-question-text>{{ q.text }}</p>
-                  <div class="q-foot">
-                    <span class="q-kind">{{ 'steps.kind.question' | transloco }}</span>
-                    @if (session !== null) {
-                      <app-agent-chip [session]="session" />
-                    }
-                  </div>
-                </div>
-              } @else {
-                <button type="button" class="row edge" [attr.data-needs-card]="c.task" [style.--edge]="edge(c)" (click)="opened.emit(c)">
-                  <ui-glyph [state]="c.state" family="card" [size]="14" />
-                  <span class="mono">{{ c.task }}</span>
-                  <span class="text">{{ c.text }}</span>
-                  <ui-state-chip [state]="c.state" family="card" />
-                </button>
-              }
-            </li>
-          }
-        </ul>
-      } @else {
-        <p class="empty">{{ 'board.rail.emptyNeeds' | transloco }}</p>
-      }
-      @if (steps().length > 0) {
-        <p class="op-eb" data-needs-steps>{{ 'board.rail.yourSteps' | transloco }}</p>
-        @for (s of steps(); track s.task) {
-          <button type="button" class="op-mini" [attr.data-op-mini]="s.task" [attr.title]="'board.rail.showStep' | transloco: { task: s.task }" (click)="showStep(s.task)">
-            <span class="mono">{{ s.task }}</span><span class="text">{{ s.text }}</span>@if (s.reason) {<span class="why">{{ s.reason }}</span>}
-          </button>
-        }
-      }
-    </ng-template>
-  `,
+  styleUrl: './needs-you.css',
+  templateUrl: './needs-you.html',
 })
 export class NeedsYou {
   /** The open operator steps (prototype "Your steps" in the Needs you card); each row points at its step on the board. */

@@ -6,6 +6,8 @@
  * meter bar and track. Compact
  * density (ISC-254) renders no description, so the title has the line to itself. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
  */
+@import "../../../shared/ui/_agent-dot.css";
+
 :host {
   display: grid;
   grid-template-areas: 'id title track meter star';
@@ -110,24 +112,9 @@
   inline-size: 8px;
 }
 
-/* The prototype's `.agent-dot`: an orange 8 px dot with a ping ring; the ring stops under reduced motion (0ms). */
+/* The prototype's `.agent-dot` (shared/ui/_agent-dot.css) as an inline block in the track cell. */
 .agent-dot {
   display: inline-block;
-  position: relative;
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: 50%;
-  background: var(--color-warning);
-}
-
-.agent-dot::after {
-  position: absolute;
-  inset: -4px;
-  border: 2px solid var(--color-warning);
-  border-radius: 50%;
-  animation: agent-ping var(--motion-duration-skeleton) var(--motion-ease-standard) infinite;
-  content: '';
-  opacity: 0;
 }
 
 @keyframes agent-ping {

@@ -1,0 +1,9 @@
+:host {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+ui-chip {
+  transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard), color var(--motion-duration-highlight) var(--motion-ease-standard);
+}

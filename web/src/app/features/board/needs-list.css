@@ -1,0 +1,41 @@
+/*
+ * The cards waiting on you in the compact sheet (spec 024, design § Mobile; moved from board-page.parity.css with the
+ * markup, spec 061). The host `<ul class="needs-list">` keeps the page's list rule.
+ */
+.needs-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 8px;
+  align-content: center;
+  min-block-size: 44px;
+  padding: 6px 8px;
+  border-radius: var(--radius-field);
+  color: var(--color-base-content);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.needs-row:hover {
+  background: var(--color-base-300);
+}
+
+.needs-row .mono {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.needs-row .nt {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.needs-row .nr {
+  grid-column: 2;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}

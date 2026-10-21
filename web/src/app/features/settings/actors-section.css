@@ -1,0 +1,139 @@
+/* The actors card; the card rules are _settings-card.css. */
+@import "./_settings-card.css";
+
+    :host {
+      display: block;
+      container-type: inline-size;
+    }
+
+    h2 {
+      margin: 0;
+      font-family: var(--font-brand);
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 24px;
+    }
+
+    .actor-head, .actor-row {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .actor-head {
+      display: none;
+      margin-block-start: 12px;
+    }
+
+    .rows {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .actor-row {
+      padding: 12px 0;
+      border-block-start: 1px solid var(--line);
+    }
+    .actor-row > span:first-child { justify-self: start; }
+
+    label {
+      display: grid;
+      min-inline-size: 0;
+    }
+
+    .field {
+      box-sizing: border-box;
+      inline-size: 100%;
+      min-inline-size: 0;
+    }
+
+    .field:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    .field.mono {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    @media (pointer: coarse) { .field { block-size: 44px; } }
+
+    .field-help {
+      margin-block-start: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .field-err {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-block-start: 4px;
+      color: var(--hover-text);
+      font-size: 12px;
+      line-height: 16px;
+    }
+    .glyph-ok { color: var(--clos-text); }
+
+    .sr-only {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .set-foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding: 12px var(--space-3);
+      border-block-start: 1px solid var(--line);
+    }
+
+    .actors-status {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 16px;
+    }
+    .actors-status[data-state='saved'] { color: var(--done-text); }
+    ui-notice { margin: 0 var(--space-3) var(--space-3); }
+
+    .n-title {
+      display: block;
+      font-weight: 600;
+    }
+
+    .skel-row {
+      display: grid;
+      grid-template-columns: 40px 1fr 64px;
+      gap: 12px;
+      align-items: center;
+      block-size: 48px;
+      border-block-start: 1px solid var(--line);
+    }
+
+    @container (inline-size >= 640px) {
+      .actor-head {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) 32px;
+        gap: 12px;
+      }
+
+      .actor-row {
+        grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) 32px;
+        gap: 12px;
+        align-items: start;
+      }
+      .actor-row > span:first-child { margin-block-start: 8px; }
+      .glyph-ok { margin-block-start: 10px; }
+    }
+  

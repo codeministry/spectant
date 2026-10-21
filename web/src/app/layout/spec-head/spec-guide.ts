@@ -12,6 +12,7 @@ import type { AreaId, TabId } from '../shell/areas';
 import { specLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
+import { specModel } from '../shell/spec-model';
 import type { Tier } from '../shell/tier';
 
 /** The spec page's guidance spot (ISC-239): the spec's next step and the other entries that wait on you. */
@@ -73,10 +74,7 @@ export class SpecGuideCard {
   private readonly data = inject(ShellData);
   private readonly state = inject(ShellState);
 
-  private readonly model = computed<SpecPageModel | null>(() => {
-    const result = this.data.spec.value();
-    return result?.kind === 'ok' ? result.body : null;
-  });
+  private readonly model = specModel(this.data);
 
   /** The guide, only where the card is the tab's guidance spot and something can be said. */
   protected readonly guide = computed<SpecGuide | null>(() => {

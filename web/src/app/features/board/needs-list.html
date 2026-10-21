@@ -1,0 +1,9 @@
+@for (card of cards(); track card.key) {
+  <li>
+    <a class="needs-row" [routerLink]="link(card)" (click)="picked.emit()">
+      <span class="mono">{{ card.id ?? card.slug }}</span>
+      <span class="nt">{{ card.title }}</span>
+      <span class="nr">{{ card.reason ?? ('stages.' + card.stage | transloco) }}</span>
+    </a>
+  </li>
+}

@@ -1,0 +1,22 @@
+/* The prototype's `.switch`: 32 × 18 on the track, a 14 px knob. The importer sets the transitions and the on state. */
+.switch {
+  position: relative;
+  inline-size: 32px;
+  block-size: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: var(--track);
+  cursor: pointer;
+}
+
+.switch::after {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+  background: var(--color-base-100);
+  content: '';
+}

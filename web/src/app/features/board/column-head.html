@@ -1,0 +1,25 @@
+@let column = this.column();
+<ui-icon [name]="glyphs[column.stage]" [size]="16" />
+<h2 [id]="'col-' + column.stage">{{ label() }}</h2>
+@if (gateOf(column.stage); as gate) {
+  <ui-term class="gate" [id]="'gate-' + column.stage" [hint]="gate | transloco"
+    ><ui-icon name="shield-check" [size]="14" /><span class="vh">{{ 'board.workspace.column.fixedGate' | transloco }}</span></ui-term
+  >
+}
+<!-- Spec 020 (T24): a stage that waits on you shows the open ring of 040, no own count; the hourglass stays a wait on others. -->
+@if (yours(column.stage)) {
+  <span class="wait" data-open-stage><ui-glyph state="open" family="item" [size]="14" /><span class="vh">{{ 'board.workspace.column.openStage' | transloco }}</span></span>
+} @else if (waiting(column.stage)) {
+  <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
+}
+<span class="count" aria-hidden="true" [attr.data-morph]="morph() ? '' : null">{{ column.count }}</span>
+<button
+  type="button"
+  class="btn btn-ghost btn-xs fold"
+  data-fold-toggle
+  aria-expanded="true"
+  [attr.aria-label]="'board.workspace.column.fold' | transloco: { stage: label() }"
+  (click)="fold.emit()"
+>
+  <ui-icon name="fold-horizontal" [size]="14" />
+</button>

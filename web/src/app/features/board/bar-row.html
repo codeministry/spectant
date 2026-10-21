@@ -1,0 +1,30 @@
+@let c = column();
+@let curLabel = 'stages.' + c.stage | transloco;
+<button
+  ui-icon-button
+  class="prev"
+  icon="chevron-right"
+  data-prev
+  [label]="'board.workspace.compact.prev' | transloco: { stage: prev() ? ('stages.' + prev() | transloco) : '' }"
+  [disabled]="prev() === null"
+  (click)="pick.emit(prev())"
+></button>
+<button
+  type="button"
+  class="btn btn-ghost barname"
+  data-back
+  [attr.aria-label]="(c.cards.length === 1 ? 'board.workspace.compact.back.one' : 'board.workspace.compact.back.other') | transloco: { stage: curLabel, count: c.cards.length }"
+  (click)="back.emit()"
+>
+  <ui-icon [name]="glyphs[c.stage]" [size]="16" />
+  <span class="sl">{{ curLabel }}</span>
+  <span class="count" [attr.data-morph]="morph() ? '' : null">{{ c.cards.length }}</span>
+</button>
+<button
+  ui-icon-button
+  icon="chevron-right"
+  data-next
+  [label]="'board.workspace.compact.next' | transloco: { stage: next() ? ('stages.' + next() | transloco) : '' }"
+  [disabled]="next() === null"
+  (click)="pick.emit(next())"
+></button>

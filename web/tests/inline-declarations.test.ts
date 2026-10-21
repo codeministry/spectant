@@ -1,5 +1,5 @@
-// Inline-declaration guard for ISC-422 (spec 060, T24): every component under `web/src/app/core/`, `shared/` and
-// `layout/` keeps its template and styles in their own files (`templateUrl`, `styleUrl`). The rule lives in
+// Inline-declaration guard for ISC-422 (spec 060, T24) and ISC-429 (spec 061, T25): every component under
+// `web/src/app/` keeps its template and styles in their own files (`templateUrl`, `styleUrl`). The rule lives in
 // `eslint.config.js` (`@angular-eslint/component-max-inline-declarations` with `template: 0` and `styles: 0`); this
 // guard runs the workspace ESLint config programmatically on fixture text, so it proves the config as `bun run lint`
 // applies it. The type-aware project service only knows files that exist, so the fixture text is linted in place of
@@ -17,6 +17,8 @@ const SHARED = join(ROOT, "web", "src", "app", "shared", "open-state.ts");
 const CORE = join(ROOT, "web", "src", "app", "core", "api.service.ts");
 const LAYOUT_SPEC = join(ROOT, "web", "src", "app", "layout", "tab-bar", "tab-bar.spec.ts");
 const FEATURE = join(ROOT, "web", "src", "app", "features", "help", "help-page.ts");
+const FEATURE_SPEC = join(ROOT, "web", "src", "app", "features", "help", "help-page.spec.ts");
+const ROOT_FILE = join(ROOT, "web", "src", "app", "app.ts");
 
 const eslint = new ESLint({ cwd: ROOT });
 
@@ -49,7 +51,7 @@ async function inlineHits(source: string, filePath: string): Promise<string[]> {
   return result.messages.filter((m) => m.ruleId === RULE).map((m) => m.message);
 }
 
-describe("inline template and styles are refused in core, shared and layout (ISC-422)", () => {
+describe("inline template and styles are refused everywhere in the app (ISC-422, ISC-429)", () => {
   test("an inline template under layout/ is reported", async () => {
     const hits = await inlineHits(INLINE_TEMPLATE, LAYOUT);
     expect(hits).toHaveLength(1);
@@ -77,7 +79,12 @@ describe("inline template and styles are refused in core, shared and layout (ISC
     expect(await inlineHits(INLINE_TEMPLATE, LAYOUT_SPEC)).toEqual([]);
   }, 60_000);
 
-  test("features/ is outside the scope", async () => {
-    expect(await inlineHits(INLINE_TEMPLATE, FEATURE)).toEqual([]);
+  test("an inline template under features/ and in the app root is reported", async () => {
+    expect(await inlineHits(INLINE_TEMPLATE, FEATURE)).toHaveLength(1);
+    expect(await inlineHits(INLINE_TEMPLATE, ROOT_FILE)).toHaveLength(1);
+  }, 60_000);
+
+  test("a spec file under features/ may declare a test host inline", async () => {
+    expect(await inlineHits(INLINE_TEMPLATE, FEATURE_SPEC)).toEqual([]);
   }, 60_000);
 });

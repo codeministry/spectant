@@ -1,0 +1,200 @@
+@import './_vdot.css';
+
+:host {
+  display: contents;
+}
+
+.body {
+  display: grid;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.cd-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.cd-head .id {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.cd-head .claim {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.cd-head .grow {
+  flex: 1;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.close {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+.text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.cd-paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pathchip {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-base-300);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+.cd-dl {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.cd-dl dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cd-dl dd {
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.cd-dl dd.mono {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.cd-dl .red {
+  color: var(--fail-text);
+}
+
+.cd-dl ui-icon {
+  vertical-align: -2px;
+}
+
+.vdot {
+  display: inline-block;
+  inline-size: 7px;
+  block-size: 7px;
+  margin-inline: 4px 2px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cd-steps {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  min-inline-size: 0;
+}
+
+.cd-steps app-step-timeline {
+  justify-self: stretch;
+}
+
+ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 24px;
+}
+
+.frame {
+  min-inline-size: 88px;
+  font-family: var(--font-mono);
+  color: var(--muted-ink);
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+.cd-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cd-links .push {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+@container shell (width < 640px) {
+  .cd-dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .cd-dl dd {
+    margin-block-end: 8px;
+  }
+}

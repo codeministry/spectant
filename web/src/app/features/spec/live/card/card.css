@@ -1,0 +1,321 @@
+@import './_vdot.css';
+
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+article {
+  display: grid;
+  gap: 4px;
+  min-inline-size: 0;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--edge);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+}
+
+article:hover {
+  background: var(--color-base-300);
+}
+
+:host([data-density='compact']) article {
+  gap: 2px;
+  padding: 6px 10px 6px 12px;
+}
+
+/* spec 024: the operator lane's checklist card, one 36 px row (design.md § Live · Operator lane (Principal 2026-10-13)). */
+:host([data-density='step']) article {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-block-size: 36px;
+  padding: 4px 10px 4px 12px;
+}
+
+.r1, .r3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* The header stays one line, as the prototype's .r1: the state word never shrinks, the claim chip gives way. */
+.r1 {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.r1 > .claim {
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.id {
+  min-block-size: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.id:hover {
+  text-decoration: underline;
+}
+
+/* After .id and .id:hover, which set no flex: the order changes no computed value. */
+.r1 > ui-glyph, .r1 > .id {
+  flex: none;
+}
+
+.state {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+/* Flow at the medium tier (four narrow columns), as the prototype's .flow-grid: no claim chip, the word stays readable. */
+@container shell (640px <= width < 1120px) {
+  :host([data-flow-card]) .claim {
+    display: none;
+  }
+}
+
+.text {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.r3 {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.r3:empty {
+  display: none;
+}
+
+/* spec 024: the prototype marks (.pmark, .seam), role tags with icon (.tag, .vdot) and the try chip (.try). */
+.pmark, .seam {
+  flex: none;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font: 600 10px/14px var(--font-mono);
+}
+
+.seam {
+  padding: 0 5px;
+  border-color: var(--color-primary);
+  background: repeating-linear-gradient(135deg, var(--disp-t) 0 3px, transparent 3px 6px);
+  color: var(--disp-text);
+}
+
+.tag {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.vdot {
+  display: inline-block;
+  inline-size: 7px;
+  block-size: 7px;
+  margin-inline-start: 2px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.vdot[data-verdict="skipped"] {
+  border: 1.5px solid var(--muted);
+  background: none;
+}
+
+.try {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--hover-t);
+  color: var(--hover-text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.session {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* spec 024: the prototype .lane-chip (dot + lane), drawn only on a Flow card, hidden in Flow's narrow columns. */
+.lane-chip {
+  display: none;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.lane-chip i {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: var(--lane-c, var(--muted));
+}
+
+:host([data-flow-card]) .lane-chip {
+  display: inline-flex;
+}
+
+@container shell (width < 1120px) {
+  :host([data-flow-card]) .lane-chip {
+    display: none;
+  }
+}
+
+/* spec 024: the prototype .tcard.sel (2 px cyan outline) and .tcard.changed (a 1200 ms cyan tint after a frame change). */
+article[data-sel] {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+article[data-changed] {
+  animation: card-tint var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+@keyframes card-tint {
+  from {
+    background: var(--disp-t);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  article[data-changed] {
+    animation: none;
+  }
+}
+
+.flag[data-flag='stale'] {
+  color: var(--fail-ink);
+  font-weight: 600;
+}
+
+.strike-note {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+/* The step density's overrides of .r1, .text, .state and .strike-note sit after those base rules; they outrank them
+   by specificity and no rule of equal specificity sets their properties, so the order changes no computed value. */
+:host([data-density='step']) .r1 {
+  display: contents;
+}
+
+:host([data-density='step']) .text {
+  display: block;
+  flex: 1;
+  order: 1;
+  min-inline-size: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host([data-density='step']) .state {
+  order: 2;
+}
+
+:host([data-density='step']) .strike-note {
+  display: none;
+}
+
+/* spec 027: a card of the round wears its run chip where the state chip stood, top right; below 320 px of card
+       width on a line of its own under the text, left (design.md § Across viewports, live board). */
+:host([data-run]) {
+  container: live-card / inline-size;
+}
+
+:host([data-run]) article {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+:host([data-run]) .r1 {
+  grid-area: 1 / 1;
+}
+
+:host([data-run]) .run-state {
+  grid-area: 1 / 2;
+  align-self: center;
+}
+
+/* spec 015: the latest agent step, a text line and no chip; a new step swaps it with a fade (0 ms under reduce). */
+.latest-step {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-inline-size: 0;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  animation: step-in var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+.latest-step .sw {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.latest-step ui-icon, .latest-step .st {
+  flex: none;
+}
+
+.latest-step .st {
+  font: 11px/16px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* spec 027: a run card's text, strike note, latest step and third row span both columns; after the .latest-step rules,
+   which set no grid-column, so the order changes no computed value. */
+:host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .latest-step, :host([data-run]) .r3 {
+  grid-column: 1 / -1;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@container live-card (width < 320px) {
+  :host([data-run]) .run-state {
+    grid-area: auto / 1 / auto / -1;
+    justify-self: start;
+  }
+}
+
+@media (forced-colors: active) {
+  article {
+    border-inline-start-color: CanvasText;
+  }
+}

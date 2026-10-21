@@ -1,0 +1,13 @@
+/* An inline text link, an icon beside it where it has one: 13 px in the display ink, underlined on hover. */
+.text-link {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--disp-text);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}

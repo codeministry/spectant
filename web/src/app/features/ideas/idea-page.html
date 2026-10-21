@@ -1,0 +1,139 @@
+
+    @if (missing()) {
+      <app-not-found />
+    } @else if (story(); as story) {
+      <!-- A div, not a header: the page head's back link belongs to the page, not to a banner (ISC-142). -->
+      <div class="head" data-idea-head>
+        <div class="sh-context">
+          <ui-page-head
+            [segments]="[state.ws() ?? '', ('shell.pages.board' | transloco), ('ideas.crumb' | transloco: { slug: story.idea.slug })]"
+            [back]="{ href: boardPath(), label: 'orientation.backToBoard' | transloco }"
+          />
+          <ul class="chips" data-idea-chips [attr.aria-label]="'ideas.meta' | transloco">
+            <li data-idea-chip="stage">
+              <span class="visually-hidden">{{ 'ideas.chip.stage' | transloco }}</span>
+              <ui-chip tone="secondary" icon="lightbulb">{{ 'stages.idea' | transloco }}</ui-chip>
+            </li>
+            <li data-idea-chip="type">
+              <span class="visually-hidden">{{ 'ideas.chip.type' | transloco }}</span>
+              <ui-chip variant="plain">
+                @if (story.idea.type; as type) {
+                  <span class="chip-body"><ui-type-glyph [type]="type" [size]="14" [decorative]="true" />{{ 'types.' + type | transloco }}</span>
+                } @else {
+                  <span class="unset">{{ 'ideas.noType' | transloco }}</span>
+                }
+              </ui-chip>
+            </li>
+            <li data-idea-chip="feature">
+              <span class="visually-hidden">{{ 'ideas.chip.feature' | transloco }}</span>
+              @if (story.idea.feature; as feature) {
+                <ui-chip variant="mono" tone="primary">{{ feature }}</ui-chip>
+              } @else {
+                <ui-chip variant="plain"><span class="unset">{{ 'ideas.noFeature' | transloco }}</span></ui-chip>
+              }
+            </li>
+            <li data-idea-chip="milestone">
+              <span class="visually-hidden">{{ 'ideas.chip.milestone' | transloco }}</span>
+              <ui-chip variant="plain">
+                @if (story.idea.milestone; as milestone) {
+                  <span class="chip-body"><ui-icon name="flag" [size]="12" />{{ milestone }}</span>
+                } @else {
+                  <span class="unset">{{ 'ideas.noMilestone' | transloco }}</span>
+                }
+              </ui-chip>
+            </li>
+            <li data-idea-chip="priority"><ui-priority [value]="story.idea.priority" /></li>
+            @if (story.source?.kind === 'worktree') {
+              <!-- Spec 039 (ISC-209): the story was read from a spec worktree's copy, not the main checkout's. -->
+              <li data-idea-chip="source"><ui-source-chip [source]="story.source" /></li>
+            }
+          </ul>
+        </div>
+        <div class="sh-row">
+          <div class="sh-main">
+            <h1 id="idea" tabindex="-1">{{ story.idea.slug }}</h1>
+            <p class="hint source" data-idea-source>{{ 'ideas.source' | transloco: { path: story.idea.path, hash: shortHash() } }}</p>
+          </div>
+          <div class="sh-actions">
+            <!-- Spec 026 (T28, ISC-171): the idea's relations (feature and milestone parents) in the detail sidebar. -->
+            <a
+              ui-button
+              data-show-relations
+              [routerLink]="[]"
+              [queryParams]="{ sel: ref() }"
+              queryParamsHandling="merge"
+              [replaceUrl]="true"
+              [attr.data-ref]="ref()"
+              [attr.data-selected]="look()"
+            >
+              <ui-icon name="panel-right-open" [size]="16" />{{ 'ideas.showRelations' | transloco }}
+            </a>
+            <code class="cmd" data-idea-command>{{ command() }}</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div class="col">
+          @if (story.idea.title) {
+            <figure class="idea-quote" data-idea-goal>
+              <figcaption class="eyebrow">{{ 'ideas.quote' | transloco }} · <code>{{ story.idea.path }}</code></figcaption>
+              <blockquote>{{ story.idea.title }}</blockquote>
+            </figure>
+          }
+          <ui-card class="next-step" data-idea-next>
+            <p class="eyebrow">{{ 'ideas.next.title' | transloco }}</p>
+            <div><code class="cmd">{{ command() }}</code></div>
+            <ul class="why">
+              <li>{{ 'ideas.next.why' | transloco }}</li>
+            </ul>
+          </ui-card>
+          <ui-card class="prose-card" [padding]="24">
+            <ui-doc-prose [page]="prosePage() ?? story.page" [wide]="false" />
+            <p class="hint ro-hint" data-idea-hint><ui-icon name="lock" [size]="12" />{{ 'ideas.allocateHint' | transloco }}</p>
+          </ui-card>
+        </div>
+
+        @if (state.tier() === 'wide') {
+          <aside class="toc-col" [attr.aria-label]="'ideas.contents' | transloco">
+            @if (story.page.toc.length > 0) {
+              <nav class="docs-toc" [attr.aria-label]="'docs.contents' | transloco">
+                <p class="eyebrow rail-eyebrow"><span>{{ 'ideas.contents' | transloco }}</span><span>{{ story.page.toc.length }}</span></p>
+                <ol class="toc-list">
+                  @for (entry of story.page.toc; track entry.anchor) {
+                    <li [attr.data-level]="entry.level">
+                      <a [href]="'#' + entry.anchor" [attr.aria-current]="active() === entry.anchor ? 'true' : null" (click)="jump($event, entry.anchor)">{{ entry.text }}</a>
+                    </li>
+                  }
+                </ol>
+              </nav>
+            }
+            <section data-idea-record>
+              <p class="eyebrow">{{ 'ideas.record.title' | transloco }}</p>
+              <ul class="shape-rec">
+                <li>{{ 'ideas.record.slug' | transloco }} <span class="mono">{{ story.idea.slug }}</span></li>
+                <li>
+                  {{ 'ideas.record.shape' | transloco }}
+                  @if (story.idea.type; as type) {
+                    {{ 'types.' + type | transloco }}
+                  } @else {
+                    {{ 'ideas.record.noShape' | transloco }}
+                  }
+                </li>
+                <li>{{ 'ideas.record.hash' | transloco }} <span class="mono">{{ shortHash() }}</span></li>
+              </ul>
+            </section>
+          </aside>
+        }
+      </div>
+    } @else if (failed()) {
+      <ui-notice tone="error" data-idea-error>{{ 'ideas.error' | transloco }}</ui-notice>
+    } @else {
+      <div class="idea-loading" role="status" [attr.aria-label]="'ideas.loading' | transloco">
+        <ui-skeleton width="40%" height="28px" />
+        <ui-skeleton height="16px" />
+        <ui-skeleton height="16px" />
+        <ui-skeleton width="70%" height="16px" />
+      </div>
+    }
+  

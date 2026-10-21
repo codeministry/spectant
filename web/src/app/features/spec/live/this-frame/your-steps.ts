@@ -1,115 +1,52 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { FrameCard } from '../../../../../../../core/src/files';
-import { ApiClient } from '../../../../core/api.service';
 import { LockSourceService } from '../../../../core/lock-source.service';
-import { ShellState } from '../../../../layout/shell/shell-state.service';
-import { type CheckEvent, type CheckState, checkBlock, IDLE, nextCheckState, rowChecked } from '../../data/tasks/checkbox';
+import { type CheckState, checkBlock, IDLE, rowChecked } from '../../data/tasks/checkbox';
 import type { TasksBody } from '../../data/tasks/tasks-tab';
 import { BoardCard } from '../board/board-card';
 
-type TaskRow = NonNullable<TasksBody>['tasks'][number];
+/** One tasks.md row as core parsed it (`…/tasks`). */
+export type TaskRow = NonNullable<TasksBody>['tasks'][number];
+
+/** A step's box ticked or cleared: the task and the state wanted. */
+export interface StepToggle {
+  readonly task: string;
+  readonly checked: boolean;
+}
 
 /**
  * "Your steps" (T88, ISC-87; design.md § Live · Operator lane (Principal 2026-10-13)): the operator lane at wide as the
  * prototype draws it, its own lane in the grid (`.lane.op`; in Flow the row across all columns, `.op.span`): the lane
  * head (dot, `operator`, "Your steps · n of m done"), then one checklist row per step, a box and the step as a compact
  * 36 px card (`density="step"`: glyph, id, text, state chip, 4 px edge), so every frame card stays an
- * `article[data-card]` (ISC-88). Each box is the guarded task write of T80: the same `checkbox.ts` state machine and
- * `ApiClient.taskCheck` the Tasks tab runs (saving, written, locked, conflict, failed), against the tasks.md hash of
- * this component's own read of `…/tasks`, so no second state machine exists. A card without a tasks.md row (the list
- * not read yet) shows the frame's state, disabled.
+ * `article[data-card]` (ISC-88). Each box is the guarded task write of T80: the board's store runs the same
+ * `checkbox.ts` state machine and `ApiClient.taskCheck` the Tasks tab runs (saving, written, locked, conflict, failed)
+ * against the tasks.md hash of its own read of `…/tasks`, and hands the rows, the write states and the hash in here; a
+ * tick goes back out (`toggled`), so no second state machine exists. A card without a tasks.md row (the list not read
+ * yet) shows the frame's state, disabled.
  */
 @Component({
   selector: 'app-your-steps',
   imports: [BoardCard, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-your-steps': '' },
-  styles: `
-    :host { display: grid; gap: 8px; align-self: start; min-inline-size: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--color-base-100); }
-    .op { display: grid; gap: 8px; min-inline-size: 0; }
-    .op-head { display: flex; gap: 8px; align-items: center; min-inline-size: 0; }
-    .ldot { flex: none; inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--muted-ink); }
-    .op-name { margin: 0; font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; }
-    .op-count { margin-inline-start: auto; color: var(--color-base-content); font-family: var(--font-mono); font-size: 12px; line-height: 16px; white-space: nowrap; }
-    .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
-    .your-step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; min-block-size: 40px; }
-    .checkbox { justify-self: center; }
-    .note { grid-column: 2; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-    .note[data-tone='fail'] { color: var(--fail-ink); }
-    .empty { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
-    @media (pointer: coarse) { .your-step { min-block-size: 44px; } }
-  `,
-  template: `
-    <section class="op" data-steps-lane aria-labelledby="your-steps-heading">
-      <div class="op-head">
-        <span class="ldot" aria-hidden="true"></span>
-        <h3 class="op-name" id="your-steps-heading">operator</h3>
-        <span class="op-count" data-steps-count>{{ 'board.rail.stepsDone' | transloco: { done: done(), total: cards().length } }}</span>
-      </div>
-    @if (cards().length > 0) {
-      <ul class="rows">
-        @for (c of cards(); track c.task) {
-          @let state = checkOf(c.task);
-          @let row = rowOf(c.task);
-          <li class="your-step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
-            <input
-              type="checkbox"
-              class="checkbox checkbox-sm checkbox-success"
-              [checked]="checked(c)"
-              [disabled]="row === null || blocked(row)"
-              [attr.aria-label]="'board.rail.stepCheck' | transloco: { task: c.task }"
-              (change)="onChange(c.task, $event)"
-            />
-            <app-board-card [card]="c" density="step" />
-            @if (state.kind === 'saving') {
-              <p class="note" data-step-note="saving"><span class="loading loading-spinner loading-xs" aria-hidden="true"></span> {{ 'board.rail.stepSaving' | transloco }}</p>
-            } @else if (state.kind === 'locked') {
-              <p class="note" data-step-note="locked">{{ 'board.rail.stepLocked' | transloco: { session: state.session } }}</p>
-            } @else if (state.kind === 'conflict') {
-              <p class="note" data-tone="fail" role="alert" data-step-note="conflict">{{ 'board.rail.stepConflict' | transloco }}</p>
-            } @else if (state.kind === 'failed') {
-              <p class="note" data-tone="fail" role="alert" data-step-note="failed">{{ 'board.rail.stepFailed' | transloco }}</p>
-            }
-          </li>
-        }
-      </ul>
-    } @else {
-      <p class="empty">{{ 'board.rail.stepsEmpty' | transloco }}</p>
-    }
-    </section>
-  `,
+  styleUrl: './your-steps.css',
+  templateUrl: './your-steps.html',
 })
 export class YourSteps {
-  private readonly api = inject(ApiClient);
-  private readonly state = inject(ShellState);
   private readonly locks = inject(LockSourceService);
 
   /** The operator lane's cards of the frame on screen, board order. */
   readonly cards = input.required<readonly FrameCard[]>();
-
-  private readonly tasks = resource({
-    params: () => {
-      const ws = this.state.ws();
-      const id = this.state.specId();
-      return ws === null || id === null ? undefined : { ws, id };
-    },
-    loader: ({ params }) => this.api.tasks(params.ws, params.id),
-  });
-  private readonly rows = computed<ReadonlyMap<string, TaskRow>>(() => {
-    const result = this.tasks.value();
-    return new Map(result?.kind === 'ok' && result.body ? result.body.tasks.map((row) => [row.id, row]) : []);
-  });
-  /** The hash the next tick sends: the read's, then each accepted write's (as the Tasks tab). */
-  private readonly hash = linkedSignal(() => {
-    const result = this.tasks.value();
-    return result?.kind === 'ok' ? result.hash : null;
-  });
-  /** The write state per task id; a new read drops them all. */
-  private readonly checks = linkedSignal<unknown, ReadonlyMap<string, CheckState>>({
-    source: () => this.tasks.value(),
-    computation: () => new Map(),
-  });
+  /** The tasks.md rows by task id; empty until the board's read answers. */
+  readonly rows = input<ReadonlyMap<string, TaskRow>>(new Map());
+  /** The write state per task id. */
+  readonly checks = input<ReadonlyMap<string, CheckState>>(new Map());
+  /** The tasks.md hash the next tick sends; null before the read. */
+  readonly hash = input<string | null>(null);
+  /** A box ticked or cleared; the board posts it. */
+  readonly toggled = output<StepToggle>();
 
   /** The steps ticked, the writes of this view included. */
   protected readonly done = computed(() => this.cards().filter((c) => this.checked(c)).length);
@@ -131,28 +68,7 @@ export class YourSteps {
     return checkBlock(row, this.checkOf(row.id), this.locks.lock(), this.hash()) !== null;
   }
 
-  private transition(task: string, event: CheckEvent): boolean {
-    const current = this.checkOf(task);
-    const next = nextCheckState(current, event);
-    if (next === current) return false;
-    this.checks.update((checks) => new Map(checks).set(task, next));
-    return true;
-  }
-
   protected onChange(task: string, event: Event): void {
-    void this.tick(task, (event.target as HTMLInputElement).checked);
-  }
-
-  /** A tick: post the state wanted with the hash of this read, then apply the answer (ISC-25, ISC-26, ISC-86). */
-  private async tick(task: string, checked: boolean): Promise<void> {
-    const ws = this.state.ws();
-    const id = this.state.specId();
-    const row = this.rowOf(task);
-    const hash = this.hash();
-    if (ws === null || id === null || row === null || hash === null || this.blocked(row)) return;
-    this.transition(task, { type: 'tick', checked });
-    const result = await this.api.taskCheck(ws, id, task, hash, checked);
-    if (!this.transition(task, { type: 'answer', result }) || result.kind !== 'ok') return;
-    this.hash.set(result.body.hash);
+    this.toggled.emit({ task, checked: (event.target as HTMLInputElement).checked });
   }
 }

@@ -1,26 +1,14 @@
 /* One workflow figure (ISC-123, T161): tokens only; forced-colors falls back to system colours. */
+@import "./_legend.css";
 
 :host {
   display: block;
   min-inline-size: 0;
 }
 
+/* The legend's list (_legend.css), 8 px above the canvas. */
 .legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
   margin: 0 0 8px;
-  padding: 0;
-  color: var(--muted-ink);
-  font-size: 12px;
-  line-height: 16px;
-  list-style: none;
-}
-
-.legend li {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
 }
 
 .legend ui-icon {

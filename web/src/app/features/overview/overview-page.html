@@ -12,10 +12,7 @@
           }
           @case ('unreadable') {
             <section data-ui="workspace-column" class="plain" [attr.data-ws]="slot.entry.slug">
-              <div class="ws-head">
-                <h2>{{ slot.entry.name }}</h2>
-                <span class="path">{{ slot.entry.pathTail }}</span>
-              </div>
+              <ng-container *ngTemplateOutlet="plainHead; context: { $implicit: slot.entry }" />
               <ui-notice tone="warning">
                 <strong class="notice-title">{{ 'overview.unreadable' | transloco }}</strong>
                 @if (slot.reason; as reason) {
@@ -26,10 +23,7 @@
           }
           @case ('loading') {
             <section data-ui="workspace-column" class="plain" aria-busy="true" [attr.data-ws]="slot.entry.slug">
-              <div class="ws-head">
-                <h2>{{ slot.entry.name }}</h2>
-                <span class="path">{{ slot.entry.pathTail }}</span>
-              </div>
+              <ng-container *ngTemplateOutlet="plainHead; context: { $implicit: slot.entry }" />
               <div class="strip-skeleton">
                 <ui-skeleton height="96px" /><ui-skeleton height="96px" /><ui-skeleton height="96px" /><ui-skeleton height="96px" />
               </div>
@@ -61,3 +55,11 @@
 }
 
 <p class="footer-note" data-footer-note>{{ 'overview.footer' | transloco: { origin } }}</p>
+
+<!-- The ws-head of an unreadable or loading column: the name and the path tail, without the workspace component. -->
+<ng-template #plainHead let-entry>
+  <div class="ws-head">
+    <h2>{{ entry.name }}</h2>
+    <span class="path">{{ entry.pathTail }}</span>
+  </div>
+</ng-template>

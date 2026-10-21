@@ -1,3 +1,6 @@
+/* The not-found page; the text link is shared/ui/_text-link.css. */
+@import "../../shared/ui/_text-link.css";
+
 :host {
   display: block;
 }
@@ -84,19 +87,6 @@ p {
 
 .nf-actions ui-kbd {
   margin-inline-start: 4px;
-}
-
-.text-link {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  color: var(--disp-text);
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.text-link:hover {
-  text-decoration: underline;
 }
 
 .c-head {

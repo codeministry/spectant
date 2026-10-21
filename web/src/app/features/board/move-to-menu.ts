@@ -7,31 +7,23 @@ import type { Tier } from '../../layout/shell/tier';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
-import { BoardDrag, type BoardRefusal, type DropHint, dropHint, runHoldOf } from './board-drag';
+import { type BoardRefusal, type DropHint, dropHint, runHoldOf } from './board-drag';
 import type { BoardCard, BoardModel } from '../../core/model/board-types';
 import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
 
-/**
- * The stage Shift+← (`-1`) or Shift+→ (`1`) moves a card to (T127): the nearest of its targets (`card.targets`, core's
- * transition table) before or after its stage in the board's column order; null when there is none that way.
- */
-export function stepTarget(card: Pick<BoardCard, 'stage' | 'targets'>, stages: readonly WorkflowStage[], dir: -1 | 1): WorkflowStage | null {
-  const at = stages.indexOf(card.stage);
-  if (at < 0) return null;
-  const ahead = dir === 1 ? stages.slice(at + 1) : stages.slice(0, at).reverse();
-  return ahead.find((stage) => card.targets.includes(stage)) ?? null;
-}
-
-/** A card the menu or the keyboard moved, and where to: the board follows it and focuses its grip. */
-export interface MovedCard {
-  readonly key: string;
-  readonly to: WorkflowStage;
-}
+/** `stepTarget` and `MovedCard` live in `board-view.ts` since spec 061; the menu's spec reads them from here. */
+export { type MovedCard, stepTarget } from './board-view';
 
 interface MoveEntry {
   readonly stage: WorkflowStage;
   readonly hint: DropHint;
   readonly enabled: boolean;
+}
+
+/** A chosen entry: the card and the stage it moves to. */
+export interface MoveChoice {
+  readonly card: BoardCard;
+  readonly to: WorkflowStage;
 }
 
 /**
@@ -41,9 +33,10 @@ interface MoveEntry {
  * disabled (`aria-disabled`, still focusable so its reason is read) with the drag's own hint words, "not next from …"
  * or "gate" (`dropHint`).
  *
- * An entry calls `BoardDrag.move`, the one move of a drop, so the held move, toast, count morph, tint and reload, and
- * the refusal notice, are the drop's. On a 200 the menu closes and emits `moved`; a story's entry opens the allocation
- * dialog (T128) and closes the menu; a refusal keeps the menu open with the notice under its entry.
+ * An entry emits `choose`, and the page sends `BoardDrag.move`, the one move of a drop, so the held move, toast, count
+ * morph, tint and reload, and the refusal notice, are the drop's. On a 200 the page closes the menu and follows the
+ * card; a story's entry opens the allocation dialog (T128) and closes the menu; a refusal keeps the menu open with the
+ * notice under its entry. The drag state comes in through `draggable` and `refusalOf` (spec 061, ISC-437).
  *
  * Spec 040 (T58, ISC-225.1): for a card a running run holds, every entry is disabled (`BoardDrag.draggable`) and the
  * run's refusal, the notice the drag and the keys show (`itemState.refusal`), stands above them without its ✕
@@ -58,70 +51,21 @@ interface MoveEntry {
   imports: [NgTemplateOutlet, RefusalNotice, TranslocoPipe, UiIcon, UiPopover, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './move-to-menu.css',
-  template: `
-    @if (tier() === 'compact') {
-      <ui-sheet tier="compact" [open]="open()" [heading]="heading()" (openChange)="onOpenChange($event)">
-        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'sheet' }" />
-      </ui-sheet>
-    } @else {
-      <ui-popover class="move-popover" [label]="heading()" (openChange)="onOpenChange($event)">
-        <p class="head" aria-hidden="true">{{ 'board.workspace.move.open' | transloco }}</p>
-        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'popover' }" />
-      </ui-popover>
-    }
-
-    <ng-template #list let-surface>
-      @if (open() && card(); as c) {
-        @if (runRefusal(); as rr) {
-          <app-refusal-notice class="run-notice" data-move-run [refusal]="rr" [dismissible]="false" />
-        }
-        <ul class="entries" role="list" data-move-menu [attr.data-surface]="surface" [attr.data-tier]="tier()">
-          @for (e of entries(); track e.stage) {
-            <li>
-              <button
-                type="button"
-                class="entry"
-                [attr.data-move-to]="e.stage"
-                [attr.data-hint]="e.hint"
-                [attr.aria-current]="e.hint === 'current' ? 'true' : null"
-                [attr.aria-disabled]="e.enabled ? null : 'true'"
-                [attr.data-autofocus]="e.stage === focusStage() ? '' : null"
-                (click)="choose(e)"
-              >
-                <!-- &ngsp; keeps a space between the name and the hint in the button's accessible name. -->
-                <span class="name">{{ 'stages.' + e.stage | transloco }}</span>&ngsp;
-                @switch (e.hint) {
-                  @case ('not-next') {
-                    <span class="hint"><ui-icon name="ban" [size]="14" /><span>{{ 'board.workspace.drag.notNext' | transloco: { stage: fromLabel() } }}</span></span>
-                  }
-                  @case ('gate') {
-                    <span class="hint" data-gate><ui-icon name="shield-check" [size]="14" /><span>{{ 'board.workspace.drag.gate' | transloco }}</span></span>
-                  }
-                  @case ('current') {
-                    <span class="hint">{{ 'board.workspace.drag.current' | transloco }}</span>
-                  }
-                }
-              </button>
-              @if (refusal(); as r) {
-                @if (r.to === e.stage && r.kind !== 'run-locked') {
-                  <app-refusal-notice [refusal]="r" (closed)="drag.dismiss(c.key)" />
-                }
-              }
-            </li>
-          }
-        </ul>
-      }
-    </ng-template>
-  `,
+  templateUrl: './move-to-menu.html',
 })
 export class MoveToMenu {
   readonly board = input.required<BoardModel>();
   readonly ws = input.required<string>();
   readonly tier = input.required<Tier>();
-  /** A 200 moved the card: the board focuses its grip (and at compact shows its column). */
-  readonly moved = output<MovedCard>();
+  /** Whether a card may move at all (`BoardDrag.draggable`): false while a running run holds it (T58). */
+  readonly draggable = input.required<(card: BoardCard) => boolean>();
+  /** The refusal that stands for a card now (`BoardDrag.refusalOf`), shown under the entry it was refused for. */
+  readonly refusalOf = input.required<(card: BoardCard) => BoardRefusal | null>();
+  /** An enabled entry was chosen: the page sends the move. */
+  readonly choose = output<MoveChoice>();
+  /** The ✕ of the refusal notice under an entry: the card's key. */
+  readonly dismiss = output<string>();
 
-  protected readonly drag = inject(BoardDrag);
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly popover = viewChild(UiPopover);
@@ -140,7 +84,7 @@ export class MoveToMenu {
   protected readonly entries = computed<readonly MoveEntry[]>(() => {
     const card = this.card();
     if (card === null) return [];
-    const movable = this.drag.draggable(card);
+    const movable = this.draggable()(card);
     return this.board().stages.map((stage) => {
       const hint = dropHint(card, stage);
       return { stage, hint, enabled: movable && hint === 'allowed' };
@@ -152,7 +96,7 @@ export class MoveToMenu {
 
   protected readonly refusal = computed(() => {
     const card = this.card();
-    return card === null ? null : this.drag.refusalOf(card);
+    return card === null ? null : this.refusalOf()(card);
   });
 
   /** The run's refusal above the entries while a run holds the card (T58); null otherwise. */
@@ -194,11 +138,9 @@ export class MoveToMenu {
     this.open.set(open);
   }
 
-  protected async choose(entry: MoveEntry): Promise<void> {
+  protected chose(entry: MoveEntry): void {
     const card = this.card();
     if (card === null || !entry.enabled) return;
-    const outcome = await this.drag.move(this.ws(), card, entry.stage);
-    if (outcome === 'moved' || outcome === 'asked') this.close();
-    if (outcome === 'moved') this.moved.emit({ key: card.key, to: entry.stage });
+    this.choose.emit({ card, to: entry.stage });
   }
 }

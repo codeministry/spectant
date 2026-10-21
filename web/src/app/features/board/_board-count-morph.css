@@ -1,0 +1,14 @@
+/*
+ * An accepted move: the counts morph in. The board page and the column head import this partial as their first rule;
+ * emulated encapsulation scopes the copy (and its keyframes) per component, and no other rule animates a count.
+ */
+.count[data-morph] {
+  animation: board-count-in var(--motion-duration-slow) var(--motion-ease-standard);
+}
+
+@keyframes board-count-in {
+  from {
+    opacity: 0;
+    transform: translateY(-25%);
+  }
+}

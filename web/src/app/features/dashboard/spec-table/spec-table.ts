@@ -35,7 +35,7 @@ import { ShellData } from '../../../layout/shell/shell-data.service';
 import { type SortOption, UiSortMenu } from '../../../shared/ui/sort-menu/sort-menu';
 import { toneMark } from '../../../shared/ui/tone';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
-import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
+import { TRACK_STAGES } from '../../../core/model/stage-track';
 import { SpecRow } from './spec-row';
 import {
   ALL,
