@@ -4,7 +4,7 @@
 //
 // Four checks hold the claim:
 //   1. Every icon key of the prototype reference (`fixtures/prototype-reference.json`, part `icons`) has an entry in
-//      `PROTOTYPE_ICON_MAP`, so no prototype icon is left unmapped.
+//      `ICON_KEY_MAP`, so no prototype icon is left unmapped.
 //   2. The mapping has no key the fixture lacks, so it cannot drift from the prototype's icon tables.
 //   3. Every mapped name exists in the pinned package's `icons/` folder, the version the fixture was measured against.
 //   4. Every mapped name is in `ICON_NAMES`, so the app can render it through `<ui-icon>`.
@@ -15,7 +15,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ICON_NAMES } from "../src/app/shared/icons/icon-names.ts";
 import { lucideDir } from "../src/app/shared/icons/generate-icons.ts";
-import { PROTOTYPE_ICON_MAP } from "../src/app/shared/icons/prototype-map.ts";
+import { ICON_KEY_MAP } from "../src/app/shared/icons/icon-map.ts";
 
 type IconEntry = { lucide?: string; source?: string };
 type Reference = { icons?: Record<string, IconEntry>; lucide?: string };
@@ -30,7 +30,7 @@ const reference = JSON.parse(
   readFileSync(join(import.meta.dir, "fixtures", "prototype-reference.json"), "utf8"),
 ) as Reference;
 const fixtureKeys = Object.keys(must(reference.icons, "icons part of the prototype reference")).sort();
-const mapped = Object.entries(PROTOTYPE_ICON_MAP);
+const mapped = Object.entries(ICON_KEY_MAP);
 const pinned = (JSON.parse(readFileSync(join(lucideDir(), "package.json"), "utf8")) as { version?: string }).version;
 const available = new Set(readdirSync(join(lucideDir(), "icons")).map((f) => f.replace(/\.svg$/, "")));
 
@@ -41,7 +41,7 @@ describe("ISC-147 prototype icon mapping", () => {
   });
 
   test("every icon key of the prototype has an entry in the mapping", () => {
-    const unmapped = fixtureKeys.filter((k) => !Object.hasOwn(PROTOTYPE_ICON_MAP, k));
+    const unmapped = fixtureKeys.filter((k) => !Object.hasOwn(ICON_KEY_MAP, k));
     expect(unmapped).toEqual([]);
   });
 

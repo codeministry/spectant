@@ -1,10 +1,10 @@
 import type { IconName } from '../../icons/icons';
 
 /**
- * The prototype's `CHIP_ICON` (`app.js`), word for word (spec 024 design.md § Fundament, Icons): the key a chip shows
- * (a spec type, a stage, a state) to the Lucide icon in front of its word, the prototype keys resolved through
- * `icons/prototype-map.ts` (`flask` → `flask-conical`, `checkCircle` → `circle-check`, `octagon` → `octagon-x`,
- * `alert` → `triangle-alert`, `loader` → `loader-circle`, `gitBranch` → `git-branch`).
+ * The chip icons (spec 024 design.md § Fundament, Icons): the key a chip shows (a spec type, a stage, a state) to the
+ * Lucide icon in front of its word, the icon keys resolved through `icons/icon-map.ts` (`flask` → `flask-conical`,
+ * `checkCircle` → `circle-check`, `octagon` → `octagon-x`, `alert` → `triangle-alert`, `loader` → `loader-circle`,
+ * `gitBranch` → `git-branch`).
  */
 export const CHIP_ICON = {
   feature: 'sparkles',

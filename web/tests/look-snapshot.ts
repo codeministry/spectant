@@ -16,7 +16,7 @@
 // when either part differs from a fresh resolution or the file is missing.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { PROTOTYPE_ICON_MAP } from "../src/app/shared/icons/prototype-map";
+import { ICON_KEY_MAP } from "../src/app/shared/icons/icon-map";
 
 export const THEMES = ["light", "dark"] as const;
 export type Theme = (typeof THEMES)[number];
@@ -165,7 +165,7 @@ export function resolveTokens(theme: Theme, read: SourceReader = readSource): Re
 }
 
 /** The icon key map, key → Lucide name. */
-export const iconKeys = (): Record<string, string> => ({ ...PROTOTYPE_ICON_MAP });
+export const iconKeys = (): Record<string, string> => ({ ...ICON_KEY_MAP });
 
 // ── The snapshot file. ──
 export type Snapshot = {

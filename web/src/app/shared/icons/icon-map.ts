@@ -1,11 +1,11 @@
-// The prototype's icons by name (ISC-147): each key of the prototype's icon tables mapped to the Lucide symbol it
-// draws. The prototype carries an older Lucide, so its path data is never used; `<ui-icon>` renders the pinned
-// `lucide-static` path of the mapped name. Keys and the starting proposal come from
-// `web/tests/fixtures/prototype-reference.json` (part `icons`); a trailing comment says why a value differs from that
-// proposal or how a low-confidence key was decided. `web/tests/icon-parity.test.ts` holds completeness and the pin.
+// The app's icon keys by name (ISC-147, ISC-452): each short key the app's icon tables use, mapped to the Lucide
+// symbol it draws. `<ui-icon>` renders the pinned `lucide-static` path of the mapped name, so every value must exist
+// in that version and in `ICON_NAMES`. A trailing comment says why a value differs from the first name proposed for the
+// key or how a low-confidence key was decided. `web/tests/look-snapshot.test.ts` holds the map against the pinned
+// package and the tracked snapshot `web/tests/fixtures/look-snapshot.json` (part `icons`).
 import type { IconName } from './icons';
 
-export const PROTOTYPE_ICON_MAP: Readonly<Record<string, IconName>> = {
+export const ICON_KEY_MAP: Readonly<Record<string, IconName>> = {
   activity: 'activity',
   alert: 'triangle-alert',
   anchor: 'anchor',

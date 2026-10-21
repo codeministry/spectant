@@ -102,7 +102,7 @@ import type { SpecPageModel } from '../../core/src/files.ts';
 import { workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
-import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
+import { ICON_KEY_MAP } from '../src/app/shared/icons/icon-map.ts';
 import { atWidth, expect, headerControl, test } from './fixtures';
 import { RESET_PATH, SESSION_HEADER, STUB_NOTES } from './stub-api';
 
@@ -418,7 +418,7 @@ const ICON_PLACES: readonly IconPlace[] = [
 
 test.describe('icons', () => {
   test('every expected name is a mapped prototype icon or one design.md names', () => {
-    const mapped = new Set<string>([...Object.values(PROTOTYPE_ICON_MAP), ...DESIGN_ICONS]);
+    const mapped = new Set<string>([...Object.values(ICON_KEY_MAP), ...DESIGN_ICONS]);
     expect(ICON_PLACES.map((p) => p.icon).filter((name) => !mapped.has(name))).toEqual([]);
   });
 

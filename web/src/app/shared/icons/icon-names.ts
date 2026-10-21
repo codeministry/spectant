@@ -92,7 +92,7 @@ export const ICON_NAMES = [
   // Spec 008, folding a board column by hand.
   'fold-horizontal',
   'unfold-horizontal',
-  // Spec 024: the prototype's icons not covered above, by the names of `prototype-map.ts` (ISC-147).
+  // Spec 024: the icon keys not covered above, by the names of `icon-map.ts` (ISC-147).
   'anchor',
   'arrow-down-up',
   'arrow-right',
