@@ -161,6 +161,7 @@ describe('parseListQuery and listQueryParams', () => {
       type: 'bug',
       sort: 'id',
       takeable: true,
+      working: false,
       archived: true,
     });
     expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes', archived: 'yes' }))).toEqual(DEFAULT_QUERY);
@@ -168,6 +169,15 @@ describe('parseListQuery and listQueryParams', () => {
     expect(parseListQuery(params({ phase: 'climbing' }))).toEqual(DEFAULT_QUERY);
     expect(parseListQuery(params({ phase: 'complete' })).phase).toBe('complete');
     expect(parseListQuery(params({ phase: 'fog' })).phase).toBe('fog');
+  });
+
+  it('starts with the working filter off and reads ?working=1 as on, like takeable (spec 064, T3, ISC-465)', () => {
+    expect(DEFAULT_QUERY.working).toBe(false);
+    expect(parseListQuery(params({ working: '1' }))).toEqual({ ...DEFAULT_QUERY, working: true });
+    expect(parseListQuery(params({ working: '0' })).working).toBe(false);
+    expect(parseListQuery(params({ working: 'yes' })).working).toBe(false);
+    expect(listQueryParams(query({ working: true })).working).toBe('1');
+    expect(listQueryParams(DEFAULT_QUERY).working).toBeNull();
   });
 
   it('starts with the archived specs hidden and reads ?archived=1 as shown (spec 050, ISC-287)', () => {
@@ -179,12 +189,13 @@ describe('parseListQuery and listQueryParams', () => {
   });
 
   it('writes defaults as null, so the URL only carries what differs', () => {
-    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, archived: null });
+    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, working: null, archived: null });
     expect(listQueryParams(query({ phase: 'fog', sort: 'next', takeable: true }))).toEqual({
       phase: 'fog',
       type: null,
       sort: 'next',
       takeable: '1',
+      working: null,
       archived: null,
     });
   });
@@ -192,12 +203,12 @@ describe('parseListQuery and listQueryParams', () => {
 
 describe('LIST_QUERY_KEYS (spec 058, T5, ISC-396)', () => {
   it('names every key listQueryParams can write', () => {
-    const every = listQueryParams({ phase: FOG, type: 'feature', sort: 'next', takeable: true, archived: true });
+    const every = listQueryParams({ phase: FOG, type: 'feature', sort: 'next', takeable: true, working: true, archived: true });
     for (const key of Object.keys(every)) expect(LIST_QUERY_KEYS).toContain(key);
   });
 
   it('names search, the show-all fold and density beside the filters', () => {
-    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'takeable', 'type']);
+    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'takeable', 'type', 'working']);
   });
 
   it('never names sel: the dashboard keeps its own selection (ISC-400)', () => {
@@ -220,6 +231,15 @@ describe('applyListQuery', () => {
     expect(ids(applyListQuery(rows, query({ phase: 'scoping' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ type: 'bug' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ takeable: true })))).toEqual(['002']);
+  });
+
+  it('keeps exactly the rows with an agent under the working filter (spec 064, T3, ISC-465)', () => {
+    const lock = { id: 'ISC-1', session: 'a:claude:sess-1', since: '2026-10-21T09:00:00Z', source: 'activity' };
+    const locked = readSpecRows({ specs: [wire('011', { taken: [lock] }), wire('012'), wire('013', { taken: [lock], type: 'bug' })] });
+    expect(ids(applyListQuery(locked, query({ working: true })))).toEqual(['011', '013']);
+    expect(ids(applyListQuery(locked, query({ working: true, type: 'bug' })))).toEqual(['013']);
+    expect(ids(applyListQuery(locked, DEFAULT_QUERY))).toEqual(['011', '012', '013']);
+    expect(applyListQuery(rows, query({ working: true }))).toEqual([]);
   });
 
   it('offers the prototype sort menu: Stage, ID, Progress', () => {
@@ -368,6 +388,8 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
   it('hides every archived row under a phase chip, the fog chip or takeable', () => {
     for (const phase of [...STAGE_GROUPS, FOG]) expect(applyArchivedQuery(ARCHIVE, on({ phase }))).toEqual([]);
     expect(applyArchivedQuery(ARCHIVE, on({ takeable: true }))).toEqual([]);
+    // An archived spec holds no lock, so the working filter (spec 064, ISC-465) lists none of them either.
+    expect(applyArchivedQuery(ARCHIVE, on({ working: true }))).toEqual([]);
   });
 
   it('lets the type filter reach the archived rows', () => {

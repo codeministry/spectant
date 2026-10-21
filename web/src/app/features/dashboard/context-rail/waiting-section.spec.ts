@@ -7,22 +7,26 @@ import beacon from '../../../../../../core/fixtures/beacon.golden.json';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import type { GuidanceEntry } from '../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { TILE_LIMIT } from '../../../shared/ui/guidance/tiles';
 import { WAITING_FRAGMENT, WaitingSection } from './waiting-section';
 
 let entries: readonly GuidanceEntry[] = [];
+let titles: Readonly<Record<string, string>> = {};
 
 /** The dashboard route as the page sits on it: the section with the entries of the test. */
 @Component({
   selector: 'app-test-host',
   imports: [WaitingSection],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<app-waiting-section [entries]="entries" workspace="harbor" />`,
+  template: `<app-waiting-section [entries]="entries" [titles]="titles" workspace="harbor" />`,
 })
 class TestHost {
   protected readonly entries = entries;
+  protected readonly titles = titles;
 }
 
 beforeEach(() => {
+  titles = {};
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -55,69 +59,58 @@ const text = (el: Element | null | undefined): string => (el?.textContent ?? '')
 /** The fold toggle's accessible name: its visually hidden name (the visible text is `aria-hidden`). */
 const nameOf = (button: Element | null | undefined): string => text(button?.querySelector('[data-name]'));
 const visibleOf = (button: Element | null | undefined): string => text(button?.querySelector('[data-visible]'));
+/** The tile's ID: the spec number inside its link. */
+const idOf = (tile: Element): string => text(tile.querySelector('[data-tile-id]'));
 const HARBOR = harbor.guidance.waits as unknown as readonly GuidanceEntry[];
 const BEACON = beacon.guidance.waits as unknown as readonly GuidanceEntry[];
 
-describe('WaitingSection (spec 020 T17, ISC-238; spec 058 T46, ISC-399 card rows)', () => {
-  /** The rows standing in the card, outside the fold. */
-  const standing = (section: Element | null | undefined): Element[] => [...(section?.querySelectorAll('ui-card[data-waits-card] > ol.entries > li') ?? [])];
+describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tiles)', () => {
+  /** The tiles standing in the block's list, outside the fold. */
+  const standing = (section: Element | null | undefined): Element[] => [...(section?.querySelectorAll('section > ol.tiles > li > ui-flat-tile') ?? [])];
 
-  it('is the #waiting target and shows a single entry as the one row of its card with its chip, no fold', async () => {
+  it('is the #waiting target and shows a single entry as one flat tile with its chip, no fold', async () => {
     const root = await render(BEACON.slice(0, 1));
     const section = root.querySelector('app-waiting-section');
     expect(section?.id).toBe(WAITING_FRAGMENT);
     expect(section?.getAttribute('tabindex')).toBe('-1');
     expect(standing(section)).toHaveLength(1);
-    expect(section?.querySelector('ui-card [data-top] ui-command-chip')).not.toBeNull();
-    expect(section?.querySelectorAll('[data-row]').length).toBe(0);
-    expect(section?.querySelector('[data-more], ui-disclosure')).toBeNull();
+    expect(standing(section)[0]?.querySelector('ui-command-chip')).not.toBeNull();
+    expect(section?.querySelector('[data-top], [data-row], [data-more], ui-disclosure')).toBeNull();
   });
 
-  it('shows up to three entries as rows without a fold', async () => {
+  it('shows up to TILE_LIMIT entries as tiles without a fold', async () => {
     expect(BEACON.length).toBe(2);
     const root = await render(BEACON);
     const section = root.querySelector('app-waiting-section');
-    expect(standing(section).map((li) => text(li.querySelector('.id')))).toEqual(BEACON.map((e) => e.spec));
+    expect(standing(section).map(idOf)).toEqual(BEACON.map((e) => e.spec));
     expect(section?.querySelector('ui-disclosure')).toBeNull();
   });
 
-  it('shows the header with the count and one card: three rows, then "Show all 7" at its bottom, closed, the rest folded with reason and chip', async () => {
+  it('shows the header with the count, three equal tiles, then "Show all 7", closed, the rest folded as the same tiles', async () => {
     expect(HARBOR.length).toBe(7);
+    titles = { '002': 'Sync history that explains itself' };
     const root = await render(HARBOR);
     const section = root.querySelector('app-waiting-section');
     expect(section?.getAttribute('data-count')).toBe('7');
     const block = section?.querySelector('ui-waits-block');
     expect(text(block?.querySelector('ui-section-header ui-chip'))).toBe('7');
-    const cards = block?.querySelectorAll('ui-card');
-    expect(cards?.length).toBe(1);
-    // Three rows stand, the first one [data-top]: spec link, the reason never shortened, the copy chip.
+    expect(block?.querySelector('ui-card[data-top], [data-top], [data-waits-card], [data-reason], [data-more]')).toBeNull();
     const rows = standing(section);
-    expect(rows.map((li) => text(li.querySelector('.id')))).toEqual(HARBOR.slice(0, 3).map((e) => e.spec));
-    const top = rows[0];
-    expect(top.hasAttribute('data-top')).toBe(true);
-    expect(block?.querySelectorAll('[data-top]').length).toBe(1);
-    expect(top.querySelector('a.row')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
-    for (const row of rows) {
-      expect(text(row.querySelector('[data-reason]'))).not.toBe('');
-      expect(row.querySelector('ui-command-chip')).not.toBeNull();
-    }
-    expect(block?.querySelector('[data-more]')).toBeNull();
-    // The fold closes the card.
+    expect(rows).toHaveLength(TILE_LIMIT);
+    expect(rows.map(idOf)).toEqual(HARBOR.slice(0, 3).map((e) => e.spec));
+    expect(rows[0]?.querySelector('a.id')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
+    // The spec's title is the main text, from the caller's titles where the entry is a claim or task.
+    expect(rows.map((tile) => text(tile.querySelector('.main')))).toEqual([HARBOR[0]?.title, titles['002'], titles['002']]);
     const fold = section?.querySelector('ui-disclosure[data-show-all]');
-    expect(cards?.[0]?.lastElementChild).toBe(fold);
     const button = fold?.querySelector('button');
     expect(visibleOf(button)).toBe('Show all 7');
     expect(button?.querySelector('[data-visible]')?.getAttribute('aria-hidden')).toBe('true');
     expect(nameOf(button)).toBe('Show all 7 · Waits on you');
-    expect(nameOf(button).startsWith(visibleOf(button))).toBe(true);
     expect(button?.getAttribute('aria-expanded')).toBe('false');
-    const folded = [...(fold?.querySelectorAll('[data-row]') ?? [])];
-    expect(folded.map((row) => text(row.querySelector('.id')))).toEqual(HARBOR.slice(3).map((e) => e.spec));
-    for (const row of folded) {
-      expect(text(row.querySelector('[data-reason]'))).not.toBe('');
-      expect(row.querySelector('ui-command-chip')).not.toBeNull();
-    }
-    expect(section?.querySelectorAll('ui-command-chip').length).toBe(7);
+    const folded = [...(fold?.querySelectorAll('ol.tiles > li > ui-flat-tile') ?? [])];
+    expect(folded.map(idOf)).toEqual(HARBOR.slice(3).map((e) => e.spec));
+    // Every harbor entry has a command: seven tiles, seven copy chips, each tile its own.
+    expect(section?.querySelectorAll('ui-flat-tile ui-command-chip').length).toBe(7);
     expect(document.activeElement).not.toBe(section);
   });
 
@@ -154,6 +147,6 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 058 T46, ISC-399 card rows
     const root = await render([]);
     const section = root.querySelector('app-waiting-section');
     expect(text(section?.querySelector('[data-empty]'))).toBe('Nothing is waiting on you.');
-    expect(section?.querySelector('ui-disclosure, ui-card')).toBeNull();
+    expect(section?.querySelector('ui-disclosure, ui-card, ui-flat-tile')).toBeNull();
   });
 });

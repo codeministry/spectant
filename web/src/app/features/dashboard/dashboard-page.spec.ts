@@ -181,6 +181,9 @@ describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)
     ] as const) {
       it(`sets ?sel=spec:<id> from ${name} and stays on /w/harbor, the sidebar ${FLOATING[tier]}, at ${tier}`, async () => {
         const { page, harness } = await render(tier);
+        // Spec 064 (T32): the warnings start folded; open them before reading their links.
+        page.querySelector<HTMLButtonElement>('app-warnings-panel [data-warnings-toggle]')?.click();
+        await harness.fixture.whenStable();
         const link = page.querySelector<HTMLAnchorElement>(selector);
         expect(link).not.toBeNull();
         const href = link?.getAttribute('href');

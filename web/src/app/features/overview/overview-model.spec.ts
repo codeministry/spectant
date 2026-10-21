@@ -50,6 +50,20 @@ describe('readColumn (T65)', () => {
     expect(readColumn(entry('harbor'), harbor, 0).waits).toEqual(harbor.guidance.waits);
     expect(readColumn(entry('lantern'), lantern, 0).waits).toEqual([]);
   });
+
+  it('reads the specs a session holds a claim of through workingOf (spec 064 T18)', () => {
+    const body = {
+      specs: [
+        { id: '064', title: 'Flat tiles', taken: [{ claim: 'ISC-461', session: 'a:claude:x', since: '2026-10-20T08:00:00Z' }] },
+        { id: '065', title: 'Idle' },
+      ],
+    };
+    expect(readColumn(entry('held'), body, 0).working).toEqual([
+      { id: '064', title: 'Flat tiles', session: 'a:claude:x', since: '2026-10-20T08:00:00Z' },
+    ]);
+    expect(readColumn(entry('odd'), { nonsense: true }, 0).working).toEqual([]);
+    expect(readColumn(entry('free'), { specs: [{ id: '065', title: 'Idle' }] }, 0).working).toEqual([]);
+  });
 });
 
 describe('monogram', () => {

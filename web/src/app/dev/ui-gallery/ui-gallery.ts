@@ -15,6 +15,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { BoardStatesGallery } from './board-states-gallery';
 import { StatesGallery } from './states-gallery';
+import { TilesGallery } from './tiles-gallery';
 import { UiButton, type ButtonTone, type ButtonVariant } from '../../shared/ui/button/button';
 import { UiButtonGroup } from '../../shared/ui/button/button-group';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
@@ -75,6 +76,7 @@ import {
   imports: [
     BoardStatesGallery,
     StatesGallery,
+    TilesGallery,
     RouterLink,
     UiButton,
     UiButtonGroup,

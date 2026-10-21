@@ -154,72 +154,118 @@ describe('ui-waits-block heading level (spec 058, T14)', () => {
   });
 });
 
-// Spec 058 (T40, T46, ISC-401, ISC-399): `form` `card-rows` sets every entry as a row in one card like Next up's card
-// form, three standing and the rest behind "Show all n" at the card's bottom (the dashboard); the default `stack` keeps
-// the highlighted card (the start and the spec page).
-describe('ui-waits-block form (spec 058, T40, T46)', () => {
-  const rowsOf = (el: Element | null | undefined): Element[] => [...(el?.querySelectorAll(':scope > ol.entries > li') ?? [])];
+// Spec 064 (T13, ISC-478): `form` `tiles` sets every entry as the same flat tile (`ui-flat-tile`) on `/` and `/w/<ws>`:
+// mark, ID, kind or ref chip, the spec's title as the main text (one line, cut with an ellipsis, the full title in the
+// link's `title`), the copy chip where the entry has a command, "waiting n d"; the reason sentence only as the tile's
+// accessible description, never visible; no highlighted top card. `TILE_LIMIT` tiles stand, the rest fold (`more`
+// `fold`, the dashboard) or a link leads on (`more` `link`, the start).
+describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
+  const LONG = 'Keep every spec tile on the workspace dashboard to one calm line, however long the title of its spec may run in the files';
+  /** The spec titles the caller passes; the claim entry of 002 shows 002's title, not the claim's text. */
+  const TITLES = { '006': LONG, '002': 'Sync history that explains itself' };
+  /** Four entries: one with a 120+ character spec title, one without a command, two with a ref. */
+  const FOUR: GuidanceEntry[] = [{ ...WAITS[0], title: LONG }, { ...WAITS[1], command: null }, WAITS[2], WAITS[4]];
+  const tilesOf = (el: Element): Element[] => [...el.querySelectorAll('ol.tiles > li > ui-flat-tile')];
+  /** A tile's visible text: everything but its visually hidden description and the chip's hidden names. */
+  const visible = (tile: Element): string => {
+    const copy = tile.cloneNode(true) as Element;
+    copy.querySelectorAll('.vh, .visually-hidden').forEach((n) => n.remove());
+    return text(copy);
+  };
 
-  it('card-rows: one unpadded card of rows, the first three standing with ID link, reason and copy chip', async () => {
-    const host = await render(WAITS, { form: 'card-rows', chips: true });
-    const cards = host.querySelectorAll('ui-card');
-    expect(cards).toHaveLength(1);
-    const card = cards[0];
-    expect(card.hasAttribute('data-waits-card')).toBe(true);
-    expect(card.hasAttribute('data-top')).toBe(false);
-    const standing = rowsOf(card);
+  it('four equal tiles: three standing, the fourth behind the fold, no top card', async () => {
+    expect(LONG.length).toBeGreaterThan(120);
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES });
+    const standing = [...host.querySelectorAll('section > ol.tiles > li > ui-flat-tile')];
     expect(standing).toHaveLength(3);
-    // The first entry stays [data-top] (e2e suites read it); the others are [data-row].
-    expect(standing.map((li) => li.hasAttribute('data-top'))).toEqual([true, false, false]);
-    expect(standing.map((li) => li.hasAttribute('data-row'))).toEqual([false, true, true]);
-    const top = standing[0];
-    expect(top.querySelector('a.row')?.getAttribute('href')).toBe('/w/harbor/s/006');
-    expect(text(top.querySelector('.id'))).toBe('006');
-    expect(text(top.querySelector('[data-reason]')).length).toBeGreaterThan(0);
-    expect(chips(top)).toEqual(['/spec review 006']);
-    expect(host.querySelector('ui-card .title, ui-priority, ui-relative-time, [data-more]')).toBeNull();
-  });
-
-  it('card-rows: the rest fold behind "Show all 7" at the bottom of the card, every row with reason and chip', async () => {
-    const host = await render(WAITS, { form: 'card-rows' });
-    const card = host.querySelector('ui-card[data-waits-card]');
-    const fold = card?.querySelector(':scope > ui-disclosure[data-show-all]');
+    const fold = host.querySelector('ui-disclosure[data-show-all]');
     expect(fold).not.toBeNull();
-    expect(card?.lastElementChild).toBe(fold);
-    const button = fold?.querySelector('button');
-    expect(text(button?.querySelector('[data-visible]'))).toBe('Show all 7');
-    expect(button?.querySelector('[data-visible]')?.getAttribute('aria-hidden')).toBe('true');
-    expect(text(button?.querySelector('[data-name]'))).toBe('Show all 7 · Waits on you');
+    expect(tilesOf(fold as Element)).toHaveLength(1);
+    expect(tilesOf(host)).toHaveLength(4);
+    expect(host.querySelector('.top, [data-top], [data-waits-card], ui-card[data-side], ui-priority, [data-reason], ol.rest, ol.entries')).toBeNull();
+    // Every tile is built the same: mark (the waiting glyph), ID, main text, meta.
+    for (const tile of tilesOf(host)) {
+      expect(tile.querySelector('.mark ui-glyph[state="waiting"]')).not.toBeNull();
+      expect(tile.querySelector('a.id [data-tile-id]')).not.toBeNull();
+      expect(tile.querySelector('.main .title')).not.toBeNull();
+      expect(text(tile.querySelector('.meta ui-relative-time'))).toMatch(/^waiting \d+ (s|min|h|d)$/);
+    }
+  });
+
+  it('the main text is the spec title, one line in the ellipsis slot, the full title in the link\'s title', async () => {
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES });
+    const tiles = tilesOf(host);
+    const titles = tiles.map((tile) => text(tile.querySelector('.main .title')));
+    expect(titles).toEqual([LONG, TITLES['002'], TITLES['002'], WAITS[4].title]);
+    expect(tiles.map((tile) => tile.querySelector('a.id')?.getAttribute('title'))).toEqual(titles);
+    // The claim's and the task's own text never stand in the tile.
+    expect(text(host)).not.toContain(WAITS[1].title);
+    expect(text(host)).not.toContain(WAITS[2].title);
+    expect(tiles[0].querySelector('a.id')?.getAttribute('href')).toBe('/w/harbor/s/006');
+  });
+
+  it('the reason sentence is no visible text, only the tile\'s accessible description', async () => {
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES });
+    for (const tile of tilesOf(host)) {
+      const id = tile.querySelector('a.id')?.getAttribute('aria-describedby') ?? '';
+      expect(id).not.toBe('');
+      const description = text(tile.querySelector(`[id="${id}"]`));
+      expect(description.length).toBeGreaterThan(0);
+      expect(visible(tile)).not.toContain(description);
+    }
+  });
+
+  it('a copy chip only where the entry has a command; a ref chip beside the ID where the entry has a ref', async () => {
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES });
+    const tiles = tilesOf(host);
+    expect(tiles.map((tile) => tile.querySelector('.aside ui-command-chip') !== null)).toEqual([true, false, true, true]);
+    expect(chips(host)).toEqual(['/spec review 006', '/spec implement 002', '/spec review 005']);
+    expect(tiles.map((tile) => text(tile.querySelector('a.id ui-chip')))).toEqual(['', 'ISC-77', 'T31', '']);
+  });
+
+  it('names each tile "<id> <title> · <ref> · waiting <time>", the parts it lacks dropped', async () => {
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES });
+    const names = tilesOf(host).map((tile) => tile.querySelector('a.id')?.getAttribute('aria-label') ?? '');
+    expect(names[0]).toMatch(new RegExp(`^006 ${LONG} · waiting \\d+ (s|min|h|d)$`));
+    expect(names[1]).toMatch(/^002 Sync history that explains itself · ISC-77 · waiting \d+ (s|min|h|d)$/);
+    TestBed.resetTestingModule();
+    const undated = await render([{ ...WAITS[4], since: null }], { form: 'tiles' });
+    expect(tilesOf(undated)[0].querySelector('a.id')?.getAttribute('aria-label')).toBe(`005 ${WAITS[4].title}`);
+    expect(tilesOf(undated)[0].querySelector('ui-relative-time')).toBeNull();
+  });
+
+  it('the fold: "Show all 4" with a chevron, closed, its name naming the list; `open` opens it', async () => {
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES });
+    const button = host.querySelector('ui-disclosure[data-show-all] button');
+    expect(text(button?.querySelector('[data-visible]'))).toBe('Show all 4');
+    expect(text(button?.querySelector('[data-name]'))).toBe('Show all 4 · Waits on you');
+    expect(button?.querySelector('ui-icon[name="chevron-down"]')).not.toBeNull();
     expect(button?.getAttribute('aria-expanded')).toBe('false');
-    const folded = rowsOf(fold?.querySelector('.content'));
-    expect(folded).toHaveLength(4);
-    expect(folded.every((li) => li.hasAttribute('data-row') && text(li.querySelector('[data-reason]')) !== '')).toBe(true);
-    // Every entry once, in core's order, each with its chip.
-    expect([...host.querySelectorAll('[data-top], [data-row]')].map((li) => text(li.querySelector('.id')))).toEqual(WAITS.map((e) => e.spec));
-    expect(chips(host)).toEqual(WAITS.flatMap((e) => (e.command ? [e.command] : [])));
-  });
-
-  it('card-rows: three entries or fewer stand without a fold; German names the fold', async () => {
-    const short = await render(WAITS.slice(0, 3), { form: 'card-rows' });
-    expect(rowsOf(short.querySelector('ui-card'))).toHaveLength(3);
-    expect(short.querySelector('ui-disclosure')).toBeNull();
     TestBed.resetTestingModule();
-    const de = await render(WAITS, { form: 'card-rows' }, 'de');
-    expect(text(de.querySelector('[data-show-all] [data-visible]'))).toBe('Alle 7 anzeigen');
-    expect(text(de.querySelector('[data-show-all] [data-name]'))).toBe('Alle 7 anzeigen · Liegt bei Ihnen');
+    const open = await render(FOUR, { form: 'tiles', open: true });
+    expect(open.querySelector('ui-disclosure button')?.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('card-rows: the top chip keeps the stack form\'s accessible names', async () => {
-    const row = await render(WAITS, { form: 'card-rows' });
-    const rowChip = row.querySelector('[data-top] ui-command-chip')?.innerHTML;
+  it('more="link": three tiles, then a link with an arrow to moreLink#moreFragment; three or fewer, neither', async () => {
+    const host = await render(FOUR, { form: 'tiles', more: 'link', moreLink: '/w/harbor' }, 'de');
+    expect(tilesOf(host)).toHaveLength(3);
+    expect(host.querySelector('ui-disclosure')).toBeNull();
+    const more = host.querySelector('a[data-more]');
+    expect(more?.getAttribute('href')).toBe('/w/harbor#waiting');
+    expect(text(more?.querySelector('[data-visible]'))).toBe('Alle 4 anzeigen');
+    expect(text(more?.querySelector('[data-name]'))).toBe('Alle 4 anzeigen · Liegt bei Ihnen');
+    expect(more?.querySelector('ui-icon[name="arrow-right"]')).not.toBeNull();
     TestBed.resetTestingModule();
-    const card = await render(WAITS);
-    expect(rowChip).toBe(card.querySelector('[data-top] ui-command-chip')?.innerHTML);
+    const three = await render(FOUR.slice(0, 3), { form: 'tiles', more: 'link', moreLink: '/w/harbor' });
+    expect(tilesOf(three)).toHaveLength(3);
+    expect(three.querySelector('a[data-more], ui-disclosure')).toBeNull();
   });
 
-  it('stack is the default: the top entry stays the highlighted card', async () => {
-    const host = await render(WAITS);
-    expect(host.querySelector('ui-card[data-top]')).not.toBeNull();
-    expect(host.querySelector('[data-waits-card], ui-disclosure')).toBeNull();
+  it('nothing waiting: the sentence with the done glyph, no list', async () => {
+    const host = await render([], { form: 'tiles' });
+    expect(host.querySelector('ol, ui-flat-tile')).toBeNull();
+    expect(text(host.querySelector('[data-empty]'))).toBe(en.guidance.waits.empty);
+    expect(host.querySelector('[data-empty] ui-glyph[state="done"]')).not.toBeNull();
   });
 });
+

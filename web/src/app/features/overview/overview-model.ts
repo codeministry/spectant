@@ -1,5 +1,6 @@
 import type { GuidanceEntry } from '../../../../../core/src/files';
 import { guidanceOfBody } from '../../core/model/guidance-entry';
+import { type WorkingEntry, workingOf } from '../../core/model/working';
 import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
 import { count, isLoose, type Loose, text } from '../../layout/shell/loose';
 
@@ -43,6 +44,8 @@ export interface OverviewColumn {
   readonly list: readonly ColumnRow[];
   /** `guidance.waits` as served, in core's order (spec 020, ISC-237); empty when the body carries no guidance. */
   readonly waits: readonly GuidanceEntry[];
+  /** The specs a session holds a claim of, read by core/model's `workingOf` (spec 064, ISC-461); empty without a lock. */
+  readonly working: readonly WorkingEntry[];
   /** Epoch ms the dashboard answered; the ws-head's "Updated n s ago". */
   readonly loadedAt: number;
 }
@@ -81,7 +84,8 @@ export function readColumn(
     .flatMap((id) => list.filter((row) => row.id === id && row.nextCommand !== null))
     .slice(0, NEXT_UP_LIMIT);
   const waits = guidanceOfBody(body)?.waits ?? [];
-  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, loadedAt };
+  const working = workingOf(body);
+  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, working, loadedAt };
 }
 
 /** The workspace badge's monogram (prototype `identity.js` `mono`): first letters of two words, else two letters. */

@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { DashboardView, DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
@@ -7,7 +7,6 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
-import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { edgeDiagnostic, overlapOf, pathSuffixes } from '../../../core/model/overlap';
 
 /**
@@ -25,11 +24,15 @@ export const WARNINGS_HEADING = 'warnings';
  * here. Each warning is one line (alert icon, spec ID link to the preview `?spec=<id>`, text, and the clearing command
  * with copy when it has one); a spec with open fog adds a fog line (cloud icon, violet left edge on the violet tint).
  * The count is the model's `warnings` KPI; "in n specs" counts the specs that carry a warning. The section form heads
- * the card with the section header and the count.
+ * the card with its heading and the count.
+ *
+ * Spec 064 (T32, ISC-476): the section form folds. Its heading row is one native button (≥ 44 px, full width) with
+ * `aria-expanded` and `aria-controls` on the list region, the summary "n warnings in m specs" (or "No warnings") and a
+ * chevron; `open` starts closed, and closed the region is hidden with no card in it. The callout form is unchanged.
  */
 @Component({
   selector: 'app-warnings-panel',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiSectionHeader],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './warnings-panel.html',
   styleUrl: './warnings-panel.css',
@@ -41,8 +44,16 @@ export class WarningsPanel {
   /** The model's key numbers; only `warnings` is read. */
   readonly kpis = input.required<DashboardView['kpis']>();
   readonly form = input<WarningsForm>('section');
+  /** Whether the section form shows its list; closed by default, two-way (`openChange`) for the page's `?open=`. */
+  readonly open = model(false);
 
   protected readonly headingId = WARNINGS_HEADING;
+  protected readonly regionId = `${WARNINGS_HEADING}-region`;
+  protected readonly summaryId = `${WARNINGS_HEADING}-summary`;
+
+  protected toggle(): void {
+    this.open.update((open) => !open);
+  }
   protected readonly groups = computed(() => this.specs().filter((row) => row.warnings.length > 0 || row.fog > 0));
   /** Specs carrying at least one warning, for "in n specs". */
   protected readonly warned = computed(() => this.specs().filter((row) => row.warnings.length > 0).length);

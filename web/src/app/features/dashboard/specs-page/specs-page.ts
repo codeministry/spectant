@@ -24,8 +24,8 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  * dashboard's blocks (KPI band, TL;DR, Waits on you, Next up, warnings) left on the dashboard. The eyebrow names the page
  * and its menu summary (`shell.pages.summary.specs`, active · archived), the h1 "Specs · <ws>".
  *
- * Filter, sort and takeable are query state (`?phase=&type=&sort=&takeable=`), read from and written to the URL, as on
- * the dashboard; the list holds back new specs behind its pill until the reader takes them in (design.md § Live update).
+ * Filter, sort, takeable and working are query state (`?phase=&type=&sort=&takeable=&working=`), read from and written
+ * to the URL, as on the dashboard (`working`: spec 064, T5, ISC-465, the target of "In Arbeit"'s "show all"); the list holds back new specs behind its pill until the reader takes them in (design.md § Live update).
  *
  * The selection (T8, ISC-393): a row's activation selects `?sel=spec:<id>` and the page docks the detail sidebar
  * (`DetailSelection.dock`); `[` `]` step the selection through the list's current order while a spec is selected.

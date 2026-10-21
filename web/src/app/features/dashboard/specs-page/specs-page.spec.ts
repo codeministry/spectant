@@ -14,9 +14,24 @@ import { SpecsPage } from './specs-page';
 const DASHBOARD_BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up-list', 'app-warnings-panel', 'app-context-rail'];
 
 const missing = signal(false);
+/** The body the page reads; harbor's golden unless a test swaps it. */
+const body = signal<unknown>(harbor);
+
+/**
+ * Harbor with a lock on 002 and 005 (spec 064, T5, ISC-465): the golden's rows carry `taken: []`, the activity locks
+ * reach them only through the live source, so the test gives two rows a holder as core's `taken` would.
+ */
+const WORKING = ['002', '005'];
+const harborWorking = {
+  ...harbor,
+  specs: harbor.specs.map((spec) =>
+    WORKING.includes(spec.id) ? { ...spec, taken: [{ id: 'ISC-1', session: `a:claude:sess-${spec.id}`, since: '2026-10-21T09:00:00Z', source: 'activity' }] } : spec,
+  ),
+};
 
 beforeEach(() => {
   missing.set(false);
+  body.set(harbor);
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -37,7 +52,7 @@ beforeEach(() => {
           workspaceName: (slug: string) => slug,
           specMissing: () => false,
           specRows: () => [],
-          dashboard: { value: () => ({ kind: 'ok', body: harbor }) },
+          dashboard: { value: () => ({ kind: 'ok', body: body() }) },
           isFavorite: () => false,
           toggleFavorite: () => Promise.resolve(false),
         },
@@ -90,6 +105,27 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
     page.setQuery({ phase: 'scoping', type: null, sort: 'stage', takeable: false, archived: false });
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toContain('phase=scoping');
+  });
+
+  it('lists exactly the specs with an agent on ?working=1 and drops the param when the filter resets (spec 064, T5, ISC-465)', async () => {
+    body.set(harborWorking);
+    const { root, harness } = await render('/w/harbor/specs?working=1');
+    expect(rowIds(root)).toEqual([...WORKING].sort());
+    const page = harness.routeDebugElement?.componentInstance as { query: () => { working: boolean }; setQuery: (query: unknown) => void };
+    expect(page.query().working).toBe(true);
+    page.setQuery({ ...page.query(), working: false });
+    await harness.fixture.whenStable();
+    const router = TestBed.inject(Router);
+    expect(router.parseUrl(router.url).queryParamMap.has('working')).toBe(false);
+    expect(rowIds(root)).toEqual(harbor.specs.map((spec) => spec.id).sort());
+  });
+
+  it('writes ?working=1 into the URL like takeable (spec 064, T5, ISC-465)', async () => {
+    const { harness } = await render('/w/harbor/specs');
+    const page = harness.routeDebugElement?.componentInstance as { query: () => object; setQuery: (query: unknown) => void };
+    page.setQuery({ ...page.query(), working: true });
+    await harness.fixture.whenStable();
+    expect(TestBed.inject(Router).url).toContain('working=1');
   });
 
   it('renders not-found for an unknown workspace', async () => {

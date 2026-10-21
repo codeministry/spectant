@@ -1,0 +1,24 @@
+/*
+ * The row grid of the Specs list (spec 021, design § P3 heights), shared by `app-spec-row` and `app-idea-row`
+ * (spec 064), each importing it first. The list declares `container: specs`; the row reads it, never the viewport.
+ * From 640 px one 48 px line, `id | title | track | meter | star`; below 640 px two lines, `id title a/b` over
+ * `star track desc`.
+ */
+:host {
+  display: grid;
+  grid-template-areas: 'id title track meter star';
+  grid-template-columns: 48px minmax(0, 1fr) auto auto 32px;
+  gap: 4px 16px;
+  align-items: center;
+  min-block-size: 48px;
+  padding: 8px 16px;
+}
+
+@container specs (width < 640px) {
+  :host {
+    grid-template:
+      'id title title meter' 24px
+      'fav track desc desc' 24px
+      / 48px auto minmax(0, 1fr) auto;
+  }
+}

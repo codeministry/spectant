@@ -1,0 +1,46 @@
+/*
+ * The flat-tile section of `/__ui` (tiles-gallery.ts): two frames of fixed maximum width, each holding an
+ * `<ol class="tiles">` (the shared partial makes it the `tiles` container), so the tiles take their stacked and their
+ * line density side by side. Layout only; every colour is a theme token. The `tg-` prefix keeps clear of daisyUI's
+ * global component classes.
+ */
+@import '../../shared/ui/guidance/_tiles.css';
+
+:host {
+  display: block;
+}
+
+.gallery-group {
+  display: grid;
+  gap: 16px;
+}
+
+.gallery-group h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tg-frame {
+  display: grid;
+  gap: 8px;
+  inline-size: 100%;
+}
+
+.tg-eyebrow {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 0.75rem;
+}
+
+.tg-agent {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.tg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}

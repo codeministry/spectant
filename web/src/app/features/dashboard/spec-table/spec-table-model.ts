@@ -7,7 +7,7 @@ import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
  * The Specs panel's view of the dashboard model (T63, ISC-61). Nothing here counts or derives a spec's state: every
  * field is read from the rows `core/src/dashboard.ts` built (the body stays `unknown` in web until core's dashboard
  * types move to a browser-safe module, see `DashboardBody`), and the helpers only filter and order those rows by the
- * query state the URL carries (`?phase=&type=&sort=&takeable=&archived=`, design.md § Routes and state).
+ * query state the URL carries (`?phase=&type=&sort=&takeable=&working=&archived=`, design.md § Routes and state).
  */
 
 /** One active spec as the panel renders it: the fields of `DashboardSpecRow` the row shows. */
@@ -87,11 +87,16 @@ export interface ListQuery {
   readonly type: string | null;
   readonly sort: SortKey;
   readonly takeable: boolean;
+  /**
+   * Spec 064 (T3, ISC-465): only the specs with an agent, the rows `holderOf` gives a lock holder (`?working=1`), the
+   * list "In Arbeit" links to; off by default.
+   */
+  readonly working: boolean;
   /** Spec 050 (T1, ISC-287): the archived specs show under the active ones (`?archived=1`); off by default. */
   readonly archived: boolean;
 }
 
-export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage', takeable: false, archived: false };
+export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage', takeable: false, working: false, archived: false };
 
 /** The filter chip key for "every phase" and for "has open fog". */
 export const ALL = 'all';
@@ -261,6 +266,7 @@ export function parseListQuery(params: { get(name: string): string | null }): Li
     type: type === null || type === '' || type === ALL ? null : type,
     sort: SORT_KEYS.find((key) => key === sort) ?? DEFAULT_QUERY.sort,
     takeable: params.get('takeable') === '1',
+    working: params.get('working') === '1',
     archived: params.get('archived') === '1',
   };
 }
@@ -271,18 +277,19 @@ export function parseListQuery(params: { get(name: string): string | null }): Li
  * list, so the router sends it on to the Specs page with the same query. `sel` is never one: the dashboard keeps its
  * own selection (ISC-400).
  */
-export const LIST_QUERY_KEYS = ['phase', 'type', 'sort', 'takeable', 'archived', 'q', 'all', 'density'] as const;
+export const LIST_QUERY_KEYS = ['phase', 'type', 'sort', 'takeable', 'working', 'archived', 'q', 'all', 'density'] as const;
 export type ListQueryKey = (typeof LIST_QUERY_KEYS)[number];
 
 /** The query params for `query`; a default is null, so the URL carries only what differs. Every key is a list key. */
 export function listQueryParams(
   query: ListQuery,
-): Pick<Record<ListQueryKey, string | null>, 'phase' | 'type' | 'sort' | 'takeable'> & { readonly archived: '1' | null } {
+): Pick<Record<ListQueryKey, string | null>, 'phase' | 'type' | 'sort' | 'takeable'> & { readonly working: '1' | null; readonly archived: '1' | null } {
   return {
     phase: query.phase,
     type: query.type,
     sort: query.sort === DEFAULT_QUERY.sort ? null : query.sort,
     takeable: query.takeable ? '1' : null,
+    working: query.working ? '1' : null,
     archived: query.archived ? '1' : null,
   };
 }
@@ -302,7 +309,8 @@ export function applyListQuery(rows: readonly SpecTableRow[], query: ListQuery):
     (row) =>
       matchesPhase(row, query.phase) &&
       (query.type === null || row.type === query.type) &&
-      (!query.takeable || row.takeable.length > 0),
+      (!query.takeable || row.takeable.length > 0) &&
+      (!query.working || row.agent !== null),
   );
   switch (query.sort) {
     case 'stage':
@@ -318,13 +326,14 @@ export function applyListQuery(rows: readonly SpecTableRow[], query: ListQuery):
 
 /**
  * Spec 050 (T5, ISC-288): the archived rows the panel shows under the active ones for `query` (design.md § Across
- * viewports). None while the switch is off, under a phase or fog chip or with takeable on; the type filter reaches them.
+ * viewports). None while the switch is off, under a phase or fog chip, with takeable on or with working on (an archived
+ * spec holds no lock, spec 064, ISC-465); the type filter reaches them.
  * The block orders on its own, never interleaved with the active rows: Stage and Next by ID descending (the last
  * archived at the boundary), ID ascending, Progress by claim ratio descending, ties by ID descending. An empty archive
  * yields none, so `?archived=1` alone changes nothing.
  */
 export function applyArchivedQuery(rows: readonly ArchiveRow[], query: ListQuery): SpecTableRow[] {
-  if (!query.archived || query.phase !== null || query.takeable) return [];
+  if (!query.archived || query.phase !== null || query.takeable || query.working) return [];
   const kept = rows.map(archivedTableRow).filter((row) => query.type === null || row.type === query.type);
   switch (query.sort) {
     case 'stage':
