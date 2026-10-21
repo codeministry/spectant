@@ -20,7 +20,8 @@ export const WAITING_SHOWN = 0;
 /**
  * The workspace dashboard's section `#waiting` (spec 020 T17, ISC-238; design.md § Workspace-Dashboard), in the short
  * form of spec 021 (ISC-246.1, design.md § P3 heights): the `ui-waits-block` of `guidance.waits` holds the header with
- * the count chip and the top entry whole (spec, reason never shortened, copy chip); every other entry sits in core's
+ * the count chip and the top entry whole (spec, reason never shortened, copy chip), since spec 058 (T40, ISC-401) as a
+ * 44 px row like the folded ones instead of a card (`topForm` `row`); every other entry sits in core's
  * order behind `ui-disclosure` "+n more" right below it, each row with its reason and its chip. The toggle's
  * accessible name starts with its visible text and names the list ("+6 more · Waits on you, show all 7"). Arriving
  * over `#waiting` opens the disclosure, scrolls the section into view and focuses it (`tabindex="-1"`, DS-APP-35), so
@@ -56,7 +57,7 @@ export const WAITING_SHOWN = 0;
     }
   `,
   template: `
-    <ui-waits-block [entries]="entries()" [workspace]="workspace()" [limit]="folds() ? shown : null" [chips]="true" [headingId]="headingId()" [level]="level()" />
+    <ui-waits-block [entries]="entries()" [workspace]="workspace()" [limit]="folds() ? shown : null" [chips]="true" [headingId]="headingId()" [level]="level()" topForm="row" />
     @if (folds()) {
       <ui-disclosure class="waits-fold" data-show-all [(open)]="open">
         <span uiDisclosureSummary data-fold-toggle>

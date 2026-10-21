@@ -23,7 +23,9 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
  * command as `ui-command-chip` and "waiting 2 d" as `ui-relative-time` from `since`. Up to `limit` more entries follow
  * as links to their spec with their reason, each with its own chip only under `chips` (the `#waiting` section and the
  * spec page); past them "+n more" links to `moreLink#moreFragment`, which the caller names. Without an entry the block
- * holds one sentence, never an empty card. Only existing primitives are composed; no new token.
+ * holds one sentence, never an empty card. Only existing primitives are composed; no new token. With `topForm` `row`
+ * (the dashboard, spec 058 T40) the top entry stands as one 44 px row like the folded ones: ID, reason and copy chip,
+ * no card, no title, priority or "waiting" line.
  */
 @Component({
   selector: 'ui-waits-block',
@@ -52,6 +54,9 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
     :host(:not([data-chips])) .row { box-sizing: border-box; padding-block: 12px; }
     .row .id { line-height: 20px; }
     .row .reason { flex: 1 1 auto; min-inline-size: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
+    /* The top entry as a row (topForm row): the folded rows' markup, 44 px with the text centred, the chip beside it. */
+    .top-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+    .top-row .row { box-sizing: border-box; padding-block: 12px; }
     .row ui-icon { flex: none; padding-block-start: 2px; color: var(--muted-ink); }
     .more { display: inline-flex; gap: 4px; align-items: center; min-block-size: 44px; color: var(--disp-ink); font-size: 13px; line-height: 20px; }
     .empty { display: flex; gap: 8px; align-items: center; margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
@@ -68,19 +73,17 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
         </span>
       </ui-section-header>
       @if (top(); as first) {
-        <ui-card class="top" side [padding]="16" data-top>
-          <div class="head">
-            <a class="id" [routerLink]="specLink(first)" [fragment]="fragmentOf(first)">{{ label(first) }}</a>
-            @if (kindKey(first); as kind) {
-              <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
-            } @else if (first.ref) {
-              <ui-chip variant="mono">{{ first.ref }}</ui-chip>
-            }
-            <span class="title" [title]="first.title">{{ first.title }}</span>
-            <ui-priority [value]="first.priority" />
-          </div>
-          <p class="reason" data-reason>{{ first.reason | guidanceReason }}</p>
-          <div class="foot">
+        @if (topForm() === 'row') {
+          <div class="top-row" data-top data-top-row [attr.data-item]="first.item">
+            <a class="row" [routerLink]="specLink(first)" [fragment]="fragmentOf(first)">
+              <span class="id">{{ label(first) }}</span>
+              @if (kindKey(first); as kind) {
+                <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+              } @else if (first.ref) {
+                <ui-chip variant="mono">{{ first.ref }}</ui-chip>
+              }
+              <span class="reason" data-reason>{{ first.reason | guidanceReason }}</span>
+            </a>
             @if (first.command; as cmd) {
               <ui-command-chip
                 [command]="cmd"
@@ -90,11 +93,36 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
                 [manualHint]="'common.copyFallback' | transloco"
               />
             }
-            @if (first.since; as since) {
-              <ui-relative-time class="since" [date]="since" [format]="waiting" />
-            }
           </div>
-        </ui-card>
+        } @else {
+          <ui-card class="top" side [padding]="16" data-top>
+            <div class="head">
+              <a class="id" [routerLink]="specLink(first)" [fragment]="fragmentOf(first)">{{ label(first) }}</a>
+              @if (kindKey(first); as kind) {
+                <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+              } @else if (first.ref) {
+                <ui-chip variant="mono">{{ first.ref }}</ui-chip>
+              }
+              <span class="title" [title]="first.title">{{ first.title }}</span>
+              <ui-priority [value]="first.priority" />
+            </div>
+            <p class="reason" data-reason>{{ first.reason | guidanceReason }}</p>
+            <div class="foot">
+              @if (first.command; as cmd) {
+                <ui-command-chip
+                  [command]="cmd"
+                  [context]="'orientation.chipContext.waits' | transloco: { what: first.ref ? first.spec + ' ' + first.ref : first.spec }"
+                  [copyLabel]="'common.copyCommand' | transloco"
+                  [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+                  [manualHint]="'common.copyFallback' | transloco"
+                />
+              }
+              @if (first.since; as since) {
+                <ui-relative-time class="since" [date]="since" [format]="waiting" />
+              }
+            </div>
+          </ui-card>
+        }
         @if (rest().length > 0) {
           <ol class="rest">
             @for (entry of rest(); track key(entry)) {
@@ -168,6 +196,12 @@ export class UiWaitsBlock {
    * dashboard, where the block is a sibling of Next up and Warnings directly under the page's h1.
    */
   readonly level = input<2 | 3>(3);
+  /**
+   * The top entry's form (spec 058, T40, ISC-401): `card`, the default, highlighted in a `ui-card` with title,
+   * priority and "waiting n d" (the start and the spec page); `row` on the dashboard, one 44 px row like the folded
+   * ones with ID, reason and copy chip, so KPI band, TL;DR, this block and Next up fit one 1440 px screen.
+   */
+  readonly topForm = input<'card' | 'row'>('card');
 
   protected readonly top = computed(() => this.entries()[0] ?? null);
   protected readonly rest = computed(() => {

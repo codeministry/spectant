@@ -153,3 +153,36 @@ describe('ui-waits-block heading level (spec 058, T14)', () => {
     expect(empty.querySelector('ui-section-header h3')).toBeNull();
   });
 });
+
+// Spec 058 (T40, ISC-401): `topForm` `row` sets the top entry as one row like the folded ones (the dashboard); the
+// default `card` keeps the highlighted card (the start and the spec page).
+describe('ui-waits-block top form (spec 058, T40)', () => {
+  it('row: the top entry is a row with ID link, reason and copy chip, no card, title, priority or "waiting"', async () => {
+    const host = await render(WAITS, { topForm: 'row', limit: null, chips: true });
+    expect(host.querySelector('ui-card')).toBeNull();
+    const top = host.querySelector('[data-top]');
+    expect(top?.hasAttribute('data-top-row')).toBe(true);
+    expect(top?.querySelector('a.row')?.getAttribute('href')).toBe('/w/harbor/s/006');
+    expect(text(top?.querySelector('.id'))).toBe('006');
+    expect(text(top?.querySelector('[data-reason]')).length).toBeGreaterThan(0);
+    expect(chips(top as Element)).toEqual(['/spec review 006']);
+    expect(top?.querySelector('.title, ui-priority, ui-relative-time')).toBeNull();
+    // The same entries and chips as the card form, in core's order.
+    expect(host.querySelectorAll('[data-row]')).toHaveLength(6);
+    expect(chips(host)).toEqual(WAITS.flatMap((e) => (e.command ? [e.command] : [])));
+  });
+
+  it('row: the top chip keeps the card form\'s accessible names', async () => {
+    const row = await render(WAITS, { topForm: 'row' });
+    const rowChip = row.querySelector('[data-top] ui-command-chip')?.innerHTML;
+    TestBed.resetTestingModule();
+    const card = await render(WAITS);
+    expect(rowChip).toBe(card.querySelector('[data-top] ui-command-chip')?.innerHTML);
+  });
+
+  it('card is the default: the top entry stays the highlighted card', async () => {
+    const host = await render(WAITS);
+    expect(host.querySelector('ui-card[data-top]')).not.toBeNull();
+    expect(host.querySelector('[data-top-row]')).toBeNull();
+  });
+});

@@ -87,8 +87,12 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 021 ISC-246.1 short form)'
     const block = section?.querySelector('ui-waits-block');
     expect(text(block?.querySelector('ui-section-header ui-chip'))).toBe('7');
     // The top entry whole: spec, the reason never shortened, the copy chip.
+    // Spec 058 (T40, ISC-401): the top entry is a row like the folded ones, no card.
     const top = block?.querySelector('[data-top]');
-    expect(text(top?.querySelector('a.id'))).toBe(HARBOR[0]?.spec);
+    expect(top?.hasAttribute('data-top-row')).toBe(true);
+    expect(block?.querySelector('ui-card')).toBeNull();
+    expect(top?.querySelector('a.row')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
+    expect(text(top?.querySelector('.id'))).toBe(HARBOR[0]?.spec);
     expect(text(top?.querySelector('[data-reason]')).length).toBeGreaterThan(0);
     expect(top?.querySelector('ui-command-chip')).not.toBeNull();
     expect(block?.querySelectorAll('[data-row]').length).toBe(0);
