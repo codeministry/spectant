@@ -21,3 +21,28 @@ export {
 export { type IdeaSources, type RepoFileReading, readIdeaSources, readRepoFile } from "./repo-files.ts";
 export { readCopies, readSpecSource, resolveWorkspaceSpec } from "./spec-source.ts";
 export { type CatalogLoad, type CopiesLoad, loadCatalog, loadCatalogDoc, loadCatalogDocs, readRepoCatalogFiles } from "./catalog-load.ts";
+export { type OpenedSpec, type SpecOpening, openSpec } from "./open-spec.ts";
+export {
+  type DevService,
+  type DevServiceKind,
+  type HttpProbe,
+  type ListServicesOptions,
+  type LoopbackHost,
+  type LsofRun,
+  PROBE_TIMEOUT_MS,
+  listServices,
+  probeHttp,
+} from "./services.ts";
+export {
+  type ImagesOf,
+  type WorkspaceListSummary,
+  type WorkspaceSummary,
+  NO_IMAGES,
+  listSummary,
+  pathTail,
+  summaryOf,
+  unavailable,
+  workspaceSummaryReader,
+} from "./summary.ts";
+export { type DashboardApiOptions, type WorkspaceContext, type WorkspaceLoader, localDate, workspaceContext } from "./context.ts";
+export { DASHBOARD_PATH, WORKSPACES_PATH, WORKSPACE_READ_ALLOW, readableWorkspace, workspaceRoutes } from "./routes.ts";

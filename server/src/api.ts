@@ -2,13 +2,9 @@
  * The workspace routes (T47, ISC-16; plan 001 § Interfaces "HTTP"), read-only over the registry and the files of the
  * registered repositories:
  *
- * - `GET /api/workspaces` → `WorkspaceSummary[]` in registry order: `{slug, name, pathTail, readable, error?, counts,
- *   status, images}` (spec 016: `status` is `ok`, `empty` or `missing` from the read; no `addedAt`, so a re-add keeps the
- *   list bytes, ISC-7).
- *   `counts` is the workspace's `DashboardKpis`, built without a services probe; `null` when unreadable.
- * - `GET /api/workspaces/:slug/dashboard` → the `DashboardModel` of `core/src/dashboard.ts`, unchanged, its `services`
- *   from the local-listener probe labelled with the constitution's `dev_services:`. Its `guidance` is the workspace-wide
- *   guidance (spec 020, core's `guidanceOf`) over the same item states as its rows (`loadDashboard`).
+ * - `GET /api/workspaces` → `WorkspaceListSummary[]` and `GET /api/workspaces/:slug/dashboard` → the `DashboardModel`:
+ *   answered by the `workspace/` slice (`workspace/routes.ts`, the summaries in `workspace/summary.ts`); this handler
+ *   guards, matches and dispatches them with the family's one context (`workspace/context.ts`).
  *
  * Answers:
  * - 200 with the JSON body; `HEAD` gets the same headers without it.
@@ -141,7 +137,7 @@ import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
 import { runReleaseAnswer } from "./run-release-route.ts";
-import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
+import { buildDashboard } from "../../core/src/dashboard.ts";
 import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { type RepoFileCopy, catalogSourceOf } from "../../core/src/library.ts";
 import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
@@ -160,9 +156,6 @@ import { mapBounded } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
 import { evidenceFileResponse } from "./infra/http/file-response.ts";
 import { json, readJson } from "./infra/http/json.ts";
-import type { LifeosDetection } from "./lifeos.ts";
-import type { Registry, Workspace } from "./registry.ts";
-import { listServices } from "./services.ts";
 import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import {
   ACTORS_ALLOW,
@@ -176,39 +169,38 @@ import {
   isBoardQuery,
   isFavoriteSpec,
   matchWorkspacePath,
-  ACTIVITY_HASH_HEADER,
 } from "./spec-routes.contract.ts";
 import {
-  type CatalogLoad,
-  type CopiesLoad,
-  type DashboardLoad,
-  type ServicesProbe,
-  type StateClock,
-  type UnreadableCode,
+  type DashboardApiOptions,
   type WorkspaceReading,
-  loadCatalog,
-  loadCatalogDoc,
-  loadCatalogDocs,
-  loadDashboard,
+  DASHBOARD_PATH,
+  WORKSPACES_PATH,
+  WORKSPACE_READ_ALLOW,
   readBytesIfExists,
   readCopies,
   readIdeaSources,
   readRepoFile,
-  readWorkspaceInput,
+  readableWorkspace,
+  summaryOf,
+  unavailable,
   unreadableCode,
-  workspaceUnreadable,
-} from "./workspace-loader.ts";
-import { type WorkspaceImages, type WorkspaceSummaryAdded, workspaceAdminAllowFor, workspaceStatusOf } from "./workspace-admin.contract.ts";
-import { ACTIVITY_PATH } from "./writes.contract.ts";
+  workspaceContext,
+  workspaceRoutes,
+} from "./workspace/index.ts";
+import { workspaceAdminAllowFor } from "./workspace-admin.contract.ts";
 import { rawSha256 } from "./writes.ts";
 
 export { composeApi, json } from "./infra/http/json.ts";
-
-/** The list route; a dashboard is `${WORKSPACES_PATH}/:slug/dashboard`. */
-export const WORKSPACES_PATH = "/api/workspaces";
-
-const DASHBOARD_PATH = /^\/api\/workspaces\/([^/]+)\/dashboard$/;
-const ALLOW = "GET, HEAD";
+export {
+  type DashboardApiOptions,
+  type ImagesOf,
+  type WorkspaceListSummary,
+  type WorkspaceSummary,
+  NO_IMAGES,
+  WORKSPACES_PATH,
+  localDate,
+  workspaceSummaryReader,
+} from "./workspace/index.ts";
 
 /** Characters of plain text a search snippet keeps before and after the match (spec 017, as the e2e stub cuts it). */
 const SNIPPET_BEFORE = 40;
@@ -293,134 +285,6 @@ const SEARCH_READS = 16;
 /** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
 type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };
 
-/**
- * The body of a 409 workspace answer (`Unavailable`), and the base of each `GET /api/workspaces` entry
- * (`WorkspaceListSummary`).
- */
-export type WorkspaceSummary = {
-  slug: string;
-  name: string;
-  /** The last segment of the workspace path; the path itself never leaves the server. */
-  pathTail: string;
-  readable: boolean;
-  /** Present only when `readable` is false. */
-  error?: UnreadableCode;
-  /** The workspace's key numbers; null when it cannot be read. */
-  counts: DashboardKpis | null;
-};
-
-/**
- * One entry of `GET /api/workspaces` and the answer of the writing workspace routes: the summary plus the fields spec
- * 016 adds (`WorkspaceSummaryAdded` in `workspace-admin.contract.ts`): `status` from the read (ISC-309) and `images`;
- * no `addedAt`, so a re-add keeps the list bytes (ISC-7). The 409 body keeps the plain `WorkspaceSummary`, as
- * `Unavailable` pins it.
- */
-export type WorkspaceListSummary = WorkspaceSummary & WorkspaceSummaryAdded;
-
-export type DashboardApiOptions = {
-  registry: Pick<Registry, "list" | "get">;
-  /**
-   * The image URLs each list entry carries (spec 016 T7, the image store under the data folder); absent, every entry
-   * lists `NO_IMAGES`.
-   */
-  imagesOf?: ImagesOf;
-  /**
-   * Reads one workspace; `loadDashboard` by default. Tests inject another loader. The dashboard route passes `clock`
-   * (spec 040, ISC-224): `now` and the `runAbortMinutes` abort age the rows' and stories' item states are derived at.
-   */
-  loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null, clock?: StateClock) => Promise<DashboardLoad>;
-  /**
-   * Reads one workspace's files for the planning route; `readWorkspaceInput` by default, the same read `loadDashboard`
-   * starts from. Whoever injects `loadWorkspace` injects this too, so both workspace routes answer from one source.
-   */
-  readWorkspace?: (root: string) => Promise<WorkspaceReading>;
-  /**
-   * Reads one workspace's document catalog for the library routes (spec 017 T15, T17, T18): `loadCatalog` by default
-   * for the catalog (the dashboard's input, so the heads' stages agree), `loadCatalogDoc` for the reader and
-   * `loadCatalogDocs` for the search, which need the documents alone (ISC-156.5). An injected loader answers all three:
-   * the reader then finds its document in the injected catalog's `docs`.
-   */
-  loadCatalog?: (root: string, lifeosStateDir?: string | null) => Promise<CatalogLoad>;
-  /** Probes the local listeners for the dashboard route; `listServices` (lsof) by default. */
-  services?: ServicesProbe;
-  /**
-   * The LifeOS detection `GET /api/lifeos` answers from (`lifeos.ts`), so both routes see the same answer. Present:
-   * both routes read its frontier locks beside the repository's activity log. Absent (the default): no LifeOS path
-   * is read (ISC-37).
-   */
-  lifeos?: LifeosDetection;
-  /**
-   * Today as `YYYY-MM-DD`, the day the planning route's milestone states compare target dates with; the local date by
-   * default (`localDate`). Tests pin it, as the planning goldens pin theirs.
-   */
-  today?: () => string;
-  /**
-   * The open `spectant.db` the board-query route reads and writes (`board_query`, T92). Absent: that route is
-   * declined, so the server's JSON 404 applies; every other route here reads no database.
-   */
-  db?: Db;
-  /**
-   * The allocation's clock (its event's `ts`, `started`, `created`) and the dashboard's item-state clock (spec 040,
-   * ISC-224); `new Date()` by default. Tests pin it.
-   */
-  now?: () => Date;
-  /**
-   * The age after which an open run reads `aborted` (spec 040): it stops locking a story's allocation (ISC-225), and
-   * the dashboard's rows and stories read it so (ISC-224). The `runAbortMinutes` setting × 60 000, read per request.
-   * Absent, core's default.
-   */
-  abortAfterMs?: () => number;
-  /**
-   * The age after which a claim lock or task run reads `aborted` in the dashboard's item states (spec 032, ISC-35): the
-   * `staleMinutes` setting × 60 000, read per request. Absent, core's default.
-   */
-  staleAfterMs?: () => number;
-};
-
-/** The local calendar date of `date` as `YYYY-MM-DD`: the day the user sees, not the UTC one. */
-export function localDate(date: Date = new Date()): string {
-  const pad = (n: number): string => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-/** The last path segment, whatever the separator. */
-function pathTail(path: string): string {
-  return path.split(/[\\/]/).filter((segment) => segment !== "").pop() ?? "";
-}
-
-/** A workspace without a stored image, and every workspace when no image store is wired (`imagesOf` absent). */
-export const NO_IMAGES: WorkspaceImages = { logo: null, screenshot: null };
-
-/** The image URLs of a workspace by slug (`workspace-images.ts` `imagesOf`, spec 016 T7). */
-export type ImagesOf = (slug: string) => WorkspaceImages;
-
-const noImages: ImagesOf = () => NO_IMAGES;
-
-function summary(workspace: Workspace, load: DashboardLoad): WorkspaceSummary {
-  const base = { slug: workspace.slug, name: workspace.name, pathTail: pathTail(workspace.path) };
-  return load.readable
-    ? { ...base, readable: true, counts: load.model.kpis }
-    : { ...base, readable: false, error: load.error, counts: null };
-}
-
-/** The list's entry: the summary, its status from the same read, the registration time and the image URLs. */
-function listSummary(workspace: Workspace, load: DashboardLoad, imagesOf: ImagesOf): WorkspaceListSummary {
-  const status = workspaceStatusOf(load.readable, load.readable ? load.model.kpis.specs : null);
-  return { ...summary(workspace, load), status, images: imagesOf(workspace.slug) };
-}
-
-/**
- * The summary of one workspace as `GET /api/workspaces` lists it, read now: the writing workspace routes (spec 016,
- * `workspace-admin-route.ts`) answer with it, so the row a write returns equals the row the list shows.
- */
-export function workspaceSummaryReader(
-  options: Pick<DashboardApiOptions, "loadWorkspace" | "lifeos" | "imagesOf">,
-): (workspace: Workspace) => Promise<WorkspaceListSummary> {
-  const load = options.loadWorkspace ?? loadDashboard;
-  const stateDir = options.lifeos?.stateDir ?? null;
-  const imagesOf = options.imagesOf ?? noImages;
-  return async (workspace) => listSummary(workspace, await load(workspace.path, null, stateDir), imagesOf);
-}
 
 /**
  * Each active spec's state for the board (spec 008, T83): the stage and its source from the dashboard rows of the very
@@ -437,70 +301,25 @@ function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readabl
   });
 }
 
-const defaultServices: ServicesProbe = (repoRoot, labels) => listServices({ repoRoot, labels });
-
 /**
  * `GET` / `HEAD` of the workspace list, the dashboard and the planning route as an `ApiHandler`; `null` for every other path. Nothing is cached: each
  * request reads the registry and the files again, so a `spectant add` or an edited spec shows on the next poll, and
  * the ETag keeps an unchanged answer to a 304.
  */
 export function dashboardApi(options: DashboardApiOptions): ApiHandler {
-  const { registry } = options;
-  const load = options.loadWorkspace ?? loadDashboard;
-  const read = options.readWorkspace ?? readWorkspaceInput;
-  const services = options.services ?? defaultServices;
-  const stateDir = options.lifeos?.stateDir ?? null;
-  const injected = options.loadCatalog;
-  const catalogOf = injected ?? loadCatalog;
-  const docsOf =
-    injected === undefined
-      ? loadCatalogDocs
-      : async (root: string): Promise<CopiesLoad<{ docs: readonly LibraryDoc[] }>> => {
-          const loaded = await injected(root, stateDir);
-          return loaded.readable ? { readable: true, docs: loaded.catalog.docs, copies: loaded.copies ?? {}, repoFiles: loaded.repoFiles ?? {} } : loaded;
-        };
-  const docOf =
-    injected === undefined
-      ? loadCatalogDoc
-      : async (root: string, path: string | null): Promise<CopiesLoad<{ doc: LibraryDoc | null }>> => {
-          const loaded = await docsOf(root);
-          if (!loaded.readable) return loaded;
-          return { readable: true, doc: loaded.docs.find((d) => d.path === path) ?? null, copies: loaded.copies, repoFiles: loaded.repoFiles };
-        };
+  const ctx = workspaceContext(options);
+  const { registry, stateDir, read, catalogOf, docsOf, docOf, today, clock, stateClock } = ctx;
+  const { list, dashboard } = workspaceRoutes(ctx);
   // The search text of each Markdown document, by workspace root and catalog path; each search keeps only what it saw.
   const searchTexts = new Map<string, Map<string, SearchText>>();
-  const today = options.today ?? (() => localDate());
-  const clock = options.now ?? (() => new Date());
-  /** This request's clock and the abort and stale ages as the settings now stand (spec 040, ISC-224; spec 032, ISC-35). */
-  const stateClock = (): StateClock => ({
-    now: clock(),
-    ...(options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() }),
-    ...(options.staleAfterMs === undefined ? {} : { staleAfterMs: options.staleAfterMs() }),
-  });
 
-  const list = async (req: Request): Promise<Response> => {
-    const workspaces = registry.list();
-    const loads = await Promise.all(workspaces.map((w) => load(w.path, null, stateDir)));
-    const imagesOf = options.imagesOf ?? noImages;
-    return json(req, 200, workspaces.map((w, i) => listSummary(w, loads[i] ?? { readable: false, error: "unreadable" }, imagesOf)));
-  };
-
-  const dashboard = async (req: Request, slug: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    // The item states at this request's clock and the abort age as the setting now stands (spec 040, ISC-224).
-    const loaded = await load(workspace.path, services, stateDir, stateClock());
-    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
-    // The hash a run release sends back (spec 040, ISC-226): the raw bytes of the activity log, the empty text's without it.
-    return json(req, 200, loaded.model, { [ACTIVITY_HASH_HEADER]: rawSha256(readBytesIfExists(join(workspace.path, ACTIVITY_PATH)) ?? "") });
-  };
 
   // The board's stages come from the reading's own lock source (the repository's activity log); no LifeOS path is read.
   const planning = async (req: Request, slug: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     const reading = await read(workspace.path);
-    if (!reading.readable) return json(req, 409, summary(workspace, reading));
+    if (!reading.readable) return json(req, 409, summaryOf(workspace, reading));
     const { master, specs, archived, constitution } = reading.input;
     // The feature backlog (spec 036): text and hash from one read of the bytes, so the hash the client sends back with
     // a backlog write is the hash of the order it rendered; the hash of the empty text without the file.
@@ -529,7 +348,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     const loaded = await catalogOf(workspace.path, stateDir);
-    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    if (!loaded.readable) return json(req, 409, summaryOf(workspace, loaded));
     const body: WorkspaceRouteResponses["library"] = loaded.catalog;
     return json(req, 200, body);
   };
@@ -593,7 +412,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       path = null; // no document, but an unreadable workspace still answers 409 first
     }
     const loaded = await docOf(workspace.path, path);
-    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    if (!loaded.readable) return json(req, 409, summaryOf(workspace, loaded));
     const file = loaded.doc === null ? null : await catalogFile(workspace.path, loaded.doc, loaded.copies, loaded.repoFiles);
     if (file === "symlink-escape") return json(req, 403, { error: "forbidden" }); // a worktree copy linked out (ISC-216.1)
     if (file === null) return json(req, 404, { error: "not-found" });
@@ -604,7 +423,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       const code = (error as NodeJS.ErrnoException | null)?.code;
       if (typeof code !== "string") throw error;
       if (code === "ENOENT") return json(req, 404, { error: "not-found" }); // gone since the catalog was read
-      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+      return json(req, 409, unavailable(workspace, unreadableCode(error)));
     }
     const page = renderCatalogDoc(workspace.path, file, source);
     // tech.md carries core's section heads, since the rendered page drops its markers (ISC-157.2); no other document does.
@@ -652,7 +471,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     const loaded = await docsOf(workspace.path);
-    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    if (!loaded.readable) return json(req, 409, summaryOf(workspace, loaded));
     const query = q.trim();
     if (query === "") {
       const empty: WorkspaceRouteResponses["librarySearch"] = { query: "", hits: [] };
@@ -717,13 +536,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   };
 
   // The story folder alone: no spec folder or lock source feeds a story page (header).
-  const idea = async (req: Request, slug: string, story: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const root = workspace.path;
-    const unreadable = workspaceUnreadable(root);
-    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
-    try {
+  const idea = (req: Request, slug: string, story: string): Promise<Response> =>
+    readableWorkspace(ctx, req, slug, async (root) => {
       // The stories from their read sources (spec 039, ISC-209): a story changed in a spec worktree shows that version.
       const { files } = await readIdeaSources(root);
       // Only a slug `readIdeas` lists names a file: never a path built from the request alone.
@@ -747,11 +561,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
         ...(read.source.kind === "worktree" ? { source: read.source } : {}),
       };
       return json(req, 200, body);
-    } catch (error) {
-      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
-      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
-    }
-  };
+    });
 
   // The database alone: no file of the workspace is read, so there is no 409 (header).
   const boardQuery = async (req: Request, slug: string, db: Db): Promise<Response> => {
@@ -793,61 +603,34 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   };
 
   // The one write of the family (T87): the route layer's 404 and 409 here, everything else in `allocate-route.ts`.
-  const allocate = async (req: Request, slug: string, story: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const root = workspace.path;
-    const unreadable = workspaceUnreadable(root);
-    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
-    try {
-      const age = options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() };
+  const allocate = (req: Request, slug: string, story: string): Promise<Response> =>
+    readableWorkspace(ctx, req, slug, async (root) => {
+      const age = ctx.abortAge();
       const answer = await allocateAnswer({ root, slug: story, stateDir, now: clock(), text: await req.text(), ...age });
       return json(req, answer.status, answer.body);
-    } catch (error) {
-      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
-      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
-    }
-  };
+    });
 
   // The backlog write (spec 036): the route layer's 404 and 409 here, everything else in `backlog-route.ts`.
-  const backlog = async (req: Request, slug: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const root = workspace.path;
-    const unreadable = workspaceUnreadable(root);
-    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
-    try {
+  const backlog = (req: Request, slug: string): Promise<Response> =>
+    readableWorkspace(ctx, req, slug, async (root) => {
       const answer = await backlogAnswer({ root, now: clock(), text: await req.text() });
       return json(req, answer.status, answer.body);
-    } catch (error) {
-      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
-      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
-    }
-  };
+    });
 
   // The run release (spec 040, ISC-226): the route layer's 404 and 409 here, everything else in `run-release-route.ts`.
-  const runRelease = async (req: Request, slug: string, run: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const root = workspace.path;
-    const unreadable = workspaceUnreadable(root);
-    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
-    try {
-      const age = options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() };
+  const runRelease = (req: Request, slug: string, run: string): Promise<Response> =>
+    readableWorkspace(ctx, req, slug, async (root) => {
+      const age = ctx.abortAge();
       const answer = await runReleaseAnswer({ root, now: clock(), run, headers: req.headers, ...age });
       return json(req, answer.status, answer.body);
-    } catch (error) {
-      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
-      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
-    }
-  };
+    });
 
   return (req, url) => {
     const { pathname } = url;
     const match = DASHBOARD_PATH.exec(pathname);
     const workspaceRoute = matchWorkspacePath(pathname);
     if (pathname !== WORKSPACES_PATH && !match && !workspaceRoute) return null;
-    const { db } = options;
+    const { db } = ctx;
     const dbRoute = workspaceRoute?.route === "boardQuery" || workspaceRoute?.route === "favorites" || workspaceRoute?.route === "favorite";
     if (dbRoute && db === undefined) return null;
     const refused = loopbackRefusal(req);
@@ -872,7 +655,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (req.method !== "GET" && req.method !== "HEAD") {
       // The list path also takes the admin route's POST (spec 016), so its 405 names it as the composed server does.
       const list = pathname === WORKSPACES_PATH ? workspaceAdminAllowFor(pathname) : null;
-      const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : (list ?? ALLOW);
+      const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : (list ?? WORKSPACE_READ_ALLOW);
       return methodNotAllowed(req, allow);
     }
     if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);

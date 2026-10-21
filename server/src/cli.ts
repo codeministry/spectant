@@ -29,8 +29,9 @@
  * data directory), the working directory and the browser runner, and stop `serve` with a signal; all default to the
  * process's own.
  */
-import { basename, resolve } from "node:path";
+import { resolve } from "node:path";
 import { actorsApi, composeApi, dashboardApi, workspaceSummaryReader } from "./api.ts";
+import { pathTail } from "./workspace/index.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { exportNotesCommand, importNotesCommand, rollbackCommand } from "./cli-notes.ts";
 import { FEATURE_ARG, featureGateCommand } from "./feature-gate.ts";
@@ -45,7 +46,7 @@ import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts"
 import { dataDir } from "./paths.ts";
 import { eventsApi } from "./events-route.ts";
 import { prototypeApi } from "./prototype.ts";
-import { openRegistry, type Registry, RegistryError, type Workspace } from "./registry.ts";
+import { openRegistry, type Registry, RegistryError } from "./registry.ts";
 import { openSettings, settingsApi } from "./settings.ts";
 import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
@@ -283,11 +284,6 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
   });
 }
 
-/** The last path segment: the only piece of a workspace path that is ever printed (ISC-3). */
-function pathTail(workspace: Workspace): string {
-  return basename(workspace.path);
-}
-
 /** The stored paths `ref` could mean: its realpath when it exists, and the plain absolute path. */
 function candidatePaths(absolute: string): string[] {
   const real = realpathOrNull(absolute);
@@ -298,7 +294,7 @@ function add(registry: Registry, arg: string, cwd: string): number {
   const absolute = resolve(cwd, arg);
   try {
     const workspace = registry.add(absolute);
-    console.log(`added ${workspace.slug} · ${pathTail(workspace)}`);
+    console.log(`added ${workspace.slug} · ${pathTail(workspace.path)}`);
     return 0;
   } catch (error) {
     if (!(error instanceof RegistryError)) throw error;
@@ -316,7 +312,7 @@ function add(registry: Registry, arg: string, cwd: string): number {
 function list(registry: Registry): number {
   const workspaces = registry.list();
   const width = Math.max(0, ...workspaces.map((w) => w.slug.length));
-  for (const workspace of workspaces) console.log(`${workspace.slug.padEnd(width)}  ${pathTail(workspace)}`);
+  for (const workspace of workspaces) console.log(`${workspace.slug.padEnd(width)}  ${pathTail(workspace.path)}`);
   return 0;
 }
 

@@ -10,6 +10,7 @@ import { itemStates, withItemStates } from "../../../core/src/item-state.ts";
 import { guidanceOf, withGuidance } from "../../../core/src/guidance.ts";
 import { taskRunsOf } from "../../../core/src/live.ts";
 import type { UnreadableCode } from "../contracts/spec-routes.contract.ts";
+import { abortAge } from "../infra/abort-age.ts";
 import { readWorkspaceInput } from "./reading.ts";
 
 export type DashboardLoad = { readable: true; model: DashboardModel } | { readable: false; error: UnreadableCode };
@@ -35,7 +36,7 @@ export function workspaceItemStates(input: DashboardInput, model: DashboardModel
     dashboard: model,
     taskRuns: input.locks === undefined ? {} : taskRunsOf(input.specs, input.locks, clock.now),
     now: clock.now,
-    ...(clock.abortAfterMs === undefined ? {} : { abortAfterMs: clock.abortAfterMs }),
+    ...abortAge(clock.abortAfterMs),
     ...(clock.staleAfterMs === undefined ? {} : { staleAfterMs: clock.staleAfterMs }),
   });
 }

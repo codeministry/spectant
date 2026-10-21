@@ -11,6 +11,7 @@ import type { GateReviewedRequest } from "./spec-routes.contract.ts";
 import { readIfExists, readSpecFiles } from "./workspace-loader.ts";
 import { EVENTS_PATH, eventAppendBytes, gateConflict, reviewedEvent, reviewedMarkText } from "./writes.contract.ts";
 import { type WriteResult, appendInPlace, ensureGatesDir, gateHashes, runWrite, writeInPlace } from "./writes.ts";
+import { abortAge } from "./infra/abort-age.ts";
 
 export interface GateWriteInput {
   readonly root: string;
@@ -32,7 +33,7 @@ export function writeGateReviewed(input: GateWriteInput): Promise<WriteResult<"g
     root: input.root,
     stateDir: input.stateDir,
     now,
-    ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }),
+    ...abortAge(input.abortAfterMs),
     read: () => {
       const files = readSpecFiles(ref);
       const hashes = gateHashes(files.texts);

@@ -1,9 +1,9 @@
 /**
- * The in-place primitives every write path writes through (`writes.ts`, `feature-gate.ts`, `tokens-cli.ts`): the
+ * The in-place primitives every write path writes through (`writes/`, `feature-gate.ts`, `tokens-cli.ts`): the
  * target is written in place, open, write, fsync, close. No temp file, no rename, no git object. A created or removed
  * directory entry is made durable with `fsyncDir`.
  */
-import { closeSync, fsyncSync, lstatSync, openSync, writeSync } from "node:fs";
+import { closeSync, fsyncSync, lstatSync, mkdirSync, openSync, unlinkSync, writeSync } from "node:fs";
 
 function writeAll(fd: number, data: string | Uint8Array): void {
   const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
@@ -54,4 +54,23 @@ export function fsyncDir(dir: string): void {
   } finally {
     closeSync(fd);
   }
+}
+
+/** Creates one directory, never a parent; throws when anything already has the name. */
+export function createDir(path: string): void {
+  mkdirSync(path);
+}
+
+/** Creates one directory when missing, never a parent; an existing entry of that name is left as it is. */
+export function ensureDir(path: string): void {
+  try {
+    mkdirSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+}
+
+/** Removes one file (unlink); throws when it is missing. */
+export function removeFile(path: string): void {
+  unlinkSync(path);
 }

@@ -12,6 +12,7 @@ import type { TaskCheckRequest } from "./spec-routes.contract.ts";
 import { readBytesIfExists, readSpecFiles } from "./workspace-loader.ts";
 import { tasksConflict } from "./writes.contract.ts";
 import { type WriteResult, rawSha256, runWrite, writeInPlace } from "./writes.ts";
+import { abortAge } from "./infra/abort-age.ts";
 
 export interface CheckboxWriteInput {
   readonly root: string;
@@ -54,7 +55,7 @@ export function writeTaskCheck(input: CheckboxWriteInput): Promise<WriteResult<"
     root: input.root,
     stateDir: input.stateDir,
     now: input.now,
-    ...(input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs }),
+    ...abortAge(input.abortAfterMs),
     read: () => {
       const bytes = readBytesIfExists(path);
       if (bytes === null) return null;

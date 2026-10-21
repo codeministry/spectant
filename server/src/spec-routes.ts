@@ -34,7 +34,7 @@
  * over `writeTransition` and adds the 422 `transition-refused`. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
  * a workspace is its slug, its name and `pathTail`.
  */
-import { basename, relative, sep } from "node:path";
+import { relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
 import { specFilePath } from "../../core/src/files.ts";
 import type { ItemStateInfo, LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
@@ -71,7 +71,6 @@ import {
   type SpecRouteMatch,
   type SpecRouteResponses,
   TASKS_HASH_HEADER,
-  type Unavailable,
   allowFor,
   formatReviewedHashes,
   matchSpecPath,
@@ -79,22 +78,21 @@ import {
 } from "./spec-routes.contract.ts";
 import {
   type UnreadableCode,
+  gateHashes,
+  openSpec,
   readBytesIfExists,
   readRepoFile,
-  readSpecSource,
-  resolveWorkspaceSpec,
-  readWorktreeView,
   readWorkspaceInput,
   timelineWorktreeOf,
   unreadableCode,
+  unavailable,
   viewerActorOf,
   workspaceItemStates,
-  workspaceUnreadable,
-} from "./workspace-loader.ts";
+} from "./workspace/index.ts";
 import { transitionAnswer } from "./transition-route.ts";
 import { parseWriteBody, writeActorOf } from "./writes.contract.ts";
-import { gateHashes } from "./writes.ts";
 import { rawSha256 } from "./infra/hash.ts";
+import { abortAge } from "./infra/abort-age.ts";
 
 export type SpecRoutesOptions = {
   registry: Pick<Registry, "get">;
@@ -140,10 +138,6 @@ class WorkspaceUnreadable extends Error {
   }
 }
 
-function unavailable(workspace: Workspace, error: UnreadableCode): Unavailable {
-  return { slug: workspace.slug, name: workspace.name, pathTail: basename(workspace.path), readable: false, error, counts: null };
-}
-
 /** The workspace's constitution text as an optional `texts` key, the way the golden families add it. */
 const withConstitution = (files: SpecFiles, constitution: string | null): SpecFiles =>
   constitution === null ? files : { folder: files.folder, texts: { ...files.texts, constitution } };
@@ -159,7 +153,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
   const clock = options.now ?? (() => new Date());
   const cache = options.commitCache ?? new CommitCache();
   /** The run lock's abort age for one write, as an optional input field. */
-  const age = (): { abortAfterMs?: number } => (options.abortAfterMs === undefined ? {} : { abortAfterMs: options.abortAfterMs() });
+  const age = (): { abortAfterMs?: number } => abortAge(options.abortAfterMs?.());
   /** The claim stale age for one read (spec 032, ISC-35), as an optional input field: the live frame, claims, item states. */
   const staleAge = (): { staleAfterMs?: number } => (options.staleAfterMs === undefined ? {} : { staleAfterMs: options.staleAfterMs() });
 
@@ -243,23 +237,16 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
 
   async function answer(req: Request, url: URL, match: SpecRouteMatch, workspace: Workspace): Promise<Response> {
     const root = workspace.path;
-    const unreadable = workspaceUnreadable(root);
-    if (unreadable !== null) throw new WorkspaceUnreadable(unreadable);
-    const ref = await resolveWorkspaceSpec(root, match.params.id);
-    if (ref.kind !== "spec") return json(req, 404, NOT_FOUND);
+    // The shared prelude (`openSpec`): the workspace readable, the spec resolved, then its read source and constitution.
+    const opening = await openSpec(root, match.params.id);
+    if (opening.kind === "unreadable") throw new WorkspaceUnreadable(opening.code);
+    if (opening.kind === "not-found") return json(req, 404, NOT_FOUND);
+    const { ref } = opening;
     if (match.route === "spec") return specPage(req, root, ref);
 
-    // The spec's read source, as the row and the head read it (spec 027, ISC-181): `dir` is the worktree copy's folder
-    // when the source is `worktree`, for every file of the folder, the evidence file route's `artifacts/`, `.evidence/`
-    // and `.design/` included (spec 039, ISC-208). The three writes on the spec (reviewed mark, tick, stage move) take
-    // `source`: they read, compare and write the copy the client's hashes came from (T22), so a source that switched
-    // between render and write is the plain 409 of the hash compare.
-    const reading = await readWorktreeView(root);
-    const { files, dir } = await readSpecSource(root, ref, reading);
-    if (files.texts.spec === undefined) return json(req, 404, NOT_FOUND);
-    const source = { ...ref, dir };
-    // The constitution and the workflow from their read source (spec 039, ISC-209), as the dashboard reading reads them.
-    const constitution = async (): Promise<string | null> => (await readRepoFile(root, "specs/constitution.md", reading)).text;
+    const opened = await opening.open();
+    if (opened === null) return json(req, 404, NOT_FOUND);
+    const { reading, files, dir, source, constitution } = opened;
 
     switch (match.route) {
       case "timeline": {

@@ -12,6 +12,7 @@
 import type { SpecRef } from "../../core/src/resolve.ts";
 import { parseWriteBody } from "./writes.contract.ts";
 import { type WriteResult, writeTransition } from "./writes.ts";
+import { abortAge } from "./infra/abort-age.ts";
 
 export interface TransitionRouteInput {
   readonly root: string;
@@ -28,6 +29,6 @@ export interface TransitionRouteInput {
 export async function transitionAnswer(input: TransitionRouteInput): Promise<WriteResult<"transition">> {
   const parsed = parseWriteBody("transition", input.text);
   if (!parsed.ok) return { status: 400, body: parsed.error };
-  const age = input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs };
+  const age = abortAge(input.abortAfterMs);
   return writeTransition({ root: input.root, ref: input.ref, stateDir: input.stateDir, now: input.now, body: parsed.body, ...age });
 }

@@ -10,6 +10,7 @@
  */
 import { ACTIVITY_HASH_HEADER, runReleaseRequestFromHeader } from "./spec-routes.contract.ts";
 import { type WriteResult, writeRunRelease } from "./writes.ts";
+import { abortAge } from "./infra/abort-age.ts";
 
 export interface RunReleaseRouteInput {
   /** The repository root: the main checkout, where `.spectant/activity.jsonl` is. */
@@ -27,6 +28,6 @@ export interface RunReleaseRouteInput {
 export async function runReleaseAnswer(input: RunReleaseRouteInput): Promise<WriteResult<"runRelease">> {
   const request = runReleaseRequestFromHeader(input.headers.get(ACTIVITY_HASH_HEADER));
   if (request === null) return { status: 400, body: { error: "invalid-body" } };
-  const age = input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs };
+  const age = abortAge(input.abortAfterMs);
   return writeRunRelease({ root: input.root, now: input.now, run: input.run, hash: request.hash, ...age });
 }

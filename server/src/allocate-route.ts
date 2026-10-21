@@ -12,6 +12,7 @@
 import { isAllocateRequest } from "./spec-routes.contract.ts";
 import { parseJson } from "./infra/http/json.ts";
 import { type WriteResult, writeAllocate } from "./writes.ts";
+import { abortAge } from "./infra/abort-age.ts";
 
 export interface AllocateRouteInput {
   readonly root: string;
@@ -29,6 +30,6 @@ export interface AllocateRouteInput {
 export async function allocateAnswer(input: AllocateRouteInput): Promise<WriteResult<"allocate">> {
   const data = parseJson(input.text);
   if (!isAllocateRequest(data)) return { status: 400, body: { error: "invalid-body" } };
-  const age = input.abortAfterMs === undefined ? {} : { abortAfterMs: input.abortAfterMs };
+  const age = abortAge(input.abortAfterMs);
   return writeAllocate({ root: input.root, slug: input.slug, stateDir: input.stateDir, now: input.now, body: data, ...age });
 }

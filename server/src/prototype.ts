@@ -49,7 +49,7 @@ import {
   evidenceFileHeaders,
   matchPrototypePath,
 } from "./spec-routes.contract.ts";
-import { unreadableCode, workspaceUnreadable } from "./workspace-loader.ts";
+import { unavailable, unreadableCode, workspaceUnreadable } from "./workspace-loader.ts";
 
 export type PrototypeApiOptions = {
   registry: Pick<Registry, "get">;
@@ -88,11 +88,6 @@ const OPAQUE_DESTINATIONS: ReadonlySet<string> = new Set(["script", "style", "fo
  */
 function renderFetch(req: Request): boolean {
   return req.headers.get("Sec-Fetch-Mode") === "cors" && OPAQUE_DESTINATIONS.has(req.headers.get("Sec-Fetch-Dest") ?? "");
-}
-
-/** The workspace's 409 body, as the library route sends it: the summary with the stable code, never the path. */
-function unavailable(workspace: { slug: string; name: string; path: string }, error: string): unknown {
-  return { slug: workspace.slug, name: workspace.name, pathTail: basename(workspace.path), readable: false, error, counts: null };
 }
 
 /** `GET`/`HEAD /proto/:ws/:spec/:folder/*` as an `ApiHandler`; `null` for every path outside `PROTOTYPE_PREFIX`. */
