@@ -28,6 +28,7 @@ import type { ArchitectureConfig, LaneEntry } from "./architecture.config.ts";
 import { DuplicatesToolError, duplicates } from "./architecture/duplicates.ts";
 import type { Rule, Violation } from "./architecture/files.ts";
 import { imports } from "./architecture/imports.ts";
+import { io } from "./architecture/io.ts";
 import { layout } from "./architecture/layout.ts";
 import { size } from "./architecture/size.ts";
 
@@ -39,6 +40,7 @@ const RULES: ReadonlyArray<{ name: string; section: Section; run: Rule }> = [
   { name: "duplicates", section: "duplicates", run: duplicates },
   { name: "layout", section: "layout", run: layout },
   { name: "imports", section: "imports", run: imports },
+  { name: "io", section: "io", run: io },
 ];
 
 const REPO_ROOT = resolve(import.meta.dir, "..");

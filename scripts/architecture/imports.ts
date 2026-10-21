@@ -32,7 +32,7 @@ export type ImportEdge = { from: string; to: string; line: number };
 const transpiler = new Bun.Transpiler({ loader: "ts" });
 
 /** `source` with every type-only import turned into a value import, so `scanImports` keeps it. */
-function withTypeImports(source: string): string {
+export function withTypeImports(source: string): string {
   return source
     .replace(/\bimport\s+type\s+/g, "import ")
     .replace(/\bexport\s+type\s+(?=[{*])/g, "export ")

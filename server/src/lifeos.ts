@@ -14,8 +14,8 @@
  */
 import { statSync } from "node:fs";
 import { isAbsolute } from "node:path";
-import { json } from "./api.ts";
 import type { ApiHandler } from "./http.ts";
+import { json } from "./infra/http/json.ts";
 import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
 
 /** The environment variable that names the LifeOS state directory (the directory holding `isa-locks/`). */

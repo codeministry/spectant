@@ -12,8 +12,8 @@
  *
  * Answers:
  * - 200 with the JSON body; `HEAD` gets the same headers without it.
- * - 304 when `If-None-Match` matches. Every JSON answer carries a strong `ETag`, the sha256 of the exact body, and
- *   `Cache-Control: no-cache`, so the web app's polling revalidates every time and transfers only a change.
+ * - 304 when `If-None-Match` matches. Every JSON answer is `json()`'s (`infra/http/json.ts`), with its strong `ETag`
+ *   and `Cache-Control: no-cache`.
  * - 404 `{error: "not-found"}` for an unknown slug.
  * - 409 with the workspace's own summary (`readable: false`, `error` one of `missing`, `not-a-directory`,
  *   `permission-denied`, `unreadable`, `counts: null`) for a registered workspace whose directory cannot be read: the
@@ -120,7 +120,7 @@
  *   the entries of the catalog it read. Each document is resolved once from the entry in hand (no lookup by path), its
  *   real folder once per search, and the files are read `SEARCH_READS` at a time, so a search grows linearly with the
  *   documents (ISC-156.5).
- * - `libraryAsset`, `GET …/library/asset?path=`: one image below `specs/`, the evidence file route (`evidence.ts`) with
+ * - `libraryAsset`, `GET …/library/asset?path=`: one image below `specs/`, the evidence file route (`infra/http/file-response.ts`) with
  *   the workspace's `specs/` as the root: the same once-decoded resolver, every file below the real `specs/` reachable,
  *   images only. A path into the folder of a spec read from its worktree copy resolves below the copy's `specs/`
  *   instead (spec 039, ISC-208). 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a second encoding, an absolute
@@ -156,10 +156,10 @@ import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.t
 import { listSpecs } from "../../core/src/resolve.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { addFavorite, getBoardQuery, listActors, listFavorites, removeFavorite, replaceActors, setBoardQuery } from "./db.ts";
-import { evidenceFileResponse } from "./evidence.ts";
 import { mapBounded } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
-import { matchesIfNoneMatch } from "./http.ts";
+import { evidenceFileResponse } from "./infra/http/file-response.ts";
+import { json, readJson } from "./infra/http/json.ts";
 import type { LifeosDetection } from "./lifeos.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { listServices } from "./services.ts";
@@ -201,6 +201,8 @@ import {
 import { type WorkspaceImages, type WorkspaceSummaryAdded, workspaceAdminAllowFor, workspaceStatusOf } from "./workspace-admin.contract.ts";
 import { ACTIVITY_PATH } from "./writes.contract.ts";
 import { rawSha256 } from "./writes.ts";
+
+export { composeApi, json } from "./infra/http/json.ts";
 
 /** The list route; a dashboard is `${WORKSPACES_PATH}/:slug/dashboard`. */
 export const WORKSPACES_PATH = "/api/workspaces";
@@ -381,44 +383,9 @@ export function localDate(date: Date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/**
- * The first handler that answers wins; `null` from all of them lets the server's JSON 404 apply. A handler declines
- * with a synchronous `null` (`ApiHandler` allows no `Promise<null>`), so a returned promise is always its answer and
- * the composition never waits on a handler that does not own the path.
- */
-export function composeApi(...handlers: ApiHandler[]): ApiHandler {
-  return (req, url) => {
-    for (const handler of handlers) {
-      const answer = handler(req, url);
-      if (answer !== null) return answer;
-    }
-    return null;
-  };
-}
-
 /** The last path segment, whatever the separator. */
 function pathTail(path: string): string {
   return path.split(/[\\/]/).filter((segment) => segment !== "").pop() ?? "";
-}
-
-function strongEtag(body: string): string {
-  return `"${new Bun.CryptoHasher("sha256").update(body).digest("base64url")}"`;
-}
-
-/** A JSON answer with its ETag; 304 for a matching `If-None-Match` on a 200, no body on `HEAD`. `lifeos.ts` shares it. */
-export function json(req: Request, status: number, value: unknown, extra: Record<string, string> = {}): Response {
-  const body = JSON.stringify(value);
-  const headers = {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-cache",
-    ETag: strongEtag(body),
-    ...extra,
-  };
-  const read = req.method === "GET" || req.method === "HEAD";
-  if (status === 200 && read && matchesIfNoneMatch(req.headers.get("If-None-Match"), headers.ETag)) {
-    return new Response(null, { status: 304, headers });
-  }
-  return new Response(req.method === "HEAD" ? null : body, { status, headers });
 }
 
 /** A workspace without a stored image, and every workspace when no image store is wired (`imagesOf` absent). */
@@ -924,15 +891,6 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
     return dashboard(req, slug);
   };
-}
-
-/** The request's JSON body, or `undefined` when it is not JSON; the validators refuse `undefined`. */
-async function readJson(req: Request): Promise<unknown> {
-  try {
-    return await req.json();
-  } catch {
-    return undefined;
-  }
 }
 
 function actorList(db: Database): ActorsResponse {

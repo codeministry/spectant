@@ -121,7 +121,7 @@ import type { UnreadableCode as LoaderUnreadableCode } from "../server/src/works
 
 const ROOT = resolve(import.meta.dir, "..");
 const FIXTURES = join(ROOT, "core", "fixtures");
-const CONTRACT = join(ROOT, "server", "src", "spec-routes.contract.ts");
+const CONTRACT = join(ROOT, "server", "src", "contracts", "spec-routes.contract.ts");
 
 // ─── type-level helpers ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1009,12 +1009,20 @@ describe("the contract is browser-safe", () => {
 
   test("no module reached from the contract imports Bun or Node, or touches Bun.* or process.*", () => {
     const files = [...reach(CONTRACT)];
-    // The contract, assets.contract.ts, core's files.ts and core's spec-ref.ts (`SPEC_FOLDER`, spec 052's favourite id).
+    // The contract (its barrel and parts), assets.contract.ts, core's files.ts and core's spec-ref.ts (`SPEC_FOLDER`, spec 052's favourite id).
     expect(files.map((file) => relative(ROOT, file)).sort()).toEqual([
       "core/src/files.ts",
       "core/src/spec-ref.ts",
-      "server/src/assets.contract.ts",
-      "server/src/spec-routes.contract.ts",
+      "server/src/contracts/assets.contract.ts",
+      "server/src/contracts/spec-routes.contract.ts",
+      "server/src/contracts/spec-routes/api-answers.ts",
+      "server/src/contracts/spec-routes/app-state.ts",
+      "server/src/contracts/spec-routes/live.ts",
+      "server/src/contracts/spec-routes/prototype-route.ts",
+      "server/src/contracts/spec-routes/route-match.ts",
+      "server/src/contracts/spec-routes/spec-route-table.ts",
+      "server/src/contracts/spec-routes/workspace-route-table.ts",
+      "server/src/contracts/spec-routes/write-requests.ts",
     ]);
     const offending = files.filter((file) => {
       // Code only: assets.contract.ts documents `Bun.file()` for its consumers in comments.

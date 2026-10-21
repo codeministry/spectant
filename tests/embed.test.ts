@@ -61,7 +61,7 @@ describe("scripts/embed.ts", () => {
     // `main.ts` pulls the manifest into `tsc`; Bun's types cannot model `with { type: "file" }` (T11).
     expect(text.split("\n")[1]).toBe("// @ts-nocheck");
     expect(text.endsWith("export default manifest;\n")).toBe(true);
-    expect(text).toContain('import type { EmbeddedManifest } from "./src/assets.contract.ts";');
+    expect(text).toContain('import type { EmbeddedManifest } from "./src/contracts/assets.contract.ts";');
     expect(text).toContain('import a0 from "../web/dist/browser/fonts/inter.woff2" with { type: "file" };');
     expect(text).toContain('import a1 from "../web/dist/browser/index.html" with { type: "file" };');
     expect(text).toContain('import a2 from "../web/dist/browser/main-ABCDEFGH.js" with { type: "file" };');

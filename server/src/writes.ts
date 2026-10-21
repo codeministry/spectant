@@ -31,7 +31,7 @@
  * own: the other copy's bytes fail the compare, the plain 409 with `files`. The allocation always targets `root`.
  */
 import { createHash } from "node:crypto";
-import { closeSync, fsyncSync, lstatSync, mkdirSync, openSync, unlinkSync, writeSync } from "node:fs";
+import { mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { allocationOf, nextSpecNumber, specNumbersOf } from "../../core/src/allocate.ts";
 import { backlogFeatures, planBacklogMove, planBacklogPriority } from "../../core/src/backlog.ts";
@@ -49,6 +49,7 @@ import { type ResolvedSpecEdges, resolveEdges } from "../../core/src/spec-edges.
 import { mainFeatureOf, partitionClaims, specEdgeHolds } from "../../core/src/status.ts";
 import { type TransitionInput, planTransition } from "../../core/src/transition.ts";
 import { takenSpecNumbers } from "./git.ts";
+import { appendInPlace, fsyncDir, pathTaken, writeInPlace } from "./infra/fs/in-place.ts";
 import type { AllocateRequest, BacklogRequest, NotFound, ReviewedHashes, TransitionRequest } from "./spec-routes.contract.ts";
 import { readBytesIfExists, readIdeaFiles, readIfExists, readSpecFiles, readWorkspaceInput, viewerActorOf } from "./workspace-loader.ts";
 import {
@@ -77,6 +78,8 @@ import {
   writePathsOf,
 } from "./writes.contract.ts";
 
+export { appendInPlace, writeInPlace } from "./infra/fs/in-place.ts";
+
 /** sha256 hex of raw bytes: tasks.md's hash (`X-Spectant-Tasks-Hash`). */
 export function rawSha256(bytes: Uint8Array | string): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -86,33 +89,6 @@ export function rawSha256(bytes: Uint8Array | string): string {
 export function gateHashes(texts: SpecFiles["texts"]): ReviewedHashes {
   const hash = (file: "spec.md" | "plan.md" | "tasks.md", text: string | undefined): string | null => (text === undefined ? null : hashForGate(file, text));
   return { spec: hash("spec.md", texts.spec), plan: hash("plan.md", texts.plan), tasks: hash("tasks.md", texts.tasks) };
-}
-
-function writeAll(fd: number, data: string | Uint8Array): void {
-  const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
-  let offset = 0;
-  while (offset < bytes.length) offset += writeSync(fd, bytes, offset, bytes.length - offset);
-  fsyncSync(fd);
-}
-
-/** Replaces the file's bytes in place (same inode, same mode) and fsyncs it; creates it when missing. */
-export function writeInPlace(path: string, data: string | Uint8Array): void {
-  const fd = openSync(path, "w");
-  try {
-    writeAll(fd, data);
-  } finally {
-    closeSync(fd);
-  }
-}
-
-/** Appends to the file in place and fsyncs it; creates it when missing. */
-export function appendInPlace(path: string, data: string): void {
-  const fd = openSync(path, "a");
-  try {
-    writeAll(fd, data);
-  } finally {
-    closeSync(fd);
-  }
 }
 
 /** Creates `<specDir>/.gates/` when missing (that directory only, never a parent) and returns its path. */
@@ -348,27 +324,6 @@ export interface AllocateWriteInput {
   readonly body: AllocateRequest;
   /** The run lock's abort age (`WriteInput.abortAfterMs`). */
   readonly abortAfterMs?: number;
-}
-
-/** Whether anything (a file, a folder, a link) already has this name; never follows a link. */
-function pathTaken(path: string): boolean {
-  try {
-    lstatSync(path);
-    return true;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
-    throw error;
-  }
-}
-
-/** fsyncs a directory, so a created or removed entry in it is durable as well. */
-function fsyncDir(dir: string): void {
-  const fd = openSync(dir, "r");
-  try {
-    fsyncSync(fd);
-  } finally {
-    closeSync(fd);
-  }
 }
 
 /**

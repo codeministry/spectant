@@ -24,6 +24,9 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
+import { defaultLsof, type LsofRun } from "./infra/process/lsof.ts";
+
+export type { LsofRun };
 
 export type DevServiceKind = "node" | "java" | "bun" | "python" | "other";
 
@@ -42,9 +45,6 @@ export type DevService = {
    */
   spec?: string;
 };
-
-/** Runs `lsof` with these arguments. Null when `lsof` is not on PATH. */
-export type LsofRun = (args: string[]) => Promise<{ code: number; stdout: string } | null>;
 
 /** True when `host:port` answers HTTP. Only ever called with `127.0.0.1` or `::1`. */
 export type HttpProbe = (host: LoopbackHost, port: number) => Promise<boolean>;
@@ -249,11 +249,3 @@ function kindOf(process: string): DevServiceKind {
   if (name.startsWith("python")) return "python";
   return "other";
 }
-
-const defaultLsof: LsofRun = async (args) => {
-  const lsof = Bun.which("lsof", { PATH: process.env.PATH ?? "" });
-  if (!lsof) return null;
-  const child = Bun.spawn([lsof, ...args], { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
-  const [stdout, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
-  return { code, stdout };
-};

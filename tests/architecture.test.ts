@@ -1,7 +1,8 @@
 /**
  * architecture — the folder-shape and import-graph rules of `scripts/check-architecture.ts` (spec 059).
  *
- * `-t layout` selects ISC-409, `-t imports` ISC-410. Each rule runs on one fixture root per clause under
+ * `-t layout` selects ISC-409, `-t imports` ISC-410, `-t io` ISC-411 (no other test name holds "io"). Each rule
+ * runs on one fixture root per clause under
  * `tests/fixtures/architecture/`, with the server entry's own `layout` and `imports` sections, and must return exactly
  * the expected violations. The app case runs the rule on the real server entry of `scripts/architecture.config.ts`; it
  * stays `test.failing` while `server/src` is flat and turns into a plain `test` when the split is done (T61).
@@ -12,6 +13,7 @@ import { resolve } from "node:path";
 import config, { type LaneEntry } from "../scripts/architecture.config.ts";
 import type { Violation } from "../scripts/architecture/files.ts";
 import { imports } from "../scripts/architecture/imports.ts";
+import { io } from "../scripts/architecture/io.ts";
 import { layout } from "../scripts/architecture/layout.ts";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
@@ -30,6 +32,7 @@ function fixture(path: string): LaneEntry {
     ignore: [],
     ...(app.layout === undefined ? {} : { layout: app.layout }),
     ...(app.imports === undefined ? {} : { imports: app.imports }),
+    ...(app.io === undefined ? {} : { io: app.io }),
   };
 }
 
@@ -59,7 +62,7 @@ describe("layout", () => {
     ]);
   });
 
-  test("an entry without a layout section is not checked", () => {
+  test("an entry without layout settings is not checked", () => {
     const entry: LaneEntry = { ...fixture("layout/stray"), layout: undefined };
     expect(layout(entry, REPO_ROOT)).toEqual([]);
   });
@@ -99,12 +102,58 @@ describe("imports", () => {
     ]);
   });
 
-  test("an entry without an imports section is not checked", () => {
+  test("an entry without imports settings is not checked", () => {
     const entry: LaneEntry = { ...fixture("imports/cycle"), imports: undefined };
     expect(imports(entry, REPO_ROOT)).toEqual([]);
   });
 
   test.failing("the app: the server/src graph keeps all three rules", () => {
     expect(imports(app, REPO_ROOT)).toEqual([]);
+  });
+});
+
+describe("io rule", () => {
+  const expected = (path: string, line: number, detail: string): Violation => ({ ...at(path, detail, line), rule: "io" });
+
+  test("the server entry guards the four modules and three calls of ISC-411, allowed in infra only", () => {
+    expect(app.io).toEqual({
+      allowedIn: ["infra"],
+      modules: ["node:fs", "node:fs/promises", "node:child_process", "bun:sqlite"],
+      calls: ["Bun.spawn", "Bun.file", "Bun.write"],
+    });
+  });
+
+  test("a slice importing node:fs is reported, with the bare, type-only and dynamic forms", () => {
+    expect(io(fixture("io/module"), REPO_ROOT)).toEqual([
+      expected("io/module/notes/index.ts", 1, "node:fs"),
+      expected("io/module/notes/store.ts", 1, "bun:sqlite"),
+      expected("io/module/notes/store.ts", 2, "fs/promises (node:fs/promises)"),
+      expected("io/module/notes/store.ts", 9, "node:child_process"),
+    ]);
+  });
+
+  test("a slice calling Bun.file, Bun.spawn or destructuring Bun.write is reported at each use", () => {
+    expect(io(fixture("io/call"), REPO_ROOT)).toEqual([
+      expected("io/call/spec/index.ts", 3, "Bun.file"),
+      expected("io/call/spec/run.ts", 1, "Bun.write"),
+      expected("io/call/spec/run.ts", 3, "Bun.spawn"),
+    ]);
+  });
+
+  test("a mention in a comment, string, template or regex literal is not a call", () => {
+    expect(io(fixture("io/mention"), REPO_ROOT)).toEqual([]);
+  });
+
+  test("infra/ may use every listed module and call", () => {
+    expect(io(fixture("io/allowed"), REPO_ROOT)).toEqual([]);
+  });
+
+  test("an entry without io settings is not checked", () => {
+    const entry: LaneEntry = { ...fixture("io/module"), io: undefined };
+    expect(io(entry, REPO_ROOT)).toEqual([]);
+  });
+
+  test.failing("the app: no file outside server/src/infra does direct I/O", () => {
+    expect(io(app, REPO_ROOT)).toEqual([]);
   });
 });
