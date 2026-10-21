@@ -81,7 +81,7 @@
 }
 
 
-/* Sweep 2 (ISC-149): the prototype's task list — a card, the 9-column grid with Flags, 10.5 px head, 48 px rows. */
+/* Sweep 2 (ISC-149): the task list — a card, the 9-column grid with Flags, 10.5 px head, 48 px rows. */
 .task-card {
   min-inline-size: 0;
   overflow: hidden;
@@ -98,13 +98,13 @@
   border-block-end: 0;
 }
 
-/* Prototype `[data-ui="seam-badge"]`: mono 11, muted; a seam in orange text. */
+/* `[data-ui="seam-badge"]`: mono 11, muted; a seam in orange text. */
 
 .flag[data-flag='seam'] {
   color: var(--hover-text);
 }
 
-/* Prototype `[data-ui="chip"].st-*`: 22 px, radius-sm, 11 px versal on a tint. */
+/* `[data-ui="chip"].st-*`: 22 px, radius-sm, 11 px versal on a tint. */
 .tstate {
   display: inline-flex;
   gap: 6px;
@@ -122,7 +122,7 @@
   text-transform: uppercase;
 }
 
-/* Prototype `.cbx`: a 20 px box, 2 px track ring, lime when ticked; held dashed; locked and conflict orange. */
+/* The checkbox: a 20 px box, 2 px track ring, lime when ticked; held dashed; locked and conflict orange. */
 .hit .checkbox {
   --input-color: var(--color-accent);
 
@@ -168,7 +168,7 @@
   font-size: 13px;
 }
 
-/* Prototype probe mapping: a card with a 15 px head and the `.tbl` rows. */
+/* The probe mapping: a card with a 15 px head and the `.tbl` rows. */
 
 .mapping h3 {
   margin: 0;
@@ -198,7 +198,7 @@
   pointer-events: none;
 }
 
-/* Sweep 3 (ISC-149): prototype `.t-reason` (12 px muted, 8 px gap, 13 px leading icon) and `details.fold-row`. */
+/* Sweep 3 (ISC-149): the reason line (12 px muted, 8 px gap, 13 px leading icon) and `details.fold-row`. */
 .extra .sub,
 .extra .check-note {
   display: inline-flex;

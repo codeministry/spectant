@@ -9,7 +9,7 @@
   max-inline-size: 100%;
 }
 
-/* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. A host may round it
+/* The command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. A host may round it
        through --ui-command-chip-radius (the spec head, spec 045), and the copy button follows. */
 .chip {
   display: inline-flex;

@@ -1,5 +1,5 @@
 /*
- * The status group (prototype `[data-ui="live-indicator"]`): one 40 px bordered group on the card, its parts split by
+ * The status group: one 40 px bordered group on the card, its parts split by
  * 1 px rules; 44 px on touch. The dot is lime while a dev service is up; the text alternative carries the meaning.
  */
 :host {
@@ -78,7 +78,7 @@
   background: var(--clos-text);
 }
 
-/* Below 640 px only the indicator: activity and the dot, no refresh (prototype rule). */
+/* Below 640 px only the indicator: activity and the dot, no refresh. */
 @container header (width < 640px) {
   .refresh {
     display: none;
@@ -90,7 +90,7 @@
   }
 }
 
-/* The popover's contents (prototype `pop-live`: `.pop-head`, `.service`, `.pop-item`, `.pop-sep`). */
+/* The popover's contents (head, services, items, separators). */
 .live-pop {
   --ui-popover-width: 300px;
 }

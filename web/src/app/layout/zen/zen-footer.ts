@@ -14,7 +14,7 @@ import { ShellState } from '../shell/shell-state.service';
 
 /**
  * Zen's footer status bar (ISC-75, T38; design.md § Zen per tier): a sticky 40 px bar at the bottom of the shell that
- * takes the spec head's place while zen is on. Spec 024 aligns it with the prototype `zen-statusbar`: 36 px, 12 px muted
+ * takes the spec head's place while zen is on. Spec 024 sets it as the `zen-statusbar`: 36 px, 12 px muted
  * text on the page glass, the path `← <ws badge> ws / area` back to the workspace, the id and the 600 title, then pushed
  * right the type chip (plain) and the stage chip, followed by the app's claims meter (`25/30`), the command chip with
  * copy and the notes pill (ISC-75); compact: path · id · chips · claims · command chip.
@@ -45,7 +45,7 @@ export class ZenFooter {
   protected readonly id = computed(() => this.body()?.head.id ?? this.state.specId());
   protected readonly title = computed(() => this.body()?.head.title ?? this.data.currentRow()?.title ?? null);
   protected readonly type = computed(() => this.body()?.head.type ?? null);
-  /** The prototype path: back to the workspace, its name, then the open area. */
+  /** The path: back to the workspace, its name, then the open area. */
   protected readonly wsPath = computed(() => {
     const ws = this.state.ws();
     return ws === null ? null : { link: '/w/' + ws, name: this.data.workspaceName(ws) };

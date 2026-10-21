@@ -12,11 +12,11 @@ import { UiDialog } from '../../shared/ui/overlay/dialog';
 
 
 /**
- * The shortcut sheet (ISC-97, T102; spec 001 T67; spec 024 aligns it with the prototype `#dlg-keys`): every binding of
+ * The shortcut sheet (ISC-97, T102; spec 001 T67; restyled by spec 024): every binding of
  * `SHORTCUTS`, per context (workspace, spec, everywhere) and group, each row the action left and its key caps right,
- * the rows in the prototype `.keys` grid (two columns from 528 px, 32 px apart). Opened by `?` and from the settings
+ * the rows in the `.keys` grid (two columns from 528 px, 32 px apart). Opened by `?` and from the settings
  * help entry through `KeyboardService.sheetOpen`; mounted once by the app root. A centred 640 px dialog 96 px from the
- * top on every tier (prototype `[data-ui="dialog"]`), listed on every tier even where key hints are hidden.
+ * top on every tier, listed on every tier even where key hints are hidden.
  */
 @Component({
   selector: 'app-shortcut-sheet',

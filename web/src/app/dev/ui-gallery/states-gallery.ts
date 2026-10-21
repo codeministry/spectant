@@ -5,7 +5,7 @@ import { UiCard, UiCommandChip, UiEmptyState, UiNotice, UiSkeleton } from '../..
 import { GalleryGate, type GateSample } from './gallery-samples';
 
 /**
- * The state gallery (T55; prototype `states.html`: `app.js` `pageStates` plus `pages.js` `SPECTANT_STATES`) as the
+ * The state gallery (spec 024 T55) as the
  * section `[data-gallery="states"]` of `/__ui`: loading skeletons at final geometry, the empty states, the server
  * notice, the 409/423 conflict notices, the task checkbox and gate button states, the agent banner and reduced motion, each
  * rendered with the app's own components and static sample inputs (`gallery-samples.ts`). Dev-only strings.

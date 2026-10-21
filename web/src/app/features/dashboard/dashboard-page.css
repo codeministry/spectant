@@ -35,8 +35,8 @@
   margin-block-start: 24px;
 }
 
-/* Prototype `page-head h1`: the 22 px workspace badge, "Dashboard", then "· <ws>" in muted 400 (_workspace-page.css,
-   with the prototype's `.footer-note`), 10 px apart. */
+/* The page head's h1: the 22 px workspace badge, "Dashboard", then "· <ws>" in muted 400 (_workspace-page.css,
+   with the page's footer note), 10 px apart. */
 .h1-row {
   gap: 10px;
 }

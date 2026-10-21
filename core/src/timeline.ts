@@ -15,7 +15,7 @@
 // mixed precision (`…29Z` vs `…29.277Z`) breaks a lexical compare as well. A `ts` that does not parse sorts after
 // every one that does, lexically among its peers.
 //
-// The server joins two sources the files do not hold (spec 024, the prototype's `.mk.note` and `.mk.agent`): the
+// The server joins two sources the files do not hold (spec 024, the note and agent marks): the
 // app's notes of the spec (`note`, at the note's creation) and the lock sessions holding one of its claims (`agent`,
 // at the lock's `since`, `running` while held). They sort after every file source of the same instant.
 //

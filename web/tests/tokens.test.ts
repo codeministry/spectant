@@ -1,17 +1,17 @@
 // Contrast guard for ISC-65 as refined by ISC-146.1 (spec 024, T20): the derived tokens in `web/src/styles/tokens.css`
 // against the surfaces of both daisyUI themes in `web/src/styles.css`.
 //
-// ISC-146.1: where the prototype and a contrast correction disagree, the prototype wins. Every `--*-ink` therefore
-// paints the prototype's `--*-text` of its role (`--held-ink` and `--muted-ink` its `--muted`), found through the
-// shared map in `prototype-token-map.ts`, and `--badge-ink` / `--badge-fill` paint its badge pair; the fixture
-// `fixtures/prototype-reference.json` holds the values.
+// ISC-146.1: where an adopted value and a contrast correction disagree, the adopted value wins. Every `--*-ink`
+// therefore paints its accent's `--*-text` (`--held-ink` and `--muted-ink` paint `--muted`), and `--badge-ink` /
+// `--badge-fill` paint the badge pair `--color-neutral-content` / `--badge`; the app's own snapshot
+// `fixtures/look-snapshot.json` (read through `look-snapshot.ts`) holds the reference values.
 //
 // ISC-65, refined: text reaches 4.5:1 and the `--track` mark 3:1, except the pairs the DS-APP-32/33 adaptation names
 // with their measured ratio (`specs/constitution.md` § Adaptations). Measured: `--muted-ink` and every `--*-ink` on
 // the card (`--color-base-100`) and the page (`--color-base-200`), every accent ink also on its own `-t` tint (chips,
 // notices, the danger and warning buttons), `--badge-ink` on `--badge-fill`, each filled button's ink on its fill,
-// `--track` on card and page, and `--track` at the prototype's 45 % and 55 % coverage (the meter and ring track, the pending
-// stage-track segment; spec 024: prototype background (principal 2026-10-13)) composited in sRGB on the surfaces it sits on. The pairs
+// `--track` on card and page, and `--track` at 45 % and 55 % coverage (the meter and ring track, the pending
+// stage-track segment; spec 024 decision, principal 2026-10-13) composited in sRGB on the surfaces it sits on. The pairs
 // below the line must equal `CONTRAST_EXCEPTIONS` (`contrast-exceptions.ts`) exactly, the list the browser spec reads
 // too. A `var()` value is resolved through the token block, then the shared block, then the theme block in
 // `styles.css`, as the cascade does on the element that carries `data-theme`.
@@ -24,7 +24,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CONTRAST_EXCEPTIONS } from "./contrast-exceptions.ts";
-import { homesOf, PROTOTYPE_TOKENS } from "./prototype-token-map.ts";
+import { readSnapshot } from "./look-snapshot.ts";
 
 const must = <T,>(value: T | null | undefined, what = "value"): T => {
   if (value === null || value === undefined) throw new Error(`missing ${what}`);
@@ -174,21 +174,22 @@ function below(theme: Theme, name: string, min: number): string[] {
 
 const toHex = (rgb: Rgb) => `#${quantise(rgb).map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`;
 
-// ── ISC-146.1: the prototype value of every ink, through the shared map. ──
-// Each prototype `--<colour>-text` (the badge's aside) is held by its home `--<accent>-text`; the ink of that accent
-// must paint the same value. The held state's text is the prototype's `--muted` (`.st-held`, `.o-line.held`), as is
-// the secondary text; the badge pair is the prototype's `--badge` / `--badge-text`.
-const PROTOTYPE_SOURCE: Readonly<Record<string, string>> = Object.fromEntries<string>([
-  ...Object.keys(PROTOTYPE_TOKENS["spec-light"])
-    .filter((name) => /^--[a-z]+-text$/.test(name) && name !== "--badge-text")
-    .map((name): [string, string] => [must(homesOf(name)[0], `home of ${name}`).replace(/-text$/, "-ink"), name]),
+// ── ISC-146.1: the source value of every ink, from the app's snapshot. ──
+// Each accent's `--<accent>-ink` must paint the same value as its `--<accent>-text`. The held state's text is
+// `--muted` (`.st-held`, `.o-line.held`), as is the secondary text; the badge pair is daisyUI's
+// `--color-neutral-content` on `--badge`. The values come from `fixtures/look-snapshot.json`, the app's recorded look.
+const APP_SOURCE: Readonly<Record<string, string>> = Object.fromEntries<string>([
+  ...INKS.filter((ink) => ink !== "--held-ink").map((ink): [string, string] => [ink, ink.replace(/-ink$/, "-text")]),
   ["--held-ink", "--muted"],
   ["--muted-ink", "--muted"],
-  ["--badge-ink", "--badge-text"],
+  ["--badge-ink", "--color-neutral-content"],
   ["--badge-fill", "--badge"],
 ]);
+const SNAPSHOT_TOKENS = must(must(readSnapshot(), "fixtures/look-snapshot.json").tokens, "snapshot tokens");
+/** The snapshot's resolved tokens of one theme (`spec-light` → `light`). */
+const snapshotOf = (theme: Theme) => must(SNAPSHOT_TOKENS[theme.replace(/^spec-/, "")], `snapshot tokens of ${theme}`);
 
-/** ΔE_OK×100 between the painted token and the prototype hex. */
+/** ΔE_OK×100 between the painted token and the snapshot hex. */
 const deltaE = (painted: Rgb, hex: string) => {
   const [a, b] = [srgbToOklab(quantise(painted)), srgbToOklab(hexToSrgb(hex))];
   return 100 * Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -202,7 +203,7 @@ const over = (fg: Rgb, bg: Rgb, alpha: number) => fg.map((c, i) => alpha * c + (
 type Pair = { tone: string; surface: string; min: number; alpha?: number };
 const PAIRS: readonly Pair[] = [
   ...["--muted-ink", ...INKS].flatMap((tone) => {
-    // Held text never sits on `--held-t`: the prototype's held chip is muted text on `--raised`. The neutral tone's
+    // Held text never sits on `--held-t`: the held chip is muted text on `--color-base-300`. The neutral tone's
     // ink is `--muted-ink` (tone.ts), so the neutral chip's tint is `--raised`, daisyUI's `--color-base-300` (spec 024
     // ISC-148), not a `-t` token.
     const tint =
@@ -210,13 +211,13 @@ const PAIRS: readonly Pair[] = [
     return ["--color-base-100", "--color-base-200", ...tint].map((surface) => ({ tone, surface, min: TEXT_MIN }));
   }),
   { tone: "--badge-ink", surface: "--badge-fill", min: TEXT_MIN },
-  // spec 024: prototype background (principal 2026-10-13). The Decisions tab's `.file-chip`: `--cyan-text` on `--raised`.
+  // spec 024 decision (principal 2026-10-13). The Decisions tab's file chip: `--disp-text` on `--color-base-300`.
   { tone: "--disp-ink", surface: "--color-base-300", min: TEXT_MIN },
   { tone: "--track", surface: "--color-base-100", min: MARK_MIN },
   { tone: "--track", surface: "--color-base-200", min: MARK_MIN },
-  // Filled buttons: the light primary is the prototype `.btn.primary`, `--cyan` under `--page`.
+  // Filled buttons: the light primary paints `--color-base-200` text on `--color-primary`.
   ...["primary", "danger", "warning"].map((fill) => ({ tone: `--${fill}-fill-ink`, surface: `--${fill}-fill`, min: TEXT_MIN })),
-  // The meter and ring track at the prototype's 45 % and the pending stage-track segment at its 55 %, on the card and
+  // The meter and ring track at 45 % and the pending stage-track segment at 55 %, on the card and
   // the page.
   ...TRACK_ALPHAS.flatMap((alpha) => TRACK_SURFACES.map((surface) => ({ tone: "--track", surface, min: MARK_MIN, alpha }))),
 ];
@@ -255,7 +256,7 @@ describe("tokens.css", () => {
     expect(shared.find((d) => d.name === "--focus-ring")?.value).toBe("var(--color-primary)");
     expect(shared.find((d) => d.name === "--focus-halo")?.value).toBe("var(--color-base-200)");
     expect(shared.find((d) => d.name === "--badge-ink")?.comment).toMatch(/^#fcfcfa\b/);
-    // The prototype's `--page-glass`: the page colour at 85 % under the header's blur (design.md § Header).
+    // `--page-glass`: the page colour at 85 % under the header's blur (design.md § Header).
     expect(shared.find((d) => d.name === "--page-glass")?.value).toBe(
       "color-mix(in srgb, var(--color-base-200) 85%, transparent)",
     );
@@ -275,8 +276,8 @@ describe("tokens.css", () => {
     expect(missing).toEqual([]);
   });
 
-  test("the prototype's tokens the old pages lack are theme slots in both themes (ISC-74)", () => {
-    // Prototype hex per theme; the round trip itself is the ΔE check of `theme-colors.test.ts` over every slot.
+  test("the tokens the old pages lack are theme slots in both themes (ISC-74)", () => {
+    // The app's hex per theme; the round trip itself is the ΔE check of `theme-colors.test.ts` over every slot.
     const expected: Record<Theme, Record<string, string>> = {
       "spec-light": { "--hover-t": "#fbedd4", "--scrim": "rgba(0,0,0,.4)" },
       "spec-dark": { "--hover-t": "#3a2f27", "--scrim": "rgba(0,0,0,.4)" },
@@ -318,24 +319,28 @@ describe("tokens.css", () => {
   });
 });
 
-describe("prototype value over contrast correction (ISC-146.1)", () => {
-  test("every ink has a prototype source in the shared map", () => {
-    expect(["--muted-ink", ...INKS].filter((ink) => !(ink in PROTOTYPE_SOURCE))).toEqual([]);
+describe("adopted value over contrast correction (ISC-146.1)", () => {
+  test("every ink has a source token recorded in the app's snapshot", () => {
+    expect(["--muted-ink", ...INKS].filter((ink) => !(ink in APP_SOURCE))).toEqual([]);
+    const unrecorded = THEMES.flatMap((theme) =>
+      Object.values(APP_SOURCE).filter((source) => !(source in snapshotOf(theme))).map((source) => `${theme} ${source}`),
+    );
+    expect(unrecorded).toEqual([]);
   });
 
   for (const theme of THEMES) {
-    test(`every ink and the badge pair paint the prototype value · ${theme}`, () => {
-      const drift = Object.entries(PROTOTYPE_SOURCE).flatMap(([token, source]) => {
-        const hex = must(PROTOTYPE_TOKENS[theme][source], `prototype ${source} in ${theme}`);
+    test(`every ink and the badge pair paint their source value · ${theme}`, () => {
+      const drift = Object.entries(APP_SOURCE).flatMap(([token, source]) => {
+        const hex = must(snapshotOf(theme)[source], `snapshot ${source} in ${theme}`);
         const painted = resolve(theme, token);
         const dE = deltaE(painted, hex);
-        return dE > MAX_DELTA_E ? [`${theme} ${token}: ${toHex(painted)} vs prototype ${source} ${hex} (ΔE ${dE.toFixed(2)})`] : [];
+        return dE > MAX_DELTA_E ? [`${theme} ${token}: ${toHex(painted)} vs snapshot ${source} ${hex} (ΔE ${dE.toFixed(2)})`] : [];
       });
       expect(drift).toEqual([]);
     });
 
     test(`no ink is a contrast correction of its own · ${theme}`, () => {
-      // An ink aliases the prototype value's home with `var()`; a literal shade in the token block is a correction.
+      // An ink aliases its source token with `var()`; a literal shade in the token block is a correction.
       const literal = tokensOf(theme).filter((d) => d.name.endsWith("-ink") && d.value.startsWith("oklch("));
       expect(literal.map((d) => d.name)).toEqual([]);
     });

@@ -4,7 +4,7 @@ import { WS_ACCENT_TOKENS, type WsAccent, wsAccent, wsLocalImage, wsMonogram } f
 export type WsBadgeSize = 'sm' | 'md' | 'page' | 'lg';
 
 /**
- * The workspace badge (prototype `styles.css` `.ws-badge`, `identity.js` `badge`): the monogram, or a logo, on the
+ * The workspace badge: the monogram, or a logo, on the
  * accent tint with a 45 % ring, Sora 700. Sizes: `sm` 18 px, `md` 22 px (the default), `page` 24 px beside an h1,
  * `lg` 30 px in a ws-head. With nothing but `name` it renders core's data: the initials of the workspace name on the
  * accent its hash picks, so it is no mock; a caller that passes a fixture's `logo` or `accent` owns the demo mark.

@@ -21,7 +21,7 @@ import { Mascot } from './mascot';
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 /**
- * The assistant "dot" panel (spec 024 T53, ISC-150; prototype `assistant.js`, `styles.css` `.as-*`), a mock until specs
+ * The assistant "dot" panel (spec 024 T53, ISC-150; `.as-*` in assistant-panel.css), a mock until specs
  * 012/015 with the demo chip in its `as-head` (ISC-149.1). It renders only while open, as a manual popover in the top
  * layer (the sticky header's backdrop filter would otherwise contain a fixed panel): from 640 px floating 16 px from the
  * bottom right, 400 × min(660, 100dvh − 96), below 640 px a full-height bottom sheet. Suggestions and answers come from

@@ -40,7 +40,7 @@ export class SpecStore {
   /** While the take chip's claims load, the rail says it is busy. */
   readonly claimsLoading = computed(() => this.claims.isLoading());
 
-  /** The first takeable claim, the rail's `take` chip (prototype: "takeable ISC-334"). */
+  /** The first takeable claim, the rail's `take` chip (e.g. "takeable ISC-334"). */
   readonly firstTakeable = computed(() => {
     const result = this.claims.value();
     return result?.kind === 'ok' ? (openClaims(result.body.claims).find((claim) => claim.state === 'takeable')?.id ?? null) : null;

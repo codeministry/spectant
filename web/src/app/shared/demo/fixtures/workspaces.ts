@@ -1,4 +1,4 @@
-/** A row of the workspace management mock (prototype `workspaces.html` `ws-row`, design.md § Workspace-Verwaltung), until spec 016. */
+/** A row of the workspace management mock (design.md § Workspace-Verwaltung), until spec 016. */
 export interface DemoWorkspaceRow {
   readonly name: string;
   /** The repository path as the registry shows it, relative to the developer's code folder. */
@@ -11,7 +11,7 @@ export interface DemoWorkspaceRow {
   readonly state: 'ok' | 'missing';
 }
 
-/** The folders the add row's path completion offers (prototype `FOLDERS`, `.path-pop`), a trailing `/` for a parent. */
+/** The folders the add row's path completion offers in its popover, a trailing `/` for a parent. */
 export const DEMO_FOLDERS: readonly string[] = Object.freeze([
   '~/Development/',
   '~/Development/oss/',

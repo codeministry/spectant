@@ -83,15 +83,19 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
 ## Design system
 
 - daisyUI 5 on Tailwind 4 CSS-first, `themes: false`, `--depth: 0`, `--noise: 0`. Reason: no stock theme, bevel or
-  grain may leak into the inherited look.
-- The themes `spec-light` / `spec-dark` in `src/styles.css` are the only colour source, OKLCH with the inherited hex
-  in a comment. Reason: ISC-18 round-trips them to the old pages' values.
+  grain may leak into the app's look.
+- The app is the only reference of its look: `web/tests/fixtures/look-snapshot.json` holds its tokens, icons and
+  primitives, guarded by `web/tests/look-snapshot.test.ts` (tokens, icons) and `web/e2e/browser/primitives.spec.ts`
+  (primitives). Reason: a look change must be deliberate; it rewrites the snapshot (`bun run look:snapshot`, and
+  `LOOK_SNAPSHOT=write` on the primitives spec) in the same commit, and the diff is reviewed (spec 063).
+- The themes `spec-light` / `spec-dark` in `src/styles.css` are the only colour source, OKLCH with each slot's hex
+  in a comment. Reason: ISC-18 round-trips them to the snapshot's hex values (`web/tests/theme-colors.test.ts`).
 - Derived tokens (`--muted`, `--track`, `--*-ink`) live in `src/styles/tokens.css`. Reason: they are contrast fixes
-  (ISC-65), not inherited values, and ISC-18 does not cover them.
-- Text in an accent colour uses that accent's `--*-ink` (the badge's is its text on `--badge-fill`); the prototype's
+  (ISC-65), not theme slots, and ISC-18 does not cover them.
+- Text in an accent colour uses that accent's `--*-ink` (the badge's is its text on `--badge-fill`); the
   `--*-text` inks are for text on the card or page only, never on their own tint (4.2–4.47:1). Reason: ISC-65, guarded
   by `web/tests/tokens.test.ts`.
-- Cards carry the prototype's 3 px `edge` and corner `glow` only through `ui-card`'s variants; no other glow, text or
+- Cards carry the 3 px top `edge` and corner `glow` only through `ui-card`'s variants; no other glow, text or
   drop shadow. Reason: master decision 2026-09-29, guarded by `web/tests/no-glow.test.ts`.
 - `color-no-hex` everywhere outside those two files. Reason: a stray hex is a colour neither theme knows.
 - `data-theme` is set by the pre-paint script and the theme service, never by a `prefers-color-scheme` block.

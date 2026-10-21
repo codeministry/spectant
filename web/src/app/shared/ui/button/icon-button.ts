@@ -5,8 +5,8 @@ import { SIZE_CLASS, type ButtonSize } from './button';
 import { swallowClicksWhile } from './disabled';
 
 /**
- * A square icon-only button: `size="md"` (default) is the prototype's `.btn-icon`, 40 px with a 1 px `--line` border
- * on `--card`; `size="sm"` is its `.quiet-icon`, 32 px without chrome, muted, with an 8 % hover tint (button.css). `label` is required and must be a translated string: it is the accessible
+ * A square icon-only button: `size="md"` (default) is the bordered one, 40 px with a 1 px `--line` border
+ * on `--card`; `size="sm"` is the quiet one, 32 px without chrome, muted, with an 8 % hover tint (button.css). `label` is required and must be a translated string: it is the accessible
  * name (`aria-label`) and the pointer tooltip (`title`), since the icon alone names nothing.
  */
 @Component({

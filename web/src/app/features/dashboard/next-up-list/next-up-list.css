@@ -1,6 +1,5 @@
 /*
- * Next up (T64, ported in T90 from the prototype's `styles.css`: `[data-ui="next-up-list"]` l.353, `.next-row`
- * l.480-481). Tokens only; spacing on the 8 px scale. Spec 021 (T79, P3 heights): one card of rows under hairlines.
+ * Next up (T64, reworked in T90: the `[data-ui="next-up-list"]` section over a card of `.next-row`s). Tokens only; spacing on the 8 px scale. Spec 021 (T79, P3 heights): one card of rows under hairlines.
  */
 :host {
   display: block;
@@ -28,7 +27,7 @@ ui-section-header {
   border-block-start: 1px solid var(--line);
 }
 
-/* Prototype `[data-ui=empty-state].small`: start-aligned, 24 × 16 px inset, 8 px gaps, at most 520 px wide. */
+/* The small `[data-ui=empty-state]`: start-aligned, 24 × 16 px inset, 8 px gaps, at most 520 px wide. */
 .empty {
   display: grid;
   justify-items: start;

@@ -1,18 +1,18 @@
-// Colour guard for ISC-18 (T17; reference switched by spec 024, T16): the daisyUI themes `spec-light` and `spec-dark`
-// in `web/src/styles.css` carry the prototype's light and dark colour tokens. The reference is the prototype fixture
-// `fixtures/prototype-reference.json` (spec 024, ISC-146), read through the one name map in `prototype-token-map.ts`;
-// the old Spec pages' inline table it replaced is no longer a reference, and ISC-18 stays closed. Every colour is
-// written as `oklch(L C H)` with its source in a trailing comment; this guard converts each OKLCH value back to sRGB
-// and measures it against the prototype hex (and, for every colour in the theme blocks, against its own comment).
+// Colour guard for ISC-18 (T17; reference switched by spec 063, T13): the daisyUI themes `spec-light` and `spec-dark`
+// in `web/src/styles.css` carry the app's light and dark colour slots. The reference is the app's own look snapshot
+// `fixtures/look-snapshot.json` (spec 063), whose `tokens` part holds each slot's resolved 8-bit hex per theme; ISC-18
+// stays closed. Every colour is written as `oklch(L C H)` with its source hex in a trailing comment; this guard
+// converts each OKLCH value back to sRGB and measures it against the snapshot hex (and, for every colour in the theme
+// blocks, against its own comment).
 //
 // Distance metric: ΔE_OK × 100, i.e. the Euclidean distance in OKLab scaled by 100 (OKLab L runs 0…1, so the
 // scaled metric sits on roughly the same scale as CIE ΔE; ~2 is a just-noticeable difference). Threshold: 0.5.
 // The OKLab matrices are Björn Ottosson's reference values; sRGB uses the IEC 61966-2-1 transfer function.
-// The stricter exact-hex parity of every prototype token, colours and the rest, is `prototype-tokens.test.ts`.
+// The exact-value guard of every token, colours and the rest, is `look-snapshot.test.ts`.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { homesOf, PROTOTYPE_THEMES, PROTOTYPE_TOKENS, type PrototypeTheme } from "./prototype-token-map";
+import { parseColour, readSnapshot, THEMES } from "./look-snapshot";
 
 /** Narrow a regex capture or array slot without a `!` assertion; a miss is a broken fixture, so it throws. */
 const must = <T,>(value: T | null | undefined, what = "value"): T => {
@@ -23,7 +23,10 @@ const must = <T,>(value: T | null | undefined, what = "value"): T => {
 const MAX_DELTA_E = 0.5;
 const STYLES = readFileSync(join(import.meta.dir, "..", "src", "styles.css"), "utf8");
 const TOKENS_CSS = readFileSync(join(import.meta.dir, "..", "src", "styles", "tokens.css"), "utf8");
-type Theme = PrototypeTheme;
+/** The daisyUI theme names; the snapshot keys them without the `spec-` prefix. */
+const THEME_NAMES = THEMES.map((t) => `spec-${t}` as const);
+type Theme = (typeof THEME_NAMES)[number];
+const snapshotKey = (theme: Theme) => theme.slice("spec-".length) as (typeof THEMES)[number];
 
 // ── Colour math (no dependencies). ──
 type Rgb = [number, number, number]; // sRGB, 0…1, gamma-encoded
@@ -117,7 +120,7 @@ describe("styles.css", () => {
   });
 });
 
-for (const theme of PROTOTYPE_THEMES) {
+for (const theme of THEME_NAMES) {
   describe(`theme ${theme}`, () => {
     const load = () => declarations(themeBlock(theme));
 
@@ -141,7 +144,7 @@ for (const theme of PROTOTYPE_THEMES) {
       for (const { name, value, comment } of load()) {
         if (/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i.test(value)) failures.push(`${name}: non-OKLCH colour ${value}`);
         const values = oklchValues(value);
-        // `#rrggbbaa` (the prototype's shadow colour) counts as one source; its alpha is checked by the T84 block.
+        // `#rrggbbaa` (the shadow colour) counts as one source; its alpha is checked by the T84 block.
         const sources = [...(comment ?? "").matchAll(/#[0-9a-f]{8}\b|#[0-9a-f]{6}\b|rgba?\([^)]*\)/gi)].map((m) => m[0]);
         if (values.length === 0) {
           if (name.startsWith("--color-")) failures.push(`${name}: colour slot without oklch()`);
@@ -164,15 +167,6 @@ for (const theme of PROTOTYPE_THEMES) {
       expect(failures).toEqual([]);
     });
   });
-}
-
-/** `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa` → sRGB 0…1 plus alpha. */
-function hexToRgba(hex: string): { rgb: Rgb; alpha: number } {
-  const digits = must(/^#([0-9a-f]{3,8})$/i.exec(hex)?.[1], `hex ${hex}`);
-  const full = digits.length <= 4 ? digits.replace(/./g, (d) => d + d) : digits;
-  if (full.length !== 6 && full.length !== 8) throw new Error(`not a hex colour: ${hex}`);
-  const channel = (i: number) => Number.parseInt(full.slice(i, i + 2), 16) / 255;
-  return { rgb: [channel(0), channel(2), channel(4)], alpha: full.length === 8 ? channel(6) : 1 };
 }
 
 /** Flat declarations of the `tokens.css` rule with exactly this selector. */
@@ -198,21 +192,57 @@ function resolveOklch(theme: Theme, name: string, seen: string[] = []): Oklch {
   return parseOklch(found.value);
 }
 
-/** The prototype's colour tokens of a theme block: every property whose value is a hex colour. */
-const colourTokens = (theme: Theme) =>
-  Object.entries(PROTOTYPE_TOKENS[theme]).filter(([, value]) => /^#[0-9a-f]{3,8}$/i.test(value));
+/** An accent family: its colour slot(s), its tint and its text ink on the card or page. */
+type Family = { accent: readonly string[]; tint: string; text: string };
 
-// The prototype tokens the old pages lacked (T84): the themes had no slot for them, so they are declared in the
+const FAMILIES: readonly Family[] = [
+  { accent: ["--color-primary", "--color-info"], tint: "--disp-t", text: "--disp-text" },
+  { accent: ["--color-secondary"], tint: "--ques-t", text: "--ques-text" },
+  { accent: ["--color-accent"], tint: "--clos-t", text: "--clos-text" },
+  { accent: ["--color-success"], tint: "--done-t", text: "--done-text" },
+  { accent: ["--conc"], tint: "--conc-t", text: "--conc-text" },
+  { accent: ["--color-warning"], tint: "--hover-t", text: "--hover-text" },
+  { accent: ["--color-error"], tint: "--fail-t", text: "--fail-text" },
+];
+
+/** Slots that hold one value under several names (a daisyUI slot and its custom-property twin); they must not drift. */
+const TWINS: ReadonlyArray<readonly string[]> = [
+  ["--color-primary", "--color-info"],
+  ["--badge", "--color-neutral", "--badge-fill"],
+  ["--color-neutral-content", "--badge-ink"],
+];
+
+/** Every colour slot of the theme blocks this guard measures: surfaces and text, the accent families, teal, badge. */
+const SLOTS: readonly string[] = [
+  "--color-base-200", "--color-base-100", "--color-base-300", "--lane", "--color-base-content", "--muted", "--line",
+  "--track", "--scrim", "--shadow-color",
+  ...FAMILIES.flatMap((f) => [...f.accent, f.tint, f.text]),
+  "--teal", "--teal-content",
+  ...TWINS.slice(1).flat(),
+];
+
+/** The snapshot's resolved hex of each slot, in `SLOTS` order; a slot the snapshot lacks has no entry. */
+function snapshotColours(theme: Theme): Array<[string, string]> {
+  const tokens = readSnapshot()?.tokens?.[snapshotKey(theme)] ?? {};
+  return SLOTS.flatMap((slot) => {
+    const hex = tokens[slot];
+    return hex === undefined ? [] : [[slot, hex] as [string, string]];
+  });
+}
+
+// The colour tokens the old pages lacked (T84): the themes had no slot for them, so they are declared in the
 // daisyUI theme blocks themselves.
 const ADDED = [
   "--disp-text", "--ques-text", "--clos-text", "--done-text", "--conc-text", "--hover-text", "--fail-text",
   "--teal", "--teal-content", "--shadow-color",
 ];
 
-for (const theme of PROTOTYPE_THEMES) {
-  describe(`theme ${theme}: the prototype's palette (fixture, ISC-146)`, () => {
-    test("the fixture's colour tokens are there to compare", () => {
-      expect(colourTokens(theme).length).toBeGreaterThan(0);
+for (const theme of THEME_NAMES) {
+  describe(`theme ${theme}: the app's palette (look snapshot)`, () => {
+    test("the snapshot holds every colour slot as a hex colour", () => {
+      const colours = new Map(snapshotColours(theme));
+      const failures = SLOTS.filter((slot) => !/^#[0-9a-f]{6}([0-9a-f]{2})?$/.test(colours.get(slot) ?? ""));
+      expect(failures).toEqual([]);
     });
 
     test("the tokens the themes lacked are declared in the daisyUI theme block", () => {
@@ -220,53 +250,56 @@ for (const theme of PROTOTYPE_THEMES) {
       expect(ADDED.filter((name) => !names.has(name))).toEqual([]);
     });
 
-    test("every home round-trips to the prototype hex (ΔE_OK×100 ≤ 0.5, alpha within 1/255)", () => {
+    test("twin slots hold one value in the snapshot", () => {
+      const colours = new Map(snapshotColours(theme));
+      const failures = TWINS.filter((twins) => new Set(twins.map((slot) => colours.get(slot))).size !== 1).map(
+        (twins) => twins.map((slot) => `${slot} ${colours.get(slot) ?? "missing"}`).join(" / "),
+      );
+      expect(failures).toEqual([]);
+    });
+
+    test("every slot round-trips to its snapshot hex (ΔE_OK×100 ≤ 0.5, alpha within 1/255)", () => {
       const failures: string[] = [];
-      for (const [name, hex] of colourTokens(theme)) {
-        const reference = hexToRgba(hex);
-        for (const home of homesOf(name)) {
-          let value: Oklch;
-          try {
-            value = resolveOklch(theme, home);
-          } catch (error) {
-            failures.push(`${name} → ${home}: ${(error as Error).message}`);
-            continue;
-          }
-          const dE = roundTrip(value, reference.rgb);
-          if (dE > MAX_DELTA_E) failures.push(`${name} → ${home}: ΔE_OK×100 ${dE.toFixed(3)} > ${MAX_DELTA_E}`);
-          if (Math.abs(value.alpha - reference.alpha) > 1 / 255) {
-            failures.push(`${name} → ${home}: alpha ${value.alpha} vs ${reference.alpha.toFixed(3)} (${hex})`);
-          }
+      for (const [slot, hex] of snapshotColours(theme)) {
+        const reference = parseColour(hex);
+        let value: Oklch;
+        try {
+          value = resolveOklch(theme, slot);
+        } catch (error) {
+          failures.push(`${slot}: ${(error as Error).message}`);
+          continue;
+        }
+        const dE = roundTrip(value, reference.rgb);
+        if (dE > MAX_DELTA_E) failures.push(`${slot}: ΔE_OK×100 ${dE.toFixed(3)} > ${MAX_DELTA_E}`);
+        if (Math.abs(value.alpha - reference.alpha) > 1 / 255) {
+          failures.push(`${slot}: alpha ${value.alpha} vs ${reference.alpha.toFixed(3)} (${hex})`);
         }
       }
       expect(failures).toEqual([]);
     });
 
-    test("a home written as oklch() names the prototype hex at the start of its comment", () => {
+    test("a slot written as oklch() names its snapshot hex at the start of its comment", () => {
       const failures: string[] = [];
-      for (const [name, hex] of colourTokens(theme)) {
-        if (!/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(hex)) continue; // `#0006` (scrim) is noted as rgba(); its alpha is checked above
-        for (const home of homesOf(name)) {
-          const found = findDecl(theme, home);
-          if (!found.value.startsWith("oklch(")) continue;
-          const commentHex = /^#[0-9a-f]{6}([0-9a-f]{2})?\b/i.exec(found.comment ?? "")?.[0].toLowerCase();
-          if (commentHex !== hex) failures.push(`${name} → ${home}: comment starts with ${commentHex ?? "no hex"}, expected ${hex}`);
-        }
+      for (const [slot, hex] of snapshotColours(theme)) {
+        const found = findDecl(theme, slot);
+        if (!found.value.startsWith("oklch(")) continue;
+        if (/^rgba?\(/.test(found.comment ?? "")) continue; // the scrim is noted as rgba(); its alpha is checked above
+        const commentHex = /^#[0-9a-f]{6}([0-9a-f]{2})?\b/i.exec(found.comment ?? "")?.[0].toLowerCase();
+        if (commentHex !== hex) failures.push(`${slot}: comment starts with ${commentHex ?? "no hex"}, expected ${hex}`);
       }
       expect(failures).toEqual([]);
     });
 
     test("a -text ink equal to its accent aliases that accent with var(), so it follows the palette", () => {
-      const tokens = PROTOTYPE_TOKENS[theme];
+      const colours = new Map(snapshotColours(theme));
       const block = declarations(themeBlock(theme));
       const failures: string[] = [];
-      for (const [name, hex] of Object.entries(tokens)) {
-        if (!name.endsWith("-text") || name === "--badge-text") continue;
-        const base = name.slice(0, -"-text".length);
-        if (tokens[base] !== hex) continue;
-        const expected = `var(${must(homesOf(base)[0], `home of ${base}`)})`;
-        const found = decl(block, must(homesOf(name)[0], `home of ${name}`))?.value;
-        if (found !== expected) failures.push(`${name}: expected ${expected}, found ${found ?? "nothing"}`);
+      for (const { accent, text } of FAMILIES) {
+        const primary = must(accent[0], `accent of ${text}`);
+        if (colours.get(text) === undefined || colours.get(text) !== colours.get(primary)) continue;
+        const expected = `var(${primary})`;
+        const found = decl(block, text)?.value;
+        if (found !== expected) failures.push(`${text}: expected ${expected}, found ${found ?? "nothing"}`);
       }
       expect(failures).toEqual([]);
     });

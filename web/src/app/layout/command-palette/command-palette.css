@@ -1,5 +1,5 @@
 /*
- * The command palette, ported from the prototype (`spectant-ui/styles.css` `[data-ui="command-palette"]`, `.p-item`):
+ * The command palette (rows are `.p-item`):
  * a 56 px input row over a grouped list, the active option on the raised surface with a 3 px cyan edge, matches
  * underlined in cyan instead of filled. 640 px wide, 96 px from the top (design.md § Command palette and keyboard).
  */
@@ -40,7 +40,7 @@ ui-dialog {
   font-size: 15px;
 }
 
-/* The input row is the focused control; its caret shows focus, as in the prototype. */
+/* The input row is the focused control; its caret shows focus. */
 .p-input input:focus-visible {
   outline: 0;
   box-shadow: none;
@@ -88,13 +88,13 @@ ui-dialog {
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-/* The lead icon (prototype `.p-item .icon`): muted, 20 px, before the label or the chip. */
+/* The lead icon: muted, 20 px, before the label or the chip. */
 .p-lead {
   flex: none;
   color: var(--muted-ink);
 }
 
-/* Next up commands and service ports in mono (prototype `.p-item .grow.mono`). */
+/* Next up commands and service ports in mono. */
 .p-item .grow.mono {
   font-family: var(--font-mono);
   font-size: 13px;

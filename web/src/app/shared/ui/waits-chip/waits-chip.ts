@@ -22,7 +22,7 @@ interface BlockerView {
  *
  * - One chip per blocker, at most `WAITS_VISIBLE`; from three on a neutral dashed `+n` whose tooltip and hidden text
  *   name the rest. A chip is exactly "waits on NNN" / "wartet auf NNN", never more words.
- * - Violet (scoping), not filled: 1 px dashed `--color-secondary` (the prototype's `--violet`), ink `--ques-ink`, `clock`
+ * - Violet (scoping), not filled: 1 px dashed `--color-secondary` (violet), ink `--ques-ink`, `clock`
  *   12 px, mono 500 11, 22 px high; hover `--ques-t`, the number dotted-underlined, focus the app's ring.
  * - A known blocker links to its spec page; an unknown one (`042`) is a plain span with the same look and no link.
  * - `meta`: the partial scope ("4 waiting · 1 open", spec 021 ISC-252.1: `heldTasks` and `readyTasks`, the Tasks tab's

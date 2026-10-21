@@ -21,7 +21,7 @@ import { PHASE_TONES, type SpecTableRow } from './spec-table-model';
 const AGENT_KEY = 'specs.agentWorking';
 
 /**
- * One spec as a row of the Specs panel, ported from the prototype's `spec-row` (styles.css 380-397, app.js specRow):
+ * One spec as a row of the Specs panel (`spec-row`, T89):
  * `type glyph + id | title + one-line description | agent dot + priority + mini five-segment stage track + phase chip |
  * meter + a/b` (spec 008: the type glyph before the number, `ui-priority` before the stage track, ISC-118). It
  * renders the cells only; the link and the roving tab stop are the list's (`spec-table`).

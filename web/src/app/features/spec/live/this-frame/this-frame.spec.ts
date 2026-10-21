@@ -53,7 +53,7 @@ describe('ThisFrame', () => {
     const root = await render(ThisFrame, { frame: LIVE, events });
     const rows = [...root.querySelectorAll('[data-frame-event]')].map((row) => row.getAttribute('data-frame-event'));
     expect(rows).toEqual(events.map((c) => c.task));
-    // spec 024: the prototype .fevents line, "T9 → closed · ISC-330", a button that opens the card.
+    // spec 024: the .fevents line, "T9 → closed · ISC-330", a button that opens the card.
     const first = events.at(0);
     if (first === undefined) throw new Error('the goldens hold no frame event');
     const words = (CATALOGUES.en as { states: { card: Record<string, string> } }).states.card;

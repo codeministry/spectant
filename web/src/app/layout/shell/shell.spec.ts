@@ -232,7 +232,7 @@ describe('ShellComponent', () => {
     }
   });
 
-  // Spec 024 (ISC-149): the prototype tab bar under the header on every width (principal 2026-10-12, design.md).
+  // Spec 024 (ISC-149): the tab bar under the header on every width (principal 2026-10-12, design.md).
   it('puts the tab bar in main under the header on every width, never in the header', async () => {
     setUp();
     const { root, harness } = await open('/w/harbor/s/002/status', 390);
@@ -516,7 +516,7 @@ describe('ShellComponent', () => {
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
         expect(entries.map((entry) => entry.getAttribute('aria-disabled'))).toEqual([null, null, null, null, null, null]);
         expect(entries.map((entry) => entry.querySelector('.dot')?.getAttribute('data-dot'))).toEqual([...AREA_IDS]);
-        // spec 024: prototype value (principal: the prototype wins) — pop-area's sublines name each area's tabs.
+        // spec 024: the area menu's sublines name each area's tabs.
         expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
           'overview · next step · gates',
           'Status · Timeline',
@@ -567,7 +567,7 @@ describe('ShellComponent', () => {
       expect(spec.querySelector('[data-live-board]')?.textContent).toContain('Open the round board');
     });
 
-    // spec 024 T40, T52: the settings control opens the prototype settings popover; its "Workspaces…" entry leads to
+    // spec 024 T40, T52: the settings control opens the settings popover; its "Workspaces…" entry leads to
     // the workspace management at /settings/workspaces.
     it('opens the settings popover from the settings control, whose Workspaces entry leads to the workspace management', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
@@ -728,11 +728,11 @@ describe('ShellComponent', () => {
       const list = root.querySelector('nav[data-picker="workspace"]');
       expect(list?.getAttribute('aria-label')).toBe('Workspaces');
       const entries = [...(list?.querySelectorAll<HTMLAnchorElement>('.picker-entry') ?? [])];
-      // spec 024: prototype value (principal: the prototype wins) — pop-ws: the workspaces, then "Show all n workspaces".
+      // spec 024: the workspace picker lists the workspaces, then "Show all n workspaces".
       expect(entries.map((entry) => entry.getAttribute('href'))).toEqual(['/w/harbor', '/w/lantern', '/']);
       expect(list?.querySelector('.menu-head')?.textContent.trim()).toBe('All workspaces (2)');
       expect(texts(list?.querySelectorAll('.entry-name') as NodeListOf<Element>)).toEqual(['harbor', 'lantern', 'Show all 2 workspaces']);
-      // spec 024: prototype value (principal: the prototype wins) — the bare count, as pop-ws shows it.
+      // spec 024: the bare count, as the workspace picker shows it.
       expect(texts(list?.querySelectorAll('.entry-meta') as NodeListOf<Element>)).toEqual(['3', 'Cannot be read']);
       expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['true', null, null]);
       expect(document.activeElement).toBe(entries[0]);
@@ -771,7 +771,7 @@ describe('ShellComponent', () => {
       const list = root.querySelector('nav[data-picker="spec"]');
       expect(list?.getAttribute('aria-label')).toBe('Specs');
       expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor/specs');
-      // spec 024: prototype value (principal: the prototype wins) — pop-specs ends with "Spec overview" (g s).
+      // spec 024: the spec picker ends with "Spec overview" (g s).
       expect(list?.querySelector('.picker-all')?.textContent).toContain('Spec overview');
       const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
       expect(rows.map((row) => row.getAttribute('data-spec'))).toEqual(['004', '002', '003']);
@@ -828,7 +828,7 @@ describe('ShellComponent', () => {
       const keys = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-area]')].map(
         (entry) => entry.querySelector('ui-kbd')?.textContent.trim() ?? null,
       );
-      // spec 024: prototype value (principal: the prototype wins) — pop-area names g h for the dashboard.
+      // spec 024: the area menu names g h for the dashboard.
       expect(keys).toEqual(['g h', 'g s', 'g l', 'g d', 'g o', 'g n']);
       expect(root.querySelector('header nav[aria-label="Areas"] ui-kbd')?.getAttribute('aria-hidden')).toBe('true');
     });

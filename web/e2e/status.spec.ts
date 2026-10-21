@@ -187,7 +187,7 @@ test.describe('status tab', () => {
       const button = page.locator('app-status-tab [data-gate-action]');
       await expect(button).toHaveAttribute('data-state', 'paused');
       await expect(button).toBeDisabled();
-      // spec 024: prototype value (principal: the prototype wins) — the time and the session stand in the `.gate-hint` under the button.
+      // spec 024: the time and the session stand in the `.gate-hint` under the button.
       await expect(page.locator('app-status-tab [data-gate-hint]')).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
       // The agent banner moved to the spec head, above every area (T78).
       await expect(page.locator('app-spec-head [data-writes-paused]')).toBeVisible();

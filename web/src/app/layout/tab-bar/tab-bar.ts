@@ -19,10 +19,10 @@ export function tabbedArea(state: ShellState): SpecArea | null {
 }
 
 /**
- * The tab bar (ISC-76, ISC-134.1) in the prototype's `tab-bar` anatomy (spec 024, ISC-149, design.md § Across
+ * The tab bar (ISC-76, ISC-134.1) in its `tab-bar` anatomy (spec 024, ISC-149, design.md § Across
  * viewports): the area eyebrow on the left (11/700, .08em, uppercase, a hairline after it), then the tabs as route
  * links, 44 px high with 12 px padding, 500 in the muted ink, the current one in the text colour on a 2 px cyan
- * underline and `aria-current="page"`, one tab stop with roving focus. A count rides inside its tab as the prototype's
+ * underline and `aria-current="page"`, one tab stop with roving focus. A count rides inside its tab as a
  * `small` badge (mono 11 on the raised ground); a tab with `sep` opens a new group behind a `tab-sep`. The strip
  * scrolls sideways in itself, never the page. One component for every page with tabs (DS-APP-27): `TabBarSlot` builds
  * the list and is the sticky bar under the header.

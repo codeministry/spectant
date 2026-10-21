@@ -13,8 +13,8 @@ import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiSourceC
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 
 /**
- * A story of `specs/ideas/` at `/w/:ws/ideas/:slug` (spec 008, T131, ISC-124.2), read-only, in the prototype look
- * (spec 024 design.md § Idee, `.design/prototype/idea.html`):
+ * A story of `specs/ideas/` at `/w/:ws/ideas/:slug` (spec 008, T131, ISC-124.2), read-only, in the look of
+ * spec 024 design.md § Idee:
  * - the head (`spec-head-unified`): the back link to the board (ISC-142) and the eyebrow `<ws> · Board · Idea`, the
  *   chip row (the violet `IDEA` chip with `lightbulb`, type, feature, milestone with its flag, priority), the slug as
  *   the h1 (Sora 24/600) with the file path and the hash's first 8 hex in mono beneath;
@@ -49,7 +49,7 @@ export class IdeaPage {
   protected readonly look = computed(() => selectedLook(this.selection, this.ref(), 'card'));
   /** The board the back link leads to (ISC-142). */
   protected readonly boardPath = computed(() => `/w/${this.state.ws() ?? ''}/board`);
-  /** The shaping command the Next step card names (prototype `next-step`). */
+  /** The shaping command the Next step card names (`next-step`). */
   protected readonly command = computed(() => `/spec idea ${this.slug()}`);
 
   protected readonly result = resource<ApiResult<IdeaPageBody>, { ws: string; slug: string } | undefined>({

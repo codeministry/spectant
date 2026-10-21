@@ -39,7 +39,7 @@ export class FlowView {
   /** The board's resolved density: `?density` for the view, else the stored setting (spec 021, ISC-254). */
   readonly density = input<Density>('comfortable');
   readonly tier = input<Tier>('wide');
-  /** The operator steps at wide: drawn as the prototype's checklist across all columns (`.op.span`) in place of a band. */
+  /** The operator steps at wide: drawn as the checklist across all columns (`.op.span`) in place of a band. */
   readonly steps = input<readonly FrameCard[] | null>(null);
   /** The steps' tasks.md rows, write states and hash, from the board's read; a tick goes back to the board. */
   readonly stepRows = input<ReadonlyMap<string, TaskRow>>(new Map());

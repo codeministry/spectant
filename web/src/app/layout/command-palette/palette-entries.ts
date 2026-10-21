@@ -38,7 +38,7 @@ export const CLAIMS_ORDER = 15;
 /** After Next up (20), before Workspaces (30). */
 export const PAGES_ORDER = 25;
 
-/** A spec of the Specs group: its phase as the prototype's chip (`.chip.building` / `.chip.scoping`). */
+/** A spec of the Specs group: its phase as a chip (`.chip.building` / `.chip.scoping`). */
 export interface PaletteSpecEntry extends PaletteEntry {
   readonly phase: string;
   readonly phaseLabel: string;

@@ -166,7 +166,7 @@ export class StepCounter extends StepRecorder {
   /**
    * Scrolls just far enough to bring `target` wholly on screen and counts it as one scroll step, the same as a screen:
    * a partial scroll is still one scroll action in the 018 notation. Use it only where the target is not yet wholly in
-   * view (spec 024: the prototype tab bar under the header moved the claims list down at 390).
+   * view (spec 024: the tab bar under the header moved the claims list down at 390).
    */
   async scrollTo(target: Locator): Promise<void> {
     this.scroll();

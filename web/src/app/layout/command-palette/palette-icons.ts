@@ -1,7 +1,7 @@
 import type { PaletteEntry } from '../../core/palette-sources';
 import type { IconName } from '../../shared/icons/icons';
 
-/** The prototype's lead icon per group (`app.js` `PAL`, spec 024 T40); a group with an id chip leads with the chip. */
+/** The lead icon per group (spec 024 T40); a group with an id chip leads with the chip. */
 const GROUP_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   recent: 'clock',
   nextUp: 'terminal',
@@ -10,7 +10,7 @@ const GROUP_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   actions: 'layers',
 };
 
-/** The Actions group's icons by entry id, as the prototype draws them; any other action takes the group's `layers`. */
+/** The Actions group's icons by entry id; any other action takes the group's `layers`. */
 const ACTION_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   'action/all-workspaces': 'layers',
   'action/copy-next': 'copy',
@@ -24,7 +24,7 @@ const ACTION_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   'action/shortcuts': 'circle-help',
 };
 
-/** Groups whose labels are commands or ports, set in mono as the prototype does (`Next up`, `Services`). */
+/** Groups whose labels are commands or ports, set in mono (`Next up`, `Services`). */
 export const MONO_GROUPS: ReadonlySet<string> = new Set(['nextUp', 'services']);
 
 /**
@@ -33,7 +33,7 @@ export const MONO_GROUPS: ReadonlySet<string> = new Set(['nextUp', 'services']);
  */
 export function leadIcon(group: string, entry: PaletteEntry): IconName | null {
   if (group === 'recent') return 'clock';
-  // Next up leads with `terminal` and the command, as the prototype draws it; the id stays a search key.
+  // Next up leads with `terminal` and the command; the id stays a search key.
   if (group === 'nextUp') return 'terminal';
   if (entry.chip) return null;
   if (group === 'actions') return ACTION_ICONS[entry.id] ?? 'layers';

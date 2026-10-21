@@ -44,7 +44,7 @@ import {
   worktreeChipTier,
 } from './spec-head-model';
 
-/** The stage chip's tone and prototype icon (`CHIP_ICON`: scoping compass, tasked list, building hammer, …). */
+/** The stage chip's tone and icon (`CHIP_ICON`: scoping compass, tasked list, building hammer, …). */
 export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: IconName | undefined }>> = {
   plan: { tone: 'secondary', icon: chipIcon('scoping') },
   tasks: { tone: 'secondary', icon: chipIcon('tasked') },
@@ -58,8 +58,8 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
 };
 
 /**
- * T36 · ISC-149: the spec head above the tab bar on every spec area, the prototype's `spec-head-unified`
- * (`pages.js` `specHeader()`; spec 024 design.md § Spec head per viewport and § Across viewports, Breadcrumb).
+ * T36 · ISC-149: the spec head above the tab bar on every spec area, one unified head
+ * (spec 024 design.md § Spec head per viewport and § Across viewports, Breadcrumb).
  *
  * - The context line: the breadcrumb `← [badge] workspace / Spec NNN · Area › ISC-51` on every tier (the workspace
  *   first, spec 019 ISC-140.1; the claim or task the open Claims or Tasks tab names by fragment as the last level). Each

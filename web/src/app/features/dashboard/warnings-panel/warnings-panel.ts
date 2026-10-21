@@ -19,7 +19,7 @@ export type WarningsForm = 'section' | 'callout';
 export const WARNINGS_HEADING = 'warnings';
 
 /**
- * Warnings (T64, ported in T90 from the prototype's `warningsPanel`): one group per spec with a warning or open fog, in
+ * Warnings (T64, reworked in T90): one group per spec with a warning or open fog, in
  * the model's row order — the rows already carry their warnings and fog count, so nothing is regrouped or recounted
  * here. Each warning is one line (alert icon, spec ID link to the preview `?spec=<id>`, text, and the clearing command
  * with copy when it has one); a spec with open fog adds a fog line (cloud icon, violet left edge on the violet tint).
@@ -70,7 +70,7 @@ export class WarningsPanel {
 
   /**
    * The text lines of a group: its warnings, less the open-fog warning when the spec has a fog line, so open fog is
-   * said once, by the fog line (prototype `warningsPanel`: `warn` lines, then one `fog` line).
+   * said once, by the fog line (the `warn` lines, then one `fog` line).
    */
   protected textLines(spec: DashboardSpecRow): DashboardSpecRow['warnings'] {
     return spec.fog > 0 ? spec.warnings.filter((warning) => warning.kind !== 'fog') : spec.warnings;

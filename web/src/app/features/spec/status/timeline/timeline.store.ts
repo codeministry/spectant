@@ -54,7 +54,7 @@ export class TimelineStore {
     return groupByDay(shown);
   });
 
-  /** No recorded event yet: every entry is a stage transition derived from the files (prototype `empty-tl`). */
+  /** No recorded event yet: every entry is a stage transition derived from the files. */
   readonly derivedOnly = computed(() => {
     const entries = this.entries();
     return entries.length > 0 && entries.every((entry) => entry.derived);

@@ -6,13 +6,13 @@ import { type Tone, toneInk, toneMark, toneTint } from '../tone';
 
 export type ChipVariant = 'status' | 'small' | 'plain' | 'mono' | 'take' | 'pill' | 'count' | 'demo';
 
-/** The demo chip's yellow (design.md § Across viewports): prototype `--yellow-t` / `--yellow-text`, the app's `--conc-*`. */
+/** The demo chip's yellow (design.md § Across viewports): the app's `--conc-*` tokens. */
 const DEMO_COLORS = { color: 'var(--conc)', tint: 'var(--conc-t)', ink: 'var(--conc-text)' } as const;
 
 /**
- * The prototype's chip family (spec 024 design.md § Fundament, `[data-ui="chip"]`, `.pill`, `.count-badge`; ISC-148):
- * a tinted background, ink text (the tone's `--*-ink`, ISC-65), an optional 12 px icon (`chipIcon()` holds the
- * prototype's `CHIP_ICON`) and an optional accent dot. The variants:
+ * The chip family (spec 024 design.md § Fundament; ISC-148):
+ * a tinted background, ink text (the tone's `--*-ink`, ISC-65), an optional 12 px icon (`chipIcon()` reads the
+ * `CHIP_ICON` map) and an optional accent dot. The variants:
  *
  * - `status` (default): 22 px, radius 6, 0 8 px, 11/600 upper case at .06em (stage, state, "stale");
  * - `small`: the board card's state chip (`.schip`): 10/16 at 700, .05em, upper case, `1px 6px`, radius 4, one line that
@@ -23,7 +23,7 @@ const DEMO_COLORS = { color: 'var(--conc)', tint: 'var(--conc-t)', ink: 'var(--c
  * - `pill`: 28 px, radius 999, 0 10 px, 12/600 ("2 notes" with `file-text`);
  * - `count`: the 22 px round counter (`.count-badge`), at least 22 wide, 0 6 px, 12/400;
  * - `demo` (ISC-149.1, design.md § Across viewports): the mark of a mocked block, the `plain` box on the yellow
- *   tint (`--conc-t` / `--conc-text`, the prototype's `--yellow-t` / `--yellow-text`) with `flask-conical`, the
+ *   tint (`--conc-t` / `--conc-text`) with `flask-conical`, the
  *   lower-case word `demo.chip` and the accessible description `demo.description` as visually hidden text; it ignores
  *   `tone`, `icon` and projected content, and its host carries `data-demo-chip`, the one selector for every width.
  */
@@ -46,7 +46,7 @@ export class UiChip {
   readonly tone = input<Tone>('neutral');
   readonly dot = input(false);
   readonly variant = input<ChipVariant>('status');
-  /** The 12 px icon in front of the word; `chipIcon()` gives the prototype's for a type, stage or state. */
+  /** The 12 px icon in front of the word; `chipIcon()` gives the one for a type, stage or state. */
   readonly icon = input<IconName>();
 
   protected readonly demo = computed(() => this.variant() === 'demo');

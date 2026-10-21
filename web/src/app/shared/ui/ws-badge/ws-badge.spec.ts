@@ -46,7 +46,7 @@ describe('workspace identity (spec 024 T54)', () => {
     }
   });
 
-  it('derives the prototype monogram, a hash accent among the first five tokens and a stable pattern', () => {
+  it('derives the monogram, a hash accent among the first five tokens and a stable pattern', () => {
     expect(wsMonogram('harbor')).toBe('HA');
     expect(wsMonogram('example-app')).toBe('EA');
     expect(wsMonogram('')).toBe('?');

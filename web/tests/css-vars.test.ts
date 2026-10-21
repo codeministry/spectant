@@ -1,6 +1,6 @@
 // CSS custom property guard (spec 057, ISC-389). A `var(--x)` whose property nobody defines resolves to the
 // property's initial value without a sound: a text colour falls back to inherited, a border to none, a length to 0.
-// Spec 024 shipped such a reference (`--lime-text`, a prototype ink the themes never carried), and no test noticed.
+// Spec 024 shipped such a reference (`--lime-text`, an ink the themes never carried), and no test noticed.
 //
 // The guard collects every custom property definition the app can see and every reference under `web/src`, and fails
 // on a reference with no definition:

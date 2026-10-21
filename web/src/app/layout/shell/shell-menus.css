@@ -68,7 +68,7 @@
   vertical-align: -2px;
 }
 
-/* The prototype's `.pop-sep` (pop-ws, pop-specs); its `.pop-head eyebrow` is in menu-rows.css. */
+/* The pickers' separator (workspace and spec picker); their eyebrow head is in menu-rows.css. */
 .picker-sep {
   block-size: 1px;
   margin-block: 4px;
@@ -148,7 +148,7 @@
   }
 }
 
-/* The overflow menu and the settings panel (prototype `[data-ui="popover"]`, `pop-settings`; spec 024 T76, T40). */
+/* The overflow menu and the settings panel (spec 024 T76, T40). */
 .menu-popover {
   --ui-popover-width: 280px;
 }
@@ -228,7 +228,7 @@
   cursor: default;
 }
 
-/* The prototype's `.switch` (shared/ui/_switch.css), `--badge` when on. */
+/* The `.switch` (shared/ui/_switch.css), `--badge` when on. */
 .switch {
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }

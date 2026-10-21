@@ -1,6 +1,6 @@
 /*
  * WCAG 2.5.8 (target size): under a coarse pointer an invisible `::before` grows the hit area to at least 44 × 44
- * around the visual box (the prototype's `.btn-icon::after`), which itself keeps its visible size (design.md,
+ * around the visual box, which itself keeps its visible size (design.md,
  * Tablet). Fine pointers keep the visual box as the target.
  *
  * Imported at the top of button/button.css (ui-button, ui-icon-button), star-toggle/star-toggle.css,

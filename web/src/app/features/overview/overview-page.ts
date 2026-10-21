@@ -11,11 +11,11 @@ import { OverviewData } from './overview-data.service';
 import { WorkspaceColumn } from './workspace-column';
 
 /**
- * `/`, all workspaces side by side (T65, ISC-16; prototype `index.html`, `app.js` `pageOverview`): the page head
+ * `/`, all workspaces side by side (T65, ISC-16): the page head
  * (eyebrow "ALL WORKSPACES · n", title) and `.overview`, an auto-fit grid of `workspace-column`s at least 360 px wide,
  * three equal columns from 1300 px of shell width. An unreadable workspace keeps its place in the grid with a notice;
  * no workspace at all is the "Add your first workspace" empty state with `spectant add <path>`. The footnote names the
- * loopback origin the app is served from (prototype `.footer-note`, "Running locally at http://127.0.0.1:7717").
+ * loopback origin the app is served from (the footer note, "Running locally at http://127.0.0.1:7717").
  */
 @Component({
   selector: 'app-overview-page',

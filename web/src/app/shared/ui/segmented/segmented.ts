@@ -95,9 +95,9 @@ const reducedMotion = () =>
  * the highlighted segment, the first in view unless the keyboard moved it; arrow keys (wrap-around), Home and End move
  * it and scroll along. More than five segments that overflow one line wrap into rows of five.
  *
- * Radio mode wears the prototype's `.seg` (spec 024, ISC-148): 2 px padding, 1 px `--line` border, 8 px radius on
+ * Radio mode wears the segmented style (spec 024, ISC-148): 2 px padding, 1 px `--line` border, 8 px radius on
  * `--lane`; segments 28 px high, 6 px radius, 13 px `--muted`; the checked one `--card` with `--shadow-hair` and
- * `--text`. Two forms, as the prototype draws them:
+ * `--text`. Two forms:
  *
  * - default, the toolbar form (`.btool .seg`): columns as wide as their labels, segments `0 12px` with a 6 px gap
  *   for a dot or an icon (the board's Lanes / Flow);

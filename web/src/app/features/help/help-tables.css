@@ -1,10 +1,10 @@
 /*
- * The Help page tables, steps and key rows (spec 024, prototype help): `.tbl` in a `.card` for the type, command and
+ * The Help page tables, steps and key rows (spec 024): `.tbl` in a `.card` for the type, command and
  * glossary tables, the numbered `.steps` cards and the `.keys-grid`. A second stylesheet of HelpPage, so each file stays
  * inside the 8 kB component-style budget.
  */
 
-/* Prototype `.tbl` in a `.card`: 13 px rows, 10/16 cells on hairlines, 11 px uppercase muted heads, no last line. */
+/* `.tbl` in a `.card`: 13 px rows, 10/16 cells on hairlines, 11 px uppercase muted heads, no last line. */
 .tbl-card {
   display: block;
   overflow: hidden;
@@ -57,7 +57,7 @@
   font-family: var(--font-mono);
 }
 
-/* Getting started: prototype `.steps` (own names: daisyUI owns `.steps`), numbered cards (a 24 px cyan-tinted counter). */
+/* Getting started: numbered steps (own names: daisyUI owns `.steps`), numbered cards (a 24 px cyan-tinted counter). */
 .start-steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -95,7 +95,7 @@
   content: counter(step);
 }
 
-/* Keyboard: prototype `.keys-grid` in a card, action left and the keys right, 10/16 rows on hairlines. */
+/* Keyboard: `.keys-grid` in a card, action left and the keys right, 10/16 rows on hairlines. */
 .keys-context + .keys-context {
   margin-block-start: 24px;
 }

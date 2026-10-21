@@ -85,7 +85,7 @@
   min-inline-size: 0;
 }
 
-/* The area dot (prototype `.area-ic`): 10 px in the area's accent, status orange, live lime, data cyan, library violet,
+/* The area dot: 10 px in the area's accent, status orange, live lime, data cyan, library violet,
    notes yellow (spec 024, T75). */
 .area-ic {
   flex: none;

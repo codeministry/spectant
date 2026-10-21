@@ -38,7 +38,7 @@
   line-height: var(--rail-line);
 }
 
-/* spec 024: the prototype .rail-card > .eyebrow, uppercase 11 px muted, the frame label or count in mono on the right. */
+/* spec 024: the .rail-card > .eyebrow, uppercase 11 px muted, the frame label or count in mono on the right. */
 .eyebrow-head {
   display: flex;
   flex: 1;

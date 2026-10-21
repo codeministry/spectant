@@ -7,7 +7,7 @@ export interface AssistantMessage {
 }
 
 /**
- * The assistant "dot" (spec 024 T53, ISC-150; prototype `assistant.js`), mocked until specs 012/015: whether its panel
+ * The assistant "dot" (spec 024 T53, ISC-150), mocked until specs 012/015: whether its panel
  * is open, the trigger focus returns to, and the conversation. The service stays tiny because the header loads it
  * eagerly; the panel (`AssistantPanel`, deferred) reads its answers from `DemoData` and adds them here. The history
  * lives in memory only (no localStorage, ISC-149.1) and is gone with a reload or "New conversation".
@@ -19,7 +19,7 @@ export class AssistantDot {
 
   readonly open = this.openState.asReadonly();
   readonly messages = signal<readonly AssistantMessage[]>([]);
-  /** dot is "typing" (the prototype's three dots) before its answer lands. */
+  /** dot is "typing" (three dots) before its answer lands. */
   readonly thinking = signal(false);
 
   /** Opens the panel; focus returns to `trigger` when it closes. */

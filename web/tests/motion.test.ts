@@ -63,7 +63,7 @@ function stylesheets(dir: string): string[] {
     .map((e) => join(e.parentPath, e.name));
 }
 
-// The prototype names hold the values (spec 024, ISC-146); the app names the components write alias them.
+// The base names hold the values (spec 024, ISC-146); the names the components write alias them.
 const TOKENS: Record<string, string> = {
   "--dur-hover": "80ms",
   "--dur-pop": "160ms",

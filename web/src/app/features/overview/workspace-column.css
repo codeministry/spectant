@@ -1,4 +1,4 @@
-/* Prototype styles.css:465-483 (workspace-column, kpi-strip); the ws-head and its badge live in `ws-identity.ts` (T54).
+/* The workspace column and its kpi-strip; the ws-head and its badge live in `ws-identity.ts` (T54).
    Next up, the dense list and the open link are gone from `/` (spec 024 T79, principal 2026-10-13). Spec 020 T16:
    identity, Waits on you and the kpi-strip take three row tracks of the page grid (`subgrid`), so the columns of one
    grid row keep their strips on one line however many entries wait in each (design.md § Start). Spec 064 T19: Waits

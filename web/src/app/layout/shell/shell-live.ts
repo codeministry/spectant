@@ -12,7 +12,7 @@ import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
 /**
- * The header's status group (prototype `[data-ui="live-indicator"]`, spec 024 T34, T40): one bordered 40 px group of
+ * The header's status group (spec 024 T34, T40): one bordered 40 px group of
  * the live indicator and Refresh now. The indicator (ISC-73) is `activity` followed by a 6 px
  * dot, lime while one of the workspace's dev services is up and the track colour otherwise, never colour alone, since
  * its name carries the agent source and the service count. It stays this narrow at every width: "Updated 12 s ago"

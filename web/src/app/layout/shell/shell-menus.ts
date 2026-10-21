@@ -77,17 +77,17 @@ const LANGS = ['en', 'de'] as const;
  * The header's menus (ISC-73, ISC-76, ISC-97), loaded after first render (`@defer (on immediate)` in `ShellNav`) so the
  * overlay primitives and the list styles stay out of the initial bundle; until then a picker anchor simply navigates.
  *
- * - **Workspace picker** (prototype `pop-ws`): the head "All workspaces (n)", every workspace from `ShellData.workspaces()`
+ * - **Workspace picker**: the head "All workspaces (n)", every workspace from `ShellData.workspaces()`
  *   as a link with its badge and spec count (or "cannot be read"), the current one marked, then "Show all n workspaces"
  *   (`g a`) and "Manage workspaces" → `/settings`.
- * - **Spec picker** (prototype `pop-specs`): the head "Specs · <workspace>", the workspace's specs (muted id, title, phase
+ * - **Spec picker**: the head "Specs · <workspace>", the workspace's specs (muted id, title, phase
  *   chip, else the stage), the open one marked, then "Spec overview" (`g s`) → the dashboard's Specs panel.
  * - **Page menu** (spec 024 T80, ISC-150.2): `app-area-menu scope="page"`, the workspace pages, on every workspace route.
  * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37), the spec areas, on a spec page.
  * - **Overflow menu** `⋯` (spec 024 T76, below 1120 px): Area, Zen, Assistant, Settings and Help, each item carrying the
  *   `data-control` (or `data-tool`) of the header control it stands for. Area and Settings open their own panel,
  *   anchored to `⋯`.
- * - **Settings panel** (prototype `pop-settings`, T40): theme and language segmented, "Workspaces…" → `/settings`,
+ * - **Settings panel** (T40): theme and language segmented, "Workspaces…" → `/settings`,
  *   "Help & guide" → `/help`, and the single-key switch; every change goes through `/api/settings`.
  * - Each is a `ui-popover` at medium and wide and a bottom `ui-sheet` at compact; focus lands on the current entry.
  *
@@ -178,7 +178,7 @@ export class ShellMenus {
   private readonly specNav = viewChild<ElementRef<HTMLElement>>('specNav');
   private readonly announcer = viewChild(UiLiveRegion);
 
-  /** The phase chip of a spec row (prototype `pop-specs`: `chip(phaseOf(s))`), its tone and icon. */
+  /** The phase chip of a spec row, its tone and icon. */
   protected readonly phaseTone = (phase: string): Tone => toneOfPhase(phase);
   protected readonly phaseIcon = chipIcon;
 

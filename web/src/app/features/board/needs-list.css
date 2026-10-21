@@ -1,5 +1,5 @@
 /*
- * The cards waiting on you in the compact sheet (spec 024, design § Mobile; moved from board-page.parity.css with the
+ * The cards waiting on you in the compact sheet (spec 024, design § Mobile; moved from board-page.layout.css with the
  * markup, spec 061). The host `<ul class="needs-list">` keeps the page's list rule.
  */
 .needs-row {

@@ -1,7 +1,7 @@
-/** The prototype's accent token names (`identity.js` `TOKENS`); a mock maps them onto the app's tones. */
+/** The accent names of the identity mock; a mock maps them onto the app's tones. */
 export type DemoAccent = 'teal' | 'cyan' | 'lime' | 'violet' | 'orange' | 'yellow' | 'green' | 'red';
 
-/** A workspace identity of the identity mock (prototype `identity.js`, design.md § Workspace-Identitätsbilder). */
+/** A workspace identity of the identity mock (design.md § Workspace-Identitätsbilder). */
 export interface DemoIdentity {
   readonly workspace: string;
   /** Initials for the `ws-badge`. */

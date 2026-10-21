@@ -5,7 +5,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { LIFECYCLE, LIFECYCLE_TONES } from './help-sections';
 
 /**
- * The lifecycle in two bands (prototype help "How a spec moves", `.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted
+ * The lifecycle in two bands (Help "How a spec moves", `.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted
  * canvas, "Shape & plan" and "Build & finish" with five nodes each (number, step, what it does, command, the file it
  * writes with `file`, the gate with `flag`, an optional step dotted with its `optional` pill), arrows between the
  * nodes, then the loops with `refresh-cw` and the tone legend. Static: the stages and commands come from core's stage

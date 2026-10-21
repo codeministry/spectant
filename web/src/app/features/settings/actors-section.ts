@@ -22,7 +22,7 @@ type SaveState =
 type Field = 'displayName' | 'gitIdentities';
 
 /**
- * Settings, card Actors (T140, ISC-119.2; restyled by spec 024 T60 after the prototype's `settings.html`): one row per
+ * Settings, card Actors (T140, ISC-119.2; restyled by spec 024 T60): one row per
  * known person id, the stored mappings (`GET /api/actors`) together with every `u:` id the registered workspaces'
  * dashboard and planning trees name (assignees, lock holders). Each row has its chip as the app shows it today, an
  * editable display name and the git identities as one comma-separated input. Save sends the whole list through

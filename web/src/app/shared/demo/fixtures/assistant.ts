@@ -1,4 +1,4 @@
-/** One canned exchange of the assistant "dot" mock (prototype `assistant.js`, design.md § Assistent), until specs 012/015. */
+/** One canned exchange of the assistant "dot" mock (design.md § Assistent), until specs 012/015. */
 export interface DemoAssistantReply {
   /** The suggestion chip that asks it; also matched, case-insensitively, against a typed prompt. */
   readonly prompt: string;

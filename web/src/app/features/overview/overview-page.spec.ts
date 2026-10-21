@@ -241,7 +241,7 @@ describe('OverviewPage (T65, ISC-16)', () => {
   it('shows the empty state with the add command when no workspace is registered', async () => {
     const { root } = await render([]);
     expect(root.querySelector('[data-ui="workspace-column"]')).toBeNull();
-    // spec 024: prototype value (principal: the prototype wins) — the prototype's own empty-state markup.
+    // spec 024: the shared empty-state markup.
     const empty = root.querySelector('[data-overview-empty]');
     expect(text(empty)).toContain('Add your first workspace');
     expect(empty?.querySelector('ui-command-chip')).not.toBeNull();

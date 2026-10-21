@@ -184,7 +184,7 @@ for (const width of [1440, 600, 390] as const) {
       await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}/claims$`));
 
       await expect(claimCard(page)).toBeVisible();
-      // spec 024: the prototype tab bar under the header (principal 2026-10-12) moves the list down; where the card is
+      // spec 024: the tab bar under the header (principal 2026-10-12) moves the list down; where the card is
       // not wholly on screen the scroll to it counts as a step. The budget is unchanged.
       if (!(await wholly(claimCard(page)))) await steps.scrollTo(claimCard(page));
       await click(claimCard(page), TARGET.claim);

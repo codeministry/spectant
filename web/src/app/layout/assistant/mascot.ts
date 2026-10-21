@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 export type MascotState = 'idle' | 'thinking' | 'happy';
 
 /**
- * The assistant's mascot (prototype `assistant.js` `mascot(state, size)`): the ring lime into cyan, top left to bottom
+ * The assistant's mascot: the ring lime into cyan, top left to bottom
  * right, and the violet dot with eyes and mouth in its gap. Not a lucide icon (`data-icon-exempt`, ISC-18.2); the ring
  * is eight dashed arcs mixing lime into cyan instead of a gradient, because fragment ids break under `<base href>` in
  * WebKit. `thinking` spins the ring and bobs the dot, never under reduced motion.

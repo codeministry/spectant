@@ -2,8 +2,8 @@ import { Injectable, signal } from '@angular/core';
 import type { TaskSteps } from '../../../../../../../core/src/files';
 
 /**
- * What a board card and its detail know about the board around them (spec 024, prototype board.js): the frame on
- * screen (the detail head's "lane · frame"), the cards whose state changed when the frame last changed (the prototype's
+ * What a board card and its detail know about the board around them (spec 024): the frame on
+ * screen (the detail head's "lane · frame"), the cards whose state changed when the frame last changed (the
  * `.changed` tint) and the card selected last (`.sel`). Provided by the Board and the Matrix tab; a card outside them
  * gets none and draws without these marks.
  */

@@ -42,7 +42,7 @@ export {
 export { fileName, missingCommand, typeIcon } from './library-prose';
 
 /**
- * `/w/:ws/library` (spec 017, T27, ISC-156; spec 024's list and reader, prototype `library.html` / `library.js`): the
+ * `/w/:ws/library` (spec 017, T27, ISC-156; spec 024's list and reader): the
  * workspace's catalog from the server's library route (`ApiClient.library`), grouped by `library-model.ts`:
  * workspace-wide first, then each spec once in ascending number, every row with its type tag (12 px icon, family
  * colour), title, the spec it belongs to and a meta line, a spec's evidence as one collapsed subgroup with its count

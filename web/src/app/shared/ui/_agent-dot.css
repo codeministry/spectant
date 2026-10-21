@@ -1,4 +1,4 @@
-/* The prototype's `.agent-dot`: an orange 8 px dot with a ping ring. The importer names the `agent-ping` keyframes and
+/* The agent dot: an orange 8 px dot with a ping ring. The importer names the `agent-ping` keyframes and
    the dot's place in its row; the ring stops under reduced motion (0ms). */
 .agent-dot {
   position: relative;

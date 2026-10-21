@@ -10,7 +10,7 @@
     <app-area-placeholder />
   }
   @case ('error') {
-    <!-- Spec 024 (prototype states gallery): the area's error is the inline notice, red edge, Retry in its slot. -->
+    <!-- Spec 024: the area's error is the inline notice, red edge, Retry in its slot. -->
     <ui-notice tone="error" data-status-error>
       <strong>{{ 'status.error.heading' | transloco }}</strong> {{ 'status.error.body' | transloco }}
       <button action ui-button size="sm" type="button" (click)="store.reload()">{{ 'status.error.retry' | transloco }}</button>

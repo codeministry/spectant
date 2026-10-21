@@ -103,13 +103,13 @@ describe('UiCard', () => {
     expect(css).toMatch(/\[data-dashed\][^{]*\{\s*border-style: dashed;/);
   });
 
-  it('paints the edge as the prototype: a 3 px ::before bar in --edge, cyan by default, no shadow', () => {
+  it('paints the edge: a 3 px ::before bar in --edge, cyan by default, no shadow', () => {
     const css = cardStyles();
     expect(css).toMatch(/\[data-edge\][^{]*::before\s*\{[^}]*inset: 0 0 auto;[^}]*block-size: 3px;[^}]*background: var\(--edge, var\(--color-primary\)\);/);
     expect(css).not.toContain('box-shadow');
   });
 
-  it('paints the glow as the prototype: a 140 px ::after in the corner, --edge at 14 %, opacity .7, 1 on hover', () => {
+  it('paints the glow: a 140 px ::after in the corner, --edge at 14 %, opacity .7, 1 on hover', () => {
     const css = cardStyles();
     const glow = /\[data-glow\][^{]*::after\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
     expect(glow).toContain('inset: -40px -40px auto auto;');

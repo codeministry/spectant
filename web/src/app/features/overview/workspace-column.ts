@@ -15,7 +15,7 @@ const TICK_MS = 10_000;
 const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = { s: 'second', min: 'minute', h: 'hour', d: 'day' };
 
 /**
- * One workspace on `/` (T65, prototype `app.js` `wsColumn`, tiles.md § index.html): the identity block (`WsIdentity`,
+ * One workspace on `/` (T65): the identity block (`WsIdentity`,
  * spec 024 T54: cover, then the ws-head with badge, name, path tail and "Updated n s ago"; cover and name link to
  * `/w/:ws`), one wrapper with the block "Waits on you" (spec 020 T16; spec 064 ISC-478: up to `TILE_LIMIT` flat
  * tiles with the spec title, "Show all n" to `/w/:ws#waiting`, one sentence when nothing waits) and, only while a
@@ -51,7 +51,7 @@ export class WorkspaceColumn {
     return master === null || master.total === 0 ? null : Math.floor((master.closed / master.total) * 100);
   });
 
-  /** Building then scoping, as the prototype's split meter; a phase with no spec is left out. */
+  /** Building then scoping, as a split meter; a phase with no spec is left out. */
   protected readonly split = computed<readonly MeterSegment[]>(() => {
     const { building, scoping } = this.kpis();
     const parts: MeterSegment[] = [

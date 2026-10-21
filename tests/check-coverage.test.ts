@@ -1,5 +1,5 @@
-// check:coverage (spec 008, T2, ISC-126 and ISC-128): every heading of the three planning sources and every view and
-// doc of the prototype is mapped in `specs/008-spectant-complete/artifacts/coverage.md`; `--free-specs` proves each
+// check:coverage (spec 008, T2, ISC-126 and ISC-128): every heading of the three planning sources (roadmap, outline,
+// notes) is mapped in `specs/008-spectant-complete/artifacts/coverage.md`; `--free-specs` proves each
 // Free story has its spec folder. The sources are private and untracked, so every case here builds a synthetic tree
 // in a temp directory and runs the real script against it with `--root`; the pure helpers get small strings.
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -10,7 +10,6 @@ import { headingsOf, normaliseHeading, parseCoverage } from '../scripts/check-co
 
 const SCRIPT = join(import.meta.dir, '..', 'scripts', 'check-coverage.ts');
 const COVERAGE = 'specs/008-spectant-complete/artifacts/coverage.md';
-const PROTO = 'specs/001-app-skeleton/.design/prototype/spectant-ui';
 
 const tmp = mkdtempSync(join(tmpdir(), 'check-coverage-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -68,22 +67,11 @@ function fullTree(extra: Record<string, string> = {}, rows?: string[]): Record<s
     '| outline | Steps & Status | F10 | |',
     '| outline | Licence FREE \\| PRO \\| MAX | F20 | |',
     '| notes | Notes | drop | the section title |',
-    '| view | board-flow.html | spec:008 | |',
-    '| view | `help.html` | F22 | |',
-    '| doc | 01-VIEWS.md | spec:001 | |',
-    '| doc | 03-DATA.md | spec:002 | |',
   ];
   return {
     'spectant-produktideen.md': ROADMAP,
     'specs/notes/outline.md': OUTLINE,
     'specs/notes/notizen.md': NOTES,
-    [`${PROTO}/board-flow.html`]: '<html></html>',
-    [`${PROTO}/help.html`]: '<html></html>',
-    [`${PROTO}/styles.css`]: 'body {}',
-    [`${PROTO}/docs/00-START.md`]: '# Start',
-    [`${PROTO}/docs/01-VIEWS.md`]: '# Views',
-    [`${PROTO}/docs/03-DATA.md`]: '# Data',
-    [`${PROTO}/docs/04-DESIGN.md`]: '# Design',
     [COVERAGE]: ['# Coverage', '', '| Source | Entry | Target | Reason |', '|---|---|---|---|', ...mapping, ''].join('\n'),
     ...extra,
   };
@@ -115,8 +103,8 @@ describe('normaliseHeading and headingsOf', () => {
       '| Source | Entry | Target | Reason |',
       '| --- | --- | --- | --- |',
       '| outline | A \\| B | F1 | |',
-      '| view | x.html | drop | |',
-      '| shelf | y | F1 | |',
+      '| notes | x | drop | |',
+      '| view | y | F1 | |',
       '| notes | z | nowhere | |',
     ].join('\n');
     const { rows, problems } = parseCoverage(text);
@@ -132,28 +120,23 @@ describe('check-coverage', () => {
     expect(code).toBe(0);
   });
 
-  test('every heading, view and doc mapped: exit 0 with counts per source', () => {
+  test('every heading mapped: exit 0 with counts per source', () => {
     const { code, out } = run(tree(fullTree()));
     expect(out).toContain('roadmap: 4 entries, 4 mapped');
     expect(out).toContain('outline: 3 entries, 3 mapped');
     expect(out).toContain('notes: 1 entry, 1 mapped');
-    expect(out).toContain('view: 2 entries, 2 mapped');
-    expect(out).toContain('doc: 2 entries, 2 mapped');
     expect(out).not.toContain(': unmapped');
     expect(out).toContain('unmapped: 0');
     expect(code).toBe(0);
   });
 
-  test('an unmapped heading and an unmapped view fail by line, never by text', () => {
-    const extra = { 'specs/notes/outline.md': `${OUTLINE}\n### Secret customer heading\n`, [`${PROTO}/zeta.html`]: '' };
+  test('an unmapped heading fails by line, never by text', () => {
+    const extra = { 'specs/notes/outline.md': `${OUTLINE}\n### Secret customer heading\n` };
     const { code, out } = run(tree(fullTree(extra)));
     expect(out).toContain('outline: 4 entries, 3 mapped');
     expect(out).toContain('outline:7: unmapped');
-    expect(out).toContain('view: 3 entries, 2 mapped');
-    expect(out).toContain('view:3: unmapped');
-    expect(out).toContain('unmapped: 2');
+    expect(out).toContain('unmapped: 1');
     expect(out.toLowerCase()).not.toContain('secret');
-    expect(out).not.toContain('zeta');
     expect(code).toBe(1);
   });
 
@@ -188,16 +171,6 @@ describe('check-coverage', () => {
     expect(out).not.toContain('coverage.md: absent');
     expect(out).toContain('roadmap: 4 entries, 4 mapped');
     expect(out).toContain('unmapped: 0');
-    expect(code).toBe(0);
-  });
-
-  test('spec 001 archived: views and docs are read from specs/archive/', () => {
-    const archived = Object.fromEntries(
-      Object.entries(fullTree()).map(([p, t]) => [p.startsWith(PROTO) ? `specs/archive/${p.slice('specs/'.length)}` : p, t]),
-    );
-    const { code, out } = run(tree(archived));
-    expect(out).toContain('view: 2 entries, 2 mapped');
-    expect(out).toContain('doc: 2 entries, 2 mapped');
     expect(code).toBe(0);
   });
 

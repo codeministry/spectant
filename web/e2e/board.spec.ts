@@ -72,7 +72,7 @@ test.describe('states', () => {
       const glyph = card.locator('.r1 > ui-glyph');
       pairs.add(`${String(await glyph.getAttribute('data-shape'))}/${String(await glyph.getAttribute('data-tone'))}`);
       const edge = await card.evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
-      // spec 024: prototype value (principal: the prototype wins)
+      // spec 024: the card's state edge is 4 px.
       expect(edge, state).toBe('4px');
     }
     expect(pairs.size).toBe(statesOf(LIVE.cards).length);
@@ -107,7 +107,7 @@ test.describe('states', () => {
     if (!last) throw new Error('the frames golden is empty');
     await page.locator('ui-scrubber [data-step="previous"]').click();
     await expect(page).toHaveURL(new RegExp(`[?&]frame=${String(last.index)}(&|$)`));
-    // spec 024: prototype value (principal: the prototype wins) — the replay label reads "R2 · result", the chip "history".
+    // spec 024: the replay label reads "R2 · result", the chip "history".
     await expect(page.locator('[data-frame-chip="history"] [data-frame-label]')).toHaveText(`${last.label} · ${last.kind}`);
     await expect(page.locator(CARDS)).toHaveCount(last.cards.length);
     await expect(page.locator('ui-scrubber input[type="range"]')).toHaveAttribute('aria-valuetext', last.label);
@@ -236,7 +236,7 @@ test.describe('flow', () => {
     await expect(page.locator(FLOW_CARDS)).toHaveCount(LIVE.cards.length);
     const rendered = await page.locator(FLOW_CARDS).evaluateAll((cards) => cards.map((c) => c.getAttribute('data-card') ?? ''));
     expect(rendered.sort()).toEqual(LIVE.cards.map((c) => c.task).sort());
-    // spec 024: prototype value (principal: the prototype wins): at wide the operator steps are the row across all columns
+    // spec 024: at wide the operator steps are the row across all columns
     // (`.op.span`, design.md § Live · Operator lane), not a band; every other card sits in its band and column.
     for (const c of LIVE.cards) {
       const at = c.lane === 'operator' ? `app-flow-view app-your-steps.span [data-step="${c.task}"]` : `app-flow-view [data-band="${c.lane}"] [data-column="${COLUMN_OF[c.state]}"]`;
@@ -381,7 +381,7 @@ test.describe('rail', () => {
       const edge = await rail.locator('app-needs-you [data-needs-card]').first().evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
       expect(edge).toBe('4px');
 
-      // spec 024: prototype value (principal: the prototype wins): design.md § Live · Operator lane (Principal 2026-10-13), the
+      // spec 024: design.md § Live · Operator lane (Principal 2026-10-13), the
       // operator steps are their own lane in the grid, each a compact 36 px card; the Needs you card lists them (.op-mini).
       const lane = page.locator('app-board-tab [data-lanes] app-your-steps');
       const steps = await lane.locator('[data-step]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-step')));
@@ -528,7 +528,7 @@ test.describe('rail text', () => {
   test('rail text: the state chip centres on the first text line', async ({ page }) => {
     await page.goto(BOARD);
     await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    // spec 024: prototype value (principal: the prototype wins): This frame's rows are the compact .fevents lines without a chip.
+    // spec 024: This frame's rows are the compact .fevents lines without a chip.
     const rows = await chipOffsets(page.locator('aside.shell-rail app-needs-you [data-needs-card]'));
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
@@ -622,7 +622,7 @@ for (const lang of ['en', 'de'] as const) {
         const { sheet, needsYou } = await openRailSheet(page);
         const frameRows = sheet.locator('app-this-frame [data-frame-event]');
         await expectSheetFits(page, frameRows);
-        // spec 024: prototype value (principal: the prototype wins): This frame's rows are the compact .fevents lines without a chip;
+        // spec 024: This frame's rows are the compact .fevents lines without a chip;
         // each still names its card.
         const named = await frameRows.evaluateAll((els) => els.map((el) => [el.getAttribute('data-frame-event'), el.querySelector('.fid')?.textContent]));
         expect(named.length).toBeGreaterThan(0);
@@ -653,7 +653,7 @@ test.describe('rail sheet on a coarse pointer', () => {
         expect(row.height, row.task).toBeGreaterThanOrEqual(44);
       }
     };
-    // spec 024: prototype value (principal: the prototype wins): This frame's rows are the compact .fevents lines without a chip;
+    // spec 024: This frame's rows are the compact .fevents lines without a chip;
     // each keeps its 44 px target and opens the card detail.
     const frameRows = sheet.locator('app-this-frame [data-frame-event]');
     const heights = await frameRows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));

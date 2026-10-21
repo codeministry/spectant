@@ -1,5 +1,5 @@
 /*
- * The Board tab in the prototype's anatomy (spec 024, T45; design.md § Across viewports "Kanban stays"):
+ * The Board tab's anatomy (spec 024, T45; design.md § Across viewports "Kanban stays"):
  * `board-sticky` controls (toolbar `btool`, legend pills `lchip`, search `bsearch`, scrubber), lanes as `lane-col`
  * on `--lane` with radius 12. From 640 the lanes run as 300 px columns in a horizontal scroller (`lanes-board`); below
  * 640 one lane at a time with the lane switch (`lane-col.lane-on`). A lane never scrolls on its own (ISC-93).
@@ -132,7 +132,7 @@
   cursor: pointer;
 }
 
-/* The prototype .meta.lane-quiet: sans meta, the next command in mono. */
+/* The .meta.lane-quiet: sans meta, the next command in mono. */
 .lane-quiet {
   margin: 0;
   color: var(--muted-ink);
@@ -144,7 +144,7 @@
   font-family: var(--font-mono);
 }
 
-/* The prototype .btn-icon.sm: 28 px, card surface, hairline border. */
+/* The .btn-icon.sm: 28 px, card surface, hairline border. */
 .btn-icon-sm {
   display: inline-grid;
   flex: none;

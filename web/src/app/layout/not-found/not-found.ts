@@ -25,7 +25,7 @@ export function nearestSpecs(rows: readonly SpecRowView[], id: string, count = 3
 }
 
 /**
- * The not-found page (ISC-71; spec 024 T65, design.md § NotFound and the static prototype `not-found.html`): an
+ * The not-found page (ISC-71; spec 024 T65, design.md § NotFound): an
  * unknown path, workspace, spec or tab. No fallback and no redirect. The page head `SPECTANT · 404`, then one card:
  * the empty state (`compass` in its circle, "Nothing at this address", the path, why) with All workspaces, Search
  * (the palette) and, in a known workspace, the way back to it. A spec id the known workspace does not list is the

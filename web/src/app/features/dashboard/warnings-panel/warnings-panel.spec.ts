@@ -40,7 +40,7 @@ async function render(model: DashboardModel, form?: WarningsForm, open = true): 
 }
 
 const withWarnings = (model: DashboardModel) => model.specs.filter((r) => r.warnings.length > 0);
-/** The prototype's groups: every spec with a warning or open fog, in model order. */
+/** The panel's groups: every spec with a warning or open fog, in model order. */
 const withNotes = (model: DashboardModel) => model.specs.filter((r) => r.warnings.length > 0 || r.fog > 0);
 
 describe('WarningsPanel', () => {
@@ -81,7 +81,7 @@ describe('WarningsPanel', () => {
     for (const spec of foggy) {
       const line = root.querySelector(`[data-fog-line="${spec.id}"]`) as HTMLElement;
       expect(line.closest(`[data-warning-spec="${spec.id}"]`)).not.toBeNull();
-      // spec 024: prototype value (principal: the prototype wins)
+      // spec 024: the fog line carries the cloud icon
       expect(line.querySelector('ui-icon[data-icon="cloud"]')).not.toBeNull();
       expect(line.querySelector('a[data-warning-link]')?.getAttribute('href')).toBe(`/?sel=spec:${spec.id}`);
       expect(line.textContent).toContain(spec.fog === 1 ? '1 open fog item' : `${spec.fog} open fog items`);

@@ -20,7 +20,7 @@ import { UiWaitsChip } from '../../../../shared/ui/waits-chip/waits-chip';
 import { ClaimsStore } from './claims.store';
 
 /** One glyph per state; blocked shares open's ring and adds a chip, taken adds the lock chip and its session
- * (spec 001 prompt 2); the template draws taken as the lucide `lock` (spec 024, prototype `tabClaims`). */
+ * (spec 001 prompt 2); the template draws taken as the lucide `lock` (spec 024). */
 const GLYPH: Record<ClaimGlyphState, string> = {
   open: '○',
   takeable: '◐',

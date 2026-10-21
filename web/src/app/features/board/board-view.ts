@@ -25,7 +25,7 @@ export function boardNavigationParams(query: BoardQueryState): Record<string, st
   return { ...params, ...boardQueryParams(query) };
 }
 
-/** One glyph per workflow stage for the column head and the stub (design 008 § board, the prototype's set). */
+/** One glyph per workflow stage for the column head and the stub (design 008 § board). */
 export const STAGE_GLYPHS: Readonly<Record<WorkflowStage, IconName>> = {
   idea: 'lightbulb',
   plan: 'list',

@@ -8,7 +8,7 @@
   gap: 4px;
 }
 
-/* Prototype: rail-tab and rail-collapse are pure icons, no background, border or shadow, also on hover. */
+/* The rail tab and the rail collapse are pure icons, no background, border or shadow, also on hover. */
 :host button.fold.fold[data-control] {
   --btn-bg: transparent;
   --btn-border: transparent;

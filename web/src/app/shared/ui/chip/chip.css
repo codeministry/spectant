@@ -75,7 +75,7 @@
   text-transform: none;
 }
 
-/* The icon sits on the chip's line (the icon host zeroes its own) and 1 px into the padding, as in the prototype. */
+/* The icon sits on the chip's line (the icon host zeroes its own) and 1 px into the padding. */
 ui-icon {
   margin-inline-start: -1px;
   line-height: inherit;

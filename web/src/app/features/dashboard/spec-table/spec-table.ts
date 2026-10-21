@@ -63,8 +63,7 @@ export const SPEC_ROW_CAP = 10;
 const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End', 'j', 'k']);
 
 /**
- * The Specs panel of the workspace dashboard (T63, ISC-61), ported from the prototype's `spec-table` (T89; styles.css
- * 362-400, app.js specTable): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
+ * The Specs panel of the workspace dashboard (T63, ISC-61; `spec-table`, reworked in T89): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
  * picker land on, the phase chips (plus type chips from two types and the takeable flag) and the sort menu
  * (`ui-sort-menu`: a popover, a bottom sheet at compact), the 8 px phase strip (one segment per active spec), the rows as one
  * roving list (↓ ↑ j k Home End, one tab stop, no wrap).
@@ -327,7 +326,7 @@ export class SpecTable {
     this.lang();
     return typeOptions(this.counts()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false), 'specs.filter.allTypes'));
   });
-  /** The strip under the head (prototype `.phase-strip`): one equal segment per active spec, in its stage group's tone. */
+  /** The strip under the head (`.phase-strip`): one equal segment per active spec, in its stage group's tone. */
   protected readonly strip = computed(() =>
     this.rows().map((row) => ({ id: row.id, color: toneMark(PHASE_TONES[row.stageGroup ?? ''] ?? 'neutral') })),
   );

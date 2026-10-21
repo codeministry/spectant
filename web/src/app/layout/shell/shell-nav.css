@@ -1,10 +1,10 @@
 /*
- * The rail-selects (prototype `.rail-select`, `.rail-divider`; spec 024 T34): Workspace · Page · Spec · Area (T80). They
+ * The rail-selects (spec 024 T34): Workspace · Page · Spec · Area (T80). They
  * sit on the header's brand rail after the logo, on every width (spec 024 T76); below 1120 px without the Area select.
  *
  * Labelled selects (ISC-140.2): every segment is its 9 px mono label (`[data-pill-label]`) and its 13/650 value
- * (`[data-pill-value]`), inline on one baseline as in the prototype, from 1120 px; below it the label lives only in the
- * accessible name, and at compact the chevrons go (prototype rule). Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only names ellipsize.
+ * (`[data-pill-value]`), inline on one baseline, from 1120 px; below it the label lives only in the
+ * accessible name, and at compact the chevrons go. Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only names ellipsize.
  */
 :host {
   display: flex;
@@ -104,7 +104,7 @@
   max-inline-size: none;
 }
 
-/* The spec's name in violet (prototype `.specs-select`, `.spec-name`), the area's in cyan (`.area-select`). */
+/* The spec's name in violet, the area's in cyan. */
 [data-control="spec"] .pill-value {
   color: var(--ques-text);
 }
@@ -126,7 +126,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The prototype's area select carries no dot; the closed PAGE select no icon (spec 024 T80, principal 2026-10-13). */
+/* The area select carries no dot; the closed PAGE select no icon (spec 024 T80, principal 2026-10-13). */
 .area-dot {
   display: none;
 }
@@ -175,7 +175,7 @@
   }
 }
 
-/* Compact: no chevrons (prototype rule); the names ellipsize from 112 / 96 px. */
+/* Compact: no chevrons; the names ellipsize from 112 / 96 px. */
 @container header (width < 640px) {
   .pick {
     gap: 4px;

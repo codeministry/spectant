@@ -1,7 +1,7 @@
 /* Timeline tab, after `timeline-tab.css` (spec 061): entry anchor, title variants, markers, the Q&A list. */
 @import '../../_fold-row.css';
 
-/* The prototype's hover anchor: `#` links the entry's `#t/<id>`, shown on hover or focus. */
+/* The hover anchor: `#` links the entry's `#t/<id>`, shown on hover or focus. */
 .entry-anchor {
   position: absolute;
   inset-block-start: 12px;
@@ -19,7 +19,7 @@
   opacity: 1;
 }
 
-/* Prototype `.tl-entry .small-t`: a commit's title in small mono. */
+/* The entry's `.small-t`: a commit's title in small mono. */
 .entry[data-kind='commit'] .title {
   color: var(--muted-ink);
   font-family: var(--font-mono);
@@ -31,18 +31,18 @@
   white-space: nowrap;
 }
 
-/* Prototype `.tl.empty-tl::before`: without a recorded event the strand is dashed, 6 px on, 6 px off. */
+/* The empty strand: without a recorded event the strand is dashed, 6 px on, 6 px off. */
 .strand.is-dashed::before {
   background: repeating-linear-gradient(var(--line) 0 6px, transparent 6px 12px);
 }
 
-/* Prototype `.mk.note`: the ques tint inside a 2 px ques ring (the filter dot and the strand marker). */
+/* `.mk.note`: the ques tint inside a 2 px ques ring (the filter dot and the strand marker). */
 .dot[data-kind='note'],
 .entry[data-kind='note'] .marker {
   background: var(--ques-t);
 }
 
-/* Prototype `.pulse-mk`: a running agent's marker sends an orange ring out once a beat — drawn as an outline that
+/* The pulse marker: a running agent's marker sends an orange ring out once a beat — drawn as an outline that
    widens and fades (the glow guard keeps box-shadow flat); still under reduced motion. */
 .marker[data-running] {
   outline: 2px solid var(--color-warning);
@@ -64,7 +64,7 @@
   }
 }
 
-/* Prototype `.qa`: a 90 px label column of small caps, the value beside it; the files as `.file-chip`. */
+/* `.qa`: a 90 px label column of small caps, the value beside it; the files as `.file-chip`. */
 .qa {
   display: grid;
   grid-template-columns: 90px minmax(0, 1fr);

@@ -1,4 +1,4 @@
-/* The prototype's `.switch`: 32 × 18 on the track, a 14 px knob. The importer sets the transitions and the on state. */
+/* The switch: 32 × 18 on the track, a 14 px knob. The importer sets the transitions and the on state. */
 .switch {
   position: relative;
   inline-size: 32px;

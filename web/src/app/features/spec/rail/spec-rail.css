@@ -1,5 +1,5 @@
 /*
- * The spec rail from 1120 px (spec 024, the prototype's `whereCard` and `waitingCard`: `.rail-card`, `.ring-row`,
+ * The spec rail from 1120 px (spec 024, Where it stands and Waiting on you: `.rail-card`, `.ring-row`,
  * `.big`, `.insp-block`, `.insp-chips`, `.o-line.warn-t`, `.gate-rows`, `.count-badge`, `.wait-line`, `.step-hint`). The
  * card, its head, eyebrow, gate rows and key line come from `_spec-card.css` and `_spec-context.css`.
  */

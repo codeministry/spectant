@@ -15,8 +15,8 @@ it and shows, live, where every spec stands, what waits on you and which agent w
 
 ## Preview
 
-Desktop screens of the design prototype the app is being built against (spec 002, dark theme, fixture data). The
-running app does not render these pages yet.
+Early desktop screens from the design phase (spec 002, dark theme, fixture data). The running app differs from them
+in detail.
 
 ![All workspaces: every registered repository as a card with master and spec claims, specs, warnings and next up](docs/preview/all-workspaces.png)
 
