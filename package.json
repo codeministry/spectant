@@ -29,6 +29,7 @@
     "check:coverage": "bun scripts/check-coverage.ts",
     "check:single-core": "bun scripts/check-single-core.ts",
     "check:version": "bun scripts/check-version.ts",
+    "look:snapshot": "bun web/tests/look-snapshot.ts",
     "test:binary": "bun scripts/build.ts --host-only && SPECTANT_TEST_BINARY=1 bun test tests/binary.test.ts",
     "test:install:linux": "bun tests/install/run.ts",
     "test:readonly": "bun test tests/readonly.test.ts",

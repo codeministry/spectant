@@ -54,9 +54,17 @@
  *
  * Threshold: zero differing properties on every part in both themes. Each part is its own soft assertion, so one run
  * lists every part that differs, with fixture and app values side by side.
+ *
+ * Write mode (spec 063): `LOOK_SNAPSHOT=write bun run test:browser -- primitives` skips the comparison and records
+ * the app's own anatomy instead. One test measures every part above in both themes (same selectors, pseudo-elements,
+ * property set and normalisation; the RETONED colours too, since the snapshot holds what the app paints) and writes
+ * `{ <part>: { light, dark } }` as the `primitives` part of `web/tests/fixtures/look-snapshot.json`. Every other part
+ * of that file is kept; the whole file is written back with sorted keys, two-space indent and a trailing newline, so
+ * the output is byte-stable.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { Page } from '@playwright/test';
 import { awaitReady, expect, test } from '../fixtures';
 
 type Measurement = Record<string, string>;
@@ -183,6 +191,55 @@ function normalise(prop: string, value: string): string {
 /** A border is drawn when any side's width is not zero. */
 const draws = (width: string | undefined): boolean => (width ?? '0px').split(/\s+/).some((w) => w !== '0px');
 
+/** `LOOK_SNAPSHOT=write` records the app's anatomy into the look snapshot instead of comparing it. */
+const WRITE = process.env['LOOK_SNAPSHOT'] === 'write';
+const SNAPSHOT = fileURLToPath(new URL('../../tests/fixtures/look-snapshot.json', import.meta.url));
+
+/** Keys sorted at every level, so the same data always serialises to the same bytes. */
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value === null || typeof value !== 'object') return value;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return Object.fromEntries(entries.map(([k, v]) => [k, sortKeys(v)]));
+}
+const stableStringify = (value: unknown): string => `${JSON.stringify(sortKeys(value), null, 2)}\n`;
+
+/** Replaces only the `primitives` part of the look snapshot, keeping every other part. */
+function writePrimitives(primitives: Record<string, { light: Measurement; dark: Measurement }>): void {
+  const current = existsSync(SNAPSHOT) ? (JSON.parse(readFileSync(SNAPSHOT, 'utf8')) as Record<string, unknown>) : {};
+  writeFileSync(SNAPSHOT, stableStringify({ ...current, primitives }));
+}
+
+/** The raw computed values of every part's properties in the gallery, or null where the block or element is missing. */
+async function measure(page: Page, theme: 'light' | 'dark', parts: readonly string[]): Promise<Record<string, Measurement | null>> {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/__ui?theme=${theme}`);
+  await awaitReady(page);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+  await page.evaluate(() => document.fonts.ready.then(() => true));
+
+  const request = parts.map((part) => ({
+    part,
+    selector: selectorOf(part),
+    pseudo: pseudoOf(part),
+    props: Object.keys(FIXTURE.primitives[part]?.[theme] ?? {}),
+  }));
+  return page.evaluate((req) => {
+    const out: Record<string, Record<string, string> | null> = {};
+    for (const r of req) {
+      const block = [...document.querySelectorAll('[data-anatomy]')].find((el) => el.getAttribute('data-anatomy') === r.part.replaceAll('.', '-'));
+      const el = block?.querySelector(r.selector);
+      if (!el) {
+        out[r.part] = null;
+        continue;
+      }
+      const cs = getComputedStyle(el, r.pseudo);
+      out[r.part] = Object.fromEntries(r.props.map((p) => [p, cs.getPropertyValue(p)]));
+    }
+    return out;
+  }, request);
+}
+
 test.describe('primitives', () => {
   const measured = Object.keys(FIXTURE.primitives);
   const parts = measured.filter((part) => !NOT_PRIMITIVES.has(part));
@@ -192,34 +249,27 @@ test.describe('primitives', () => {
     expect(parts.length).toBe(39);
   });
 
+  test('writes the primitives part of the look snapshot', async ({ page }) => {
+    test.skip(!WRITE, 'only under LOOK_SNAPSHOT=write');
+    const snapshot: Record<string, { light: Measurement; dark: Measurement }> = {};
+    for (const theme of ['light', 'dark'] as const) {
+      const rows = await measure(page, theme, parts);
+      const missing = parts.filter((part) => !rows[part]);
+      expect(missing, `${theme}: parts without an app element`).toEqual([]);
+      for (const part of parts) {
+        const got = rows[part] ?? {};
+        const entry = (snapshot[part] ??= { light: {}, dark: {} });
+        entry[theme] = Object.fromEntries(Object.entries(got).map(([prop, value]) => [prop, normalise(prop, value)]));
+      }
+    }
+    writePrimitives(snapshot);
+    console.log(`[primitives] wrote ${String(Object.keys(snapshot).length)} parts to the look snapshot`);
+  });
+
   for (const theme of ['light', 'dark'] as const) {
     test(`anatomy of every primitive matches the prototype · ${theme}`, async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 800 });
-      await page.goto(`/__ui?theme=${theme}`);
-      await awaitReady(page);
-      await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
-      await page.evaluate(() => document.fonts.ready.then(() => true));
-
-      const request = parts.map((part) => ({
-        part,
-        selector: selectorOf(part),
-        pseudo: pseudoOf(part),
-        props: Object.keys(FIXTURE.primitives[part]?.[theme] ?? {}),
-      }));
-      const rows = await page.evaluate((req) => {
-        const out: Record<string, Record<string, string> | null> = {};
-        for (const r of req) {
-          const block = [...document.querySelectorAll('[data-anatomy]')].find((el) => el.getAttribute('data-anatomy') === r.part.replaceAll('.', '-'));
-          const el = block?.querySelector(r.selector);
-          if (!el) {
-            out[r.part] = null;
-            continue;
-          }
-          const cs = getComputedStyle(el, r.pseudo);
-          out[r.part] = Object.fromEntries(r.props.map((p) => [p, cs.getPropertyValue(p)]));
-        }
-        return out;
-      }, request);
+      test.skip(WRITE, 'LOOK_SNAPSHOT=write records the snapshot instead');
+      const rows = await measure(page, theme, parts);
 
       const summary: string[] = [];
       for (const part of parts) {
