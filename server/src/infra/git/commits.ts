@@ -6,6 +6,7 @@
 // and a cache keyed by root and folder that skips `git log` while `HEAD` is unchanged.
 import type { CommitRecord } from "../../../../core/src/files.ts";
 import { hasGit } from "../fs/read.ts";
+import { storeBounded } from "./bounded.ts";
 import { repoStateOf } from "./repo-state.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, SHA, defaultGitRunner, firstLine, gitEnv, messageOf, normalizeFolder, readWithin } from "./runner.ts";
 
@@ -73,13 +74,7 @@ export class CommitCache {
 
   /** @internal */
   store(key: string, entry: CacheEntry): void {
-    this.#entries.delete(key);
-    this.#entries.set(key, entry);
-    while (this.#entries.size > this.max) {
-      const oldest = this.#entries.keys().next();
-      if (oldest.done === true) break;
-      this.#entries.delete(oldest.value);
-    }
+    storeBounded(this.#entries, key, entry, this.max);
   }
 }
 

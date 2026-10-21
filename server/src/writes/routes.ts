@@ -37,14 +37,22 @@
  * `run-aborted`), then one appended `run-end` line and 200 `RunReleased`. No claim lock is read and no run locks the
  * release, so no 423.
  *
- * On the three workspace writes, 403 (loopback guard) and 405 (`Allow: POST`) are the dispatcher's (`api.ts`); 404
- * (unknown workspace) and the unreadable workspace's 409 are `readableWorkspace`'s, as on every workspace route.
+ * On the three workspace writes, 403 (loopback guard) and 405 (`Allow: POST`) are the router's (the workspace family,
+ * `workspace/family.ts`; spec 059, ISC-412); 404 (unknown workspace) and the unreadable workspace's 409 are
+ * `readableWorkspace`'s, as on every workspace route.
  */
 import type { SpecRef } from "../../../core/src/resolve.ts";
-import { ACTIVITY_HASH_HEADER, isAllocateRequest, isBacklogRequest, runReleaseRequestFromHeader } from "../contracts/spec-routes.contract.ts";
+import {
+  ACTIVITY_HASH_HEADER,
+  type WorkspaceRouteMatch,
+  isAllocateRequest,
+  isBacklogRequest,
+  runReleaseRequestFromHeader,
+} from "../contracts/spec-routes.contract.ts";
 import { type WriteAnswer, parseWriteBody } from "../contracts/writes.contract.ts";
 import { abortAge } from "../infra/abort-age.ts";
 import { json, parseJson } from "../infra/http/json.ts";
+import type { RouteHandlers } from "../infra/http/router.ts";
 import { type WorkspaceContext, readableWorkspace } from "../workspace/index.ts";
 import { writeAllocate } from "./allocate.ts";
 import { writeBacklog } from "./backlog.ts";
@@ -160,4 +168,17 @@ export function workspaceWriteRoutes(ctx: WorkspaceContext): WorkspaceWriteRoute
     });
 
   return { allocate, backlog, runRelease };
+}
+
+/** The workspace family's three writes. */
+export type WorkspaceWriteRoute = keyof WorkspaceWriteRoutes;
+
+/** The three workspace writes as handlers of the workspace family, each given its route's match. */
+export function workspaceWriteHandlers(ctx: WorkspaceContext): RouteHandlers<Extract<WorkspaceRouteMatch, { route: WorkspaceWriteRoute }>> {
+  const { allocate, backlog, runRelease } = workspaceWriteRoutes(ctx);
+  return {
+    allocate: (req, _url, match) => allocate(req, match.params.ws, match.params.slug),
+    backlog: (req, _url, match) => backlog(req, match.params.ws),
+    runRelease: (req, _url, match) => runRelease(req, match.params.ws, match.params.run),
+  } satisfies RouteHandlers<Extract<WorkspaceRouteMatch, { route: WorkspaceWriteRoute }>>;
 }

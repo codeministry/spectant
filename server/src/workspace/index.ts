@@ -20,7 +20,16 @@ export {
 } from "./worktree-view.ts";
 export { type IdeaSources, type RepoFileReading, readIdeaSources, readRepoFile } from "./repo-files.ts";
 export { readCopies, readSpecSource, resolveWorkspaceSpec } from "./spec-source.ts";
-export { type OpenedSpec, type SpecOpening, openSpec } from "./open-spec.ts";
+export {
+  type OpenedSpec,
+  type SpecOpening,
+  type SpecTarget,
+  type SpecTargetParams,
+  WorkspaceUnreadable,
+  onOpenedSpec,
+  onSpec,
+  openSpec,
+} from "./open-spec.ts";
 export {
   type DevService,
   type DevServiceKind,
@@ -45,3 +54,4 @@ export {
 } from "./summary.ts";
 export { type CatalogLoad, type DashboardApiOptions, type WorkspaceContext, type WorkspaceLoader, localDate, workspaceContext } from "./context.ts";
 export { DASHBOARD_PATH, WORKSPACES_PATH, WORKSPACE_READ_ALLOW, readableWorkspace, workspaceRoutes } from "./routes.ts";
+export { type WorkspaceFamilyMatch, type WorkspaceFamilyRoute, workspaceFamily, workspaceHandlers } from "./family.ts";

@@ -8,7 +8,6 @@
  *
  * This is the composition root of the server: every slice's handler is built and composed here.
  */
-import { dashboardApi } from "../api.ts"; // the dispatcher until the router lands (T54–T56)
 import { detectLifeos } from "../infra/lifeos.ts";
 import { actorsApi, lifeosApi, openSettings, settingsApi } from "../settings/index.ts";
 import type { EmbeddedManifest } from "../contracts/assets.contract.ts";
@@ -27,6 +26,7 @@ import { specRoutesApi } from "../spec/index.ts";
 import { openImageStore, workspaceAdminApi } from "../workspace-admin/index.ts";
 import { workspaceSummaryReader } from "../workspace/index.ts";
 import type { Command } from "./args.ts";
+import { dashboardApi } from "./dashboard-api.ts";
 import type { RunOptions } from "./options.ts";
 
 function reason(error: unknown): string {

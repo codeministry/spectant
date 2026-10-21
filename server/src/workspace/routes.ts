@@ -9,7 +9,7 @@
  *   clock (spec 040, ISC-224), and the activity log's hash in `X-Spectant-Activity-Hash` (spec 040, ISC-226). 404 for an
  *   unknown slug, 409 with the workspace's summary when its folder cannot be read.
  *
- * The guard, the method check and the path match stay with `dashboardApi`, which dispatches here.
+ * The guard, the path match and the method check are the router's, over the workspace family (`family.ts`).
  */
 import { join } from "node:path";
 import { ACTIVITY_HASH_HEADER } from "../contracts/spec-routes.contract.ts";

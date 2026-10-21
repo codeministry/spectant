@@ -29,10 +29,13 @@ export {
   type BacklogRouteInput,
   type RunReleaseRouteInput,
   type TransitionRouteInput,
+  type WorkspaceWriteRoute,
   type WorkspaceWriteRoutes,
   allocateAnswer,
   backlogAnswer,
   runReleaseAnswer,
   transitionAnswer,
+  workspaceWriteHandlers,
   workspaceWriteRoutes,
 } from "./routes.ts";
+export { type SpecWriteContext, type SpecWriteRoute, specWriteHandlers } from "./spec-handlers.ts";

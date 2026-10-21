@@ -1,6 +1,7 @@
 /**
  * The board's stored preferences, answered from the database alone (the context's `db`), never a repository file, and
- * dispatched by `dashboardApi` after its guard; without a database it declines them, so the server's JSON 404 applies.
+ * dispatched by the router over the workspace family after its guard and method check (`handlers.ts`); without a
+ * database the family does not claim them, so the server's JSON 404 applies.
  *
  * The board query (spec 008 T92, ISC-129.1): `GET`/`HEAD`/`PUT /api/workspaces/:ws/board-query` → `BoardQuery`, from
  * the `board_query` table: GET `{query}` (`''` when none is stored), PUT validated by the contract's `isBoardQuery`

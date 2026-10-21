@@ -24,6 +24,7 @@ import { lstatSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { existsNoFollow } from "../fs/exists.ts";
+import { storeBounded } from "./bounded.ts";
 
 const statOf = (path: string): string => {
   try {
@@ -139,13 +140,7 @@ export class StateMemo<T> {
     const entry = this.#entries.get(key);
     if (entry?.state === state) return entry.value;
     const value = read();
-    this.#entries.delete(key);
-    this.#entries.set(key, { state, value });
-    while (this.#entries.size > this.max) {
-      const oldest = this.#entries.keys().next();
-      if (oldest.done === true) break;
-      this.#entries.delete(oldest.value);
-    }
+    storeBounded(this.#entries, key, { state, value }, this.max);
     // A failed read is not kept: the next caller reads again.
     value.catch(() => {
       if (this.#entries.get(key)?.value === value) this.#entries.delete(key);

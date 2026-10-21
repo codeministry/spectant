@@ -4,13 +4,21 @@
  * `NNN`, the folder name or the bare slug), and then, on `open`, the spec's files from its read source and the
  * workspace's constitution. The spec routes answer every read and every write on a spec from it, so the reads and the
  * writes share one prelude without importing each other.
+ *
+ * `onSpec` and `onOpenedSpec` are that prelude as the route layer of every route on one spec, after the router
+ * (spec 059, ISC-412) has guarded, matched and checked the method: 404 for an unknown workspace, the 409 `Unavailable`
+ * when its directory cannot be read, 404 for no spec, then the route, which answers before `open` (the spec page) or
+ * after it (every other route; a folder without `spec.md` is no spec, 404).
  */
 import type { SpecFiles } from "../../../core/src/files.ts";
 import type { SpecRef } from "../../../core/src/resolve.ts";
 import type { UnreadableCode } from "../contracts/spec-routes.contract.ts";
-import { workspaceUnreadable } from "../infra/fs/errno.ts";
+import type { Registry, Workspace } from "../infra/db/registry.ts";
+import { unreadableCode, workspaceUnreadable } from "../infra/fs/errno.ts";
+import { json } from "../infra/http/json.ts";
 import { readRepoFile } from "./repo-files.ts";
 import { readSpecSource, resolveWorkspaceSpec } from "./spec-source.ts";
+import { unavailable } from "./summary.ts";
 import { type WorktreeReading, readWorktreeView } from "./worktree-view.ts";
 
 /** One spec read from its read source, with what every route on it needs beside its files. */
@@ -59,4 +67,68 @@ export async function openSpec(root: string, id: string): Promise<SpecOpening> {
       return { reading, files, dir, source, constitution };
     },
   };
+}
+
+/** Thrown inside a route on a spec to answer a workspace that cannot be read with the dashboard's 409 body. */
+export class WorkspaceUnreadable extends Error {
+  constructor(readonly code: UnreadableCode) {
+    super(code);
+  }
+}
+
+/** The params every route on a spec names: the workspace slug and the spec ref, each decoded once. */
+export interface SpecTargetParams {
+  readonly ws: string;
+  readonly id: string;
+}
+
+/** The spec a route on it answers: its workspace, the resolved spec and the lazy read of its source (`SpecOpening`). */
+export interface SpecTarget {
+  readonly workspace: Workspace;
+  readonly ref: SpecRef;
+  readonly open: () => Promise<OpenedSpec | null>;
+}
+
+const NOT_FOUND = { error: "not-found" } as const;
+
+/** A file system failure (it carries an errno code), as opposed to a defect, which must surface as a 500. */
+const isFsError = (error: unknown): boolean => typeof (error as NodeJS.ErrnoException | null)?.code === "string";
+
+/**
+ * One route on one spec behind the prelude (module header); `answer` gets the spec before its source is read. A
+ * `WorkspaceUnreadable` or an errno failure inside `answer` is the 409 with the workspace's summary; any other throw is
+ * a defect.
+ */
+export function onSpec(
+  registry: Pick<Registry, "get">,
+  req: Request,
+  params: SpecTargetParams,
+  answer: (spec: SpecTarget) => Promise<Response>,
+): Response | Promise<Response> {
+  const workspace = registry.get(params.ws);
+  if (!workspace) return json(req, 404, NOT_FOUND);
+  const resolved = async (): Promise<Response> => {
+    const opening = await openSpec(workspace.path, params.id);
+    if (opening.kind === "unreadable") throw new WorkspaceUnreadable(opening.code);
+    if (opening.kind === "not-found") return json(req, 404, NOT_FOUND);
+    return answer({ workspace, ref: opening.ref, open: opening.open });
+  };
+  return resolved().catch((error: unknown) => {
+    if (error instanceof WorkspaceUnreadable) return json(req, 409, unavailable(workspace, error.code));
+    if (isFsError(error)) return json(req, 409, unavailable(workspace, unreadableCode(error)));
+    throw error;
+  });
+}
+
+/** `onSpec` with the spec's source read: a folder without `spec.md` is no spec (404). */
+export function onOpenedSpec(
+  registry: Pick<Registry, "get">,
+  req: Request,
+  params: SpecTargetParams,
+  answer: (spec: SpecTarget, opened: OpenedSpec) => Promise<Response>,
+): Response | Promise<Response> {
+  return onSpec(registry, req, params, async (spec) => {
+    const opened = await spec.open();
+    return opened === null ? json(req, 404, NOT_FOUND) : answer(spec, opened);
+  });
 }

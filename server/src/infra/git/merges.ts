@@ -3,6 +3,7 @@
 // refs and objects only, never touch the index, never take a lock and never write an object.
 import { SPEC_FOLDER } from "../../../../core/src/spec-ref.ts";
 import { hasGit } from "../fs/read.ts";
+import { storeBounded } from "./bounded.ts";
 import { StateMemo, repoStateOf } from "./repo-state.ts";
 import type { UserEmailOptions } from "./refs.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, SHA, defaultGitRunner, firstLine, gitEnv, isPlainBranchName, readWithin } from "./runner.ts";
@@ -53,13 +54,7 @@ export class MergeCache {
 
   /** @internal */
   store(root: string, key: string, result: SpecBranches): void {
-    this.#entries.delete(root);
-    this.#entries.set(root, { key, result });
-    while (this.#entries.size > this.max) {
-      const oldest = this.#entries.keys().next();
-      if (oldest.done === true) break;
-      this.#entries.delete(oldest.value);
-    }
+    storeBounded(this.#entries, root, { key, result }, this.max);
   }
 }
 

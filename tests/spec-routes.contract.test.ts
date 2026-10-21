@@ -953,7 +953,7 @@ describe("answers and errors are the API's existing convention", () => {
   test("every literal error code in api.ts and settings.ts is one of API_ERRORS or an unreadable code", () => {
     const unreadable = { missing: true, "not-a-directory": true, "permission-denied": true, unreadable: true } satisfies Record<UnreadableCode, true>;
     const known = new Set<string>([...API_ERRORS, ...Object.keys(unreadable)]);
-    const found = ["api.ts", "settings/routes.ts", "settings/actors.ts"].flatMap((file) =>
+    const found = ["workspace/family.ts", "settings/routes.ts", "settings/actors.ts"].flatMap((file) =>
       [...readFileSync(join(ROOT, "server", "src", file), "utf8").matchAll(/\berror:\s*"([^"]+)"/g)].map((m) => m[1] ?? ""),
     );
     expect(found.length).toBeGreaterThan(3);

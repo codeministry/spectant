@@ -62,7 +62,7 @@ import {
 } from "../contracts/spec-routes.contract.ts";
 import {
   type OpenedSpec,
-  type UnreadableCode,
+  WorkspaceUnreadable,
   gateHashes,
   readBytesIfExists,
   readRepoFile,
@@ -104,13 +104,6 @@ export type SpecRoutesOptions = {
 export type OpenedReadMatch = Extract<SpecRouteMatch, { route: "timeline" | "claims" | "tasks" | "evidenceFile" | "frames" | "live" }>;
 
 export const NOT_FOUND: NotFound = { error: "not-found" };
-
-/** Thrown inside a route to answer a workspace that cannot be read with the dashboard's 409 body. */
-export class WorkspaceUnreadable extends Error {
-  constructor(readonly code: UnreadableCode) {
-    super(code);
-  }
-}
 
 /** The workspace's constitution text as an optional `texts` key, the way the golden families add it. */
 const withConstitution = (files: SpecFiles, constitution: string | null): SpecFiles =>

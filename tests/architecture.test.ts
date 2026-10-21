@@ -107,7 +107,7 @@ describe("imports", () => {
     expect(imports(entry, REPO_ROOT)).toEqual([]);
   });
 
-  test.failing("the app: the server/src graph keeps all three rules", () => {
+  test("the app: the server/src graph keeps all three rules", () => {
     expect(imports(app, REPO_ROOT)).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 /**
- * The library routes (spec 017), each matched by the contract's `matchWorkspacePath` and dispatched by `dashboardApi`
- * after its guard and method check, with the planning route's statuses: 404 unknown workspace, 409 with the summary
- * when the folder cannot be read.
+ * The library routes (spec 017), each matched by the contract's `matchWorkspacePath` and dispatched by the router over
+ * the workspace family after its guard and method check, with the planning route's statuses: 404 unknown workspace,
+ * 409 with the summary when the folder cannot be read.
  *
  * - The catalog (T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, core's `readCatalog`
  *   through `loadCatalog` (`load.ts`) as it is: metadata only (path, type, spec, title, modified, state), never a
@@ -34,10 +34,11 @@
 import { dirname, join } from "node:path";
 import { SPEC_FOLDER } from "../../../core/src/spec-ref.ts";
 import { techSectionHeads } from "../../../core/src/tech.ts";
-import { type WorkspaceRouteResponses, evidencePathQuery } from "../contracts/spec-routes.contract.ts";
+import { type WorkspaceRouteMatch, type WorkspaceRouteResponses, evidencePathQuery } from "../contracts/spec-routes.contract.ts";
 import { readText } from "../infra/fs/list.ts";
 import { evidenceFileResponse } from "../infra/http/file-response.ts";
 import { json } from "../infra/http/json.ts";
+import type { RouteHandlers } from "../infra/http/router.ts";
 import { type WorkspaceContext, readCopies, readRepoFile, summaryOf, unavailable, unreadableCode } from "../workspace/index.ts";
 import { catalogFile, isFile, isFolder, renderCatalogDoc } from "./catalog-file.ts";
 import { catalogLoaders } from "./load.ts";
@@ -138,4 +139,18 @@ export function libraryRoutes(ctx: WorkspaceContext): {
   };
 
   return { library, libraryDoc, librarySearch, libraryAsset };
+}
+
+/** The workspace family's four library routes. */
+export type LibraryRoute = "library" | "libraryDoc" | "librarySearch" | "libraryAsset";
+
+/** The four library routes as handlers of the workspace family (spec 059, ISC-412), each given its route's match. */
+export function libraryHandlers(ctx: WorkspaceContext): RouteHandlers<Extract<WorkspaceRouteMatch, { route: LibraryRoute }>> {
+  const { library, libraryDoc, librarySearch, libraryAsset } = libraryRoutes(ctx);
+  return {
+    library: (req, _url, match) => library(req, match.params.ws),
+    libraryDoc: (req, url, match) => libraryDoc(req, match.params.ws, url.search),
+    librarySearch: (req, url, match) => librarySearch(req, match.params.ws, url.searchParams.get("q") ?? ""),
+    libraryAsset: (req, url, match) => libraryAsset(req, match.params.ws, url.search),
+  } satisfies RouteHandlers<Extract<WorkspaceRouteMatch, { route: LibraryRoute }>>;
 }
