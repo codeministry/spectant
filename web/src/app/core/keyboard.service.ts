@@ -1,5 +1,6 @@
 import { computed, DOCUMENT, inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, Router } from '@angular/router';
+import { first } from 'rxjs';
 import { TranslocoService } from '@jsverse/transloco';
 import { areaById, areaPath, specLink, workspaceLink } from '../layout/shell/areas';
 import { ShellData } from '../layout/shell/shell-data.service';
@@ -43,6 +44,12 @@ const SPECS_PANEL = '[data-panel="specs"]';
 const SELECTED_ROW = `${SPECS_PANEL} [data-spec-row][data-selected]`;
 
 const MOD = 'Mod+';
+
+/** The page that holds `section` (the Specs page for the list, else the dashboard) as router link and URL path. */
+function sectionLink(ws: string, section: DashboardSection): { link: string[]; path: string } {
+  const link = workspaceLink(ws, section === 'specs' ? 'specs' : 'dashboard');
+  return { link, path: ['/w', ...link.slice(1).map(encodeURIComponent)].join('/') };
+}
 
 /** The bindings of `list` by their `key`; one key holds one binding per context (`GROUP_CONTEXT`). */
 function byKey(list: readonly Shortcut[], key: (binding: Shortcut) => string | undefined): ReadonlyMap<string, readonly Shortcut[]> {
@@ -247,13 +254,34 @@ export class KeyboardService {
   private focusSection(section: DashboardSection): boolean {
     const ws = this.workspace();
     if (ws === null) return false;
-    const link = workspaceLink(ws, section === 'specs' ? 'specs' : 'dashboard');
-    const path = ['/w', ...link.slice(1).map(encodeURIComponent)].join('/');
+    const { link, path } = sectionLink(ws, section);
     if (this.router.url.split(/[?#]/u)[0] === path) return this.focusSectionHeading(section);
     void this.router.navigate(link).then((done) => {
       if (done) this.awaitSectionHeading(section);
     });
     return true;
+  }
+
+  /**
+   * Spec 058 (ISC-395, T45): a click on a link to a section's page (the spec select's "show all") that its
+   * `routerLink` navigates is a section jump like `g s`: when that navigation has ended, focus moves to the section
+   * heading. A click `routerLink` leaves to the browser (a modifier or another button than the primary) is none.
+   */
+  followSectionLink(event: MouseEvent, ws: string, section: DashboardSection): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (this.router.url.split(/[?#]/u)[0] === sectionLink(ws, section).path) {
+      this.awaitSectionHeading(section);
+      return;
+    }
+    this.router.events
+      .pipe(
+        first(
+          (e) => e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped,
+        ),
+      )
+      .subscribe((e) => {
+        if (e instanceof NavigationEnd) this.awaitSectionHeading(section);
+      });
   }
 
   private focusSectionHeading(section: DashboardSection): boolean {

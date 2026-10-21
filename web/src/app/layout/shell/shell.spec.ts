@@ -693,6 +693,25 @@ describe('ShellComponent', () => {
       expect(all?.getAttribute('href'), url).toBe('/w/harbor/specs');
     });
 
+    // Spec 058 (ISC-395, T45): "show all" is a section jump like `g s`; focus lands on the list heading once it rendered.
+    it.each(['/w/harbor', '/w/harbor/s/002', '/w/harbor/specs'])('on %s moves focus to the Specs heading after "show all" (spec 058, ISC-395)', async (url) => {
+      setUp(TWO);
+      const { root, harness } = await open(url);
+      click(control(root, 'spec'));
+      await harness.fixture.whenStable();
+      const all = root.querySelector<HTMLAnchorElement>('nav[data-picker="spec"] .picker-all');
+      if (!all) throw new Error(`show all missing on ${url}`);
+      all.click();
+      await harness.fixture.whenStable();
+      for (let frame = 0; frame < 5 && document.activeElement?.id !== 'specs'; frame++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await harness.fixture.whenStable();
+      }
+      expect(TestBed.inject(Router).url, url).toBe('/w/harbor/specs');
+      expect(document.activeElement?.id, url).toBe('specs');
+      expect(document.activeElement?.tagName, url).toBe('H2');
+    });
+
     it('opens the workspace picker on a plain click: all workspaces, every workspace with its specs, the current marked', async () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002/claims');
