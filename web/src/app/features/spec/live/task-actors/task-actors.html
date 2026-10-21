@@ -1,0 +1,16 @@
+
+    @if (actors(); as a) {
+      @if (a.agent; as agent) {
+        <ui-actor-chip
+          data-task-agent
+          [actor]="agent"
+          [active]="a.subagent === null && !a.stale"
+          [stale]="a.subagent === null && a.stale"
+          [staleAge]="a.subagent === null ? age() : undefined"
+        />
+      }
+      @if (a.subagent; as sub) {
+        <ui-actor-chip data-task-subagent [actor]="sub" [active]="!a.stale" [stale]="a.stale" [staleAge]="age()" />
+      }
+    }
+  

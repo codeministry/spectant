@@ -15,16 +15,7 @@ import { UiToast } from './shared/ui/toast/toast';
   selector: 'app-root',
   imports: [RouterOutlet, CommandPalette, ShortcutSheet, UiToast],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <router-outlet />
-    @defer (when keyboard.sheetOpen()) {
-      <app-shortcut-sheet />
-    }
-    @defer (when keyboard.paletteOpen()) {
-      <app-command-palette />
-    }
-    <ui-toast />
-  `,
+  templateUrl: './app.html',
 })
 export class App {
   protected readonly keyboard = inject(KeyboardService);

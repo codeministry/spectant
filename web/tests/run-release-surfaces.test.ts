@@ -7,7 +7,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const SRC = join(import.meta.dir, "..", "src");
-const ALLOWED = ["app/features/spec/status/status-block.ts", "app/layout/detail-sidebar/detail-sidebar.html"];
+const ALLOWED = ["app/features/spec/status/status-block.html", "app/layout/detail-sidebar/detail-sidebar.html"];
 
 function sources(dir = SRC): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

@@ -36,7 +36,7 @@ import { UiItemState } from '../../../../shared/ui/item-state/item-state';
 import { UiNotice } from '../../../../shared/ui/notice/notice';
 import { taskActorsOf } from '../../live/live-frame';
 import { TaskActors } from '../../live/task-actors/task-actors';
-import { RunChip } from '../../live/card/card';
+import { RunChip } from '../../live/card/run-chip';
 import { runChanges, runOf, runStates, specWaitOf } from '../../live/board/board-model';
 import { UiLiveRegion } from '../../../../shared/ui/live-region/live-region';
 

@@ -1,0 +1,10 @@
+
+    <router-outlet />
+    @defer (when keyboard.sheetOpen()) {
+      <app-shortcut-sheet />
+    }
+    @defer (when keyboard.paletteOpen()) {
+      <app-command-palette />
+    }
+    <ui-toast />
+  

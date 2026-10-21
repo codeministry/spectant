@@ -44,29 +44,7 @@ export interface DashboardIdeas {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./ideas-panel.css', '../../../layout/detail-sidebar/selection.css'],
   host: { '[attr.data-ideas]': 'ideas().count > 0 ? ideas().count : null', '(click)': 'open($event)' },
-  template: `
-    @if (ideas().count > 0) {
-      <ui-card [padding]="0" class="panel">
-        <ui-disclosure class="fold">
-          <span uiDisclosureSummary class="title" data-ideas-title>{{ 'specs.ideas.title' | transloco: { count: ideas().count } }}</span>
-          <ul class="ideas-list" [attr.aria-label]="'specs.ideas.label' | transloco">
-            @for (idea of ideas().list; track idea.slug) {
-              @let where = whereOf(idea);
-              <li [attr.data-idea]="idea.slug" [attr.data-selected]="look(idea.slug)">
-                <ui-idea-chip [ws]="ws()" [slug]="idea.slug" [title]="idea.title" [ref]="'idea:' + idea.slug" />
-                @if (where !== '') {
-                  <span class="where" data-idea-where>{{ where }}</span>
-                }
-                @if (idea.state; as state) {
-                  <ui-item-state class="state" [info]="state" [ws]="ws()" />
-                }
-              </li>
-            }
-          </ul>
-        </ui-disclosure>
-      </ui-card>
-    }
-  `,
+  templateUrl: './ideas-panel.html',
 })
 export class IdeasPanel {
   readonly ws = input.required<string>();

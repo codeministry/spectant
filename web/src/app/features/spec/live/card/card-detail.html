@@ -1,0 +1,100 @@
+
+    @let c = card();
+    <ui-dialog
+      [attr.data-fullscreen]="compact() ? '' : null"
+      [(open)]="open"
+      [label]="'board.detail.heading' | transloco: { task: c.task, claim: c.claim }"
+    >
+      <div class="body" data-card-detail [attr.data-task]="c.task">
+        <header class="cd-head" data-detail-head>
+          <ui-glyph [state]="c.state" family="card" [size]="20" />
+          <b class="id">{{ c.task }}</b>
+          <span class="claim">{{ c.claim }}</span>
+          <ui-state-chip [state]="c.state" family="card" />
+          <span class="grow"></span>
+          <span class="meta" data-detail-where>{{ c.lane }}@if (frameLabel(); as label) { · {{ label }}}</span>
+          <button type="button" class="close" data-detail-close [attr.aria-label]="'common.close' | transloco" (click)="open.set(false)"><ui-icon name="x" [size]="16" /></button>
+        </header>
+        <p class="text" data-detail-text>{{ c.text }}</p>
+        @if (paths().length > 0) {
+          <div class="cd-paths" data-detail-paths>
+            @for (p of paths(); track p) {
+              <span class="pathchip">{{ p }}</span>
+            }
+          </div>
+        }
+        <dl class="cd-dl">
+          @if (c.reason) {
+            <dt>{{ 'board.detail.reason' | transloco }}</dt>
+            <!-- spec 025: core's "waits on NNN" through the catalogue, as the board's group reads it (Flow flattens those). -->
+            @if (specWaitOf(c.reason); as specs) {
+              <dd data-detail-waits>{{ 'waits.on' | transloco }} @for (id of specs; track id; let last = $last) {<span class="mono" [attr.data-blocker]="id">{{ id }}</span>{{ last ? '' : ', ' }}}</dd>
+            } @else {
+              <dd>{{ c.reason }}</dd>
+            }
+          }
+          @if (c.builder) {
+            <dt>{{ 'board.detail.builder' | transloco }}</dt>
+            <dd><ui-icon name="wrench" [size]="13" /> <span data-detail-builder>{{ c.builder }}</span></dd>
+          }
+          @if (c.reader) {
+            <dt>{{ 'board.detail.reader' | transloco }}</dt>
+            <dd><ui-icon name="eye" [size]="13" /> {{ c.reader }}@if (c.verdict) { · <i class="vdot" [attr.data-verdict]="c.verdict"></i>{{ c.verdict }}}</dd>
+          }
+          <dt>{{ 'board.detail.tries' | transloco }}</dt>
+          <dd class="num" data-detail-tries>{{ c.tries }}</dd>
+          @if (c.note) {
+            <dt>{{ 'board.detail.note' | transloco }}</dt>
+            <dd class="mono red" data-detail-note>{{ c.note }}</dd>
+          }
+          @if (probe(); as probe) {
+            <dt>{{ 'board.detail.probe' | transloco }}</dt>
+            <dd class="mono" data-detail-probe>{{ probe }}</dd>
+          }
+          @if (agent(); as agent) {
+            <dt>{{ 'board.detail.agent' | transloco }}</dt>
+            <dd data-detail-session><app-agent-chip [session]="agent.session" [since]="agent.since" [stale]="agent.stale" /></dd>
+          }
+        </dl>
+        @if (steps().length > 0) {
+          <section class="cd-steps" data-detail-steps>
+            <h3>{{ 'steps.timeline.heading' | transloco }} · <span class="mono num" data-detail-steps-count>{{ steps().length }}</span></h3>
+            @if (steps().length > shownSteps().length) {
+              @if (specLink(); as base) {
+                <a class="btn btn-sm" data-detail-steps-more [routerLink]="[...base, 'tasks']" [queryParams]="{ steps: c.task }" [fragment]="'task-' + c.task">{{
+                  'steps.timeline.all.' + (steps().length === 1 ? 'one' : 'other') | transloco: { count: steps().length }
+                }}</a>
+              }
+            }
+            <app-step-timeline [steps]="shownSteps()" [task]="c.task" />
+          </section>
+        }
+        <h3>{{ 'board.detail.history' | transloco }}</h3>
+        @if (history(); as steps) {
+          @if (steps.length > 0) {
+            <ol data-history>
+              @for (step of steps; track step.frame) {
+                <li [attr.data-history-frame]="step.frame" [attr.data-history-state]="step.state">
+                  <span class="frame">{{ step.label }}</span>
+                  <ui-glyph [state]="step.state" family="card" [size]="14" />
+                  <span>{{ word(step) | transloco }}</span>
+                </li>
+              }
+            </ol>
+          } @else {
+            <p class="muted" data-history-empty>{{ 'board.detail.historyEmpty' | transloco }}</p>
+          }
+        } @else {
+          <p class="muted" data-history-loading>{{ 'common.loading' | transloco }}</p>
+        }
+        @if (specLink(); as base) {
+          <div class="cd-links" data-detail-links>
+            <a class="btn btn-sm" [routerLink]="[...base, 'claims']">{{ 'board.detail.openClaim' | transloco }}</a>
+            <a class="btn btn-sm" [routerLink]="[...base, 'library']" [queryParams]="{ type: 'evidence' }">{{ 'board.detail.evidence' | transloco }}</a>
+            <a class="btn btn-sm" [routerLink]="[...base, 'timeline']">{{ 'board.detail.timeline' | transloco }}</a>
+            <span class="meta push"><ui-kbd>←</ui-kbd><ui-kbd>→</ui-kbd> {{ 'board.detail.step' | transloco }}</span>
+          </div>
+        }
+      </div>
+    </ui-dialog>
+  

@@ -88,6 +88,7 @@ const CONVERTED = [
   "app/layout/spec-head/gate-button/gate-button.ts",
   "app/layout/spec-head/gate-button/gate-button.html",
   "app/features/spec/status/status-block.ts",
+  "app/features/spec/status/status-block.html",
   "app/features/spec/status/status-tab.ts",
   "app/features/spec/status/status-tab.html",
   "app/features/spec/status/timeline/timeline-tab.ts",

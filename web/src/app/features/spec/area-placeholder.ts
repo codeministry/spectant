@@ -14,29 +14,8 @@ import { UiCard } from '../../shared/ui/card/card';
   imports: [TranslocoPipe, UiCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'placeholder', '[attr.data-area]': 'state.area()', '[attr.data-tab]': 'state.tab()' },
-  styles: `
-    :host { display: block; }
-    h2 { margin: 0 0 8px; font-size: 17px; font-weight: 600; line-height: 24px; }
-    p { margin: 0; font-size: 14px; line-height: 20px; }
-    p + p { margin-block-start: 8px; color: var(--muted-ink); font-size: 13px; }
-  `,
-  template: `
-    <ui-card [padding]="24">
-      @if (tabKey(); as tabKey) {
-        <h2>{{ tabKey | transloco }}</h2>
-        <p>{{ 'shell.placeholder.tab' | transloco: { tab: (tabKey | transloco) } }}</p>
-      } @else {
-        <h2>{{ areaKey() | transloco }}</h2>
-        <p>{{ 'shell.placeholder.area' | transloco: { area: (areaKey() | transloco) } }}</p>
-      }
-      @if (!built()) {
-        <p>{{ 'shell.area.unbuilt' | transloco }}</p>
-      }
-      @if (data.specRouteUnserved()) {
-        <p>{{ 'shell.placeholder.specRoute' | transloco }}</p>
-      }
-    </ui-card>
-  `,
+  styleUrl: './area-placeholder.css',
+  templateUrl: './area-placeholder.html',
 })
 export class AreaPlaceholder {
   protected readonly state = inject(ShellState);

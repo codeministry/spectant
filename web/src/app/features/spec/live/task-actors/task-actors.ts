@@ -23,25 +23,8 @@ const TICK_MS = 10_000;
     '[attr.data-task-actors]': 'card().task',
     '[attr.aria-label]': 'label()',
   },
-  styles: `
-    :host { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; min-inline-size: 0; max-inline-size: 100%; }
-  `,
-  template: `
-    @if (actors(); as a) {
-      @if (a.agent; as agent) {
-        <ui-actor-chip
-          data-task-agent
-          [actor]="agent"
-          [active]="a.subagent === null && !a.stale"
-          [stale]="a.subagent === null && a.stale"
-          [staleAge]="a.subagent === null ? age() : undefined"
-        />
-      }
-      @if (a.subagent; as sub) {
-        <ui-actor-chip data-task-subagent [actor]="sub" [active]="!a.stale" [stale]="a.stale" [staleAge]="age()" />
-      }
-    }
-  `,
+  styleUrl: './task-actors.css',
+  templateUrl: './task-actors.html',
 })
 export class TaskActors {
   private readonly transloco = inject(TranslocoService);

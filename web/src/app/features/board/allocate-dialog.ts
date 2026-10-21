@@ -29,49 +29,8 @@ const NUMBER = 'NNN';
   selector: 'app-allocate-dialog',
   imports: [TranslocoPipe, UiButton, UiDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: contents; }
-    .lead { display: grid; gap: 16px; }
-    dl { display: grid; gap: 8px; margin: 0; }
-    dt { color: var(--muted-ink); font-size: 12px; font-weight: 600; line-height: 16px; }
-    dd { display: grid; gap: 4px; margin: 0 0 8px; min-inline-size: 0; }
-    code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
-    .files { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; color: var(--muted-ink); }
-    .note, .warn { margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-    .warn { color: var(--color-base-content); }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-  `,
-  template: `
-    <ui-dialog [open]="card() !== null" [heading]="'board.workspace.allocate.lead' | transloco" (openChange)="onOpenChange($event)">
-      @if (card(); as c) {
-        <div class="lead" data-allocate-dialog [attr.data-slug]="c.slug">
-          <dl>
-            <dt>{{ 'board.workspace.allocate.creates' | transloco }}</dt>
-            <dd>
-              <code data-allocate-folder>{{ paths().folder }}</code>
-              <ul class="files" role="list">
-                @for (file of paths().files; track file) {
-                  <li><code data-allocate-file>{{ file }}</code></li>
-                }
-              </ul>
-              <p class="note" data-allocate-number>{{ 'board.workspace.allocate.number' | transloco }}</p>
-            </dd>
-            <dt>{{ 'board.workspace.allocate.removes' | transloco }}</dt>
-            <dd><code data-allocate-story>{{ paths().story }}</code></dd>
-          </dl>
-          @if (unreadable()) {
-            <p class="warn" role="alert" data-allocate-unreadable>{{ 'board.workspace.allocate.unreadable' | transloco }}</p>
-          }
-          <div class="actions">
-            <button type="button" ui-button variant="ghost" data-allocate-cancel (click)="cancel()">{{ 'board.workspace.allocate.cancel' | transloco }}</button>
-            <button type="button" ui-button variant="primary" data-allocate-confirm [disabled]="hash() === null || saving()" (click)="confirm()">
-              {{ saving() ? ('board.workspace.allocate.saving' | transloco: { slug: c.slug }) : ('board.workspace.allocate.confirm' | transloco) }}
-            </button>
-          </div>
-        </div>
-      }
-    </ui-dialog>
-  `,
+  styleUrl: './allocate-dialog.css',
+  templateUrl: './allocate-dialog.html',
 })
 export class AllocateDialog {
   /** The workspace slug the story lives in. */

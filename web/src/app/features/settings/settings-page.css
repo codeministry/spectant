@@ -1,0 +1,248 @@
+
+    :host { display: block; }
+    ui-page-head { margin-block-end: 4px; }
+    h1 { margin: 0; }
+
+    .page-meta {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 20px;
+    }
+    app-help-nav { margin-block-end: var(--space-4); }
+
+    .main {
+      display: grid;
+      gap: var(--space-5);
+      max-inline-size: 1040px;
+      margin-inline: auto;
+      container-type: inline-size;
+    }
+    .main > * { scroll-margin-block-start: 128px; }
+
+    .c-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 12px var(--space-3);
+      border-block-end: 1px solid var(--line);
+    }
+
+    .c-head h2 {
+      margin: 0;
+      font-family: var(--font-brand);
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 24px;
+    }
+    .card-pad { padding: var(--space-3); }
+
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      line-height: 16px;
+      text-transform: uppercase;
+    }
+
+    /* Ahead of `.set-row .switch`: sets no justify-self, the switch has no other class; order is inert. */
+    .switch {
+      position: relative;
+      flex: none;
+      inline-size: 32px;
+      block-size: 18px;
+      padding: 0;
+      border: 0;
+      border-radius: 9px;
+      background: var(--track);
+      cursor: pointer;
+      transition: background-color var(--dur-pop) var(--ease);
+    }
+
+    .set-row {
+      display: grid;
+      gap: var(--space-2);
+      align-items: center;
+      padding: 12px 0;
+      border-block-start: 1px solid var(--line);
+    }
+    .set-row:first-of-type { border-block-start: 0; }
+    .set-row ui-segmented, .set-row .switch { justify-self: start; }
+
+    @container (inline-size >= 560px) {
+      .set-row { grid-template-columns: 200px minmax(0, 1fr); }
+      .set-row .row-hint { grid-column: 2; }
+    }
+
+    .demo-block {
+      margin-block-start: 12px;
+      padding-block-start: 12px;
+      border-block-start: 1px solid var(--line);
+    }
+
+    .demo-head {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    fieldset {
+      min-inline-size: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .switch::after {
+      position: absolute;
+      inset-block-start: 2px;
+      inset-inline-start: 2px;
+      inline-size: 14px;
+      block-size: 14px;
+      border-radius: 50%;
+      background: var(--color-base-100);
+      content: '';
+      transition: translate var(--dur-pop) var(--ease);
+    }
+    .switch[aria-checked='true'] { background: var(--badge); }
+    .switch[aria-checked='true']::after { translate: 14px 0; }
+    .switch:disabled { cursor: not-allowed; }
+
+    @media (pointer: coarse) { .switch::before {
+   position: absolute;
+   inset: -13px -6px;
+   content: '';
+ } }
+
+    .sum-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      align-items: center;
+    }
+
+    .check-line {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    .sdot {
+      inline-size: 8px;
+      block-size: 8px;
+      border-radius: 50%;
+    }
+    .s-ok .sdot { background: var(--color-accent); }
+    .s-red .sdot { background: var(--color-error); }
+
+    .row-link {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
+      align-items: center;
+      min-block-size: 48px;
+      padding: 0 var(--space-3);
+      border-block-start: 1px solid var(--line);
+      color: var(--color-base-content);
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .row-link:hover { background: var(--lane); }
+
+    .row-link .end {
+      margin-inline-start: auto;
+      color: var(--muted);
+    }
+
+    .text-link {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      color: var(--disp-text);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .text-link:hover { text-decoration: underline; }
+
+    .key-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      min-block-size: 36px;
+      padding: 8px 0;
+      border-block-end: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .key-row .k {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .sheet-row {
+      inline-size: 100%;
+      border-inline: 0;
+      border-block-start: 0;
+      border-block-end: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-size: 13px;
+      text-align: start;
+      cursor: pointer;
+    }
+    .sheet-row:hover { background: var(--lane); }
+
+    .single {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding-block-end: 12px;
+      border-block-end: 1px solid var(--line);
+    }
+
+    .single .meta {
+      font-size: 12px;
+      line-height: 16px;
+    }
+    .mono { font-family: var(--font-mono); }
+
+    .field {
+      justify-self: start;
+      box-sizing: border-box;
+      inline-size: 112px;
+      block-size: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--lane);
+      color: var(--color-base-content);
+      font: inherit;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .field[aria-invalid='true'] { border-color: var(--color-error); }
+
+    @media (pointer: coarse) { .field { block-size: 44px; } }
+
+    .field-err {
+      margin: 0;
+      color: var(--hover-text);
+      font-size: 12px;
+      line-height: 16px;
+    }
+  

@@ -25,19 +25,8 @@ const RAIL_AREAS: ReadonlySet<AreaId> = new Set(['status', 'data', 'notes']);
   selector: 'app-spec-page',
   imports: [RouterOutlet, NotFound, SpecHead, SpecRail, TabBarSlot],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: block; }
-  `,
-  template: `
-    @if (data.specMissing()) {
-      <app-not-found />
-    } @else {
-      <app-spec-head />
-      <app-tab-bar-slot />
-      <router-outlet />
-    }
-    <ng-template #rail><app-spec-rail /></ng-template>
-  `,
+  styleUrl: './spec-page.css',
+  templateUrl: './spec-page.html',
 })
 export class SpecPage {
   protected readonly data = inject(ShellData);

@@ -1,0 +1,15 @@
+
+    <a class="chip" [routerLink]="link()" [attr.data-variant]="variant()" [attr.aria-label]="label()">
+      @if (variant() === 'main') {
+        <span class="dot" aria-hidden="true"></span>
+      } @else if (variant() === 'archived') {
+        <ui-icon name="archive" [size]="14" />
+      }
+      <span class="id">{{ holder().id }}</span>
+      @if (variant() === 'archived') {
+        <span>{{ 'planning.features.archived' | transloco }}</span>
+      } @else if (stage(); as word) {
+        <span>{{ word }}</span>
+      }
+    </a>
+  

@@ -49,66 +49,7 @@ export const mostOpenFeatures = (milestone: PlanningMilestone | null): PlanningM
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-planning-overview': '' },
   styleUrl: './planning-overview.css',
-  template: `
-    @if (next(); as next) {
-      <section class="block" data-overview="next-milestone">
-        <h2 class="eyebrow type-eyebrow">
-          <span>{{ 'planning.milestones.rail.next' | transloco }}</span>
-          @let days = nextDays();
-          @if (days !== null) {
-            <span>{{ 'planning.milestones.rail.days' | transloco: { days } }}</span>
-          }
-        </h2>
-        <ui-card [padding]="16">
-          <div class="ring-row">
-            <ui-ring aria-hidden="true" [value]="next.total > 0 ? (100 * next.closed) / next.total : null" [size]="96" [stroke]="8" />
-            <div>
-              <div class="big">{{ next.closed }}<small>/{{ next.total }}</small></div>
-              <div class="meta">{{ 'planning.milestones.rail.closed' | transloco: { name: next.name } }}</div>
-            </div>
-          </div>
-          @if (mostOpen().length > 0) {
-            <p class="eyebrow type-eyebrow sub">{{ 'planning.milestones.rail.mostOpen' | transloco }}</p>
-            @for (feature of mostOpen(); track feature.id) {
-              <a class="mini-row" data-overview-feature [routerLink]="treeLink()" [queryParams]="{ sel: 'feature:' + feature.id }">
-                <span class="fid">{{ feature.id }}</span>
-                <span class="t">{{ feature.name }}</span>
-                <span class="bar" aria-hidden="true"
-                  ><i [style.inline-size.%]="feature.total > 0 ? (100 * feature.closed) / feature.total : 0"></i
-                ></span>
-                <span class="num">{{ feature.closed }}/{{ feature.total }}</span>
-              </a>
-            }
-          }
-        </ui-card>
-      </section>
-    }
-    @if (milestones().length > 0) {
-      <section class="block" data-overview="milestones">
-        <h2 class="eyebrow type-eyebrow">{{ 'planning.page.levels.milestones' | transloco }}</h2>
-        <ul class="ms-list">
-          @for (milestone of milestones(); track milestone.slug) {
-            <li>
-              <a class="ms-row" [routerLink]="treeLink()" [queryParams]="{ sel: 'milestone:' + milestone.slug }" [attr.data-overview-milestone]="milestone.slug">
-                <ui-icon name="flag" [size]="14" />
-                <span class="t">{{ milestone.name }}</span>
-                <span class="num">{{ milestone.closed }}/{{ milestone.total }}</span>
-              </a>
-              <ui-meter
-                [value]="milestone.closed"
-                [max]="milestone.total"
-                size="mini"
-                [label]="'planning.milestones.meterLabel' | transloco: { name: milestone.name }"
-                [valueText]="'planning.features.valueText' | transloco: { closed: milestone.closed, total: milestone.total }"
-              />
-            </li>
-          }
-        </ul>
-      </section>
-    } @else {
-      <p class="meta" data-overview-empty>{{ 'planning.page.overviewEmpty' | transloco }}</p>
-    }
-  `,
+  templateUrl: './planning-overview.html',
 })
 export class PlanningOverview {
   readonly ws = input.required<string>();

@@ -25,60 +25,8 @@ type TaskRow = NonNullable<TasksBody>['tasks'][number];
   imports: [BoardCard, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-your-steps': '' },
-  styles: `
-    :host { display: grid; gap: 8px; align-self: start; min-inline-size: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--color-base-100); }
-    .op { display: grid; gap: 8px; min-inline-size: 0; }
-    .op-head { display: flex; gap: 8px; align-items: center; min-inline-size: 0; }
-    .ldot { flex: none; inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--muted-ink); }
-    .op-name { margin: 0; font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; }
-    .op-count { margin-inline-start: auto; color: var(--color-base-content); font-family: var(--font-mono); font-size: 12px; line-height: 16px; white-space: nowrap; }
-    .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
-    .your-step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; min-block-size: 40px; }
-    .checkbox { justify-self: center; }
-    .note { grid-column: 2; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-    .note[data-tone='fail'] { color: var(--fail-ink); }
-    .empty { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
-    @media (pointer: coarse) { .your-step { min-block-size: 44px; } }
-  `,
-  template: `
-    <section class="op" data-steps-lane aria-labelledby="your-steps-heading">
-      <div class="op-head">
-        <span class="ldot" aria-hidden="true"></span>
-        <h3 class="op-name" id="your-steps-heading">operator</h3>
-        <span class="op-count" data-steps-count>{{ 'board.rail.stepsDone' | transloco: { done: done(), total: cards().length } }}</span>
-      </div>
-    @if (cards().length > 0) {
-      <ul class="rows">
-        @for (c of cards(); track c.task) {
-          @let state = checkOf(c.task);
-          @let row = rowOf(c.task);
-          <li class="your-step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
-            <input
-              type="checkbox"
-              class="checkbox checkbox-sm checkbox-success"
-              [checked]="checked(c)"
-              [disabled]="row === null || blocked(row)"
-              [attr.aria-label]="'board.rail.stepCheck' | transloco: { task: c.task }"
-              (change)="onChange(c.task, $event)"
-            />
-            <app-board-card [card]="c" density="step" />
-            @if (state.kind === 'saving') {
-              <p class="note" data-step-note="saving"><span class="loading loading-spinner loading-xs" aria-hidden="true"></span> {{ 'board.rail.stepSaving' | transloco }}</p>
-            } @else if (state.kind === 'locked') {
-              <p class="note" data-step-note="locked">{{ 'board.rail.stepLocked' | transloco: { session: state.session } }}</p>
-            } @else if (state.kind === 'conflict') {
-              <p class="note" data-tone="fail" role="alert" data-step-note="conflict">{{ 'board.rail.stepConflict' | transloco }}</p>
-            } @else if (state.kind === 'failed') {
-              <p class="note" data-tone="fail" role="alert" data-step-note="failed">{{ 'board.rail.stepFailed' | transloco }}</p>
-            }
-          </li>
-        }
-      </ul>
-    } @else {
-      <p class="empty">{{ 'board.rail.stepsEmpty' | transloco }}</p>
-    }
-    </section>
-  `,
+  styleUrl: './your-steps.css',
+  templateUrl: './your-steps.html',
 })
 export class YourSteps {
   private readonly api = inject(ApiClient);

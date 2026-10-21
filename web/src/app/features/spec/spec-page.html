@@ -1,0 +1,10 @@
+
+    @if (data.specMissing()) {
+      <app-not-found />
+    } @else {
+      <app-spec-head />
+      <app-tab-bar-slot />
+      <router-outlet />
+    }
+    <ng-template #rail><app-spec-rail /></ng-template>
+  

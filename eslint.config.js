@@ -108,11 +108,11 @@ export default defineConfig(
   },
 
   {
-    // Spec 060 (ISC-422): every component in the base layers keeps its template and styles in their own files
-    // (`templateUrl`, `styleUrl`), so templates and CSS get their own lint, size and duplicate checks. A limit of 0
-    // lines refuses any inline `template` or `styles`. Spec files may declare test hosts inline; features/ joins
-    // with the third spec of the feature. Guarded by web/tests/inline-declarations.test.ts.
-    files: ['web/src/app/{core,shared,layout}/**/*.ts'],
+    // Specs 060 and 061 (ISC-422, ISC-429): every component in the app keeps its template and styles in their own
+    // files (`templateUrl`, `styleUrl`), so templates and CSS get their own lint, size and duplicate checks. A limit
+    // of 0 lines refuses any inline `template` or `styles`. Spec files may declare test hosts inline. Guarded by
+    // web/tests/inline-declarations.test.ts.
+    files: ['web/src/app/**/*.ts'],
     ignores: ['**/*.spec.ts'],
     rules: { '@angular-eslint/component-max-inline-declarations': ['error', { template: 0, styles: 0 }] },
   },

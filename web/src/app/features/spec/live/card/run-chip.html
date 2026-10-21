@@ -1,0 +1,8 @@
+
+    <ui-chip [tone]="tone()" [variant]="small() ? 'small' : 'status'">
+      @if (!small()) {
+        <ui-glyph [state]="glyph()" family="card" [size]="14" />
+      }
+      <span>{{ 'states.run.' + run() | transloco }}</span>
+    </ui-chip>
+  

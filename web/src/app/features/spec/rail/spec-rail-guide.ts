@@ -23,58 +23,8 @@ import { UiWaitsBlock } from '../../../shared/ui/guidance/waits-block';
   selector: 'app-spec-rail-guide',
   imports: [GuidanceReasonPipe, TranslocoPipe, UiChip, UiCommandChip, UiWaitsBlock],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: contents; }
-    .sr-card {
-      display: grid;
-      gap: 12px;
-      align-content: start;
-      min-inline-size: 0;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-box);
-      background: var(--color-base-100);
-      color: var(--color-base-content);
-    }
-    .sr-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
-    .sr-eyebrow { margin: 0; color: var(--muted-ink); font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: 0.08em; text-transform: uppercase; }
-    .sr-sentence { margin: 0; font-size: 15px; line-height: 24px; overflow-wrap: break-word; }
-  `,
-  template: `
-    @if (guide(); as g) {
-      <section class="sr-card" data-rail-block="next" aria-labelledby="spec-rail-next">
-        <div class="sr-head">
-          <h2 id="spec-rail-next" class="sr-eyebrow">{{ 'guidance.next.step' | transloco }}</h2>
-          @if (g.waiting) {
-            <ui-chip variant="small" tone="secondary" icon="user-round" data-rail-marker>{{ 'guidance.marker' | transloco }}</ui-chip>
-          }
-        </div>
-        <p class="sr-sentence" data-rail-reason>{{ g.entry?.reason | guidanceReason: g.phrase }}</p>
-        @if (g.command; as command) {
-          <ui-command-chip
-            data-rail-next
-            [command]="command"
-            [context]="'orientation.chipContext.railGuide' | transloco: { spec: specId() }"
-            [copyLabel]="'common.copyCommand' | transloco"
-            [copiedLabel]="'common.copied' | transloco: { command }"
-            [manualHint]="'common.copyFallback' | transloco"
-          />
-        }
-      </section>
-      @if (g.others.length > 0) {
-        <ui-waits-block
-          data-rail-block="waits"
-          scope="spec"
-          headingId="spec-rail-waits"
-          [entries]="g.others"
-          [workspace]="ws()"
-          [limit]="5"
-          [chips]="true"
-          [moreLink]="dashboardLink()"
-        />
-      }
-    }
-  `,
+  styleUrl: './spec-rail-guide.css',
+  templateUrl: './spec-rail-guide.html',
 })
 export class SpecRailGuide {
   private readonly data = inject(ShellData);

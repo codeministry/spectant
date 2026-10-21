@@ -1,0 +1,39 @@
+
+    <section class="op" data-steps-lane aria-labelledby="your-steps-heading">
+      <div class="op-head">
+        <span class="ldot" aria-hidden="true"></span>
+        <h3 class="op-name" id="your-steps-heading">operator</h3>
+        <span class="op-count" data-steps-count>{{ 'board.rail.stepsDone' | transloco: { done: done(), total: cards().length } }}</span>
+      </div>
+    @if (cards().length > 0) {
+      <ul class="rows">
+        @for (c of cards(); track c.task) {
+          @let state = checkOf(c.task);
+          @let row = rowOf(c.task);
+          <li class="your-step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-sm checkbox-success"
+              [checked]="checked(c)"
+              [disabled]="row === null || blocked(row)"
+              [attr.aria-label]="'board.rail.stepCheck' | transloco: { task: c.task }"
+              (change)="onChange(c.task, $event)"
+            />
+            <app-board-card [card]="c" density="step" />
+            @if (state.kind === 'saving') {
+              <p class="note" data-step-note="saving"><span class="loading loading-spinner loading-xs" aria-hidden="true"></span> {{ 'board.rail.stepSaving' | transloco }}</p>
+            } @else if (state.kind === 'locked') {
+              <p class="note" data-step-note="locked">{{ 'board.rail.stepLocked' | transloco: { session: state.session } }}</p>
+            } @else if (state.kind === 'conflict') {
+              <p class="note" data-tone="fail" role="alert" data-step-note="conflict">{{ 'board.rail.stepConflict' | transloco }}</p>
+            } @else if (state.kind === 'failed') {
+              <p class="note" data-tone="fail" role="alert" data-step-note="failed">{{ 'board.rail.stepFailed' | transloco }}</p>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty">{{ 'board.rail.stepsEmpty' | transloco }}</p>
+    }
+    </section>
+  
