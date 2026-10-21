@@ -30,33 +30,6 @@
   margin-block-end: 8px;
 }
 
-.title-row ui-page-head {
-  min-inline-size: 0;
-}
-
-h1 {
-  margin: 0;
-}
-
-.source {
-  display: inline-flex;
-  align-items: center;
-  block-size: 22px;
-  margin-block-end: 5px; /* centred on the h1 line (32 px) while the row aligns to its end */
-  padding-inline: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-field);
-  color: var(--muted-ink);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.source.mono {
-  color: var(--color-base-content);
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
 .unavailable,
 .meta,
 .no-match {

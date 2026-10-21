@@ -1,0 +1,139 @@
+/*
+ * A band head's inside (spec 037; moved from board-bands.css and board-page.drag.css with the markup, spec 061): the
+ * label sticking to the scroller's start with the grip, the heading and another milestone's lock hint, then a refused
+ * move's notice. The host `<div class="band-head">` keeps the page's rules: its box, the band drag's preview and
+ * placeholder, and the drop line's bar.
+ */
+@import './_board-moved-tint.css';
+
+.bh {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  max-inline-size: 480px;
+  margin: 0;
+  padding-inline-end: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.band-sticky {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  max-inline-size: 480px;
+}
+
+.band-sticky > .bh {
+  position: static;
+  max-inline-size: none;
+}
+
+/*
+ * A refused band move (ISC-198): the notice right under the band head, held at the scroller's start, at most 480 px.
+ * The host's class keeps the rule above the page's `.band-head` box rule (Angular leaves the `:has()` argument unscoped).
+ */
+:host(.band-head):has(> .band-notice) {
+  flex-wrap: wrap;
+  block-size: auto;
+  min-block-size: 44px;
+}
+
+.band-notice {
+  position: sticky;
+  inset-inline-start: 0;
+  flex-basis: 100%;
+  max-inline-size: 480px;
+  margin-block-end: 8px;
+}
+
+.band-grip,
+.grip-gap {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 44px;
+}
+
+.band-grip {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-ink);
+  cursor: grab;
+  touch-action: none;
+}
+
+.band-grip::before {
+  position: absolute;
+  inset: 0 -10px;
+  content: '';
+}
+
+.band-grip:focus-visible,
+:host(:hover) .band-grip {
+  color: var(--color-base-content);
+}
+
+.band-grip[aria-disabled='true'] {
+  cursor: default;
+}
+
+/* The drop line's dot at the label's start (T35); the page draws the line itself over the host's width. */
+:host([data-drop-line]) .band-sticky::before {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: -4px;
+  inset-inline-start: 0;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--radius-selector);
+  background: var(--color-primary);
+  content: '';
+  pointer-events: none;
+}
+
+/* Other milestones' bands dim like locked columns, and their head names why. */
+:host([data-band-lock]) .bh,
+:host([data-band-lock]) .band-grip {
+  opacity: 0.55;
+}
+
+.band-lock {
+  flex: none;
+  padding: 0 8px;
+  border-radius: var(--radius-selector);
+  background: var(--color-base-200);
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* Under reduced motion the confirmation after a band move (ISC-200.1) is a static 4 px dot at its start, as in the tree. */
+@media (prefers-reduced-motion: reduce) {
+  :host([data-moved]) .band-sticky::after {
+    inset: calc(50% - 2px) auto auto 2px;
+    inline-size: 4px;
+    block-size: 4px;
+    border-radius: var(--radius-selector);
+    background: var(--color-primary);
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :host([data-drop-line]) .band-sticky::before {
+    background: Highlight;
+  }
+}

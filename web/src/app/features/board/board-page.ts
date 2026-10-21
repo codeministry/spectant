@@ -1,4 +1,4 @@
-import { CdkDrag, type CdkDragDrop, CdkDragHandle, type CdkDragMove, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkDrag, type CdkDragDrop, type CdkDragMove, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
@@ -18,23 +18,24 @@ import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiGlyph } from '../../shared/ui/glyph/glyph';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
-import { UiPageHead } from '../../shared/ui/page-head/page-head';
-import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
 import { UiSegmented } from '../../shared/ui/segmented/segmented';
 import { CARD_EDGE } from '../../shared/ui/stage-edge';
-import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { AllocateDialog } from './allocate-dialog';
 import { BandDividerRow } from './band-divider-row';
-import { BandHeadLine } from './band-head-line';
-import { BoardCard } from './board-card';
+import { BandHeader } from './band-header';
+import { BarRow } from './bar-row';
+import { BoardCards } from './board-cards';
 import { BoardLoading } from './board-loading';
 import { BoardOverflow } from './board-overflow';
 import { ColumnHead } from './column-head';
 import { BoardDrag, type BoardDropEvent, provideBoardDrag } from './board-drag';
 import { BoardFilters } from './board-filters';
+import { BoardTitle } from './board-title';
+import { StageDrop } from './stage-drop';
 import { BoardStore } from './board.store';
 import { bandTargetAt, dividerShown, measureColumns, type MovedCard, reducedMotion, STAGE_GLYPHS, stepColumnOf } from './board-view';
 import { type MoveChoice, MoveToMenu } from './move-to-menu';
+import { NeedsList } from './needs-list';
 
 /**
  * `/w/:ws/board` (spec 008, T121, ISC-129; design 008 § board layout, Tablet 820 and Desktop 1440): the workspace
@@ -76,10 +77,10 @@ import { type MoveChoice, MoveToMenu } from './move-to-menu';
 @Component({
   selector: 'app-board-page',
   // The CDK drag and drop, the board's own parts, then the frame and the shared UI it renders.
-  imports: [CdkDrag, CdkDragHandle, CdkDropList, CdkDropListGroup, CdkScrollable, NgTemplateOutlet, RouterLink, TranslocoPipe,
-    AllocateDialog, BandDividerRow, BandHeadLine, BoardCard, BoardFilters, BoardLoading, BoardOverflow, ColumnHead, MoveToMenu,
-    NotFound, RefusalNotice, ReorderMenu, UiCard, UiCommandChip, UiEmptyState, UiGlyph, UiIcon, UiIconButton, UiPageHead,
-    UiSegmented, UiSheet, UiWsBadge],
+  imports: [CdkDrag, CdkDropList, CdkDropListGroup, CdkScrollable, NgTemplateOutlet, RouterLink, TranslocoPipe,
+    AllocateDialog, BandDividerRow, BandHeader, BarRow, BoardCards, BoardFilters, BoardLoading, BoardOverflow, BoardTitle, ColumnHead,
+    MoveToMenu, NeedsList, NotFound, ReorderMenu, StageDrop, UiCard, UiCommandChip, UiEmptyState, UiGlyph, UiIcon, UiIconButton,
+    UiSegmented, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   hostDirectives: [CdkDropListGroup],
   providers: [provideBoardDrag(), BoardStore],
