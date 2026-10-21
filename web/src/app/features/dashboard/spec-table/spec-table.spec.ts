@@ -1363,6 +1363,13 @@ describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
     expect([...without.host.querySelectorAll('.t-head [data-filter="phase"] button')].map(text).some((label) => label.startsWith('ideas'))).toBe(false);
   });
 
+  it('wraps the phase and type chips instead of scrolling them, so the chip "ideas" never hides at 600 px', async () => {
+    const { host } = await renderIdeas();
+    const groups = [...host.querySelectorAll('.t-head ui-filter-chips')];
+    expect(groups.length).toBeGreaterThan(0);
+    for (const group of groups) expect(group.hasAttribute('data-wrap'), group.getAttribute('data-filter') ?? '').toBe(true);
+  });
+
   it('heads the group in German: "Ideen" and "3 Ideen"', async () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
     const { group } = await renderIdeas();

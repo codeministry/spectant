@@ -16,8 +16,10 @@
       [tier]="shell.tier()"
       (choose)="setSort($event)"
     />
+    <!-- Spec 064 (T41): the chips wrap, so the chip "ideas" never hides behind a sideways scroll at 600 px. -->
     <ui-filter-chips
       data-filter="phase"
+      wrap
       [options]="phaseChips()"
       [value]="query().phase ?? 'all'"
       [label]="'specs.filter.label' | transloco"
@@ -26,6 +28,7 @@
     @if (typeChips().length > 0) {
       <ui-filter-chips
         data-filter="type"
+        wrap
         [options]="typeChips()"
         [value]="query().type ?? 'all'"
         [label]="'specs.filter.typeLabel' | transloco"

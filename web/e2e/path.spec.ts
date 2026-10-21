@@ -368,7 +368,8 @@ test.describe('P2 · waiting spec with its command @1440', () => {
 
     await expect(button, 'the visible confirmation').toHaveAttribute('data-copied', '');
     expect(await page.evaluate(() => navigator.clipboard.readText()), 'the clipboard holds the command byte for byte').toBe(command);
-    const link = entry.locator('a.id');
+    // Spec 064 (T10): the tile's link is the empty cover link over the tile; its id beside it is aria-hidden.
+    const link = entry.locator('a.cover');
     await expect(link, 'the top entry\'s reason is the tile link\'s description').toHaveAccessibleDescription(p2Text(sentence));
     await expect(entry.locator('[data-reason]'), 'no visible reason line on the tile').toHaveCount(0);
     const described = await link.evaluate((a) => {
