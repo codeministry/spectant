@@ -1,10 +1,10 @@
 <section class="matrix" aria-labelledby="matrix-heading">
   <h2 id="matrix-heading" class="visually-hidden" tabindex="-1">{{ 'shell.tabs.matrix' | transloco }}</h2>
 
-  @if (failed()) {
+  @if (live.failed()) {
     <p class="note" role="alert" data-matrix-failed>{{ 'matrix.failed' | transloco }}</p>
   } @else if (matrix().rows.length === 0) {
-    @if (!loading()) {
+    @if (!live.loading()) {
       <p class="note" data-matrix-empty>{{ 'matrix.empty' | transloco }}</p>
     }
   } @else {
@@ -12,9 +12,9 @@
     <ui-scrubber
       class="mx-scrubber"
       data-matrix-scrubber
-      [frames]="stops()"
-      [markers]="markers()"
-      [value]="current()"
+      [frames]="live.stops()"
+      [markers]="live.markers()"
+      [value]="live.index()"
       [playing]="playing()"
       [ariaLabel]="'board.frame.scrubber' | transloco"
       (valueChange)="setFrame($event)"
@@ -30,7 +30,7 @@
               <th scope="col" class="mx-lane-mark" [attr.aria-label]="'matrix.laneMark' | transloco"></th>
               <th scope="col" class="meta-col">{{ 'matrix.lane' | transloco }}</th>
               @for (column of matrix().columns; track $index) {
-                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.data-current]="column.frame === current() ? '' : null" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
+                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.data-current]="column.frame === live.index() ? '' : null" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
                   @switch (column.kind) {
                     @case ('result') {
                       <span aria-hidden="true">{{ column.label }}</span>
@@ -86,38 +86,20 @@
     </div>
   }
 
-  @if (frame(); as f) {
-    <ng-template #railBlocks>
-      <app-this-frame [frame]="f" [events]="events()" (opened)="openCard($event)" />
-      <app-needs-you [frame]="f" [cards]="needsYou()" (opened)="openCard($event)" />
-    </ng-template>
-    <ng-template #frameBar>
-      <app-frame-bar
-        [label]="f.label"
-        [live]="isLive()"
-        [thisFrame]="events().length"
-        [needsYou]="needsYou().length"
-        [index]="current()"
-        [last]="lastIndex()"
-        (step)="setFrame($event)"
-        (opened)="barOpen.set(true)"
-      />
-    </ng-template>
-    @if (!wide() && !state.zen()) {
-      <ng-container [ngTemplateOutlet]="frameBar" />
-    }
-    @if (!wide() || state.zen()) {
-      <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
-        <ui-segmented fill [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
-        @if (barTab() === 'frame') {
-          <app-this-frame [frame]="f" [events]="events()" [collapsible]="false" (opened)="openCard($event)" />
-        } @else {
-          <app-needs-you [frame]="f" [cards]="needsYou()" [framed]="false" (opened)="openCard($event)" />
-        }
-      </ui-sheet>
-    }
-    @if (selected(); as c) {
-      <app-card-detail [card]="c" [history]="selectedHistory()" [open]="true" (openChange)="closeDetail($event)" />
+  @if (live.frame(); as f) {
+    <app-live-rail
+      [frame]="f"
+      [events]="live.events()"
+      [needsYou]="live.needsYou()"
+      [index]="live.index()"
+      [last]="live.lastIndex()"
+      [live]="live.isLive()"
+      [(barOpen)]="live.barOpen"
+      (opened)="live.openCard($event)"
+      (step)="setFrame($event)"
+    />
+    @if (live.selected(); as c) {
+      <app-card-detail [card]="c" [history]="live.selectedHistory()" [open]="true" (openChange)="live.closeDetail($event)" />
     }
   }
 </section>

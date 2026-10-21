@@ -1,0 +1,29 @@
+<ng-template #railBlocks>
+  <app-this-frame [frame]="frame()" [events]="events()" (opened)="opened.emit($event)" />
+  <app-needs-you [frame]="frame()" [cards]="needsYou()" [steps]="steps()" (opened)="opened.emit($event)" />
+</ng-template>
+<ng-template #frameBar>
+  <app-frame-bar
+    [label]="frame().label"
+    [live]="live()"
+    [thisFrame]="events().length"
+    [needsYou]="needsYou().length"
+    [index]="index()"
+    [last]="last()"
+    (step)="step.emit($event)"
+    (opened)="barOpen.set(true)"
+  />
+</ng-template>
+@if (!wide() && !state.zen()) {
+  <ng-container [ngTemplateOutlet]="frameBar" />
+}
+@if (!wide() || state.zen()) {
+  <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
+    <ui-segmented fill [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
+    @if (barTab() === 'frame') {
+      <app-this-frame [frame]="frame()" [events]="events()" [collapsible]="false" (opened)="opened.emit($event)" />
+    } @else {
+      <app-needs-you [frame]="frame()" [cards]="needsYou()" [framed]="false" (opened)="opened.emit($event)" />
+    }
+  </ui-sheet>
+}

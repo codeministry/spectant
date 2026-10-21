@@ -11,9 +11,7 @@
 //   the selection, the shell and the live sources. The fixture `pages/board/` holds a part component injecting a store
 //   and one injecting `ApiClient`; both are reported, the listed page injecting both is not.
 //
-// The sources are read with the TypeScript parser, so a comment or a string that names a pattern is no hit. The app
-// cases are `test.failing` until the stores exist and the part components take their data through inputs; the round
-// that makes one pass flips it to `test`.
+// The sources are read with the TypeScript parser, so a comment or a string that names a pattern is no hit.
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -209,8 +207,7 @@ describe("store: the signal stores of board, library, spec and planning keep off
     ]);
   });
 
-  // Fails until the later rounds of spec 061 create the stores; that round flips it to `test`.
-  test.failing("store app: every listed store exists and is clean", () => {
+  test("store app: every listed store exists and is clean", () => {
     expect(storeViolations(FEATURES, STORES)).toEqual([]);
   });
 });
@@ -233,8 +230,7 @@ describe("pages: only page components of board, library, spec and planning injec
     expect(PAGES.filter((file) => !existsSync(join(FEATURES, file)))).toEqual([]);
   });
 
-  // Fails until the part components take their data through inputs; the round that clears it flips it to `test`.
-  test.failing("pages app: no part component injects a holder or ApiClient", () => {
+  test("pages app: no part component injects a holder or ApiClient", () => {
     expect(pageViolations(FEATURES, AREAS, PAGES)).toEqual([]);
   });
 });

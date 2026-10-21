@@ -1,3 +1,5 @@
+@import './_vdot.css';
+
 :host {
   display: block;
   min-inline-size: 0;
@@ -139,18 +141,6 @@ article:hover {
   margin-inline-start: 2px;
   border-radius: 50%;
   background: var(--muted);
-}
-
-.vdot[data-verdict="pass"] {
-  background: var(--color-accent);
-}
-
-.vdot[data-verdict="concerns"] {
-  background: var(--conc);
-}
-
-.vdot[data-verdict="fail"] {
-  background: var(--color-error);
 }
 
 .vdot[data-verdict="skipped"] {

@@ -1,8 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, model } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { FrameCard, LiveCard } from '../../../../../../../core/src/files';
-import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
@@ -12,6 +11,7 @@ import { UiDialog } from '../../../../shared/ui/overlay/dialog';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { specWaitOf } from '../board/board-model';
 import { agentOfCard } from '../live-frame';
+import { LiveSource } from '../live-source';
 import { StepTimeline } from '../steps/step-timeline';
 import { AgentChip } from '../this-frame/agent-chip';
 import type { CardHistoryEntry } from './card-history';
@@ -39,7 +39,6 @@ const DETAIL_STEPS = 8;
 })
 export class CardDetail {
   private readonly shell = inject(ShellState);
-  private readonly api = inject(ApiClient);
   private readonly context = inject(CardContext, { optional: true });
 
   readonly card = input.required<FrameCard | LiveCard>();
@@ -61,14 +60,7 @@ export class CardDetail {
   });
 
   /** The tasks.md read (core's parse, served by the server): the task's paths and its claim's probe. */
-  private readonly tasks = resource({
-    params: () => {
-      const ws = this.shell.ws();
-      const id = this.shell.specId();
-      return this.open() && ws !== null && id !== null ? { ws, id } : undefined;
-    },
-    loader: ({ params }) => this.api.tasks(params.ws, params.id),
-  });
+  private readonly tasks = inject(LiveSource).tasks(() => this.open());
   private readonly body = computed(() => {
     if (!this.tasks.hasValue()) return null;
     const result = this.tasks.value();

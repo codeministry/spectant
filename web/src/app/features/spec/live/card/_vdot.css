@@ -1,0 +1,15 @@
+/*
+ * The verdict dot's tones, shared by the card and its detail. Each imports it first; the attribute rules outrank the
+ * base `.vdot` rule by specificity, so leading the stylesheet changes no cascade.
+ */
+.vdot[data-verdict="pass"] {
+  background: var(--color-accent);
+}
+
+.vdot[data-verdict="concerns"] {
+  background: var(--conc);
+}
+
+.vdot[data-verdict="fail"] {
+  background: var(--color-error);
+}

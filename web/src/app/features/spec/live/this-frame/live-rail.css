@@ -1,0 +1,4 @@
+/* The rail holds only templates, the bottom bar and its sheet; it draws no box of its own in the tab's grid. */
+:host {
+  display: contents;
+}

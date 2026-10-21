@@ -1,8 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { FrameCard, LiveCard } from '../../../../../../../core/src/files';
-import { ApiClient } from '../../../../core/api.service';
-import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
@@ -52,9 +50,6 @@ export type CardDensity = 'comfortable' | 'compact' | 'step';
   templateUrl: './card.html',
 })
 export class BoardCard {
-  private readonly api = inject(ApiClient);
-  private readonly shell = inject(ShellState);
-
   readonly card = input.required<FrameCard | LiveCard>();
   readonly density = input<CardDensity>('comfortable');
 
@@ -100,20 +95,11 @@ export class BoardCard {
     return 'stale' in c && c.stale === true;
   });
 
+  private readonly source = inject(LiveSource);
   /** The live frame the board and the matrix read too: one shared read per refresh tick (ISC-371). */
-  private readonly live = inject(LiveSource).attach(() => this.detailOpen());
+  private readonly live = this.source.attach(() => this.detailOpen());
   /** The history frames, read only while the detail is open; the live frame comes from `LiveSource`. */
-  private readonly historyFrames = resource({
-    params: () => {
-      const ws = this.shell.ws();
-      const id = this.shell.specId();
-      return this.detailOpen() && ws !== null && id !== null ? { ws, id } : undefined;
-    },
-    loader: async ({ params }): Promise<readonly HistoryFrame[]> => {
-      const history = await this.api.frames(params.ws, params.id);
-      return history.kind === 'ok' ? history.body : [];
-    },
-  });
+  private readonly historyFrames = this.source.history(() => this.detailOpen());
   /** Every frame on the scrubber, history then live, once the detail's history is read. */
   private readonly frames = computed<readonly HistoryFrame[] | undefined>(() => {
     const history = this.historyFrames.value();

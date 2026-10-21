@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { elapsedLabel } from '../live-frame';
+import { activeLang } from '../../spec-view';
+import { ticker } from '../ticker';
 
 /** How often the elapsed time re-reads the clock (as `ui-relative-time`). */
 const TICK_MS = 10_000;
@@ -27,15 +28,10 @@ export class AgentChip {
   readonly since = input<string | null>(null);
   readonly stale = input(false);
 
-  private readonly now = signal(Date.now());
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+  private readonly now = ticker(TICK_MS);
+  private readonly lang = activeLang(this.transloco);
   protected readonly elapsed = computed(() => {
     const since = this.since();
     return since === null ? null : elapsedLabel(since, this.now(), this.lang());
   });
-
-  constructor() {
-    const timer = setInterval(() => this.now.set(Date.now()), TICK_MS);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
-  }
 }

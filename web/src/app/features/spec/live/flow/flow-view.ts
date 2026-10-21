@@ -1,4 +1,4 @@
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, input } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, output } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -9,7 +9,8 @@ import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segment
 import { BoardCard } from '../board/board-card';
 import type { FrameCard } from '../../../../../../../core/src/files';
 import { type BoardSection, LANE_COLORS, type LaneView, OPERATOR_LANE } from '../board/board-model';
-import { YourSteps } from '../this-frame/your-steps';
+import type { CheckState } from '../../data/tasks/checkbox';
+import { type StepToggle, type TaskRow, YourSteps } from '../this-frame/your-steps';
 import { type CardPlace, FLOW_COLUMNS, flipMoves, flowBands, flowCounts, resolveColumn } from './flow-model';
 
 /**
@@ -40,6 +41,11 @@ export class FlowView {
   readonly tier = input<Tier>('wide');
   /** The operator steps at wide: drawn as the prototype's checklist across all columns (`.op.span`) in place of a band. */
   readonly steps = input<readonly FrameCard[] | null>(null);
+  /** The steps' tasks.md rows, write states and hash, from the board's read; a tick goes back to the board. */
+  readonly stepRows = input<ReadonlyMap<string, TaskRow>>(new Map());
+  readonly stepChecks = input<ReadonlyMap<string, CheckState>>(new Map());
+  readonly stepHash = input<string | null>(null);
+  readonly stepToggled = output<StepToggle>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly router = inject(Router);
