@@ -1,14 +1,27 @@
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { ApiClient } from '../../../core/api.service';
 import { RefreshService } from '../../../layout/shell/refresh.service';
+import { RailSlot } from '../../../layout/shell/rail-slot';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { SpecsPage } from './specs-page';
+
+@Component({ template: '' })
+class Blank {}
+
+/** The planning index the detail sidebar looks a selection up in: each harbor story as its `idea:<slug>` entry. */
+const RELATIONS = Object.fromEntries(
+  harbor.ideas.list.map((idea) => [
+    `idea:${idea.slug}`,
+    { ref: `idea:${idea.slug}`, type: 'idea', id: idea.slug, title: idea.title, closed: 0, total: 0, parents: [], children: [], blockers: [] },
+  ]),
+);
 
 /** The dashboard's own blocks, none of which belongs on the Specs page (spec 058, ISC-391). */
 const DASHBOARD_BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up-list', 'app-warnings-panel', 'app-context-rail'];
@@ -41,7 +54,10 @@ beforeEach(() => {
       }),
     ],
     providers: [
-      provideRouter([{ path: 'w/:ws/specs', component: SpecsPage, data: { page: 'specs' } }]),
+      provideRouter([
+        { path: 'w/:ws/specs', component: SpecsPage, data: { page: 'specs' } },
+        { path: 'w/:ws/ideas/:slug', component: Blank },
+      ]),
       {
         provide: ShellData,
         useValue: {
@@ -55,8 +71,11 @@ beforeEach(() => {
           dashboard: { value: () => ({ kind: 'ok', body: body() }) },
           isFavorite: () => false,
           toggleFavorite: () => Promise.resolve(false),
+          planningModel: () => ({ relations: RELATIONS }),
+          ideas: () => [],
         },
       },
+      { provide: ApiClient, useValue: { activityHash: () => null } },
       { provide: RefreshService, useValue: { changedKpis: signal(new Set()), changedRows: signal(new Set()) } },
     ],
   });
@@ -157,5 +176,135 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
     root.ownerDocument.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true, cancelable: true }));
     await harness.fixture.whenStable();
     expect(selection.selected()).toBe(`spec:${String(next)}`);
+  });
+});
+
+/** A third story beside harbor's two (spec 064): placed in one milestone, no feature, no state. */
+const THIRD_IDEA = { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' };
+const THREE_IDEAS = [...harbor.ideas.list, THIRD_IDEA];
+const harborThreeIdeas = { ...harbor, ideas: { count: THREE_IDEAS.length, list: THREE_IDEAS } };
+
+describe('SpecsPage · an idea row selects like a spec row (spec 064, T40, ISC-484)', () => {
+  const SLUG = harbor.ideas.list[1].slug;
+  const ideaLink = (root: HTMLElement, slug = SLUG) => root.querySelector<HTMLAnchorElement>(`app-idea-row[data-idea="${slug}"] a.link`);
+  const sel = (): string | null => {
+    const router = TestBed.inject(Router);
+    return router.parseUrl(router.url).queryParamMap.get('sel');
+  };
+
+  it('a first click selects the idea (?sel=idea:<slug>, other params kept) with the row look; a second opens its page', async () => {
+    body.set(harborThreeIdeas);
+    const { root, harness } = await render('/w/harbor/specs?sort=stage');
+    const router = TestBed.inject(Router);
+    expect(ideaLink(root)?.getAttribute('href')).toBe(`/w/harbor/ideas/${SLUG}`);
+    expect(ideaLink(root)?.getAttribute('data-ref')).toBe(`idea:${SLUG}`);
+    expect(ideaLink(root)?.hasAttribute('data-selected')).toBe(false);
+
+    ideaLink(root)?.click();
+    await harness.fixture.whenStable();
+    expect(router.url.startsWith('/w/harbor/specs?')).toBe(true);
+    expect(sel()).toBe(`idea:${SLUG}`);
+    expect(router.parseUrl(router.url).queryParamMap.get('sort')).toBe('stage');
+    expect(ideaLink(root)?.getAttribute('data-selected')).toBe('row');
+    expect(ideaLink(root)?.getAttribute('aria-expanded')).toBe('true');
+    expect(ideaLink(root, THIRD_IDEA.slug)?.hasAttribute('data-selected')).toBe(false);
+
+    ideaLink(root)?.click();
+    await harness.fixture.whenStable();
+    expect(router.url).toBe(`/w/harbor/ideas/${SLUG}`);
+  });
+
+  it('Enter on the row link selects it as a click does; a click on another idea moves the selection', async () => {
+    const { root, harness } = await render('/w/harbor/specs');
+    const link = ideaLink(root);
+    link?.focus();
+    // A link's activation by Enter is a click with button 0 and no modifier.
+    link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    await harness.fixture.whenStable();
+    expect(sel()).toBe(`idea:${SLUG}`);
+    const other = harbor.ideas.list[0].slug;
+    ideaLink(root, other)?.click();
+    await harness.fixture.whenStable();
+    expect(sel()).toBe(`idea:${other}`);
+    expect(ideaLink(root)?.hasAttribute('data-selected')).toBe(false);
+    expect(ideaLink(root, other)?.getAttribute('data-selected')).toBe('row');
+  });
+
+  it('Shift, Ctrl, Cmd and Alt clicks keep the link’s native behaviour: no selection, the default not prevented', async () => {
+    const { root, harness } = await render('/w/harbor/specs');
+    const prevented: boolean[] = [];
+    // Records the link's verdict, then stops the DOM's own navigation of the test document.
+    const record = (event: Event): void => {
+      prevented.push(event.defaultPrevented);
+      event.preventDefault();
+    };
+    root.ownerDocument.addEventListener('click', record);
+    for (const modifier of ['shiftKey', 'ctrlKey', 'metaKey', 'altKey'] as const) {
+      ideaLink(root)?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, [modifier]: true }));
+      await harness.fixture.whenStable();
+    }
+    root.ownerDocument.removeEventListener('click', record);
+    expect(prevented).toEqual([false, false, false, false]);
+    expect(sel()).toBeNull();
+    expect(TestBed.inject(Router).url).toBe('/w/harbor/specs');
+  });
+
+  it('with ?sel=idea:<slug> the Specs page docks the detail sidebar for that idea (ISC-171 for ideas on the Specs page)', async () => {
+    const { root } = await render(`/w/harbor/specs?sel=idea:${SLUG}`);
+    expect(ideaLink(root)?.getAttribute('data-selected')).toBe('row');
+    const rail = TestBed.createComponent(RailSlot);
+    rail.autoDetectChanges();
+    await rail.whenStable();
+    const sidebar = (rail.nativeElement as HTMLElement).querySelector('app-detail-sidebar');
+    expect(sidebar?.getAttribute('data-presentation')).toBe('docked');
+    expect(sidebar?.querySelector('[data-part="type"]')?.getAttribute('data-type')).toBe('idea');
+    expect(text(sidebar?.querySelector('h2[data-part="title"]'))).toBe(harbor.ideas.list[1].title);
+  });
+});
+
+describe('SpecsPage · anti: an idea is no active spec (spec 064, T43, ISC-482)', () => {
+  /** Two active specs (004 building, 005 scoping), both worked by an agent, the model's counts for those two, three stories. */
+  const TWO = ['004', '005'];
+  const twoSpecs = {
+    ...harbor,
+    specs: harbor.specs
+      .filter((spec) => TWO.includes(spec.id))
+      .map((spec) => ({ ...spec, taken: [{ id: 'ISC-1', session: `a:claude:sess-${spec.id}`, since: '2026-10-21T09:00:00Z', source: 'activity' }] })),
+    kpis: { ...harbor.kpis, specs: 2, building: 1, scoping: 1, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 1, spike: 1 } },
+    ideas: { count: THREE_IDEAS.length, list: THREE_IDEAS },
+  };
+  /** The last number in a chip's text, its count. */
+  const countOf = (el: Element): number => Number(/(\d+)\D*$/.exec(text(el) ?? '')?.[1] ?? Number.NaN);
+
+  it('counts 2 active specs in the eyebrow, the h1, the counters and the phase chips, with 3 idea rows listed', async () => {
+    body.set(twoSpecs);
+    const { root } = await render('/w/harbor/specs');
+    expect(root.querySelectorAll('app-idea-row')).toHaveLength(3);
+    expect(rowIds(root)).toEqual(TWO);
+    expect(text(root.querySelector('ui-page-head [data-page-eyebrow]'))).toBe(`harbor · Specs · 2 active · ${String(harbor.kpis.archived)} archived`);
+    expect(text(root.querySelector('ui-page-head h1'))).toBe('Specs · harbor');
+    expect(countOf(root.querySelector('[data-count="active"]') as Element)).toBe(2);
+    const chips = [...root.querySelectorAll('.t-head [data-filter="phase"] button')];
+    const all = chips.find((chip) => text(chip)?.startsWith('All'));
+    expect(all && countOf(all)).toBe(2);
+    const stages = chips.filter((chip) => chip !== all && !text(chip)?.startsWith('ideas'));
+    expect(stages.reduce((sum, chip) => sum + countOf(chip), 0)).toBe(2);
+    // The ideas chip counts the stories, its own filter; never an active spec's.
+    expect(countOf(chips.find((chip) => text(chip)?.startsWith('ideas')) as Element)).toBe(3);
+  });
+
+  it('carries no spec trait in an idea row: no stage track, claim progress, command chip or agent dot', async () => {
+    body.set(twoSpecs);
+    const { root } = await render('/w/harbor/specs');
+    // The spec rows carry each trait, so the selectors below name what an idea row leaves out.
+    const specRow = root.querySelector('app-spec-row');
+    for (const trait of ['ui-stage-track', '.rmeter', 'ui-agent-dot']) expect(specRow?.querySelector(trait), trait).not.toBeNull();
+    const ideaRows = [...root.querySelectorAll('app-idea-row')];
+    expect(ideaRows).toHaveLength(3);
+    for (const row of ideaRows) {
+      for (const trait of ['ui-stage-track', '.rmeter', 'ui-meter', '.frac', 'ui-command-chip', 'ui-agent-dot', 'ui-actor-chip']) {
+        expect(row.querySelector(trait), `${String(row.getAttribute('data-idea'))} ${trait}`).toBeNull();
+      }
+    }
   });
 });

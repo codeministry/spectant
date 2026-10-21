@@ -148,15 +148,25 @@ test.describe('run-state surfaces', () => {
         });
       }
 
-      test(`surfaces: the idea card shows open, running and aborted with their details, on the board and in the ideas panel (${project})`, async ({ page }) => {
+      test(`surfaces: the idea card shows open, running and aborted with their details, on the board and in the ideas group of the list (${project})`, async ({ page }) => {
         await open(page, `/w/${WS}/board`);
         for (const { slug, form } of IDEA_FORMS) await expectForm(await boardCard(page, `idea:${slug}`, 'Idea'), form);
         // The aborted run's state word is the warning chip in the head, set off from the line, as on a spec card.
         await expect((await boardCard(page, 'idea:cert-expiry', 'Idea')).locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
-        await open(page, `/w/${WS}/specs`);
-        await page.locator('app-ideas-panel [data-ideas-title]').click();
-        for (const { slug, form } of IDEA_FORMS) await expectForm(page.locator(`app-ideas-panel li[data-idea="${slug}"] ui-item-state`), form);
-        await expect(page.locator('app-ideas-panel li[data-idea="cert-expiry"] ui-item-state [data-item-line] ui-state-chip')).toHaveText(/aborted/i);
+        // beacon lists more specs than the fold shows, so the ideas group would sit behind "Show all"; the phase chip
+        // "ideas" lists it alone.
+        await open(page, `/w/${WS}/specs?phase=idea`);
+        // Spec 064 (ISC-482): the list's idea row carries the state line without its command and actor; the page holds them.
+        const ideaRow = (slug: string): Locator => page.locator(`li[data-ideas-group] app-idea-row[data-idea="${slug}"] ui-item-state`);
+        for (const { slug, form } of IDEA_FORMS) {
+          const item = ideaRow(slug);
+          await expect(item).toBeVisible();
+          await expect(item).toHaveAttribute('data-state', form.state);
+          if (form.line !== undefined) await expect(item.locator('[data-item-line]')).toHaveText(form.line);
+          await expect(item.locator('ui-command-chip')).toHaveCount(0);
+          await expect(item.locator('ui-actor-chip')).toHaveCount(0);
+        }
+        await expect(ideaRow('cert-expiry').locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
       });
 
       test(`surfaces: the claim row shows each of the five forms with its details (${project})`, async ({ page }) => {

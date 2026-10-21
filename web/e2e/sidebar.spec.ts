@@ -201,22 +201,17 @@ test.describe('sidebar: wide (1440)', () => {
     await escapeReturns(page, 'spec:004');
   });
 
-  test('specs page ideas: a chip docks the sidebar on the idea; its feature parent re-selects; reload; Escape', async ({ page }) => {
+  test('specs page ideas: an idea row docks the sidebar on the idea; its feature parent re-selects; reload; Escape', async ({ page }) => {
     const ref: RelationRef = 'idea:console-audit-log';
-    const chip = page.locator(`a.idea${refSel(ref)}`);
-    const openIdeas = async (): Promise<void> => {
-      if (!(await chip.isVisible())) await page.locator('[data-ideas-title]').click();
-      await expect(chip).toBeVisible();
-    };
+    // Spec 064 (ISC-485): the idea is a row of the list's ideas group; its first click selects, as a spec row's does.
+    const row = page.locator('li[data-ideas-group] app-idea-row[data-idea="console-audit-log"] a.link');
     await page.goto('/w/harbor/specs');
-    await openIdeas();
-    await chip.click();
+    await row.click();
     await expect(page).toHaveURL(/\/w\/harbor\/specs\?/u);
     await expectSidebar(page, ref, 'docked');
     await reloadSame(page, ref, 'docked');
-    await openIdeas();
     await escapeReturns(page, ref);
-    await chip.click();
+    await row.click();
     await follow(page, firstOf(parentsOf(ref)), 'docked');
   });
 

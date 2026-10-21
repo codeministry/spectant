@@ -3,8 +3,8 @@
  * by the stub API (`core/fixtures/harbor.planning.golden.json`, `harbor.golden.json`). `bun run e2e -- ideas`.
  *
  * - The Features page shows each story on its feature block (F2, F7), the Milestones page on its milestone (Harbor 1.0;
- *   the other story names a milestone the master does not hold), the Specs page (spec 058) in the "Ideas · n" disclosure,
- *   collapsed until opened, and the palette in its Ideas group.
+ *   the other story names a milestone the master does not hold), the Specs page (spec 064) as rows of the list's group
+ *   "Ideas · n ideas", and the palette in its Ideas group.
  * - The idea page `/w/harbor/ideas/console-audit-log` renders the chips, the heading and the body read-only: the page
  *   sends only GET or HEAD to the story route and holds no form, input, textarea, select or button. An unknown slug is
  *   the not-found page (ISC-71).
@@ -29,7 +29,7 @@ type Catalogue = {
   ideas: { source: string };
   palette: { groups: { ideas: string } };
   planning: { ideas: { label: string } };
-  specs: { ideas: { title: string } };
+  specs: { ideasGroup: { label: string; count: { other: string } }; ideaRow: { name: string } };
 };
 const en = read('../src/i18n/en.json') as Catalogue;
 
@@ -57,31 +57,22 @@ test.afterEach(async ({ request }) => {
 });
 
 test.describe('ideas on the dashboard', () => {
-  test('the disclosure "Ideas · 2" is collapsed, then lists both stories when opened', async ({ page }) => {
+  test('the list\'s group "Ideas · 2 ideas" lists both stories as rows of their own', async ({ page }) => {
     await page.goto('/w/harbor/specs');
-    const panel = page.locator('app-ideas-panel');
-    await expect(panel).toHaveAttribute('data-ideas', String(dashboard.ideas.count));
-    await expect(panel.locator('[data-ideas-title]')).toHaveText(template(en.specs.ideas.title, { count: dashboard.ideas.count }));
+    // Spec 064 (ISC-484): the ideas are a group of the spec list, not a fold of their own.
+    const group = page.locator('app-spec-table li[data-ideas-group]');
+    await expect(group).toHaveCount(1);
+    await expect(group.locator('[data-ideas-label]')).toHaveText(en.specs.ideasGroup.label);
+    await expect(group.locator('[data-ideas-count]')).toHaveText(template(en.specs.ideasGroup.count.other, { count: dashboard.ideas.count }));
 
-    const fold = panel.locator('ui-disclosure');
-    const summary = fold.locator('button.summary');
-    await expect(summary).toHaveAttribute('aria-expanded', 'false');
-    await expect(fold).not.toHaveAttribute('data-open', /.*/u);
-    await expect(fold.locator('.region')).toHaveAttribute('inert', '');
-    await expect(panel.locator('ui-idea-chip').first()).toBeHidden();
-
-    await summary.click();
-    await expect(summary).toHaveAttribute('aria-expanded', 'true');
-    await expect(fold).toHaveAttribute('data-open', '');
-    await expect(fold.locator('.region')).not.toHaveAttribute('inert', /.*/u);
-    const rows = panel.locator('li[data-idea]');
+    const rows = group.locator('app-idea-row[data-idea]');
     await expect(rows).toHaveCount(dashboard.ideas.count);
     for (const [index, idea] of dashboard.ideas.list.entries()) {
       const row = rows.nth(index);
       await expect(row).toHaveAttribute('data-idea', idea.slug);
-      await expect(row.locator('ui-idea-chip a')).toBeVisible();
-      await expect(row.locator('ui-idea-chip a')).toHaveAttribute('href', `/w/harbor/ideas/${idea.slug}`);
-      await expect(row.locator('ui-idea-chip a')).toHaveText(idea.title);
+      await expect(row.locator('a.link')).toBeVisible();
+      await expect(row.locator('a.link')).toHaveText(idea.title);
+      await expect(row.locator('a.link')).toHaveAttribute('aria-label', template(en.specs.ideaRow.name, { title: idea.title }));
       await expect(row.locator('[data-idea-where]')).toHaveText([idea.feature, idea.milestone].filter(Boolean).join(' · '));
     }
   });

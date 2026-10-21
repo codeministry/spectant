@@ -319,7 +319,7 @@ test.describe('no rail anti (ISC-398)', () => {
   async function noRailNoDouble(page: Page, dashboard: boolean): Promise<void> {
     await expect(page.locator(RAIL)).toHaveCount(0);
     const counts = await page.evaluate((selectors) => {
-      const all = [...selectors, 'app-spec-table', 'app-ideas-panel', '#waiting', '#warnings', '[data-footer-note]'];
+      const all = [...selectors, 'app-spec-table', 'li[data-ideas-group]', '#waiting', '#warnings', '[data-footer-note]'];
       return {
         perBlock: Object.fromEntries(all.map((s) => [s, document.querySelectorAll(s).length])),
         inAside: selectors.filter((s) => [...document.querySelectorAll(s)].some((el) => el.closest('aside') !== null)),

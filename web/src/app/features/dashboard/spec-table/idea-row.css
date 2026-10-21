@@ -51,6 +51,12 @@
   outline-offset: -2px;
 }
 
+/* The sidebar's selected story (selection.css look, contract rule 3) paints the whole row, as a spec row's does. */
+:host:has(> .rtitle > .link[data-selected='row']) {
+  background: var(--disp-t);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
 /* Feature and milestone, the ids in mono, muted like the spec row's description. */
 .where {
   flex: 0 1 auto;
