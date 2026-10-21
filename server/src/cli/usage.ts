@@ -30,8 +30,8 @@ Options:
   --strict-port    fail instead of falling forward when the port is busy
   --no-browser     do not open the browser
   --yes            confirm db rollback, gate code-reviewed or tokens
-  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working
-                   directory)
+  --root <dir>     the repository gate code-reviewed and tokens work on (default: the main checkout
+                   of the working directory, also from a worktree)
   --transcripts <dir>
                    the Claude Code project folder tokens reads (default: projects/<encoded root>
                    in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too

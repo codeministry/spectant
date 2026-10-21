@@ -3,7 +3,7 @@
 // `code_review: feature`; 008 is closed, 009 holds ISC-131 open. With ISC-131 closed (master and spec.md) the command
 // marks both folders (`scope: F6`, one `code-review → close` event each) and both then derive `close`; with it open it
 // refuses and writes nothing; without `--yes` it only prints. `bun test tests/gates.test.ts -t feature` runs them all.
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, setSystemTime, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -380,5 +380,71 @@ describe("ISC-211 cli mark worktree: spectant gate code-reviewed F<n> marks a sp
 
     expect(await stateOf002(planted.root)).toBe("fresh");
     await changeOnlyInWorktreeThenMain(planted);
+  });
+});
+
+// Spec 062, ISC-442: without `--root` the CLI's root is the main checkout, also when it is started inside a spec
+// worktree. The same `gate code-reviewed F2 --yes` runs once with the main checkout as its working directory and once
+// with the spec worktree, each on a fresh copy of the same fixture: the printed targets, the mark paths and the marks'
+// trees are equal. `bun test tests/gates.test.ts -t "cli from worktree"` runs the group.
+describe("ISC-442 cli from worktree: spectant gate code-reviewed F<n> without --root marks as from the main checkout", () => {
+  const F2_OPEN = /^- \[ \] (ISC-7[4-8]):/gm; // single-core: allow — test setup edits raw fixture bytes of known claim lines
+
+  function closeF2(file: string): void {
+    const text = readFileSync(file, "utf8");
+    writeFileSync(file, text.replace(F2_OPEN, "- [x] $1:")); // single-core: allow — test setup ticks known claim lines
+  }
+
+  /** Every mark below the fixture's base (the main checkout and its worktrees), relative to it, to its tree. */
+  function marksBelow(base: string): Record<string, string | undefined> {
+    const marks: Record<string, string | undefined> = {};
+    for (const [key] of snapshot(base)) {
+      if (!key.endsWith(".gates/code-reviewed.json")) continue;
+      const reading = readGateMark("code-reviewed", readFileSync(join(base, key), "utf8"));
+      expect(reading.diagnostics).toEqual([]);
+      marks[key] = reading.mark !== null && "tree" in reading.mark ? reading.mark.tree : undefined;
+    }
+    return marks;
+  }
+
+  async function markFrom(trackedSpecs: boolean, cwd: "main" | "worktree"): Promise<{ printed: string[]; marks: Record<string, string | undefined> }> {
+    const planted = await plantWorktreeRepo({ parent: root, trackedSpecs });
+    const files = [join(planted.root, "ISA.md"), join(planted.root, "specs", SPEC_FOLDER, "spec.md")];
+    if (trackedSpecs) files.push(join(planted.worktrees.spec, "ISA.md"), join(planted.worktrees.spec, "specs", SPEC_FOLDER, "spec.md"));
+    for (const file of files) closeF2(file);
+    out.length = 0;
+    const at = cwd === "main" ? planted.root : planted.worktrees.spec;
+    // One clock for both calls: the event line's `ts` is part of the tree the mark names.
+    setSystemTime(new Date("2026-10-21T00:00:00.000Z"));
+    try {
+      expect(await run(["gate", "code-reviewed", "F2", "--yes"], MANIFEST, { cwd: at })).toBe(0);
+    } finally {
+      setSystemTime();
+    }
+    expect(err).toEqual([]);
+    return { printed: [...out], marks: marksBelow(planted.base) };
+  }
+
+  for (const trackedSpecs of [true, false]) {
+    const label = trackedSpecs ? "tracked specs/" : "linked specs/";
+    test(`cli from worktree (${label}): the same targets, mark paths and trees as from the main checkout`, async () => {
+      const fromMain = await markFrom(trackedSpecs, "main");
+      const fromWorktree = await markFrom(trackedSpecs, "worktree");
+      expect(Object.keys(fromMain.marks).length).toBeGreaterThan(0);
+      expect(fromMain.printed.length).toBeGreaterThan(1);
+      expect(fromWorktree.printed).toEqual(fromMain.printed);
+      expect(fromWorktree.marks).toEqual(fromMain.marks);
+    });
+  }
+
+  test("cli from worktree: an explicit --root is kept as given, the worktree itself", async () => {
+    const planted = await plantWorktreeRepo({ parent: root, trackedSpecs: true });
+    for (const file of [join(planted.worktrees.spec, "ISA.md"), join(planted.worktrees.spec, "specs", SPEC_FOLDER, "spec.md")]) closeF2(file);
+    const before = Object.keys(marksBelow(planted.base));
+    expect(await run(["gate", "code-reviewed", "F2", "--root", ".", "--yes"], MANIFEST, { cwd: planted.worktrees.spec })).toBe(0);
+    expect(err).toEqual([]);
+    // Rooted at the worktree itself, the spec reads its own folder there: the one new mark lands in the worktree's specs/.
+    const added = Object.keys(marksBelow(planted.base)).filter((key) => !before.includes(key));
+    expect(added).toEqual([`harbor/.worktrees/${SPEC_FOLDER}/specs/${SPEC_FOLDER}/.gates/code-reviewed.json`]);
   });
 });

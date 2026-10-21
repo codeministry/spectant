@@ -91,7 +91,9 @@ describe('plugin bundle: plugin/spectant/bin/spec-check', () => {
       ['home path', /\/Users\/[A-Za-z]|\/home\/[A-Za-z]|[A-Z]:\\Users\\/],
       // A path that starts at `~/`, not a regex such as `/~~/g`.
       ['home-relative path', /(?:^|[\s"'`(=])~\/[\w.]/m],
-      ['Claude home folder', /\.claude\//],
+      // `.claude/worktrees/` is the repository's own builder folder, which core names (`BUILDER_WORKTREES`) and the CLI
+      // imports since spec 062 (ISC-438); the home folder itself stays caught here and by the home-relative rule above.
+      ['Claude home folder', /\.claude\/(?!worktrees\/)/],
       ['LifeOS directory or variable', /LIFEOS/],
       ['LifeOS tool', /IsaFrontier|ISAGate|Skill\(\s*["']ISA/],
       ['voice notification', /localhost:31337|\/notify\b/],

@@ -9,6 +9,7 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import { buildDashboard } from "../core/src/dashboard.ts";
 import type { TimelineEntry } from "../core/src/files.ts";
 import { composeApi } from "../server/src/infra/http/json.ts";
 import { dashboardApi } from "../server/src/cli/index.ts";
@@ -695,6 +696,64 @@ describe("ISC-208.1 worktree-only spec: a spec folder only a spec worktree carri
     if (!reading.readable) throw new Error("the fixture workspace is unreadable");
     expect(reading.input.specs.some((f) => f.folder === NEW_FOLDER)).toBe(false);
   });
+});
+
+// ── cli status equals app (spec 062, C1, ISC-444) ────────────────────────────────────────────────────────────────────
+//
+// One tracked fixture with three spec worktrees: (a) 002's, whose tracked copy carries an uncommitted task tick (T28)
+// and claim tick (ISC-75) on top of its commits; (b) 004's, whose `specs/` is a link to the main checkout's; (c) 050's,
+// whose folder exists only on its branch in its worktree. Every other harbor spec has no worktree. `spec-check status
+// --json`, called from the main checkout and from each worktree, shows per spec the stage, the progress and the task
+// boxes of the app's dashboard row over the same fixture, and the same set of specs.
+
+const CLI = join(import.meta.dir, "..", "plugin", "src", "spec-check.ts");
+const LINKED_FOLDER = "004-retention-policies";
+const LINKED_WORKTREE = `.worktrees/${LINKED_FOLDER}`;
+
+/** What a status row and a dashboard row are compared on: stage, progress and the task boxes. */
+interface StatusFacts {
+  readonly stage: string;
+  readonly progress: string;
+  readonly tasks: { readonly landed: number; readonly total: number } | null;
+}
+
+/** `spec-check status --json` run from `cwd`, by spec folder. */
+function cliStatus(cwd: string): Record<string, StatusFacts> {
+  const r = Bun.spawnSync([process.execPath, CLI, "status", "--json"], { cwd, stdout: "pipe", stderr: "pipe" });
+  if (r.exitCode !== 0) throw new Error(`spec-check status exited ${r.exitCode}: ${r.stdout.toString()}${r.stderr.toString()}`);
+  const { specs } = JSON.parse(r.stdout.toString()) as { specs: Array<StatusFacts & { slug: string }> };
+  return Object.fromEntries(specs.map((s) => [s.slug, { stage: s.stage, progress: s.progress, tasks: s.tasks }]));
+}
+
+describe("ISC-444 cli status equals app: spec-check status shows each spec at its read source, from every checkout", () => {
+  test("cli status equals app: stage, progress and task boxes per spec match the dashboard rows in all four calls", async () => {
+    const repo = await plantWorktreeOnly();
+    // (a) An uncommitted task tick and claim tick in 002's tracked copy.
+    const copy = join(repo.worktrees.spec, "specs", SPEC_FOLDER);
+    const tasks = readFileSync(join(copy, "tasks.md"), "utf8");
+    writeFileSync(join(copy, "tasks.md"), tasks.replace(/^- \[ \] T28 ·/m, "- [x] T28 ·")); // single-core: allow — a fixture edit, not a reader
+    const spec = readFileSync(join(copy, "spec.md"), "utf8");
+    writeFileSync(join(copy, "spec.md"), spec.replace(/^- \[ \] ISC-75:/m, "- [x] ISC-75:")); // single-core: allow — a fixture edit, not a reader
+    // (b) 004's worktree with `specs/` linked to the main checkout's.
+    expect((await repo.git(repo.root, "worktree", "add", "-q", "-b", `feature/${LINKED_FOLDER}`, LINKED_WORKTREE)).code).toBe(0);
+    const linked = join(repo.root, LINKED_WORKTREE);
+    rmSync(join(linked, "specs"), { recursive: true, force: true });
+    symlinkSync("../../specs", join(linked, "specs"));
+
+    const reading = await readWorkspaceInput(repo.root);
+    if (!reading.readable) throw new Error("the fixture workspace is unreadable");
+    const app = Object.fromEntries(
+      buildDashboard(reading.input).specs.map((row) => [row.slug, { stage: row.stage, progress: `${row.progress.closed}/${row.progress.total}`, tasks: row.tasks }]),
+    );
+    // The app reads the uncommitted ticks and the worktree-only spec: the comparison is not vacuous.
+    expect(app[NEW_FOLDER]).toBeDefined();
+    expect(app[SPEC_FOLDER]?.progress).toBe("26/30"); // main's 25/30 plus the uncommitted ISC-75 tick
+    expect(app[LINKED_FOLDER]).toBeDefined();
+
+    const calls = { main: repo.root, tracked: repo.worktrees.spec, linked, only: join(repo.root, NEW_WORKTREE) };
+    const cli = Object.fromEntries(Object.entries(calls).map(([name, cwd]) => [name, cliStatus(cwd)]));
+    expect(cli).toEqual({ main: app, tracked: app, linked: app, only: app });
+  }, 30_000); // four CLI processes over a git fixture
 });
 
 // ── repo files (spec 039, T13, ISC-209) ──────────────────────────────────────────────────────────────────────────────

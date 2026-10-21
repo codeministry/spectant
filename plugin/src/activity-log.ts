@@ -7,11 +7,12 @@
 // the main checkout's log, as the app reads it. Every line is core's plan (`core/src/activity-text.ts`); this module
 // only places it. The strict run-event writer requires `claim` on a dispatch, build, patch or apply line it writes;
 // core's planner and reader stay tolerant of old lines without one (ISC-213).
-import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, lstatSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { claimLine, releaseLine, runEventLine } from '../../core/src/activity-text.ts';
 import type { ClaimLineInput, RunEventLineInput } from '../../core/src/activity-text.ts';
 import { activityReading } from '../../core/src/locks.ts';
+import { mainCheckoutFrom } from '../../core/src/worktree-facts.ts';
 
 export type ActivityLogErrorCode = 'claim-required';
 
@@ -26,11 +27,34 @@ export class ActivityLogError extends Error {
   }
 }
 
-/** The main checkout's root: the parent of the common git directory; `dir` itself outside git. */
+/** Whether `folder` holds its own `.git` (a file in a linked worktree), not followed through a link. */
+export function holdsGit(folder: string): boolean {
+  try {
+    lstatSync(join(folder, '.git'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Both folders are one once links are resolved; false when either cannot be resolved. */
+function sameFolder(a: string, b: string): boolean {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The main checkout's root by `core/`'s rule (`mainCheckoutFrom`, spec 062, ISC-443), the one the server CLI applies
+ * too: the parent of the common git directory; `dir` itself, resolved, outside git. Unlike the server CLI, git is asked
+ * from a subfolder as well and discovers the checkout above it, so `spec-check` started below the root still finds it.
+ */
 export function repoRoot(dir: string): string {
-  const r = Bun.spawnSync(['git', 'rev-parse', '--git-common-dir'], { cwd: dir, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } });
-  const common = r.exitCode === 0 ? r.stdout.toString().trim() : '';
-  return common === '' ? dir : dirname(resolve(dir, common));
+  const cwd = resolve(dir);
+  const r = Bun.spawnSync(['git', 'rev-parse', '--git-common-dir'], { cwd, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } });
+  return mainCheckoutFrom({ cwd, commonDir: r.exitCode === 0 ? r.stdout.toString() : null, holdsGit, sameFolder });
 }
 
 /** The activity log of a repository root. */

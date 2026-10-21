@@ -7,12 +7,13 @@
  * spec reads from the main checkout again, and the timeline carries the derived entry instead (`timelineWorktreeOf`,
  * ISC-175.1, ISC-212.1).
  */
-import { isAbsolute, join } from "node:path";
+import { join } from "node:path";
 import type { TimelineWorktreeInput, Worktree } from "../../../core/src/files.ts";
 import { REPO_SOURCE_PATHS } from "../../../core/src/repo-source.ts";
 import { type SpecRef, listSpecs } from "../../../core/src/resolve.ts";
 import { specIdOf } from "../../../core/src/spec-ref.ts";
-import { type WorktreeView, assignWorktrees, liveWorktrees, mainBranchOf, worktreeOnlySpecs } from "../../../core/src/worktrees.ts";
+import { statusToRead, trackedToRead, worktreeFactsToRead, worktreeViewOf } from "../../../core/src/worktree-facts.ts";
+import { type WorktreeView, assignWorktrees, insideRepository, liveWorktrees, withWorktreeOnly, worktreeOnlySpecs } from "../../../core/src/worktrees.ts";
 import {
   type SpecBranch,
   aheadOfMain,
@@ -68,22 +69,15 @@ export interface RepoFacts {
   readonly worktrees: ReadonlyArray<{ readonly path: string; readonly facts: CheckoutFacts }>;
 }
 
-/**
- * The active spec references of `listed` (`listSpecs`) and `worktreeOnly` in number order, then the archived ones, as
- * `listSpecs` orders them (spec 039, ISC-208.1).
- */
-export function withWorktreeOnly(listed: readonly SpecRef[], worktreeOnly: readonly SpecRef[]): SpecRef[] {
-  if (worktreeOnly.length === 0) return [...listed];
-  const active = [...listed.filter((ref) => !ref.archived), ...worktreeOnly].sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : 1));
-  return [...active, ...listed.filter((ref) => ref.archived)];
-}
+/** The worktree-only specs merged into the listing: `core/`'s rule, re-exported for the slice's callers (spec 062, ISC-444). */
+export { withWorktreeOnly };
 
 /** Whether `path` (relative, `/`-separated) is one of the repository files of `REPO_SOURCE_PATHS`. */
 const isRepoFile = (path: string): boolean =>
   REPO_SOURCE_PATHS.some((spec) => (spec.endsWith("/") ? path.startsWith(spec) && !path.slice(spec.length).includes("/") : path === spec));
 
-/** A worktree path inside the repository: the only ones whose files are read (plan 027 § Risks, external paths). */
-export const insideRepository = (path: string): boolean => !isAbsolute(path) && path !== ".." && !path.startsWith("../");
+/** A worktree path inside the repository: `core/`'s rule, re-exported for the slice's callers (spec 062, ISC-443). */
+export { insideRepository };
 
 /**
  * The repository file facts (spec 039, ISC-209): in the main checkout its tracked paths, the repository files its
@@ -160,20 +154,14 @@ async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Prom
   const only = worktreeOnlySpecs(listedFirst.worktrees, mainFolders, planning);
   // Assigned again with the found folders, so each one's worktree is its spec's like any other (its chip, its source).
   const assignment = only.length === 0 ? listedFirst : assignWorktrees(porcelain, [...mainFolders, ...only.map((s) => s.slug)]);
-  const ofSpec = assignment.worktrees.filter((w) => w.kind === "spec" && w.spec !== null);
+  // What git must be asked about each spec worktree of a spec, as `core/` names it (spec 062, ISC-443).
+  const toRead = worktreeFactsToRead(assignment);
   const merged = merge.branches.filter((b) => b.merged).map((b) => b.branch);
-  const present = ofSpec.flatMap((w) => {
-    const folder = folderOf(w);
-    return folder !== null && w.path !== null && hasGit(folder) ? [{ worktree: w, path: w.path, folder }] : [];
-  });
+  const present = toRead.paths.filter((path) => hasGit(join(root, path)));
   // A merged worktree still holding uncommitted work stays the spec's (ISC-212.2): only those are asked here.
-  const mergedPresent = present.filter(({ worktree: w }) => w.branch !== null && merged.includes(w.branch));
-  const dirtyMerged = await Promise.all(mergedPresent.map(({ folder }) => dirty(folder)));
-  const facts = {
-    merged,
-    present: present.map(({ path }) => path),
-    dirty: mergedPresent.filter((_, i) => dirtyMerged[i] === true).map(({ path }) => path),
-  };
+  const mergedPresent = statusToRead(toRead.ofSpec, merged, present);
+  const dirtyMerged = await Promise.all(mergedPresent.map((path) => dirty(join(root, path))));
+  const facts = { merged, present, dirty: mergedPresent.filter((_, i) => dirtyMerged[i] === true) };
   const split = liveWorktrees(assignment, facts);
   // The live spec worktrees' git facts, a bounded number of worktrees at a time (ISC-215).
   // The status listing of each live spec worktree answers `dirty` and, below the repository files, `changed` (ISC-209).
@@ -189,19 +177,15 @@ async function readWorktreeViewNow(root: string, refs: readonly SpecRef[]): Prom
   const repoFacts = await readRepoFacts(root, live, planning, statuses);
   // `ls-files` for the folder of each spec with a live worktree inside the repository, the first in git's order.
   const tracked: Record<string, readonly string[]> = {};
-  const listed = new Set<string>();
-  for (const worktree of live) {
-    const ref = worktree.kind === "spec" ? refs.find((r) => !r.archived && r.id === worktree.spec) : undefined;
-    if (ref !== undefined && worktree.path !== null && insideRepository(worktree.path)) listed.add(ref.slug);
-  }
-  const lists = await mapBounded([...listed], WORKTREE_READS, (slug) => trackedSpecPaths(root, slug));
-  [...listed].forEach((slug, i) => {
+  const listed = trackedToRead(live, refs);
+  const lists = await mapBounded(listed, WORKTREE_READS, (slug) => trackedSpecPaths(root, slug));
+  listed.forEach((slug, i) => {
     tracked[slug] = lists[i] ?? [];
   });
   // A folder only a worktree carries is tracked by that worktree's branch: its source is the worktree (ISC-208.1).
   for (const spec of only) tracked[spec.slug] = (planning[spec.worktree] ?? []).filter((path) => path.startsWith(`specs/${spec.slug}/`));
   const worktreeOnly = only.map((spec): SpecRef => ({ kind: "spec", id: spec.id, slug: spec.slug, dir: join(root, spec.worktree, "specs", spec.slug), archived: false }));
-  const view: WorktreeView = { assignment, live, ended: split.ended, mainBranch: mainBranchOf(porcelain), tracked };
+  const view = worktreeViewOf({ porcelain, assignment, split, live, tracked });
   return { view, branches: merge.branches, worktreeOnly, planning, repoFacts };
 }
 

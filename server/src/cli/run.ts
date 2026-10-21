@@ -21,6 +21,7 @@
  */
 import { resolve } from "node:path";
 import type { EmbeddedManifest } from "../contracts/assets.contract.ts";
+import { mainCheckoutOf } from "../infra/git/index.ts";
 import { dataDir } from "../infra/paths.ts";
 import { VERSION } from "../infra/version.ts";
 import { exportNotesCommand, importNotesCommand } from "../notes/index.ts";
@@ -32,6 +33,15 @@ import { rollbackCommand } from "./rollback.ts";
 import { serveUntilSignal } from "./serve.ts";
 import { USAGE } from "./usage.ts";
 import { workspaceCommand } from "./workspace-commands.ts";
+
+/**
+ * The repository `gate code-reviewed` and `tokens` work on: an explicit `--root` exactly as given (relative to
+ * `cwd`), else the main checkout of the checkout `cwd` is (spec 062, ISC-442), so a call from a spec worktree finds
+ * the same specs, read sources and `specs/tokens.jsonl` as one from the main checkout; outside git, `cwd` itself.
+ */
+async function repositoryRoot(cwd: string, root: string | null): Promise<string> {
+  return root === null ? mainCheckoutOf(resolve(cwd)) : resolve(cwd, root);
+}
 
 export async function run(argv: string[], manifest: EmbeddedManifest, options: RunOptions = {}): Promise<number> {
   let command: Command;
@@ -62,10 +72,10 @@ export async function run(argv: string[], manifest: EmbeddedManifest, options: R
     case "db-rollback":
       return rollbackCommand(dataDir(options.env ?? process.env), command.target, command.yes);
     case "gate-code-reviewed":
-      return featureGateCommand(resolve(options.cwd ?? process.cwd(), command.root ?? "."), command.feature, command.yes);
+      return featureGateCommand(await repositoryRoot(options.cwd ?? process.cwd(), command.root), command.feature, command.yes);
     case "tokens": {
       const cwd = options.cwd ?? process.cwd();
-      return tokensCommand(resolve(cwd, command.root ?? "."), {
+      return tokensCommand(await repositoryRoot(cwd, command.root), {
         transcripts: command.transcripts === null ? null : resolve(cwd, command.transcripts),
         yes: command.yes,
         env: options.env ?? process.env,
