@@ -1,4 +1,5 @@
 import type { GuidanceEntry } from '../../../../../core/src/files';
+import type { WorkspaceListEntry } from '../../core/api.service';
 import { guidanceOfBody } from '../../core/model/guidance-entry';
 import { type WorkingEntry, workingOf } from '../../core/model/working';
 import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
@@ -48,6 +49,9 @@ export interface OverviewColumn {
   readonly working: readonly WorkingEntry[];
   /** Epoch ms the dashboard answered; the ws-head's "Updated n s ago". */
   readonly loadedAt: number;
+  /** The stored logo and screenshot URLs from the workspace list (spec 016); null per kind without one. */
+  readonly logo: string | null;
+  readonly screenshot: string | null;
 }
 
 const fraction = (value: unknown): Fraction | null =>
@@ -58,7 +62,7 @@ const fraction = (value: unknown): Fraction | null =>
  * KPIs as served, the active rows, the Next up ids and `guidance.waits` as served. Derives nothing but the three-row cut; never throws.
  */
 export function readColumn(
-  entry: { readonly slug: string; readonly name: string; readonly pathTail: string },
+  entry: Pick<WorkspaceListEntry, 'slug' | 'name' | 'pathTail' | 'images'>,
   body: unknown,
   loadedAt: number,
 ): OverviewColumn {
@@ -85,7 +89,9 @@ export function readColumn(
     .slice(0, NEXT_UP_LIMIT);
   const waits = guidanceOfBody(body)?.waits ?? [];
   const working = workingOf(body);
-  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, working, loadedAt };
+  const logo = entry.images?.logo ?? null;
+  const screenshot = entry.images?.screenshot ?? null;
+  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, working, loadedAt, logo, screenshot };
 }
 
 /** The workspace badge's monogram (prototype `identity.js` `mono`): first letters of two words, else two letters. */

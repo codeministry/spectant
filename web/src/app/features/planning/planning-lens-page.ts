@@ -3,6 +3,7 @@ import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { NotFound } from '../../layout/not-found/not-found';
 import { RailContent } from '../../layout/shell/rail-content';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { TabBarSlot } from '../../layout/tab-bar/tab-bar-slot';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
@@ -40,9 +41,12 @@ import { PlanningStore } from './planning.store';
 })
 export class PlanningPage {
   private readonly store = inject(PlanningStore);
+  private readonly shell = inject(ShellData);
 
   protected readonly ws = this.store.ws;
   protected readonly name = this.store.name;
+  /** The page badge's stored logo (spec 016), the initials without one. */
+  protected readonly logo = computed(() => this.shell.wsImages().logo);
   protected readonly lens = this.store.lens;
   protected readonly missing = this.store.missing;
   protected readonly unavailable = this.store.unavailable;
