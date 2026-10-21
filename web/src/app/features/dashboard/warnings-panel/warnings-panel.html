@@ -14,7 +14,8 @@
     <!--
       Spec 064 (T32, ISC-476): the section folds, closed by default. Pattern: the button sits INSIDE the h2, so the
       heading stays a heading (and the `g w` focus target) while the button is the disclosure; the button is named by
-      the toggle word and described by the summary. Closed, the region is hidden and renders no card.
+      its visible text (title, then summary), so the heading reads the same; the toggle word is only its `title`.
+      Closed, the region is hidden and renders no card.
     -->
     <section class="section">
       <h2 class="head" tabindex="-1" [id]="headingId">
@@ -24,15 +25,14 @@
           data-warnings-toggle
           [attr.aria-expanded]="open()"
           [attr.aria-controls]="regionId"
-          [attr.aria-describedby]="summaryId"
-          [attr.aria-label]="(open() ? 'warnings.toggle.close' : 'warnings.toggle.open') | transloco"
+          [title]="(open() ? 'warnings.toggle.close' : 'warnings.toggle.open') | transloco"
           (click)="toggle()"
         >
           <span class="title" data-warnings-title>{{ 'warnings.title' | transloco }}</span>
           @if (open()) {
             <span class="count" data-warnings-count>{{ count() }}</span>
           }
-          <span class="summary" [id]="summaryId">
+          <span class="summary">
             @if (count() > 0) {
               <ui-icon class="warn-icon" data-icon="triangle-alert" name="triangle-alert" [size]="12" />
               <ng-container [ngTemplateOutlet]="summaryText" />

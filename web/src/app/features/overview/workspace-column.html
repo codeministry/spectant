@@ -4,16 +4,25 @@
   <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
 </app-ws-identity>
 
-<!-- Spec 020 T16 (ISC-238): what waits on you, between the identity and the kpi-strip; Next up stays off `/` (024 T79). -->
-<ui-waits-block
-  data-ui="waits-block"
-  [entries]="c.waits"
-  [workspace]="c.slug"
-  [limit]="limit"
-  [moreLink]="'/w/' + c.slug"
-  moreFragment="waiting"
-  [headingId]="'waits-' + c.slug"
-/>
+<!-- Spec 020 T16 (ISC-238), spec 064 T19 (ISC-461, ISC-462): what waits on you and, with a held lock, what is in
+     progress, in one wrapper on the middle row track between the identity and the kpi-strip; Next up stays off `/`. -->
+<div class="lists" data-lists>
+  <ui-waits-block
+    data-ui="waits-block"
+    form="tiles"
+    more="link"
+    [entries]="c.waits"
+    [workspace]="c.slug"
+    [titles]="titles()"
+    [level]="3"
+    [moreLink]="'/w/' + c.slug"
+    moreFragment="waiting"
+    [headingId]="'waits-' + c.slug"
+  />
+  @if (c.working.length > 0) {
+    <ui-working-block [entries]="c.working" [workspace]="c.slug" [level]="3" [headingId]="'working-' + c.slug" />
+  }
+</div>
 
 <div data-ui="kpi-strip">
   <ui-card data-ui="kpi-tile" data-kpi="master" [padding]="0">

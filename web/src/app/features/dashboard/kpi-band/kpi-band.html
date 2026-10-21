@@ -95,6 +95,7 @@
     [value]="k.warnings"
     [meta]="warningsRef"
     [href]="href()"
+    [queryParams]="warningsQuery"
     [fragment]="targets.warnings"
   >
     <span class="statement">{{ 'kpi.statement.warnings' | transloco }}</span>
@@ -173,7 +174,7 @@
             <span class="statement">{{ 'kpi.statement.takeable' | transloco }}</span>
           </span>
         </a>
-        <a [routerLink]="href()" [fragment]="targets.warnings" data-cell="warnings">
+        <a [routerLink]="href()" [queryParams]="warningsQuery" [fragment]="targets.warnings" data-cell="warnings">
           <span class="head">
             <span class="type-eyebrow">{{ 'kpi.warnings' | transloco }}</span>
             <b data-stat="warnings" [attr.data-tint]="tint()('warnings')">{{ k.warnings }}</b>

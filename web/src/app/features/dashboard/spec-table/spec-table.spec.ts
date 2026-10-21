@@ -127,6 +127,49 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(host.querySelectorAll('.t-head [data-filter] button')).toHaveLength(0);
   });
 
+  // Spec 064 (T4, ISC-465): the working filter is named by a flag chip beside takeable; a click and the reset drop it.
+  describe('working flag (ISC-465)', () => {
+    const flag = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('.t-head button[data-filter="working"]');
+
+    it('shows no working chip while the filter is off', async () => {
+      const { host } = await render();
+      expect(flag(host)).toBeNull();
+    });
+
+    it('names the filter "In progress" with aria-pressed="true" while query.working is on', async () => {
+      const { host } = await render({ ...DEFAULT_QUERY, working: true });
+      expect(host.querySelectorAll('.t-head [data-filter="working"]')).toHaveLength(1);
+      expect(text(flag(host))).toBe('In progress');
+      expect(flag(host)?.getAttribute('aria-pressed')).toBe('true');
+      expect([...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow'])).toEqual(['002']);
+    });
+
+    it('reads "In Arbeit" in German', async () => {
+      const { fixture, host } = await render({ ...DEFAULT_QUERY, working: true });
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      await fixture.whenStable();
+      expect(text(flag(host))).toBe('In Arbeit');
+      TestBed.inject(TranslocoService).setActiveLang('en');
+    });
+
+    it('a click on the chip asks for the query with working: false', async () => {
+      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, working: true, takeable: true });
+      flag(host)?.click();
+      await fixture.whenStable();
+      expect(emitted).toEqual([{ ...DEFAULT_QUERY, takeable: true, working: false }]);
+    });
+
+    it('"reset all filters" drops working along with phase, type and takeable', async () => {
+      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, phase: 'complete', working: true });
+      const reset = host.querySelector<HTMLButtonElement>('p.empty button');
+      expect(text(reset)).toBe('Clear filter');
+      reset?.click();
+      await fixture.whenStable();
+      expect(emitted).toEqual([DEFAULT_QUERY]);
+      expect(emitted[0]?.working).toBe(false);
+    });
+  });
+
   it('sorts through a popover menu (Stage / ID / Progress), not a native select', async () => {
     const { host, emitted } = await render();
     expect(host.querySelector('select')).toBeNull();

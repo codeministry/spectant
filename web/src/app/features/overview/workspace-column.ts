@@ -6,20 +6,21 @@ import { UiMeter } from '../../shared/ui/meter/meter';
 import { type RelativeUnit, relativeParts } from '../../shared/ui/relative-time/relative-time';
 import { UiRing } from '../../shared/ui/ring/ring';
 import { UiWaitsBlock } from '../../shared/ui/guidance/waits-block';
+import { UiWorkingBlock } from '../../shared/ui/guidance/working-block';
 import type { OverviewColumn } from './overview-model';
 import { WsIdentity } from './ws-identity';
 
 /** How often "Updated n s ago" re-reads the clock (design.md: every 10 s). */
 const TICK_MS = 10_000;
-/** Rows under the highlighted waiting entry on `/` (spec 020 ISC-238: up to four more, then "+n more"). */
-export const START_WAITS_LIMIT = 4;
 const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = { s: 'second', min: 'minute', h: 'hour', d: 'day' };
 
 /**
  * One workspace on `/` (T65, prototype `app.js` `wsColumn`, tiles.md § index.html): the identity block (`WsIdentity`,
  * spec 024 T54: cover, then the ws-head with badge, name, path tail and "Updated n s ago"; cover and name link to
- * `/w/:ws`), the block "Waits on you" (spec 020 T16, ISC-238: the top entry with its chip, up to four more as links,
- * "+n more" to `/w/:ws#waiting`, one sentence when nothing waits) and the 2 × 2 kpi-strip (master ring + fraction,
+ * `/w/:ws`), one wrapper with the block "Waits on you" (spec 020 T16; spec 064 ISC-478: up to `TILE_LIMIT` flat
+ * tiles with the spec title, "Show all n" to `/w/:ws#waiting`, one sentence when nothing waits) and, only while a
+ * session holds a claim, the block "In progress" with the dashboard's tiles (spec 064 ISC-461, ISC-462), then the
+ * 2 × 2 kpi-strip (master ring + fraction,
  * spec claims with the lime meter, specs with the building / scoping split, warnings + open fog with the orange edge
  * above 0). Spec 024 T79, a deliberate deviation (design.md § Übersicht, principal 2026-10-13, kept by 020): no Next
  * up, no spec list and no open link here; those live on the workspace dashboard the column leads to. The three parts
@@ -28,7 +29,7 @@ const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = {
  */
 @Component({
   selector: 'app-workspace-column',
-  imports: [TranslocoPipe, UiCard, UiMeter, UiRing, UiWaitsBlock, WsIdentity],
+  imports: [TranslocoPipe, UiCard, UiMeter, UiRing, UiWaitsBlock, UiWorkingBlock, WsIdentity],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-ui': 'workspace-column', '[attr.data-ws]': 'column().slug' },
   templateUrl: './workspace-column.html',
@@ -41,7 +42,8 @@ export class WorkspaceColumn {
   private readonly now = signal(Date.now());
 
   protected readonly kpis = computed(() => this.column().kpis);
-  protected readonly limit = START_WAITS_LIMIT;
+  /** Spec id → title from the column's rows, the waits tiles' main text (ISC-478). */
+  protected readonly titles = computed(() => Object.fromEntries(this.column().list.map((row) => [row.id, row.title])));
 
   /** Whole percent of master claims closed, floored as the KPI band does; null without a master. */
   protected readonly masterPercent = computed(() => {

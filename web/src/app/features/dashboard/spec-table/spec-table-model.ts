@@ -79,11 +79,13 @@ export type SortKey = (typeof SORT_KEYS)[number];
 export const SORT_MENU: readonly SortKey[] = ['stage', 'id', 'progress'];
 
 /**
- * The panel's query state. `phase` is a stage group or `fog`; null means all. A `?phase=` value that is neither (an
- * old frontmatter phase such as `climbing`) parses as all.
+ * The panel's query state. `phase` is a stage group, `fog` or `idea` (spec 064, ISC-480: only the ideas); null means
+ * all. A `?phase=` value that is none of them (an old frontmatter phase such as `climbing`) parses as all.
  */
 export interface ListQuery {
   readonly phase: string | null;
+  /** Spec 064 (T39, ISC-480): the search `?q=`, trimmed; absent when empty. The URL keeps it (the page merges params). */
+  readonly q?: string;
   readonly type: string | null;
   readonly sort: SortKey;
   readonly takeable: boolean;
@@ -98,9 +100,10 @@ export interface ListQuery {
 
 export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage', takeable: false, working: false, archived: false };
 
-/** The filter chip key for "every phase" and for "has open fog". */
+/** The filter chip key for "every phase", for "has open fog" and for "only the ideas" (spec 064, ISC-480). */
 export const ALL = 'all';
 export const FOG = 'fog';
+export const IDEA = 'idea';
 
 /** The stage groups core derives (`StageGroup` in `core/src/dashboard.ts`), in lifecycle order: the phase chips' keys. */
 export const STAGE_GROUPS = ['scoping', 'building', 'complete'] as const;
@@ -261,8 +264,10 @@ export function parseListQuery(params: { get(name: string): string | null }): Li
   const phase = params.get('phase');
   const type = params.get('type');
   const sort = params.get('sort');
+  const q = params.get('q')?.trim() ?? '';
   return {
-    phase: phase === FOG ? FOG : stageGroupOf(phase),
+    phase: phase === FOG || phase === IDEA ? phase : stageGroupOf(phase),
+    ...(q !== '' ? { q } : {}),
     type: type === null || type === '' || type === ALL ? null : type,
     sort: SORT_KEYS.find((key) => key === sort) ?? DEFAULT_QUERY.sort,
     takeable: params.get('takeable') === '1',

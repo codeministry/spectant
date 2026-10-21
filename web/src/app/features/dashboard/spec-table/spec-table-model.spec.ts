@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { workingOf } from '../../../core/model/working';
+import { applyIdeaQuery, readIdeaRows } from './idea-rows';
 import {
   applyArchivedQuery,
   applyListQuery,
@@ -9,6 +10,7 @@ import {
   DEFAULT_QUERY,
   FOG,
   holdNewRows,
+  IDEA,
   LIST_QUERY_KEYS,
   type ListQuery,
   listQueryParams,
@@ -427,5 +429,76 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
   it('leaves the active rows to applyListQuery unchanged', () => {
     const rows = readSpecRows(BODY);
     expect(applyListQuery(rows, on({}))).toEqual(applyListQuery(rows, DEFAULT_QUERY));
+  });
+});
+
+/** Harbor's dashboard body with a third story (spec 064, T37, ISC-479): harbor's golden serves two. */
+const THIRD = { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' };
+const HARBOR_IDEAS = { ...harbor, ideas: { count: 3, list: [...harbor.ideas.list, THIRD] } };
+
+describe('readIdeaRows (spec 064, T37, ISC-479)', () => {
+  it("reads every story of the body's ideas.list in model order with slug, title, feature, milestone, priority and state", () => {
+    const ideas = readIdeaRows(HARBOR_IDEAS);
+    expect(ideas.map((idea) => idea.slug)).toEqual(['console-audit-log', 'registry-webhooks', 'sync-dry-run']);
+    expect(ideas[0]).toEqual(harbor.ideas.list[0]);
+    expect(ideas[1]).toMatchObject({ feature: 'F7', milestone: 'Harbor 1.0', priority: 'P2', state: { kind: 'idea', state: 'open' } });
+    expect(ideas[2]).toEqual(THIRD);
+    expect(ideas[2] && 'state' in ideas[2]).toBe(false);
+  });
+
+  it('stands beside the spec rows: the same body still reads its specs', () => {
+    expect(readSpecRows(HARBOR_IDEAS)).toEqual(readSpecRows(harbor));
+    expect(readIdeaRows(HARBOR_IDEAS)).toHaveLength(3);
+  });
+
+  it('reads none from a body without ideas or with a malformed ideas part', () => {
+    for (const body of [null, 'x', {}, { ideas: null }, { ideas: { list: 'x' } }, { ideas: { list: [null, 3] } }]) expect(readIdeaRows(body)).toEqual([]);
+  });
+
+  it('skips a story without a slug, falls back to the slug as title and P3 as priority, and drops a malformed state', () => {
+    const body = { ideas: { list: [{ title: 'No slug' }, { slug: 'bare', feature: 7, state: 'open' }] } };
+    expect(readIdeaRows(body)).toEqual([{ slug: 'bare', title: 'bare', feature: null, milestone: null, priority: 'P3' }]);
+  });
+});
+
+describe('applyIdeaQuery and the phase idea (spec 064, T39, ISC-480)', () => {
+  const ideas = readIdeaRows(HARBOR_IDEAS);
+  const specs = readSpecRows(HARBOR_IDEAS);
+  const slugs = (q: ListQuery): string[] => applyIdeaQuery(ideas, q).map((idea) => idea.slug);
+  const all = ['console-audit-log', 'registry-webhooks', 'sync-dry-run'];
+
+  it('parses ?phase=idea as the phase idea, and keeps it out of the URL only when null', () => {
+    expect(IDEA).toBe('idea');
+    expect(parseListQuery(params({ phase: 'idea' }))).toEqual({ ...DEFAULT_QUERY, phase: IDEA });
+    expect(listQueryParams(query({ phase: IDEA })).phase).toBe('idea');
+  });
+
+  it('?phase=idea: every idea and no spec row, active or archived', () => {
+    const q = parseListQuery(params({ phase: 'idea' }));
+    expect(slugs(q)).toEqual(all);
+    expect(specs.length).toBeGreaterThan(0);
+    expect(applyListQuery(specs, q)).toEqual([]);
+    expect(applyArchivedQuery(readArchiveRows(BODY), { ...q, archived: true })).toEqual([]);
+  });
+
+  it('no phase: every idea, in model order', () => {
+    expect(slugs(parseListQuery(params({})))).toEqual(all);
+  });
+
+  it('any other phase, takeable or working hides every idea', () => {
+    for (const phase of [...STAGE_GROUPS, FOG]) expect(slugs(parseListQuery(params({ phase })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ phase: 'building' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ takeable: '1' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ working: '1' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ phase: 'idea', working: '1' })))).toEqual([]);
+  });
+
+  it('?q= matches the idea titles, case-insensitive, every word', () => {
+    expect(parseListQuery(params({ q: 'Upstream' })).q).toBe('Upstream');
+    expect(parseListQuery(params({ q: '  ' })).q).toBeUndefined();
+    expect(slugs(parseListQuery(params({ q: 'upstream REPOSITORY' })))).toEqual(['registry-webhooks']);
+    expect(slugs(parseListQuery(params({ q: 'audit log', phase: 'idea' })))).toEqual(['console-audit-log']);
+    expect(slugs(parseListQuery(params({ q: 'no such words' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ q: 'dry', phase: 'building' })))).toEqual([]);
   });
 });

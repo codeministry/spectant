@@ -49,7 +49,6 @@ export class WarningsPanel {
 
   protected readonly headingId = WARNINGS_HEADING;
   protected readonly regionId = `${WARNINGS_HEADING}-region`;
-  protected readonly summaryId = `${WARNINGS_HEADING}-summary`;
 
   protected toggle(): void {
     this.open.update((open) => !open);

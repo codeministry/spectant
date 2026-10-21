@@ -66,6 +66,7 @@ byte, so a server contract change fails there first.
 | `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`, `false`), per session |
 | `POST /api/__stub/reset` | stub only: restores the settings and drops the writes of the request's session, 204 |
 | `POST /api/__stub/bump-run?ws=&spec=&task=` | stub only (spec 027, T33): moves that task's run one run event on for the request's session, none → `dispatched` → `building` → `patched` → `applied-open` (`applied` once tasks.md ticked it), the last stays; the live frame's body and ETag change. 204; 404 for an unknown workspace, spec or task or an `absent` card; 405 with `Allow: POST`; a reset drops it |
+| `POST /api/__stub/lock?ws=` | stub only (spec 064, T25): JSON body `{spec, claim, session, release?}`; that session's dashboard row of `spec` then carries / no longer carries the claim in `taken`, body and ETag change, one `update` frame goes to the session's open streams. 204; 400 `invalid-lock`; 404 for an unknown workspace or spec; 405 with `Allow: POST`; a reset drops it |
 
 Every JSON answer follows `JSON_ANSWER` (strong sha256 ETag, 304 on a match, `HEAD` without a body); 404 is
 `{error: "not-found"}` for an unknown workspace, spec or task, 405 carries `Allow: allowFor(route)`. `GET …/:id`
@@ -79,7 +80,7 @@ workers never race. An unknown value is always a loud 400, never a silent defaul
 | Header | Values | Absent |
 |--------|--------|--------|
 | `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard, planning and spec routes 409) | `two-workspaces` |
-| `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier`, `claims`, `person` (see the lock fixtures) | `activity`, the goldens as they are |
+| `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier`, `claims`, `person`, `runs`, `working` (see the lock fixtures) | `activity`, the goldens as they are |
 | `X-Spectant-Stub-Write` | `ok`, `stale`, `locked` (see the writes) | `ok` |
 | `X-Spectant-Stub-Library` | `catalog`, `empty` (every readable workspace answers `EMPTY_CATALOG`, a workspace without one document) | `catalog` |
 | `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |
@@ -97,6 +98,7 @@ core's `live.ts` does (a person's or legacy lock: both null; a released card: bo
 | `frontier` | every golden lock relabelled `frontier`, plus a synthetic agent `a:claude:stub-<NNN>-<claim>` on the first open claim no lock holds (harbor 002: ISC-75, T28 running, 20 min, not stale) | `{present: true}` | paused |
 | `claims` | the tree's `.spectant/activity.jsonl` claim lines without their releases (as `core/tests/live.test.ts`); a held card runs, a landed one re-opened (harbor 002: T4 by the sub-agent `a:claude:sess-2/T4`, T25 and T27 by `a:claude:sess-2`, all stale) | `{present: false}` | as `activity` |
 | `person` | the golden's locks held by the person `STUB_PERSON` (`u:3f9c0a7d`): harbor 002 T27 running, `agent` and `subagent` null | `{present: false}` | as `activity` |
+| `working` | as `activity`; only harbor's dashboard body changes: a `taken` entry on 005, 006, 002 and 009 (`STUB_WORKING`, spec 064) | `{present: false}` | as `activity` |
 
 Writes, per `X-Spectant-Stub-Write`:
 

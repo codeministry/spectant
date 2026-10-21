@@ -371,8 +371,13 @@ export class SpecTable {
     this.queryChange.emit({ ...this.query(), takeable: false });
   }
 
+  /** Spec 064 (T4, ISC-465): the working flag's click drops the filter, the rest of the query stays. */
+  protected clearWorking(): void {
+    this.queryChange.emit({ ...this.query(), working: false });
+  }
+
   protected clearFilter(): void {
-    this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false });
+    this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false, working: false });
   }
 
   private chip(option: ListOption, key: string | null, toned: boolean): FilterOption {

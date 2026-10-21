@@ -84,12 +84,16 @@
  * parallel workers never race; an unknown value is a loud 400, never a silent default:
  *
  * - `X-Spectant-Stub-State: two-workspaces | empty | unreadable` picks the workspace state (absent: `two-workspaces`).
- * - `X-Spectant-Stub-Locks: none | activity | frontier` picks the lock fixture (absent: `activity`, what the goldens
+ * - `X-Spectant-Stub-Locks: none | activity | frontier | claims | person | runs | working` picks the lock fixture (absent: `activity`, what the goldens
  *   hold). `none` releases every lock; `frontier` relabels the golden's locks `frontier`, adds a second frontier
  *   session on another open claim and makes LifeOS present. `runs` (spec 040, T53) keeps every golden as `activity`
  *   has it and lists the fixture tree `beacon` after the other workspaces (`STUB_RUN.workspace`), rebuilt by core
  *   (`runVariant`: `itemStates` over core's `activityReading` of its log, at `STUB_NOW`, the default abort age); a
  *   400 beside `X-Spectant-Stub-Worktrees: on`, `X-Spectant-Stub-Edges` or `X-Spectant-Stub-Midnight: on`.
+ *   `working` (spec 064, T23) keeps every spec page and live frame as `activity` has them and puts one `taken` entry
+ *   `{id, session, since, source: 'activity'}` on each of the four specs of `STUB_WORKING` in harbor's dashboard body
+ *   (005 ISC-94, 006 ISC-1, 002 ISC-74, 009 ISC-131; session `syntheticSession(spec, claim)`, since `STUB_NOW`), one
+ *   more than the "In Arbeit" block's tile limit; the body's ETag changes with it, every other workspace stays.
  * - `X-Spectant-Stub-Run: none | running | ended` switches beacon's `/spec tasks 003` run (`STUB_RUN`) under the
  *   `runs` locks (absent: `running`; a 400 under any other lock fixture), each body derived by core from the edited
  *   log, never written by hand: `none` drops its run-start line, so 003 reads `open` with `/spec tasks 003`;
@@ -126,6 +130,14 @@
  *   stream's headers, so a page that primes its cache with them gets a 304 on its next poll; a path that does not
  *   answer 200 under those headers is left out. 404 for a workspace the stub does not hold; 405 with `Allow: POST`
  *   for another method.
+ * - `POST /api/__stub/lock?ws=<slug>` with a JSON body `{spec, claim, session, release?}` stands in for a claim or
+ *   release line of an agent in `.spectant/activity.jsonl` (spec 064, T25, ISC-468): for that session from then on
+ *   the workspace's dashboard row `spec` carries `{id: claim, session, since: STUB_NOW, source: 'activity'}` in its
+ *   `taken` (claim-ID order), or, with `release: true`, no entry for that claim, a fixture's included; body and ETag
+ *   change as the log line would change them. Before its 204 it pushes one `update` frame to that session's open
+ *   `/api/events` streams, exactly as `POST /api/__stub/bump` does. 400 `{error: "invalid-lock"}` for a body without
+ *   non-blank `spec`, `claim` and `session` strings or with a non-boolean `release`; 404 for an unknown workspace or a
+ *   spec its dashboard does not list; 405 with `Allow: POST` for another method. A reset drops it.
  * - `PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that
  *   workspace's workflow file (T151, ISC-123): core's `parseWorkflow` reads the text, and that session's planning tree
  *   carries the result as its `workflow` until a reset, so the next read shows the changed table (body and ETag). 204;
@@ -307,10 +319,23 @@ export type StubState = (typeof STUB_STATES)[number];
  * The lock fixtures (ISC-85, ISC-86): no source, the repository's activity log (the goldens), a LifeOS frontier; for
  * who works a task (T149, ISC-131.1) the log's claim lines without their releases, and the golden's locks held by a
  * person; for the item states (spec 040, T53) the goldens as `activity` has them plus the fixture tree `beacon` with
- * its run variants (`X-Spectant-Stub-Run`, `runVariant`).
+ * its run variants (`X-Spectant-Stub-Run`, `runVariant`); for "In Arbeit" on the dashboard (spec 064, T23) the goldens
+ * as `activity` has them plus a `taken` entry on the four specs of `STUB_WORKING` in harbor's dashboard body.
  */
-export const LOCK_STATES = ['none', 'activity', 'frontier', 'claims', 'person', 'runs'] as const;
+export const LOCK_STATES = ['none', 'activity', 'frontier', 'claims', 'person', 'runs', 'working'] as const;
 export type LockState = (typeof LOCK_STATES)[number];
+
+/**
+ * The specs in work under `X-Spectant-Stub-Locks: working` (spec 064, T23): on harbor's dashboard body the first four
+ * active specs with an open claim, one more than the block's tile limit of three, in served order; each row's `taken`
+ * holds that claim by `syntheticSession(spec, claim)` since `STUB_NOW`, source `activity`. The stub checks at startup
+ * that each claim is open in the fixture tree.
+ */
+export const STUB_WORKING = {
+  workspace: 'harbor',
+  specs: ['005', '006', '002', '009'],
+  claims: ['ISC-94', 'ISC-1', 'ISC-74', 'ISC-131'],
+} as const;
 
 /** The scripted outcomes of the two writes (ISC-26, ISC-86). */
 export const WRITE_OUTCOMES = ['ok', 'stale', 'locked'] as const;
@@ -325,6 +350,7 @@ export const BUMP_PATH = '/api/__stub/bump';
 export const WORKFLOW_PATH = '/api/__stub/workflow';
 export const BUMP_RUN_PATH = '/api/__stub/bump-run';
 export const STEP_PATH = '/api/__stub/step';
+export const LOCK_PATH = '/api/__stub/lock';
 /** The step kinds `POST /api/__stub/step` takes: core's `TaskStepKind`, the run events, the two step events and the release. */
 export const STUB_STEP_KINDS = ['dispatch', 'build', 'patch', 'apply', 'probe', 'question', 'release'] as const satisfies ReadonlyArray<TaskStep['kind']>;
 const PROBE_RESULTS = ['red', 'green'] as const satisfies readonly ProbeResult[];
@@ -473,6 +499,39 @@ export function bumpDashboard(model: unknown, by: number): unknown {
 
 /** The stub's clock: the `now` the live goldens were built with; the `at` of every reviewed mark the stub writes. */
 export const STUB_NOW = '2026-03-08T15:00:00Z';
+
+/** One claim lock laid over a dashboard body: held by `session` since `STUB_NOW`, or released (`session: null`). */
+type TakenEdit = { spec: string; claim: string; session: string | null };
+type TakenRow = { id?: unknown; taken?: Array<{ id: string; session: string; since: string; source: string }> };
+
+/**
+ * The dashboard model with each edit applied to its spec row's `taken` (spec 064, T23, T25), in claim-ID order as core
+ * keeps it; no edit returns the model itself, so the body stays byte for byte.
+ */
+function takenDashboard(model: unknown, edits: readonly TakenEdit[]): unknown {
+  if (edits.length === 0) return model;
+  const copy = structuredClone(model) as { specs?: TakenRow[] };
+  for (const row of copy.specs ?? []) {
+    const own = edits.filter((e) => e.spec === row.id);
+    if (own.length === 0 || !Array.isArray(row.taken)) continue;
+    let taken = row.taken;
+    for (const { claim, session } of own) {
+      taken = taken.filter((t) => t.id !== claim);
+      if (session !== null) taken.push({ id: claim, session, since: STUB_NOW, source: 'activity' });
+    }
+    row.taken = taken.sort((a, b) => byClaimId(a.id, b.id));
+  }
+  return copy;
+}
+
+/** The body of `POST /api/__stub/lock` (spec 064, T25). */
+type StubLock = { spec: string; claim: string; session: string; release?: boolean };
+const isStubLock = (body: unknown): body is StubLock => {
+  if (typeof body !== 'object' || body === null) return false;
+  const b = body as Record<string, unknown>;
+  const named = (v: unknown): boolean => typeof v === 'string' && v.trim() !== '';
+  return named(b['spec']) && named(b['claim']) && named(b['session']) && (b['release'] === undefined || typeof b['release'] === 'boolean');
+};
 
 /** The near-midnight fixture (spec 006, T4): `off` serves the goldens as they are, `on` lays `STUB_MIDNIGHT` over harbor. */
 export const MIDNIGHT_STATES = ['off', 'on'] as const;
@@ -1147,6 +1206,8 @@ function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: 
     person: { spec: pageWith('activity', personLive.agents, personLive.locks), live: personLive },
     // The run variants change no lock: every tree reads as under `activity` (beacon's variants are rebuilt by core).
     runs: { spec, live },
+    // Specs in work (spec 064, T23) change only harbor's dashboard body (`STUB_WORKING`); spec page and live frame stay.
+    working: { spec, live },
   };
 }
 
@@ -2151,6 +2212,17 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const dashboards = new Map(workspaces.map((w) => [w.slug, readDashboard(dir, w.golden)]));
   const trees = new Map(workspaces.map((w) => [w.slug, readTree(core, dir, w.golden)]));
   const plannings = new Map(workspaces.map((w) => [w.slug, readPlanning(dir, w.golden)]));
+  // Specs in work (spec 064, T23): `STUB_WORKING`'s claims, each checked open in harbor's tree, so a fixture change fails here.
+  const workingEdits: readonly TakenEdit[] = STUB_WORKING.specs.map((spec, n) => {
+    const claim = STUB_WORKING.claims[n] ?? '';
+    const tree = trees.get(STUB_WORKING.workspace);
+    const found = tree?.specs.find((s) => s.spec.head.id === spec && !s.key.includes('/archive/'));
+    const state = found?.claims.claims.find((c) => c.id === claim)?.state;
+    if (tree?.golden === 'harbor' && !['takeable', 'open', 'blocked'].includes(state ?? '')) {
+      throw new Error(`stub-api: STUB_WORKING names ${spec} ${claim}, which harbor does not hold open`);
+    }
+    return { spec, claim, session: syntheticSession(spec, claim) };
+  });
   // beacon's tech golden beside them, for its library under the run variants (spec 040, T53).
   const techs = new Map([...workspaces, STUB_RUN.workspace].map((w) => [w.slug, readTechGolden(dir, w.golden)]));
   // The worktree overlay (spec 027, T33): harbor's dashboard and spec goldens with its worktree facts, built once.
@@ -2534,6 +2606,34 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return new Response(null, { status: 204 });
   };
 
+  /** Claim locks taken or released through `POST /api/__stub/lock` (spec 064, T25) per session, then per slug, then per `<spec>\0<claim>`. */
+  const lockEdits = new Map<string, Map<string, Map<string, TakenEdit>>>();
+  const lockEditsOf = (req: Request, slug: string): TakenEdit[] => [...(lockEdits.get(sessionOf(req))?.get(slug)?.values() ?? [])];
+  const lockRoute = async (req: Request, url: URL): Promise<Response> => {
+    if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
+    const slug = url.searchParams.get('ws');
+    const dashboard = slug === null ? undefined : dashboards.get(slug);
+    if (slug === null || dashboard === undefined) return settingsError(404, { error: 'not-found' });
+    let body: unknown = null;
+    try {
+      body = await req.json();
+    } catch {
+      // A body that is no JSON is as malformed as a JSON body of the wrong shape.
+    }
+    if (!isStubLock(body)) return settingsError(400, { error: 'invalid-lock' });
+    const rows = (dashboard.model as { specs?: TakenRow[] }).specs ?? [];
+    if (!rows.some((row) => row.id === body.spec)) return settingsError(404, { error: 'not-found' });
+    const id = sessionOf(req);
+    const own = lockEdits.get(id) ?? new Map<string, Map<string, TakenEdit>>();
+    const edits = own.get(slug) ?? new Map<string, TakenEdit>();
+    edits.set(`${body.spec}\0${body.claim}`, { spec: body.spec, claim: body.claim, session: body.release === true ? null : body.session });
+    own.set(slug, edits);
+    lockEdits.set(id, own);
+    // Pushed before the 204, as `bump` does: the next live refresh sees the changed dashboard and its ETag.
+    await pushUpdate(id, slug);
+    return new Response(null, { status: 204 });
+  };
+
   // ---- the live update stream (spec 030, T17), per session like the bumps ----
 
   /** An open `GET /api/events`: its session, what its synthetic reads go out with, and how to write to or end it. */
@@ -2771,7 +2871,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
     const added = addedOf(req, slug);
     const model = added ? adminGoldenOf(added.golden).dashboard.model : source.get(slug)?.model;
-    return workspaceJson(req, 200, bumpDashboard(model, bumpsOf(req, slug)), activityHash);
+    const fixture = req.headers.get(LOCKS_HEADER) === 'working' && slug === STUB_WORKING.workspace ? workingEdits : [];
+    const body = takenDashboard(bumpDashboard(takenDashboard(model, fixture), bumpsOf(req, slug)), lockEditsOf(req, slug));
+    return workspaceJson(req, 200, body, activityHash);
   };
 
   /**
@@ -3528,6 +3630,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       writes.delete(sessionOf(req));
       notebooks.delete(sessionOf(req));
       bumps.delete(sessionOf(req));
+      lockEdits.delete(sessionOf(req));
       runBumps.delete(sessionOf(req));
       addedSteps.delete(sessionOf(req));
       boards.delete(sessionOf(req));
@@ -3542,6 +3645,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
+    if (pathname === LOCK_PATH) return lockRoute(req, url);
     if (pathname === BUMP_RUN_PATH) return bumpRunRoute(req, url);
     if (pathname === STEP_PATH) return stepRoute(req, url);
     if (pathname === WORKFLOW_PATH) return workflowRoute(req, url);

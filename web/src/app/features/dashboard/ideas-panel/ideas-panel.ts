@@ -1,22 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { ItemStateInfo } from '../../../../../../core/src/files';
 import { DetailSelection, selectedLook } from '../../../layout/detail-sidebar/selection';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiIdeaChip } from '../../../shared/ui/idea-chip/idea-chip';
 import { UiItemState } from '../../../shared/ui/item-state/item-state';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
+import type { DashboardIdea } from '../spec-table/idea-rows';
 
-/** One story as `DashboardModel.ideas.list` carries it; only these fields are read. */
-export interface DashboardIdea {
-  readonly slug: string;
-  readonly title: string;
-  readonly feature: string | null;
-  readonly milestone: string | null;
-  readonly priority: string;
-  /** The story's item state (spec 040, ISC-224); absent when the server read it without a clock. */
-  readonly state?: ItemStateInfo;
-}
+/** The story shape moved to the list's idea rows (spec 064, T37), which read it from the same body. */
+export type { DashboardIdea } from '../spec-table/idea-rows';
 
 /** `DashboardModel.ideas`: the backlog's stories and their count, as served. */
 export interface DashboardIdeas {

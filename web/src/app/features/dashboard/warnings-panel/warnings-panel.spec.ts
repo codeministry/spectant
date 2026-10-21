@@ -212,7 +212,11 @@ describe('WarningsPanel fold (spec 064, T32)', () => {
     const toggle = toggleOf(root);
     expect(toggle).not.toBeNull();
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle.getAttribute('aria-label')).toBe('Show warnings');
+    // The heading's name stays its visible text (title, then summary); the toggle word is only the button's title.
+    expect(toggle.hasAttribute('aria-label')).toBe(false);
+    expect(toggle.title).toBe('Show warnings');
+    expect(toggle.hasAttribute('aria-describedby')).toBe(false);
+    expect(text(root.querySelector('h2#warnings'))).toBe(`Warnings ${summary}`);
     expect(text(toggle.querySelector('[data-warnings-summary]'))).toBe(summary);
     expect(toggle.querySelector('ui-icon[data-icon="triangle-alert"]')).not.toBeNull();
     expect(toggle.querySelector('ui-icon[data-icon="chevron-down"]')).not.toBeNull();
@@ -232,7 +236,8 @@ describe('WarningsPanel fold (spec 064, T32)', () => {
     await fixture.whenStable();
     const toggle = toggleOf(root);
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(toggle.getAttribute('aria-label')).toBe('Hide warnings');
+    expect(toggle.hasAttribute('aria-label')).toBe(false);
+    expect(toggle.title).toBe('Hide warnings');
     const region = root.querySelector(`#${toggle.getAttribute('aria-controls') ?? 'none'}`) as HTMLElement;
     expect(region.hidden).toBe(false);
     expect(region.querySelectorAll('ui-card [data-warning-spec]').length).toBe(withNotes(HARBOR).length);

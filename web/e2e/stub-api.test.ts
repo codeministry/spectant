@@ -72,6 +72,7 @@ import {
   EMPTY_CATALOG,
   LIBRARY_HEADER,
   LOCKS_HEADER,
+  LOCK_PATH,
   LOCK_STATES,
   MIDNIGHT_HEADER,
   MIDNIGHT_STATES,
@@ -86,6 +87,8 @@ import {
   QUESTION_HEADER,
   STUB_QUESTION,
   STUB_WAITS,
+  STUB_WORKING,
+  syntheticSession,
   WAITS_HEADER,
   WAITS_STATES,
   runActivity,
@@ -3324,5 +3327,110 @@ describe('stub API: the workspace admin routes per session (spec 016, T25, ISC-3
     // After a reset the path adds again, under the same slug.
     const again = await send(workspaceAdminRoutes.add(), 'POST', mine, { path: STUB_ADMIN.paths.empty });
     expect([again.status, ((await again.json()) as Json)['slug']]).toEqual([201, 'new-workspace']);
+  });
+});
+
+describe('stub API: specs in work on the dashboard body (spec 064, T23, T25)', () => {
+  const HARBOR = '/api/workspaces/harbor/dashboard';
+  type Taken = { id: string; session: string; since: string; source: string };
+  type Row = { id: string; taken: Taken[] };
+  const rowsOf = async (res: Response): Promise<Row[]> => ((await res.json()) as { specs: Row[] }).specs;
+  const workingOf = (rows: Row[]): Array<[string, Taken[]]> => rows.filter((r) => r.taken.length > 0).map((r) => [r.id, r.taken]);
+  const working = { [LOCKS_HEADER]: 'working' };
+  const lock = (session: string, body: unknown, ws = 'harbor'): Promise<Response> =>
+    ask(`${LOCK_PATH}?ws=${ws}`, { method: 'POST', session, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+
+  test('"working" is a lock fixture; harbor\'s dashboard then holds a taken entry on four active specs, more than the tile limit', async () => {
+    expect(LOCK_STATES).toContain('working');
+    const rows = await rowsOf(await ask(HARBOR, { headers: working }));
+    const held = workingOf(rows);
+    expect(held.map(([id]) => id)).toEqual(['005', '006', '002', '009']);
+    expect(held.map(([id]) => id)).toEqual([...STUB_WORKING.specs]);
+    expect(held).toEqual(
+      STUB_WORKING.claims.map((claim, n): [string, Taken[]] => {
+        const id = STUB_WORKING.specs[n] ?? '';
+        return [id, [{ id: claim, session: syntheticSession(id, claim), since: STUB_NOW, source: 'activity' }]];
+      }),
+    );
+    expect(held.flatMap(([, taken]) => taken.map((t) => t.session))).toEqual([
+      'a:claude:stub-005-isc-94',
+      'a:claude:stub-006-isc-1',
+      'a:claude:stub-002-isc-74',
+      'a:claude:stub-009-isc-131',
+    ]);
+    // Every row but the four is the golden's, byte for byte.
+    const goldenRows = golden('harbor')['specs'] as Row[];
+    expect(rows.map((r) => (r.taken.length > 0 ? { ...r, taken: [] } : r))).toEqual(goldenRows);
+    expect(workingOf(await rowsOf(await ask('/api/workspaces/lantern/dashboard', { headers: working })))).toEqual([]);
+  });
+
+  test('every other lock value keeps today\'s dashboard body byte for byte; "working" changes its ETag', async () => {
+    const plain = await ask(HARBOR);
+    const etag = plain.headers.get('ETag');
+    const text = await plain.text();
+    expect(text).toBe(JSON.stringify(golden('harbor')));
+    for (const locks of LOCK_STATES.filter((l) => l !== 'working')) {
+      expect({ locks, text: await (await ask(HARBOR, { headers: { [LOCKS_HEADER]: locks } })).text() }).toEqual({ locks, text });
+    }
+    expect((await ask(HARBOR, { headers: working })).headers.get('ETag')).not.toBe(etag);
+  });
+
+  test('a lock POST puts the taken entry on that session\'s dashboard with a new ETag; a release takes it off; other sessions stay', async () => {
+    const session = 'working-live';
+    const before = await ask(HARBOR, { session });
+    const etag = before.headers.get('ETag') ?? '';
+    expect(workingOf(await rowsOf(before))).toEqual([]);
+
+    const take = { spec: '003', claim: 'ISC-81', session: 'a:claude:stub-live', release: false };
+    expect((await lock(session, take)).status).toBe(204);
+    const taken = await ask(HARBOR, { session, headers: { 'If-None-Match': etag } });
+    expect(taken.status).toBe(200);
+    const takenEtag = taken.headers.get('ETag') ?? '';
+    expect(takenEtag).not.toBe(etag);
+    expect(workingOf(await rowsOf(taken))).toEqual([['003', [{ id: 'ISC-81', session: 'a:claude:stub-live', since: STUB_NOW, source: 'activity' }]]]);
+    expect(workingOf(await rowsOf(await ask(HARBOR, { session: 'working-bystander' })))).toEqual([]);
+
+    expect((await lock(session, { ...take, release: true })).status).toBe(204);
+    const released = await ask(HARBOR, { session, headers: { 'If-None-Match': takenEtag } });
+    expect(released.status).toBe(200);
+    expect(released.headers.get('ETag')).toBe(etag);
+    expect(workingOf(await rowsOf(released))).toEqual([]);
+
+    // A release also takes a fixture's entry off; a reset drops what the session changed.
+    expect((await lock(session, { spec: '002', claim: 'ISC-74', session: 'a:claude:stub-002-isc-74', release: true })).status).toBe(204);
+    const fewer = workingOf(await rowsOf(await ask(HARBOR, { session, headers: working })));
+    expect(fewer.map(([id]) => id)).toEqual(['005', '006', '009']);
+    expect((await lock(session, take)).status).toBe(204);
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    expect(await (await ask(HARBOR, { session })).text()).toBe(JSON.stringify(golden('harbor')));
+  });
+
+  test('a lock POST pushes one update frame to the session\'s open streams, carrying the changed dashboard', async () => {
+    const session = 'working-stream';
+    const sse = sseReader(await ask(EVENTS_PATH, { session }));
+    expect(await sse.next()).toEqual({ comment: 'ping' });
+    expect((await lock(session, { spec: '003', claim: 'ISC-81', session: 'a:claude:stub-live' })).status).toBe(204);
+    const frame = await sse.update();
+    if (typeof frame === 'string' || 'comment' in frame) throw new Error(`no update frame: ${JSON.stringify(frame)}`);
+    const update = JSON.parse(frame.data) as { ws: string; views: Array<{ path: string; etag: string; body: { specs: Row[] } }> };
+    const view = update.views.find((v) => v.path === HARBOR);
+    const now = await ask(HARBOR, { session });
+    expect(view?.etag).toBe(now.headers.get('ETag') ?? '');
+    expect(workingOf(view?.body.specs ?? []).map(([id]) => id)).toEqual(['003']);
+    await sse.cancel();
+    await ask(RESET_PATH, { method: 'POST', session });
+  });
+
+  test('answers 405 with Allow: POST, 404 for an unknown workspace or spec, 400 for a malformed body', async () => {
+    const wrong = await ask(`${LOCK_PATH}?ws=harbor`);
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'POST']);
+    const good = { spec: '003', claim: 'ISC-81', session: 'a:claude:stub-live' };
+    expect((await lock('working-errors', good, 'nowhere')).status).toBe(404);
+    expect((await lock('working-errors', { ...good, spec: '404' })).status).toBe(404);
+    for (const bad of [null, {}, { ...good, claim: '' }, { ...good, session: 7 }, { ...good, release: 'yes' }, { ...good, spec: 3 }]) {
+      const res = await lock('working-errors', bad);
+      expect({ bad, status: res.status, body: (await res.json()) as unknown }).toEqual({ bad, status: 400, body: { error: 'invalid-lock' } });
+    }
+    expect(workingOf(await rowsOf(await ask(HARBOR, { session: 'working-errors' })))).toEqual([]);
   });
 });

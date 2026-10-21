@@ -53,6 +53,13 @@
         <ui-icon name="x" [size]="14" />
       </button>
     }
+    <!-- Spec 064 (T4, ISC-465): the working filter's flag beside takeable, same look; a click drops it. -->
+    @if (query().working) {
+      <button type="button" class="btn btn-sm btn-ghost takeable-flag" data-filter="working" aria-pressed="true" (click)="clearWorking()">
+        {{ 'specs.workingFilter' | transloco }}
+        <ui-icon name="x" [size]="14" />
+      </button>
+    }
   </div>
   <span class="visually-hidden" aria-live="polite" data-archived-live>{{ archivedLive() }}</span>
 
