@@ -2798,9 +2798,7 @@
       "since": "seit {{time}}",
       "showAll": "Alle {{count}} anzeigen",
       "waiting": "+{{n}} bei Ihnen",
-      "foldName": "+{{n}} weitere · Liegt bei Ihnen, alle {{count}} zeigen",
-      "fewer": "Weniger zeigen",
-      "fewerName": "Weniger zeigen · Liegt bei Ihnen, nur der oberste Eintrag"
+      "showAllName": "Alle {{count}} anzeigen · Liegt bei Ihnen"
     },
     "next": {
       "label": "Als Nächstes",

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, model } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { GuidanceEntry } from '../../../../../../core/src/files';
@@ -7,6 +8,7 @@ import { UiCard } from '../card/card';
 import { UiChip } from '../chip/chip';
 import { UiCommandChip } from '../command-chip/command-chip';
 import { UiGlyph } from '../glyph/glyph';
+import { UiDisclosure } from '../overlay/disclosure';
 import { UiPriority } from '../priority/priority';
 import { type RelativeFormat, UiRelativeTime } from '../relative-time/relative-time';
 import { UiSectionHeader } from '../section-header/section-header';
@@ -23,13 +25,14 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
  * command as `ui-command-chip` and "waiting 2 d" as `ui-relative-time` from `since`. Up to `limit` more entries follow
  * as links to their spec with their reason, each with its own chip only under `chips` (the `#waiting` section and the
  * spec page); past them "+n more" links to `moreLink#moreFragment`, which the caller names. Without an entry the block
- * holds one sentence, never an empty card. Only existing primitives are composed; no new token. With `topForm` `row`
- * (the dashboard, spec 058 T40) the top entry stands as one 44 px row like the folded ones: ID, reason and copy chip,
- * no card, no title, priority or "waiting" line.
+ * holds one sentence, never an empty card. Only existing primitives are composed; no new token. With `form`
+ * `card-rows` (the dashboard, spec 058 T40, T46) every entry is one 44 px row in one unpadded `ui-card` under
+ * hairlines, like Next up's card form: ID, reason and copy chip, no title, priority or "waiting" line; the first
+ * `shown` rows stand, the rest fold behind "Show all n" at the bottom of the card.
  */
 @Component({
   selector: 'ui-waits-block',
-  imports: [GuidanceReasonPipe, RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiGlyph, UiIcon, UiPriority, UiRelativeTime, UiSectionHeader],
+  imports: [GuidanceReasonPipe, NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDisclosure, UiGlyph, UiIcon, UiPriority, UiRelativeTime, UiSectionHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-count]': 'entries().length', '[attr.data-chips]': "chips() ? '' : null" },
   styles: `
@@ -54,9 +57,16 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
     :host(:not([data-chips])) .row { box-sizing: border-box; padding-block: 12px; }
     .row .id { line-height: 20px; }
     .row .reason { flex: 1 1 auto; min-inline-size: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
-    /* The top entry as a row (topForm row): the folded rows' markup, 44 px with the text centred, the chip beside it. */
-    .top-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
-    .top-row .row { box-sizing: border-box; padding-block: 12px; }
+    /* Form card-rows (spec 058 T46): Next up's card anatomy, 44 px rows 12 px in from the card edges under hairlines,
+       the chip beside the text (or under it, still 8 px off the hairline); the fold insets itself like a row. */
+    .entries { margin: 0; padding: 0; list-style: none; }
+    .entries > li { display: flex; flex-wrap: wrap; column-gap: 12px; align-items: center; padding-inline: 12px; }
+    .entries > li + li, .fold, .fold .entries { border-block-start: 1px solid var(--line); }
+    .entries .row { box-sizing: border-box; padding-block: 12px; }
+    .entries ui-command-chip { margin-block: 8px; }
+    .fold { display: block; padding-inline: 12px; }
+    .fold .entries { margin-inline: -12px; }
+    .visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .row ui-icon { flex: none; padding-block-start: 2px; color: var(--muted-ink); }
     .more { display: inline-flex; gap: 4px; align-items: center; min-block-size: 44px; color: var(--disp-ink); font-size: 13px; line-height: 20px; }
     .empty { display: flex; gap: 8px; align-items: center; margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
@@ -73,27 +83,31 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
         </span>
       </ui-section-header>
       @if (top(); as first) {
-        @if (topForm() === 'row') {
-          <div class="top-row" data-top data-top-row [attr.data-item]="first.item">
-            <a class="row" [routerLink]="specLink(first)" [fragment]="fragmentOf(first)">
-              <span class="id">{{ label(first) }}</span>
-              @if (kindKey(first); as kind) {
-                <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
-              } @else if (first.ref) {
-                <ui-chip variant="mono">{{ first.ref }}</ui-chip>
+        @if (form() === 'card-rows') {
+          <ui-card data-waits-card [padding]="0">
+            <ol class="entries">
+              @for (entry of lead(); track key(entry); let first = $first) {
+                <li [attr.data-top]="first ? '' : null" [attr.data-row]="first ? null : ''" [attr.data-item]="entry.item">
+                  <ng-container [ngTemplateOutlet]="waitRow" [ngTemplateOutletContext]="{ $implicit: entry }" />
+                </li>
               }
-              <span class="reason" data-reason>{{ first.reason | guidanceReason }}</span>
-            </a>
-            @if (first.command; as cmd) {
-              <ui-command-chip
-                [command]="cmd"
-                [context]="'orientation.chipContext.waits' | transloco: { what: first.ref ? first.spec + ' ' + first.ref : first.spec }"
-                [copyLabel]="'common.copyCommand' | transloco"
-                [copiedLabel]="'common.copied' | transloco: { command: cmd }"
-                [manualHint]="'common.copyFallback' | transloco"
-              />
+            </ol>
+            @if (folded().length > 0) {
+              <ui-disclosure class="fold" data-show-all [(open)]="open">
+                <span uiDisclosureSummary data-fold-toggle>
+                  <span aria-hidden="true" data-visible>{{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}</span>
+                  <span class="visually-hidden" data-name>{{ 'guidance.waits.showAllName' | transloco: { count: entries().length } }}</span>
+                </span>
+                <ol class="entries">
+                  @for (entry of folded(); track key(entry)) {
+                    <li data-row [attr.data-item]="entry.item">
+                      <ng-container [ngTemplateOutlet]="waitRow" [ngTemplateOutletContext]="{ $implicit: entry }" />
+                    </li>
+                  }
+                </ol>
+              </ui-disclosure>
             }
-          </div>
+          </ui-card>
         } @else {
           <ui-card class="top" side [padding]="16" data-top>
             <div class="head">
@@ -123,7 +137,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
             </div>
           </ui-card>
         }
-        @if (rest().length > 0) {
+        @if (form() === 'stack' && rest().length > 0) {
           <ol class="rest">
             @for (entry of rest(); track key(entry)) {
               <li data-row [attr.data-item]="entry.item">
@@ -152,7 +166,7 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
             }
           </ol>
         }
-        @if (more() > 0 && moreLink(); as link) {
+        @if (form() === 'stack' && more() > 0 && moreLink(); as link) {
           <a class="more" data-more [routerLink]="link" [fragment]="moreFragment()">
             {{ 'guidance.waits.more' | transloco: { n: more() } }}
             <ui-icon name="arrow-right" [size]="12" />
@@ -165,6 +179,27 @@ export const waitsKey = (entry: GuidanceEntry): string => `${entry.spec}:${entry
         </p>
       }
     </section>
+    <!-- One row of the card-rows form: the ID link with the reason, the copy chip beside it. -->
+    <ng-template #waitRow let-entry>
+      <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
+        <span class="id">{{ label(entry) }}</span>
+        @if (kindKey(entry); as kind) {
+          <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+        } @else if (entry.ref) {
+          <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
+        }
+        <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+      </a>
+      @if (entry.command; as cmd) {
+        <ui-command-chip
+          [command]="cmd"
+          [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      }
+    </ng-template>
   `,
 })
 export class UiWaitsBlock {
@@ -197,17 +232,25 @@ export class UiWaitsBlock {
    */
   readonly level = input<2 | 3>(3);
   /**
-   * The top entry's form (spec 058, T40, ISC-401): `card`, the default, highlighted in a `ui-card` with title,
-   * priority and "waiting n d" (the start and the spec page); `row` on the dashboard, one 44 px row like the folded
-   * ones with ID, reason and copy chip, so KPI band, TL;DR, this block and Next up fit one 1440 px screen.
+   * The block's form (spec 058, T40, T46, ISC-401, ISC-399): `stack`, the default, the top entry highlighted in a
+   * `ui-card` with title, priority and "waiting n d", `limit` rows and "+n more" below it (the start and the spec
+   * page); `card-rows` on the dashboard, every entry one 44 px row with ID, reason and copy chip in one card like Next
+   * up's, the first `shown` standing and the rest behind the fold "Show all n" at the card's bottom.
    */
-  readonly topForm = input<'card' | 'row'>('card');
+  readonly form = input<'stack' | 'card-rows'>('stack');
+  /** How many rows stand before the fold in the `card-rows` form (Next up's `NEXT_UP_SHOWN`). */
+  readonly shown = input(3);
+  /** The `card-rows` fold's state, two-way: the `#waiting` section opens it on arrival over its fragment. */
+  readonly open = model(false);
 
   protected readonly top = computed(() => this.entries()[0] ?? null);
   protected readonly rest = computed(() => {
     const limit = this.limit();
     return this.entries().slice(1, limit === null ? undefined : 1 + Math.max(0, limit));
   });
+  /** The `card-rows` form's standing rows and the folded rest, in core's order. */
+  protected readonly lead = computed(() => this.entries().slice(0, Math.max(1, this.shown())));
+  protected readonly folded = computed(() => this.entries().slice(Math.max(1, this.shown())));
   /** The entries past the highlighted one and the listed rows. */
   protected readonly more = computed(() => Math.max(0, this.entries().length - 1 - this.rest().length));
 

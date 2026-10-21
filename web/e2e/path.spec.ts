@@ -457,7 +457,9 @@ async function readAll(page: Page, steps: StepCounter, targets: readonly Block[]
  * viewport height, and each block's height and top before any scroll.
  */
 const P3_BUDGET: Readonly<Record<number, { steps: number; seconds: number }>> = {
-  1440: { steps: 1, seconds: 3 },
+  // Spec 058 review (2026-10-21): three Waits rows push Next up below the fold at 1440 too; one screen of scrolling is
+  // allowed there as at 600 (ISC-401 as refined).
+  1440: { steps: 2, seconds: 4.5 },
   600: { steps: 2, seconds: 4.5 },
 };
 
@@ -514,7 +516,7 @@ for (const lang of ['en', 'de'] as const) {
         );
         expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
         expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
-        if (width === 1440) expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls at 1440').toBe(0);
+        expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
         expect(unreadNames, 'every block read').toEqual([]);
       });
     });

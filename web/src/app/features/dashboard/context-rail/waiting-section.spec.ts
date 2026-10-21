@@ -58,56 +58,61 @@ const visibleOf = (button: Element | null | undefined): string => text(button?.q
 const HARBOR = harbor.guidance.waits as unknown as readonly GuidanceEntry[];
 const BEACON = beacon.guidance.waits as unknown as readonly GuidanceEntry[];
 
-describe('WaitingSection (spec 020 T17, ISC-238; spec 021 ISC-246.1 short form)', () => {
-  it('is the #waiting target and shows a single entry whole with its chip, no fold', async () => {
+describe('WaitingSection (spec 020 T17, ISC-238; spec 058 T46, ISC-399 card rows)', () => {
+  /** The rows standing in the card, outside the fold. */
+  const standing = (section: Element | null | undefined): Element[] => [...(section?.querySelectorAll('ui-card[data-waits-card] > ol.entries > li') ?? [])];
+
+  it('is the #waiting target and shows a single entry as the one row of its card with its chip, no fold', async () => {
     const root = await render(BEACON.slice(0, 1));
     const section = root.querySelector('app-waiting-section');
     expect(section?.id).toBe(WAITING_FRAGMENT);
     expect(section?.getAttribute('tabindex')).toBe('-1');
-    expect(section?.querySelector('[data-top] ui-command-chip')).not.toBeNull();
+    expect(standing(section)).toHaveLength(1);
+    expect(section?.querySelector('ui-card [data-top] ui-command-chip')).not.toBeNull();
     expect(section?.querySelectorAll('[data-row]').length).toBe(0);
     expect(section?.querySelector('[data-more], ui-disclosure')).toBeNull();
   });
 
-  it('folds every entry past the top one from two entries on: "+1 more"', async () => {
+  it('shows up to three entries as rows without a fold', async () => {
     expect(BEACON.length).toBe(2);
     const root = await render(BEACON);
     const section = root.querySelector('app-waiting-section');
-    expect(section?.querySelector('ui-waits-block')?.querySelectorAll('[data-row]').length).toBe(0);
-    const button = section?.querySelector('ui-disclosure[data-show-all] button');
-    expect(visibleOf(button)).toBe('+1 more');
-    expect(nameOf(button)).toBe('+1 more · Waits on you, show all 2');
+    expect(standing(section).map((li) => text(li.querySelector('.id')))).toEqual(BEACON.map((e) => e.spec));
+    expect(section?.querySelector('ui-disclosure')).toBeNull();
   });
 
-  it('shows the header with the count, the top card whole and "+6 more" directly below, closed, the rest folded with reason and chip', async () => {
+  it('shows the header with the count and one card: three rows, then "Show all 7" at its bottom, closed, the rest folded with reason and chip', async () => {
     expect(HARBOR.length).toBe(7);
     const root = await render(HARBOR);
     const section = root.querySelector('app-waiting-section');
     expect(section?.getAttribute('data-count')).toBe('7');
     const block = section?.querySelector('ui-waits-block');
     expect(text(block?.querySelector('ui-section-header ui-chip'))).toBe('7');
-    // The top entry whole: spec, the reason never shortened, the copy chip.
-    // Spec 058 (T40, ISC-401): the top entry is a row like the folded ones, no card.
-    const top = block?.querySelector('[data-top]');
-    expect(top?.hasAttribute('data-top-row')).toBe(true);
-    expect(block?.querySelector('ui-card')).toBeNull();
-    expect(top?.querySelector('a.row')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
-    expect(text(top?.querySelector('.id'))).toBe(HARBOR[0]?.spec);
-    expect(text(top?.querySelector('[data-reason]')).length).toBeGreaterThan(0);
-    expect(top?.querySelector('ui-command-chip')).not.toBeNull();
-    expect(block?.querySelectorAll('[data-row]').length).toBe(0);
+    const cards = block?.querySelectorAll('ui-card');
+    expect(cards?.length).toBe(1);
+    // Three rows stand, the first one [data-top]: spec link, the reason never shortened, the copy chip.
+    const rows = standing(section);
+    expect(rows.map((li) => text(li.querySelector('.id')))).toEqual(HARBOR.slice(0, 3).map((e) => e.spec));
+    const top = rows[0];
+    expect(top.hasAttribute('data-top')).toBe(true);
+    expect(block?.querySelectorAll('[data-top]').length).toBe(1);
+    expect(top.querySelector('a.row')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
+    for (const row of rows) {
+      expect(text(row.querySelector('[data-reason]'))).not.toBe('');
+      expect(row.querySelector('ui-command-chip')).not.toBeNull();
+    }
     expect(block?.querySelector('[data-more]')).toBeNull();
-    // The fold right below the block.
+    // The fold closes the card.
     const fold = section?.querySelector('ui-disclosure[data-show-all]');
-    expect(block?.nextElementSibling).toBe(fold);
+    expect(cards?.[0]?.lastElementChild).toBe(fold);
     const button = fold?.querySelector('button');
-    expect(visibleOf(button)).toBe('+6 more');
+    expect(visibleOf(button)).toBe('Show all 7');
     expect(button?.querySelector('[data-visible]')?.getAttribute('aria-hidden')).toBe('true');
-    expect(nameOf(button)).toBe('+6 more · Waits on you, show all 7');
+    expect(nameOf(button)).toBe('Show all 7 · Waits on you');
     expect(nameOf(button).startsWith(visibleOf(button))).toBe(true);
     expect(button?.getAttribute('aria-expanded')).toBe('false');
     const folded = [...(fold?.querySelectorAll('[data-row]') ?? [])];
-    expect(folded.map((row) => text(row.querySelector('.id')))).toEqual(HARBOR.slice(1).map((e) => e.spec));
+    expect(folded.map((row) => text(row.querySelector('.id')))).toEqual(HARBOR.slice(3).map((e) => e.spec));
     for (const row of folded) {
       expect(text(row.querySelector('[data-reason]'))).not.toBe('');
       expect(row.querySelector('ui-command-chip')).not.toBeNull();
@@ -116,7 +121,7 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 021 ISC-246.1 short form)'
     expect(document.activeElement).not.toBe(section);
   });
 
-  it('names the toggle by its state once open: "Show fewer · Waits on you, only the top entry"', async () => {
+  it('opens the fold on a click, its name unchanged', async () => {
     entries = HARBOR;
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/w/harbor');
@@ -126,17 +131,15 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 021 ISC-246.1 short form)'
     await settle(harness);
     const button = root.querySelector('app-waiting-section ui-disclosure button');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(visibleOf(button)).toBe('Show fewer');
-    expect(nameOf(button)).toBe('Show fewer · Waits on you, only the top entry');
-    expect(nameOf(button).startsWith(visibleOf(button))).toBe(true);
+    expect(nameOf(button)).toBe('Show all 7 · Waits on you');
   });
 
-  it('reads the German names: "+6 weitere · Liegt bei Ihnen, alle 7 zeigen"', async () => {
+  it('reads the German names: "Alle 7 anzeigen · Liegt bei Ihnen"', async () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
     const root = await render(HARBOR);
     const button = root.querySelector('app-waiting-section ui-disclosure button');
-    expect(visibleOf(button)).toBe('+6 weitere');
-    expect(nameOf(button)).toBe('+6 weitere · Liegt bei Ihnen, alle 7 zeigen');
+    expect(visibleOf(button)).toBe('Alle 7 anzeigen');
+    expect(nameOf(button)).toBe('Alle 7 anzeigen · Liegt bei Ihnen');
   });
 
   it('opens the fold and focuses the section when the page is reached over #waiting', async () => {
@@ -144,7 +147,6 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 021 ISC-246.1 short form)'
     const section = root.querySelector('app-waiting-section');
     const button = section?.querySelector('ui-disclosure button');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(nameOf(button)).toBe('Show fewer · Waits on you, only the top entry');
     expect(document.activeElement).toBe(section);
   });
 
@@ -152,6 +154,6 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 021 ISC-246.1 short form)'
     const root = await render([]);
     const section = root.querySelector('app-waiting-section');
     expect(text(section?.querySelector('[data-empty]'))).toBe('Nothing is waiting on you.');
-    expect(section?.querySelector('ui-disclosure')).toBeNull();
+    expect(section?.querySelector('ui-disclosure, ui-card')).toBeNull();
   });
 });

@@ -15,6 +15,10 @@
  *   KPI band, TL;DR, Waits on you, Next up, warnings: in the DOM and visually, each block below the one before.
  * - ISC-398 (T35, anti): at 1440 px neither the dashboard nor the spec list without a selection draws a rail or a rail
  *   slot, no block stands in an `aside`, and no block appears twice on a page.
+ * - ISC-399 (T46, `-g "dashboard card rows (ISC-399)"`): at 390, 820 and 1440 px Waits on you, Next up and the warnings
+ *   stand 8 px under their section headers; Waits on you is one card of three 44 px rows under hairlines with the fold
+ *   at its bottom; the warning groups stand in equal columns with an inner grid of hairlines, two from 640 px of shell
+ *   and three from 1120 px, in one column below.
  */
 import type { Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from '../fixtures';
@@ -138,6 +142,81 @@ test.describe('dashboard one column (ISC-392)', () => {
           const [prev, next] = [blocks[i - 1]?.box, blocks[i]?.box];
           expect(next?.top ?? 0, `${BLOCKS[i] ?? ''} below ${BLOCKS[i - 1] ?? ''}`).toBeGreaterThanOrEqual((prev?.bottom ?? 0) - 0.5);
           expect(next?.top ?? 0).toBeGreaterThan(prev?.top ?? 0);
+        }
+      });
+    });
+  }
+});
+
+/** The gap from a block's section header to its card, in CSS px. */
+async function headerToCard(page: Page, block: string): Promise<number> {
+  return page.locator(block).first().evaluate((el) => {
+    const header = el.querySelector('ui-section-header')?.getBoundingClientRect();
+    const card = el.querySelector('ui-card')?.getBoundingClientRect();
+    return (card?.top ?? NaN) - (header?.bottom ?? NaN);
+  });
+}
+
+test.describe('dashboard card rows (ISC-399)', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`dashboard card rows (ISC-399): ${String(width)} px, Waits on you and warnings read like Next up`, async ({ page }) => {
+        await dashboardReady(page);
+        // The header sits 8 px over its card in all three blocks.
+        const nextGap = await headerToCard(page, 'app-next-up-list');
+        expect(nextGap).toBeCloseTo(8, 0);
+        expect(await headerToCard(page, 'app-waiting-section'), 'Waits on you: header to card').toBeCloseTo(nextGap, 0);
+        expect(await headerToCard(page, 'app-warnings-panel'), 'Warnings: header to card').toBeCloseTo(nextGap, 0);
+
+        // Waits on you: one card, three rows standing under hairlines, the fold at its bottom.
+        const waits = await page.locator('#waiting').evaluate((section) => {
+          const card = section.querySelector('ui-card[data-waits-card]');
+          const rows = [...(card?.querySelectorAll(':scope > ol > li') ?? [])];
+          const fold = card?.querySelector(':scope > ui-disclosure[data-show-all]');
+          return {
+            cards: section.querySelectorAll('ui-card').length,
+            heights: rows.map((li) => li.getBoundingClientRect().height),
+            lines: rows.map((li) => getComputedStyle(li).borderTopWidth),
+            foldLast: fold !== null && fold !== undefined && card?.lastElementChild === fold,
+          };
+        });
+        expect(waits.cards).toBe(1);
+        expect(waits.heights).toHaveLength(3);
+        for (const h of waits.heights) expect(h).toBeGreaterThanOrEqual(44);
+        expect(waits.lines).toEqual(['0px', '1px', '1px']);
+        expect(waits.foldLast).toBe(true);
+
+        // Warnings: two equal columns from 640 px of shell with an inner grid of hairlines, one column below.
+        const groups = await page.locator('app-warnings-panel li.group').evaluateAll((items) =>
+          items.map((li) => {
+            const r = li.getBoundingClientRect();
+            const style = getComputedStyle(li);
+            return { left: r.left, top: r.top, width: r.width, topLine: style.borderTopWidth, sideLine: style.borderRightWidth };
+          }),
+        );
+        expect(groups.length).toBeGreaterThanOrEqual(3);
+        const [first, second] = groups;
+        if (width >= 640) {
+          // Two columns from 640 px of shell, three from 1120 px (desktop).
+          const columns = width >= 1120 ? 3 : 2;
+          expect(second?.top).toBeCloseTo(first?.top ?? NaN, 0);
+          expect(second?.left ?? 0).toBeGreaterThan((first?.left ?? 0) + 100);
+          expect(Math.abs((second?.width ?? 0) - (first?.width ?? 0))).toBeLessThanOrEqual(1);
+          if (columns === 3) expect(groups[2]?.top).toBeCloseTo(first?.top ?? NaN, 0);
+          groups.forEach((g, i) => {
+            expect(g.topLine, `group ${String(i + 1)}: line above`).toBe(i < columns ? '0px' : '1px');
+            const hasRight = i % columns !== columns - 1 && i + 1 < groups.length;
+            expect(g.sideLine, `group ${String(i + 1)}: line between the columns`).toBe(hasRight ? '1px' : '0px');
+          });
+        } else {
+          expect(second?.left).toBeCloseTo(first?.left ?? NaN, 0);
+          expect(second?.top ?? 0).toBeGreaterThan(first?.top ?? 0);
+          groups.forEach((g, i) => {
+            expect(g.topLine).toBe(i === 0 ? '0px' : '1px');
+            expect(g.sideLine).toBe('0px');
+          });
         }
       });
     });

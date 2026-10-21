@@ -10,8 +10,12 @@
 
 .section {
   display: grid;
-  gap: 8px;
   min-inline-size: 0;
+}
+
+/* Section form: 8 px under the section header instead of its 16, as Next up's card form (spec 058, T46). */
+.section ui-section-header {
+  margin-block-end: var(--space-2);
 }
 
 /* Rail form: the eyebrow heading with its count on the right, 12 px above the card. */
@@ -79,6 +83,43 @@
 
 .group + .group {
   border-block-start: 1px solid var(--line);
+}
+
+/*
+ * Section form from 640 px of shell (spec 058, T46): the groups in two equal columns (three from 1120 px), an inner
+ * grid of hairlines.
+ * The first row has no top line; a left cell carries the line between the columns only where a right cell stands
+ * beside it, so an odd last group leaves no line beside the empty cell. Grid rows stretch both cells to one height.
+ */
+@container shell (width >= 640px) {
+  .section .groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .section .group:nth-child(2) {
+    border-block-start: 0;
+  }
+}
+
+@container shell (640px <= width < 1120px) {
+  .section .group:nth-child(odd):not(:last-child) {
+    border-inline-end: 1px solid var(--line);
+  }
+}
+
+/* From 1120 px of shell (desktop, principal 2026-10-21): three columns, the same inner grid of hairlines. */
+@container shell (width >= 1120px) {
+  .section .groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .section .group:nth-child(3) {
+    border-block-start: 0;
+  }
+
+  .section .group:not(:nth-child(3n), :last-child) {
+    border-inline-end: 1px solid var(--line);
+  }
 }
 
 /* One line: 16 px icon, 40 px ID column, the text. */

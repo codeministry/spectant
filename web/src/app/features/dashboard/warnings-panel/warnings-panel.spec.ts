@@ -180,3 +180,18 @@ describe('WarningsPanel spec edges (T28, ISC-164.1, ISC-162.4)', () => {
     expect(lines.every((l) => l.querySelector('ui-command-chip') === null)).toBe(true);
   });
 });
+
+// Spec 058 (T46, ISC-399): the section form (the dashboard) keeps one list of groups in one card right under its
+// header; the two columns from 640 px of shell and the 8 px header gap are layout, measured in the browser tier.
+describe('WarningsPanel section form (spec 058, T46)', () => {
+  it('holds the header, then one card with one list of every group in model order', async () => {
+    const root = await render(HARBOR, 'section');
+    const section = root.querySelector('section.section') as HTMLElement;
+    expect([...section.children].map((el) => el.tagName.toLowerCase())).toEqual(['ui-section-header', 'ui-card']);
+    const lists = section.querySelectorAll('ui-card ul.groups');
+    expect(lists).toHaveLength(1);
+    const groups = [...lists[0].children];
+    expect(groups.every((g) => g.matches('li.group[data-warning-spec]'))).toBe(true);
+    expect(groups.map((g) => g.getAttribute('data-warning-spec'))).toEqual(withNotes(HARBOR).map((r) => r.id));
+  });
+});
