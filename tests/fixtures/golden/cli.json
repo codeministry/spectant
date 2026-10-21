@@ -1,0 +1,1274 @@
+[
+  {
+    "name": "help --help",
+    "argv": [
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help -h",
+    "argv": [
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "version --version",
+    "argv": [
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "spectant <VERSION>\n",
+    "stderr": ""
+  },
+  {
+    "name": "version -v",
+    "argv": [
+      "-v"
+    ],
+    "exit": 0,
+    "stdout": "spectant <VERSION>\n",
+    "stderr": ""
+  },
+  {
+    "name": "version -V",
+    "argv": [
+      "-V"
+    ],
+    "exit": 0,
+    "stdout": "spectant <VERSION>\n",
+    "stderr": ""
+  },
+  {
+    "name": "version before --no-browser",
+    "argv": [
+      "-V",
+      "--no-browser"
+    ],
+    "exit": 0,
+    "stdout": "spectant <VERSION>\n",
+    "stderr": ""
+  },
+  {
+    "name": "version after --no-browser",
+    "argv": [
+      "--no-browser",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "spectant <VERSION>\n",
+    "stderr": ""
+  },
+  {
+    "name": "version wins over help",
+    "argv": [
+      "--version",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "spectant <VERSION>\n",
+    "stderr": ""
+  },
+  {
+    "name": "help serve --help",
+    "argv": [
+      "serve",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help serve -h",
+    "argv": [
+      "serve",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help add --help",
+    "argv": [
+      "add",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help add -h",
+    "argv": [
+      "add",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help list --help",
+    "argv": [
+      "list",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help list -h",
+    "argv": [
+      "list",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help remove --help",
+    "argv": [
+      "remove",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help remove -h",
+    "argv": [
+      "remove",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help import-notes --help",
+    "argv": [
+      "import-notes",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help import-notes -h",
+    "argv": [
+      "import-notes",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help export-notes --help",
+    "argv": [
+      "export-notes",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help export-notes -h",
+    "argv": [
+      "export-notes",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help db --help",
+    "argv": [
+      "db",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help db -h",
+    "argv": [
+      "db",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help db rollback --help",
+    "argv": [
+      "db",
+      "rollback",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help db rollback -h",
+    "argv": [
+      "db",
+      "rollback",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help gate --help",
+    "argv": [
+      "gate",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help gate -h",
+    "argv": [
+      "gate",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help gate code-reviewed --help",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help gate code-reviewed -h",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help tokens --help",
+    "argv": [
+      "tokens",
+      "--help"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "help tokens -h",
+    "argv": [
+      "tokens",
+      "-h"
+    ],
+    "exit": 0,
+    "stdout": "Usage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n",
+    "stderr": ""
+  },
+  {
+    "name": "unknown command",
+    "argv": [
+      "frobnicate"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown command frobnicate\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "unknown command help",
+    "argv": [
+      "help"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown command help\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "unknown option",
+    "argv": [
+      "--bogus"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown option --bogus\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "unknown short option",
+    "argv": [
+      "-x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown option -x\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "unknown option on list",
+    "argv": [
+      "list",
+      "--bogus"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown option --bogus\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "unknown option before help",
+    "argv": [
+      "--bogus",
+      "--help"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown option --bogus\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port missing value",
+    "argv": [
+      "--port"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port needs a number from 0 to 65535, got nothing\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port not a number",
+    "argv": [
+      "serve",
+      "--port",
+      "http"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port needs a number from 0 to 65535, got \"http\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port too large",
+    "argv": [
+      "--port=70000"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port needs a number from 0 to 65535, got \"70000\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port negative",
+    "argv": [
+      "--port",
+      "-1"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port needs a number from 0 to 65535, got \"-1\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port empty",
+    "argv": [
+      "--port="
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port needs a number from 0 to 65535, got \"\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port six digits",
+    "argv": [
+      "--port",
+      "123456"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port needs a number from 0 to 65535, got \"123456\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "port on list",
+    "argv": [
+      "list",
+      "--port",
+      "1"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --port only applies to serve, not to list\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "strict-port on list",
+    "argv": [
+      "list",
+      "--strict-port"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --strict-port only applies to serve, not to list\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "yes on list",
+    "argv": [
+      "list",
+      "--yes"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --yes only applies to db rollback, gate and tokens, not to list\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "yes on serve",
+    "argv": [
+      "--yes"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --yes only applies to db rollback, gate and tokens, not to serve\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "root on list",
+    "argv": [
+      "list",
+      "--root",
+      "x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --root only applies to gate and tokens, not to list\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "root on serve",
+    "argv": [
+      "--root",
+      "x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --root only applies to gate and tokens, not to serve\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "root missing value",
+    "argv": [
+      "tokens",
+      "--root"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --root needs a directory\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "root empty",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F1",
+      "--root="
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --root needs a directory\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "transcripts on serve",
+    "argv": [
+      "serve",
+      "--transcripts",
+      "x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --transcripts only applies to tokens, not to serve\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "transcripts on list",
+    "argv": [
+      "list",
+      "--transcripts",
+      "x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --transcripts only applies to tokens, not to list\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "transcripts on gate",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F1",
+      "--transcripts",
+      "x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --transcripts only applies to tokens, not to gate\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "transcripts missing value",
+    "argv": [
+      "tokens",
+      "--transcripts"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --transcripts needs a directory\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "transcripts empty",
+    "argv": [
+      "tokens",
+      "--transcripts="
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: --transcripts needs a directory\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "tokens unknown option",
+    "argv": [
+      "tokens",
+      "--bogus"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown option --bogus\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "serve extra argument",
+    "argv": [
+      "serve",
+      "extra"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument extra\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "add without a path",
+    "argv": [
+      "add"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: add needs a path\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "add two paths",
+    "argv": [
+      "add",
+      "a",
+      "b"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument b\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "list extra argument",
+    "argv": [
+      "list",
+      "extra"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument extra\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "remove without a ref",
+    "argv": [
+      "remove"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: remove needs a path or a slug\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "remove two refs",
+    "argv": [
+      "remove",
+      "a",
+      "b"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument b\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "import-notes without a file",
+    "argv": [
+      "import-notes"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: import-notes needs a file\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "export-notes two files",
+    "argv": [
+      "export-notes",
+      "a",
+      "b"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument b\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db without arguments",
+    "argv": [
+      "db"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: db needs rollback and a schema version\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db rollback without a version",
+    "argv": [
+      "db",
+      "rollback"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: db needs rollback and a schema version\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db unknown command",
+    "argv": [
+      "db",
+      "frob",
+      "1"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown db command frob\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db rollback 0",
+    "argv": [
+      "db",
+      "rollback",
+      "0"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: db rollback needs a schema version from 1 to 5, got \"0\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db rollback past the schema",
+    "argv": [
+      "db",
+      "rollback",
+      "99"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: db rollback needs a schema version from 1 to 5, got \"99\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db rollback not a number",
+    "argv": [
+      "db",
+      "rollback",
+      "x"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: db rollback needs a schema version from 1 to 5, got \"x\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "db rollback extra argument",
+    "argv": [
+      "db",
+      "rollback",
+      "1",
+      "2"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument 2\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "gate without arguments",
+    "argv": [
+      "gate"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: gate needs code-reviewed and a feature id F<n>\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "gate code-reviewed without a feature",
+    "argv": [
+      "gate",
+      "code-reviewed"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: gate needs code-reviewed and a feature id F<n>\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "gate unknown gate",
+    "argv": [
+      "gate",
+      "reviewed",
+      "F6"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unknown gate reviewed; the CLI writes only code-reviewed\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "gate bad feature id",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "6"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: gate code-reviewed needs a feature id F<n>, got \"6\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "gate lower-case feature id",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "f6"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: gate code-reviewed needs a feature id F<n>, got \"f6\"\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "tokens extra argument",
+    "argv": [
+      "tokens",
+      "extra"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "spectant: unexpected argument extra\n\nUsage: spectant [command] [options]\n\nCommands:\n  serve            serve the dashboard on 127.0.0.1 (the default command)\n  add <path>       register a repository with specs\n  list             list the registered repositories\n  remove <path|slug>\n                   unregister a repository (its files are never touched)\n  import-notes <file>\n                   import the old notes page's JSON export (a second run skips what is there)\n  export-notes <file>\n                   write every note to <file> in the same JSON shape\n  db rollback <version> --yes\n                   undo the newer schema migrations (1 to 5); without --yes it only says\n                   what would be lost\n  gate code-reviewed F<n> [--root <dir>] [--yes]\n                   write the feature-level code-review mark into every spec of main feature\n                   F<n> once all its claims are closed; without --yes it only prints the plan\n  tokens [--root <dir>] [--transcripts <dir>] [--yes]\n                   measure the token use of the repository's Claude Code sessions per /spec call,\n                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it\n\nOptions:\n  --port <n>       port to listen on (default 7717; 0 picks a free port); a busy port falls\n                   forward to the next free one, up to 20 ports in all\n  --strict-port    fail instead of falling forward when the port is busy\n  --no-browser     do not open the browser\n  --yes            confirm db rollback, gate code-reviewed or tokens\n  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working\n                   directory)\n  --transcripts <dir>\n                   the Claude Code project folder tokens reads (default: projects/<encoded root>\n                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too\n  -v, -V, --version\n                   print the version and exit\n  -h, --help       print this help and exit\n"
+  },
+  {
+    "name": "serve on port 0",
+    "argv": [
+      "--port",
+      "0",
+      "--no-browser"
+    ],
+    "exit": 0,
+    "stdout": "spectant · http://127.0.0.1:<port>\n",
+    "stderr": ""
+  },
+  {
+    "name": "serve on port 0 opening the browser",
+    "argv": [
+      "serve",
+      "--port=0"
+    ],
+    "exit": 0,
+    "stdout": "spectant · http://127.0.0.1:<port>\n",
+    "stderr": ""
+  },
+  {
+    "name": "serve busy port strict",
+    "argv": [
+      "serve",
+      "--strict-port",
+      "--port",
+      "<busy-port>"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: cannot listen on 127.0.0.1:<busy-port>: Failed to start server. Is port <busy-port> in use?\n"
+  },
+  {
+    "name": "serve busy port strict, flags first",
+    "argv": [
+      "--no-browser",
+      "--strict-port",
+      "--port",
+      "<busy-port>"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: cannot listen on 127.0.0.1:<busy-port>: Failed to start server. Is port <busy-port> in use?\n"
+  },
+  {
+    "name": "serve busy port falls forward",
+    "argv": [
+      "--port",
+      "<busy-port>",
+      "--no-browser"
+    ],
+    "exit": 0,
+    "stdout": "spectant · http://127.0.0.1:<port>\n",
+    "stderr": ""
+  },
+  {
+    "name": "serve data directory cannot open",
+    "argv": [
+      "--port",
+      "0",
+      "--no-browser"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: cannot open the data directory: ENOTDIR: not a directory, mkdir '<tmp>/not-a-dir/spectant'\n"
+  },
+  {
+    "name": "list empty",
+    "argv": [
+      "list"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "name": "add relative",
+    "argv": [
+      "add",
+      "alpha"
+    ],
+    "exit": 0,
+    "stdout": "added alpha · alpha\n",
+    "stderr": ""
+  },
+  {
+    "name": "add duplicate",
+    "argv": [
+      "add",
+      "./alpha"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: ./alpha is already registered as alpha\n"
+  },
+  {
+    "name": "add missing",
+    "argv": [
+      "add",
+      "missing"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: missing is not a directory\n"
+  },
+  {
+    "name": "add a file",
+    "argv": [
+      "add",
+      "<tmp>/not-a-dir"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: <tmp>/not-a-dir is not a directory\n"
+  },
+  {
+    "name": "add absolute",
+    "argv": [
+      "add",
+      "<tmp>/ws/beta-repo"
+    ],
+    "exit": 0,
+    "stdout": "added beta-repo · beta-repo\n",
+    "stderr": ""
+  },
+  {
+    "name": "add same basename",
+    "argv": [
+      "add",
+      "nested/alpha"
+    ],
+    "exit": 0,
+    "stdout": "added alpha-2 · alpha\n",
+    "stderr": ""
+  },
+  {
+    "name": "list three",
+    "argv": [
+      "list"
+    ],
+    "exit": 0,
+    "stdout": "alpha      alpha\nbeta-repo  beta-repo\nalpha-2    alpha\n",
+    "stderr": ""
+  },
+  {
+    "name": "remove unknown",
+    "argv": [
+      "remove",
+      "gamma"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: gamma is not registered\n"
+  },
+  {
+    "name": "remove by slug",
+    "argv": [
+      "remove",
+      "alpha-2"
+    ],
+    "exit": 0,
+    "stdout": "removed alpha-2\n",
+    "stderr": ""
+  },
+  {
+    "name": "remove by path",
+    "argv": [
+      "remove",
+      "beta-repo"
+    ],
+    "exit": 0,
+    "stdout": "removed beta-repo\n",
+    "stderr": ""
+  },
+  {
+    "name": "remove again",
+    "argv": [
+      "remove",
+      "beta-repo"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: beta-repo is not registered\n"
+  },
+  {
+    "name": "list one",
+    "argv": [
+      "list"
+    ],
+    "exit": 0,
+    "stdout": "alpha  alpha\n",
+    "stderr": ""
+  },
+  {
+    "name": "export-notes empty",
+    "argv": [
+      "export-notes",
+      "empty.json"
+    ],
+    "exit": 0,
+    "stdout": "exported 0\n",
+    "stderr": ""
+  },
+  {
+    "name": "import-notes",
+    "argv": [
+      "import-notes",
+      "old.json"
+    ],
+    "exit": 0,
+    "stdout": "imported 1, skipped 2\n",
+    "stderr": "spectant: skipped old-2: empty body\nspectant: skipped #3: no id\n"
+  },
+  {
+    "name": "import-notes again",
+    "argv": [
+      "import-notes",
+      "old.json"
+    ],
+    "exit": 0,
+    "stdout": "imported 0, skipped 3\n",
+    "stderr": "spectant: skipped old-2: empty body\nspectant: skipped #3: no id\n"
+  },
+  {
+    "name": "import-notes missing file",
+    "argv": [
+      "import-notes",
+      "missing.json"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: cannot read missing.json: ENOENT: no such file or directory, open '<tmp>/notes/missing.json'\n"
+  },
+  {
+    "name": "import-notes not json",
+    "argv": [
+      "import-notes",
+      "bad.json"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: bad.json is not JSON (JSON Parse error: Expected '}')\n"
+  },
+  {
+    "name": "import-notes wrong shape",
+    "argv": [
+      "import-notes",
+      "shape.json"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: shape.json is not an export of the notes page: expected {\"v\": 1, \"notes\": [...]} or an array of notes\n"
+  },
+  {
+    "name": "import-notes a directory",
+    "argv": [
+      "import-notes",
+      "."
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: cannot read .: EISDIR: illegal operation on a directory, read\n"
+  },
+  {
+    "name": "export-notes",
+    "argv": [
+      "export-notes",
+      "out.json"
+    ],
+    "exit": 0,
+    "stdout": "exported 1\n",
+    "stderr": ""
+  },
+  {
+    "name": "export-notes into a missing folder",
+    "argv": [
+      "export-notes",
+      "nowhere/out.json"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: cannot write nowhere/out.json: ENOENT: no such file or directory, open '<tmp>/notes/nowhere/out.json'\n"
+  },
+  {
+    "name": "gate root without a master",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F1",
+      "--root",
+      "<tmp>/gate/empty"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: gate code-reviewed F1 refused: F1 is not a feature block of the master\n"
+  },
+  {
+    "name": "gate open claims",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F6",
+      "--root",
+      "<tmp>/gate/open/harbor"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: gate code-reviewed F6 refused: F6 still has open claims: 009-chunked-upload-limits (open claim ISC-131)\n"
+  },
+  {
+    "name": "gate unknown feature",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F99",
+      "--root",
+      "<tmp>/gate/plain/harbor",
+      "--yes"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: gate code-reviewed F99 refused: F99 is not a feature block of the master\n"
+  },
+  {
+    "name": "gate without a tree id",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F6",
+      "--root",
+      "<tmp>/gate/plain/harbor",
+      "--yes"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: gate code-reviewed F6 refused: the worktree tree id cannot be computed in . (not a git checkout, or git failed); a mark without it never reads fresh\n"
+  },
+  {
+    "name": "gate plan",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F6",
+      "--root",
+      "<tmp>/gate/git/harbor"
+    ],
+    "exit": 0,
+    "stdout": "gate code-reviewed F6 would write the mark (scope F6, actor u:1baa6e51):\n  specs/008-referrers-support/.gates/code-reviewed.json · code-review → close in specs/008-referrers-support/events.jsonl · source main, tree .'s, computed after the event lines, head <sha>\n  specs/009-chunked-upload-limits/.gates/code-reviewed.json · code-review → close in specs/009-chunked-upload-limits/events.jsonl · source main, tree .'s, computed after the event lines, head <sha>\nrun it again with --yes to write\n",
+    "stderr": ""
+  },
+  {
+    "name": "gate plan relative root",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F6",
+      "--root=harbor"
+    ],
+    "exit": 0,
+    "stdout": "gate code-reviewed F6 would write the mark (scope F6, actor u:1baa6e51):\n  specs/008-referrers-support/.gates/code-reviewed.json · code-review → close in specs/008-referrers-support/events.jsonl · source main, tree .'s, computed after the event lines, head <sha>\n  specs/009-chunked-upload-limits/.gates/code-reviewed.json · code-review → close in specs/009-chunked-upload-limits/events.jsonl · source main, tree .'s, computed after the event lines, head <sha>\nrun it again with --yes to write\n",
+    "stderr": ""
+  },
+  {
+    "name": "gate write",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F6",
+      "--root",
+      "<tmp>/gate/git/harbor",
+      "--yes"
+    ],
+    "exit": 0,
+    "stdout": "gate code-reviewed F6 wrote the mark (scope F6, actor u:1baa6e51):\n  specs/008-referrers-support/.gates/code-reviewed.json · code-review → close in specs/008-referrers-support/events.jsonl · source main, tree <sha>, head <sha>\n  specs/009-chunked-upload-limits/.gates/code-reviewed.json · code-review → close in specs/009-chunked-upload-limits/events.jsonl · source main, tree <sha>, head <sha>\n",
+    "stderr": ""
+  },
+  {
+    "name": "gate write again",
+    "argv": [
+      "gate",
+      "code-reviewed",
+      "F6",
+      "--yes"
+    ],
+    "exit": 0,
+    "stdout": "gate code-reviewed F6 wrote the mark (scope F6, actor u:1baa6e51):\n  specs/008-referrers-support/.gates/code-reviewed.json · already close, no event · source main, tree <sha>, head <sha>\n  specs/009-chunked-upload-limits/.gates/code-reviewed.json · already close, no event · source main, tree <sha>, head <sha>\n",
+    "stderr": ""
+  },
+  {
+    "name": "tokens without specs",
+    "argv": [
+      "tokens",
+      "--root",
+      "<tmp>/tokens/no-specs",
+      "--transcripts",
+      "<tmp>/transcripts/-elsewhere"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: tokens: no-specs has no specs/ folder; nothing to measure against\n"
+  },
+  {
+    "name": "tokens without a transcript folder",
+    "argv": [
+      "tokens",
+      "--root",
+      "<tmp>/tokens/lonely"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: tokens: the transcript folder projects/<tmp-encoded>-tokens-lonely in the Claude Code config directory cannot be read (missing)\n"
+  },
+  {
+    "name": "tokens with a missing --transcripts",
+    "argv": [
+      "tokens",
+      "--root",
+      "<tmp>/tokens/lonely",
+      "--transcripts",
+      "<tmp>/transcripts/-none"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: tokens: the transcript folder -none cannot be read (missing)\n"
+  },
+  {
+    "name": "tokens plan",
+    "argv": [
+      "tokens",
+      "--root",
+      "<tmp>/tokens/measured"
+    ],
+    "exit": 0,
+    "stdout": "tokens would write specs/tokens.jsonl (1 lines, 1 transcripts):\n  lines: baseline 0, invocation 0, spec 0, stage 0, round 0, unassigned 1\n  totals: requests 0, input 0, output 0, cache_read 0, cache_write 0\nrun it again with --yes to write\n",
+    "stderr": "spectant: tokens: warning s.jsonl: tokens-transcript-no-usage: The transcript carries no `usage`; nothing in it is counted.\n"
+  },
+  {
+    "name": "tokens plan with --transcripts",
+    "argv": [
+      "tokens",
+      "--transcripts",
+      "<tmp>/transcripts/-elsewhere"
+    ],
+    "exit": 0,
+    "stdout": "tokens would write specs/tokens.jsonl (1 lines, 1 transcripts):\n  lines: baseline 0, invocation 0, spec 0, stage 0, round 0, unassigned 1\n  totals: requests 0, input 0, output 0, cache_read 0, cache_write 0\nrun it again with --yes to write\n",
+    "stderr": "spectant: tokens: warning t.jsonl: tokens-transcript-no-usage: The transcript carries no `usage`; nothing in it is counted.\n"
+  },
+  {
+    "name": "tokens write",
+    "argv": [
+      "tokens",
+      "--root",
+      "<tmp>/tokens/measured",
+      "--yes"
+    ],
+    "exit": 0,
+    "stdout": "tokens wrote specs/tokens.jsonl (1 lines, 1 transcripts):\n  lines: baseline 0, invocation 0, spec 0, stage 0, round 0, unassigned 1\n  totals: requests 0, input 0, output 0, cache_read 0, cache_write 0\n",
+    "stderr": "spectant: tokens: warning s.jsonl: tokens-transcript-no-usage: The transcript carries no `usage`; nothing in it is counted.\n"
+  },
+  {
+    "name": "db rollback refused without --yes",
+    "argv": [
+      "db",
+      "rollback",
+      "1"
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "spectant: db rollback 1 would drop the board_query table (0 workspaces lose their remembered board query) and drop the actor table (0 actors lose their display name) and drop the pinned column (0 pinned notes lose their pin) and drop the note table (1 notes; save them first with spectant export-notes <file>); run it again with --yes\n"
+  },
+  {
+    "name": "db rollback 5 --yes",
+    "argv": [
+      "db",
+      "rollback",
+      "5",
+      "--yes"
+    ],
+    "exit": 0,
+    "stdout": "schema version 6 → 5\n",
+    "stderr": ""
+  },
+  {
+    "name": "db rollback 5 again",
+    "argv": [
+      "db",
+      "rollback",
+      "5"
+    ],
+    "exit": 0,
+    "stdout": "schema version 5, nothing to roll back\n",
+    "stderr": ""
+  }
+]

@@ -18,20 +18,28 @@
  * Output: one `<rule> <file>[:line] <detail>` per violation on stderr, then a summary, exit 1; otherwise
  * `architecture: 0 violations, N entries (…)` on stdout and exit 0. Paths are relative to the repository root.
  * Exit 2 on a usage error: an unknown argument, a configuration that does not load or has no lane list, a lane
- * whose root is not a folder.
+ * whose root is not a folder, a rule's tool that cannot run (jscpd missing or failing for `duplicates`).
  */
 import { statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { ArchitectureConfig, LaneEntry } from "./architecture.config.ts";
+import { DuplicatesToolError, duplicates } from "./architecture/duplicates.ts";
 import type { Rule, Violation } from "./architecture/files.ts";
+import { imports } from "./architecture/imports.ts";
+import { layout } from "./architecture/layout.ts";
 import { size } from "./architecture/size.ts";
 
 type Section = "size" | "duplicates" | "layout" | "imports" | "io";
 
 /** The registered rules, each with the entry section that switches it on. */
-const RULES: ReadonlyArray<{ name: string; section: Section; run: Rule }> = [{ name: "size", section: "size", run: size }];
+const RULES: ReadonlyArray<{ name: string; section: Section; run: Rule }> = [
+  { name: "size", section: "size", run: size },
+  { name: "duplicates", section: "duplicates", run: duplicates },
+  { name: "layout", section: "layout", run: layout },
+  { name: "imports", section: "imports", run: imports },
+];
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
 const DEFAULT_CONFIG = join(import.meta.dir, "architecture.config.ts");
@@ -101,7 +109,14 @@ async function main(): Promise<number> {
   const violations: Violation[] = [];
   for (const entry of config.lanes) {
     for (const rule of RULES) {
-      if (entry[rule.section] !== undefined) violations.push(...rule.run(entry, REPO_ROOT));
+      if (entry[rule.section] === undefined) continue;
+      try {
+        violations.push(...rule.run(entry, REPO_ROOT));
+      } catch (error) {
+        if (!(error instanceof DuplicatesToolError)) throw error;
+        console.error(`architecture: lane ${entry.name}: ${rule.name}: ${error.message}`);
+        return 2;
+      }
     }
   }
 

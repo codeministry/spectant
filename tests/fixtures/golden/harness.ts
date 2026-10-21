@@ -22,7 +22,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EmbeddedManifest, embeddedAssetFor } from "../../../server/src/assets.contract.ts";
 import { run } from "../../../server/src/cli.ts";
+import { WRITE_PATHS } from "../../../server/src/writes.contract.ts";
 import { plantWorktreeRepo } from "../worktree-repo.ts";
+
+/** The write-path constant the write recording pins (re-exported, so the suite imports `server/src/` only here). */
+export { WRITE_PATHS };
 
 /** The frozen server clock. */
 export const GOLDEN_NOW = new Date("2026-03-20T12:00:00.000Z");
@@ -351,14 +355,19 @@ export function changeFile(file: string, text: string): void {
 
 // ── the recording file ───────────────────────────────────────────────────────────────────────────────────────────
 
-/** The recording as it is stored: pretty JSON with a trailing newline. */
-export function writeGolden(file: string, entries: readonly GoldenEntry[]): void {
+/** The recording as it is stored: pretty JSON with a trailing newline (the read entries, or the write recording). */
+export function writeGolden(file: string, recording: unknown): void {
   mkdirSync(join(file, ".."), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(entries, null, 2)}\n`);
+  writeFileSync(file, `${JSON.stringify(recording, null, 2)}\n`);
 }
 
-/** The stored recording, or null when the file is missing. */
-export function readGolden(file: string): GoldenEntry[] | null {
+/** The stored recording as parsed JSON, or null when the file is missing. */
+export function readGoldenJson(file: string): unknown {
   if (!existsSync(file)) return null;
-  return JSON.parse(readFileSync(file, "utf8")) as GoldenEntry[];
+  return JSON.parse(readFileSync(file, "utf8"));
+}
+
+/** The stored read recording, or null when the file is missing. */
+export function readGolden(file: string): GoldenEntry[] | null {
+  return readGoldenJson(file) as GoldenEntry[] | null;
 }
