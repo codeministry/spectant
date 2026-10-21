@@ -29,10 +29,11 @@ import { DuplicatesToolError, duplicates } from "./architecture/duplicates.ts";
 import type { Rule, Violation } from "./architecture/files.ts";
 import { imports } from "./architecture/imports.ts";
 import { io } from "./architecture/io.ts";
+import { layers } from "./architecture/layers.ts";
 import { layout } from "./architecture/layout.ts";
 import { size } from "./architecture/size.ts";
 
-type Section = "size" | "duplicates" | "layout" | "imports" | "io";
+type Section = "size" | "duplicates" | "layout" | "imports" | "io" | "layers";
 
 /** The registered rules, each with the entry section that switches it on. */
 const RULES: ReadonlyArray<{ name: string; section: Section; run: Rule }> = [
@@ -41,6 +42,7 @@ const RULES: ReadonlyArray<{ name: string; section: Section; run: Rule }> = [
   { name: "layout", section: "layout", run: layout },
   { name: "imports", section: "imports", run: imports },
   { name: "io", section: "io", run: io },
+  { name: "layers", section: "layers", run: layers },
 ];
 
 const REPO_ROOT = resolve(import.meta.dir, "..");

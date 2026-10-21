@@ -8,6 +8,7 @@
  * Paths: `root` is relative to the repository root; `ignore` patterns and the layout and io folder names are relative
  * to `root`. Patterns are `Bun.Glob` globs.
  */
+import { TEST_AND_GENERATED } from "./architecture/files.ts";
 
 /** Line limit per file (ISC-413). */
 export type SizeConfig = {
@@ -51,6 +52,12 @@ export type IoConfig = {
   calls: string[];
 };
 
+/** The layer order of the root (spec 060, ISC-424). */
+export type LayersConfig = {
+  /** Top folders of the root, lowest layer first: a file of one layer imports no file of a layer after it. */
+  order: string[];
+};
+
 export type LaneEntry = {
   /** The lane's name, as it appears in the output. */
   name: string;
@@ -65,14 +72,16 @@ export type LaneEntry = {
   layout?: LayoutConfig;
   imports?: ImportsConfig;
   io?: IoConfig;
+  layers?: LayersConfig;
 };
 
 export type ArchitectureConfig = {
   lanes: LaneEntry[];
 };
 
-/** Test and generated files, which no rule of any lane looks at. */
-export const TEST_AND_GENERATED: string[] = ["**/*.test.ts", "**/*.spec.ts", "**/*.gen.ts"];
+// Test and generated files, which no rule of any lane looks at. The list lives in `architecture/files.ts`, so a lane
+// entry kept in a file of its own (`architecture/web.entry.ts`) uses it without an import cycle through this file.
+export { TEST_AND_GENERATED };
 
 const config: ArchitectureConfig = {
   lanes: [

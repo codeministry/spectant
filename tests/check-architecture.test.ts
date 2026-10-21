@@ -1,7 +1,9 @@
 // check-architecture (spec 059, ISC-415, ISC-413, ISC-414): the guard runs as the CLI over fixture configurations.
 // The oversize fixture is red on `size` and names only its 401-line file, the clone fixture is red on `duplicates`
 // and names the copied block, a configuration with both lanes checks both from their entries alone, a clean root is
-// green, and a bad flag is a usage error.
+// green, and a bad flag is a usage error. The web fixtures (spec 060, ISC-423) run the web entry of
+// `scripts/architecture/web.entry.ts` over a fixture root: a 401-line stylesheet and a block copied between two
+// templates are red, the same files under `features/` are ignored, and a clean template and stylesheet are green.
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
@@ -24,6 +26,12 @@ function violations(run: Run): string[] {
 const OVERSIZE_LINE = `size ${FIXTURES}/oversize/src/over-limit.ts 401 lines, limit 400`;
 const CLONE_LINE =
   `duplicates ${FIXTURES}/clone/src/nested/copy.ts:4-17 = ${FIXTURES}/clone/src/original.ts:4-17 (154 tokens)`;
+
+const WEB = `${FIXTURES}/web/red/src`;
+const WEB_LINES = [
+  `size ${WEB}/shared/wide.css 401 lines, limit 400`,
+  `duplicates ${WEB}/layout/footer.html:1-11 = ${WEB}/layout/header.html:2-12 (147 tokens)`,
+];
 
 describe("check-architecture", () => {
   test("oversize fixture: exit 1, only the 401-line file", () => {
@@ -52,6 +60,20 @@ describe("check-architecture", () => {
     expect(run.exit).toBe(0);
     expect(run.stderr).toBe("");
     expect(run.stdout).toContain("architecture: 0 violations, 1 entries (fixture-clean)");
+  });
+
+  test("web fixture: exit 1, the 401-line stylesheet and the block copied between two templates", () => {
+    const run = guard("--config", `${FIXTURES}/web/red/architecture.config.ts`);
+    expect(run.exit).toBe(1);
+    expect(violations(run)).toEqual(WEB_LINES);
+    expect(run.stderr).toContain("architecture: 2 violations, 1 entries (fixture-web-red)");
+  });
+
+  test("clean web fixture: a component with its template and stylesheet in files of their own, exit 0", () => {
+    const run = guard("--config", `${FIXTURES}/web/clean/architecture.config.ts`);
+    expect(run.exit).toBe(0);
+    expect(run.stderr).toBe("");
+    expect(run.stdout).toContain("architecture: 0 violations, 1 entries (fixture-web-clean)");
   });
 
   test("bad flag: exit 2", () => {

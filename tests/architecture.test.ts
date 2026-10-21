@@ -7,6 +7,10 @@
  * the expected violations. The app case runs the rule on the real server entry of `scripts/architecture.config.ts`;
  * since the split (T61) it is a plain `test` and must stay clean.
  *
+ * `-t layers` selects ISC-424 (spec 060): the web entry's layer order on one fixture root per forbidden direction and
+ * a clean one. The app case runs the rule on the web entry of `scripts/architecture/web.entry.ts`; it is a
+ * `test.failing` until the base layers of the web app keep the order.
+ *
  * `-t routes` selects ISC-412: the route families `spectant serve` joins (`routeFamilies` in `server/src/cli/`) name
  * every route once, and the set of method and route they answer equals the one the golden master recorded
  * (`tests/fixtures/golden/routes.json`, `writes.json`), every route hit by a recorded request.
@@ -21,7 +25,9 @@ import type { RouteFamily, RouteMatch } from "../server/src/infra/http/router.ts
 import type { Violation } from "../scripts/architecture/files.ts";
 import { imports } from "../scripts/architecture/imports.ts";
 import { io } from "../scripts/architecture/io.ts";
+import { layers } from "../scripts/architecture/layers.ts";
 import { layout } from "../scripts/architecture/layout.ts";
+import { web } from "../scripts/architecture/web.entry.ts";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
 const FIXTURES = "tests/fixtures/architecture";
@@ -162,6 +168,51 @@ describe("io rule", () => {
 
   test("the app: no file outside server/src/infra does direct I/O", () => {
     expect(io(app, REPO_ROOT)).toEqual([]);
+  });
+});
+
+describe("layers", () => {
+  const expected = (path: string, line: number, detail: string): Violation => ({
+    ...at(path, detail, line),
+    rule: "layers",
+  });
+  /** The web entry over a fixture root under `layers/`: its extensions, ignore list (`features/**`) and order. */
+  const layered = (path: string): LaneEntry => ({ ...web, name: `fixture-layers-${path}`, root: `${FIXTURES}/layers/${path}` });
+
+  test("the web entry orders the layers core, shared, layout, features", () => {
+    expect(web.layers).toEqual({ order: ["core", "shared", "layout", "features"] });
+  });
+
+  test("a clean graph: each layer imports only earlier ones, a root file anything, packages are no layer", () => {
+    expect(layers(layered("clean"), REPO_ROOT)).toEqual([]);
+  });
+
+  test("core importing shared is reported", () => {
+    expect(layers(layered("core-shared"), REPO_ROOT)).toEqual([
+      expected("layers/core-shared/core/clock.ts", 1, "core imports shared (shared/format.ts)"),
+    ]);
+  });
+
+  test("shared importing layout is reported, type-only imports included", () => {
+    expect(layers(layered("shared-layout"), REPO_ROOT)).toEqual([
+      expected("layers/shared-layout/shared/format.ts", 2, "shared imports layout (layout/shell.ts)"),
+    ]);
+  });
+
+  test("layout importing an ignored features file is reported, extensionless as the web app writes it", () => {
+    expect(layers(layered("layout-features"), REPO_ROOT)).toEqual([
+      expected("layers/layout-features/layout/shell.ts", 2, "layout imports features (features/home.ts)"),
+    ]);
+  });
+
+  test("an entry without layers settings is not checked", () => {
+    const entry: LaneEntry = { ...layered("core-shared"), layers: undefined };
+    expect(layers(entry, REPO_ROOT)).toEqual([]);
+  });
+
+  // Red until the base layers of web/src/app keep the order (spec 060); then a plain `test`.
+  test.failing("the app: web/src/app keeps core ← shared ← layout ← features", () => {
+    expect(layers(web, REPO_ROOT)).toEqual([]);
   });
 });
 
