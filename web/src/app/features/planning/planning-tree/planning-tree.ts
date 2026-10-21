@@ -29,12 +29,12 @@ import { UiTerm } from '../../../shared/ui/term/term';
 import { UiLiveRegion } from '../../../shared/ui/live-region/live-region';
 import { RefusalNotice } from '../../../shared/ui/refusal-notice/refusal-notice';
 import { ShellState } from '../../../layout/shell/shell-state.service';
-import { beforeFor, edgeBefore, groupOf, positionOf, stepBefore, type Target } from '../../backlog/backlog-order';
+import { beforeFor, edgeBefore, groupOf, positionOf, stepBefore, type Target } from '../../../core/model/backlog-order';
 import { featureOrder } from '../../../core/model/feature-order';
-import { BacklogWriter, withBacklog } from '../../backlog/backlog-writer.service';
-import { PriorityMenu } from '../../backlog/priority-menu';
-import { ReorderMenu, type ReorderStep } from '../../backlog/reorder-menu';
-import { BOARD_DRAG_CONFIG } from '../../board/board-drag';
+import { BacklogWriter, withBacklog } from '../../../layout/shell/backlog-writer.service';
+import { PriorityMenu } from '../../../layout/backlog-menu/priority-menu';
+import { ReorderMenu, type ReorderStep } from '../../../layout/backlog-menu/reorder-menu';
+import { BOARD_DRAG_CONFIG } from '../../../shared/ui/drag-config';
 import { hasArchivedSpecs, planningCounts } from '../../../core/model/planning-counts';
 import { buildTree, hasDoneOrEmpty, pathTo, withoutDoneAndEmpty, type TreeKind, type TreeNode } from './tree-nodes';
 

@@ -1,0 +1,57 @@
+
+    <button
+      #chip
+      type="button"
+      class="chip"
+      data-priority-chip
+      aria-haspopup="dialog"
+      [attr.aria-label]="label()"
+      [attr.aria-expanded]="open()"
+      [attr.aria-busy]="busy() ? 'true' : null"
+      [attr.tabindex]="tabbable() ? null : -1"
+      (pointerdown)="openAtPress = open()"
+      (click)="toggle()"
+    >
+      <ui-priority [value]="priority()" />
+      <ui-icon class="caret" name="chevron-down" [size]="12" />
+    </button>
+
+    @if (tier() === 'compact') {
+      <ui-sheet tier="compact" [open]="open()" [heading]="heading()" (openChange)="onOpenChange($event)">
+        @if (featureTitle(); as title) {
+          <p class="sub" data-feature-title>{{ title }}</p>
+        }
+        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'sheet' }" />
+      </ui-sheet>
+    } @else {
+      <ui-popover class="priority-popover" placement="end" [label]="heading()" (openChange)="onOpenChange($event)">
+        <ng-container [ngTemplateOutlet]="list" [ngTemplateOutletContext]="{ $implicit: 'popover' }" />
+      </ui-popover>
+    }
+
+    <ng-template #list let-surface>
+      @if (open()) {
+        <ul class="entries" role="list" uiRovingList data-priority-menu [attr.data-surface]="surface" [attr.data-tier]="tier()">
+          @for (level of levels; track level) {
+            <li>
+              <button
+                type="button"
+                class="entry"
+                uiRovingItem
+                [attr.data-level-entry]="level"
+                [attr.aria-current]="level === priority() ? 'true' : null"
+                [attr.data-autofocus]="level === priority() ? '' : null"
+                (click)="choose(level)"
+              >
+                <ui-priority [value]="level" />&ngsp;
+                <span class="word">{{ 'priority.hint.' + level | transloco }}</span>
+                @if (level === priority()) {
+                  <ui-icon class="check" name="check" [size]="16" data-check />
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </ng-template>
+  

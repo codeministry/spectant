@@ -8,7 +8,7 @@ import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
-import { Brief, type BriefModel } from './brief/brief';
+import { Brief, type BriefModel } from '../../shared/brief/brief';
 import type { DashboardView } from './context-rail/dashboard-view';
 import { WaitingSection } from './context-rail/waiting-section';
 import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';

@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, RedirectCommand, type RedirectFunction, Router, type Routes } from '@angular/router';
 import { LIST_QUERY_KEYS } from './features/dashboard/spec-table/spec-table-model';
-import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
+import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './spec-area.routes';
 import { anchorRef, planningTreeLink, type ShellRouteData } from './layout/shell/areas';
 import { PLANNING_LENSES, type PlanningLensId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
@@ -91,7 +91,7 @@ export const routes: Routes = [
       // Spec 024: the overview and settings are lazy chunks, so the identity covers and the settings cards stay out of
       // the initial bundle (its 1 MB budget in angular.json).
       { path: '', loadComponent: () => import('./features/overview/overview-page').then((m) => m.OverviewPage) },
-      { path: 'settings', loadComponent: () => import('./features/placeholders/settings-page').then((m) => m.SettingsPage) },
+      { path: 'settings', loadComponent: () => import('./features/settings/settings-page').then((m) => m.SettingsPage) },
       // Spec 024 (T52): the workspace management, a mock until the registry's spec; lazy, its own chunk.
       {
         path: 'settings/workspaces',
@@ -111,7 +111,7 @@ export const routes: Routes = [
       // Spec 058 (ISC-391): the workspace's Specs page, the spec list with the backlog; lazy, its own chunk.
       {
         path: 'w/:ws/specs',
-        loadComponent: () => import('./features/specs-page/specs-page').then((m) => m.SpecsPage),
+        loadComponent: () => import('./features/dashboard/specs-page/specs-page').then((m) => m.SpecsPage),
         data: specsPage,
       },
       // Spec 008 (ISC-129, ISC-124.2): the workspace board, a sibling of the planning pages, and a story's read-only

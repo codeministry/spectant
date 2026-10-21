@@ -5,7 +5,7 @@ import { type ActivatedRouteSnapshot, NavigationStart, provideRouter, Router } f
 import { routes, TECH_REDIRECTS } from './app.routes';
 import { DashboardPage } from './features/dashboard/dashboard-page';
 import { LibraryPage } from './features/library/library-page';
-import { SpecsPage } from './features/specs-page/specs-page';
+import { SpecsPage } from './features/dashboard/specs-page/specs-page';
 import { NotFound } from './layout/not-found/not-found';
 import { ShellState } from './layout/shell/shell-state.service';
 

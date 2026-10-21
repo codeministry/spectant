@@ -16,7 +16,7 @@ import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import type { BacklogOp } from '../../../core/api.service';
-import { BacklogWriter, type BacklogOutcome } from '../../backlog/backlog-writer.service';
+import { BacklogWriter, type BacklogOutcome } from '../../../layout/shell/backlog-writer.service';
 import type { BacklogRefusal } from '../../../shared/ui/refusal-notice/refusal';
 import { formatDay } from '../../../shared/time';
 import { PlanningTree } from './planning-tree';

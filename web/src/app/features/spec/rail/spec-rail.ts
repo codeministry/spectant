@@ -11,7 +11,8 @@ import { UiKbd } from '../../../shared/ui/kbd/kbd';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
-import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from '../dashboard/dashboard-model';
+import { stageIndex, TRACK_STAGES } from '../../../core/model/stage-track';
+import { GATE_NAMES, GATE_TONE } from '../dashboard/dashboard-model';
 import { openClaims } from '../status/status-model';
 import { SpecRailGuide } from './spec-rail-guide';
 

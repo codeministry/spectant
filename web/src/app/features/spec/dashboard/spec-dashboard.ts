@@ -29,10 +29,11 @@ import { UiSectionHeader } from '../../../shared/ui/section-header/section-heade
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
-import { Brief, type BriefModel } from '../../dashboard/brief/brief';
+import { Brief, type BriefModel } from '../../../shared/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
 import { SpecRailGuide } from '../rail/spec-rail-guide';
-import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from './dashboard-model';
+import { stageIndex, TRACK_STAGES } from '../../../core/model/stage-track';
+import { GATE_NAMES, GATE_TONE } from './dashboard-model';
 
 /** The five area tiles in menu order, each with its provisional `g` key (the sequences themselves arrive with T102). */
 const TILE_AREAS: ReadonlyArray<{ readonly id: Exclude<AreaId, 'dashboard'>; readonly key: string }> = [

@@ -12,7 +12,7 @@ import { keyLabel, SHORTCUTS } from '../../layout/shell/keyboard-bindings';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
-import { CARD_EDGE } from '../board/board-card';
+import { CARD_EDGE } from '../../shared/ui/stage-edge';
 import { HelpPage } from './help-page';
 import { HELP_COMMAND_ROWS, HELP_COMMANDS, HELP_SECTIONS, LEGEND, LIFECYCLE, STAGE_CHAIN } from './help-sections';
 

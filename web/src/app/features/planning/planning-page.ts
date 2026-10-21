@@ -24,32 +24,6 @@ export const isStage = (value: string): value is Stage => STAGES.has(value);
 export const stagesByRow = (rows: readonly SpecRowView[]): ReadonlyMap<string, Stage> =>
   new Map(rows.flatMap((row) => (isStage(row.stage) ? [[row.id, row.stage] as const] : [])));
 
-/** The part of `ShellData` the pair reads; `ShellData` itself satisfies it. */
-export interface PlanningPageData {
-  readonly workspaceMissing: Signal<boolean>;
-  readonly planningMissing: Signal<boolean>;
-  readonly workspaceUnavailable: Signal<boolean>;
-  readonly planningUnavailable: Signal<boolean>;
-  readonly planning: { readonly value: Signal<unknown> };
-  readonly planningModel: Signal<unknown>;
-}
-
-/**
- * `missing`: the workspace or the tree answered the contract's 404 (the not-found page). `unavailable`: either is
- * unreadable, or the tree answered with anything but the model (an error status): the shell's unavailable line.
- */
-export function planningPageState(data: PlanningPageData): { missing: Signal<boolean>; unavailable: Signal<boolean> } {
-  return {
-    missing: computed(() => data.workspaceMissing() || data.planningMissing()),
-    unavailable: computed(
-      () =>
-        data.workspaceUnavailable() ||
-        data.planningUnavailable() ||
-        (data.planning.value() !== undefined && data.planningModel() === null),
-    ),
-  };
-}
-
 /** The route's fragment (`F2`, `m-harbor-1-0`), the row a page lands on; null without one. Injection context only. */
 export function fragmentTarget(): Signal<string | null> {
   const route = inject(ActivatedRoute);

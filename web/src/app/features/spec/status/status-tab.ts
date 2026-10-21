@@ -19,7 +19,7 @@ import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
 import type { Tone } from '../../../shared/ui/tone';
-import { Brief, type BriefModel } from '../../dashboard/brief/brief';
+import { Brief, type BriefModel } from '../../../shared/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
 import { GATE_NAMES, GATE_TONE } from '../dashboard/dashboard-model';
 import { StatusBlock } from './status-block';

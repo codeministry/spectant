@@ -1,7 +1,7 @@
 /**
  * architecture — the folder-shape and import-graph rules of `scripts/check-architecture.ts` (spec 059).
  *
- * `-t layout` selects ISC-409, `-t imports` ISC-410, `-t io` ISC-411 (no other test name holds "io"). Each rule
+ * `-t layout` selects ISC-409, `-t imports` ISC-410, `-t "io rule"` ISC-411 (`-t io` also selects `isolation`). Each rule
  * runs on one fixture root per clause under
  * `tests/fixtures/architecture/`, with the server entry's own `layout` and `imports` sections, and must return exactly
  * the expected violations. The app case runs the rule on the real server entry of `scripts/architecture.config.ts`;
@@ -9,6 +9,10 @@
  *
  * `-t layers` selects ISC-424 (spec 060): the web entry's layer order on one fixture root per forbidden direction and
  * a clean one. The app case runs the rule on the web entry of `scripts/architecture/web.entry.ts`.
+ *
+ * `-t isolation` selects ISC-431 (spec 061): no folder under the web entry's `features/` imports another, statically,
+ * type-only or through a dynamic `import()`, on one fixture root per form and a clean one. The app case runs the rule
+ * on the web entry, which carries the area `webIsolation`.
  *
  * `-t routes` selects ISC-412: the route families `spectant serve` joins (`routeFamilies` in `server/src/cli/`) name
  * every route once, and the set of method and route they answer equals the one the golden master recorded
@@ -24,9 +28,10 @@ import type { RouteFamily, RouteMatch } from "../server/src/infra/http/router.ts
 import type { Violation } from "../scripts/architecture/files.ts";
 import { imports } from "../scripts/architecture/imports.ts";
 import { io } from "../scripts/architecture/io.ts";
+import { isolation } from "../scripts/architecture/isolation.ts";
 import { layers } from "../scripts/architecture/layers.ts";
 import { layout } from "../scripts/architecture/layout.ts";
-import { web } from "../scripts/architecture/web.entry.ts";
+import { web, webIsolation } from "../scripts/architecture/web.entry.ts";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
 const FIXTURES = "tests/fixtures/architecture";
@@ -212,6 +217,57 @@ describe("layers", () => {
   // Red until the base layers of web/src/app keep the order (spec 060); then a plain `test`.
   test("the app: web/src/app keeps core ← shared ← layout ← features", () => {
     expect(layers(web, REPO_ROOT)).toEqual([]);
+  });
+});
+
+describe("isolation", () => {
+  const expected = (path: string, line: number, detail: string): Violation => ({
+    ...at(path, detail, line),
+    rule: "isolation",
+  });
+  /** The web entry over a fixture root under `isolation/`, with its feature area switched on. */
+  const isolated = (path: string): LaneEntry => ({
+    ...web,
+    name: `fixture-isolation-${path}`,
+    root: `${FIXTURES}/isolation/${path}`,
+    isolation: webIsolation,
+  });
+
+  test("the web entry's isolation area is features/", () => {
+    expect(webIsolation).toEqual({ area: "features" });
+  });
+
+  test("a clean area: features import core, shared and their own folder; root and generated files are not checked", () => {
+    expect(isolation(isolated("clean"), REPO_ROOT)).toEqual([]);
+  });
+
+  test("a feature importing another feature is reported, type-only imports included", () => {
+    expect(isolation(isolated("static"), REPO_ROOT)).toEqual([
+      expected("isolation/static/features/a/page.ts", 1, "a imports b (features/b/widget.ts)"),
+      expected("isolation/static/features/a/page.ts", 2, "a imports b (features/b/shape.ts)"),
+    ]);
+  });
+
+  test("a feature loading another feature with a dynamic import() is reported", () => {
+    expect(isolation(isolated("dynamic"), REPO_ROOT)).toEqual([
+      expected("isolation/dynamic/features/a/routes.ts", 3, "a imports b (features/b/page.ts)"),
+    ]);
+  });
+
+  test("a file directly in the feature area is a feature of its own", () => {
+    expect(isolation(isolated("loose"), REPO_ROOT)).toEqual([
+      expected("isolation/loose/features/a/page.ts", 1, "a imports helper.ts (features/helper.ts)"),
+    ]);
+  });
+
+  test("an entry without isolation settings is not checked", () => {
+    const entry: LaneEntry = { ...isolated("static"), isolation: undefined };
+    expect(isolation(entry, REPO_ROOT)).toEqual([]);
+  });
+
+  test("the app: no folder of web/src/app/features imports another", () => {
+    expect(web.isolation).toEqual(webIsolation);
+    expect(isolation(web, REPO_ROOT)).toEqual([]);
   });
 });
 

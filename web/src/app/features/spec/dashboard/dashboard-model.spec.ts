@@ -1,4 +1,5 @@
-import { quoteIdea, stageIndex } from './dashboard-model';
+import { stageIndex } from '../../../core/model/stage-track';
+import { quoteIdea } from './dashboard-model';
 
 describe('quoteIdea', () => {
   it('wraps English in curly double quotes', () => {

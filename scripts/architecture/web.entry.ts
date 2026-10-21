@@ -6,8 +6,14 @@
  * layout ← features (`layers`). The entry lives in a file of its own, so the fixture configurations of the tests load
  * it without the server entry; `scripts/architecture.config.ts` lists it, and `bun run check:static` runs it.
  */
-import type { LaneEntry } from "../architecture.config.ts";
+import type { IsolationConfig, LaneEntry } from "../architecture.config.ts";
 import { TEST_AND_GENERATED } from "./files.ts";
+
+/**
+ * The web entry's feature area for the `isolation` rule (spec 061, ISC-431): no folder under `features/` imports
+ * another, statically, type-only or through a dynamic `import()`.
+ */
+export const webIsolation: IsolationConfig = { area: "features" };
 
 export const web: LaneEntry = {
   name: "web",
@@ -17,6 +23,7 @@ export const web: LaneEntry = {
   // removes this pattern; `layers` still resolves imports into it. `dev/**` (the developer gallery) is no base
   // layer: ISC-423 covers core/, shared/ and layout/ only (spec 060 decision 2026-10-21).
   ignore: [...TEST_AND_GENERATED, "features/**", "dev/**"],
+  isolation: webIsolation,
   size: { maxLines: 400 },
   duplicates: {
     minTokens: 50,

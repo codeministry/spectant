@@ -1,6 +1,6 @@
 import type { Stage } from '../../../../../../core/src/stage';
 import type { GraphLens, LensEdge, LensNode, RelationRef } from '../../../../../../core/src/relations';
-import { CARD_EDGE } from '../../board/board-card';
+import { CARD_EDGE } from '../../../shared/ui/stage-edge';
 import { DIAGRAM_CSS } from '../../../shared/ui/doc-prose/mermaid';
 
 /** The words the mermaid text needs from the catalogue; the view hands them in, so this file stays pure. */

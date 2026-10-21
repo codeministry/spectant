@@ -69,6 +69,12 @@ export type LayersConfig = {
   order: string[];
 };
 
+/** The feature area of the root (spec 061, ISC-431). */
+export type IsolationConfig = {
+  /** A top folder of the root: no folder directly under it imports another folder directly under it. */
+  area: string;
+};
+
 export type LaneEntry = {
   /** The lane's name, as it appears in the output. */
   name: string;
@@ -84,6 +90,7 @@ export type LaneEntry = {
   imports?: ImportsConfig;
   io?: IoConfig;
   layers?: LayersConfig;
+  isolation?: IsolationConfig;
 };
 
 export type ArchitectureConfig = {

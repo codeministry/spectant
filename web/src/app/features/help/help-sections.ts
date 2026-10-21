@@ -1,5 +1,6 @@
 import type { SpecType, WorkflowStage } from '../../../../../core/src/files';
 import { CLAIMLESS_RULE, STAGE_RULES, TYPE_NEEDS, WORKFLOW_TYPES } from '../../../../../core/src/stage';
+import type { HelpSection } from '../../shared/page-nav/help-nav';
 import {
   GROUP_CONTEXT,
   type Shortcut,
@@ -15,13 +16,6 @@ import {
  * sources the rest of the app uses — core's stage table and default workflow, the one shortcut table — so the page
  * states nothing a second list could let drift.
  */
-
-/** One section of the page: its id (the nav chip's fragment), its heading's id and its nav label key. */
-export interface HelpSection {
-  readonly id: string;
-  readonly heading: string;
-  readonly label: string;
-}
 
 /** The sections in page order; the nav renders one chip per entry. */
 export const HELP_SECTIONS: readonly HelpSection[] = [

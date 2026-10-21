@@ -2,7 +2,6 @@ import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { WorkflowStage } from '../../../../../core/src/files';
 import type { RelationRef } from '../../../../../core/src/relations';
 import { DetailSelection, selectedLook } from '../../layout/detail-sidebar/selection';
 import { UiIcon } from '../../shared/icons/icon';
@@ -18,25 +17,7 @@ import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type
 import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
 import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
 import type { BoardCard as BoardCardModel } from '../../core/model/board-types';
-
-/**
- * The inline-start edge per stage, in the prototype's role colours (spec 024, design § Workspace board): teal for an
- * idea, the track grey for plan and tasks, violet for a wait on you (review, code-review, close), cyan in motion
- * (build), red for blocked, the held grey for close-pending, lime done. The edge never carries the meaning alone: the
- * reason line says it in words.
- */
-export const CARD_EDGE: Readonly<Record<WorkflowStage, string>> = {
-  idea: 'var(--teal)',
-  plan: 'var(--track)',
-  tasks: 'var(--track)',
-  review: 'var(--color-secondary)',
-  'code-review': 'var(--color-secondary)',
-  close: 'var(--color-secondary)',
-  build: 'var(--color-primary)',
-  blocked: 'var(--color-error)',
-  'close-pending': 'var(--held)',
-  done: 'var(--color-accent)',
-};
+import { CARD_EDGE } from '../../shared/ui/stage-edge';
 
 /** The reason line's ink in the edge's tone: the violet ink for a wait on you, the muted ink otherwise. */
 const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--ques-ink)' : 'var(--muted-ink)');

@@ -19,7 +19,7 @@ import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 import { HelpLifecycle } from './help-lifecycle';
-import { HelpNav } from './help-nav';
+import { HelpNav } from '../../shared/page-nav/help-nav';
 import { version } from '../../../../package.json';
 import {
   HELP_COMMAND_ROWS,
