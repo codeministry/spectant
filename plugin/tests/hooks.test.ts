@@ -339,3 +339,83 @@ describe('spec-check hook', () => {
     expect(existsSync(join(root, LOG))).toBe(false);
   });
 });
+
+// A parent session started in a spec worktree (spec 062, ISC-441): `CLAUDE_PROJECT_DIR` is `.worktrees/001-digest` on
+// `feature/001-digest`, a linked worktree of a repository with `specs/` committed. Every claim, dispatch, build and
+// release line lands in the main checkout's `.spectant/activity.jsonl`, and no other file changes: not a byte of the
+// main checkout (`.git/` included) and not a byte of the worktree, which never gets a `.spectant/` of its own.
+describe('worktree project dir', () => {
+  const MARKER_PROMPT = 'spectant: spec=001 task=C1 claim=ISC-1\n\nBuild claim unit C1 of spec 001 in this worktree.';
+
+  /** A repository with `specs/001-digest/` committed and the spec worktree `.worktrees/001-digest` inside it. */
+  function specWorktree(): { root: string; worktree: string } {
+    const root = gitRepo();
+    mkdirSync(join(root, 'specs', '001-digest'), { recursive: true });
+    writeFileSync(join(root, 'specs', '001-digest', 'spec.md'), '---\nstage: implement\n---\n# 001 Digest\n');
+    writeFileSync(join(root, 'specs', '001-digest', 'tasks.md'), '# Tasks\n\n- [ ] C1 the digest\n');
+    writeFileSync(join(root, '.gitignore'), '.worktrees/\n');
+    git(root, ['add', '.']);
+    git(root, ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-q', '-m', 'specs']);
+    const worktree = join(root, '.worktrees', '001-digest');
+    git(root, ['worktree', 'add', '-q', worktree, '-b', 'feature/001-digest']);
+    return { root, worktree };
+  }
+
+  /** A fixture whose Agent prompt carries the C1 marker and whose `cwd` is the spec worktree. */
+  function inWorktree(name: string, worktree: string): Payload {
+    const payload: Payload = { ...fixture(name), cwd: worktree };
+    if (name.startsWith('pre-') || name.startsWith('post-')) payload.tool_input = { ...(payload.tool_input as Payload), prompt: MARKER_PROMPT };
+    if (name.startsWith('post-')) payload.tool_response = { ...(payload.tool_response as Payload), prompt: MARKER_PROMPT };
+    return payload;
+  }
+
+  /** Every file under `dir`, `.git/` and the nested worktree included, as its bytes in hex; `skip` left out. */
+  function snapshot(dir: string, skip: string): Map<string, string> {
+    const files = new Map<string, string>();
+    const walk = (rel: string): void => {
+      for (const entry of readdirSync(join(dir, rel), { withFileTypes: true })) {
+        const path = rel === '' ? entry.name : `${rel}/${entry.name}`;
+        if (path === skip) continue;
+        if (entry.isDirectory()) walk(path);
+        else files.set(path, readFileSync(join(dir, path)).toString('hex'));
+      }
+    };
+    walk('');
+    return files;
+  }
+
+  const ROUND = [`claim ISC-1 C1 ${ACTOR}`, `dispatch ISC-1 C1 ${ACTOR}`, `build ISC-1 C1 ${ACTOR}`, `release ISC-1 C1 ${ACTOR}`];
+  const NAMES = ['pre-tool-use-agent', 'subagent-start', 'post-tool-use-agent-async', 'subagent-stop'];
+
+  /** Drives one background round with `drive`, then checks the main log grew by exactly the round and nothing else moved. */
+  function expectOnlyMainLogGrows(drive: (payload: Payload, worktree: string, data: string) => void): void {
+    const { root, worktree } = specWorktree();
+    const data = tempDir('spectant-hooks-data-');
+    const before = snapshot(root, LOG);
+    const worktreeBefore = snapshot(worktree, '');
+    expect(existsSync(join(root, LOG))).toBe(false);
+    for (const name of NAMES) drive(inWorktree(name, worktree), worktree, data);
+    expect(events(root)).toEqual(ROUND);
+    expect(snapshot(root, LOG)).toEqual(before);
+    expect(snapshot(worktree, '')).toEqual(worktreeBefore);
+    expect(existsSync(join(worktree, '.spectant'))).toBe(false);
+  }
+
+  test('claim, dispatch, build and release go to the main checkout log alone; the worktree stays byte-identical (spec 062, ISC-441)', () => {
+    expectOnlyMainLogGrows((payload, worktree, data) => {
+      handleHook(payload, { projectDir: worktree, dataDir: data, now: NOW });
+    });
+  });
+
+  test('through `spec-check hook` with CLAUDE_PROJECT_DIR in the worktree: the same lines, the same untouched tree (spec 062, ISC-441)', () => {
+    expectOnlyMainLogGrows((payload, worktree, data) => {
+      const r = Bun.spawnSync(['bun', CLI, 'hook'], {
+        stdin: Buffer.from(JSON.stringify(payload)),
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: { ...process.env, CLAUDE_PROJECT_DIR: worktree, CLAUDE_PLUGIN_DATA: data },
+      });
+      expect({ code: r.exitCode, stdout: r.stdout.toString(), stderr: r.stderr.toString() }).toEqual({ code: 0, stdout: '', stderr: '' });
+    });
+  });
+});
