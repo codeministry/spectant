@@ -1,8 +1,10 @@
 /*
  * ui-sheet: a native modal pinned to an edge. No padding on the dialog itself, so a click that targets the
  * `<dialog>` is a backdrop click (modal.ts). It slides in from its edge on the base token with the emphasized ease
- * and out with the exit ease; without `@starting-style` (WebKit < 17.4) it appears instantly.
+ * and out with the exit ease.
  */
+@import './_overlay-surface.css';
+
 :host {
   display: contents;
 }
@@ -20,14 +22,10 @@
   padding: 0;
   border: 0;
   border-inline-start: 1px solid var(--line);
-  background: var(--color-base-100);
-  color: var(--color-base-content);
-  box-shadow: var(--shadow);
   translate: var(--ui-sheet-from);
   transition:
     translate var(--motion-duration-base) var(--motion-ease-exit),
-    overlay var(--motion-duration-base) allow-discrete,
-    display var(--motion-duration-base) allow-discrete;
+    var(--ui-overlay-discrete-base);
 }
 
 :host([data-tier="compact"]) .sheet {
@@ -43,21 +41,10 @@
   border-start-end-radius: var(--radius-box);
 }
 
-.sheet[open] {
-  display: flex;
-  flex-direction: column;
-  translate: 0;
-  transition-timing-function: var(--motion-ease-emphasized);
-}
-
 @starting-style {
   .sheet[open] {
     translate: var(--ui-sheet-from);
   }
-}
-
-.sheet::backdrop {
-  background: var(--scrim);
 }
 
 .grip {
@@ -81,13 +68,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 16px 0 24px;
-}
-
-.title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.75rem;
 }
 
 .body {

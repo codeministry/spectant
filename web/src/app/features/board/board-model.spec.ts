@@ -4,24 +4,17 @@ import { allowedTransition, DEFAULT_WORKFLOW, reasonOf, storyStep } from '../../
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
 import ranksGolden from '../../../../../core/fixtures/backlog-ranks.planning.golden.json';
+import { type BoardRow, boardRowsOf } from '../../core/model/board-rows';
+import { type BoardBand, type BoardCard, type BoardModel } from '../../core/model/board-types';
 import {
-  type BoardBand,
-  type BoardCard,
-  type BoardModel,
   type BoardQueryState,
-  type BoardRow,
   boardQueryParams,
-  boardRowsOf,
-  boardSummaryOf,
   boardQueryString,
-  buildBoard,
-  dropTargetsOf,
   EMPTY_BOARD_QUERY,
-  hiddenColumnsOf,
-  hiddenLanesOf,
-  type OverflowColumn,
   parseBoardQuery,
-} from './board-model';
+} from '../../core/model/board-query';
+import { boardSummaryOf, buildBoard, dropTargetsOf } from '../../core/model/board';
+import { hiddenColumnsOf, hiddenLanesOf, type OverflowColumn } from './board-model';
 
 // T120 · ISC-129: the workspace board's view model, derived from the harbor planning golden and the dashboard rows the
 // server sends beside it. The goldens are typed as JSON; the served bodies are the core types they snapshot.

@@ -8,7 +8,7 @@ import { UiCard } from '../../../shared/ui/card/card';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
-import { edgeDiagnostic, overlapOf, pathSuffixes } from './overlap';
+import { edgeDiagnostic, overlapOf, pathSuffixes } from '../../../core/model/overlap';
 
 /**
  * `section`: the page section `#warnings` under its section header; `callout`: a collapsed `<details>` with the orange

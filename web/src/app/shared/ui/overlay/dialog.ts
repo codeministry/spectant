@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, type ElementRef, input, model, viewChild } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { UiIconButton } from '../button/icon-button';
 import { nextId } from './ids';
 import { modalDialog } from './modal';
+import { UiOverlayHead } from './overlay-head';
 
 /**
  * A centred modal on a native `<dialog>` (`showModal()`): `min(480px, 100% - 32px)` wide, backdrop 40 % black with
@@ -16,7 +15,7 @@ import { modalDialog } from './modal';
  */
 @Component({
   selector: 'ui-dialog',
-  imports: [TranslocoPipe, UiIconButton],
+  imports: [UiOverlayHead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './dialog.css',
   host: {
@@ -24,25 +23,7 @@ import { modalDialog } from './modal';
     '(pointerdown)': 'modal.pointerDown($event)',
     '(click)': 'modal.click($event)',
   },
-  template: `
-    <dialog
-      #dialog
-      class="dialog"
-      [attr.aria-labelledby]="heading() ? headingId : null"
-      [attr.aria-label]="heading() ? null : (label() ?? null)"
-      (close)="modal.closed()"
-    >
-      <div class="body">
-        @if (heading(); as heading) {
-          <div class="head">
-            <h2 class="title" [id]="headingId">{{ heading }}</h2>
-            <button ui-icon-button icon="x" size="sm" [label]="'common.close' | transloco" (click)="open.set(false)"></button>
-          </div>
-        }
-        <ng-content />
-      </div>
-    </dialog>
-  `,
+  templateUrl: './dialog.html',
 })
 export class UiDialog {
   readonly open = model(false);

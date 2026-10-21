@@ -12,7 +12,7 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiDiagramToolbar } from '../../../shared/ui/doc-prose/diagram-toolbar';
 import { DiagramZoom, panWithMouse, zoomDiagram } from '../../../shared/ui/doc-prose/diagram-zoom';
 import { capAtNaturalWidth, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from '../../../shared/ui/doc-prose/mermaid';
-import { planningCounts } from '../planning-counts';
+import { planningCounts } from '../../../core/model/planning-counts';
 import { laneParam, M_PARAM } from '../planning-page';
 import { GRAPH_CSS, type GraphLabels, graphSource, nodeLines, specEdgeIds } from './graph-source';
 

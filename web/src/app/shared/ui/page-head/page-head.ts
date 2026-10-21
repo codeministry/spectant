@@ -37,40 +37,8 @@ export interface PageHeadBack {
   selector: 'ui-page-head',
   imports: [RouterLink, UiIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: grid; gap: 4px; min-inline-size: 0; }
-    .row { display: flex; gap: 8px; align-items: center; min-inline-size: 0; }
-    .back { display: inline-grid; flex: none; place-items: center; inline-size: 24px; block-size: 24px; margin-block: -4px; border-radius: 4px; color: var(--muted-ink); }
-    .back:hover { color: var(--color-base-content); }
-    @media (pointer: coarse) {
-      .back { inline-size: 44px; block-size: 44px; margin-block: -14px; margin-inline: -10px; }
-    }
-    .eyebrow { display: flex; flex: 0 1 auto; min-inline-size: 0; margin: 0; overflow: hidden; white-space: nowrap; }
-    .segment { flex: none; }
-    .segment:first-child { flex: 0 1 auto; min-inline-size: 0; max-inline-size: 40ch; overflow: hidden; text-overflow: ellipsis; }
-    .sep { flex: none; white-space: pre; }
-    @media (forced-colors: active) {
-      .back { color: LinkText; }
-    }
-  `,
-  template: `
-    <div class="row">
-      @if (back(); as back) {
-        <a class="back" [routerLink]="back.href" [attr.aria-label]="back.label" [attr.title]="back.label" data-page-back>
-          <ui-icon name="arrow-left" [size]="16" />
-        </a>
-      }
-      <p class="eyebrow type-eyebrow" data-page-eyebrow>
-        @for (segment of segments(); track $index) {
-          @if (!$first) {
-            <span class="sep" aria-hidden="true"> · </span>
-          }
-          <span class="segment">{{ segment }}</span>
-        }
-      </p>
-    </div>
-    <ng-content select="h1" />
-  `,
+  styleUrl: './page-head.css',
+  templateUrl: './page-head.html',
 })
 export class UiPageHead {
   /** The eyebrow's segments, already translated, in address order; only the first one may shorten. */

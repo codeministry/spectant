@@ -5,7 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from '../../layout/shell/keyboard.service';
 import { DEFAULT_SETTINGS, SETTINGS_URL, SettingsService } from '../../core/settings.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ActorsSection } from '../settings/actors-section';

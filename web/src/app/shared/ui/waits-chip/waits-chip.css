@@ -1,0 +1,89 @@
+/* Under a coarse pointer the `.waits` link gets a hit area of at least 44 × 44 (WCAG 2.5.8) from `_hit-area.css`. */
+@import '../_hit-area.css';
+
+:host {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.waits {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  box-sizing: border-box;
+  block-size: 22px;
+  padding-inline: 7px;
+  border: 1px dashed var(--color-secondary);
+  border-radius: 4px;
+  background: none;
+  color: var(--ques-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* What daisyUI's `.label` gave the old class name (spec 049), kept so the chip looks as it did. */
+.chip-label {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  color: color-mix(in oklab, currentcolor 60%, transparent);
+  white-space: nowrap;
+}
+
+.num {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+/* `span.waits` (a chip without a link) and `a.waits` never match one element, so this rule may sit before the hover rules. */
+span.waits .num {
+  text-decoration: none;
+}
+
+a.waits:hover {
+  background: var(--ques-t);
+}
+
+a.waits:hover .num, a.waits:focus-visible .num {
+  text-decoration-style: solid;
+}
+
+.more {
+  border-color: var(--line);
+  color: var(--muted-ink);
+}
+
+.meta {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .waits {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  a.waits {
+    color: LinkText;
+  }
+}

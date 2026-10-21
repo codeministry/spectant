@@ -79,24 +79,7 @@ const toMs = (value: string): number => {
     '(keydown.space)': 'onActivate($event)',
     '(keydown.escape)': 'onEscape($event)',
   },
-  template: `
-    <dfn
-      #term
-      tabindex="0"
-      [id]="termId()"
-      [attr.aria-describedby]="hintId()"
-      [attr.role]="guide() ? 'button' : null"
-      [attr.aria-expanded]="guide() ? open() : null"
-      [attr.aria-controls]="guide() ? hintId() : null"
-      ><ng-content
-    /></dfn>
-    <span #panel class="hint" [attr.role]="guide() ? null : 'tooltip'" [id]="hintId()" [attr.popover]="kind" (toggle)="onToggle($event)"
-      ><span class="hint-text">{{ hint() }}</span
-      >@if (guide(); as key) {<a #link class="open-link" data-term-guide routerLink="/help" [fragment]="'term-' + key" (click)="onFocusOut(null)">{{
-          guideLabel()
-        }}</a>}</span
-    >
-  `,
+  templateUrl: './term.html',
 })
 export class UiTerm {
   /** The common term, already translated by the caller. */

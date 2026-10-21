@@ -19,7 +19,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiGlyph } from '../../shared/ui/glyph/glyph';
-import { guidanceOfBody } from '../../shared/ui/guidance/guidance-entry';
+import { guidanceOfBody } from '../../core/model/guidance-entry';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
@@ -28,29 +28,30 @@ import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { UiTime } from '../../shared/time';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
-import { beforeFor, edgeBefore, type FeatureGroup, featureOrder, groupOf, positionOf, stepBefore, type Target } from '../backlog/backlog-order';
+import { beforeFor, edgeBefore, groupOf, positionOf, stepBefore, type Target } from '../backlog/backlog-order';
+import { type FeatureGroup, featureOrder } from '../../core/model/feature-order';
 import { BacklogWriter, withBacklog } from '../backlog/backlog-writer.service';
 import { ReorderMenu, type ReorderStep } from '../backlog/reorder-menu';
 import { planningPageState } from '../planning/planning-page';
 import { BoardCard, CARD_EDGE } from './board-card';
 import { BoardDrag, type BoardDropEvent, provideBoardDrag, withMoves } from './board-drag';
 import { BoardFilters, withoutFilters } from './board-filters';
+import { boardRowsOf } from '../../core/model/board-rows';
 import {
   type BoardCard as BoardCardModel,
   type BandDivider,
   type BandPlace,
   type BoardColumn,
   type BoardModel,
+} from '../../core/model/board-types';
+import {
   type BoardQueryState,
   boardQueryParams,
   boardQueryString,
-  boardRowsOf,
-  buildBoard,
-  type HiddenColumn,
-  hiddenColumnsOf,
-  hiddenLanesOf,
   parseBoardQuery,
-} from './board-model';
+} from '../../core/model/board-query';
+import { buildBoard } from '../../core/model/board';
+import { type HiddenColumn, hiddenColumnsOf, hiddenLanesOf } from './board-model';
 import { AllocateDialog } from './allocate-dialog';
 import { type MovedCard, MoveToMenu, stepTarget } from './move-to-menu';
 import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';

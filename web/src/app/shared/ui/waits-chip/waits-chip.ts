@@ -35,53 +35,8 @@ interface BlockerView {
   imports: [RouterLink, UiIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-full]': 'wait().full ? "" : null' },
-  styles: `
-    :host { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; min-inline-size: 0; }
-    .waits {
-      position: relative; display: inline-flex; flex: none; gap: 4px; align-items: center; box-sizing: border-box; block-size: 22px;
-      padding-inline: 7px; border: 1px dashed var(--color-secondary); border-radius: 4px; background: none; color: var(--ques-ink);
-      font-family: var(--font-mono); font-size: 11px; font-weight: 500; line-height: 1; text-decoration: none; white-space: nowrap;
-    }
-    /* What daisyUI's \`.label\` gave the old class name (spec 049), kept so the chip looks as it did. */
-    .chip-label { display: inline-flex; gap: 0.375rem; align-items: center; color: color-mix(in oklab, currentcolor 60%, transparent); white-space: nowrap; }
-    .num { text-decoration: underline dotted; text-underline-offset: 2px; }
-    a.waits:hover { background: var(--ques-t); }
-    a.waits:hover .num, a.waits:focus-visible .num { text-decoration-style: solid; }
-    span.waits .num { text-decoration: none; }
-    .more { border-color: var(--line); color: var(--muted-ink); }
-    .meta { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-    .visually-hidden { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    @media (pointer: coarse) {
-      .waits::before { content: ""; position: absolute; inset: 50% auto auto 50%; translate: -50% -50%; inline-size: max(100%, 44px); block-size: max(100%, 44px); }
-    }
-    @media (forced-colors: active) {
-      .waits { border-color: CanvasText; color: CanvasText; }
-      a.waits { color: LinkText; }
-    }
-  `,
-  template: `
-    @for (blocker of visible(); track blocker.id) {
-      @if (blocker.link; as link) {
-        <a class="waits" data-waits [attr.data-blocker]="blocker.id" [routerLink]="link" [attr.aria-label]="blocker.name" [attr.title]="blocker.name">
-          <ui-icon name="clock" [size]="12" />{{ prefix() }} <span class="num">{{ blocker.id }}</span>
-        </a>
-      } @else {
-        <span class="waits" data-waits data-unknown [attr.data-blocker]="blocker.id" [attr.title]="blocker.name">
-          <ui-icon name="clock" [size]="12" /><span class="chip-label" aria-hidden="true">{{ prefix() }} <span class="num">{{ blocker.id }}</span></span>
-          <span class="visually-hidden">{{ blocker.name }}</span>
-        </span>
-      }
-    }
-    @if (rest(); as rest) {
-      <span class="waits more" data-waits-more [attr.title]="rest.name">
-        <span aria-hidden="true">+{{ rest.count }}</span>
-        <span class="visually-hidden">{{ rest.name }}</span>
-      </span>
-    }
-    @if (metaText(); as text) {
-      <span class="meta" data-waits-meta>· {{ text }}</span>
-    }
-  `,
+  styleUrl: './waits-chip.css',
+  templateUrl: './waits-chip.html',
 })
 export class UiWaitsChip {
   private readonly transloco = inject(TranslocoService);

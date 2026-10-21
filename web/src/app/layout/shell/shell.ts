@@ -1,7 +1,7 @@
 import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from './keyboard.service';
 import { DetailSidebar } from '../detail-sidebar/detail-sidebar';
 import { DetailSelection } from '../detail-sidebar/selection';
 import { RailToggle } from '../zen/rail-toggle';

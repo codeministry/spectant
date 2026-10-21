@@ -1,0 +1,59 @@
+
+    @if (collapsed()) {
+      <button
+        #control
+        ui-icon-button
+        size="sm"
+        class="fold"
+        data-control="rail-expand"
+        icon="chevron-left"
+        aria-expanded="false"
+        [label]="'shell.rail.expand' | transloco"
+        (click)="toggle()"
+      ></button>
+      @if (content.badges(); as badges) {
+        @for (badge of badges; track badge.key) {
+          <span
+            class="count"
+            role="img"
+            [attr.data-rail-count]="badge.key"
+            [attr.data-tone]="tone(badge.key)"
+            [attr.aria-label]="badge.label"
+            [attr.title]="badge.label"
+          >{{ badge.count }}</span>
+        }
+      } @else {
+        @if (waiting(); as count) {
+          <span
+            class="count"
+            data-rail-count="waiting"
+            data-tone="attention"
+            role="img"
+            [attr.aria-label]="'shell.rail.waiting' | transloco: { count }"
+            [attr.title]="'shell.rail.waiting' | transloco: { count }"
+          >{{ count }}</span>
+        }
+        @if (warnings(); as count) {
+          <span
+            class="count"
+            data-rail-count="warnings"
+            role="img"
+            [attr.aria-label]="'shell.rail.warnings' | transloco: { count }"
+            [attr.title]="'shell.rail.warnings' | transloco: { count }"
+          >{{ count }}</span>
+        }
+      }
+    } @else {
+      <button
+        #control
+        ui-icon-button
+        size="sm"
+        class="fold"
+        data-control="rail-collapse"
+        icon="chevron-right"
+        aria-expanded="true"
+        [label]="'shell.rail.collapse' | transloco"
+        (click)="toggle()"
+      ></button>
+    }
+  

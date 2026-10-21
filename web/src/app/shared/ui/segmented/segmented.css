@@ -1,0 +1,151 @@
+
+    .seg-icon {
+      flex: none;
+      margin-inline-end: 6px;
+      vertical-align: -2px;
+    }
+    :host { display: inline-flex; }
+
+    .group {
+      display: inline-grid;
+      grid-auto-columns: auto;
+      grid-auto-flow: column;
+      min-inline-size: 0;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-field);
+      background: var(--lane);
+    }
+
+    .seg {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+      block-size: 28px;
+      padding: 0 12px;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted-ink);
+      font-size: 13px;
+      cursor: pointer;
+      transition: color var(--motion-duration-instant) var(--motion-ease-standard);
+    }
+    .seg:hover { color: var(--color-base-content); }
+
+    .seg[aria-checked='true'] {
+      background: var(--color-base-100);
+      color: var(--color-base-content);
+      box-shadow: var(--shadow-hair);
+    }
+    :host([data-fill]) { display: flex; }
+
+    :host([data-fill]) .group {
+      flex: 1 1 auto;
+      grid-auto-columns: 1fr;
+    }
+
+    :host([data-fill]) .seg {
+      gap: normal;
+      padding: 0;
+    }
+
+    /* The checked segment's own shadow outranks the zero-specificity global ring rule; keep the halo (ISC-64). */
+    .seg[aria-checked='true']:focus-visible { box-shadow: 0 0 0 4px var(--focus-halo), var(--shadow-hair); }
+
+    .dot {
+      inline-size: 8px;
+      block-size: 8px;
+      border-radius: 50%;
+    }
+
+    :host([data-mode='strip']) {
+      display: block;
+      min-inline-size: 0;
+    }
+
+    .strip {
+      display: flex;
+      gap: 2px;
+      padding-block: 4px 6px;
+    }
+
+    .strip[data-wrap] {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .sseg {
+      --btn-fg: var(--muted-ink);
+
+      position: relative;
+      flex: 1 0 auto;
+      gap: 6px;
+      block-size: auto;
+      min-block-size: 40px;
+      padding-inline: 12px;
+      border: 0;
+      font-weight: 600;
+    }
+
+    .strip[data-wrap] .sseg {
+      flex-direction: column;
+      gap: 0;
+      min-block-size: 52px;
+      padding-inline: 4px;
+    }
+    .sseg[data-inview] { --btn-fg: var(--color-base-content); }
+
+    .sseg[data-inview]::after {
+      position: absolute;
+      inset-inline: 8px;
+      inset-block-end: 0;
+      block-size: 2px;
+      border-radius: 1px;
+      background: var(--color-primary);
+      content: '';
+    }
+
+    .sl {
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .strip[data-wrap] .sl {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow-wrap: anywhere;
+      text-align: center;
+    }
+
+    .count {
+      color: var(--color-base-content);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      line-height: 20px;
+    }
+
+    .strip .dot {
+      inline-size: 6px;
+      block-size: 6px;
+    }
+
+    .strip[data-wrap] .dot {
+      position: absolute;
+      inset-block-start: 6px;
+      inset-inline-end: 6px;
+    }
+
+    /* Sets only margin-inline-end, which no `.dot` rule above sets, so it may follow them. */
+    :host([data-fill]) .seg .dot { margin-inline-end: 6px; }
+
+    @media (forced-colors: active) {
+      .seg[aria-checked='true'] { outline: 2px solid Highlight; }
+      .dot { background: CanvasText; }
+      .sseg[data-inview]::after { background: Highlight; }
+    }
+  

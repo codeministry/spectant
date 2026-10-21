@@ -35,7 +35,7 @@ const TONE_CLASS: Record<ButtonTone, string> = { warning: 'btn-warning', danger:
     // A static `disabled` attribute would reach the DOM next to the input and make the button unfocusable.
     '[attr.disabled]': 'null',
   },
-  template: '<ng-content />',
+  templateUrl: './button.html',
 })
 export class UiButton {
   readonly variant = input<ButtonVariant>('secondary');

@@ -19,23 +19,8 @@ import { UiChip } from '../chip/chip';
     '[attr.hidden]': "worktree() === null ? '' : null",
     '[attr.data-source-chip]': 'worktree()',
   },
-  styles: `
-    :host { display: inline-flex; min-inline-size: 0; }
-    :host([hidden]) { display: none; }
-    .name { font-family: var(--font-mono); }
-  `,
-  template: `
-    @if (worktree(); as path) {
-      <ui-chip
-        variant="plain"
-        icon="git-branch"
-        role="note"
-        [attr.title]="'sourceChip.title' | transloco: { path }"
-        [attr.aria-label]="'sourceChip.title' | transloco: { path }"
-        >{{ 'sourceChip.text' | transloco }} <span class="name">{{ name() }}</span></ui-chip
-      >
-    }
-  `,
+  styleUrl: './source-chip.css',
+  templateUrl: './source-chip.html',
 })
 export class UiSourceChip {
   /** Where the file was read; absent or `main` renders nothing. */

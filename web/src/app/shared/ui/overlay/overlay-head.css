@@ -1,0 +1,7 @@
+/* The modal's H2 (ui-dialog, ui-sheet); the row's layout stays with the overlay's `.head`. */
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+}

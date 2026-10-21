@@ -10,8 +10,8 @@ import {
   type ShortcutContext,
   type ShortcutGroup,
   SHORTCUTS,
-} from '../../core/keyboard-bindings';
-import { KeyboardService } from '../../core/keyboard.service';
+} from '../../layout/shell/keyboard-bindings';
+import { KeyboardService } from '../../layout/shell/keyboard.service';
 import { SettingsService } from '../../core/settings.service';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiIconButton } from '../../shared/ui/button/icon-button';

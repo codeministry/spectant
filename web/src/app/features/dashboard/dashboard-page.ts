@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';

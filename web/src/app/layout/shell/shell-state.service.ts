@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter, tap } from 'rxjs';
-import { altTyped } from '../../core/keyboard-bindings';
+import { altTyped } from './keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import {
   type AreaId,

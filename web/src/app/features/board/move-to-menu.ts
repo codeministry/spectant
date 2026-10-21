@@ -8,7 +8,7 @@ import { UiIcon } from '../../shared/icons/icon';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { BoardDrag, type BoardRefusal, type DropHint, dropHint, runHoldOf } from './board-drag';
-import type { BoardCard, BoardModel } from './board-model';
+import type { BoardCard, BoardModel } from '../../core/model/board-types';
 import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
 
 /**

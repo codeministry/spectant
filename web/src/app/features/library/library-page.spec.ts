@@ -10,7 +10,7 @@ import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/s
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { addressParams, controlViews, missingCommand, SEARCH_DEBOUNCE_MS, typeIcon } from './library-page';

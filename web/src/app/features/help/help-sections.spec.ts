@@ -8,7 +8,7 @@ import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import type { Workflow } from '../../../../../core/src/files';
 import { CLAIMLESS_RULE, DEFAULT_WORKFLOW, STAGE_RULES, WORKFLOW_TYPES } from '../../../../../core/src/stage';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
-import { keyLabel, SHORTCUTS } from '../../core/keyboard-bindings';
+import { keyLabel, SHORTCUTS } from '../../layout/shell/keyboard-bindings';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';

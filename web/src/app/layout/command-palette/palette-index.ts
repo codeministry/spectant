@@ -1,7 +1,8 @@
 import { computed, inject, Injectable, Injector, linkedSignal, type Resource, resource, type Signal, signal, untracked } from '@angular/core';
 import type { ClaimGlyphState } from '../../../../../core/src/files';
 import { ApiClient, type DashboardBody } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { isLoose, type Loose, text } from '../shell/loose';
+import { RefreshService } from '../shell/refresh.service';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -63,9 +64,6 @@ export const CLAIM_LOAD_CONCURRENCY = 6;
  */
 export const OTHERS_WAIT_MS = 500;
 
-type Loose = Readonly<Record<string, unknown>>;
-const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
-const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 const list = (body: unknown, key: string): Loose[] => {
   const value = isLoose(body) ? body[key] : null;
   return Array.isArray(value) ? value.filter(isLoose) : [];

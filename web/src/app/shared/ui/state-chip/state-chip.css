@@ -1,0 +1,5 @@
+:host {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}

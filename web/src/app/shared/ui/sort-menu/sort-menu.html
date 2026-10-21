@@ -1,0 +1,44 @@
+
+    <ng-template #menu>
+      <div class="sort-menu" role="group" [attr.aria-label]="label()">
+        @for (option of options(); track option.key) {
+          <button
+            type="button"
+            class="pop-item"
+            [attr.data-sort]="option.key"
+            [attr.aria-pressed]="option.key === value()"
+            [attr.data-autofocus]="option.key === value() ? '' : null"
+            (click)="pick(option.key)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    </ng-template>
+
+    @if (tier() === 'compact') {
+      <button
+        type="button"
+        class="btn btn-sm btn-ghost trigger"
+        data-control="sort"
+        aria-haspopup="dialog"
+        [attr.aria-label]="name()"
+        [attr.aria-expanded]="sheetOpen()"
+        (click)="sheetOpen.set(true)"
+      >
+        <ui-icon name="arrow-up-down" [size]="16" />
+        <span>{{ current() }}</span>
+      </button>
+      <ui-sheet tier="compact" [(open)]="sheetOpen" [label]="label()">
+        <ng-container [ngTemplateOutlet]="menu" />
+      </ui-sheet>
+    } @else {
+      <button type="button" class="btn btn-sm btn-ghost trigger" data-control="sort" [attr.aria-label]="name()" [uiPopoverTrigger]="pop">
+        <ui-icon name="arrow-up-down" [size]="16" />
+        <span>{{ current() }}</span>
+      </button>
+      <ui-popover #pop class="sort-popover" [placement]="placement()" [label]="label()">
+        <ng-container [ngTemplateOutlet]="menu" />
+      </ui-popover>
+    }
+  

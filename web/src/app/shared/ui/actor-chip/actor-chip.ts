@@ -35,47 +35,8 @@ const COLORS: Record<ActorTone, { readonly tint: string; readonly ink: string; r
     '[style.--actor-ink]': 'colors().ink',
     '[style.--actor-mark]': 'colors().mark',
   },
-  styles: `
-    :host { display: inline-flex; gap: 6px; align-items: center; min-inline-size: 0; max-inline-size: 100%; block-size: 24px; padding-inline: 8px; border-radius: 999px; background: var(--actor-tint); color: var(--actor-ink); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 16px; white-space: nowrap; }
-    /* The display, gap, nowrap and 60 % ink came from daisyUI's \`.label\` under the old class name (spec 049); kept. */
-    .chip-label { display: inline-flex; gap: 0.375rem; align-items: center; min-inline-size: 0; overflow: hidden; color: color-mix(in oklab, currentcolor 60%, transparent); white-space: nowrap; text-overflow: ellipsis; }
-    .mono, .task { font-family: var(--font-mono); font-weight: 500; }
-    .suffix, .stale { font-weight: 500; }
-    .dot { flex: none; inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--actor-mark); }
-    .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    @media (forced-colors: active) {
-      :host { border: 1px solid CanvasText; }
-      .dot { background: CanvasText; }
-    }
-  `,
-  template: `
-    @if (agent()) {
-      <ui-icon name="bot" [size]="14" />
-      <span class="vh">{{ 'actors.agent' | transloco }}</span>
-    }
-    <span class="chip-label" [class.mono]="mono()">{{ text() }}</span>
-    @if (actor().task; as task) {
-      <span class="task">{{ task }}</span>
-    }
-    @if (actor().legacy) {
-      <span class="suffix">{{ 'actors.legacy' | transloco }}</span>
-    }
-    @if (isActive() || stale()) {
-      <span class="dot" aria-hidden="true"></span>
-    }
-    @if (isActive()) {
-      <span class="vh">{{ 'actors.active' | transloco }}</span>
-    }
-    @if (stale()) {
-      <span class="stale">
-        @if (staleAge(); as age) {
-          {{ 'actors.staleFor' | transloco: { age } }}
-        } @else {
-          {{ 'actors.stale' | transloco }}
-        }
-      </span>
-    }
-  `,
+  styleUrl: './actor-chip.css',
+  templateUrl: './actor-chip.html',
 })
 export class UiActorChip {
   readonly actor = input.required<ActorRef>();

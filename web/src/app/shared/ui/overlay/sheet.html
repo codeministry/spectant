@@ -1,0 +1,19 @@
+
+    <dialog
+      #dialog
+      class="sheet"
+      [attr.aria-labelledby]="heading() ? headingId : null"
+      [attr.aria-label]="heading() ? null : (label() ?? null)"
+      (close)="modal.closed()"
+    >
+      @if (tier() === 'compact') {
+        <div class="grip">
+          <ng-content select="[uiSheetHandle]"><span class="handle" aria-hidden="true"></span></ng-content>
+        </div>
+      }
+      @if (heading(); as heading) {
+        <div class="head" ui-overlay-head [heading]="heading" [headingId]="headingId" (dismiss)="open.set(false)"></div>
+      }
+      <div class="body"><ng-content /></div>
+    </dialog>
+  

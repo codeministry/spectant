@@ -7,7 +7,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
-import { areaById, areaPath, specLink } from '../shell/areas';
+import { notesLinkOf } from '../spec-head/notes-link';
 import { RailContent } from '../shell/rail-content';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
@@ -28,99 +28,8 @@ import { ShellState } from '../shell/shell-state.service';
   imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiMeter, UiWsBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  styles: `
-    app-shell[data-zen] app-spec-page .spec-head { display: none; }
-    app-zen-footer { position: sticky; inset-block-end: 0; z-index: 20; display: block; }
-    app-zen-footer .zen-bar {
-      display: flex; gap: 8px; align-items: center; block-size: 36px; padding-inline: 16px;
-      padding-block-end: env(safe-area-inset-bottom); border-block-start: 1px solid var(--line);
-      background: var(--page-glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-      color: var(--muted); font-size: 12px; line-height: 16px; white-space: nowrap;
-      animation: zen-bar-in var(--dur-sheet) var(--ease);
-    }
-    @keyframes zen-bar-in { from { opacity: 0; translate: 0 8px; } }
-    @media (prefers-reduced-motion: reduce) { app-zen-footer .zen-bar { animation: none; } }
-    app-zen-footer .zen-path { display: flex; flex: none; gap: 4px; align-items: center; overflow: hidden; color: var(--muted); }
-    app-zen-footer .zen-path a { display: inline-flex; gap: 4px; align-items: center; color: inherit; text-decoration: none; }
-    app-zen-footer .zen-path a:hover { color: var(--color-base-content); }
-    app-zen-footer .zen-id { color: var(--disp-text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
-    app-zen-footer .zen-title { overflow: hidden; min-inline-size: 0; flex: 0 1 auto; color: var(--color-base-content); font-weight: 600; text-overflow: ellipsis; }
-    app-zen-footer .zen-chips { display: flex; flex: none; gap: 4px; align-items: center; margin-inline-start: auto; }
-    app-zen-footer .zen-claims { display: inline-flex; gap: 8px; align-items: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-    app-zen-footer .zen-meter { inline-size: 64px; }
-    app-zen-footer .zen-command { min-inline-size: 0; }
-    app-zen-footer .zen-command ui-command-chip { flex-wrap: nowrap; }
-    app-zen-footer .zen-notes { color: var(--muted-ink); font-variant-numeric: tabular-nums; }
-    @container shell (width < 640px) {
-      app-zen-footer .zen-bar { gap: 8px; padding-inline: 16px; }
-      app-zen-footer .zen-title, app-zen-footer .zen-meter, app-zen-footer .zen-notes, app-zen-footer .zen-here, app-zen-footer [data-zen-part='type'] { display: none; }
-    }
-    /* Merged with a view's bottom bar (the board, T88): one 48 px bar; the bar yields the command chip first. */
-    app-zen-footer .zen-bar[data-merged] { block-size: 48px; }
-    app-zen-footer .zen-bar[data-merged] .zen-command { flex: 0 1 auto; margin-inline-start: 0; }
-    @container shell (width < 1120px) {
-      app-zen-footer .zen-bar[data-merged] .zen-command, app-zen-footer .zen-bar[data-merged] .zen-notes { display: none; }
-    }
-    @container shell (width < 640px) {
-      app-zen-footer .zen-bar[data-merged] { gap: 4px; padding-inline: 8px; }
-      app-zen-footer .zen-bar[data-merged] [data-zen-part='stage'], app-zen-footer .zen-bar[data-merged] .zen-claims { display: none; }
-    }
-  `,
-  template: `
-    <footer class="zen-bar" data-zen-footer [attr.data-merged]="bar() ? '' : null" [attr.aria-label]="'shell.zen.footer' | transloco">
-      @if (wsPath(); as path) {
-        <nav class="zen-path" data-zen-part="path" aria-hidden="true">
-          <a [routerLink]="path.link" tabindex="-1"><ui-icon name="arrow-left" [size]="12" /><ui-ws-badge size="sm" [name]="path.name" />{{ path.name }}</a>
-          <span class="zen-here">/</span>
-          <span class="zen-here">{{ areaKey() | transloco }}</span>
-        </nav>
-      }
-      <span class="zen-id" data-zen-part="id">{{ id() }}</span>
-      @if (title(); as title) {
-        <span class="zen-title" data-zen-part="title" [attr.title]="title">{{ title }}</span>
-      }
-      <span class="zen-chips">
-        @if (type(); as type) {
-          <ui-chip variant="plain" data-zen-part="type">{{ 'types.' + type | transloco }}</ui-chip>
-        }
-        <ui-chip tone="primary" [dot]="true" data-zen-part="stage">{{ stageKey() | transloco }}</ui-chip>
-      </span>
-      @if (claims(); as claims) {
-        <span class="zen-claims" data-zen-part="claims">
-          <ui-meter
-            class="zen-meter"
-            [mini]="true"
-            [value]="claims.closed"
-            [max]="claims.total"
-            [label]="'common.claimsClosed' | transloco: claims"
-          />
-          <span aria-hidden="true">{{ 'shell.zen.claims' | transloco: claims }}</span>
-        </span>
-      }
-      <span class="zen-command">
-        @if (command(); as command) {
-          <ui-command-chip
-            [command]="command"
-            [copyLabel]="'common.copyCommand' | transloco"
-            [copiedLabel]="'common.copied' | transloco: { command }"
-            [manualHint]="'common.copyFallback' | transloco"
-          />
-        }
-      </span>
-      @if (notesLink(); as link) {
-        <a class="zen-notes badge badge-ghost" data-zen-part="notes" [routerLink]="link">
-          @if (notes(); as count) {
-            {{ 'shell.zen.notesCount' | transloco: { count } }}
-          } @else {
-            {{ 'shell.zen.notes' | transloco }}
-          }
-        </a>
-      }
-      @if (bar(); as bar) {
-        <ng-container [ngTemplateOutlet]="bar" />
-      }
-    </footer>
-  `,
+  styleUrl: './zen-footer.css',
+  templateUrl: './zen-footer.html',
 })
 export class ZenFooter {
   private readonly state = inject(ShellState);
@@ -149,9 +58,5 @@ export class ZenFooter {
   });
   protected readonly command = computed(() => this.body()?.head.nextCommand ?? null);
   protected readonly notes = computed(() => this.body()?.areas.notes.count ?? null);
-  protected readonly notesLink = computed(() => {
-    const ws = this.state.ws();
-    const id = this.state.specId();
-    return ws === null || id === null ? null : specLink(ws, id, areaPath(areaById('notes')));
-  });
+  protected readonly notesLink = computed(() => notesLinkOf(this.state.ws(), this.state.specId()));
 }

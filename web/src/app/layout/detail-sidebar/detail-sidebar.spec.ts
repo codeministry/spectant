@@ -5,7 +5,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
 import { ApiClient } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../shell/refresh.service';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { RailSlot } from '../shell/rail-slot';
 import { ShellData } from '../shell/shell-data.service';

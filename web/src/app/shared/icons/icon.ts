@@ -13,30 +13,8 @@ import { ICONS, type IconName } from './icons';
   selector: 'ui-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-icon]': 'name()' },
-  styles: `
-    :host {
-      display: inline-flex;
-      flex-shrink: 0;
-      line-height: 0;
-    }
-  `,
-  template: `
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      focusable="false"
-      [attr.width]="size()"
-      [attr.height]="size()"
-      [attr.aria-hidden]="label() ? null : 'true'"
-      [attr.role]="label() ? 'img' : null"
-      [attr.aria-label]="label() || null"
-      [innerHTML]="markup()"
-    ></svg>
-  `,
+  styleUrl: './icon.css',
+  templateUrl: './icon.html',
 })
 export class UiIcon {
   readonly name = input.required<IconName>();

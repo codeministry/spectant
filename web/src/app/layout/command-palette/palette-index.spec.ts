@@ -2,7 +2,7 @@ import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { ClaimGlyphState, ClaimView, ClaimViewModel } from '../../../../../core/src/files';
 import { ApiClient, type ApiResult, type DashboardBody } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../shell/refresh.service';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { CLAIM_LOAD_CONCURRENCY, OTHERS_WAIT_MS, PaletteIndex } from './palette-index';

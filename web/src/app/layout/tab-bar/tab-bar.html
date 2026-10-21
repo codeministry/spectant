@@ -1,0 +1,30 @@
+
+    @if (tabs().length > 0) {
+      <nav data-ui="tab-bar" [attr.aria-label]="'shell.tabBar' | transloco: { area: (labelKey() | transloco) }">
+        <span class="area-eyebrow" data-area-eyebrow aria-hidden="true">{{ labelKey() | transloco }}</span>
+        <div class="tabs-in" uiRovingList>
+          @for (tab of tabs(); track tab.id) {
+            @if (tab.sep && !$first) {
+              <span class="tab-sep" aria-hidden="true"></span>
+            }
+            <a
+              uiRovingItem
+              [routerLink]="tab.link"
+              [queryParamsHandling]="tab.keepQuery ? 'merge' : null"
+              [attr.data-tab]="tab.id"
+              [class.muted-tab]="tab.muted"
+              [attr.data-muted]="tab.muted ? '' : null"
+              [attr.aria-current]="tab.id === current() ? 'page' : null"
+              >@if (tab.icon; as icon) {
+                <ui-icon [name]="icon" [size]="16" />
+              }
+              {{ tab.labelKey | transloco }}
+              @if (tab.count; as count) {
+                <small class="count" [attr.data-count]="tab.id">{{ count }}</small>
+              }</a
+            >
+          }
+        </div>
+      </nav>
+    }
+  

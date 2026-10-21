@@ -8,7 +8,7 @@ import type { SpecType, Workflow, WorkflowRow, WorkflowStage } from '../../../..
 import { GLOSSARY } from '../../../../../core/src/glossary';
 import { DEFAULT_WORKFLOW, defaultWorkflowRow } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
-import { keyLabel } from '../../core/keyboard-bindings';
+import { keyLabel } from '../../layout/shell/keyboard-bindings';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';

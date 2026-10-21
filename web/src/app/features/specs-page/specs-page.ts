@@ -3,8 +3,8 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, linke
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { altTyped } from '../../core/keyboard-bindings';
-import { RefreshService } from '../../core/refresh.service';
+import { altTyped } from '../../layout/shell/keyboard-bindings';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { SettingsService } from '../../core/settings.service';
 import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { NotFound } from '../../layout/not-found/not-found';

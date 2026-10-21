@@ -20,7 +20,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, LibraryDoc, LibraryDocType } from '../../../../../core/src/files';
 import type { LibraryDocPage } from '../../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';

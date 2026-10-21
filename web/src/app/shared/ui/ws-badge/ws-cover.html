@@ -1,0 +1,12 @@
+
+    @if (src(); as src) {
+      <img [src]="src" [alt]="alt()" loading="lazy" />
+    } @else {
+      @let p = pattern();
+      <!-- The name pattern, drawn from the hash; not an icon (data-icon-exempt, ISC-18.2). -->
+      <svg viewBox="0 0 360 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false" data-icon-exempt>
+        <path [attr.d]="p.arc" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" />
+        <circle [attr.cx]="p.dot.cx" [attr.cy]="p.dot.cy" r="7" fill="var(--color-secondary)" />
+      </svg>
+    }
+  

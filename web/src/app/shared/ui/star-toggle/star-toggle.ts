@@ -30,7 +30,7 @@ export type StarToggleSize = 'sm' | 'head';
     '[attr.data-size]': 'size()',
     '(click)': 'toggled.emit()',
   },
-  template: '<ui-icon name="star" [size]="16" />',
+  templateUrl: './star-toggle.html',
 })
 export class UiStarToggle {
   readonly pressed = input(false);

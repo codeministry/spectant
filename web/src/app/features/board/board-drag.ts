@@ -12,7 +12,7 @@ import { ApiClient } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import type { BoardRefusal } from '../../shared/ui/refusal-notice/refusal';
 import { ToastService } from '../../shared/ui/toast/toast';
-import type { BoardCard } from './board-model';
+import type { BoardCard } from '../../core/model/board-types';
 
 /**
  * The one drag configuration of the workspace board (spec 008, T125, ISC-130; design 008 § Drag, Drop und die

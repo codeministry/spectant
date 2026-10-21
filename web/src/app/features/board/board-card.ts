@@ -11,13 +11,13 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiItemState } from '../../shared/ui/item-state/item-state';
 import { UiPriority } from '../../shared/ui/priority/priority';
-import { withReason } from '../../shared/ui/guidance/guidance-entry';
+import { withReason } from '../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../shared/ui/guidance/guidance-reason.pipe';
 import { UiReason } from '../../shared/ui/reason/reason';
 import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
 import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
-import type { BoardCard as BoardCardModel } from './board-model';
+import type { BoardCard as BoardCardModel } from '../../core/model/board-types';
 
 /**
  * The inline-start edge per stage, in the prototype's role colours (spec 024, design § Workspace board): teal for an

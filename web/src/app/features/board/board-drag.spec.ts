@@ -17,7 +17,9 @@ import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { BOARD_DRAG_CONFIG, type BoardDrag, dropHint, withMoves } from './board-drag';
-import { type BoardCard, boardRowsOf, buildBoard } from './board-model';
+import { boardRowsOf } from '../../core/model/board-rows';
+import { type BoardCard } from '../../core/model/board-types';
+import { buildBoard } from '../../core/model/board';
 import type { BoardPage } from './board-page';
 
 // T125 / T126 · ISC-130: the drag configuration, the hint per column while a card is lifted, the transition a drop

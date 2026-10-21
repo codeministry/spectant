@@ -1,0 +1,149 @@
+/* The bar's page glass (background and backdrop blur) comes from the partial the tab bar slot shares. */
+@import '../_glass-bar.css';
+
+app-shell[data-zen] app-spec-page .spec-head {
+  display: none;
+}
+
+app-zen-footer {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 20;
+  display: block;
+}
+
+app-zen-footer .zen-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  block-size: 36px;
+  padding-inline: 16px;
+  padding-block-end: env(safe-area-inset-bottom);
+  border-block-start: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  animation: zen-bar-in var(--dur-sheet) var(--ease);
+}
+
+@keyframes zen-bar-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  app-zen-footer .zen-bar {
+    animation: none;
+  }
+}
+
+app-zen-footer .zen-path {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  overflow: hidden;
+  color: var(--muted);
+}
+
+app-zen-footer .zen-path a {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+app-zen-footer .zen-path a:hover {
+  color: var(--color-base-content);
+}
+
+app-zen-footer .zen-id {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+app-zen-footer .zen-title {
+  overflow: hidden;
+  min-inline-size: 0;
+  flex: 0 1 auto;
+  color: var(--color-base-content);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+app-zen-footer .zen-chips {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+app-zen-footer .zen-claims {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+app-zen-footer .zen-meter {
+  inline-size: 64px;
+}
+
+app-zen-footer .zen-command {
+  min-inline-size: 0;
+}
+
+app-zen-footer .zen-command ui-command-chip {
+  flex-wrap: nowrap;
+}
+
+app-zen-footer .zen-notes {
+  color: var(--muted-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+@container shell (width < 640px) {
+  app-zen-footer .zen-bar {
+    gap: 8px;
+    padding-inline: 16px;
+  }
+
+  app-zen-footer .zen-title, app-zen-footer .zen-meter, app-zen-footer .zen-notes, app-zen-footer .zen-here, app-zen-footer [data-zen-part='type'] {
+    display: none;
+  }
+}
+
+/* Merged with a view's bottom bar (the board, T88): one 48 px bar; the bar yields the command chip first. */
+app-zen-footer .zen-bar[data-merged] {
+  block-size: 48px;
+}
+
+app-zen-footer .zen-bar[data-merged] .zen-command {
+  flex: 0 1 auto;
+  margin-inline-start: 0;
+}
+
+@container shell (width < 1120px) {
+  app-zen-footer .zen-bar[data-merged] .zen-command, app-zen-footer .zen-bar[data-merged] .zen-notes {
+    display: none;
+  }
+}
+
+@container shell (width < 640px) {
+  app-zen-footer .zen-bar[data-merged] {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+
+  app-zen-footer .zen-bar[data-merged] [data-zen-part='stage'], app-zen-footer .zen-bar[data-merged] .zen-claims {
+    display: none;
+  }
+}

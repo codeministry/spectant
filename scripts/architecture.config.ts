@@ -2,12 +2,14 @@
  * architecture.config — the lane entries `scripts/check-architecture.ts` checks (spec 059, ISC-415).
  *
  * One entry per lane. Each entry names a root and the files under it; every optional section switches one rule on
- * for that entry, and a rule never runs on an entry that leaves its section out. A new lane (the web lanes of the
- * feature) adds an entry here and changes no rule.
+ * for that entry, and a rule never runs on an entry that leaves its section out. A new lane adds an entry here and
+ * changes no rule: the web entry (spec 060, ISC-423) lives in `architecture/web.entry.ts` and is listed below.
  *
  * Paths: `root` is relative to the repository root; `ignore` patterns and the layout and io folder names are relative
  * to `root`. Patterns are `Bun.Glob` globs.
  */
+import { TEST_AND_GENERATED } from "./architecture/files.ts";
+import { web } from "./architecture/web.entry.ts";
 
 /** Line limit per file (ISC-413). */
 export type SizeConfig = {
@@ -15,10 +17,20 @@ export type SizeConfig = {
   maxLines: number;
 };
 
+/** A named clone the duplicates rule accepts (spec 060): two files, relative to `root`, and why they stay apart. */
+export type DuplicateAllowance = {
+  /** The two files of the clone, relative to `root`; the order does not matter. */
+  files: [string, string];
+  /** Why the copied block has no shared rule; a clone without a reason is never accepted. */
+  why: string;
+};
+
 /** Copied blocks across the files of the root (ISC-414). */
 export type DuplicatesConfig = {
   /** A copied block of at least this many tokens is a violation. */
   minTokens: number;
+  /** Named exceptions: a clone between exactly these two files is not a violation. */
+  allow?: DuplicateAllowance[];
 };
 
 /** The folder shape of the root (ISC-409). */
@@ -51,6 +63,12 @@ export type IoConfig = {
   calls: string[];
 };
 
+/** The layer order of the root (spec 060, ISC-424). */
+export type LayersConfig = {
+  /** Top folders of the root, lowest layer first: a file of one layer imports no file of a layer after it. */
+  order: string[];
+};
+
 export type LaneEntry = {
   /** The lane's name, as it appears in the output. */
   name: string;
@@ -65,14 +83,16 @@ export type LaneEntry = {
   layout?: LayoutConfig;
   imports?: ImportsConfig;
   io?: IoConfig;
+  layers?: LayersConfig;
 };
 
 export type ArchitectureConfig = {
   lanes: LaneEntry[];
 };
 
-/** Test and generated files, which no rule of any lane looks at. */
-export const TEST_AND_GENERATED: string[] = ["**/*.test.ts", "**/*.spec.ts", "**/*.gen.ts"];
+// Test and generated files, which no rule of any lane looks at. The list lives in `architecture/files.ts`, so a lane
+// entry kept in a file of its own (`architecture/web.entry.ts`) uses it without an import cycle through this file.
+export { TEST_AND_GENERATED };
 
 const config: ArchitectureConfig = {
   lanes: [
@@ -91,6 +111,7 @@ const config: ArchitectureConfig = {
         calls: ["Bun.spawn", "Bun.file", "Bun.write"],
       },
     },
+    web,
   ],
 };
 

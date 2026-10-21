@@ -5,7 +5,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { SpecsPage } from './specs-page';

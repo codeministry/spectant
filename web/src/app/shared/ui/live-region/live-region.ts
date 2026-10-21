@@ -11,10 +11,8 @@ const NBSP = String.fromCharCode(0xa0);
   selector: 'ui-live-region',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'aria-live': 'polite', 'aria-atomic': 'true' },
-  styles: `
-    :host { position: absolute; overflow: hidden; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; border: 0; clip-path: inset(50%); white-space: nowrap; }
-  `,
-  template: `{{ message() }}`,
+  styleUrl: './live-region.css',
+  templateUrl: './live-region.html',
 })
 export class UiLiveRegion {
   protected readonly message = signal('');

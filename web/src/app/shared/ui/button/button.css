@@ -1,7 +1,12 @@
 /*
  * Shared by `ui-button` and `ui-icon-button`, on top of daisyUI's layered `btn` rules (these are unlayered, so they
  * win). Deliberately no `outline` or `box-shadow` here: the focus ring is global (styles/primitives.css, ISC-64).
+ * A 32 px control is below the 44 px touch target: the coarse-pointer hit area comes from the shared partial
+ * (WCAG 2.5.8); in a joined group its pseudo keeps the segment's width (button-group.css) so neighbouring segments
+ * never overlap.
  */
+@import '../_hit-area.css';
+
 :host {
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -151,26 +156,4 @@
 
 :host([aria-disabled="true"][data-variant="outline"]) {
   --btn-border: var(--btn-color, var(--color-base-content));
-}
-
-/*
- * WCAG 2.5.8 (target size): a 32 px control is below the 44 px touch target, so under a coarse pointer an invisible
- * `::before` grows the hit area to at least 44 × 44 around the visual box (the prototype's `.btn-icon::after`), which
- * itself stays 28 / 32 / 40 px (design.md, Tablet: "Die sichtbaren 40 px bzw. 26 px bleiben"). Fine
- * pointers keep the visual box as the target. In a joined group the pseudo keeps the segment's width
- * (button-group.css) so neighbouring segments never overlap.
- */
-@media (pointer: coarse) {
-  :host {
-    position: relative;
-  }
-
-  :host::before {
-    content: "";
-    position: absolute;
-    inset: 50% auto auto 50%;
-    translate: -50% -50%;
-    inline-size: max(100%, 44px);
-    block-size: max(100%, 44px);
-  }
 }

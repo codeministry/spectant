@@ -8,7 +8,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from './keyboard.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import { navigatesNatively } from './shell-nav';
 import type { LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';

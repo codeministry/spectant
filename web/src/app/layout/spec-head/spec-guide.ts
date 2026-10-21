@@ -6,7 +6,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiGlyph } from '../../shared/ui/glyph/glyph';
-import { guidanceEntryOf } from '../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf } from '../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../shared/ui/guidance/guidance-reason.pipe';
 import type { AreaId, TabId } from '../shell/areas';
 import { specLink } from '../shell/areas';
@@ -66,49 +66,8 @@ export function guideCardShown(tier: Tier, area: AreaId | null, tab: TabId | nul
   selector: 'app-spec-guide',
   imports: [GuidanceReasonPipe, RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: block; min-inline-size: 0; }
-    :host(:empty) { display: none; }
-    .guide { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-    .lead { display: flex; flex: 1 1 28ch; gap: 8px; align-items: flex-start; min-inline-size: 0; }
-    ui-glyph { flex: none; padding-block-start: 3px; }
-    .sentence { margin: 0; font-size: 13px; line-height: 20px; overflow-wrap: break-word; }
-    .waiting { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--disp-ink); font-size: 13px; line-height: 20px; }
-    @media (forced-colors: active) {
-      .waiting { color: LinkText; }
-    }
-  `,
-  template: `
-    @if (guide(); as g) {
-      <ui-card [padding]="12" data-spec-guide>
-        <div class="guide" role="group" [attr.aria-label]="'guidance.next.step' | transloco">
-          <div class="lead">
-            <ui-glyph [state]="g.entry ? 'open' : 'done'" family="item" [size]="14" />
-            <p class="sentence" data-guide-reason>
-              @if (g.waiting) {
-                <ui-chip variant="small" tone="secondary" icon="user-round" data-guide-marker>{{ 'guidance.marker' | transloco }}</ui-chip>
-              }
-              {{ g.entry?.reason | guidanceReason: g.phrase }}
-            </p>
-          </div>
-          @if (g.command; as cmd) {
-            <ui-command-chip
-              data-guide-command
-              [command]="cmd"
-              [copyLabel]="'common.copyCommand' | transloco"
-              [copiedLabel]="'common.copied' | transloco: { command: cmd }"
-              [manualHint]="'common.copyFallback' | transloco"
-            />
-          }
-          @if (g.others.length > 0) {
-            <a class="waiting" data-guide-waiting [routerLink]="dashboardLink()" fragment="waiting">
-              {{ 'guidance.waits.waiting' | transloco: { n: g.others.length } }}
-            </a>
-          }
-        </div>
-      </ui-card>
-    }
-  `,
+  styleUrl: './spec-guide.css',
+  templateUrl: './spec-guide.html',
 })
 export class SpecGuideCard {
   private readonly data = inject(ShellData);

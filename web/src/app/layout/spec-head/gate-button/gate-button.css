@@ -1,0 +1,261 @@
+:host {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+/* Prototype .gate-btn: the button with its 11 px hint under it, right-aligned in the head, left in a column. */
+.gate-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+:host([data-size='block']) .gate-btn {
+  align-items: stretch;
+}
+
+.gate-button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 32px;
+  margin: 0;
+}
+
+:host([data-size='block']) .gate-button {
+  inline-size: 100%;
+  min-block-size: 48px;
+}
+
+/* The primary fill of ui-button (light #007e9a, principal 2026-10-13 "Sichere Werte behalten"), not daisyUI's raw primary. */
+.btn-primary {
+  --btn-color: var(--primary-fill);
+  --btn-fg: var(--primary-fill-ink);
+}
+
+/* stale: prototype orange (--orange edge, --orange-t fill, --orange-text ink). */
+.gate-button.stale {
+  --btn-bg: var(--hover-t);
+  --btn-border: var(--color-warning);
+  --btn-fg: var(--hover-ink);
+}
+
+/* done: the prototype's muted "Re-mark". */
+.gate-button.done {
+  --btn-fg: var(--muted-ink);
+
+  font-weight: 500;
+}
+
+.gate-hint {
+  color: var(--muted-ink);
+  font-size: 11px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+  text-align: end;
+}
+
+:host([data-size='block']) .gate-hint {
+  text-align: start;
+}
+
+.changed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:host([data-size='block']) .changed {
+  justify-content: flex-start;
+}
+
+.changed code {
+  font-size: 11px;
+  line-height: 16px;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* size="icon": a 28 px square; label, hint and changed files visually hidden, still read. */
+:host([data-size='icon']) .gate-button {
+  inline-size: 28px;
+  min-block-size: 28px;
+  block-size: 28px;
+  padding: 0;
+}
+
+@media (pointer: coarse) {
+  :host([data-size='icon']) .gate-button {
+    inline-size: 44px;
+    min-block-size: 44px;
+    block-size: 44px;
+  }
+}
+
+:host([data-size='icon']) :is(.gate-label, .gate-hint, .changed),
+:host([data-size='inline']) :is(.gate-hint, .changed) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* size="inline" (spec 045, ISC-271): the head's one-line pill, 28 px and round like the Notes pill beside it. */
+:host([data-size='inline']) .gate-button {
+  --size: 28px;
+
+  gap: 6px;
+  min-block-size: 28px;
+  block-size: 28px;
+  padding-inline: 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+:host([data-size='inline']) .gate-button:is(.done, .stale) {
+  --btn-border: transparent;
+}
+
+:host([data-size='inline']) .gate-button.done {
+  --btn-bg: var(--done-t);
+  --btn-fg: var(--done-ink);
+}
+
+/* Prototype [data-ui=confirm-dialog]: 520 px, 96 px from the top, card, radius-card, scrim with blur 4. */
+ui-dialog {
+  --ui-dialog-size: 520px;
+  --ui-dialog-top: 96px;
+  --ui-dialog-padding: 24px;
+}
+
+.dialog-body {
+  display: grid;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font: 600 17px/26px var(--font-brand);
+}
+
+.title code {
+  font-size: 15px;
+}
+
+.intro {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.files {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  list-style: none;
+}
+
+.file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border-block-end: 1px solid var(--line);
+}
+
+.file-row:last-child {
+  border-block-end: 0;
+}
+
+.file {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13px;
+}
+
+.hash-meta {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+.notice-title {
+  display: block;
+  font-weight: 600;
+}
+
+/* The prototype's "You confirm" checklist (spec-review-gate.html): three ticks before the mark can be written. */
+.checklist {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.checklist legend {
+  margin-block-end: 4px;
+  padding: 0;
+  color: var(--muted-ink);
+}
+
+.check-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.check-line input {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+@media (pointer: coarse) {
+  .check-line {
+    min-block-size: 44px;
+  }
+}
+
+.dlg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Prototype .btn: 1 px --border on the card for the secondary "Not yet". */
+.dlg-actions [data-not-yet] {
+  --btn-bg: var(--color-base-100);
+  --btn-border: var(--line);
+
+  border-width: 1px;
+  border-style: solid;
+}

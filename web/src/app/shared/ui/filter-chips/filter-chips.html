@@ -1,0 +1,21 @@
+
+    <div class="row" role="group" [attr.aria-label]="label() ?? null">
+      @for (option of options(); track option.key) {
+        <button
+          type="button"
+          class="btn btn-sm btn-ghost chip"
+          [attr.aria-pressed]="option.key === value()"
+          [attr.aria-label]="option.name ?? null"
+          (click)="value.set(option.key)"
+        >
+          @if (option.tone; as tone) {
+            <span class="dot" aria-hidden="true" [style.background]="color(tone)"></span>
+          }
+          {{ option.label }}
+          @if (option.count !== undefined) {
+            <span class="count">{{ option.count }}</span>
+          }
+        </button>
+      }
+    </div>
+  

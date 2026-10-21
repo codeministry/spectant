@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, type ElementRef, input, model, viewChild } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { UiIconButton } from '../button/icon-button';
 import { nextId } from './ids';
 import { modalDialog } from './modal';
+import { UiOverlayHead } from './overlay-head';
 
 /** The shell's container tier (compact < 640, medium 640–1119, wide ≥ 1120), measured by the shell, not here. */
 export type SheetTier = 'compact' | 'medium' | 'wide';
@@ -19,7 +18,7 @@ export type SheetTier = 'compact' | 'medium' | 'wide';
  */
 @Component({
   selector: 'ui-sheet',
-  imports: [TranslocoPipe, UiIconButton],
+  imports: [UiOverlayHead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './sheet.css',
   host: {
@@ -29,28 +28,7 @@ export type SheetTier = 'compact' | 'medium' | 'wide';
     '(pointerdown)': 'modal.pointerDown($event)',
     '(click)': 'modal.click($event)',
   },
-  template: `
-    <dialog
-      #dialog
-      class="sheet"
-      [attr.aria-labelledby]="heading() ? headingId : null"
-      [attr.aria-label]="heading() ? null : (label() ?? null)"
-      (close)="modal.closed()"
-    >
-      @if (tier() === 'compact') {
-        <div class="grip">
-          <ng-content select="[uiSheetHandle]"><span class="handle" aria-hidden="true"></span></ng-content>
-        </div>
-      }
-      @if (heading(); as heading) {
-        <div class="head">
-          <h2 class="title" [id]="headingId">{{ heading }}</h2>
-          <button ui-icon-button icon="x" size="sm" [label]="'common.close' | transloco" (click)="open.set(false)"></button>
-        </div>
-      }
-      <div class="body"><ng-content /></div>
-    </dialog>
-  `,
+  templateUrl: './sheet.html',
 })
 export class UiSheet {
   readonly open = model(false);

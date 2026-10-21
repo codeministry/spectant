@@ -14,51 +14,7 @@ import type { DiagramZoom } from './diagram-zoom';
   imports: [TranslocoPipe, UiIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-fullscreen]': 'fullscreen() ? "" : null' },
-  template: `
-    <div class="diagram-toolbar" role="toolbar" [attr.aria-label]="'docProse.diagram.toolbar' | transloco">
-      <button
-        type="button"
-        class="diagram-tool"
-        [attr.aria-label]="'docProse.diagram.zoomOut' | transloco"
-        [attr.title]="'docProse.diagram.zoomOut' | transloco"
-        [attr.aria-disabled]="zoom().atMin() ? 'true' : null"
-        (click)="zoom().zoomOut()"
-      >
-        <ui-icon name="zoom-out" [size]="16" />
-      </button>
-      <span class="diagram-zoom-level" data-zoom-level>{{ zoom().percent() }} %</span>
-      <button
-        type="button"
-        class="diagram-tool"
-        [attr.aria-label]="'docProse.diagram.zoomIn' | transloco"
-        [attr.title]="'docProse.diagram.zoomIn' | transloco"
-        [attr.aria-disabled]="zoom().atMax() ? 'true' : null"
-        (click)="zoom().zoomIn()"
-      >
-        <ui-icon name="zoom-in" [size]="16" />
-      </button>
-      <button
-        type="button"
-        class="diagram-tool"
-        [attr.aria-label]="'docProse.diagram.reset' | transloco"
-        [attr.title]="'docProse.diagram.reset' | transloco"
-        (click)="zoom().reset()"
-      >
-        <ui-icon name="rotate-ccw" [size]="16" />
-      </button>
-      <span class="diagram-tool-rule" aria-hidden="true"></span>
-      @let screen = fullscreen() ? 'docProse.diagram.exitFullscreen' : 'docProse.diagram.fullscreen';
-      <button
-        type="button"
-        class="diagram-tool"
-        [attr.aria-label]="screen | transloco"
-        [attr.title]="screen | transloco"
-        (click)="screenToggle.emit()"
-      >
-        <ui-icon [name]="fullscreen() ? 'minimize-2' : 'maximize-2'" [size]="16" />
-      </button>
-    </div>
-  `,
+  templateUrl: './diagram-toolbar.html',
 })
 export class UiDiagramToolbar {
   readonly zoom = input.required<DiagramZoom>();

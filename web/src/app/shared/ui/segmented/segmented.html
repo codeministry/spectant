@@ -1,0 +1,51 @@
+
+    @if (mode() === 'strip') {
+      <div #group class="strip" role="toolbar" [attr.aria-label]="label() ?? null" [attr.data-wrap]="wrapped() ? '' : null">
+        @for (option of options(); track option.key; let i = $index) {
+          <button
+            #segment
+            type="button"
+            class="btn btn-ghost sseg"
+            [attr.data-key]="option.key"
+            [attr.data-inview]="inView().includes(option.key) ? '' : null"
+            [attr.aria-label]="option.ariaLabel ?? null"
+            [tabIndex]="i === highlighted() ? 0 : -1"
+            (click)="go(i)"
+            (keydown)="onStripKey($event)"
+          >
+            <span class="sl">{{ option.label }}</span>
+            @if (option.count !== undefined) {
+              <span class="count">{{ option.count }}</span>
+            }
+            @if (option.tone; as tone) {
+              <span class="dot" aria-hidden="true" [style.background]="color(tone)"></span>
+            }
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="group" role="radiogroup" [attr.aria-label]="label() ?? null">
+        @for (option of options(); track option.key; let i = $index) {
+          <button
+            #segment
+            type="button"
+            role="radio"
+            class="seg"
+            [attr.aria-checked]="option.key === value()"
+            [attr.aria-label]="option.ariaLabel ?? null"
+            [tabIndex]="i === activeIndex() ? 0 : -1"
+            (click)="value.set(option.key)"
+            (keydown)="onKey($event)"
+          >
+            @if (option.tone; as tone) {
+              <span class="dot" aria-hidden="true" [style.background]="color(tone)"></span>
+            }
+            @if (option.icon; as icon) {
+              <ui-icon class="seg-icon" [name]="icon" [size]="14" />
+            }
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    }
+  

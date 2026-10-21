@@ -10,7 +10,9 @@ import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { BoardCard } from './board-card';
-import { type BoardCard as BoardCardModel, type BoardRow, buildBoard } from './board-model';
+import type { BoardRow } from '../../core/model/board-rows';
+import { type BoardCard as BoardCardModel } from '../../core/model/board-types';
+import { buildBoard } from '../../core/model/board';
 
 // T122 · ISC-129 / ISC-131 / ISC-122.3: one board card's anatomy, rendered from the harbor board as `buildBoard` builds
 // it: the type glyph and number (or the idea chip's look), the priority, the feature, milestone and assignee chips,

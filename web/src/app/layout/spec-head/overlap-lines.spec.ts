@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
-import type { OverlapLine } from '../../features/dashboard/warnings-panel/overlap';
+import type { OverlapLine } from '../../core/model/overlap';
 import { OverlapLines } from './overlap-lines';
 
 // Spec 025 T29 (ISC-164.1): the overlap lines of the spec head and their short form in the spec context from 1120 px.

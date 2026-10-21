@@ -7,10 +7,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 @Component({
   selector: 'ui-kbd',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    :host { display: inline-flex; }
-    kbd { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 20px; block-size: 20px; padding-inline: 5px; border: 1px solid var(--line); border-block-end-width: 2px; border-radius: 4px; background: var(--lane); color: var(--muted-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 500; line-height: 11px; }
-  `,
-  template: `<kbd><ng-content /></kbd>`,
+  styleUrl: './kbd.css',
+  templateUrl: './kbd.html',
 })
 export class UiKbd {}

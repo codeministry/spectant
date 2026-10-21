@@ -1,0 +1,48 @@
+
+    @import '../_visually-hidden.css';
+
+    :host {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      align-items: flex-start;
+      min-inline-size: 0;
+    }
+
+    /* Compact keeps one line while the chip fits beside the phrase; in a narrow board card the chip wraps under the
+       phrase instead of squeezing it to a column of letters (found in the T157 baselines). */
+    :host([data-compact]) { align-items: center; }
+
+    .line {
+      display: flex;
+      flex: 1 1 16ch;
+      gap: 6px;
+      align-items: flex-start;
+      min-inline-size: 0;
+      color: var(--reason-ink, var(--hover-ink));
+      font-size: 13px;
+      line-height: 20px;
+    }
+    :host([data-compact]) .line { align-items: center; }
+    ui-icon { padding-block-start: 3px; }
+    :host([data-compact]) ui-icon { padding-block-start: 0; }
+
+    :host([data-block]) .line {
+      flex-basis: 100%;
+      font-size: 15px;
+      line-height: 24px;
+    }
+    :host([data-block]) ui-icon { padding-block-start: 5px; }
+
+    .phrase {
+      display: block;
+      flex: 1 1 auto;
+      min-inline-size: 0;
+      overflow-wrap: anywhere;
+    }
+    ui-command-chip { flex: none; }
+
+    @media (forced-colors: active) {
+      .line { color: CanvasText; }
+    }
+  

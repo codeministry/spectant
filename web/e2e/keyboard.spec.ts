@@ -6,7 +6,7 @@
  */
 import type { Page } from '@playwright/test';
 
-import { keyLabel, SHORTCUTS } from '../src/app/core/keyboard-bindings';
+import { keyLabel, SHORTCUTS } from '../src/app/layout/shell/keyboard-bindings';
 import { atWidth, expect, test } from './fixtures';
 
 /** Opens a harbor spec route and returns the dashboard's spec order, once the shell has it. */

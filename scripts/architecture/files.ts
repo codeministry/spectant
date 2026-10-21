@@ -21,6 +21,9 @@ export type Violation = {
 
 export type Rule = (entry: LaneEntry, repoRoot: string) => Violation[];
 
+/** Test and generated files, which no rule of any lane looks at (re-exported by `architecture.config.ts`). */
+export const TEST_AND_GENERATED: string[] = ["**/*.test.ts", "**/*.spec.ts", "**/*.gen.ts"];
+
 /** Folders no walk enters: dependencies, build output and dot-folders. */
 const SKIP_DIRS = new Set(["node_modules", "dist", "coverage"]);
 

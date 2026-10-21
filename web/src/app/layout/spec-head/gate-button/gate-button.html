@@ -1,0 +1,175 @@
+@if (model(); as m) {
+  <span class="gate-btn" data-ui="mark-reviewed" [attr.data-gate-state]="action()">
+    <!-- Spec 045 (ISC-272): as the head's pill the button carries the hint, the full time or session and the changed
+         files as its tooltip and, through aria-labelledby, in its name; the block button keeps its own label. -->
+    @switch (action()) {
+      @case ('paused') {
+        <button
+          type="button"
+          class="btn btn-primary btn-sm gate-button"
+          data-gate-action
+          data-state="paused"
+          disabled
+          [attr.title]="pill() ? tooltip() : null"
+          [attr.aria-labelledby]="pill() ? labelledBy() : null"
+        >
+          <ui-icon name="lock" [size]="pill() ? 14 : 16" />
+          <span class="gate-label" [id]="ids.label">
+            @if (pill()) {
+              {{ 'status.gate.pill.paused' | transloco: { session: shortSession(lock()?.session ?? '') } }}
+            } @else {
+              {{ 'status.gate.ready' | transloco }}
+            }
+          </span>
+        </button>
+        <span class="gate-hint" data-gate-hint [id]="ids.hint">{{ 'status.gate.hint.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
+      }
+      @case ('done') {
+        <button
+          type="button"
+          class="btn btn-sm gate-button done"
+          data-gate-action
+          data-state="done"
+          [attr.title]="pill() ? tooltip() : null"
+          [attr.aria-labelledby]="pill() ? labelledBy() : null"
+          (click)="openDialog()"
+        >
+          <ui-icon name="check" [size]="pill() ? 14 : 16" />
+          <span class="gate-label" [id]="ids.label">
+            @if (pill()) {
+              <ui-time-label key="status.gate.done" form="instantShort" [value]="m.gates.reviewed.at ?? ''" />
+            } @else {
+              {{ 'status.gate.remark' | transloco }}
+            }
+          </span>
+        </button>
+        <span class="gate-hint" data-gate-hint [id]="ids.hint"><ui-time-label key="status.gate.done" [value]="m.gates.reviewed.at ?? ''" /></span>
+      }
+      @case ('stale') {
+        <button
+          type="button"
+          class="btn btn-sm gate-button stale"
+          data-gate-action
+          data-state="stale"
+          [attr.title]="pill() ? tooltip() : null"
+          [attr.aria-labelledby]="pill() ? labelledBy() : null"
+          (click)="openDialog()"
+        >
+          <ui-icon name="triangle-alert" [size]="pill() ? 14 : 16" />
+          <span class="gate-label" [id]="ids.label">{{ (pill() ? 'status.gate.pill.stale' : 'status.gate.stale') | transloco }}</span>
+        </button>
+        <span class="gate-hint" data-gate-hint [id]="ids.hint"><ui-time-label key="status.gate.hint.stale" [value]="m.gates.reviewed.at ?? ''" /></span>
+        @if (m.gates.reviewed.files?.length) {
+          <ul class="changed" data-changed-files [id]="ids.changed" [attr.aria-label]="'status.gate.changed' | transloco">
+            @for (file of m.gates.reviewed.files; track file) {
+              <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
+            }
+          </ul>
+        }
+      }
+      @default {
+        <button
+          type="button"
+          class="btn btn-primary btn-sm gate-button"
+          data-gate-action
+          data-state="ready"
+          [attr.title]="pill() ? tooltip() : null"
+          [attr.aria-labelledby]="pill() ? labelledBy() : null"
+          (click)="openDialog()"
+        >
+          <ui-icon name="flag" [size]="pill() ? 14 : 16" />
+          <span class="gate-label" [id]="ids.label">{{ (pill() ? 'status.gate.pill.ready' : 'status.gate.ready') | transloco }}</span>
+        </button>
+        <span class="gate-hint" data-gate-hint [id]="ids.hint">{{ 'status.gate.hint.ready' | transloco }}</span>
+      }
+    }
+  </span>
+  @if (written(); as at) {
+    <ui-notice tone="info" icon="circle-check" data-gate-written><ui-time-label key="status.gate.written" [value]="at" /></ui-notice>
+  }
+
+  <ui-dialog [(open)]="dialogOpen" [label]="'status.dialog.heading' | transloco">
+    <div class="dialog-body" data-gate-dialog>
+      <h2 class="title">{{ 'status.dialog.title' | transloco: { id: specId() ?? '' } }} <code>/spec implement</code>?</h2>
+      <p class="intro">{{ 'status.dialog.intro' | transloco }}</p>
+      @switch (write().kind) {
+        @case ('conflict') {
+          <ui-notice tone="error" icon="triangle-alert" data-write-conflict>
+            <span class="notice-title">{{ 'status.dialog.conflict' | transloco }}</span>
+            <button action type="button" class="btn btn-sm" data-reload (click)="reloadSpec()">
+              <ui-icon name="refresh-cw" [size]="16" />
+              {{ 'status.dialog.reload' | transloco }}
+            </button>
+          </ui-notice>
+        }
+        @case ('locked') {
+          @if (write(); as w) {
+            @if (w.kind === 'locked') {
+              <ui-notice tone="warning" icon="lock" data-write-locked>
+                {{ 'status.dialog.locked' | transloco: { session: w.session, claim: w.claim } }}
+              </ui-notice>
+            }
+          }
+        }
+        @case ('error') {
+          @if (write(); as w) {
+            @if (w.kind === 'error') {
+              <ui-notice tone="error" data-write-error>{{ 'status.dialog.error' | transloco: { status: w.status } }}</ui-notice>
+            }
+          }
+        }
+      }
+      <ul class="files">
+        @for (file of hashFiles; track file) {
+          <li class="file-row" data-hashed-file [attr.data-file]="file">
+            <code class="file">{{ hashFileNames[file] }}</code>
+            <span class="hash-meta">@if (short(file)) {sha256 }<code data-hash>{{ short(file) ?? ('status.dialog.absent' | transloco) }}</code></span>
+            @if (changedFile(m, hashFileNames[file])) {
+              <ui-chip tone="warning" data-file-changed>{{ 'status.dialog.changed' | transloco }}</ui-chip>
+            }
+          </li>
+        }
+      </ul>
+      @if (hashes() === null) {
+        <p class="muted">{{ 'status.dialog.noHashes' | transloco }}</p>
+      }
+      @if (m.areas.live.lockSource === 'none') {
+        <ui-notice tone="info" icon="activity" data-no-agent-source>{{ 'status.dialog.noAgentSource' | transloco }}</ui-notice>
+      }
+      <fieldset class="checklist" data-gate-checklist>
+        <legend class="type-eyebrow">{{ 'status.dialog.checklist.legend' | transloco }}</legend>
+        @for (item of checkItems; track item; let i = $index, first = $first) {
+          <label class="check-line">
+            <input
+              type="checkbox"
+              data-gate-check
+              [attr.data-autofocus]="first ? '' : null"
+              [checked]="checks()[i]"
+              [disabled]="write().kind === 'conflict'"
+              (change)="toggleCheck(i)"
+            />
+            <span>{{ 'status.dialog.checklist.' + item | transloco }}</span>
+          </label>
+        }
+      </fieldset>
+      <div class="dlg-actions">
+        <button type="button" class="btn btn-sm" data-not-yet (click)="dialogOpen.set(false)">
+          {{ 'status.dialog.notYet' | transloco }}
+          <!-- Only while open: a closed dialog's key hint would be the page's first, hidden kbd. -->
+          @if (dialogOpen()) {
+            <ui-kbd>Esc</ui-kbd>
+          }
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-confirm
+          [disabled]="hashes() === null || write().kind === 'sending' || !allChecked()"
+          (click)="confirm()"
+        >
+          {{ (write().kind === 'sending' ? 'status.dialog.sending' : 'status.dialog.confirm') | transloco }}
+        </button>
+      </div>
+    </div>
+  </ui-dialog>
+}

@@ -1,0 +1,13 @@
+
+    <span
+      class="chip"
+      role="img"
+      [attr.aria-label]="'priority.name' | transloco: { level: level() }"
+      [title]="'priority.title' | transloco: { level: level(), hint: hintKey() | transloco }"
+    >
+      @if (!mark()) {
+        <ui-icon [name]="look().icon" [size]="14" />
+      }
+      <span aria-hidden="true">{{ 'priority.' + level() | transloco }}</span>
+    </span>
+  

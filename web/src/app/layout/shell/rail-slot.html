@@ -1,0 +1,14 @@
+
+    @if (selection.presentation() === 'docked') {
+      <app-detail-sidebar slot="rail" />
+    } @else if (content.blocks(); as blocks) {
+      <div class="blocks" data-rail-blocks>
+        <ng-container [ngTemplateOutlet]="blocks" />
+      </div>
+    } @else if (state.tier() === 'wide') {
+      <ui-card [padding]="24">
+        <h2>{{ 'shell.rail.label' | transloco }}</h2>
+        <p>{{ 'shell.rail.pending' | transloco }}</p>
+      </ui-card>
+    }
+  

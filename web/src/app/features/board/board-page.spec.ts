@@ -13,7 +13,7 @@ import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
-import { boardQueryString, EMPTY_BOARD_QUERY, parseBoardQuery } from './board-model';
+import { boardQueryString, EMPTY_BOARD_QUERY, parseBoardQuery } from '../../core/model/board-query';
 
 // T121 · ISC-129: the workspace board page against the harbor goldens: one column per board stage, empty columns as
 // stubs with their texts, the stage strip's options, the gate `<dfn>` on review and done, the hourglass on waiting

@@ -1,0 +1,14 @@
+
+    <div class="text">
+      @if (eyebrow()) {
+        <p class="eyebrow">{{ eyebrow() }}</p>
+      }
+      @if (level() === 2) {
+        <h2 class="title" tabindex="-1" [attr.id]="headingId() ?? null"><span class="heading-text">{{ heading() }}</span></h2>
+      } @else {
+        <h3 class="title" tabindex="-1" [attr.id]="headingId() ?? null"><span class="heading-text">{{ heading() }}</span></h3>
+      }
+    </div>
+    <div class="meta"><ng-content select="[meta]" /></div>
+    <div class="actions"><ng-content select="[actions]" /></div>
+  

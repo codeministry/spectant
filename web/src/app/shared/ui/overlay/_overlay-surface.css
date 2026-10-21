@@ -1,0 +1,69 @@
+/*
+ * The surface and open state the overlays share: ui-dialog (`.dialog`), ui-popover (`.panel`), ui-sheet (`.sheet`)
+ * and ui-term (`.hint`) import this partial as their first rule. Emulated encapsulation scopes the imported copy per
+ * component, so each selector meets only its own component's panel; the other class names match nothing there. Each
+ * selector keeps the specificity of the component rule it came from, and the component's own later rules (the
+ * `@starting-style` frames, the `:host(...)` variants) still override it as before. Without `@starting-style`
+ * (WebKit < 17.4) an overlay appears instantly.
+ *
+ * The two custom properties are the discrete tail every overlay's `transition` ends with (`overlay` and `display`
+ * kept through the exit), one per duration: base for the dialog and the sheet, fast for the popover and the term.
+ */
+.dialog,
+.panel,
+.sheet,
+.hint {
+  --ui-overlay-discrete-base:
+    overlay var(--motion-duration-base) allow-discrete,
+    display var(--motion-duration-base) allow-discrete;
+  --ui-overlay-discrete-fast:
+    overlay var(--motion-duration-fast) allow-discrete,
+    display var(--motion-duration-fast) allow-discrete;
+
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+.dialog,
+.panel,
+.hint {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  opacity: 0;
+}
+
+.dialog,
+.panel,
+.sheet {
+  box-shadow: var(--shadow);
+}
+
+.dialog::backdrop,
+.sheet::backdrop {
+  background: var(--scrim);
+}
+
+.dialog[open],
+.sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog[open],
+.panel:popover-open,
+.hint:popover-open {
+  opacity: 1;
+}
+
+.dialog[open],
+.sheet[open],
+.panel:popover-open {
+  translate: 0;
+}
+
+.dialog[open],
+.sheet[open],
+.panel:popover-open,
+.hint:popover-open {
+  transition-timing-function: var(--motion-ease-emphasized);
+}

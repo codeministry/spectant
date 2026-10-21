@@ -8,7 +8,7 @@ import { ApiClient } from '../../../core/api.service';
 import { specLink } from '../../../layout/shell/areas';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
-import { GateButton } from '../../../layout/spec-head/gate-button';
+import { GateButton } from '../../../layout/spec-head/gate-button/gate-button';
 import { type GateAction, gateAction, pathSegments } from '../../../layout/spec-head/spec-head-model';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiTime } from '../../../shared/time';

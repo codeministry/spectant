@@ -1,0 +1,6 @@
+
+    <a class="idea" [routerLink]="link()" [attr.title]="slug()" [attr.data-ref]="ref()">
+      <ui-icon name="lightbulb" [size]="12" />
+      <span class="text" [class.mono]="!title()">{{ title() || slug() }}</span>
+    </a>
+  

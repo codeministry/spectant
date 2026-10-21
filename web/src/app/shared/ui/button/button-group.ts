@@ -16,7 +16,7 @@ import { booleanAttribute, ChangeDetectionStrategy, Component, input, ViewEncaps
     '[attr.aria-label]': 'label() ?? null',
     '[attr.data-layout]': "gap() ? 'gap' : 'joined'",
   },
-  template: '<ng-content />',
+  templateUrl: './button-group.html',
 })
 export class UiButtonGroup {
   readonly label = input<string>();

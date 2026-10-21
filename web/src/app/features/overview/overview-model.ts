@@ -1,5 +1,5 @@
 import type { GuidanceEntry } from '../../../../../core/src/files';
-import { guidanceOfBody } from '../../shared/ui/guidance/guidance-entry';
+import { guidanceOfBody } from '../../core/model/guidance-entry';
 import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
 
 /** How many Next up rows a workspace column shows (tiles.md § index.html: "up to 3"). */

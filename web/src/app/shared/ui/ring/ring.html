@@ -1,0 +1,29 @@
+
+    <svg data-icon-exempt aria-hidden="true" focusable="false" [attr.width]="size()" [attr.height]="size()" [attr.viewBox]="viewBox()">
+      <defs>
+        <linearGradient [attr.id]="gradientId" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" class="from" />
+          <stop offset="1" class="to" />
+        </linearGradient>
+      </defs>
+      <circle class="track" [attr.cx]="centre()" [attr.cy]="centre()" [attr.r]="radius()" [attr.stroke-width]="stroke()" />
+      <circle
+        class="bar"
+        stroke-linecap="round"
+        [attr.cx]="centre()"
+        [attr.cy]="centre()"
+        [attr.r]="radius()"
+        [attr.stroke-width]="stroke()"
+        [attr.stroke]="gradientUrl"
+        [attr.stroke-dasharray]="circumference()"
+        [style.stroke-dashoffset]="offset()"
+      />
+    </svg>
+    <span class="text">
+      @if (percent() === null) {
+        —
+      } @else {
+        {{ percent() }}<span class="unit">%</span>
+      }
+    </span>
+  

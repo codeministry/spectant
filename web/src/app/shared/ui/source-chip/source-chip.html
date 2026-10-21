@@ -1,0 +1,12 @@
+
+    @if (worktree(); as path) {
+      <ui-chip
+        variant="plain"
+        icon="git-branch"
+        role="note"
+        [attr.title]="'sourceChip.title' | transloco: { path }"
+        [attr.aria-label]="'sourceChip.title' | transloco: { path }"
+        >{{ 'sourceChip.text' | transloco }} <span class="name">{{ name() }}</span></ui-chip
+      >
+    }
+  

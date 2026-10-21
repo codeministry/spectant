@@ -1,0 +1,125 @@
+
+    <section [attr.aria-labelledby]="headingId()">
+      <ui-section-header [heading]="'guidance.waits.label' | transloco" [level]="level()" [headingId]="headingId()">
+        <span meta class="meta">
+          <ui-icon name="user-round" [size]="12" />
+          <ui-chip variant="count" tone="secondary">{{ entries().length }}</ui-chip>
+        </span>
+      </ui-section-header>
+      @if (top(); as first) {
+        @if (form() === 'card-rows') {
+          <ui-card data-waits-card [padding]="0">
+            <ol class="entries">
+              @for (entry of lead(); track key(entry); let first = $first) {
+                <li [attr.data-top]="first ? '' : null" [attr.data-row]="first ? null : ''" [attr.data-item]="entry.item">
+                  <ng-container [ngTemplateOutlet]="waitRow" [ngTemplateOutletContext]="{ $implicit: entry }" />
+                </li>
+              }
+            </ol>
+            @if (folded().length > 0) {
+              <ui-disclosure class="fold" data-show-all [(open)]="open">
+                <span uiDisclosureSummary data-fold-toggle>
+                  <span aria-hidden="true" data-visible>{{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}</span>
+                  <span class="visually-hidden" data-name>{{ 'guidance.waits.showAllName' | transloco: { count: entries().length } }}</span>
+                </span>
+                <ol class="entries">
+                  @for (entry of folded(); track key(entry)) {
+                    <li data-row [attr.data-item]="entry.item">
+                      <ng-container [ngTemplateOutlet]="waitRow" [ngTemplateOutletContext]="{ $implicit: entry }" />
+                    </li>
+                  }
+                </ol>
+              </ui-disclosure>
+            }
+          </ui-card>
+        } @else {
+          <ui-card class="top" side [padding]="16" data-top>
+            <div class="head">
+              <a class="id" [routerLink]="specLink(first)" [fragment]="fragmentOf(first)">{{ label(first) }}</a>
+              @if (kindKey(first); as kind) {
+                <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+              } @else if (first.ref) {
+                <ui-chip variant="mono">{{ first.ref }}</ui-chip>
+              }
+              <span class="title" [title]="first.title">{{ first.title }}</span>
+              <ui-priority [value]="first.priority" />
+            </div>
+            <p class="reason" data-reason>{{ first.reason | guidanceReason }}</p>
+            <div class="foot">
+              @if (first.command; as cmd) {
+                <ui-command-chip
+                  [command]="cmd"
+                  [context]="'orientation.chipContext.waits' | transloco: { what: first.ref ? first.spec + ' ' + first.ref : first.spec }"
+                  [copyLabel]="'common.copyCommand' | transloco"
+                  [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+                  [manualHint]="'common.copyFallback' | transloco"
+                />
+              }
+              @if (first.since; as since) {
+                <ui-relative-time class="since" [date]="since" [format]="waiting" />
+              }
+            </div>
+          </ui-card>
+        }
+        @if (form() === 'stack' && rest().length > 0) {
+          <ol class="rest">
+            @for (entry of rest(); track key(entry)) {
+              <li data-row [attr.data-item]="entry.item">
+                <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
+                  <ng-container [ngTemplateOutlet]="rowBody" [ngTemplateOutletContext]="{ $implicit: entry }" />
+                  @if (!chips()) {
+                    <ui-icon name="chevron-right" [size]="16" />
+                  }
+                </a>
+                @if (chips() && entry.command; as cmd) {
+                  <ui-command-chip
+                    [command]="cmd"
+                    [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
+                    [copyLabel]="'common.copyCommand' | transloco"
+                    [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+                    [manualHint]="'common.copyFallback' | transloco"
+                  />
+                }
+              </li>
+            }
+          </ol>
+        }
+        @if (form() === 'stack' && more() > 0 && moreLink(); as link) {
+          <a class="more" data-more [routerLink]="link" [fragment]="moreFragment()">
+            {{ 'guidance.waits.more' | transloco: { n: more() } }}
+            <ui-icon name="arrow-right" [size]="12" />
+          </a>
+        }
+      } @else {
+        <p class="empty" data-empty>
+          <ui-glyph state="done" family="item" [size]="14" />
+          {{ 'guidance.waits.empty' | transloco }}
+        </p>
+      }
+    </section>
+    <!-- The inside of a row's ID link, in both forms: the ID, the kind or ref chip, the reason. -->
+    <ng-template #rowBody let-entry>
+      <span class="id">{{ label(entry) }}</span>
+      @if (kindKey(entry); as kind) {
+        <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+      } @else if (entry.ref) {
+        <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
+      }
+      <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+    </ng-template>
+    <!-- One row of the card-rows form: the ID link with the reason, the copy chip beside it. -->
+    <ng-template #waitRow let-entry>
+      <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
+        <ng-container [ngTemplateOutlet]="rowBody" [ngTemplateOutletContext]="{ $implicit: entry }" />
+      </a>
+      @if (entry.command; as cmd) {
+        <ui-command-chip
+          [command]="cmd"
+          [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      }
+    </ng-template>
+  

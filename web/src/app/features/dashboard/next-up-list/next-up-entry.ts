@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import type { DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
-import { guidanceEntryOf } from '../../../shared/ui/guidance/guidance-entry';
+import { guidanceEntryOf } from '../../../core/model/guidance-entry';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
 import { UiGlyph } from '../../../shared/ui/glyph/glyph';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';

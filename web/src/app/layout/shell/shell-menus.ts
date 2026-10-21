@@ -14,7 +14,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from './keyboard.service';
 import { LanguageService } from '../../core/language.service';
 import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
@@ -37,6 +37,7 @@ import { Mascot } from '../assistant/mascot';
 import { switchSpecLink } from './areas';
 import { ShellData, type SpecRowView } from './shell-data.service';
 import { ShellState } from './shell-state.service';
+import { specCountOf } from './spec-count';
 
 /**
  * The header's menus: the two pickers, the page menu (spec 024 T80), the area menu, the overflow menu `⋯` (below
@@ -66,13 +67,6 @@ interface WorkspaceEntry {
   readonly specs: number | null;
   readonly current: boolean;
 }
-
-/** `counts.specs` read narrowly: `WorkspaceListEntry.counts` is untyped in web (api.service.ts). */
-const specCountOf = (counts: unknown): number | null => {
-  if (typeof counts !== 'object' || counts === null) return null;
-  const specs = (counts as Readonly<Record<string, unknown>>)['specs'];
-  return typeof specs === 'number' ? specs : null;
-};
 
 const THEMES = ['system', 'light', 'dark'] as const;
 

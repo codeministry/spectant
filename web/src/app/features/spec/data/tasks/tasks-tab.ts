@@ -17,7 +17,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { SpecRouteResponses } from '../../../../../../../server/src/contracts/spec-routes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { LockSourceService } from '../../../../core/lock-source.service';
-import { RefreshService } from '../../../../core/refresh.service';
+import { RefreshService } from '../../../../layout/shell/refresh.service';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';

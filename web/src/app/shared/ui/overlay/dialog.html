@@ -1,0 +1,16 @@
+
+    <dialog
+      #dialog
+      class="dialog"
+      [attr.aria-labelledby]="heading() ? headingId : null"
+      [attr.aria-label]="heading() ? null : (label() ?? null)"
+      (close)="modal.closed()"
+    >
+      <div class="body">
+        @if (heading(); as heading) {
+          <div class="head" ui-overlay-head [heading]="heading" [headingId]="headingId" (dismiss)="open.set(false)"></div>
+        }
+        <ng-content />
+      </div>
+    </dialog>
+  

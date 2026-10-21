@@ -8,7 +8,7 @@ import {
   type ShortcutContext,
   type ShortcutGroup,
   SHORTCUTS,
-} from '../../core/keyboard-bindings';
+} from '../../layout/shell/keyboard-bindings';
 
 /**
  * The Help page's sections and the data they render (spec 008, T162, ISC-133.1). Everything here is read from the

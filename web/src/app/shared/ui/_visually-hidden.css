@@ -1,0 +1,14 @@
+/*
+ * The visually hidden text that ui-actor-chip and ui-stage-track (`.vh`) and ui-reason (`.visually-hidden`) give a
+ * screen reader. Each imports this partial as its first rule; emulated encapsulation scopes the copy per component,
+ * and no rule of theirs styles those spans, so moving the rule ahead of the others changes no cascade.
+ */
+.vh,
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

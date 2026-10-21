@@ -44,78 +44,8 @@ interface Segment {
     '[attr.data-size]': 'size()',
     '[attr.data-marker]': "marker() && size() === 'labelled' ? '' : null",
   },
-  styles: `
-    :host { display: block; min-inline-size: 0; }
-    .mini { display: inline-flex; gap: 2px; vertical-align: middle; }
-    .mini .bar { inline-size: 16px; }
-    .bar { display: block; block-size: 4px; border-radius: 999px; background: color-mix(in srgb, var(--track) 55%, transparent); }
-    [data-state='done'] > .bar, .bar[data-state='done'] { background: var(--color-accent); }
-    [data-state='current'] > .bar, .bar[data-state='current'] { background: var(--color-primary); }
-    [data-state='held'] > .bar, .bar[data-state='held'] { background: repeating-linear-gradient(90deg, var(--held) 0 6px, transparent 6px 8px); }
-    [data-state='blocked'] > .bar, .bar[data-state='blocked'] { background: var(--color-error); }
-    .mini { align-items: center; }
-    .mini-word { margin-inline-start: 4px; color: var(--fail-ink); font-size: 11px; font-weight: 600; line-height: 16px; white-space: nowrap; }
-    [data-state='blocked'] > .seg-label { color: var(--fail-ink); font-weight: 700; }
-    ol { display: grid; grid-auto-columns: minmax(60px, 1fr); grid-auto-flow: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
-    li { display: grid; gap: 4px; min-inline-size: 0; }
-    .seg-label { overflow: hidden; color: var(--muted-ink); font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
-    [data-state='current'] > .seg-label, [data-state='held'] > .seg-label { color: var(--color-base-content); font-weight: 700; }
-    .detour { color: var(--held-ink); font-size: 11px; font-weight: 600; line-height: 16px; white-space: nowrap; }
-    :host([data-marker]) li { grid-template-rows: 12px auto auto; }
-    :host([data-marker]) li::before { content: ''; color: var(--disp-ink); font-size: 12px; line-height: 12px; text-align: center; }
-    :host([data-marker]) li[aria-current='step']::before { content: '▾' / ''; }
-    :host([data-marker]) li[data-state='held']::before { color: var(--held-ink); }
-    :host([data-marker]) .seg-label { font-size: 12px; }
-    :host([data-marker]) [data-state='current'] > .seg-label { color: var(--disp-ink); font-weight: 600; }
-    :host([data-size='compact']) ol { grid-auto-columns: minmax(0, 1fr); gap: 2px; }
-    :host([data-size='compact']) li { grid-template-rows: 4px 16px; }
-    .word { justify-self: start; color: var(--color-base-content); font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap; }
-    li[data-align='end'] > .word { justify-self: end; }
-    .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    @media (forced-colors: active) {
-      .bar { border: 1px solid CanvasText; }
-      [data-state='done'] > .bar, .bar[data-state='done'], [data-state='current'] > .bar, .bar[data-state='current'], [data-state='blocked'] > .bar, .bar[data-state='blocked'] { background: CanvasText; }
-      [data-state='held'] > .bar, .bar[data-state='held'] { border-style: dashed; background: Canvas; }
-    }
-  `,
-  template: `
-    @if (size() === 'mini') {
-      <span class="mini" role="img" [attr.aria-label]="name()">
-        @for (seg of segments(); track seg.key) {
-          <span class="bar" [attr.data-state]="seg.state"></span>
-        }
-        @if (blockedLabel(); as word) {
-          <span class="mini-word" data-blocked>{{ word }}</span>
-        }
-      </span>
-    } @else {
-      <ol [attr.aria-label]="name()">
-        @for (seg of segments(); track seg.key; let i = $index, count = $count) {
-          <li
-            [attr.data-stage]="rowMode() ? seg.key : null"
-            [attr.data-state]="seg.state"
-            [attr.data-detour]="seg.current && detour() ? detour() : null"
-            [attr.data-align]="i >= count / 2 ? 'end' : null"
-            [attr.aria-current]="seg.current ? 'step' : null"
-          >
-            <span class="bar"></span>
-            @if (size() === 'compact') {
-              @if (seg.current) {
-                <span class="word">{{ seg.label }}@if (detourLabel(); as word) { · <span class="detour">{{ word }}</span>}</span>
-              } @else {
-                <span class="vh">{{ seg.label }}</span>
-              }
-            } @else {
-              <span class="seg-label">{{ seg.label }}</span>
-              @if (seg.current && detourLabel(); as word) {
-                <span class="detour">{{ word }}</span>
-              }
-            }
-          </li>
-        }
-      </ol>
-    }
-  `,
+  styleUrl: './stage-track.css',
+  templateUrl: './stage-track.html',
 })
 export class UiStageTrack {
   private readonly transloco = inject(TranslocoService);

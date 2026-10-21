@@ -15,52 +15,8 @@ let nextId = 0;
   selector: 'ui-ring',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[style.--ring-size.px]': 'size()', '[attr.data-size]': 'size()' },
-  styles: `
-    :host { display: inline-grid; flex-shrink: 0; place-items: center; inline-size: var(--ring-size); block-size: var(--ring-size); }
-    svg { grid-area: 1 / 1; transform: rotate(-90deg); }
-    .track { fill: none; stroke: var(--track); opacity: 0.45; }
-    .bar { fill: none; transition: stroke-dashoffset var(--motion-duration-slow) var(--motion-ease-standard); }
-    .from { stop-color: var(--color-accent); }
-    .to { stop-color: var(--color-primary); }
-    .text { grid-area: 1 / 1; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1; }
-    .unit { color: var(--muted-ink); font-size: 12px; font-weight: 500; }
-    :host([data-size='112']) .text { font-size: 22px; }
-    :host([data-size='40']) .text { font-size: 11px; }
-    :host([data-size='40']) .unit { font-size: 0.75em; }
-    @media (forced-colors: active) {
-      .bar { stroke: CanvasText; }
-      .track { stroke: GrayText; opacity: 1; }
-    }
-  `,
-  template: `
-    <svg data-icon-exempt aria-hidden="true" focusable="false" [attr.width]="size()" [attr.height]="size()" [attr.viewBox]="viewBox()">
-      <defs>
-        <linearGradient [attr.id]="gradientId" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" class="from" />
-          <stop offset="1" class="to" />
-        </linearGradient>
-      </defs>
-      <circle class="track" [attr.cx]="centre()" [attr.cy]="centre()" [attr.r]="radius()" [attr.stroke-width]="stroke()" />
-      <circle
-        class="bar"
-        stroke-linecap="round"
-        [attr.cx]="centre()"
-        [attr.cy]="centre()"
-        [attr.r]="radius()"
-        [attr.stroke-width]="stroke()"
-        [attr.stroke]="gradientUrl"
-        [attr.stroke-dasharray]="circumference()"
-        [style.stroke-dashoffset]="offset()"
-      />
-    </svg>
-    <span class="text">
-      @if (percent() === null) {
-        —
-      } @else {
-        {{ percent() }}<span class="unit">%</span>
-      }
-    </span>
-  `,
+  styleUrl: './ring.css',
+  templateUrl: './ring.html',
 })
 export class UiRing {
   readonly value = input.required<number | null>();

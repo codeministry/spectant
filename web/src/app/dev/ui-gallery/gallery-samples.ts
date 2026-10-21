@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, Injectable, input, signal } from '@angular/core';
 import type { CardState, FrameCard, GateView, LiveCard, SpecPageModel } from '../../../../../core/src/files';
 import { ShellData } from '../../layout/shell/shell-data.service';
-import { GateButton } from '../../layout/spec-head/gate-button';
+import { GateButton } from '../../layout/spec-head/gate-button/gate-button';
 import type { ScrubberFrame, ScrubberMarker } from '../../shared/ui/scrubber/scrubber';
 
 /**

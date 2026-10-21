@@ -1,0 +1,27 @@
+
+    :host {
+      display: block;
+      margin-block-start: 8px;
+    }
+
+    ui-notice {
+      align-items: flex-start;
+      padding-inline-end: 4px;
+    }
+
+    .body {
+      display: grid;
+      gap: 4px;
+      min-inline-size: 0;
+    }
+
+    .head {
+      margin: 0;
+      color: var(--color-base-content);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 20px;
+      overflow-wrap: anywhere;
+    }
+    ui-reason { --reason-ink: var(--color-base-content); }
+  

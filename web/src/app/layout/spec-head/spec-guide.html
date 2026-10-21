@@ -1,0 +1,31 @@
+
+    @if (guide(); as g) {
+      <ui-card [padding]="12" data-spec-guide>
+        <div class="guide" role="group" [attr.aria-label]="'guidance.next.step' | transloco">
+          <div class="lead">
+            <ui-glyph [state]="g.entry ? 'open' : 'done'" family="item" [size]="14" />
+            <p class="sentence" data-guide-reason>
+              @if (g.waiting) {
+                <ui-chip variant="small" tone="secondary" icon="user-round" data-guide-marker>{{ 'guidance.marker' | transloco }}</ui-chip>
+              }
+              {{ g.entry?.reason | guidanceReason: g.phrase }}
+            </p>
+          </div>
+          @if (g.command; as cmd) {
+            <ui-command-chip
+              data-guide-command
+              [command]="cmd"
+              [copyLabel]="'common.copyCommand' | transloco"
+              [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+              [manualHint]="'common.copyFallback' | transloco"
+            />
+          }
+          @if (g.others.length > 0) {
+            <a class="waiting" data-guide-waiting [routerLink]="dashboardLink()" fragment="waiting">
+              {{ 'guidance.waits.waiting' | transloco: { n: g.others.length } }}
+            </a>
+          }
+        </div>
+      </ui-card>
+    }
+  
