@@ -11,7 +11,8 @@
 import type { BacklogEvent } from '../../../../core/src/backlog.ts';
 import { FILE_KINDS } from '../../../../core/src/files.ts';
 import type { EventLine, FileKind, LockSource, WorkflowStage } from '../../../../core/src/files.ts';
-import { hasOnlyKeys, isPlainRecord } from './route-match.ts';
+import { HEX64, isRecord } from '../guards.ts';
+import { hasOnlyKeys } from './route-match.ts';
 
 // ─── Writes ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,6 @@ export const TASKS_HASH_HEADER = 'X-Spectant-Tasks-Hash';
  */
 export const ACTIVITY_HASH_HEADER = 'X-Spectant-Activity-Hash';
 
-const HEX64 = /^[0-9a-f]{64}$/;
 const HASH_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
 const isHashOrNull = (value: unknown): boolean => value === null || (typeof value === 'string' && HEX64.test(value));
 
@@ -271,13 +271,13 @@ export function runReleaseRequestFromHeader(header: string | null): RunReleaseRe
 }
 
 export function isTransitionRequest(body: unknown): body is TransitionRequest {
-  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['to', 'hash'])) return false;
+  if (!isRecord(body) || !hasOnlyKeys(body, ['to', 'hash'])) return false;
   const { to, hash } = body;
   return typeof to === 'string' && Object.hasOwn(WORKFLOW_STAGES, to) && typeof hash === 'string' && HEX64.test(hash);
 }
 
 export function isAllocateRequest(body: unknown): body is AllocateRequest {
-  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['hash'])) return false;
+  if (!isRecord(body) || !hasOnlyKeys(body, ['hash'])) return false;
   const { hash } = body;
   return typeof hash === 'string' && HEX64.test(hash);
 }
@@ -287,7 +287,7 @@ const FEATURE_ID = /^F\d+(?:\.\d+)?$/;
 const isFeatureId = (v: unknown): v is string => typeof v === 'string' && FEATURE_ID.test(v);
 
 export function isBacklogRequest(body: unknown): body is BacklogRequest {
-  if (!isPlainRecord(body)) return false;
+  if (!isRecord(body)) return false;
   const { op, feature, hash, before, priority } = body;
   if (!isFeatureId(feature) || typeof hash !== 'string' || !HEX64.test(hash)) return false;
   if (op === 'move') return hasOnlyKeys(body, ['op', 'feature', 'before', 'hash']) && (before === null || isFeatureId(before));

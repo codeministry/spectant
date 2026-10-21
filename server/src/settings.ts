@@ -11,8 +11,11 @@
  * one dropped (spec 053 dropped the poll interval; the fallback poll is a fixed constant in the web): its row stays
  * in the table, never returned, and a `set` naming it fails with `unknown-key`.
  */
-import type { Database } from "bun:sqlite";
+import { isRecord } from "./contracts/guards.ts";
 import { type ApiHandler, matchesIfNoneMatch } from "./http.ts";
+import type { Db } from "./infra/db/db.ts";
+import { openSettingRows } from "./infra/db/settings-store.ts";
+import { loopbackRefusal, methodNotAllowed, type Responder } from "./infra/http/guard.ts";
 
 /** One setting: the value a fresh install gets, and the check every stored or submitted value must pass. */
 export type SettingSpec<T> = { readonly default: T; readonly validate: (value: unknown) => value is T };
@@ -93,25 +96,18 @@ function decode(raw: string): unknown {
 }
 
 /** Settings over an open, migrated `spectant.db` connection. The caller owns the connection and closes it. */
-export function openSettings(db: Database): SettingsStore {
-  const selectAll = db.query<{ key: string; value: string }, []>("SELECT key, value FROM setting");
-  const upsert = db.query<null, [string, string]>(
-    "INSERT INTO setting (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-  );
+export function openSettings(db: Db): SettingsStore {
+  const rows = openSettingRows(db);
 
   const get = (): Settings => {
     const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
-    for (const { key, value } of selectAll.all()) {
+    for (const { key, value } of rows.all()) {
       if (!isKey(key)) continue; // schema_version, or a key a newer build wrote
       const decoded = decode(value);
       if (SettingsSchema[key].validate(decoded)) settings[key] = decoded;
     }
     return settings as Settings;
   };
-
-  const write = db.transaction((entries: Array<[SettingKey, unknown]>) => {
-    for (const [key, value] of entries) upsert.run(key, JSON.stringify(value));
-  });
 
   return {
     get,
@@ -121,7 +117,7 @@ export function openSettings(db: Database): SettingsStore {
         if (!SettingsSchema[key].validate(value)) throw new SettingsError("invalid-value", key);
         return [key, value];
       });
-      write.immediate(entries);
+      rows.write(entries.map(([key, value]): [string, string] => [key, JSON.stringify(value)]));
       return get();
     },
   };
@@ -131,28 +127,8 @@ export function openSettings(db: Database): SettingsStore {
 export const SETTINGS_PATH = "/api/settings";
 
 const ALLOW = "GET, HEAD, PUT";
-const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
-/** True for a loopback `host[:port]`. The server binds loopback only; a foreign name here means DNS rebinding. */
-export function isLoopbackHost(host: string | null): boolean {
-  if (host === null) return false;
-  try {
-    return LOOPBACK_HOSTNAMES.has(new URL(`http://${host}`).hostname);
-  } catch {
-    return false;
-  }
-}
-
-/** A browser sends `Origin` on a cross-origin request; it must be a loopback page too. Absent means a non-browser client. */
-export function isLoopbackOrigin(origin: string | null): boolean {
-  if (origin === null) return true;
-  try {
-    const url = new URL(origin);
-    return url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname);
-  } catch {
-    return false;
-  }
-}
+export { isLoopbackHost, isLoopbackOrigin } from "./infra/http/guard.ts";
 
 function etagFor(body: string): string {
   return `W/"${Bun.hash(body).toString(36)}"`;
@@ -165,6 +141,9 @@ function json(status: number, value: unknown, headers: Record<string, string> = 
   });
 }
 
+/** The guard's 403 and the 405 in this route's own `no-store` JSON. */
+const respond: Responder = (_req, status, value, headers) => json(status, value, headers);
+
 function settingsResponse(settings: Settings, req: Request): Response {
   const body = JSON.stringify(settings);
   const headers = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache", ETag: etagFor(body) };
@@ -172,10 +151,6 @@ function settingsResponse(settings: Settings, req: Request): Response {
     return new Response(null, { status: 304, headers });
   }
   return new Response(req.method === "HEAD" ? null : body, { headers });
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -190,7 +165,7 @@ export function settingsApi(store: SettingsStore): ApiHandler {
     } catch {
       return json(400, { error: "invalid-body" });
     }
-    if (!isPlainObject(body)) return json(400, { error: "invalid-body" });
+    if (!isRecord(body)) return json(400, { error: "invalid-body" });
     try {
       return settingsResponse(store.set(body), req);
     } catch (error) {
@@ -201,11 +176,10 @@ export function settingsApi(store: SettingsStore): ApiHandler {
 
   return (req, url) => {
     if (url.pathname !== SETTINGS_PATH) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(403, { error: "forbidden" });
-    }
+    const refused = loopbackRefusal(req, respond);
+    if (refused !== null) return refused;
     if (req.method === "GET" || req.method === "HEAD") return settingsResponse(store.get(), req);
     if (req.method === "PUT") return put(req);
-    return json(405, { error: "method-not-allowed" }, { Allow: ALLOW });
+    return methodNotAllowed(req, ALLOW, respond);
   };
 }

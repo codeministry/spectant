@@ -4,7 +4,7 @@
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 import { SPEC_FOLDER } from "../../../../core/src/spec-ref.ts";
-import { StateMemo, repoStateOf } from "../../repo-state.ts";
+import { StateMemo, repoStateOf } from "./repo-state.ts";
 import type { UserEmailOptions } from "./refs.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, SHA, defaultGitRunner, firstLine, gitEnv, isPlainBranchName, readWithin } from "./runner.ts";
 

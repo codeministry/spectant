@@ -4,7 +4,8 @@
  * rewriting; it is a family of its own, not a workspace route, because its tail is a path of any depth.
  */
 import type { LibraryDoc } from '../../../../core/src/files.ts';
-import { decodeOnce, enc, READ } from './route-match.ts';
+import { decodeOnce } from '../guards.ts';
+import { enc, READ } from './route-match.ts';
 
 // ─── Prototype route (spec 017) ──────────────────────────────────────────────────────────────────────────────────
 

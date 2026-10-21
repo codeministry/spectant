@@ -2,7 +2,8 @@
  * The live update stream in the spec routes contract (part of `contracts/spec-routes.contract.ts`).
  */
 import { API_PREFIX } from '../assets.contract.ts';
-import { hasOnlyKeys, isPlainRecord } from './route-match.ts';
+import { isRecord } from '../guards.ts';
+import { hasOnlyKeys } from './route-match.ts';
 
 // ─── Live update stream ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -38,13 +39,13 @@ export interface LiveUpdate {
 
 /** A parsed `LIVE_EVENT` payload; anything else is dropped by the client. */
 export function isLiveUpdate(body: unknown): body is LiveUpdate {
-  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['ws', 'views'])) return false;
+  if (!isRecord(body) || !hasOnlyKeys(body, ['ws', 'views'])) return false;
   const { ws, views } = body;
   return typeof ws === 'string' && Array.isArray(views) && views.every((view: unknown) => isLiveView(view));
 }
 
 function isLiveView(view: unknown): view is LiveView {
-  if (!isPlainRecord(view) || !hasOnlyKeys(view, ['path', 'etag', 'body'])) return false;
+  if (!isRecord(view) || !hasOnlyKeys(view, ['path', 'etag', 'body'])) return false;
   const { path, etag } = view;
   return typeof path === 'string' && path.startsWith(API_PREFIX) && typeof etag === 'string' && 'body' in view;
 }

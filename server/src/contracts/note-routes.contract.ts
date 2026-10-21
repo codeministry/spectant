@@ -7,9 +7,10 @@
  * the web Notes area and the Claims tab's badge (T100, T101) build URLs with `noteRoutes` and type answers with
  * `NoteRouteResponses`.
  *
- * Browser-safe: the only imports are `notes.contract.ts` and `spec-routes.contract.ts`.
+ * Browser-safe: the only imports are `notes.contract.ts`, `spec-routes.contract.ts` and `guards.ts`.
  */
 import { SPEC_API_ROOT, type Forbidden, type InvalidBody, type MethodNotAllowed, type NotFound } from './spec-routes.contract.ts';
+import { decodeOnce, segmentsBelow } from './guards.ts';
 import { parseAnchor, type AnchorKind, type Note, type NoteAnchor, type NoteCounts, type NoteInvalid, type NotesQuery } from './notes.contract.ts';
 
 export * from './notes.contract.ts';
@@ -133,21 +134,10 @@ export const NOTE_ROUTE_TABLE: readonly NoteRouteEntry[] = [
 
 type Resource = { readonly kind: 'collection' | 'counts'; readonly ws: string } | { readonly kind: 'item'; readonly ws: string; readonly id: string };
 
-const ROOT_PARTS = SPEC_API_ROOT.split('/').slice(1);
-
-function decodeOnce(segment: string | undefined): string | null {
-  if (segment === undefined || segment === '') return null;
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return null;
-  }
-}
-
 function resourceOf(pathname: string): Resource | null {
-  const parts = pathname.split('/').slice(1);
-  if (!ROOT_PARTS.every((part, i) => parts[i] === part)) return null;
-  const [rawWs, section, rawId, ...rest] = parts.slice(ROOT_PARTS.length);
+  const below = segmentsBelow(pathname, SPEC_API_ROOT);
+  if (below === null) return null;
+  const [rawWs, section, rawId, ...rest] = below;
   const ws = decodeOnce(rawWs);
   if (ws === null || rest.length > 0) return null;
   if (section === 'note-counts' && rawId === undefined) return { kind: 'counts', ws };

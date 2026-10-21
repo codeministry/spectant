@@ -22,8 +22,10 @@
  * reaches the whole contract.
  *
  * Error spelling follows `spec-routes.contract.ts`: kebab-case `{error: "…"}`. Every 400 names one code of
- * `NOTE_VALIDATION_ERRORS`; the route codes are the API's own. Browser-safe: this file imports nothing.
+ * `NOTE_VALIDATION_ERRORS`; the route codes are the API's own. Browser-safe: the one import is `guards.ts`, which
+ * imports nothing.
  */
+import { isRecord } from './guards.ts';
 
 // ─── Shape ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -133,10 +135,6 @@ const NOT_IN_SLUG = /[/\\\p{Cc}]/u;
 const ok = <T>(value: T): NoteCheck<T> => ({ ok: true, value });
 const fail = (error: NoteValidationError): { readonly ok: false; readonly error: NoteValidationError } => ({ ok: false, error });
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function onlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
   return Object.keys(value).every((key) => allowed.includes(key));
 }
@@ -158,7 +156,7 @@ function isTimestamp(value: unknown): value is string {
 export function parseAnchor(value: unknown): NoteCheck<NoteAnchor | null> {
   if (value === undefined || value === null) return ok(null);
   if (Array.isArray(value)) return fail('multiple-anchors');
-  if (!isPlainObject(value) || !onlyKeys(value, ['kind', 'spec', 'id'])) return fail('invalid-anchor');
+  if (!isRecord(value) || !onlyKeys(value, ['kind', 'spec', 'id'])) return fail('invalid-anchor');
   const { kind, spec, id } = value;
   if (typeof spec !== 'string' || !SPEC_ID.test(spec)) return fail('invalid-anchor');
   if (kind === 'spec') return id === undefined ? ok({ kind, spec }) : fail('invalid-anchor');
@@ -196,7 +194,7 @@ function parseFields(value: Record<string, unknown>): NoteCheck<NoteDraft> {
 
 /** A `POST` or `PUT` body. A second anchor (`anchors`) is `multiple-anchors`; any other extra key is `invalid-body`. */
 export function parseNoteDraft(value: unknown): NoteCheck<NoteDraft> {
-  if (!isPlainObject(value)) return fail('invalid-body');
+  if (!isRecord(value)) return fail('invalid-body');
   if (Object.hasOwn(value, 'anchors')) return fail('multiple-anchors');
   if (!onlyKeys(value, ['anchor', 'title', 'body', 'pinned'])) return fail('invalid-body');
   return parseFields(value);
@@ -213,7 +211,7 @@ const NOTE_KEYS = ['id', 'workspace', 'anchor', 'title', 'body', 'pinned', 'crea
 
 /** A whole stored or answered note. `workspace` must be present: a slug, or null for an orphan. */
 export function validateNote(value: unknown): NoteCheck<Note> {
-  if (!isPlainObject(value)) return fail('invalid-body');
+  if (!isRecord(value)) return fail('invalid-body');
   if (Object.hasOwn(value, 'anchors')) return fail('multiple-anchors');
   if (!onlyKeys(value, NOTE_KEYS)) return fail('invalid-body');
   const { id, workspace, pinned, created, updated } = value;

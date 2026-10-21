@@ -8,7 +8,7 @@
 import { json } from "./infra/http/json.ts";
 import type { ApiHandler } from "./infra/http/server.ts";
 import type { LifeosDetection } from "./infra/lifeos.ts";
-import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
+import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 
 export * from "./infra/lifeos.ts";
 
@@ -22,10 +22,9 @@ export function lifeosApi(detection: LifeosDetection): ApiHandler {
   const body = { present: detection.present };
   return (req, url) => {
     if (url.pathname !== LIFEOS_PATH) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(req, 403, { error: "forbidden" });
-    }
-    if (req.method !== "GET" && req.method !== "HEAD") return json(req, 405, { error: "method-not-allowed" }, { Allow: ALLOW });
+    const refused = loopbackRefusal(req);
+    if (refused !== null) return refused;
+    if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed(req, ALLOW);
     return json(req, 200, body);
   };
 }

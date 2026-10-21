@@ -13,10 +13,8 @@
  * `.spectant/activity.jsonl`, plus the LifeOS frontier locks only when a LifeOS state directory is passed (ISC-37).
  *
  * Read-only (ISC-15): `node:fs` reads, no write, no temp file, no lock. The worktree tree id for the code-reviewed mark
- * is computed in memory by `core/`'s `treeIdOf` over a file list from `git ls-files`, which reads the index and never
- * writes it or an object (`GIT_OPTIONAL_LOCKS=0` keeps even an optional index refresh off). It runs only for a
- * repository root (`.git` directly in the folder) with at least one active spec that carries a code-reviewed mark;
- * anything else, or a git that is missing or fails, is `null`, which `core/` reads as "tree id unavailable".
+ * (`infra/git/tree-id.ts`) runs only for a repository root (`.git` directly in the folder) with at least one active
+ * spec that carries a code-reviewed mark; anything else is `null`, which `core/` reads as "tree id unavailable".
  * The worktrees (spec 027, ISC-175) come from `git.ts`'s read-only `worktree list`, `rev-list --count` and `status`
  * in one reading every caller shares (`readWorktreeView`, spec 041): `core/`'s `assignWorktrees` decides which spec each
  * belongs to and `liveWorktrees` which have ended. A spec with a live worktree of its own is read per spec
@@ -31,7 +29,7 @@
  * An unreadable workspace (gone, not a directory, no permission) is a `{readable: false, error}` value with a stable
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
  */
-import { lstatSync, readFileSync, readlinkSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
@@ -59,14 +57,14 @@ import type { Diagnostic } from "../../core/src/diagnostics.ts";
 import { MAIN_SOURCE, REPO_SOURCE_PATHS, type RepoFileCandidate, repoFileSourceOf } from "../../core/src/repo-source.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { SPEC_FOLDER, SPEC_ID, specIdOf, specSlugOf } from "../../core/src/spec-ref.ts";
-import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { type RepoFileCopy, catalogDocAt, readCatalog, readCatalogDocs } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type NotFound, type SpecNotFoundReason, type SpecRef, listSpecs, resolveSpec } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
 import { WORKTREE_COPY_KINDS, type WorktreeView, assignWorktrees, copyDirFor, liveWorktrees, mainBranchOf, worktreeOnlySpecs } from "../../core/src/worktrees.ts";
 import { type SpecBranch, aheadOfMain, changedPaths, dirty, lastCommits, mapBounded, mergeCommitOf, mergedSpecBranches, trackedPlanningPaths, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
-import { StateMemo, repoStateOf } from "./repo-state.ts";
+import { StateMemo, repoStateOf } from "./infra/git/repo-state.ts";
+import { worktreeTreeId } from "./infra/git/tree-id.ts";
 import type { UnreadableCode } from "./contracts/spec-routes.contract.ts";
 import { rawSha256 } from "./infra/hash.ts";
 import { Unreadable, codeOf, workspaceUnreadable } from "./infra/fs/errno.ts";
@@ -75,6 +73,7 @@ import { hasGit, readBytesIfExists, readIfExists, regularBytes } from "./infra/f
 export type { UnreadableCode } from "./contracts/spec-routes.contract.ts";
 export { unreadableCode, workspaceUnreadable } from "./infra/fs/errno.ts";
 export { readBytesIfExists, readIfExists } from "./infra/fs/read.ts";
+export { worktreeTreeId } from "./infra/git/tree-id.ts";
 
 /**
  * A readable workspace: the model's input, the workflow table (T78, ISC-122; the default table when `specs/workflow.md`
@@ -844,76 +843,4 @@ export function loadCatalogDocs(root: string): Promise<CopiesLoad<{ docs: readon
  */
 export function loadCatalogDoc(root: string, path: string | null): Promise<CopiesLoad<{ doc: LibraryDoc | null }>> {
   return withCopies(root, async (copies, repoFiles) => ({ doc: path === null ? null : await catalogDocAt(root, path, { copies, repoFiles }) }));
-}
-
-// ── the worktree tree id ──────────────────────────────────────────────────────────────────────────────
-
-/**
- * The paths `git add -A` would stage: tracked and untracked, `.gitignore`, `info/exclude` and the global excludes applied.
- * `ls-files` runs the repository's fsmonitor hook, so it is switched off (spec 041, ISC-216.2).
- */
-async function listedPaths(root: string): Promise<string[] | null> {
-  const git = Bun.which("git", { PATH: process.env.PATH ?? "" });
-  if (!git) return null;
-  const child = Bun.spawn([git, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
-    cwd: root,
-    env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "ignore",
-  });
-  const [stdout, code] = await Promise.all([new Response(child.stdout).text(), child.exited]);
-  if (code !== 0) return null;
-  // Unmerged paths list once per stage; an untracked nested repository lists as `dir/` and is no file.
-  return [...new Set(stdout.split("\0"))].filter((path) => path !== "" && !path.endsWith("/"));
-}
-
-/** One listed path as git would store it, or null when it is gone from the worktree or is no file (a submodule). */
-function entryFor(root: string, path: string): TreeEntry | null {
-  const absolute = join(root, path);
-  let stat;
-  try {
-    stat = lstatSync(absolute);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; // deleted: `git add -A` drops it
-    throw error;
-  }
-  let mode: TreeEntryMode;
-  let bytes: Uint8Array;
-  if (stat.isSymbolicLink()) {
-    mode = "120000";
-    bytes = readlinkSync(absolute, { encoding: "buffer" });
-  } else if (stat.isFile()) {
-    mode = (stat.mode & 0o100) !== 0 ? "100755" : "100644";
-    bytes = readFileSync(absolute);
-  } else {
-    return null;
-  }
-  return { path, mode, bytes };
-}
-
-/**
- * The listed paths per checkout, kept while `repoStateOf` stands (ISC-215): the files are read and hashed afresh on every
- * call, only the list is kept, so an edit to a listed file always shows; a new untracked file shows once the state moves.
- */
-const LISTED_PATHS = new StateMemo<string[] | null>();
-
-/**
- * The git tree id of the worktree at `root`, as `git add -A && git write-tree` would print it, computed in memory.
- * Null when `root` is not a repository root, git is missing or fails, or a file cannot be read. Clean filters
- * (`core.autocrlf`, LFS) and submodules are not applied, so such a repository reads as changed, never as reviewed.
- */
-export async function worktreeTreeId(root: string): Promise<string | null> {
-  try {
-    lstatSync(join(root, ".git"));
-  } catch {
-    return null;
-  }
-  try {
-    const paths = await LISTED_PATHS.get(root, repoStateOf(root), () => listedPaths(root));
-    if (paths === null) return null;
-    return treeIdOf(paths.flatMap((path) => entryFor(root, path) ?? []));
-  } catch {
-    return null;
-  }
 }

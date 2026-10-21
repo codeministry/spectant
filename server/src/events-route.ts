@@ -16,8 +16,7 @@
  * Read-only: the stream reads what the read routes read and writes nothing (`tests/readonly.test.ts -t live`).
  */
 import type { ApiHandler } from "./http.ts";
-import { json } from "./api.ts";
-import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
+import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import {
   EVENTS_ALLOW,
   EVENTS_PATH,
@@ -141,10 +140,9 @@ export function eventsApi(options: EventsApiOptions): ApiHandler {
 
   return (req, url) => {
     if (url.pathname !== EVENTS_PATH) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(req, 403, { error: "forbidden" });
-    }
-    if (req.method !== "GET") return json(req, 405, { error: "method-not-allowed" }, { Allow: EVENTS_ALLOW });
+    const refused = loopbackRefusal(req);
+    if (refused !== null) return refused;
+    if (req.method !== "GET") return methodNotAllowed(req, EVENTS_ALLOW);
     let self: ReadableStreamDefaultController<Uint8Array> | null = null;
     const body = new ReadableStream<Uint8Array>({
       start(controller) {

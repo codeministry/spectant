@@ -35,9 +35,10 @@
  * Images, the summary and the sort live in `workspace-list.contract.ts`; this file re-exports it, so one import still
  * reaches the whole contract.
  *
- * Browser-safe: no Bun or Node import; the only value imports are `spec-routes.contract.ts` and
+ * Browser-safe: no Bun or Node import; the only value imports are `guards.ts`, `spec-routes.contract.ts` and
  * `workspace-list.contract.ts`, the rest is `import type`.
  */
+import { decodeOnce, isRecord, segmentsBelow } from './guards.ts';
 import { SPEC_API_ROOT, type Forbidden, type InvalidBody, type MethodNotAllowed, type NotFound } from './spec-routes.contract.ts';
 import { IMAGE_VERSION_PARAM, isImageKind, type ImageKind, type WorkspaceAdminSummary } from './workspace-list.contract.ts';
 
@@ -117,22 +118,10 @@ type Resource =
   | { readonly kind: 'item' | 'rescan'; readonly ws: string }
   | { readonly kind: 'image'; readonly ws: string; readonly image: ImageKind };
 
-const ROOT_PARTS = SPEC_API_ROOT.split('/').slice(1);
-
-function decodeOnce(segment: string | undefined): string | null {
-  if (segment === undefined || segment === '') return null;
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return null;
-  }
-}
-
 /** The admin resource a pathname names (still percent-encoded, as `URL.pathname` gives it), or null. */
 function resourceOf(pathname: string): Resource | null {
-  const parts = pathname.split('/').slice(1);
-  if (!ROOT_PARTS.every((part, i) => parts[i] === part)) return null;
-  const rest = parts.slice(ROOT_PARTS.length);
+  const rest = segmentsBelow(pathname, SPEC_API_ROOT);
+  if (rest === null) return null;
   if (rest.length === 0) return { kind: 'collection' };
   const ws = decodeOnce(rest[0]);
   if (ws === null) return null;
@@ -198,8 +187,6 @@ export interface RenameWorkspaceRequest {
 
 /** A parser's answer: the normalized request, or the 400 code to refuse it with. */
 export type Parsed<T, E extends string> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: E };
-
-const isRecord = (body: unknown): body is Record<string, unknown> => typeof body === 'object' && body !== null && !Array.isArray(body);
 
 /**
  * Admits an add body: `invalid-body` when it is no object, `path` is no string or `name` is present and no string;

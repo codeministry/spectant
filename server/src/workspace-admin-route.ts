@@ -41,7 +41,7 @@ import { resolve } from "node:path";
 import { json, type WorkspaceListSummary } from "./api.ts";
 import { type ApiHandler, matchesIfNoneMatch } from "./http.ts";
 import { type Registry, RegistryError, type Workspace } from "./registry.ts";
-import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
+import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import type { WatchHub } from "./watch.ts";
 import {
   IMAGE_MAX_BYTES,
@@ -205,10 +205,9 @@ export function workspaceAdminApi(options: WorkspaceAdminApiOptions): ApiHandler
     // The collection's and a workspace's reads are the list and dashboard routes of `api.ts`.
     if ((req.method === "GET" || req.method === "HEAD") && match?.route !== "getImage") return null;
     if (match !== null && !SERVED.has(match.route)) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(req, 403, { error: "forbidden" });
-    }
-    if (match === null) return json(req, 405, { error: "method-not-allowed" }, { Allow: allow });
+    const refused = loopbackRefusal(req);
+    if (refused !== null) return refused;
+    if (match === null) return methodNotAllowed(req, allow);
     return dispatch(req, match);
   };
 }

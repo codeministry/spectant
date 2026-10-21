@@ -6,6 +6,7 @@ import { parseActor } from '../../../../core/src/actor.ts';
 import { validateEventLine } from '../../../../core/src/events.ts';
 import { FILE_KINDS } from '../../../../core/src/files.ts';
 import type { ClaimLock, LockSource } from '../../../../core/src/files.ts';
+import { HEX64, isRecord } from '../guards.ts';
 import { RELEASE_REFUSALS, REVIEWED_HASH_FILES, isGateReviewedRequest, isTransitionRequest } from '../spec-routes.contract.ts';
 import type { ReviewedHashes } from '../spec-routes.contract.ts';
 import type { WriteAnswer } from './write-answers.ts';
@@ -15,7 +16,6 @@ import type { WriteOperation } from './writes-table.ts';
 
 // ─── Answer validators (the client's side) ───────────────────────────────────────────────────────────────────────
 
-const HEX64 = /^[0-9a-f]{64}$/;
 /**
  * The fields the validators read, named: a record with literal keys, not an index signature, so the web tsconfig's
  * `noPropertyAccessFromIndexSignature` admits the dot access this file uses (T111).
@@ -25,7 +25,7 @@ type RecKey =
   | 'folder' | 'from' | 'hash' | 'hashes' | 'id' | 'idea' | 'kind' | 'line' | 'lock' | 'lockSource' | 'number' | 'outcome' | 'reason'
   | 'removed' | 'run' | 'session' | 'since' | 'source' | 'spec' | 'task' | 'tasks' | 'text' | 'to' | 'ts';
 type Rec = Partial<Record<RecKey, unknown>>;
-const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isRec: (v: unknown) => v is Rec = isRecord;
 const isHex = (v: unknown): boolean => typeof v === 'string' && HEX64.test(v);
 const isLockSource = (v: unknown): v is LockSource => v === 'frontier' || v === 'activity' || v === 'none';
 const isHashes = (v: unknown): v is ReviewedHashes => isGateReviewedRequest({ hashes: v });

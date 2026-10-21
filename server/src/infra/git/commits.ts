@@ -7,7 +7,7 @@
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 import type { CommitRecord } from "../../../../core/src/files.ts";
-import { repoStateOf } from "../../repo-state.ts";
+import { repoStateOf } from "./repo-state.ts";
 import { DEFAULT_TIMEOUT_MS, type GitRunner, SHA, defaultGitRunner, firstLine, gitEnv, messageOf, normalizeFolder, readWithin } from "./runner.ts";
 
 /** A commit record, plus the touched paths inside the folder when `files` was asked for. */

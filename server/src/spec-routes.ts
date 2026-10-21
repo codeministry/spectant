@@ -61,7 +61,7 @@ import type { ApiHandler } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
 import type { NoteStore } from "./notes.ts";
 import type { Registry, Workspace } from "./registry.ts";
-import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
+import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import {
   type NotFound,
   REVIEWED_HASHES_HEADER,
@@ -342,13 +342,12 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
   return (req, url) => {
     const { pathname } = url;
     if (!SPECS_SUBTREE.test(pathname)) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(req, 403, { error: "forbidden" });
-    }
+    const refused = loopbackRefusal(req);
+    if (refused !== null) return refused;
     const path = matchSpecPath(pathname);
     if (path === null) return json(req, 404, NOT_FOUND);
     const match = matchSpecRoute(pathname, req.method);
-    if (match === null) return json(req, 405, { error: "method-not-allowed" }, { Allow: allowFor(path.route) });
+    if (match === null) return methodNotAllowed(req, allowFor(path.route));
     const workspace = registry.get(match.params.ws);
     if (!workspace) return json(req, 404, NOT_FOUND);
     return answer(req, url, match, workspace).catch((error: unknown) => {

@@ -42,7 +42,7 @@ import { json } from "./api.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import type { Registry } from "./registry.ts";
-import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
+import { isLoopbackHost, isLoopbackOrigin, methodNotAllowed } from "./infra/http/guard.ts";
 import {
   PROTOTYPE_ALLOW,
   PROTOTYPE_CSP,
@@ -161,7 +161,7 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
     const opaque = origin === OPAQUE_ORIGIN;
     if (!isLoopbackHost(req.headers.get("Host")) || (!opaque && !isLoopbackOrigin(origin))) return forbidden(req);
     if (req.method !== "GET" && req.method !== "HEAD") {
-      return opaque ? forbidden(req) : refuse(req, 405, { error: "method-not-allowed" }, { Allow: PROTOTYPE_ALLOW });
+      return opaque ? forbidden(req) : methodNotAllowed(req, PROTOTYPE_ALLOW, refuse);
     }
     if (!opaque) return answer(req, pathname, false);
     // `Origin: null` for anything but a script, style or font fetch is refused before the file system is asked.

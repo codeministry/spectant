@@ -20,19 +20,19 @@
  * Migration 4 (T89, ISC-119.2) is expand-only: it creates `actor` (CREATE TABLE IF NOT EXISTS, adopted like migration
  * 2's), one row per person id (`u:…`, `core/`'s `actorIdOf`) with a display name and the git addresses it was seen
  * with as a JSON array, which a CHECK holds to an array. The ids derive from git config, so losing the table with the
- * data directory loses the display names and nothing a repository holds (ISC-7). `ActorRow` and its accessors are below.
+ * data directory loses the display names and nothing a repository holds (ISC-7). `ActorRow` and its accessors are in `prefs-store.ts`.
  *
  * Migration 5 (T90, ISC-129.1) is expand-only: it creates `board_query` (CREATE TABLE IF NOT EXISTS, adopted like
  * migration 2's), one row per workspace slug holding the board's last query string (`BoardQuery` in
  * `spec-routes.contract.ts`) and the time it was set. No foreign key: the row is keyed by the slug as the route names
  * it, and a re-added workspace keeps its board. Losing it loses the remembered filter, nothing a repository holds
- * (ISC-7). `BoardQueryRow` and its accessors are below.
+ * (ISC-7). `BoardQueryRow` and its accessors are in `prefs-store.ts`.
  *
  * Migration 6 (spec 052, T2, ISC-296) is expand-only: it creates `spec_favorite` (CREATE TABLE IF NOT EXISTS, adopted
  * like migration 2's), one row per workspace slug and spec folder name (`NNN-slug`) the developer marked as a
  * favourite, with the time it was first set; the pair is the primary key, so setting it twice keeps one row. No foreign
  * key, like `board_query`: a re-added workspace keeps its favourites, and a favourite on a spec the workspace no longer
- * lists stays until it is unset. Losing it loses the marks, nothing a repository holds (ISC-7). Its accessors are below.
+ * lists stays until it is unset. Losing it loses the marks, nothing a repository holds (ISC-7). Its accessors are in `prefs-store.ts`.
  *
  * No down migration runs on open. The documented reversals are `REVERSALS`, applied only by `rollback` (the CLI's
  * `spectant db rollback <version> --yes`, T98), newest first: 6 → 5 is `DROP TABLE spec_favorite` (loses every
@@ -48,6 +48,9 @@ import { dbPath, ensureDataDir } from "../paths.ts";
 
 /** The SQLite connection type, so a slice types its `db` parameter without importing `bun:sqlite` itself. */
 export type { Database as Db } from "bun:sqlite";
+
+/** The accessors of the actor, board_query and spec_favorite tables, kept importable from here. */
+export * from "./prefs-store.ts";
 
 /** The schema version this build writes. A database from a newer build is refused rather than downgraded. */
 export const SCHEMA_VERSION = 6;
@@ -192,122 +195,4 @@ export function rollback(db: Database, target: number): { from: number; to: numb
       return { from, to: Math.min(from, target) };
     })
     .immediate();
-}
-
-// ── the actor table (migration 4, T89, ISC-119.2) ────────────────────────────────────────────────────────────────────
-
-/** One person: the `u:` id, the name the app shows, the addresses seen for it, the time of the last upsert (ISO 8601). */
-export interface ActorRow {
-  readonly id: string;
-  readonly displayName: string;
-  readonly gitIdentities: readonly string[];
-  readonly updatedAt: string;
-}
-
-interface ActorRecord {
-  id: string;
-  display_name: string;
-  git_identities: string;
-  updated_at: string;
-}
-
-const actorOf = (r: ActorRecord): ActorRow => ({
-  id: r.id,
-  displayName: r.display_name,
-  gitIdentities: JSON.parse(r.git_identities) as string[], // the schema's CHECK holds it to a JSON array
-  updatedAt: r.updated_at,
-});
-
-const ACTOR_COLUMNS = "id, display_name, git_identities, updated_at";
-
-/** Inserts the actor, or replaces every field of the row with its id. */
-export function upsertActor(db: Database, actor: ActorRow): void {
-  db.run(
-    `INSERT INTO actor (${ACTOR_COLUMNS}) VALUES (?, ?, ?, ?)
-     ON CONFLICT (id) DO UPDATE SET display_name = excluded.display_name, git_identities = excluded.git_identities, updated_at = excluded.updated_at`,
-    [actor.id, actor.displayName, JSON.stringify(actor.gitIdentities), actor.updatedAt],
-  );
-}
-
-/** The actor with `id`, or null. */
-export function getActor(db: Database, id: string): ActorRow | null {
-  const row = db.query<ActorRecord, [string]>(`SELECT ${ACTOR_COLUMNS} FROM actor WHERE id = ?`).get(id);
-  return row ? actorOf(row) : null;
-}
-
-/** Every actor, ordered by id. */
-export function listActors(db: Database): ActorRow[] {
-  return db.query<ActorRecord, []>(`SELECT ${ACTOR_COLUMNS} FROM actor ORDER BY id`).all().map(actorOf);
-}
-
-/**
- * Replaces the whole table with `actors` in one immediate transaction (`PUT /api/actors`, T91): a row whose id is
- * not among them is deleted, every other one upserted. A failure leaves the table as it was.
- */
-export function replaceActors(db: Database, actors: readonly ActorRow[]): void {
-  db.transaction(() => {
-    db.run("DELETE FROM actor");
-    for (const actor of actors) upsertActor(db, actor);
-  }).immediate();
-}
-
-// ── the board_query table (migration 5, T90, ISC-129.1) ──────────────────────────────────────────────────────────────
-
-/** A workspace's remembered board query: the slug, the query string as the board sent it, the time it was set (ISO 8601). */
-export interface BoardQueryRow {
-  readonly ws: string;
-  readonly query: string;
-  readonly updatedAt: string;
-}
-
-/** The board query remembered for workspace `ws`, or null when none was set. */
-export function getBoardQuery(db: Database, ws: string): BoardQueryRow | null {
-  const row = db
-    .query<{ ws: string; query: string; updated_at: string }, [string]>("SELECT ws, query, updated_at FROM board_query WHERE ws = ?")
-    .get(ws);
-  return row ? { ws: row.ws, query: row.query, updatedAt: row.updated_at } : null;
-}
-
-/** Remembers `query` for workspace `ws`, replacing the row it had. */
-export function setBoardQuery(db: Database, ws: string, query: string, updatedAt: string): void {
-  db.run(
-    `INSERT INTO board_query (ws, query, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT (ws) DO UPDATE SET query = excluded.query, updated_at = excluded.updated_at`,
-    [ws, query, updatedAt],
-  );
-}
-
-// ── the spec_favorite table (migration 6, spec 052 T2, ISC-296) ──────────────────────────────────────────────────────
-
-/** The favourite specs of workspace `ws`: their folder names, sorted, each once. */
-export function listFavorites(db: Database, ws: string): string[] {
-  return db
-    .query<{ spec: string }, [string]>("SELECT spec FROM spec_favorite WHERE ws = ? ORDER BY spec")
-    .all(ws)
-    .map((row) => row.spec);
-}
-
-/** Marks `spec` a favourite of workspace `ws`; a second set keeps the row and its first `createdAt` (idempotent). */
-export function addFavorite(db: Database, ws: string, spec: string, createdAt: string): void {
-  db.run("INSERT INTO spec_favorite (ws, spec, created_at) VALUES (?, ?, ?) ON CONFLICT (ws, spec) DO NOTHING", [ws, spec, createdAt]);
-}
-
-/**
- * Deletes every favourite of workspace `ws` whose spec is not in `open`, the folder names of its open specs as the
- * server's workspace scan found them (spec 057 T1, ISC-352), and returns how many rows went. Only the scan calls it,
- * never a GET handler (ISC-353).
- */
-export function pruneFavorites(db: Database, ws: string, open: readonly string[]): number {
-  const keep = new Set(open);
-  const gone = listFavorites(db, ws).filter((spec) => !keep.has(spec));
-  if (gone.length === 0) return 0;
-  db.transaction(() => {
-    for (const spec of gone) removeFavorite(db, ws, spec);
-  })();
-  return gone.length;
-}
-
-/** Unsets `spec` as a favourite of workspace `ws`; one never set is no error (idempotent). */
-export function removeFavorite(db: Database, ws: string, spec: string): void {
-  db.run("DELETE FROM spec_favorite WHERE ws = ? AND spec = ?", [ws, spec]);
 }

@@ -1,9 +1,10 @@
 /**
  * The spec routes contract's own helpers (part of `contracts/spec-routes.contract.ts`): the one segment matcher both
- * route families share, the once-decode the prototype route uses too, the status lists more than one family answers,
- * and the record guards of the body validators. Internal: the barrel does not re-export this file, so none of it is
- * part of the contract's public surface.
+ * route families share, the status lists more than one family answers, and the key check of the body validators; the
+ * once-decode and the record guard are the shared ones of `../guards.ts`. Internal: the barrel does not re-export this
+ * file, so none of it is part of the contract's public surface.
  */
+import { decodeOnce } from '../guards.ts';
 
 /** Percent-encodes one segment; every builder encodes each segment exactly once. */
 export const enc = encodeURIComponent;
@@ -39,15 +40,5 @@ export function matchSegments(segments: readonly string[], parts: readonly strin
   return params;
 }
 
-export function decodeOnce(segment: string): string | null {
-  if (segment === '') return null;
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return null;
-  }
-}
-
-export const isPlainRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 export const hasOnlyKeys = (v: Record<string, unknown>, keys: readonly string[]): boolean =>
   Object.keys(v).every((key) => keys.includes(key));

@@ -134,7 +134,6 @@
  * No absolute path leaves this module (ISC-3): a workspace is its slug, its name and `pathTail`, the last path segment;
  * the unreadable codes replace OS messages, which would name the path.
  */
-import type { Database } from "bun:sqlite";
 import { type Stats, readFileSync } from "node:fs";
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, sep } from "node:path";
@@ -155,7 +154,8 @@ import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
-import { addFavorite, getBoardQuery, listActors, listFavorites, removeFavorite, replaceActors, setBoardQuery } from "./db.ts";
+import type { Db } from "./infra/db/db.ts";
+import { addFavorite, getBoardQuery, listActors, listFavorites, removeFavorite, replaceActors, setBoardQuery } from "./infra/db/prefs-store.ts";
 import { mapBounded } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
 import { evidenceFileResponse } from "./infra/http/file-response.ts";
@@ -163,7 +163,7 @@ import { json, readJson } from "./infra/http/json.ts";
 import type { LifeosDetection } from "./lifeos.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { listServices } from "./services.ts";
-import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
+import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
 import {
   ACTORS_ALLOW,
   ACTORS_PATH,
@@ -358,7 +358,7 @@ export type DashboardApiOptions = {
    * The open `spectant.db` the board-query route reads and writes (`board_query`, T92). Absent: that route is
    * declined, so the server's JSON 404 applies; every other route here reads no database.
    */
-  db?: Database;
+  db?: Db;
   /**
    * The allocation's clock (its event's `ts`, `started`, `created`) and the dashboard's item-state clock (spec 040,
    * ISC-224); `new Date()` by default. Tests pin it.
@@ -754,9 +754,9 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   };
 
   // The database alone: no file of the workspace is read, so there is no 409 (header).
-  const boardQuery = async (req: Request, slug: string, db: Database): Promise<Response> => {
+  const boardQuery = async (req: Request, slug: string, db: Db): Promise<Response> => {
     if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "PUT") {
-      return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("boardQuery") });
+      return methodNotAllowed(req, allowForWorkspace("boardQuery"));
     }
     if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
     if (req.method !== "PUT") {
@@ -771,18 +771,18 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   };
 
   // The favourites (spec 052 T4): the database alone like the board query, so no 409; every answer is the whole set.
-  const favorites = (req: Request, slug: string, db: Database): Response => {
+  const favorites = (req: Request, slug: string, db: Db): Response => {
     if (req.method !== "GET" && req.method !== "HEAD") {
-      return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("favorites") });
+      return methodNotAllowed(req, allowForWorkspace("favorites"));
     }
     if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
     const body: WorkspaceRouteResponses["favorites"] = { specs: listFavorites(db, slug) };
     return json(req, 200, body);
   };
 
-  const favorite = (req: Request, slug: string, spec: string, db: Database): Response => {
+  const favorite = (req: Request, slug: string, spec: string, db: Db): Response => {
     if (req.method !== "PUT" && req.method !== "DELETE") {
-      return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("favorite") });
+      return methodNotAllowed(req, allowForWorkspace("favorite"));
     }
     if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
     if (!isFavoriteSpec(spec)) return json(req, 400, { error: "invalid-spec" });
@@ -850,31 +850,30 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const { db } = options;
     const dbRoute = workspaceRoute?.route === "boardQuery" || workspaceRoute?.route === "favorites" || workspaceRoute?.route === "favorite";
     if (dbRoute && db === undefined) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(req, 403, { error: "forbidden" });
-    }
+    const refused = loopbackRefusal(req);
+    if (refused !== null) return refused;
     if (workspaceRoute?.route === "boardQuery" && db !== undefined) return boardQuery(req, workspaceRoute.params.ws, db);
     if (workspaceRoute?.route === "favorites" && db !== undefined) return favorites(req, workspaceRoute.params.ws, db);
     if (workspaceRoute?.route === "favorite" && db !== undefined) {
       return favorite(req, workspaceRoute.params.ws, workspaceRoute.params.spec, db);
     }
     if (workspaceRoute?.route === "allocate") {
-      if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("allocate") });
+      if (req.method !== "POST") return methodNotAllowed(req, allowForWorkspace("allocate"));
       return allocate(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
     }
     if (workspaceRoute?.route === "backlog") {
-      if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("backlog") });
+      if (req.method !== "POST") return methodNotAllowed(req, allowForWorkspace("backlog"));
       return backlog(req, workspaceRoute.params.ws);
     }
     if (workspaceRoute?.route === "runRelease") {
-      if (req.method !== "POST") return json(req, 405, { error: "method-not-allowed" }, { Allow: allowForWorkspace("runRelease") });
+      if (req.method !== "POST") return methodNotAllowed(req, allowForWorkspace("runRelease"));
       return runRelease(req, workspaceRoute.params.ws, workspaceRoute.params.run);
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
       // The list path also takes the admin route's POST (spec 016), so its 405 names it as the composed server does.
       const list = pathname === WORKSPACES_PATH ? workspaceAdminAllowFor(pathname) : null;
       const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : (list ?? ALLOW);
-      return json(req, 405, { error: "method-not-allowed" }, { Allow: allow });
+      return methodNotAllowed(req, allow);
     }
     if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
     if (workspaceRoute?.route === "library") return library(req, workspaceRoute.params.ws);
@@ -893,7 +892,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   };
 }
 
-function actorList(db: Database): ActorsResponse {
+function actorList(db: Db): ActorsResponse {
   return listActors(db).map(({ id, displayName, gitIdentities }) => ({ id, displayName, gitIdentities }));
 }
 
@@ -901,7 +900,7 @@ function actorList(db: Database): ActorsResponse {
  * `GET` / `HEAD` / `PUT /api/actors` as an `ApiHandler` over the `actor` table (T91, ISC-119.2; header); `null` for
  * any other path, so the server's JSON 404 applies. The answers carry ids, names and addresses only, never a path.
  */
-export function actorsApi(db: Database): ApiHandler {
+export function actorsApi(db: Db): ApiHandler {
   const put = async (req: Request): Promise<Response> => {
     const body = await readJson(req);
     // Only a person has a row: an agent id, a legacy value or a repeated id refuses the whole list.
@@ -915,11 +914,10 @@ export function actorsApi(db: Database): ApiHandler {
 
   return (req, url) => {
     if (url.pathname !== ACTORS_PATH) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return json(req, 403, { error: "forbidden" });
-    }
+    const refused = loopbackRefusal(req);
+    if (refused !== null) return refused;
     if (req.method === "GET" || req.method === "HEAD") return json(req, 200, actorList(db));
     if (req.method === "PUT") return put(req);
-    return json(req, 405, { error: "method-not-allowed" }, { Allow: ACTORS_ALLOW });
+    return methodNotAllowed(req, ACTORS_ALLOW);
   };
 }

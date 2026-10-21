@@ -27,12 +27,13 @@
  * `db rollback <version>` applies `db.ts`'s documented reversals down to `version`, newest first. Without `--yes` it
  * only says what would be lost and exits 1. Nothing here touches a registered repository (ISC-15).
  */
-import type { Database } from "bun:sqlite";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute } from "node:path";
+import { isRecord } from "./contracts/guards.ts";
 import { SCHEMA_VERSION, openDatabase, openDatabaseUnmigrated, rollback, schemaVersion } from "./db.ts";
+import type { Db } from "./infra/db/db.ts";
+import { type RollbackLoss, inTransaction, openNotes, rollbackLossCount } from "./infra/db/notes-store.ts";
 import { NOTE_TITLE_MAX, type Note, type NoteAnchor, isNoteId, parseAnchor } from "./notes.contract.ts";
-import { openNotes } from "./notes.ts";
 import { openRegistry } from "./registry.ts";
 
 /** One note as the old notes page stored it; `ref`, `anchor` and `pinned` are read when present. */
@@ -65,8 +66,6 @@ type Mapped = { readonly ok: true; readonly note: Note } | { readonly ok: false;
 const SPEC_NUMBER = /^(\d{3})(?:-|$)/;
 const CLAIM_REF = /^ISC-[\w.-]+$/; // single-core: allow — maps an old note's ref to an anchor kind, no spec file is parsed
 const TASK_REF = /^T\d+$/;
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** The notes of an old export: `{v: 1, notes: [...]}` or a bare array. Throws `NotesFileError` on anything else. */
 export function parseOldExport(text: string): unknown[] {
@@ -145,10 +144,10 @@ export function mapOldNote(value: unknown, workspaces: readonly WorkspaceRef[], 
 export type ImportResult = { readonly imported: number; readonly skipped: number; readonly reasons: readonly string[] };
 
 /** Imports `text` into `db` in one transaction; notes whose id is already stored are skipped. */
-export function importNotes(db: Database, workspaces: readonly WorkspaceRef[], text: string, now = new Date().toISOString()): ImportResult {
+export function importNotes(db: Db, workspaces: readonly WorkspaceRef[], text: string, now = new Date().toISOString()): ImportResult {
   const notes = parseOldExport(text);
   const store = openNotes(db);
-  return db.transaction(() => {
+  return inTransaction(db, () => {
     let imported = 0;
     const reasons: string[] = [];
     let skipped = 0;
@@ -162,11 +161,11 @@ export function importNotes(db: Database, workspaces: readonly WorkspaceRef[], t
       else skipped++; // imported before: same id
     });
     return { imported, skipped, reasons };
-  })();
+  });
 }
 
 /** Every note in the old page's shape: `repo` is the workspace slug, never a path. */
-export function exportNotes(db: Database): OldExport {
+export function exportNotes(db: Db): OldExport {
   const notes = openNotes(db)
     .all()
     .map(
@@ -231,13 +230,13 @@ export function exportNotesCommand(dir: string, file: string, shown: string): nu
 }
 
 /** What reversing each migration loses, for the refusal without `--yes`. */
-function losses(db: Database, from: number, target: number): string[] {
-  const count = (sql: string): number => db.query<{ n: number }, []>(sql).get()?.n ?? 0;
+function losses(db: Db, from: number, target: number): string[] {
+  const count = (loss: RollbackLoss): number => rollbackLossCount(db, loss);
   const out: string[] = [];
-  if (from >= 5 && target < 5) out.push(`drop the board_query table (${count("SELECT count(*) AS n FROM board_query")} workspaces lose their remembered board query)`);
-  if (from >= 4 && target < 4) out.push(`drop the actor table (${count("SELECT count(*) AS n FROM actor")} actors lose their display name)`);
-  if (from >= 3 && target < 3) out.push(`drop the pinned column (${count("SELECT count(*) AS n FROM note WHERE pinned = 1")} pinned notes lose their pin)`);
-  if (from >= 2 && target < 2) out.push(`drop the note table (${count("SELECT count(*) AS n FROM note")} notes; save them first with spectant export-notes <file>)`);
+  if (from >= 5 && target < 5) out.push(`drop the board_query table (${count("board_query")} workspaces lose their remembered board query)`);
+  if (from >= 4 && target < 4) out.push(`drop the actor table (${count("actor")} actors lose their display name)`);
+  if (from >= 3 && target < 3) out.push(`drop the pinned column (${count("pinned")} pinned notes lose their pin)`);
+  if (from >= 2 && target < 2) out.push(`drop the note table (${count("note")} notes; save them first with spectant export-notes <file>)`);
   return out;
 }
 

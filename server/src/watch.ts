@@ -19,11 +19,11 @@
  *
  * Read-only: `fs.watch` opens the directories for reading and writes nothing (`tests/readonly.test.ts -t live`).
  */
-import type { Database } from "bun:sqlite";
 import { type FSWatcher, existsSync, watch } from "node:fs";
 import { join } from "node:path";
 import { listSpecs, specIdOfPath } from "../../core/src/resolve.ts";
-import { pruneFavorites } from "./db.ts";
+import type { Db } from "./infra/db/db.ts";
+import { pruneFavorites } from "./infra/db/prefs-store.ts";
 import type { Registry } from "./registry.ts";
 import { readWorktreeView } from "./workspace-loader.ts";
 
@@ -36,7 +36,7 @@ import { readWorktreeView } from "./workspace-loader.ts";
  * (not there, mid-checkout, unmounted) prunes nothing: an unreadable tree is no proof a spec left.
  */
 export function favoritesScan(options: {
-  readonly db: Database;
+  readonly db: Db;
   readonly registry: Pick<Registry, "get">;
 }): (change: LiveChange) => Promise<void> {
   return async (change) => {

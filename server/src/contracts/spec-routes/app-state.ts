@@ -6,7 +6,8 @@
 import { API_PREFIX } from '../assets.contract.ts';
 import { SPEC_FOLDER } from '../../../../core/src/spec-ref.ts';
 import type { Forbidden, InvalidBody, MethodNotAllowed } from './api-answers.ts';
-import { hasOnlyKeys, isPlainRecord } from './route-match.ts';
+import { isRecord } from '../guards.ts';
+import { hasOnlyKeys } from './route-match.ts';
 
 export const ACTORS_STATUSES = [200, 304, 400, 403, 405] as const;
 
@@ -50,7 +51,7 @@ export type ActorsRequest = readonly ActorMapping[];
 export type ActorsError = Forbidden | MethodNotAllowed | InvalidBody;
 
 export function isActorMapping(body: unknown): body is ActorMapping {
-  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['id', 'displayName', 'gitIdentities'])) return false;
+  if (!isRecord(body) || !hasOnlyKeys(body, ['id', 'displayName', 'gitIdentities'])) return false;
   const { id, displayName, gitIdentities } = body;
   return (
     typeof id === 'string' &&
@@ -69,7 +70,7 @@ export function isActorMappings(body: unknown): body is ActorsRequest {
 }
 
 export function isBoardQuery(body: unknown): body is BoardQuery {
-  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['query'])) return false;
+  if (!isRecord(body) || !hasOnlyKeys(body, ['query'])) return false;
   const { query } = body;
   return typeof query === 'string' && query.length <= BOARD_QUERY_MAX && !query.startsWith('?');
 }
@@ -84,7 +85,7 @@ export function isFavoriteSpec(spec: unknown): spec is string {
 
 /** The `favorites` and `favorite` 200 body: `{specs}` and nothing else, each a favourite spec id. */
 export function isFavorites(body: unknown): body is Favorites {
-  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['specs'])) return false;
+  if (!isRecord(body) || !hasOnlyKeys(body, ['specs'])) return false;
   const { specs } = body;
   return Array.isArray(specs) && specs.every((spec) => isFavoriteSpec(spec));
 }
