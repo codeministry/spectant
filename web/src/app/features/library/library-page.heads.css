@@ -203,18 +203,3 @@ app-library-page .lib-fog-meta {
   color: var(--muted-ink);
   font-size: 12px;
 }
-
-/* The absent tech.md: dimmed by colour and form like a missing row, but without its flag. */
-app-library-page .lib-row[data-library-placeholder] .lib-title {
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-app-library-page .lib-row[data-library-placeholder] .lib-type {
-  border: 1px dashed var(--line);
-  border-inline-start: 3px dashed var(--track);
-  background: transparent;
-  color: var(--muted-ink);
-}

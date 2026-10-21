@@ -3,20 +3,16 @@ import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { NotFound } from '../../layout/not-found/not-found';
 import { RailContent } from '../../layout/shell/rail-content';
-import { ShellData } from '../../layout/shell/shell-data.service';
-import { ShellState } from '../../layout/shell/shell-state.service';
 import { TabBarSlot } from '../../layout/tab-bar/tab-bar-slot';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
-import { BacklogWriter } from '../../layout/shell/backlog-writer.service';
-import { planningCounts } from '../../core/model/planning-counts';
 import { PlanningGantt } from './planning-gantt/planning-gantt';
 import { PlanningGraph } from './planning-graph/planning-graph';
 import { PlanningOverview } from './planning-overview';
-import { planningPageState } from '../../core/model/planning-page-state';
 import { PlanningTree } from './planning-tree/planning-tree';
+import { PlanningStore } from './planning.store';
 
 /**
  * The planning page `/w/:ws/planning/<lens>` (spec 026, T15, ISC-167; design.md § Across viewports): one
@@ -31,41 +27,32 @@ import { PlanningTree } from './planning-tree/planning-tree';
  * no overview: the graph takes the full width, the Gantt too until a selection docks the sidebar into the rail at wide.
  * Tree and graph hide archived specs until their archive toggle shows them (the Gantt shows no spec); the page holds that toggle, so it stays as set across lens switches, and turns it on when the selection is an
  * archived spec, so a deep link or a palette pick still finds its row. The planning helpers the old pages share stay in
- * `planning-page.ts`.
+ * `planning-page.ts`; the page's state lives in the `PlanningStore` it provides (spec 061), one per page instance.
  */
 @Component({
   selector: 'app-planning-page',
   imports: [NotFound, PlanningGantt, PlanningGraph, PlanningOverview, PlanningTree, TabBarSlot, TranslocoPipe, UiCard, UiPageHead, UiSkeleton, UiWsBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [PlanningStore],
   host: { 'data-page': 'planning', '[attr.data-active-lens]': 'lens()' },
   templateUrl: './planning-lens-page.html',
   styleUrl: './planning-lens-page.css',
 })
 export class PlanningPage {
-  private readonly state = inject(ShellState);
-  private readonly data = inject(ShellData);
+  private readonly store = inject(PlanningStore);
 
-  protected readonly ws = computed(() => this.state.ws() ?? '');
-  protected readonly name = computed(() => this.data.workspaceName(this.ws()));
-  protected readonly lens = computed(() => this.state.route().lens ?? 'gantt');
-
-  private readonly pageState = planningPageState(this.data);
-  protected readonly missing = this.pageState.missing;
-  protected readonly unavailable = this.pageState.unavailable;
-  protected readonly model = this.data.planningModel;
-  private readonly writer = inject(BacklogWriter);
+  protected readonly ws = this.store.ws;
+  protected readonly name = this.store.name;
+  protected readonly lens = this.store.lens;
+  protected readonly missing = this.store.missing;
+  protected readonly unavailable = this.store.unavailable;
+  protected readonly model = this.store.model;
   /** The tree's model: the served one with the backlog writes the route accepted (spec 037), so a move shows on the 200. */
-  protected readonly treeModel = computed(() => this.writer.model() ?? this.model());
-  protected readonly counts = computed(() => {
-    const model = this.model();
-    return model === null ? null : planningCounts(model);
-  });
-
+  protected readonly treeModel = this.store.treeModel;
+  protected readonly counts = this.store.counts;
   /** Archived specs shown in every lens (each lens's archive toggle), off by default. */
-  protected readonly showArchived = signal(false);
-
-  /** The overview stands in the rail: the tree lens at wide with the rail open; on the tree elsewhere it is the block. */
-  protected readonly overviewInRail = computed(() => this.lens() === 'tree' && this.state.tier() === 'wide' && !this.state.railStrip());
+  protected readonly showArchived = this.store.showArchived;
+  protected readonly overviewInRail = this.store.overviewInRail;
 
   private readonly overview = viewChild<TemplateRef<unknown>>('overview');
 
@@ -73,8 +60,8 @@ export class PlanningPage {
     const selection = inject(DetailSelection);
     effect(() => {
       const ref = selection.selected();
-      const model = this.model();
-      if (ref !== null && model?.relations?.[ref]?.archived === true && ref.startsWith('spec:')) untracked(() => this.showArchived.set(true));
+      this.model();
+      untracked(() => this.store.revealArchived(ref));
     });
     inject(RailContent).register(
       {

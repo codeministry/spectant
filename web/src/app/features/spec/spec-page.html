@@ -6,5 +6,5 @@
       <app-tab-bar-slot />
       <router-outlet />
     }
-    <ng-template #rail><app-spec-rail /></ng-template>
+    <ng-template #rail><app-spec-rail [takeable]="store.firstTakeable()" [busy]="store.claimsLoading()" /></ng-template>
   

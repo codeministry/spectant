@@ -1,4 +1,4 @@
-@switch (view()) {
+@switch (store.view()) {
   @case ('loading') {
     <div class="page" role="status" [attr.aria-label]="'status.loading' | transloco">
       <ui-skeleton height="160px" />
@@ -13,11 +13,11 @@
     <!-- Spec 024 (prototype states gallery): the area's error is the inline notice, red edge, Retry in its slot. -->
     <ui-notice tone="error" data-status-error>
       <strong>{{ 'status.error.heading' | transloco }}</strong> {{ 'status.error.body' | transloco }}
-      <button action ui-button size="sm" type="button" (click)="reload()">{{ 'status.error.retry' | transloco }}</button>
+      <button action ui-button size="sm" type="button" (click)="store.reload()">{{ 'status.error.retry' | transloco }}</button>
     </ui-notice>
   }
   @case ('ok') {
-    @if (model(); as m) {
+    @if (store.model(); as m) {
       <ng-template #gateBlock>
         <ul class="gate-list" data-icon-place="status-gates">
           @for (name of gateNames; track name) {
@@ -28,7 +28,7 @@
                 <span class="gate-state">{{ 'status.gates.states.' + m.gates[name].state | transloco }}</span>
               </span>
               <span class="gate-detail">{{ m.gates[name].detail }}</span>
-              @if (tier() === 'wide' && name === 'reviewed' && action() !== 'stale' && m.gates.reviewed.files?.length) {
+              @if (tier() === 'wide' && name === 'reviewed' && store.action() !== 'stale' && m.gates.reviewed.files?.length) {
                 <ul class="files">
                   @for (file of m.gates.reviewed.files; track file) {
                     <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
@@ -66,7 +66,7 @@
           <div class="where-body">
             @if (tier() !== 'wide') {
               <div class="ring-block">
-                <ui-ring aria-hidden="true" [value]="claimsRatio()" [size]="96" [stroke]="10" />
+                <ui-ring aria-hidden="true" [value]="store.claimsRatio()" [size]="96" [stroke]="10" />
                 <p class="ring-text" data-claims-closed>
                   {{ 'status.where.claimsClosed' | transloco: { closed: m.keyNumbers.claims.closed, total: m.keyNumbers.claims.total } }}
                 </p>
@@ -77,11 +77,11 @@
                 [head]="m.head"
                 [next]="m.next"
                 [guidance]="m.guidance"
-                [workflow]="workflow()"
-                [actors]="actors()"
+                [workflow]="store.workflow()"
+                [actors]="store.actors()"
                 [compact]="tier() === 'compact'"
                 [showCommand]="tier() !== 'wide'"
-                [ws]="ws() ?? ''"
+                [ws]="store.ws() ?? ''"
                 [since]="m.next.since ? { at: m.next.since, via: m.next.via ?? '' } : null"
               />
               @if (m.next.reasons.length > 1) {
@@ -93,7 +93,7 @@
               }
               <p class="takeable" data-takeable>
                 <span>{{ (m.keyNumbers.claims.takeable === 1 ? 'status.where.takeable.one' : 'status.where.takeable.other') | transloco: { count: m.keyNumbers.claims.takeable } }}</span>
-                @if (lock(); as held) {
+                @if (store.lock(); as held) {
                   <span class="locked"><ui-icon name="lock" [size]="14" />{{ 'status.where.locked' | transloco: { session: held.session } }}</span>
                 } @else {
                   <span>{{ 'status.where.free' | transloco }}</span>
@@ -186,7 +186,7 @@
           <ui-section-header [heading]="'status.open.heading' | transloco">
             <span meta>{{ m.keyNumbers.claims.open }}</span>
           </ui-section-header>
-          @if (open(); as o) {
+          @if (store.open(); as o) {
             @if (o.claims.length === 0 && o.fog.length === 0) {
               <div class="status-empty" data-status-empty>
                 <p class="status-empty-title"><ui-icon name="circle-check" [size]="16" />{{ 'status.open.allClosed' | transloco }}</p>
@@ -197,7 +197,7 @@
                 }
               </div>
             }
-            @for (group of openGroups(); track group.state) {
+            @for (group of store.openGroups(); track group.state) {
               <div class="open-group" [attr.data-open-group]="group.state">
                 <p class="sub">{{ 'status.open.groups.' + group.state | transloco }} · {{ group.claims.length }}</p>
                 <ul class="rows" [attr.aria-label]="'status.open.groups.' + group.state | transloco">
@@ -234,9 +234,9 @@
                 }
               </ul>
             }
-            @if (held().length > 0) {
+            @if (store.held().length > 0) {
               <ul class="rows" data-held-list>
-                @for (task of held(); track task.id) {
+                @for (task of store.held(); track task.id) {
                   <li class="held-row" data-held-task [attr.data-task]="task.id">
                     <ui-icon class="held-icon" name="clock" [size]="16" />
                     <code class="ref">{{ task.id }}</code>
@@ -255,16 +255,16 @@
         <section class="section-card activity" data-section="activity">
           <ui-section-header [heading]="'status.activity.heading' | transloco">
             <span actions class="act-links" data-activity-links>
-              <a class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
-              <a class="link link-hover" data-activity-link="board" [routerLink]="link('board')">{{ 'status.activity.board' | transloco }}</a>
-              <a class="link link-hover" data-activity-link="report" [routerLink]="link('library')" [queryParams]="{ type: 'evidence' }">{{ 'status.activity.report' | transloco }}</a>
+              <a class="link link-hover" [routerLink]="store.link('timeline')">{{ 'status.activity.all' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="board" [routerLink]="store.link('board')">{{ 'status.activity.board' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="report" [routerLink]="store.link('library')" [queryParams]="{ type: 'evidence' }">{{ 'status.activity.report' | transloco }}</a>
             </span>
           </ui-section-header>
-          @if (activity(); as entries) {
+          @if (store.activity(); as entries) {
             @if (entries.length === 0) {
               <p class="muted">{{ 'status.activity.none' | transloco }}</p>
             } @else {
-              @if (roundSummary(); as round) {
+              @if (store.roundSummary(); as round) {
                 <p class="round-sum" data-round-summary>
                   <b>{{ round.lead }}</b>@if (round.rest) { · {{ round.rest }} }
                   @if (round.ts) {
@@ -278,7 +278,7 @@
                     <ui-icon class="act-icon" [name]="activityIcon(entry.kind)" [size]="16" />
                     <span class="kind">{{ 'status.activity.kinds.' + entry.kind | transloco }}</span>
                     @if (entry.id; as id) {
-                      <a class="row-text link link-hover" [routerLink]="link('timeline')" [fragment]="'t/' + id">{{ entry.title }}</a>
+                      <a class="row-text link link-hover" [routerLink]="store.link('timeline')" [fragment]="'t/' + id">{{ entry.title }}</a>
                     } @else {
                       <span class="row-text">{{ entry.title }}</span>
                     }
@@ -294,7 +294,7 @@
           } @else {
             <p class="muted">{{ 'status.activity.error' | transloco }}</p>
           }
-          @if (brief(); as b) {
+          @if (store.brief(); as b) {
             <app-brief class="act-brief" data-activity-brief [brief]="b" />
           }
         </section>

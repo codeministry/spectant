@@ -20,20 +20,25 @@
     <ui-empty-state data-gantt-empty icon="layers" [heading]="'planning.features.empty.heading' | transloco" [body]="'planning.features.empty.body' | transloco" />
   }
 
+  <!-- The month ticks, milestone boundaries and today line inside every `.lines`, the axis's included. -->
+  <ng-template #ticks>
+    @for (m of months(); track m.month) {
+      @if (m.left > 0) {
+        <span class="mline" [style.left.%]="m.left"></span>
+      }
+    }
+    @for (b of boundaries(); track b.ref) {
+      <span class="bline" [style.left.%]="b.left"></span>
+    }
+    <span class="tline"></span>
+  </ng-template>
+
   <!-- The lines every time cell draws, so the axis, the group heads and the lanes stand on one grid. -->
   <ng-template #lines>
     @if (axis() !== null) {
       <span class="lead" aria-hidden="true"></span>
       <span class="lines" aria-hidden="true">
-        @for (m of months(); track m.month) {
-          @if (m.left > 0) {
-            <span class="mline" [style.left.%]="m.left"></span>
-          }
-        }
-        @for (b of boundaries(); track b.ref) {
-          <span class="bline" [style.left.%]="b.left"></span>
-        }
-        <span class="tline"></span>
+        <ng-container [ngTemplateOutlet]="ticks" />
       </span>
     }
   </ng-template>
@@ -77,15 +82,7 @@
                 }
               </span>
               <span class="lines">
-                @for (m of months(); track m.month) {
-                  @if (m.left > 0) {
-                    <span class="mline" [style.left.%]="m.left"></span>
-                  }
-                }
-                @for (b of boundaries(); track b.ref) {
-                  <span class="bline" [style.left.%]="b.left"></span>
-                }
-                <span class="tline"></span>
+                <ng-container [ngTemplateOutlet]="ticks" />
               </span>
             </span>
           </span>

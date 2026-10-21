@@ -20,7 +20,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { Priority } from '../../../../../../core/src/files';
 import type { PlanningModel } from '../../../../../../core/src/planning';
 import type { RelationRef } from '../../../../../../core/src/relations';
-import { DetailSelection, refSelector, selectedLook, type SelectedLook } from '../../../layout/detail-sidebar/selection';
+import { DetailSelection, refSelector, selectedLook } from '../../../layout/detail-sidebar/selection';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiTime } from '../../../shared/time';
 import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
@@ -29,45 +29,16 @@ import { UiTerm } from '../../../shared/ui/term/term';
 import { UiLiveRegion } from '../../../shared/ui/live-region/live-region';
 import { RefusalNotice } from '../../../shared/ui/refusal-notice/refusal-notice';
 import { ShellState } from '../../../layout/shell/shell-state.service';
-import { beforeFor, edgeBefore, groupOf, positionOf, stepBefore, type Target } from '../../../core/model/backlog-order';
+import { groupOf } from '../../../core/model/backlog-order';
 import { featureOrder } from '../../../core/model/feature-order';
 import { BacklogWriter, withBacklog } from '../../../layout/shell/backlog-writer.service';
 import { PriorityMenu } from '../../../layout/backlog-menu/priority-menu';
 import { ReorderMenu, type ReorderStep } from '../../../layout/backlog-menu/reorder-menu';
 import { BOARD_DRAG_CONFIG } from '../../../shared/ui/drag-config';
 import { hasArchivedSpecs, planningCounts } from '../../../core/model/planning-counts';
-import { buildTree, hasDoneOrEmpty, pathTo, withoutDoneAndEmpty, type TreeKind, type TreeNode } from './tree-nodes';
-
-/** The tree's levels in cascade order, each with its glossary term (ISC-107's `terms.*` hints). */
-const LEVELS = [
-  { id: 'milestones', term: 'terms.milestone' },
-  { id: 'features', term: 'terms.feature' },
-  { id: 'specs', term: 'terms.spec' },
-  { id: 'claims', term: 'terms.claim' },
-] as const;
-
-/** One visible row: the node, where it stands, and the state the template binds without calling back. */
-interface TreeRow {
-  readonly node: TreeNode;
-  readonly kind: TreeKind;
-  readonly key: string;
-  readonly parentKey: string | null;
-  readonly level: number;
-  /** One entry per guide line left of the row (`level - 1`). */
-  readonly guides: readonly number[];
-  readonly expandable: boolean;
-  readonly open: boolean;
-  readonly look: SelectedLook | null;
-  readonly full: boolean;
-  /** A feature's move group (`featureOrder` key): its milestone's row key, or `group`; null for every other kind. */
-  readonly group: string | null;
-}
-
-/** Where the drop line of a drag stands: before or after a feature row of the dragged one's group. */
-interface DropMark {
-  readonly key: string;
-  readonly side: 'before' | 'after';
-}
+import { buildTree, hasDoneOrEmpty, pathTo, withoutDoneAndEmpty } from './tree-nodes';
+import { announcement, dropTarget, menuStateOf, stepTarget, type DropMark } from './tree-reorder';
+import { expandableKeys, keyStep, LEVELS, treeRows, type TreeRow } from './tree-rows';
 
 /**
  * The tree lens (spec 026, `/w/:ws/planning/tree`, ISC-168): the cascade Milestone › Feature › Spec › Claim as one
@@ -88,7 +59,8 @@ interface DropMark {
   // The board's drag delays (touch after 350 ms, mouse after 4 px): one feel for every grip of the app (spec 037).
   providers: [{ provide: CDK_DRAG_CONFIG, useValue: BOARD_DRAG_CONFIG }],
   host: { 'data-lens': 'tree' },
-  styleUrls: ['./planning-tree.css', '../../../layout/detail-sidebar/selection.css'],
+  // planning-tree.css and planning-tree.content.css are one stylesheet in two files, in cascade order (spec 061).
+  styleUrls: ['./planning-tree.css', './planning-tree.content.css', '../../../layout/detail-sidebar/selection.css'],
   templateUrl: './planning-tree.html',
 })
 export class PlanningTree {
@@ -159,34 +131,14 @@ export class PlanningTree {
   /** The row holding the roving tab stop once the user moved it. */
   private readonly focusKey = signal<string | null>(null);
 
-  protected readonly rows = computed<readonly TreeRow[]>(() => {
-    const overrides = this.overrides();
-    const path = this.path();
-    const lifted = this.dragGroup() !== null;
-    const out: TreeRow[] = [];
-    const visit = (node: TreeNode, level: number, parentKey: string | null): void => {
-      const expandable = node.children.length > 0;
-      const byDefault = node.kind === 'milestone' || node.kind === 'group' || path.has(node.key);
-      // While a feature is dragged, every feature shows its head only, so each gap is a feature boundary.
-      const open = expandable && !(lifted && node.kind === 'feature') && (overrides.get(node.key) ?? byDefault);
-      out.push({
-        node,
-        kind: node.kind,
-        key: node.key,
-        parentKey,
-        level,
-        guides: Array.from({ length: level - 1 }, (_, i) => i),
-        expandable,
-        open,
-        look: node.ref === null ? null : selectedLook(this.selection, node.ref, 'row'),
-        full: node.total > 0 && node.closed === node.total,
-        group: node.kind === 'feature' ? (parentKey ?? 'group') : null,
-      });
-      if (open) for (const child of node.children) visit(child, level + 1, node.key);
-    };
-    for (const root of this.roots()) visit(root, 1, null);
-    return out;
-  });
+  protected readonly rows = computed<readonly TreeRow[]>(() =>
+    treeRows(this.roots(), {
+      overrides: this.overrides(),
+      path: this.path(),
+      lifted: this.dragGroup() !== null,
+      lookOf: (ref) => selectedLook(this.selection, ref, 'row'),
+    }),
+  );
 
   /** The row with the tab stop: the one the user moved to, else the selected one, else the first. */
   protected readonly tabStop = computed(() => {
@@ -196,15 +148,7 @@ export class PlanningTree {
     return rows.find((row) => row.look !== null)?.key ?? rows.at(0)?.key ?? null;
   });
 
-  private readonly expandableKeys = computed(() => {
-    const keys: string[] = [];
-    const walk = (node: TreeNode): void => {
-      if (node.children.length > 0) keys.push(node.key);
-      node.children.forEach(walk);
-    };
-    this.roots().forEach(walk);
-    return keys;
-  });
+  private readonly expandableKeys = computed(() => expandableKeys(this.roots()));
   protected readonly allOpen = computed(() => {
     const open = new Set(this.rows().filter((row) => row.open).map((row) => row.key));
     return this.expandableKeys().every((key) => open.has(key));
@@ -288,54 +232,16 @@ export class PlanningTree {
     }
     // The grip and the chip are buttons: Enter and Space are theirs, not the row's.
     if ((event.key === 'Enter' || event.key === ' ') && event.target !== event.currentTarget) return;
-    let next: TreeRow | undefined;
-    switch (event.key) {
-      case 'ArrowDown':
-        next = rows[at + 1];
-        break;
-      case 'ArrowUp':
-        next = rows[at - 1];
-        break;
-      case 'Home':
-        next = rows[0];
-        break;
-      case 'End':
-        next = rows.at(-1);
-        break;
-      case 'ArrowRight':
-        if (row.expandable && !row.open) this.setOpen(row.key, true);
-        else if (row.open) next = rows[at + 1];
-        break;
-      case 'ArrowLeft':
-        if (row.open) this.setOpen(row.key, false);
-        else next = rows.find((candidate) => candidate.key === row.parentKey);
-        break;
-      case 'Enter':
-      case ' ':
-        this.activate(row);
-        break;
-      default:
-        return;
-    }
+    const step = keyStep(rows, at, event.key);
+    if (step === null) return;
+    if (step.open !== undefined) this.setOpen(row.key, step.open);
+    if (step.activate === true) this.activate(row);
     event.preventDefault();
-    if (next !== undefined) this.moveTo(next.key);
+    if (step.next !== undefined) this.moveTo(step.next.key);
   }
 
   /** The "Move" menu's state for the feature whose grip opened it: its group's name and where it stands. */
-  protected readonly menuState = computed(() => {
-    const row = this.menuRow();
-    if (row?.group == null) return null;
-    const order = this.order();
-    const at = positionOf(order, row.group, row.node.id);
-    return {
-      feature: row.node.id,
-      group: groupOf(order, row.group)?.name ?? null,
-      canUp: at !== null && at.index > 1,
-      canDown: at !== null && at.index < at.count,
-      position: at?.index ?? null,
-      count: at?.count ?? null,
-    };
-  });
+  protected readonly menuState = computed(() => menuStateOf(this.order(), this.menuRow()));
 
   /** The name of the feature's milestone, for the grip's name; empty for the group. */
   protected menuGroupName(row: TreeRow): string {
@@ -358,9 +264,7 @@ export class PlanningTree {
   /** T23 · ISC-195: one step of the menu or of Alt+↑/↓; at the group's edge nothing is sent, the live region says so. */
   private async step(row: TreeRow, step: ReorderStep): Promise<void> {
     if (row.group === null) return;
-    const order = this.order();
-    const id = row.node.id;
-    const before = step === 'up' || step === 'down' ? stepBefore(order, row.group, id, step === 'up' ? -1 : 1) : edgeBefore(order, row.group, id, step);
+    const before = stepTarget(this.order(), row.group, row.node.id, step);
     if (before === 'none') {
       this.announce(step === 'up' || step === 'first' ? 'backlog.tree.atFirst' : 'backlog.tree.atLast', row);
       return;
@@ -399,13 +303,8 @@ export class PlanningTree {
   }
 
   private announce(key: string, row: TreeRow, plural = false): void {
-    if (row.group === null) return;
-    const order = this.order();
-    const at = positionOf(order, row.group, row.node.id);
-    const name = groupOf(order, row.group)?.name ?? null;
-    const params = { id: row.node.id, position: at?.index ?? 0, count: at?.count ?? 0, group: name ?? '' };
-    const form = plural ? (params.count === 1 ? '.one' : '.other') : '';
-    this.live()?.announce(this.transloco.translate(`${name === null ? `${key}None` : key}${form}`, params, this.lang()));
+    const said = announcement(this.order(), row, key, plural);
+    if (said !== null) this.live()?.announce(this.transloco.translate(said.key, said.params, this.lang()));
   }
 
   protected dragStarted(row: TreeRow): void {
@@ -432,12 +331,10 @@ export class PlanningTree {
   }
 
   /**
-   * The gap under the pointer, measured on the rows of the dragged feature's own group as they stand now (never from
-   * cached positions, so a scrolled page or auto-scroll still lands right): a pointer beyond the group's first or last
-   * row by half a row is no target. Rows the empty-feature toggle hides are skipped by mapping the shown gap onto the
-   * full group, where `beforeFor` refuses a gap beside the feature itself.
+   * The gap under the pointer (`dropTarget`), measured on the rows of the dragged feature's own group as they stand
+   * now, never from cached positions, so a scrolled page or auto-scroll still lands right.
    */
-  private dropFor(row: TreeRow, y: number): { before: Target; mark: DropMark | 'none' | null } {
+  private dropFor(row: TreeRow, y: number): ReturnType<typeof dropTarget> {
     if (row.group === null) return { before: 'none', mark: null };
     const seen = new Map<string, DOMRect>();
     for (const el of this.host.nativeElement.querySelectorAll<HTMLElement>(`[role="treeitem"][data-kind="feature"][data-group="${CSS.escape(row.group)}"]`)) {
@@ -445,20 +342,7 @@ export class PlanningTree {
       const key = el.dataset['key'];
       if (key !== undefined && rect.height > 0 && !el.classList.contains('cdk-drag-preview')) seen.set(key, rect);
     }
-    const shown = this.rows().filter((candidate) => candidate.group === row.group && seen.has(candidate.key));
-    const rects = shown.map((candidate) => seen.get(candidate.key) as DOMRect);
-    const first = rects.at(0);
-    const last = rects.at(-1);
-    if (first === undefined || last === undefined) return { before: 'none', mark: null };
-    if (y < first.top - first.height / 2 || y > last.bottom + last.height / 2) return { before: 'none', mark: 'none' };
-    const gap = rects.filter((rect) => rect.top + rect.height / 2 < y).length;
-    const ids = groupOf(this.order(), row.group)?.ids ?? [];
-    const lastShown = shown.at(-1)?.node.id;
-    const target = shown.at(gap)?.node.id ?? (lastShown === undefined ? null : (ids.at(ids.indexOf(lastShown) + 1) ?? null));
-    const before = beforeFor(this.order(), row.group, row.node.id, target === null ? ids.length : ids.indexOf(target));
-    if (before === 'none') return { before, mark: null };
-    const mark: DropMark = gap < shown.length ? { key: shown[gap]?.key ?? '', side: 'before' } : { key: shown.at(-1)?.key ?? '', side: 'after' };
-    return { before, mark };
+    return dropTarget(this.order(), this.rows(), seen, row, y);
   }
 
   /** The drop line's side on this row, if it stands there. */
