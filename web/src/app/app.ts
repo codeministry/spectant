@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { KeyboardService } from './core/keyboard.service';
+import { KeyboardService } from './layout/shell/keyboard.service';
 import { ShortcutSheet } from './features/shortcuts/shortcut-sheet';
 import { CommandPalette } from './layout/command-palette/command-palette';
 import { UiToast } from './shared/ui/toast/toast';

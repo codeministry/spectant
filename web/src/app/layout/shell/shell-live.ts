@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { DashboardBody } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from './refresh.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { relativeParts } from '../../shared/ui/relative-time/relative-time';

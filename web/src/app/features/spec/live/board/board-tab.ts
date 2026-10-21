@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { CardState, Frame, FrameCard, LiveFrame, RunState } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
-import { RefreshService } from '../../../../core/refresh.service';
+import { RefreshService } from '../../../../layout/shell/refresh.service';
 import { type Density, isDensity, SettingsService } from '../../../../core/settings.service';
 import { type RailBadge, RailContent } from '../../../../layout/shell/rail-content';
 import { ShellData } from '../../../../layout/shell/shell-data.service';

@@ -4,11 +4,11 @@ import { ApplicationRef, DOCUMENT, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { specRoutes, type LiveUpdate } from '../../../../server/src/contracts/spec-routes.contract';
-import { ShellData } from '../layout/shell/shell-data.service';
-import { ShellState } from '../layout/shell/shell-state.service';
-import { ApiClient, dashboardUrl, planningUrl, WORKSPACES_URL } from './api.service';
-import { LiveStreamService } from './live-stream.service';
+import { specRoutes, type LiveUpdate } from '../../../../../server/src/contracts/spec-routes.contract';
+import { ShellData } from './shell-data.service';
+import { ShellState } from './shell-state.service';
+import { ApiClient, dashboardUrl, planningUrl, WORKSPACES_URL } from '../../core/api.service';
+import { LiveStreamService } from '../../core/live-stream.service';
 import { diffDashboards, FALLBACK_POLL_MS, RefreshService } from './refresh.service';
 
 const body = (closed: number, specs: ReadonlyArray<{ id: string; stage: string }>): unknown => ({

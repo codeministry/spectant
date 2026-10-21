@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DOCUMENT, inject, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from './keyboard.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiKbd } from '../../shared/ui/kbd/kbd';

@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, Injector, linkedSignal, type Resource, resource, type Signal, signal, untracked } from '@angular/core';
 import type { ClaimGlyphState } from '../../../../../core/src/files';
 import { ApiClient, type DashboardBody } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../shell/refresh.service';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 

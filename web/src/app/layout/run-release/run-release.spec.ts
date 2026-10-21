@@ -5,7 +5,7 @@ import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import type { ActorRef, ItemRun, ItemStateInfo } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ApiClient } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../shell/refresh.service';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';

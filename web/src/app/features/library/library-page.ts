@@ -22,7 +22,7 @@ import type { LibraryCatalog, LibraryDoc, SpecGroupHead, SpecType } from '../../
 import { renderDocsMarkdown } from '../../../../../core/src/markdown-docs';
 import type { Stage } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { NotFound } from '../../layout/not-found/not-found';
 import { specLink } from '../../layout/shell/areas';
 import { LibraryTabCount } from '../../layout/shell/page-tabs';

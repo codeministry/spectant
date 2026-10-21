@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LANGS } from '../../../i18n/catalogues';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from '../../layout/shell/keyboard.service';
 import { LanguageService } from '../../core/language.service';
 import { isAgeMinutes, isDensity, SettingsService, type ThemeMode } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';

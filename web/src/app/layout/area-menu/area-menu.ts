@@ -3,7 +3,7 @@ import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, 
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { ApiClient, type PlanningBody } from '../../core/api.service';
-import { DASHBOARD_GO_KEY } from '../../core/keyboard-bindings';
+import { DASHBOARD_GO_KEY } from '../shell/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
 import { UiIcon } from '../../shared/icons/icon';

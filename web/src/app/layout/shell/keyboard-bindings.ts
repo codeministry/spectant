@@ -1,4 +1,4 @@
-import { type AreaId, SPEC_AREAS, type TabId, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspacePageById } from '../layout/shell/areas';
+import { type AreaId, SPEC_AREAS, type TabId, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspacePageById } from './areas';
 
 /**
  * The app's keyboard bindings (ISC-97, T102) as data: `KeyboardService` dispatches from this table, the shortcut sheet

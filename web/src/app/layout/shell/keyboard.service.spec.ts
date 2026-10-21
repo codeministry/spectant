@@ -2,15 +2,15 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DefaultUrlSerializer, Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
-import { areaById, areaPath, SPEC_AREAS, specLink, type TabId } from '../layout/shell/areas';
-import { PaletteIndex } from '../layout/command-palette/palette-index';
+import { areaById, areaPath, SPEC_AREAS, specLink, type TabId } from './areas';
+import { PaletteIndex } from '../command-palette/palette-index';
 import { RefreshService } from './refresh.service';
-import { ShellData } from '../layout/shell/shell-data.service';
-import { ShellState } from '../layout/shell/shell-state.service';
-import { ToastService } from '../shared/ui/toast/toast';
+import { ShellData } from './shell-data.service';
+import { ShellState } from './shell-state.service';
+import { ToastService } from '../../shared/ui/toast/toast';
 import { G_WINDOW_MS, GO_PREFIX, GROUP_CONTEXT, SHORTCUTS, TAB_GO_KEYS } from './keyboard-bindings';
 import { HINT_QUERY, KEYBOARD_CLOCK, KeyboardService } from './keyboard.service';
-import { DEFAULT_SETTINGS, SettingsService } from './settings.service';
+import { DEFAULT_SETTINGS, SettingsService } from '../../core/settings.service';
 
 interface Setup {
   readonly url?: string;

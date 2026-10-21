@@ -1,10 +1,10 @@
 import { DestroyRef, DOCUMENT, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
-import type { LiveUpdate } from '../../../../server/src/contracts/spec-routes.contract';
-import { ShellData } from '../layout/shell/shell-data.service';
-import { ShellState } from '../layout/shell/shell-state.service';
-import { ApiClient } from './api.service';
-import { LiveStreamService } from './live-stream.service';
+import type { LiveUpdate } from '../../../../../server/src/contracts/spec-routes.contract';
+import { ShellData } from './shell-data.service';
+import { ShellState } from './shell-state.service';
+import { ApiClient } from '../../core/api.service';
+import { LiveStreamService } from '../../core/live-stream.service';
 
 /**
  * The fallback poll's period (spec 053, ISC-317): a fixed 60 s while the live stream is disconnected and the page is

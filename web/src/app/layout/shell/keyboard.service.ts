@@ -2,12 +2,12 @@ import { computed, DOCUMENT, inject, Injectable, InjectionToken, signal } from '
 import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, Router } from '@angular/router';
 import { first } from 'rxjs';
 import { TranslocoService } from '@jsverse/transloco';
-import { areaById, areaPath, specLink, workspaceLink } from '../layout/shell/areas';
-import { ShellData } from '../layout/shell/shell-data.service';
-import { ShellState, stepSpec } from '../layout/shell/shell-state.service';
-import { PaletteIndex } from '../layout/command-palette/palette-index';
-import { writeClipboard } from '../shared/ui/command-chip/command-chip';
-import { ToastService } from '../shared/ui/toast/toast';
+import { areaById, areaPath, specLink, workspaceLink } from './areas';
+import { ShellData } from './shell-data.service';
+import { ShellState, stepSpec } from './shell-state.service';
+import { PaletteIndex } from '../command-palette/palette-index';
+import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
+import { ToastService } from '../../shared/ui/toast/toast';
 import {
   altTyped,
   type DashboardSection,
@@ -20,7 +20,7 @@ import {
   SHORTCUTS,
 } from './keyboard-bindings';
 import { RefreshService } from './refresh.service';
-import { SettingsService } from './settings.service';
+import { SettingsService } from '../../core/settings.service';
 
 /** Key hints show only where a keyboard is likely (design.md § Interaction and accessibility). */
 export const HINT_QUERY = '(any-hover: hover) and (any-pointer: fine)';

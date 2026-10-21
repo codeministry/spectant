@@ -7,7 +7,7 @@ import harbor from '../../../../../core/fixtures/harbor.golden.json';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../../layout/shell/refresh.service';
 import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { RailContent } from '../../layout/shell/rail-content';
 import { ShellData } from '../../layout/shell/shell-data.service';

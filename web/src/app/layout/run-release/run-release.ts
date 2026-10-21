@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { ItemRun, ItemStateInfo } from '../../../../../core/src/files';
 import { ApiClient } from '../../core/api.service';
-import { RefreshService } from '../../core/refresh.service';
+import { RefreshService } from '../shell/refresh.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiNotice } from '../../shared/ui/notice/notice';

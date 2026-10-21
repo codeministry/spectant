@@ -8,7 +8,7 @@ import frames from '../../../../../../../core/fixtures/harbor.frames.golden.json
 import live from '../../../../../../../core/fixtures/harbor.live.golden.json';
 import type { Frame, LiveFrame, TaskSteps } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
-import { RefreshService } from '../../../../core/refresh.service';
+import { RefreshService } from '../../../../layout/shell/refresh.service';
 import { type Density, SETTINGS_URL, SettingsService } from '../../../../core/settings.service';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { RailContent } from '../../../../layout/shell/rail-content';

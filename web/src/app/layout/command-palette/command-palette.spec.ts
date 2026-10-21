@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
-import { KeyboardService } from '../../core/keyboard.service';
+import { KeyboardService } from '../shell/keyboard.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
 import { formatDay } from '../../shared/time';
 import { ShellState } from '../shell/shell-state.service';
