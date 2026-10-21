@@ -30,6 +30,9 @@ export class WsIdentity {
   readonly pathTail = input('');
   /** Whether cover and name link to the workspace (a loading or unreadable column does not). */
   readonly link = input(true);
+  /** The stored logo and screenshot (spec 016, the loopback image route); they win over the fixture's stand-ins. */
+  readonly logo = input<string | null>(null);
+  readonly screenshot = input<string | null>(null);
 
   private readonly demo = inject(DemoData);
 

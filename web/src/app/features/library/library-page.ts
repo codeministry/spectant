@@ -1,9 +1,10 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, ElementRef, inject, Injector, ViewEncapsulation } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, ElementRef, inject, Injector, ViewEncapsulation } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { NotFound } from '../../layout/not-found/not-found';
 import { specLink } from '../../layout/shell/areas';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiTime } from '../../shared/time';
@@ -120,6 +121,7 @@ export { fileName, missingCommand, typeIcon } from './library-prose';
 export class LibraryPage {
   protected readonly state = inject(ShellState);
   private readonly store = inject(LibraryStore);
+  private readonly shell = inject(ShellData);
   private readonly transloco = inject(TranslocoService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
@@ -132,6 +134,8 @@ export class LibraryPage {
   // The store's state as the template reads it.
   protected readonly ws = this.store.ws;
   protected readonly wsName = this.store.wsName;
+  /** The page badge's stored logo (spec 016), the initials without one. */
+  protected readonly logo = computed(() => this.shell.wsImages().logo);
   protected readonly wide = this.store.wide;
   protected readonly specScoped = this.store.specScoped;
   protected readonly catalog = this.store.catalog;

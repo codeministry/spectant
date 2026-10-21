@@ -11,7 +11,7 @@
     [back]="{ href: '/w/' + ws(), label: ('library.back' | transloco) }"
   >
     <div class="lib-h1" ngProjectAs="h1">
-      <ui-ws-badge size="page" [name]="wsName()" aria-hidden="true" />
+      <ui-ws-badge size="page" [name]="wsName()" [logo]="logo()" aria-hidden="true" />
       <h1 class="type-page-title" id="library" tabindex="-1">
         {{ 'library.title' | transloco }}<span class="lib-ws"> · {{ wsName() }}</span>
       </h1>
