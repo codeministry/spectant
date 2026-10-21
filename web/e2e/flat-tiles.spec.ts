@@ -9,13 +9,18 @@
  *   body holds no `taken` entry, so the block is absent. With `/w/harbor` open and its `/api/events` stream connected,
  *   a stub lock on 003 (`POST /api/__stub/lock`) makes the 003 tile appear without navigation, and its release makes
  *   the block disappear again.
+ * - `bun run --cwd web e2e -- flat-tiles -g "warnings fold"` (T36, ISC-474): `/w/harbor?open=warnings` shows the
+ *   warnings open (toggle expanded, list lines visible) and stays on `/w/harbor`, no redirect to the Specs page.
+ *   `?open=tldr,warnings` opens both; it runs under `X-Spectant-Stub-Dense: on`, because harbor's golden TL;DR is
+ *   stale and a stale brief never opens from the address (spec 058). A reload keeps both. `/w/harbor` alone shows the
+ *   warnings closed, with their summary.
  *
- * Both at 1440 and 390 px.
+ * All at 1440 and 390 px.
  */
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
 import { atWidth, expect, test } from './fixtures';
-import { LOCK_PATH, LOCKS_HEADER, RESET_PATH, SESSION_HEADER, STUB_WORKING } from './stub-api';
+import { DENSE_HEADER, LOCK_PATH, LOCKS_HEADER, RESET_PATH, SESSION_HEADER, STUB_WORKING } from './stub-api';
 
 const WS = STUB_WORKING.workspace;
 const DASHBOARD = `/w/${WS}`;
@@ -96,4 +101,74 @@ for (const width of [1440, 390] as const) {
       await expect(page).toHaveURL(DASHBOARD);
     });
   });
+
+  test.describe(`warnings fold at ${String(width)}`, () => {
+    test.use({ ...atWidth(width) });
+
+    test(`warnings fold: ?open=warnings shows the list open on the dashboard, a reload keeps it (${String(width)})`, async ({ page }) => {
+      await page.goto(`${DASHBOARD}?open=warnings`);
+      await warningsOpen(page);
+      await onDashboard(page, ['warnings']);
+
+      await page.reload();
+      await warningsOpen(page);
+      await onDashboard(page, ['warnings']);
+    });
+
+    test(`warnings fold: ?open=tldr,warnings opens the TL;DR whole and the warnings, a reload keeps both (${String(width)})`, async ({ page }) => {
+      // Harbor's golden TL;DR is stale and never opens from the address; the dense stub's is fresh (spec 058).
+      await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on' });
+      await page.goto(`${DASHBOARD}?open=tldr,warnings`);
+      await tldrOpen(page);
+      await warningsOpen(page);
+      await onDashboard(page, ['tldr', 'warnings']);
+
+      await page.reload();
+      await tldrOpen(page);
+      await warningsOpen(page);
+      await onDashboard(page, ['tldr', 'warnings']);
+    });
+
+    test(`warnings fold: the dashboard alone shows the warnings closed with their summary (${String(width)})`, async ({ page }) => {
+      await page.goto(DASHBOARD);
+      await expect(warningsToggle(page)).toHaveAttribute('aria-expanded', 'false');
+      await expect(warningsToggle(page).locator('[data-warnings-summary]')).toBeVisible();
+      await expect(page.locator('#warnings-region')).toBeHidden();
+      await expect(warningLines(page)).toHaveCount(0);
+      await onDashboard(page, []);
+    });
+  });
+}
+
+/** The warnings' fold toggle inside `h2#warnings`. */
+function warningsToggle(page: Page): Locator {
+  return page.locator('app-warnings-panel button[data-warnings-toggle]');
+}
+
+/** The lines of the warnings list (one per warning of a spec). */
+function warningLines(page: Page): Locator {
+  return page.locator('[data-warnings-list] [data-warning-spec] [data-warning-kind]');
+}
+
+/** The warnings stand open: the toggle expanded, the region shown, its lines visible. */
+async function warningsOpen(page: Page): Promise<void> {
+  await expect(warningsToggle(page)).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#warnings-region')).toBeVisible();
+  await expect(warningLines(page).first()).toBeVisible();
+  expect(await warningLines(page).count(), 'harbor has warnings to list').toBeGreaterThan(0);
+}
+
+/** The TL;DR stands whole: the fold expanded, the rest shown, the first section unclipped. */
+async function tldrOpen(page: Page): Promise<void> {
+  const card = page.locator('[data-ui="brief"]');
+  await expect(card.locator('[data-brief-fold] button.summary')).toHaveAttribute('aria-expanded', 'true');
+  await expect(card.locator('[data-brief-rest]')).toBeVisible();
+  await expect(card.locator('[data-brief-first]')).not.toHaveAttribute('data-clipped');
+}
+
+/** The address is still the dashboard (no redirect to `/w/harbor/specs`) and `?open=` holds exactly `keys`. */
+async function onDashboard(page: Page, keys: readonly string[]): Promise<void> {
+  await expect(page).toHaveURL((url) => url.pathname === DASHBOARD);
+  const open = new URL(page.url()).searchParams.get('open');
+  expect((open ?? '').split(',').filter(Boolean).sort()).toEqual([...keys].sort());
 }

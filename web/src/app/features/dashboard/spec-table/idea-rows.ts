@@ -1,6 +1,6 @@
 import type { ItemStateInfo } from '../../../../../../core/src/files';
 import { isLoose, text } from '../../../layout/shell/loose';
-import { IDEA, type ListQuery } from './spec-table-model';
+import { IDEA, type ListOption, type ListQuery, type SpecTableRow } from './spec-table-model';
 
 /**
  * Spec 064 (T37, T39; ISC-479, ISC-480): the Specs list's view of the backlog's stories, read from the dashboard body's
@@ -46,10 +46,31 @@ function titleMatches(title: string, q: string | undefined): boolean {
 /**
  * The ideas the list shows for `query`, in model order: all of them with no phase or the phase `idea` (under which
  * `applyListQuery` keeps no spec row, as no stage group is `idea`), none under any other phase, fog, takeable or
- * working (an idea has no stage, claim or lock). The search `q` narrows them by title; the type filter does not reach
- * them, as a story carries no type.
+ * working (an idea has no stage, claim or lock), and none under any type filter (T41), as a story carries no type. The
+ * search `q` narrows them by title.
  */
 export function applyIdeaQuery(ideas: readonly DashboardIdea[], query: ListQuery): readonly DashboardIdea[] {
-  if ((query.phase !== null && query.phase !== IDEA) || query.takeable || query.working) return [];
+  if ((query.phase !== null && query.phase !== IDEA) || query.type !== null || query.takeable || query.working) return [];
   return ideas.filter((idea) => titleMatches(idea.title, query.q));
+}
+
+/** The phase chips with the chip "ideas" closing them (T41) while the workspace holds a story; none without chips. */
+export function withIdeaOption(options: readonly ListOption[], ideas: number): ListOption[] {
+  return [...options, ...(ideas > 0 && options.length > 0 ? [{ key: IDEA, count: ideas }] : [])];
+}
+
+/** The idea group's place among the list's entries (T41): one entry, its idea rows render inside it. */
+export const IDEAS_GROUP = { id: 'group:ideas', group: 'ideas' } as const;
+export type ListEntry = SpecTableRow | typeof IDEAS_GROUP;
+
+/**
+ * The list's entries (spec 064, T41, ISC-479): the active rows, the idea group when it holds an idea, then the archived
+ * rows, split into those always in view and those behind "show all N" right after the `cap`-th spec row, so the cap
+ * counts spec rows only and the group stands in whichever part holds the row after the last active one.
+ */
+export function listEntries(active: readonly SpecTableRow[], ideas: number, archived: readonly SpecTableRow[], cap: number): { head: ListEntry[]; rest: ListEntry[] } {
+  const entries: ListEntry[] = [...active, ...(ideas > 0 ? [IDEAS_GROUP] : []), ...archived];
+  let specs = 0;
+  const split = entries.findIndex((entry) => entry !== IDEAS_GROUP && ++specs > cap);
+  return split < 0 ? { head: entries, rest: [] } : { head: entries.slice(0, split), rest: entries.slice(split) };
 }

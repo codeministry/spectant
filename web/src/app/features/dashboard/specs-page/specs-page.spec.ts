@@ -89,9 +89,20 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
     expect(building.length).toBeGreaterThan(0);
     expect(building.length).toBeLessThan(harbor.specs.length);
     expect(rowIds(root)).toEqual(building.sort());
-    expect([...root.children].map((el) => el.tagName.toLowerCase())).toEqual(['ui-page-head', 'app-spec-table', 'app-ideas-panel', 'p']);
+    expect([...root.children].map((el) => el.tagName.toLowerCase())).toEqual(['ui-page-head', 'app-spec-table', 'p']);
     expect(root.querySelector('p.footer-note')?.textContent).toContain('code/harbor');
     for (const block of DASHBOARD_BLOCKS) expect(root.querySelector(block), block).toBeNull();
+  });
+
+  it('lists the stories as the idea group of the spec list, linked to their pages, and no ideas panel (spec 064, T42, ISC-479)', async () => {
+    const { root } = await render('/w/harbor/specs');
+    const group = root.querySelector('app-spec-table [data-ideas-group]');
+    expect(group).not.toBeNull();
+    expect(text(group?.querySelector('[data-ideas-count]'))).toBe(`${String(harbor.ideas.list.length)} ideas`);
+    const hrefs = [...(group?.querySelectorAll('app-idea-row a.link') ?? [])].map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual(harbor.ideas.list.map((idea) => `/w/harbor/ideas/${idea.slug}`));
+    expect(root.querySelector('[data-ideas]')).toBeNull();
+    expect(root.querySelector('app-ideas-panel')).toBeNull();
   });
 
   it('lists every active spec without a filter', async () => {

@@ -117,7 +117,7 @@ describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
       expect(order.at(-1)).toBe('p');
       expect(page.lastElementChild?.hasAttribute('data-footer-note')).toBe(true);
       expect(root.querySelector('app-spec-table')).toBeNull();
-      expect(root.querySelector('app-ideas-panel')).toBeNull();
+      expect(root.querySelector('[data-ideas-group]')).toBeNull();
       expect(root.querySelector('app-context-rail')).toBeNull();
       // No rail blocks or strip badges are registered (T13).
       const rail = TestBed.inject(RailContent);

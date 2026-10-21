@@ -247,7 +247,8 @@ test.describe('elements', () => {
       test.use(atWidth(width));
 
       test('the workspace Warnings list follows Next up and names spec, warning and command', async ({ page }) => {
-        await page.goto('/w/harbor');
+        // Spec 064 (ISC-474): the Warnings fold is closed by default; `?open=warnings` opens it.
+        await page.goto('/w/harbor?open=warnings');
         await expect(page.locator('app-shell')).toHaveAttribute('data-tier', tier);
 
         // Spec 058 (ISC-394): one column at every tier, no rail on the dashboard; the list sits in the main column.
@@ -344,8 +345,9 @@ const ICON_PLACES: readonly IconPlace[] = [
   // Spec 050 (T10, ISC-289): the archived link footer `[data-fold="archive"]` (`layers`) is gone; its pin moved to the
   // list head's Show archived toggle, marked `archive` (design.md 050). Harbor has an archived spec, so it renders.
   { section: WORKSPACE_VIEW, place: 'spec table archived toggle', route: '/w/harbor/specs', at: '[data-panel="specs"] [data-control="archived"]', icon: 'archive' },
-  { section: WORKSPACE_VIEW, place: 'warnings list line', route: '/w/harbor', at: '[data-warnings-list] [data-warning-spec] [data-warning-kind]', icon: 'triangle-alert' },
-  { section: WORKSPACE_VIEW, place: 'warnings list empty', route: '/w/lantern', at: '[data-warnings-list] [data-warnings-empty]', icon: 'circle-check' },
+  // The warnings fold is closed by default (spec 064, ISC-474): both places open it through the address.
+  { section: WORKSPACE_VIEW, place: 'warnings list line', route: '/w/harbor?open=warnings', at: '[data-warnings-list] [data-warning-spec] [data-warning-kind]', icon: 'triangle-alert' },
+  { section: WORKSPACE_VIEW, place: 'warnings list empty', route: '/w/lantern?open=warnings', at: '[data-warnings-list] [data-warnings-empty]', icon: 'circle-check' },
   { section: WORKSPACE_VIEW, place: 'palette input', route: '/w/harbor', open: openPalette, at: '[data-ui="command-palette"] .p-input', icon: 'search' },
   { section: WORKSPACE_VIEW, place: 'palette Recent', route: '/w/harbor', open: openPaletteWithRecent, at: '[data-group="recent"] [data-entry]', icon: 'clock' },
   { section: WORKSPACE_VIEW, place: 'palette Workspaces', route: '/w/harbor', open: openPalette, at: '[data-group="workspaces"] [data-entry="harbor"]', icon: 'folder' },

@@ -227,7 +227,8 @@ for (const theme of ['light', 'dark'] as const) {
         await rendered(page, '/w/harbor/board');
         await expect(waits(`[data-col="blocked"] app-board-card[data-key="spec:${full.folder}"] ui-waits-chip`, full.on)).toHaveCount(1);
 
-        await page.goto('/w/harbor');
+        // Spec 064 (ISC-474): the Warnings fold is closed by default; `?open=warnings` opens it.
+        await page.goto('/w/harbor?open=warnings');
         await rendered(page, '/w/harbor');
         for (const kind of ['spec-overlap', 'spec-edge']) {
           await expect(page.locator(`[data-warning-spec="${partial.spec}"] [data-warning-kind="${kind}"]`), kind).toHaveCount(1);

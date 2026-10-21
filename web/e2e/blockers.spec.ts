@@ -216,6 +216,8 @@ test.describe('blockers waits: the edges are met', () => {
  */
 const OVERLAP = { waiting: '002', other: '004', path: 'web/src/app/retention/', shown: 'retention/' } as const;
 const edgeOn = (other: string): string => `(after: ${other})`;
+/** The workspace dashboard with its Warnings open: the fold is closed by default (spec 064, ISC-474). */
+const WARNINGS_OPEN = `/w/${WS}?open=warnings`;
 
 /** The visible overlap lines of the workspace dashboard's Warnings list (the rail at 1440, the section below). */
 const listOverlaps = (page: Page): Locator =>
@@ -236,7 +238,7 @@ test.describe('blockers overlap: the spec-overlap warning of 002 and 004', () =>
   test.use({ ...atWidth(WIDTHS.desktop), permissions: ['clipboard-read', 'clipboard-write'] });
 
   test('overlap: the Warnings list holds the line on 002 with the path, its chip copies (after: 004)', async ({ page }) => {
-    await open(page, `/w/${WS}`);
+    await open(page, WARNINGS_OPEN);
     const line = listOverlaps(page);
     await expect(line, 'one overlap line in the list').toHaveCount(1);
     const onWaiting = page.locator(`app-warnings-panel [data-warning-spec="${OVERLAP.waiting}"] [data-warning-kind="spec-overlap"]`);
@@ -285,7 +287,7 @@ test.describe('blockers overlap: the spec-overlap warning of 002 and 004', () =>
 
   test('overlap: the warning shows on at least two surfaces, the list and both heads', async ({ page }) => {
     let shown = 0;
-    await open(page, `/w/${WS}`);
+    await open(page, WARNINGS_OPEN);
     await expect(listOverlaps(page)).toHaveCount(1);
     shown += await listOverlaps(page).count();
     for (const spec of [OVERLAP.waiting, OVERLAP.other]) {

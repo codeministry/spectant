@@ -493,6 +493,11 @@ describe('applyIdeaQuery and the phase idea (spec 064, T39, ISC-480)', () => {
     expect(slugs(parseListQuery(params({ phase: 'idea', working: '1' })))).toEqual([]);
   });
 
+  it('any type filter hides every idea, a story carries no type (spec 064, T41)', () => {
+    expect(slugs(parseListQuery(params({ type: 'feature' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ type: 'bug', phase: 'idea' })))).toEqual([]);
+  });
+
   it('?q= matches the idea titles, case-insensitive, every word', () => {
     expect(parseListQuery(params({ q: 'Upstream' })).q).toBe('Upstream');
     expect(parseListQuery(params({ q: '  ' })).q).toBeUndefined();

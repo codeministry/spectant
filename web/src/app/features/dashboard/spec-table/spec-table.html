@@ -80,7 +80,7 @@
     }
   </div>
 
-  @if (visible().length > 0) {
+  @if (visible().length > 0 || shownIdeas().length > 0) {
     <!-- Spec 021 (T25, ISC-246): one roving list over two lists, the first rows and those behind "show all N". The row
          template is declared inside the roving host, so the list's content query sees the rows of both. -->
     <div class="row-lists" uiRovingList [singleKeys]="singleKeys()">
@@ -108,6 +108,21 @@
         </ui-disclosure>
       }
       <ng-template #rowTpl let-row>
+        @if (row.group === 'ideas') {
+          <!-- Spec 064 (T41, ISC-479): the idea group between the active rows and the archive block, headed "Ideas · n";
+               each story is its own row with its own link to the idea page (not a roving item of the spec rows). -->
+          <li class="ideas-group" data-ideas-group>
+            <h3 class="ideas-head" id="ideas-group-heading">
+              <span data-ideas-label>{{ 'specs.ideasGroup.label' | transloco }}</span>
+              <span class="ideas-count" data-ideas-count>{{ (shownIdeas().length === 1 ? 'specs.ideasGroup.count.one' : 'specs.ideasGroup.count.other') | transloco: { count: shownIdeas().length } }}</span>
+            </h3>
+            <ol class="ideas" aria-labelledby="ideas-group-heading">
+              @for (idea of shownIdeas(); track idea.slug) {
+                <li><app-idea-row [idea]="idea" [ws]="ws()" /></li>
+              }
+            </ol>
+          </li>
+        } @else {
         <!-- Spec 021 (R1, ISC-240 refined): the row carries its guidance mark ("Waits on you" or the Next ring) in its
              line; the reason, the entry's sentence or a waiting spec's phrase, is the row link's description (and its
              tooltip), no line of its own. -->
@@ -186,6 +201,7 @@
             <span hidden [id]="'why-' + row.id" [attr.data-reason]="row.id" [attr.data-guide]="guide ? (guide.waits ? 'waits' : 'next') : null">{{ why }}</span>
           }
         </li>
+        }
       </ng-template>
     </div>
   } @else if (rows().length === 0 && archive().length === 0) {

@@ -5,7 +5,7 @@ import type { ItemStateInfo, Priority } from '../../../../../../core/src/files';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiItemState } from '../../../shared/ui/item-state/item-state';
 import { PRIORITY_LOOK, UiPriority } from '../../../shared/ui/priority/priority';
-import type { DashboardIdea } from '../ideas-panel/ideas-panel';
+import type { DashboardIdea } from './idea-rows';
 
 /** The state line without a command: an idea's row carries no Next command (ISC-482); its page holds the chip. */
 function withoutCommand(info: ItemStateInfo): ItemStateInfo {

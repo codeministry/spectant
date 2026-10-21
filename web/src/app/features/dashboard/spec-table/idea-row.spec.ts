@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
-import type { DashboardIdea } from '../ideas-panel/ideas-panel';
+import type { DashboardIdea } from './idea-rows';
 import { IdeaRow } from './idea-row';
 
 /** A story as `DashboardModel.ideas.list` serves it: placed, prioritised and open with its command. */

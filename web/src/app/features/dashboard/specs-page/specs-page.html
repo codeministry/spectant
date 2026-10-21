@@ -20,13 +20,11 @@
     [pending]="held().pending"
     (showPending)="showPending()"
     [archive]="archive()"
+    [ideas]="ideas()"
     [query]="query()"
     [preview]="previewId()"
     (queryChange)="setQuery($event)"
   />
-  @if (ideas().count > 0) {
-    <app-ideas-panel [ws]="page.ws()" [ideas]="ideas()" />
-  }
   @if (page.pathTail()) {
     <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: page.pathTail() } }}</p>
   }
