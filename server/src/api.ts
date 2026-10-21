@@ -33,17 +33,17 @@
  * otherwise), `updatedAt` from the server clock, and answers the list as stored.
  * The allocation route (spec 008 T87, ISC-130.2): `POST /api/workspaces/:ws/ideas/:slug/allocate` → `IdeaAllocated`,
  * the family's one write, matched by the same `matchWorkspacePath`: 403, then 405 with `Allow: POST` for any other
- * method, 404 unknown workspace, 409 with the summary when the folder cannot be read, otherwise `allocate-route.ts`
+ * method, 404 unknown workspace, 409 with the summary when the folder cannot be read, otherwise `writes/routes.ts`
  * (400, 404 unknown story, 409 stale story, 422 refused, 200). The lock source is `options.lifeos`'s, as on the reads;
  * the clock is `options.now`.
  *
  * The backlog route (spec 036, ISC-191): `POST /api/workspaces/:ws/backlog` → `BacklogWritten`, matched by the same
  * `matchWorkspacePath` with the allocation's guard order (403, 405 with `Allow: POST`, 404 unknown workspace, 409 with
- * the summary when the folder cannot be read), otherwise `backlog-route.ts` (400, 409 stale backlog, 422 refused, 200).
+ * the summary when the folder cannot be read), otherwise `writes/routes.ts` (400, 409 stale backlog, 422 refused, 200).
  * No lock source is read. The planning route serves `backlogHash` from the same raw bytes the write compares.
  *
  * The run release (spec 040, ISC-226): `POST /api/workspaces/:ws/runs/:run/release` → `RunReleased`, matched by the
- * same `matchWorkspacePath` with the backlog's guard order, otherwise `run-release-route.ts` (400 without the hash
+ * same `matchWorkspacePath` with the backlog's guard order, otherwise `writes/routes.ts` (400 without the hash
  * header, 404 no such open run, 409 stale log, 422 refused, 200). The dashboard sends the hash it compares,
  * `X-Spectant-Activity-Hash`, the raw sha256 of `.spectant/activity.jsonl` (the empty text's without the file).
  *
@@ -54,9 +54,6 @@
  * the unreadable codes replace OS messages, which would name the path.
  */
 import { parseActor } from "../../core/src/actor.ts";
-import { allocateAnswer } from "./allocate-route.ts";
-import { backlogAnswer } from "./backlog-route.ts";
-import { runReleaseAnswer } from "./run-release-route.ts";
 import type { Db } from "./infra/db/db.ts";
 import { listActors, replaceActors } from "./infra/db/prefs-store.ts";
 import type { ApiHandler } from "./http.ts";
@@ -77,11 +74,11 @@ import {
   DASHBOARD_PATH,
   WORKSPACES_PATH,
   WORKSPACE_READ_ALLOW,
-  readableWorkspace,
   workspaceContext,
   workspaceRoutes,
 } from "./workspace/index.ts";
 import { workspaceAdminAllowFor } from "./workspace-admin.contract.ts";
+import { workspaceWriteRoutes } from "./writes/index.ts";
 
 export { composeApi, json } from "./infra/http/json.ts";
 export {
@@ -102,34 +99,12 @@ export {
  */
 export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const ctx = workspaceContext(options);
-  const { stateDir, clock } = ctx;
   const { list, dashboard } = workspaceRoutes(ctx);
   const { planning, idea } = planningRoutes(ctx);
   const { boardQuery, favorites, favorite } = prefsRoutes(ctx);
   const { library, libraryDoc, librarySearch, libraryAsset } = libraryRoutes(ctx);
-
-  // The one write of the family (T87): the route layer's 404 and 409 here, everything else in `allocate-route.ts`.
-  const allocate = (req: Request, slug: string, story: string): Promise<Response> =>
-    readableWorkspace(ctx, req, slug, async (root) => {
-      const age = ctx.abortAge();
-      const answer = await allocateAnswer({ root, slug: story, stateDir, now: clock(), text: await req.text(), ...age });
-      return json(req, answer.status, answer.body);
-    });
-
-  // The backlog write (spec 036): the route layer's 404 and 409 here, everything else in `backlog-route.ts`.
-  const backlog = (req: Request, slug: string): Promise<Response> =>
-    readableWorkspace(ctx, req, slug, async (root) => {
-      const answer = await backlogAnswer({ root, now: clock(), text: await req.text() });
-      return json(req, answer.status, answer.body);
-    });
-
-  // The run release (spec 040, ISC-226): the route layer's 404 and 409 here, everything else in `run-release-route.ts`.
-  const runRelease = (req: Request, slug: string, run: string): Promise<Response> =>
-    readableWorkspace(ctx, req, slug, async (root) => {
-      const age = ctx.abortAge();
-      const answer = await runReleaseAnswer({ root, now: clock(), run, headers: req.headers, ...age });
-      return json(req, answer.status, answer.body);
-    });
+  // The family's three writes (allocation, backlog, run release): the route layer and the answers in `writes/`.
+  const { allocate, backlog, runRelease } = workspaceWriteRoutes(ctx);
 
   return (req, url) => {
     const { pathname } = url;

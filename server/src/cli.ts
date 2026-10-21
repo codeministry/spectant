@@ -44,15 +44,14 @@ import { detectLifeos, lifeosApi } from "./lifeos.ts";
 import { notesApi, openNotes } from "./notes.ts";
 import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
 import { dataDir } from "./paths.ts";
-import { eventsApi } from "./events-route.ts";
+import { createWatchHub, eventsApi } from "./live/index.ts";
 import { prototypeApi } from "./prototype.ts";
 import { openRegistry, type Registry, RegistryError } from "./registry.ts";
 import { openSettings, settingsApi } from "./settings.ts";
 import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
-import { createWatchHub, favoritesScan } from "./watch.ts";
-import { workspaceAdminApi } from "./workspace-admin-route.ts";
-import { openImageStore } from "./workspace-images.ts";
+import { favoritesScan } from "./planning/index.ts";
+import { openImageStore, workspaceAdminApi } from "./workspace-admin/index.ts";
 
 const USAGE = `Usage: spectant [command] [options]
 
@@ -253,7 +252,7 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const hub = createWatchHub({ registry });
     // The writing workspace routes (spec 016) come before the list route of `dashboardApi`, which answers 405 for
     // every write on its path, and announce each registry write on the same hub, so open streams show it at once.
-    const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos, imagesOf: images.imagesOf }), hub, images });
+    const admin = workspaceAdminApi({ registry, summaryOf: workspaceSummaryReader({ lifeos, imagesOf: images.imagesOf }), live: hub, images });
     // The favourites are pruned in the scan after a watcher change, never in a GET (spec 057, ISC-352, ISC-353).
     const api = composeApi(eventsApi({ hub, reads, scan: favoritesScan({ db, registry }) }), admin, reads);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });

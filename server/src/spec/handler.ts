@@ -9,13 +9,11 @@
  * without `spec.md` is no spec (404).
  *
  * The two writes (`POST …/gate/reviewed`, `POST …/tasks/:tid/check`): the body through `parseWriteBody` (400), then
- * `gate-route.ts` / `checkbox-route.ts` over `writes.ts` (404 unknown task, 409 hash mismatch, 423 lock, 200 written),
- * the answers typed by `writes.contract.ts`. The stage move (`POST …/transition`, T83) goes through `transition-route.ts`
- * over `writeTransition` and adds the 422 `transition-refused`.
+ * `writeGateReviewed` / `writeTaskCheck` of the `writes/` slice (404 unknown task, 409 hash mismatch, 423 lock, 200
+ * written), the answers typed by `writes.contract.ts`. The stage move (`POST …/transition`, T83) goes through
+ * `transitionAnswer` over `writeTransition` and adds the 422 `transition-refused`.
  */
-import { writeTaskCheck } from "../checkbox-route.ts";
-import { writeGateReviewed } from "../gate-route.ts";
-import { transitionAnswer } from "../transition-route.ts";
+import { transitionAnswer, writeGateReviewed, writeTaskCheck } from "../writes/index.ts";
 import type { Workspace } from "../infra/db/registry.ts";
 import { loopbackRefusal, methodNotAllowed } from "../infra/http/guard.ts";
 import { json } from "../infra/http/json.ts";

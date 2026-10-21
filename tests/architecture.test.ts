@@ -153,7 +153,7 @@ describe("io rule", () => {
     expect(io(entry, REPO_ROOT)).toEqual([]);
   });
 
-  test.failing("the app: no file outside server/src/infra does direct I/O", () => {
+  test("the app: no file outside server/src/infra does direct I/O", () => {
     expect(io(app, REPO_ROOT)).toEqual([]);
   });
 });

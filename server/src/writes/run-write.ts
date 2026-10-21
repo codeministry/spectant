@@ -1,6 +1,6 @@
 /**
  * The write mechanism (T68, ISC-26, ISC-27, ISC-86; plan 002 § Interfaces "HTTP", the two writes): the only code that
- * writes into a registered repository. The gate route (`gate-route.ts`) and the checkbox route (`checkbox-route.ts`)
+ * writes into a registered repository. The gate route (`gate.ts`) and the checkbox route (`checkbox.ts`)
  * say what to read and what to write; this module runs every write the same way:
  *
  * 1. The lock sources are read (`readLockSources`: LifeOS frontier locks when a state directory is given,
