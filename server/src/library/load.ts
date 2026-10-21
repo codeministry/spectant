@@ -3,26 +3,24 @@
  * core's `readCatalog` over the same input; `loadCatalogDocs` and `loadCatalogDoc` read the documents alone, core's
  * `readCatalogDocs` and `catalogDocAt` (ISC-156.5). Read-only, like every load of the workspace.
  *
- * Held here until the `library/` slice takes it over (spec 059, T42).
+ * `catalogLoaders` picks them as the library routes' defaults, or answers all three from a loader the context carries
+ * (`DashboardApiOptions.loadCatalog`, a test's seam).
  */
 import { join } from "node:path";
-import type { LibraryCatalog, LibraryDoc } from "../../../core/src/files.ts";
+import type { LibraryDoc } from "../../../core/src/files.ts";
 import { type RepoFileCopy, catalogDocAt, readCatalog, readCatalogDocs } from "../../../core/src/library.ts";
 import type { UnreadableCode } from "../contracts/spec-routes.contract.ts";
 import { codeOf, workspaceUnreadable } from "../infra/fs/errno.ts";
-import { readWorkspaceInput } from "./reading.ts";
-import { readIdeaSources, readRepoFile } from "./repo-files.ts";
-import { readCopies } from "./spec-source.ts";
-import { type WorktreeReading, readWorktreeView } from "./worktree-view.ts";
-
-/**
- * The document catalog of one workspace (spec 017), or why the workspace cannot be read. `copies` are the worktree
- * copies the catalog read its specs' own files from (`WorkspaceReading.copies`, spec 027, ISC-181), so the reader opens
- * the same file; server-internal, never part of a response (ISC-3), absent from a loader that names none.
- */
-export type CatalogLoad =
-  | { readable: true; catalog: LibraryCatalog; copies?: Readonly<Record<string, string>>; repoFiles?: Readonly<Record<string, RepoFileCopy>> }
-  | { readable: false; error: UnreadableCode };
+import {
+  type CatalogLoad,
+  type WorkspaceContext,
+  type WorktreeReading,
+  readCopies,
+  readIdeaSources,
+  readRepoFile,
+  readWorkspaceInput,
+  readWorktreeView,
+} from "../workspace/index.ts";
 
 /**
  * The document catalog of the workspace at `root` (spec 017 T14, ISC-156), loaded beside the model: core's
@@ -112,4 +110,35 @@ export function loadCatalogDocs(root: string): Promise<CopiesLoad<{ docs: readon
  */
 export function loadCatalogDoc(root: string, path: string | null): Promise<CopiesLoad<{ doc: LibraryDoc | null }>> {
   return withCopies(root, async (copies, repoFiles) => ({ doc: path === null ? null : await catalogDocAt(root, path, { copies, repoFiles }) }));
+}
+
+/** The library's catalog, its documents and one document, all three from the context's injected `loadCatalog` when given. */
+export type CatalogLoaders = {
+  readonly catalogOf: (root: string, lifeosStateDir?: string | null) => Promise<CatalogLoad>;
+  readonly docsOf: (root: string) => Promise<CopiesLoad<{ docs: readonly LibraryDoc[] }>>;
+  readonly docOf: (root: string, path: string | null) => Promise<CopiesLoad<{ doc: LibraryDoc | null }>>;
+};
+
+/**
+ * The three loads of the library routes: `loadCatalog`, `loadCatalogDocs` and `loadCatalogDoc` by default; an injected
+ * loader answers all three, and the reader then finds its document in the injected catalog's `docs`.
+ */
+export function catalogLoaders(ctx: Pick<WorkspaceContext, "loadCatalog" | "stateDir">): CatalogLoaders {
+  const { loadCatalog: injected, stateDir } = ctx;
+  const docsOf: CatalogLoaders["docsOf"] =
+    injected === undefined
+      ? loadCatalogDocs
+      : async (root) => {
+          const loaded = await injected(root, stateDir);
+          return loaded.readable ? { readable: true, docs: loaded.catalog.docs, copies: loaded.copies ?? {}, repoFiles: loaded.repoFiles ?? {} } : loaded;
+        };
+  const docOf: CatalogLoaders["docOf"] =
+    injected === undefined
+      ? loadCatalogDoc
+      : async (root, path) => {
+          const loaded = await docsOf(root);
+          if (!loaded.readable) return loaded;
+          return { readable: true, doc: loaded.docs.find((d) => d.path === path) ?? null, copies: loaded.copies, repoFiles: loaded.repoFiles };
+        };
+  return { catalogOf: injected ?? loadCatalog, docsOf, docOf };
 }

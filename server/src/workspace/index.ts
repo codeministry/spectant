@@ -1,6 +1,6 @@
 /**
  * The `workspace/` slice's one public surface (spec 059): one registered repository read into the dashboard model,
- * its worktree view, the read sources of its repository files and specs, and the library's catalog loads.
+ * its worktree view and the read sources of its repository files and specs (the catalog loads are `library/`'s).
  */
 export type { UnreadableCode } from "../contracts/spec-routes.contract.ts";
 export { unreadableCode, workspaceUnreadable } from "../infra/fs/errno.ts";
@@ -20,7 +20,6 @@ export {
 } from "./worktree-view.ts";
 export { type IdeaSources, type RepoFileReading, readIdeaSources, readRepoFile } from "./repo-files.ts";
 export { readCopies, readSpecSource, resolveWorkspaceSpec } from "./spec-source.ts";
-export { type CatalogLoad, type CopiesLoad, loadCatalog, loadCatalogDoc, loadCatalogDocs, readRepoCatalogFiles } from "./catalog-load.ts";
 export { type OpenedSpec, type SpecOpening, openSpec } from "./open-spec.ts";
 export {
   type DevService,
@@ -44,5 +43,5 @@ export {
   unavailable,
   workspaceSummaryReader,
 } from "./summary.ts";
-export { type DashboardApiOptions, type WorkspaceContext, type WorkspaceLoader, localDate, workspaceContext } from "./context.ts";
+export { type CatalogLoad, type DashboardApiOptions, type WorkspaceContext, type WorkspaceLoader, localDate, workspaceContext } from "./context.ts";
 export { DASHBOARD_PATH, WORKSPACES_PATH, WORKSPACE_READ_ALLOW, readableWorkspace, workspaceRoutes } from "./routes.ts";

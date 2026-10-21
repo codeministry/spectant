@@ -4,16 +4,27 @@
  * default and each seam a test injects is decided here and nowhere else: the registry, the LifeOS state directory, the
  * loaders, the services probe, the image store, the clocks and the abort and stale ages as the settings now stand.
  */
-import type { LibraryDoc } from "../../../core/src/files.ts";
+import type { LibraryCatalog } from "../../../core/src/files.ts";
+import type { RepoFileCopy } from "../../../core/src/library.ts";
+import type { UnreadableCode } from "../contracts/spec-routes.contract.ts";
 import { abortAge } from "../infra/abort-age.ts";
 import type { Db } from "../infra/db/db.ts";
 import type { Registry } from "../infra/db/registry.ts";
 import type { LifeosDetection } from "../infra/lifeos.ts";
-import { type CatalogLoad, type CopiesLoad, loadCatalog, loadCatalogDoc, loadCatalogDocs } from "./catalog-load.ts";
 import { type DashboardLoad, type ServicesProbe, type StateClock, loadDashboard } from "./load.ts";
 import { type WorkspaceReading, readWorkspaceInput } from "./reading.ts";
 import { listServices } from "./services.ts";
 import { type ImagesOf, noImages } from "./summary.ts";
+
+/**
+ * The document catalog of one workspace (spec 017), or why the workspace cannot be read. `copies` are the worktree
+ * copies the catalog read its specs' own files from (`WorkspaceReading.copies`, spec 027, ISC-181), so the reader opens
+ * the same file; server-internal, never part of a response (ISC-3), absent from a loader that names none. The library
+ * slice loads it (`library/load.ts`); the type lives here, where the options name the loader a test injects.
+ */
+export type CatalogLoad =
+  | { readable: true; catalog: LibraryCatalog; copies?: Readonly<Record<string, string>>; repoFiles?: Readonly<Record<string, RepoFileCopy>> }
+  | { readable: false; error: UnreadableCode };
 
 /** Reads one workspace into its dashboard model (`loadDashboard`'s signature). */
 export type WorkspaceLoader = (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null, clock?: StateClock) => Promise<DashboardLoad>;
@@ -89,10 +100,11 @@ export type WorkspaceContext = {
   readonly read: (root: string) => Promise<WorkspaceReading>;
   readonly services: ServicesProbe;
   readonly imagesOf: ImagesOf;
-  /** The library's catalog, its documents and one document, all three from an injected `loadCatalog` when given. */
-  readonly catalogOf: (root: string, lifeosStateDir?: string | null) => Promise<CatalogLoad>;
-  readonly docsOf: (root: string) => Promise<CopiesLoad<{ docs: readonly LibraryDoc[] }>>;
-  readonly docOf: (root: string, path: string | null) => Promise<CopiesLoad<{ doc: LibraryDoc | null }>>;
+  /**
+   * The injected catalog loader, which then answers the library's catalog, its documents and one document; absent, the
+   * library slice's own loads apply (`library/load.ts` `catalogLoaders`).
+   */
+  readonly loadCatalog: DashboardApiOptions["loadCatalog"];
   readonly today: () => string;
   readonly clock: () => Date;
   /** This request's clock and the abort and stale ages as the settings now stand (spec 040, ISC-224; spec 032, ISC-35). */
@@ -112,22 +124,6 @@ const defaultServices: ServicesProbe = (repoRoot, labels) => listServices({ repo
 /** The options resolved into the workspace family's one context. */
 export function workspaceContext(options: DashboardApiOptions): WorkspaceContext {
   const stateDir = options.lifeos?.stateDir ?? null;
-  const injected = options.loadCatalog;
-  const docsOf: WorkspaceContext["docsOf"] =
-    injected === undefined
-      ? loadCatalogDocs
-      : async (root) => {
-          const loaded = await injected(root, stateDir);
-          return loaded.readable ? { readable: true, docs: loaded.catalog.docs, copies: loaded.copies ?? {}, repoFiles: loaded.repoFiles ?? {} } : loaded;
-        };
-  const docOf: WorkspaceContext["docOf"] =
-    injected === undefined
-      ? loadCatalogDoc
-      : async (root, path) => {
-          const loaded = await docsOf(root);
-          if (!loaded.readable) return loaded;
-          return { readable: true, doc: loaded.docs.find((d) => d.path === path) ?? null, copies: loaded.copies, repoFiles: loaded.repoFiles };
-        };
   const clock = options.now ?? (() => new Date());
   return {
     registry: options.registry,
@@ -137,9 +133,7 @@ export function workspaceContext(options: DashboardApiOptions): WorkspaceContext
     read: options.readWorkspace ?? readWorkspaceInput,
     services: options.services ?? defaultServices,
     imagesOf: options.imagesOf ?? noImages,
-    catalogOf: injected ?? loadCatalog,
-    docsOf,
-    docOf,
+    loadCatalog: options.loadCatalog,
     today: options.today ?? (() => localDate()),
     clock,
     stateClock: () => ({

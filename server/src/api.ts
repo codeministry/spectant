@@ -20,48 +20,11 @@
  *   POST`, since it also takes spec 016's add route.
  * - any other `/api/workspaces…` path is `null`, so the server's JSON 404 applies.
  *
- * The planning route (spec 003 T19, ISC-103): `GET /api/workspaces/:ws/planning` → the `PlanningModel` of
- * `core/src/planning.ts`, `buildPlanning` over the master and every spec folder, active and archived, that
- * `readWorkspaceInput` reads. It is matched by the contract's `matchWorkspacePath` (`spec-routes.contract.ts` owns the
- * route) and answers with the same guard order and the same statuses as the dashboard route: 403, 405 with
- * `allowForWorkspace`, 404, 409 with the workspace's summary. The milestone states compare target dates with today's
- * local date (`options.today`), so a stub or golden built at a fixed day differs from a live answer in `state` alone.
- * It lives here rather than in its own handler because it shares this handler's registry, guard and 409 summary.
- * Spec 026 (T11, ISC-171): the same answer carries each milestone's feature assignment (`featureIds`, the no-milestone
- * group `unassignedFeatures`) and the relation index `relations` that `buildPlanning` derives (`core/src/relations.ts`);
- * the detail sidebar reads both from here, so there is no relations route and nothing new is read or written.
- * Spec 025 (T32, ISC-170.1): it also carries the spec edges `resolveEdges` resolves against the reading's merge state
- * (`specEdges`, absent without any), from which the Diagram lens draws its `spec-edge` arrows.
- * Spec 040 (ISC-224): every story of it (`ideas`, and those under a feature or a milestone) carries its `idea` item as
- * `IdeaRef.state`, core's `ideaStateOf` over the reading's open runs at the request clock and the `runAbortMinutes`
- * abort age, attached by `withIdeaStates`: the dashboard model lists no stories, so the board reads them from here.
- *
- * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
- * `matchWorkspacePath` with the same guard order. It reads the story folder and the activity log alone, never the
- * whole workspace: a story page needs no spec folder, and its state (`idea.state`, spec 040, ISC-224, `ideaStateOf` at
- * the request clock and abort age) only the open runs. Each story comes from its read source (`readIdeaSources`, `readRepoFile`,
- * spec 039, ISC-209), so a story a spec worktree changed last shows that version and `source` names the worktree; the
- * git facts behind it are the worktree view's, kept while the repository state stands. The slug must be one
- * `readIdeas` lists, so a path out of the folder, the index or a skipped file is a 404 before any file is opened by
- * it; then one read of the file's bytes gives the `IdeaRef` (`readIdeas` over the folder with that text), the page (`renderDocsMarkdown`, images
- * confined to the workspace as on a Docs tab) and `hash`, the raw sha256 hex of those bytes (`rawSha256`, the hash
- * `allocate` checks). The ETag is `json()`'s body hash, and the body carries `hash`, so any byte change revalidates.
- * 404 for an unknown story and for a workspace without stories; 409 with the summary when the folder cannot be read.
- *
- * The board query (spec 008 T92, ISC-129.1): `GET`/`HEAD`/`PUT /api/workspaces/:ws/board-query` → `BoardQuery`, matched
- * by the same `matchWorkspacePath`, answered from the `board_query` table alone (`options.db`), never a repository
- * file: GET `{query}` (`''` when none is stored), PUT validated by the contract's `isBoardQuery` (400 `invalid-body`
- * otherwise) and stored per workspace slug with the server clock. Guard order: 403, 405 with `allowForWorkspace`
- * (`GET, HEAD, PUT`), 404 for an unknown workspace, then the body. No 409: the workspace's files are not read.
- * Without `options.db` the route is declined, so the server's JSON 404 applies.
- *
- * The favourites (spec 052 T4, ISC-296): `GET`/`HEAD /api/workspaces/:ws/favorites` and `PUT`/`DELETE
- * /api/workspaces/:ws/favorites/:spec` → `Favorites`, matched by the same `matchWorkspacePath`, answered from the
- * `spec_favorite` table alone (`options.db`), never a repository file. Every answer is `{specs}`, the workspace's whole
- * set, sorted, so the web takes the server's state after a write. `PUT` sets and `DELETE` unsets, both idempotent; the
- * spec need not exist in the workspace (plan 052). Guard order: 403, 405 with `allowForWorkspace` (`GET, HEAD` or
- * `PUT, DELETE`), 404 for an unknown workspace, 400 `invalid-spec` for an id the contract's `isFavoriteSpec` refuses.
- * No 409. Without `options.db` both routes are declined, like the board query.
+ * The planning tree, the story page, the board query and the favourites are answered by the `planning/` slice
+ * (`planning/routes.ts`, `planning/prefs-routes.ts`), the library's catalog, reader, search and asset routes by the
+ * `library/` slice (`library/routes.ts`); each is matched here by the contract's `matchWorkspacePath` and dispatched
+ * after the same guard. Without `options.db` the board query and the favourites are declined, so the server's JSON 404
+ * applies.
  *
  * The actor names (spec 008 T91, ISC-119.2): `actorsApi` serves `GET`/`HEAD`/`PUT /api/actors` (`ACTORS_PATH`), a
  * route of its own like `/api/settings`, under the same loopback guard. GET lists the `actor` table's rows as
@@ -84,111 +47,41 @@
  * header, 404 no such open run, 409 stale log, 422 refused, 200). The dashboard sends the hash it compares,
  * `X-Spectant-Activity-Hash`, the raw sha256 of `.spectant/activity.jsonl` (the empty text's without the file).
  *
- * The library catalog (spec 017 T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, matched by
- * the same `matchWorkspacePath` with the planning route's guard order and statuses (403, 405 with `allowForWorkspace`,
- * 404 unknown workspace, 409 with the summary when the folder cannot be read). It answers core's `readCatalog` through
- * `loadCatalog` (`workspace-loader.ts`) as it is: metadata only (path, type, spec, title, modified, state), never a
- * document's content and never an absolute path, since every catalog path is relative to `specs/`. Nothing is cached;
- * the ETag is `json()`'s body hash and each entry carries its mtime, so any change to a document is a new tag. The
- * catalog is read over the dashboard's own input (`readWorkspaceInput`, LifeOS locks under `options.lifeos`), so a
- * group head's stage equals the dashboard row's, a fresh code-reviewed mark included.
- *
- * The reader and the search (spec 017 T17, T18, ISC-156.2, ISC-156.3), with the same guard order and statuses, never
- * read the dashboard model (ISC-156.5): the reader reads the one asked document (`loadCatalogDoc`, core's
- * `catalogDocAt`), the search the catalog's documents (`loadCatalogDocs`, core's `readCatalogDocs`), each with the
- * worktree copies alone. A document is one the catalog lists as Markdown and not
- * `missing`; its file is reached only by its listed path, confined below the real `specs/` (`catalogFileBelow`), so a
- * request never names a file and a symlink out of `specs/` is never read. The listed path is already decoded, so a
- * name with a space, a `%`, an umlaut or a literal percent sequence opens and is searched (ISC-156.4). A spec's own file
- * read from its worktree copy (spec 027, ISC-181) is reached the same way below that copy's folder (`catalogSourceOf`).
- * - `libraryDoc`, `GET …/library/doc?path=` (the raw query value, decoded once): the document rendered as its Docs tab
- *   renders it, `renderDocsMarkdown` with `docsRenderOptions` (the constitution's and the Design tab's own options by
- *   type, else a plain page), so relative images confined to the workspace and `.design/` assets resolve as on a Docs
- *   tab. 404 for any path the catalog does not list as such a document, never a read of the path. `tech.md` adds
- *   `techSections`, core's `techSectionHeads` over the same text, and its page is core's `renderTechDocument`, each
- *   marker's part a `<section data-tech-part="key">`, so the reader cuts its sections by core's markers, never at an
- *   h2 (ISC-157.2, ISC-355).
- * - `librarySearch`, `GET …/library/search?q=`: the trimmed query, case-insensitive, over each document's rendered page
- *   as plain text, else its title; hits in catalog order, the snippet 40 characters before the first match and 60
- *   after with an ellipsis where cut, or the title for a title-only match. A blank `q` is `{query: '', hits: []}`,
- *   never 400. The plain texts are cached in memory per workspace by source folder (a worktree copy or main's
- *   `specs/`, spec 041, ISC-217) and catalog path, checked against size and mtime; a search keeps only
- *   the entries of the catalog it read. Each document is resolved once from the entry in hand (no lookup by path), its
- *   real folder once per search, and the files are read `SEARCH_READS` at a time, so a search grows linearly with the
- *   documents (ISC-156.5).
- * - `libraryAsset`, `GET …/library/asset?path=`: one image below `specs/`, the evidence file route (`infra/http/file-response.ts`) with
- *   the workspace's `specs/` as the root: the same once-decoded resolver, every file below the real `specs/` reachable,
- *   images only. A path into the folder of a spec read from its worktree copy resolves below the copy's `specs/`
- *   instead (spec 039, ISC-208). 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a second encoding, an absolute
- *   path, a symlink out or another media type, 404 for a missing file or workspace.
- * The tech page's routes (`…/tech`, `…/tech/asset`) went with spec 017 T51: the library replaces them (ISC-157.1),
- * and a request to either is the unmatched API path's 404.
- *
  * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
  * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
  *
  * No absolute path leaves this module (ISC-3): a workspace is its slug, its name and `pathTail`, the last path segment;
  * the unreadable codes replace OS messages, which would name the path.
  */
-import { type Stats, readFileSync } from "node:fs";
-import { lstat, readFile, realpath, stat } from "node:fs/promises";
-import { basename, dirname, join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { backlogAnswer } from "./backlog-route.ts";
 import { runReleaseAnswer } from "./run-release-route.ts";
-import { buildDashboard } from "../../core/src/dashboard.ts";
-import { docsRenderOptions } from "../../core/src/evidence.ts";
-import { type RepoFileCopy, catalogSourceOf } from "../../core/src/library.ts";
-import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
-import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
-import { renderTechDocument, techSectionHeads } from "../../core/src/tech.ts";
-import { readIdeas } from "../../core/src/ideas.ts";
-import { ideaStateOf, withIdeaStates } from "../../core/src/item-state.ts";
-import { readLockSources } from "../../core/src/locks.ts";
-import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
-import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
-import { listSpecs } from "../../core/src/resolve.ts";
-import { resolveEdges } from "../../core/src/spec-edges.ts";
 import type { Db } from "./infra/db/db.ts";
-import { addFavorite, getBoardQuery, listActors, listFavorites, removeFavorite, replaceActors, setBoardQuery } from "./infra/db/prefs-store.ts";
-import { mapBounded } from "./git.ts";
+import { listActors, replaceActors } from "./infra/db/prefs-store.ts";
 import type { ApiHandler } from "./http.ts";
-import { evidenceFileResponse } from "./infra/http/file-response.ts";
 import { json, readJson } from "./infra/http/json.ts";
 import { loopbackRefusal, methodNotAllowed } from "./infra/http/guard.ts";
+import { libraryRoutes } from "./library/index.ts";
+import { planningRoutes, prefsRoutes } from "./planning/index.ts";
 import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   type ActorsResponse,
-  type LibrarySearchHit,
-  type WorkspaceRouteResponses,
   allowForWorkspace,
-  evidencePathQuery,
   isActorMappings,
-  isBoardQuery,
-  isFavoriteSpec,
   matchWorkspacePath,
 } from "./spec-routes.contract.ts";
 import {
   type DashboardApiOptions,
-  type WorkspaceReading,
   DASHBOARD_PATH,
   WORKSPACES_PATH,
   WORKSPACE_READ_ALLOW,
-  readBytesIfExists,
-  readCopies,
-  readIdeaSources,
-  readRepoFile,
   readableWorkspace,
-  summaryOf,
-  unavailable,
-  unreadableCode,
   workspaceContext,
   workspaceRoutes,
 } from "./workspace/index.ts";
 import { workspaceAdminAllowFor } from "./workspace-admin.contract.ts";
-import { rawSha256 } from "./writes.ts";
 
 export { composeApi, json } from "./infra/http/json.ts";
 export {
@@ -202,105 +95,6 @@ export {
   workspaceSummaryReader,
 } from "./workspace/index.ts";
 
-/** Characters of plain text a search snippet keeps before and after the match (spec 017, as the e2e stub cuts it). */
-const SNIPPET_BEFORE = 40;
-const SNIPPET_AFTER = 60;
-
-const ENTITY: Readonly<Record<string, string>> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
-
-/**
- * A rendered page as plain text: tags dropped, the five entities the renderer writes decoded, whitespace collapsed.
- * The renderer escapes every text and emits only its own tags, so this is its exact text, never a parse of the file.
- */
-function plainTextOf(page: DocsPage): string {
-  return page.html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&(?:amp|lt|gt|quot|#39);/g, (entity) => ENTITY[entity] ?? " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** The plain text around a match at `at`: 40 characters before it and 60 after, an ellipsis where the text is cut. */
-function snippetAt(text: string, at: number, length: number): string {
-  const start = Math.max(0, at - SNIPPET_BEFORE);
-  const end = Math.min(text.length, at + length + SNIPPET_AFTER);
-  return `${start > 0 ? "…" : ""}${text.slice(start, end).trim()}${end < text.length ? "…" : ""}`;
-}
-
-/** A catalog document the reader and the search read: Markdown, and a file that exists (not `missing`). */
-const isReadableDoc = (doc: LibraryDoc): boolean => doc.media === "markdown" && doc.state !== "missing";
-
-/** The Docs tab a catalog document renders as: the constitution's and the Design tab's own options, else a plain page. */
-const docNameOf = (type: LibraryDoc["type"]): DocName => (type === "constitution" ? "constitution" : type === "design" ? "design" : "plan");
-
-/**
- * The real file of a catalog path below `dir`, or null (spec 017 T59, ISC-156.4). The path is the catalog's own
- * spelling, read from the directory and matched exactly, so it is already decoded: a `%` in it is part of the name,
- * never an escape, and nothing decodes it again. Core's `resolveEvidencePath` takes a raw request and refuses a percent
- * sequence after its one decode, which turned away a listed `run%20retry.md` (code-review finding 7). Its other rules
- * stand here: no control character or backslash, no empty, `.` or `..` segment, the real path below the real `dir`
- * and a regular file. A real path that leaves `dir` (a symlink out) is `symlink-escape`, anything else unresolved null.
- */
-const catalogFileBelow = async (
-  dir: string,
-  rel: string,
-  realDirOf: (dir: string) => Promise<string> = realpath,
-): Promise<{ real: string; stats: Stats } | "symlink-escape" | null> => {
-  // eslint-disable-next-line no-control-regex -- control characters are exactly what is refused here
-  if (rel === "" || /[\u0000-\u001f\u007f\\]/.test(rel)) return null;
-  const segments = rel.split("/");
-  if (segments.some((s) => s === "" || s === "." || s === "..")) return null;
-  try {
-    const realDir = await realDirOf(dir);
-    const real = await realpath(join(realDir, ...segments));
-    if (!real.startsWith(realDir + sep)) return "symlink-escape";
-    const stats = await stat(real);
-    return stats.isFile() ? { real, stats } : null;
-  } catch {
-    return null;
-  }
-};
-
-/** Whether `dir` is a directory now, through a link; false when it is gone or cannot be read. */
-const isFolder = async (dir: string): Promise<boolean> => {
-  try {
-    return (await stat(dir)).isDirectory();
-  } catch {
-    return false;
-  }
-};
-
-/** Whether `path` is a regular file now, never through a link; false when it is gone or cannot be read. */
-const isFile = async (path: string): Promise<boolean> => {
-  try {
-    return (await lstat(path)).isFile();
-  } catch {
-    return false;
-  }
-};
-
-/** Files a search reads at once (ISC-156.5): enough to overlap the reads, few enough to stay clear of the fd limit. */
-const SEARCH_READS = 16;
-
-/** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
-type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };
-
-
-/**
- * Each active spec's state for the board (spec 008, T83): the stage and its source from the dashboard rows of the very
- * reading the tree is built from, and the raw sha256 of spec.md's bytes, the hash `writes.ts` compares a transition
- * against (`rawSha256`), so a card's move fails only on a file changed since the board was read.
- */
-function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readable: true }>): PlanningSpecState[] {
-  const dirs = new Map(listSpecs(root).filter((ref) => !ref.archived).map((ref) => [ref.slug, ref.dir]));
-  return buildDashboard(reading.input).specs.map((row): PlanningSpecState => {
-    const dir = dirs.get(row.slug);
-    const bytes = dir === undefined ? null : readBytesIfExists(specFilePath(dir, "spec"));
-    // `waits`: the row's, so the board card shows the same `waits on NNN` as the row (spec 025, ISC-163).
-    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, waits: row.waits, ...(bytes === null ? {} : { hash: rawSha256(bytes) }) };
-  });
-}
-
 /**
  * `GET` / `HEAD` of the workspace list, the dashboard and the planning route as an `ApiHandler`; `null` for every other path. Nothing is cached: each
  * request reads the registry and the files again, so a `spectant add` or an edited spec shows on the next poll, and
@@ -308,299 +102,11 @@ function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readabl
  */
 export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const ctx = workspaceContext(options);
-  const { registry, stateDir, read, catalogOf, docsOf, docOf, today, clock, stateClock } = ctx;
+  const { stateDir, clock } = ctx;
   const { list, dashboard } = workspaceRoutes(ctx);
-  // The search text of each Markdown document, by workspace root and catalog path; each search keeps only what it saw.
-  const searchTexts = new Map<string, Map<string, SearchText>>();
-
-
-  // The board's stages come from the reading's own lock source (the repository's activity log); no LifeOS path is read.
-  const planning = async (req: Request, slug: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const reading = await read(workspace.path);
-    if (!reading.readable) return json(req, 409, summaryOf(workspace, reading));
-    const { master, specs, archived, constitution } = reading.input;
-    // The feature backlog (spec 036): text and hash from one read of the bytes, so the hash the client sends back with
-    // a backlog write is the hash of the order it rendered; the hash of the empty text without the file.
-    const backlogBytes = readBytesIfExists(repoFilePath(workspace.path, "backlog"));
-    const model: WorkspaceRouteResponses["planning"] = buildPlanning({
-      master,
-      specs,
-      archived,
-      ideas: reading.ideas,
-      now: today(),
-      workflow: reading.workflow,
-      specStates: specStatesOf(workspace.path, reading),
-      // The Diagram lens's arrows (spec 025, ISC-170.1): the edges as the dashboard resolves them.
-      specEdges: resolveEdges({ specs, archived, constitution }, reading.mergeState).edges,
-      backlog: backlogBytes === null ? null : backlogBytes.toString("utf8"),
-      backlogHash: rawSha256(backlogBytes ?? ""),
-    });
-    // Each story's item from its open runs at this request's clock (spec 040, ISC-224).
-    const at = stateClock();
-    const openRuns = reading.input.locks?.openRuns ?? [];
-    return json(req, 200, withIdeaStates(model, model.ideas.map((idea) => ideaStateOf(idea.slug, openRuns, at))));
-  };
-
-  // The catalog as core's readCatalog builds it, metadata only, never reshaped (header).
-  const library = async (req: Request, slug: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const loaded = await catalogOf(workspace.path, stateDir);
-    if (!loaded.readable) return json(req, 409, summaryOf(workspace, loaded));
-    const body: WorkspaceRouteResponses["library"] = loaded.catalog;
-    return json(req, 200, body);
-  };
-
-  /**
-   * The real file of a catalog document, confined below `specs/` (`catalogFileBelow`, the listed path never decoded
-   * again): null for a document that is not readable Markdown, or whose real path leaves `specs/` (a symlink out). The
-   * document is the catalog's entry in hand, so a request alone never names a file and nothing is looked up by path. A
-   * spec's own file comes from its worktree copy when `copies` names one (core's `catalogSourceOf`, spec 027, ISC-181),
-   * resolved from the copy's `specs/` with `NNN-slug/<file>` (spec 041, ISC-216.1), so the confinement covers the copy
-   * folder itself: a copy folder or file whose real path leaves the worktree's `specs/` is `symlink-escape`, which the
-   * reader answers 403. A symlink out of the main checkout's `specs/` stays null (404), as before. A copy folder that is
-   * gone by now (its worktree removed since the copies were read) falls back to the main checkout's file (spec 041,
-   * ISC-217). A workspace document whose read source is a spec worktree (`repoFiles`, spec 039, ISC-209) is resolved
-   * below that worktree's `specs/` with its catalog path, and falls back to the main checkout's file when it is gone by
-   * now. `source` names the folder the file was read from, the copy's, the worktree's or main's `specs/`, for the
-   * search's text cache. `realDirOf` lets a search resolve each folder once.
-   */
-  const catalogFile = async (
-    root: string,
-    doc: LibraryDoc,
-    copies: Readonly<Record<string, string>>,
-    repoFiles: Readonly<Record<string, RepoFileCopy>>,
-    realDirOf?: (dir: string) => Promise<string>,
-  ): Promise<{ doc: LibraryDoc; absolute: string; stats: Stats; logical: string; source: string } | "symlink-escape" | null> => {
-    if (!isReadableDoc(doc)) return null;
-    const main = join(root, "specs");
-    const source = catalogSourceOf(root, doc, copies, repoFiles);
-    const fromCopy = copies[doc.spec] === source.dir;
-    let found = fromCopy
-      ? await catalogFileBelow(dirname(source.dir), `${basename(source.dir)}/${source.rel}`, realDirOf)
-      : await catalogFileBelow(source.dir, source.rel, realDirOf);
-    let from = source.dir;
-    if (found === null && from !== main && (!fromCopy || !(await isFolder(source.dir)))) {
-      found = await catalogFileBelow(main, doc.path, realDirOf);
-      from = main;
-    }
-    if (found === "symlink-escape") return from !== main ? found : null;
-    // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`: the copy's
-    // file for a document read from a copy, where its relative images resolve, since the whole folder, `artifacts/` and
-    // `.design/` included, is read from it (spec 039, ISC-208); else the main checkout's.
-    const logical = from === main ? join(main, ...doc.path.split("/")) : join(source.dir, ...source.rel.split("/"));
-    return found === null ? null : { doc, absolute: found.real, stats: found.stats, logical, source: from };
-  };
-
-  /**
-   * A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`; tech.md
-   * through core's `renderTechDocument`, the same render with each marker's part marked (ISC-355).
-   */
-  const renderCatalogDoc = (root: string, file: { doc: LibraryDoc; logical: string }, source: string): DocsPage =>
-    (file.doc.type === "tech" ? renderTechDocument : renderDocsMarkdown)(source, docsRenderOptions(root, file.logical, docNameOf(file.doc.type)));
-
-  // One Markdown document of the catalog as a Docs page; 404 for anything the catalog does not list as one (header).
-  const libraryDoc = async (req: Request, slug: string, search: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    let path: string | null;
-    try {
-      path = decodeURIComponent(evidencePathQuery(search));
-    } catch {
-      path = null; // no document, but an unreadable workspace still answers 409 first
-    }
-    const loaded = await docOf(workspace.path, path);
-    if (!loaded.readable) return json(req, 409, summaryOf(workspace, loaded));
-    const file = loaded.doc === null ? null : await catalogFile(workspace.path, loaded.doc, loaded.copies, loaded.repoFiles);
-    if (file === "symlink-escape") return json(req, 403, { error: "forbidden" }); // a worktree copy linked out (ISC-216.1)
-    if (file === null) return json(req, 404, { error: "not-found" });
-    let source: string;
-    try {
-      source = readFileSync(file.absolute, "utf8");
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException | null)?.code;
-      if (typeof code !== "string") throw error;
-      if (code === "ENOENT") return json(req, 404, { error: "not-found" }); // gone since the catalog was read
-      return json(req, 409, unavailable(workspace, unreadableCode(error)));
-    }
-    const page = renderCatalogDoc(workspace.path, file, source);
-    // tech.md carries core's section heads, since the rendered page drops its markers (ISC-157.2); no other document does.
-    const body: WorkspaceRouteResponses["libraryDoc"] = file.doc.type === "tech" ? { ...page, techSections: techSectionHeads(source) } : page;
-    return json(req, 200, body);
-  };
-
-  /**
-   * The search text of one catalog document: its rendered page as plain text, from the cache while the file's size and
-   * mtime are unchanged, else rendered again. Null when the file cannot be resolved or read; the title still matches.
-   * One resolution per document (`catalogFile`), whose stat also decides the cache, and one read on a miss.
-   */
-  const searchTextOf = async (
-    root: string,
-    doc: LibraryDoc,
-    copies: Readonly<Record<string, string>>,
-    repoFiles: Readonly<Record<string, RepoFileCopy>>,
-    realDirOf: (dir: string) => Promise<string>,
-    previous: ReadonlyMap<string, SearchText>,
-    seen: Map<string, SearchText>,
-  ): Promise<string | null> => {
-    const file = await catalogFile(root, doc, copies, repoFiles, realDirOf);
-    if (file === null || file === "symlink-escape") return null;
-    const { mtimeMs, size } = file.stats;
-    // Keyed by source and catalog path (spec 041, ISC-217): a spec whose source switched between the copy and main never
-    // gets the other source's text, even where both files share size and mtime.
-    const key = `${file.source}\0${doc.path}`;
-    const cached = previous.get(key);
-    let entry: SearchText;
-    if (cached?.mtimeMs === mtimeMs && cached.size === size) entry = cached;
-    else {
-      try {
-        entry = { mtimeMs, size, text: plainTextOf(renderCatalogDoc(root, file, await readFile(file.absolute, "utf8"))) };
-      } catch (error) {
-        if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
-        return null;
-      }
-    }
-    seen.set(key, entry);
-    return entry.text;
-  };
-
-  // Title and full text of the catalog's Markdown documents, case-insensitive, hits in catalog order (header).
-  const librarySearch = async (req: Request, slug: string, q: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    const loaded = await docsOf(workspace.path);
-    if (!loaded.readable) return json(req, 409, summaryOf(workspace, loaded));
-    const query = q.trim();
-    if (query === "") {
-      const empty: WorkspaceRouteResponses["librarySearch"] = { query: "", hits: [] };
-      return json(req, 200, empty);
-    }
-    const root = workspace.path;
-    const needle = query.toLowerCase();
-    const previous = searchTexts.get(root) ?? new Map<string, SearchText>();
-    const seen = new Map<string, SearchText>();
-    // Each folder's real path once per search: every document below it shares the one realpath.
-    const realDirs = new Map<string, Promise<string>>();
-    const realDirOf = (dir: string): Promise<string> => {
-      let real = realDirs.get(dir);
-      if (real === undefined) {
-        real = realpath(dir);
-        real.catch(() => undefined); // awaited by every caller inside its own try; never an unhandled rejection
-        realDirs.set(dir, real);
-      }
-      return real;
-    };
-    const docs = loaded.docs.filter(isReadableDoc);
-    const texts = await mapBounded(docs, SEARCH_READS, (doc) => searchTextOf(root, doc, loaded.copies, loaded.repoFiles, realDirOf, previous, seen));
-    const hits: LibrarySearchHit[] = [];
-    docs.forEach((doc, i) => {
-      const text = texts[i] ?? null;
-      const at = text === null ? -1 : text.toLowerCase().indexOf(needle);
-      if (text !== null && at !== -1) hits.push({ path: doc.path, snippet: snippetAt(text, at, needle.length) });
-      else if (doc.title.toLowerCase().includes(needle)) hits.push({ path: doc.path, snippet: doc.title });
-    });
-    // Only the documents of this catalog stay cached: a removed or renamed document leaves the cache with it.
-    searchTexts.set(root, seen);
-    const body: WorkspaceRouteResponses["librarySearch"] = { query, hits };
-    return json(req, 200, body);
-  };
-
-  // One image below specs/, through the evidence file route's resolver and answer (header). A path into the folder of a
-  // spec read from its worktree copy is served from the copy's `specs/` (spec 039, ISC-208), as the reader read the
-  // document that names it; a copy folder gone by now falls back to the main checkout, as `catalogFile` does.
-  const libraryAsset = async (req: Request, slug: string, search: string): Promise<Response> => {
-    const workspace = registry.get(slug);
-    if (!workspace) return json(req, 404, { error: "not-found" });
-    let path: string | null;
-    try {
-      path = decodeURIComponent(evidencePathQuery(search));
-    } catch {
-      path = null; // the resolver refuses it below, from the main checkout
-    }
-    const first = path?.split("/")[0] ?? null;
-    const copy = first === null ? undefined : (await readCopies(workspace.path))[first];
-    let specsDir = copy !== undefined && (await isFolder(copy)) ? dirname(copy) : join(workspace.path, "specs");
-    // An image outside every spec folder belongs to the workspace documents and follows `tech.md`'s read source (spec
-    // 039, ISC-209) while the worktree holds it; otherwise it is the main checkout's.
-    if (copy === undefined && path !== null && first !== null && !SPEC_FOLDER.test(first)) {
-      const tech = await readRepoFile(workspace.path, "specs/tech.md");
-      const below = tech.source.kind === "worktree" ? join(workspace.path, tech.source.worktree, "specs") : null;
-      if (below !== null && (await isFile(join(below, ...path.split("/"))))) specsDir = below;
-    }
-    return evidenceFileResponse(req, specsDir, search, {
-      reach: "tree",
-      serves: (mediaType) => mediaType.startsWith("image/"),
-    });
-  };
-
-  // The story folder alone: no spec folder or lock source feeds a story page (header).
-  const idea = (req: Request, slug: string, story: string): Promise<Response> =>
-    readableWorkspace(ctx, req, slug, async (root) => {
-      // The stories from their read sources (spec 039, ISC-209): a story changed in a spec worktree shows that version.
-      const { files } = await readIdeaSources(root);
-      // Only a slug `readIdeas` lists names a file: never a path built from the request alone.
-      if (!readIdeas(files).ideas.some((ref) => ref.slug === story)) return json(req, 404, { error: "not-found" });
-      const name = `${story}.md`;
-      const read = await readRepoFile(root, `specs/ideas/${name}`);
-      const path = read.absolute;
-      const bytes = readBytesIfExists(path);
-      if (bytes === null) return json(req, 404, { error: "not-found" });
-      // One read: the ref, the page and the hash all describe these bytes, even if the file changed since the listing.
-      const text = bytes.toString("utf8");
-      const ref = readIdeas({ ...files, [name]: text }).ideas.find((r) => r.slug === story);
-      if (ref === undefined) return json(req, 404, { error: "not-found" });
-      // The story's state from the activity log's open runs alone (spec 040, ISC-224), as the planning route reads it.
-      const { openRuns = [] } = await readLockSources({ repoRoot: root });
-      // A story renders as a Docs tab that is not the Design tab: images confined to the workspace, no spec assets.
-      const body: WorkspaceRouteResponses["idea"] = {
-        idea: { ...ref, state: ideaStateOf(story, openRuns, stateClock()) },
-        page: renderDocsMarkdown(text, docsRenderOptions(root, path, "plan")),
-        hash: rawSha256(bytes),
-        ...(read.source.kind === "worktree" ? { source: read.source } : {}),
-      };
-      return json(req, 200, body);
-    });
-
-  // The database alone: no file of the workspace is read, so there is no 409 (header).
-  const boardQuery = async (req: Request, slug: string, db: Db): Promise<Response> => {
-    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "PUT") {
-      return methodNotAllowed(req, allowForWorkspace("boardQuery"));
-    }
-    if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
-    if (req.method !== "PUT") {
-      const body: WorkspaceRouteResponses["boardQuery"] = { query: getBoardQuery(db, slug)?.query ?? "" };
-      return json(req, 200, body);
-    }
-    const body = await readJson(req);
-    if (!isBoardQuery(body)) return json(req, 400, { error: "invalid-body" });
-    setBoardQuery(db, slug, body.query, new Date().toISOString());
-    const stored: WorkspaceRouteResponses["boardQuery"] = { query: body.query };
-    return json(req, 200, stored);
-  };
-
-  // The favourites (spec 052 T4): the database alone like the board query, so no 409; every answer is the whole set.
-  const favorites = (req: Request, slug: string, db: Db): Response => {
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      return methodNotAllowed(req, allowForWorkspace("favorites"));
-    }
-    if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
-    const body: WorkspaceRouteResponses["favorites"] = { specs: listFavorites(db, slug) };
-    return json(req, 200, body);
-  };
-
-  const favorite = (req: Request, slug: string, spec: string, db: Db): Response => {
-    if (req.method !== "PUT" && req.method !== "DELETE") {
-      return methodNotAllowed(req, allowForWorkspace("favorite"));
-    }
-    if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
-    if (!isFavoriteSpec(spec)) return json(req, 400, { error: "invalid-spec" });
-    if (req.method === "PUT") addFavorite(db, slug, spec, new Date().toISOString());
-    else removeFavorite(db, slug, spec);
-    const body: WorkspaceRouteResponses["favorite"] = { specs: listFavorites(db, slug) };
-    return json(req, 200, body);
-  };
+  const { planning, idea } = planningRoutes(ctx);
+  const { boardQuery, favorites, favorite } = prefsRoutes(ctx);
+  const { library, libraryDoc, librarySearch, libraryAsset } = libraryRoutes(ctx);
 
   // The one write of the family (T87): the route layer's 404 and 409 here, everything else in `allocate-route.ts`.
   const allocate = (req: Request, slug: string, story: string): Promise<Response> =>
