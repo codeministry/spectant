@@ -2889,5 +2889,28 @@
     "added": "{{id}} added to favorites",
     "removed": "{{id}} removed from favorites",
     "failed": "Could not save the favorite."
+  },
+  "detailSidebar": {
+    "ideaFacts": {
+      "state": "State",
+      "priority": "Priority",
+      "type": "Type",
+      "feature": "Feature",
+      "milestone": "Milestone"
+    },
+    "planningFacts": {
+      "why": "Why",
+      "milestone": "Milestone",
+      "specs": "Specs",
+      "specsPerStage": "Specs per stage",
+      "target": "Target date",
+      "description": "Description",
+      "features": "Features",
+      "kind": "Kind",
+      "state": "State",
+      "probe": "Probe",
+      "verification": "Verification",
+      "lockHolder": "Held by"
+    }
   }
 }

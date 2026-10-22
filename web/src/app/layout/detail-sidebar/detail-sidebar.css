@@ -90,6 +90,12 @@
   color: var(--ques-ink);
 }
 
+/* The star (spec 067, T25): its own 32 px box beside close, a real 44 px box in the sheet (ISC-537), not a hit area. */
+:host([data-presentation="sheet"]) .star {
+  inline-size: 44px;
+  block-size: 44px;
+}
+
 .id {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -108,16 +114,28 @@
   overscroll-behavior: contain;
 }
 
+/*
+ * The full title, never clamped (spec 067, ISC-527): it wraps anywhere, so a compound, a slug or an ISC chain cannot
+ * overflow, and hyphenates by the document's `lang`. 20/28, 18/26 in the sheet; a claim's text 16/24 in every shell.
+ */
 .title {
-  display: -webkit-box;
   margin: 0;
-  overflow: hidden;
   font-size: 20px;
   font-weight: 600;
   line-height: 28px;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+:host([data-presentation="sheet"]) .title {
+  font-size: 18px;
+  line-height: 26px;
+}
+
+/* After the sheet's rule at the same specificity, so a claim's text stays 16/24 there too. */
+:host .title[data-type="claim"] {
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .meta {
@@ -191,17 +209,24 @@
   letter-spacing: normal;
 }
 
+/*
+ * A link row (spec 067, ISC-527): the title wraps to two lines at most, its full text in `title`; id, state and chevron
+ * sit on the first line (`align-items: start`, every cell one 20 px line). A one-line row stays 40 px (44 in the sheet).
+ * In the sheet the row has two lines: id and state on top, the title below across the row's width.
+ */
 .text-link {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr) auto 16px;
   gap: 8px;
-  align-items: center;
+  align-items: start;
   min-block-size: 40px;
   margin-inline: -8px;
-  padding-inline: 8px;
+  padding: 10px 8px;
+  box-sizing: border-box;
   border-radius: var(--radius-sm);
   color: inherit;
   font-size: 13px;
+  line-height: 20px;
   text-decoration: none;
 }
 
@@ -210,7 +235,13 @@
 }
 
 :host([data-presentation="sheet"]) .text-link {
+  grid-template-areas:
+    "lid lr chev"
+    "lt lt chev";
+  grid-template-columns: minmax(0, 1fr) auto 16px;
+  row-gap: 2px;
   min-block-size: 44px;
+  padding-block: 12px;
 }
 
 .lid {
@@ -227,9 +258,12 @@
 }
 
 .lt {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .lr {
@@ -241,7 +275,27 @@
 }
 
 .chev {
+  margin-block-start: 3px;
   color: var(--muted-ink);
+}
+
+/* The sheet's two-line row places its cells by area; the chevron centres on both lines. */
+:host([data-presentation="sheet"]) .lid {
+  grid-area: lid;
+}
+
+:host([data-presentation="sheet"]) .lt {
+  grid-area: lt;
+}
+
+:host([data-presentation="sheet"]) .lr {
+  grid-area: lr;
+}
+
+:host([data-presentation="sheet"]) .chev {
+  grid-area: chev;
+  align-self: center;
+  margin-block-start: 0;
 }
 
 .text-link.blk {

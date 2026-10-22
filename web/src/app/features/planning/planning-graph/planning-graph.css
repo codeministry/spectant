@@ -89,10 +89,18 @@ app-planning-graph .graph-frame {
 }
 
 /* The sidebar floats over the lens while something is selected: leave room to scroll a node out from under it. Below
-   640 it is the bottom sheet, not a side panel, and a rail-wide padding would push the page sideways (ISC-171.2). */
+   640 it is the bottom sheet, not a side panel, and a panel-wide padding would push the page sideways (ISC-171.2).
+   Spec 067 (ISC-538): the reserve is the panel's width, its inset from the right edge (16 px overlay at medium, 32 px
+   floating at wide; detail-sidebar.css) and 16 px of air. */
 @container shell (width >= 640px) {
   app-planning-graph .graph[data-has-selection] .graph-frame {
-    padding-inline-end: calc(var(--rail) + 16px);
+    padding-inline-end: calc(var(--detail) + 16px + 16px);
+  }
+}
+
+@container shell (width >= 1120px) {
+  app-planning-graph .graph[data-has-selection] .graph-frame {
+    padding-inline-end: calc(var(--detail) + 32px + 16px);
   }
 }
 

@@ -1,0 +1,114 @@
+:host {
+  display: block;
+}
+
+/* design.md § Desktop: one key and one value per row, the key 112 px in 12 px muted, the value 13 px. */
+.pf-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pf-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+}
+
+.pf-row dt {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.pf-row dd {
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.pf-prose {
+  overflow-wrap: anywhere;
+}
+
+.pf-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The probe keeps the line breaks the Test Strategy row carries and wraps a long command instead of scrolling. */
+.pf-probe {
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-base-200);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.pf-chips,
+.pf-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pf-links {
+  flex-flow: column nowrap;
+}
+
+.pf-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* design.md § Linkzeilen: two lines, the id and the progress above, the title below in full width, clamped to two. */
+.pf-link {
+  display: grid;
+  gap: 2px;
+  min-block-size: 40px;
+  margin-inline: -8px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.pf-link:hover {
+  background: var(--color-base-200);
+}
+
+.pf-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pf-id {
+  color: var(--disp-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pf-progress {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.pf-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}

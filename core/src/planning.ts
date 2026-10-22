@@ -327,6 +327,12 @@ export interface PlanningInput {
    */
   readonly locks?: LockReading;
   /**
+   * The repository's open claim locks for each claim's `ClaimFacts.lockHolder` alone (spec 067, ISC-530); absent, those
+   * of `locks`. Unlike `locks`, they never move a holder's `assignee`, so a caller can name a claim's lock holder
+   * without changing what the board shows.
+   */
+  readonly claimLocks?: readonly ClaimLock[];
+  /**
    * The workspace's spec edges as `resolveEdges(…).edges` resolved them against the server's merge state (spec 025,
    * ISC-170.1); `resolveEdges` needs the merge state, which only the caller reads from git, so the tree takes its
    * result rather than resolving. Carried unchanged as `PlanningModel.specEdges`; absent, the diagram draws no
@@ -710,7 +716,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const after = Object.fromEntries([...claimById].flatMap(([id, claim]) => (claim.after.length === 0 ? [] : [[id, claim.after]])));
   // Spec 067: each claim's facts; the later lock of a claim wins, as in `partitionClaims`.
   const masterEvidence = evidenceOf(master);
-  const lockOf = new Map((input.locks?.locks ?? []).map((l) => [l.claim, l]));
+  const lockOf = new Map((input.claimLocks ?? input.locks?.locks ?? []).map((l) => [l.claim, l]));
   const claimFacts: Record<string, ClaimFacts> = {};
   for (const { claims } of blocks) for (const c of claims) claimFacts[c.id] ??= claimFactsOf(c, claimById.get(c.id)?.kind, masterEvidence, lockOf);
   return {

@@ -1495,7 +1495,8 @@
       "facts": {
         "kind": "normal",
         "state": "open",
-        "probe": "`bun test tests/agents.test.ts -t silent`"
+        "probe": "`bun test tests/agents.test.ts -t silent`",
+        "lockHolder": "a:claude:sess-51/T3"
       }
     },
     "claim:ISC-16": {
@@ -1514,7 +1515,8 @@
       "facts": {
         "kind": "normal",
         "state": "open",
-        "probe": "`bun test tests/agents.test.ts -t region`"
+        "probe": "`bun test tests/agents.test.ts -t region`",
+        "lockHolder": "a:claude:sess-50/T4"
       }
     },
     "claim:ISC-17": {

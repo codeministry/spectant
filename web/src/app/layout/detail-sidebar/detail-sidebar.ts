@@ -27,6 +27,7 @@ import { RELATION_ICON } from '../../shared/ui/chip/chip-icons';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRing } from '../../shared/ui/ring/ring';
+import { UiStarToggle } from '../../shared/ui/star-toggle/star-toggle';
 import { releasableRun, RunRelease } from '../run-release/run-release';
 import { specLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
@@ -43,6 +44,14 @@ interface SidebarLink {
   /** The type icon, or `clock` for an open blocker. */
   readonly icon: IconName;
   readonly blocker: boolean;
+}
+
+/** The head's favourite star: which set it writes, the key it stars under there, and whether it is on. */
+interface SidebarStar {
+  readonly kind: 'spec' | 'idea';
+  /** The spec folder (`NNN-slug`) or the story slug. */
+  readonly key: string;
+  readonly pressed: boolean;
 }
 
 /**
@@ -65,7 +74,7 @@ interface SidebarLink {
  */
 @Component({
   selector: 'app-detail-sidebar',
-  imports: [NgTemplateOutlet, RouterLink, RunRelease, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet],
+  imports: [NgTemplateOutlet, RouterLink, RunRelease, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet, UiStarToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './detail-sidebar.html',
   styleUrl: './detail-sidebar.css',
@@ -154,6 +163,21 @@ export class DetailSidebar {
     return entry?.type === 'idea' && ws !== null ? ['/w', ws, 'ideas', entry.id] : null;
   });
 
+  /**
+   * Spec 067 (T25, ISC-532): the head's star for a spec or an idea, null for every other type. It reads and writes the
+   * favourites `ShellData` holds, so the dashboard row, the idea row and the header select show the same state at
+   * once. A spec stars under its folder (`NNN-slug`) from the dashboard row; an archived spec carries no star, as its
+   * row does, nor does a spec whose folder no row names yet.
+   */
+  protected readonly star = computed<SidebarStar | null>(() => {
+    const entry = this.shown();
+    if (entry?.type === 'spec' && !entry.archived) {
+      const key = this.data.specRows().find((row) => row.id === entry.id)?.slug;
+      return key === undefined ? null : { kind: 'spec', key, pressed: this.data.isFavorite(key) };
+    }
+    return entry?.type === 'idea' ? { kind: 'idea', key: entry.id, pressed: this.data.isIdeaFavorite(entry.id) } : null;
+  });
+
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   constructor() {
@@ -180,6 +204,10 @@ export class DetailSidebar {
     if (this.doc.querySelector('dialog[open]') !== null || this.openPopover()) return;
     event.preventDefault();
     this.close();
+  }
+
+  protected toggleStar(star: SidebarStar): void {
+    void (star.kind === 'spec' ? this.data.toggleFavorite(star.key) : this.data.toggleIdeaFavorite(star.key));
   }
 
   protected sheetChange(open: boolean): void {

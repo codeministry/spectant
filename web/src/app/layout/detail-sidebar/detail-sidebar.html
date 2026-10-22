@@ -19,12 +19,22 @@
     </span>
     <span class="id" data-part="id">{{ entry.id }}</span>
     <span class="grow"></span>
+    @if (star(); as fav) {
+      <!-- Spec 067 (T25, ISC-532): the list's and the header select's favourite, one state in ShellData. -->
+      <button
+        ui-star-toggle
+        class="star"
+        [pressed]="fav.pressed"
+        [label]="(fav.kind === 'idea' ? 'favorites.toggleIdea' : 'favorites.toggle') | transloco: { id: entry.id, title: entry.title }"
+        (click)="toggleStar(fav)"
+      ></button>
+    }
     <button ui-icon-button data-close icon="x" size="sm" [label]="'sidebar.close' | transloco" (click)="close()"></button>
   </div>
 
   <div class="body">
     <div>
-      <h2 #title class="title" data-part="title" data-autofocus tabindex="-1" [id]="titleId">{{ entry.title }}</h2>
+      <h2 #title class="title" data-part="title" data-autofocus tabindex="-1" [id]="titleId" [attr.data-type]="entry.type">{{ entry.title }}</h2>
       @if (entry.archived || entry.stage) {
         <div class="meta">
           @if (entry.archived) {
@@ -129,7 +139,7 @@
     [replaceUrl]="true"
   >
     <span class="lid"><ui-icon [name]="link.icon" [size]="14" />{{ link.entry.id }}</span>
-    <span class="lt">{{ link.entry.title }}</span>
+    <span class="lt" [title]="link.entry.title">{{ link.entry.title }}</span>
     <span class="lr">
       @if (link.blocker) {
         {{ 'sidebar.waiting' | transloco }}

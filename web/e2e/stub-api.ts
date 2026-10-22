@@ -115,6 +115,15 @@
  *   and about 30 screens at 1440 × 900, rendered by core: `/w/harbor/library#002-web-console/artifacts/
  *   T40-console-operations-guide.md`, a 404 without the header. Its other routes stay the golden's. A 400 beside
  *   `X-Spectant-Stub-Waits`, `-Locks: runs`, `-Worktrees: on`, `-Edges` or `-Midnight: on`.
+ * - `X-Spectant-Stub-Sidebar: off | on` (spec 067, T7; absent: `off`, the goldens as they are): `on` serves harbor
+ *   rebuilt by core (`STUB_SIDEBAR`) with 003's `task:` line a title of exactly 200 characters (dashboard row, Next-up
+ *   entry and planning relation alike, its reviewed mark re-marked) and a master milestone `Harbor 3.0` that no spec,
+ *   feature or story names: `milestone:harbor-3-0` with no children, its target and description as facts. Every other
+ *   spec family and workspace stays the golden's. A 400 beside `X-Spectant-Stub-Dense: on`, `-Waits`, `-Locks: runs`,
+ *   `-Worktrees: on`, `-Edges` or `-Midnight: on`. The sidebar's other fixtures need no switch: an open run is
+ *   beacon's 003 (and its story `uptime-badges`) under `X-Spectant-Stub-Locks: runs`, released through
+ *   `POST …/beacon/runs/r-0308-1452/release`; open tasks are harbor 002's T28, T29 and T32 (no lock holds their
+ *   claims), ticked through `POST …/specs/002/tasks/:task/check`.
  * - `X-Spectant-Stub-Write: ok | stale | locked` scripts the two writes (absent: `ok`). `ok` answers as the server
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
  *   `locked` always 423 `Locked`. The board writes (transition, allocate) honour it the same way.
@@ -1350,8 +1359,8 @@ type EdgeCore = {
   buildLiveFrame: (input: unknown) => LiveFrame;
   parseTaskLines: (input: unknown) => TasksTab;
   resolveEdges: (model: unknown, mergeState: readonly MergeState[]) => { edges: readonly SpecEdge[] };
-  readLockSources: (input: { repoRoot: string }) => Promise<unknown>;
-  activityReading: (text: string) => unknown;
+  readLockSources: (input: { repoRoot: string }) => Promise<{ readonly locks: readonly unknown[] }>;
+  activityReading: (text: string) => { readonly locks: readonly unknown[] };
   withIdeaStates: (model: PlanningModel, items: readonly unknown[]) => PlanningModel;
   hashForGate: (file: string, text: string) => string;
   /** core's `runLockOf` and the run release's pure helpers of `server/src/writes.contract.ts` (spec 040, ISC-226). */
@@ -1498,7 +1507,7 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
   });
   const { master, specs, archived, workflow, constitution, tldr } = input;
   const edges = edge.resolveEdges({ specs, archived, constitution }, mergeState).edges;
-  const planning = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates, specEdges: edges });
+  const planning = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates, specEdges: edges, claimLocks: locks.locks });
   const all = new Map([...specs, ...archived].map((f): [string, SpecFiles] => [f.folder, f]));
   const activityClaims = claimLines(base.root);
   const tree: TreeGoldens = {
@@ -1607,7 +1616,16 @@ function runVariant(
   const withTasks = (f: SpecFiles): SpecFiles => (state === 'ended' && f.folder === STUB_RUN.folder ? { ...f, texts: { ...f.texts, tasks: STUB_RUN_TASKS } } : f);
   const input: TreeInput = { ...read, specs: read.specs.map(withTasks) };
   // The session's run releases (spec 040, ISC-226) append their run-end lines after the variant's edit.
-  const locks = edge.activityReading(withReleases(runActivity(readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'), state)));
+  const activity = withReleases(runActivity(readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'), state));
+  return rebuiltVariant(core, edge, base, input, activity, without);
+}
+
+/**
+ * A tree rebuilt by core from edited inputs and an activity log text, as `runVariant` documents: the run variants and
+ * the sidebar variant (spec 067, T7) share it, so both read exactly as the goldens' builders would read the edit.
+ */
+function rebuiltVariant(core: Core, edge: EdgeCore, base: TreeGoldens, input: TreeInput, activity: string, without: ReadonlySet<string> = new Set()): RunVariant {
+  const locks = edge.activityReading(activity);
   const workspace = { ...input, locks };
   const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS }) as ReadonlyArray<{ kind: string; id: string; spec?: string }>;
   const plain = edge.buildDashboard(input);
@@ -1619,7 +1637,7 @@ function runVariant(
     const spec = specTexts.get(row.slug);
     return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, ...(spec === undefined ? {} : { hash: new Bun.CryptoHasher('sha256').update(spec).digest('hex') }) };
   });
-  const built = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates });
+  const built = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates, claimLocks: locks.locks });
   const planning = edge.withIdeaStates(built, items);
   const all = new Map([...specs, ...archived].map((f): [string, SpecFiles] => [f.folder, f]));
   const activityClaims = claimLines(base.root);
@@ -1657,6 +1675,58 @@ function runVariant(
 export const WAITS_STATES = ['0', '1', '7'] as const;
 export type StubWaitsState = (typeof WAITS_STATES)[number];
 export const WAITS_HEADER = 'X-Spectant-Stub-Waits';
+
+// ---- sidebar variant (spec 067, T7) -------------------------------------------------------------------------------
+
+/**
+ * The sidebar variant (spec 067, T7, ISC-525 to ISC-528): `X-Spectant-Stub-Sidebar: on` serves harbor rebuilt by core
+ * (`rebuiltVariant`, its log as it is) from two edits held in memory: the spec.md of `STUB_SIDEBAR.folder` carries the
+ * 200-character title `STUB_SIDEBAR.title` on its `task:` line (its reviewed mark re-marked, so no gate moves), and the
+ * master's `## Milestones` gains `STUB_SIDEBAR.milestone`, which no spec names: a milestone without children. The
+ * dashboard, the planning tree and every spec family read both edits as the server would read the files; every other
+ * workspace stays its golden.
+ */
+export const SIDEBAR_STATES = ['off', 'on'] as const;
+export type StubSidebarState = (typeof SIDEBAR_STATES)[number];
+export const SIDEBAR_HEADER = 'X-Spectant-Stub-Sidebar';
+const SIDEBAR_TITLE =
+  'Read the config through one loader in the CLI, the API, the console and each scheduled sync job with defaults, environment overrides, include files and mounted secrets resolved in one documented order';
+if (SIDEBAR_TITLE.length !== 200) throw new Error(`stub-api: the sidebar title has ${SIDEBAR_TITLE.length} characters, not 200`);
+export const STUB_SIDEBAR = {
+  workspace: { slug: 'harbor', name: 'harbor', golden: 'harbor' } satisfies StubWorkspace,
+  spec: '003',
+  folder: '003-config-loader',
+  /** Exactly 200 characters, as core reads it from the `task:` line. */
+  title: SIDEBAR_TITLE,
+  /** The master's milestone line no spec names; its relation is `milestone:<slug>` with no children. */
+  milestone: { name: 'Harbor 3.0', slug: 'harbor-3-0', target: '2026-09-30', description: 'Mirrors for a second team, scheduled from the console.' },
+} as const;
+
+/** Harbor's master with `STUB_SIDEBAR.milestone` as the last line of its `## Milestones` list; loud without the section. */
+function sidebarMaster(master: string | null): string | null {
+  if (master === null) return null;
+  const { name, target, description } = STUB_SIDEBAR.milestone;
+  const list = /(\n## Milestones\n\n(?:- .*\n)+)/;
+  if (!list.test(master)) throw new Error('stub-api: harbor ISA.md has no ## Milestones list for the sidebar milestone');
+  return master.replace(list, (whole: string) => `${whole}- ${name} · ${target} · ${description}\n`);
+}
+
+/** Harbor under the sidebar variant: the long title on `STUB_SIDEBAR.folder`, the childless milestone in the master. */
+function sidebarVariant(core: Core, edge: EdgeCore, base: TreeGoldens): RunVariant {
+  const read = edge.readTreeAt(base.root);
+  const specs = read.specs.map((f): SpecFiles => {
+    if (f.folder !== STUB_SIDEBAR.folder || f.texts.spec === undefined) return f;
+    if (!/^task: .*$/m.test(f.texts.spec)) throw new Error(`stub-api: harbor ${f.folder}/spec.md has no task: line`);
+    const texts = { ...f.texts, spec: f.texts.spec.replace(/^task: .*$/m, () => `task: ${JSON.stringify(STUB_SIDEBAR.title)}`) };
+    const mark = remarked(edge, f.texts, texts);
+    return { folder: f.folder, texts: mark === undefined ? texts : { ...texts, gateReviewed: mark } };
+  });
+  const input: TreeInput = { ...read, master: sidebarMaster(read.master), specs };
+  const rebuilt = rebuiltVariant(core, edge, base, input, readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'));
+  // Only the edited folder's families are rebuilt; every other spec keeps its goldens, whose claims read no lock.
+  const own = rebuilt.tree.specs.find((s) => s.folder === STUB_SIDEBAR.folder);
+  return { ...rebuilt, tree: { ...rebuilt.tree, specs: base.specs.map((golden) => (golden.folder === STUB_SIDEBAR.folder && own ? own : golden)) } };
+}
 
 /**
  * The open-question variant (spec 015, T24, ISC-232.1): `X-Spectant-Stub-Question: open` gives harbor 002's running
@@ -2347,6 +2417,24 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     waitsViews.set(state, out);
     return out;
   };
+  // The sidebar variant (spec 067, T7), built on the first request that asks for it and then held.
+  let sidebarView: EdgeView | null = null;
+  /** The sidebar variant a request asks for (`X-Spectant-Stub-Sidebar: on`), null otherwise. */
+  const sidebarViewOf = (req: Request): EdgeView | null => {
+    if (req.headers.get(SIDEBAR_HEADER) !== 'on') return null;
+    if (sidebarView) return sidebarView;
+    const { slug, golden } = STUB_SIDEBAR.workspace;
+    const variant = sidebarVariant(core, edgeCore, trees.get(slug) ?? readTree(core, dir, golden));
+    const out: EdgeView = {
+      dashboards: new Map([...dashboards, [slug, variant.dashboard]]),
+      trees: new Map([...trees, [slug, variant.tree]]),
+      plannings: new Map([...plannings, [slug, variant.planning]]),
+      views: new Map(),
+    };
+    for (const s of STUB_STATES) out.views.set(s, view(s, false, out));
+    sidebarView = out;
+    return out;
+  };
   // The dense variant (spec 021, T5), built on the first request that asks for it and then held.
   let denseView: EdgeView | null = null;
   /** The dense variant a request asks for (`X-Spectant-Stub-Dense: on`), null otherwise. */
@@ -2580,6 +2668,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const variantViewOf = (req: Request, state: StubState): StateView => {
     const dense = denseViewOf(req);
     if (dense) return dense.views.get(state) ?? view(state, false, dense, [STUB_DENSE.workspace]);
+    const sided = sidebarViewOf(req);
+    if (sided) return sided.views.get(state) ?? view(state, false, sided);
     const waited = waitsViewOf(req);
     if (waited) return waited.views.get(state) ?? view(state, false, waited);
     const ran = runViewOf(req);
@@ -2828,7 +2918,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const added = addedOf(req, slug);
     const model =
       boards.get(sessionOf(req))?.planning.get(slug) ??
-      (added ? adminGoldenOf(added.golden).planning : ((denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug));
+      (added ? adminGoldenOf(added.golden).planning : ((denseViewOf(req) ?? sidebarViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.plannings ?? plannings).get(slug));
     const workflow = workflows.get(sessionOf(req))?.get(slug);
     return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
   };
@@ -2870,7 +2960,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    const source = (denseViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
+    const source = (denseViewOf(req) ?? sidebarViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
     const added = addedOf(req, slug);
@@ -3700,6 +3790,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (!isOneOf(DENSE_STATES, dense)) return settingsError(400, { error: 'unknown-stub-dense', dense, states: [...DENSE_STATES] });
     if (dense === 'on' && (waits !== null || locks === 'runs' || worktrees === 'on' || edges !== 'off' || midnight === 'on')) {
       return settingsError(400, { error: 'stub-dense-with-overlay', dense, waits, locks, worktrees, edges, midnight });
+    }
+    const sidebar = req.headers.get(SIDEBAR_HEADER) ?? 'off';
+    if (!isOneOf(SIDEBAR_STATES, sidebar)) return settingsError(400, { error: 'unknown-stub-sidebar', sidebar, states: [...SIDEBAR_STATES] });
+    if (sidebar === 'on' && (dense === 'on' || waits !== null || locks === 'runs' || worktrees === 'on' || edges !== 'off' || midnight === 'on')) {
+      return settingsError(400, { error: 'stub-sidebar-with-overlay', sidebar, dense, waits, locks, worktrees, edges, midnight });
     }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
     // After the header checks: a stream's headers are the ones its synthetic reads go out with.

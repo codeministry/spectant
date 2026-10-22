@@ -50,11 +50,20 @@ const tier = computed(() => tierFor(width()));
 /** The dashboard as `ShellData.dashboard.value()` serves it; a test sets a row's `state` (spec 040, T62). */
 const dashboard = signal<unknown>(undefined);
 const ideas = signal<ReadonlyArray<{ readonly slug: string; readonly state?: ItemStateInfo }>>([]);
+/** The favourite sets `ShellData` holds (spec 067, T25): the star reads them, a click only calls the toggles. */
+const favSpecs = signal<ReadonlySet<string>>(new Set());
+const favIdeas = signal<ReadonlySet<string>>(new Set());
+const toggleFavorite = vi.fn<(spec: string) => Promise<boolean>>(() => Promise.resolve(true));
+const toggleIdeaFavorite = vi.fn<(slug: string) => Promise<boolean>>(() => Promise.resolve(true));
 
 function setup(): void {
   width.set(820);
   dashboard.set(undefined);
   ideas.set([]);
+  favSpecs.set(new Set());
+  favIdeas.set(new Set());
+  toggleFavorite.mockClear();
+  toggleIdeaFavorite.mockClear();
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -66,7 +75,19 @@ function setup(): void {
     providers: [
       provideRouter([{ path: '**', component: Blank }]),
       { provide: ShellState, useValue: { width, tier, ws: signal('harbor') } },
-      { provide: ShellData, useValue: { planningModel: signal({ relations: INDEX }), dashboard: { value: dashboard }, ideas } },
+      {
+        provide: ShellData,
+        useValue: {
+          planningModel: signal({ relations: INDEX }),
+          dashboard: { value: dashboard },
+          ideas,
+          specRows: () => [{ id: '025', slug: '025-spec-edges', title: 'Spec edges', type: null, stage: 'build', priority: null }],
+          isFavorite: (spec: string) => favSpecs().has(spec),
+          isIdeaFavorite: (slug: string) => favIdeas().has(slug),
+          toggleFavorite,
+          toggleIdeaFavorite,
+        },
+      },
       { provide: ApiClient, useValue: { activityHash: () => null, releaseRun: vi.fn() } },
       { provide: RefreshService, useValue: { refresh: vi.fn() } },
     ],
@@ -328,5 +349,71 @@ describe('DetailSidebar', () => {
     expect(sheet?.getAttribute('data-tier')).toBe('compact');
     expect(sheet?.hasAttribute('data-flush')).toBe(true);
     expect(q(host, 'dialog h2[data-part="title"]')?.textContent.trim()).toBe('Version 1.0');
+  });
+
+  // Spec 067, T14 · ISC-527: the title wraps in full; a link row's title stops at two lines and carries the full title.
+  it('shows the full title without a clamp and gives every link row its full title in `title`', async () => {
+    await go('/w/harbor?sel=spec:025');
+    const fixture = await render();
+    const host = hostOf(fixture);
+    const title = q(host, 'h2[data-part="title"]');
+    expect(title?.getAttribute('style')).toBeNull();
+    const style = title ? getComputedStyle(title) : null;
+    expect(style?.getPropertyValue('-webkit-line-clamp')).toBe('');
+    expect(style?.getPropertyValue('line-clamp')).toBe('');
+    expect(style?.getPropertyValue('text-overflow')).not.toBe('ellipsis');
+    expect(style?.getPropertyValue('overflow-wrap')).toBe('anywhere');
+    expect(style?.getPropertyValue('hyphens')).toBe('auto');
+
+    const rows = qa(host, 'a[data-sel]');
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const entry = INDEX[row.getAttribute('data-sel') as RelationRef];
+      expect(row.querySelector('.lt')?.getAttribute('title')).toBe(entry.title);
+    }
+    const lt = rows[0].querySelector<HTMLElement>('.lt');
+    expect(lt ? getComputedStyle(lt).getPropertyValue('white-space') : '').not.toBe('nowrap');
+  });
+
+  it('sets a claim’s text as the title, marked by its type', async () => {
+    await go('/w/harbor?sel=claim:ISC-1');
+    const fixture = await render();
+    expect(q(hostOf(fixture), 'h2[data-part="title"]')?.getAttribute('data-type')).toBe('claim');
+  });
+
+  // Spec 067, T25 · ISC-532: the star in the head of a spec and an idea, between the id and the close button.
+  it('carries the star for a spec and an idea, after the id and before close, following the favourites', async () => {
+    favSpecs.set(new Set(['025-spec-edges']));
+    await go('/w/harbor?sel=spec:025');
+    const fixture = await render();
+    const host = hostOf(fixture);
+    const star = () => q(host, '.head button[ui-star-toggle]');
+    const parts = [...(q(host, '.head')?.children ?? [])].map((el) => el.getAttribute('data-part') ?? el.className.split(' ')[0]);
+    expect(parts.slice(-3, -2)).toEqual(['grow']);
+    expect(q(host, '.head')?.children[3]).toBe(star());
+    expect(q(host, '.head')?.children[4]?.hasAttribute('data-close')).toBe(true);
+    expect(star()?.getAttribute('aria-pressed')).toBe('true');
+    expect(star()?.getAttribute('aria-label')).toBe('Favorite: 025 Spec edges');
+    favSpecs.set(new Set());
+    await fixture.whenStable();
+    expect(star()?.getAttribute('aria-pressed')).toBe('false');
+    star()?.click();
+    expect(toggleFavorite).toHaveBeenCalledWith('025-spec-edges');
+
+    await go('/w/harbor?sel=idea:graph-zoom');
+    await fixture.whenStable();
+    expect(star()?.getAttribute('aria-pressed')).toBe('false');
+    favIdeas.set(new Set(['graph-zoom']));
+    await fixture.whenStable();
+    expect(star()?.getAttribute('aria-pressed')).toBe('true');
+    star()?.click();
+    expect(toggleIdeaFavorite).toHaveBeenCalledWith('graph-zoom');
+
+    for (const ref of ['feature:F25', 'milestone:v1-0', 'claim:ISC-1', 'spec:003']) {
+      await go(`/w/harbor?sel=${ref}`);
+      await fixture.whenStable();
+      expect(q(host, '[data-part="title"]')?.textContent.trim()).toBe(INDEX[ref as RelationRef].title);
+      expect(star()).toBeNull();
+    }
   });
 });

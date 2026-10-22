@@ -67,6 +67,9 @@ import {
   DENSE_HEADER,
   DENSE_STATES,
   STUB_DENSE,
+  SIDEBAR_HEADER,
+  SIDEBAR_STATES,
+  STUB_SIDEBAR,
   EDGES_HEADER,
   EDGE_STATES,
   EMPTY_CATALOG,
@@ -3454,5 +3457,92 @@ describe('stub API: specs in work on the dashboard body (spec 064, T23, T25)', (
       expect({ bad, status: res.status, body: (await res.json()) as unknown }).toEqual({ bad, status: 400, body: { error: 'invalid-lock' } });
     }
     expect(workingOf(await rowsOf(await ask(HARBOR, { session: 'working-errors' })))).toEqual([]);
+  });
+});
+
+describe('stub API: the sidebar fixtures (spec 067, T7, ISC-528)', () => {
+  type Relation = { ref: string; type: string; title: string; children: string[]; facts?: Record<string, unknown> };
+  type Milestone = { name: string; slug: string; target: string; description: string; specs: unknown[]; features: unknown[]; ideas: unknown[] };
+  type Planning = { milestones: Milestone[]; relations: Record<string, Relation> };
+  const HARBOR = `/api/workspaces/${STUB_SIDEBAR.workspace.slug}`;
+  const on = (extra: Record<string, string> = {}): Record<string, string> => ({ [SIDEBAR_HEADER]: 'on', ...extra });
+  const json = async (path: string, headers: Record<string, string> = {}): Promise<Json> => {
+    const res = await ask(path, { headers });
+    expect({ path, status: res.status }).toEqual({ path, status: 200 });
+    return (await res.json()) as Json;
+  };
+  const longKey = `spec:${STUB_SIDEBAR.spec}`;
+
+  test('the planning body carries the relation facts of the core golden, feature, milestone, claim and idea alike', async () => {
+    const served = (await json(`${HARBOR}/planning`)) as unknown as Planning;
+    // The golden as it is, plus the stub's `backlogHash` (`withBacklogText`), as the real route answers.
+    expect({ ...served, backlogHash: undefined }).toEqual({ ...(golden('harbor.planning') as unknown as Planning), backlogHash: undefined });
+    const typed = (type: string): Relation[] => Object.values(served.relations).filter((r) => r.type === type);
+    for (const type of ['feature', 'milestone', 'claim', 'idea']) {
+      expect({ type, facts: typed(type).some((r) => r.facts !== undefined) }).toEqual({ type, facts: true });
+    }
+    expect(served.relations['milestone:harbor-0-9']?.facts).toEqual({ target: '2026-03-15', description: 'Config through one loader, before the console ships.' });
+    // A spec carries no facts: its fields are the dashboard row's.
+    expect(typed('spec').every((r) => r.facts === undefined)).toBe(true);
+  });
+
+  test('on: one spec carries the 200-character title in its dashboard row and planning relation, each core-derived', async () => {
+    expect(STUB_SIDEBAR.title).toHaveLength(200);
+    const dashboard = (await json(`${HARBOR}/dashboard`, on())) as unknown as { specs: Array<{ id: string; title: string }> };
+    expect(dashboard.specs.find((s) => s.id === STUB_SIDEBAR.spec)?.title).toBe(STUB_SIDEBAR.title);
+    const planning = (await json(`${HARBOR}/planning`, on())) as unknown as Planning;
+    expect(planning.relations[longKey]?.title).toBe(STUB_SIDEBAR.title);
+    // Its feature lists the spec as a child, so the feature's link row carries the long title.
+    expect(Object.values(planning.relations).filter((r) => r.children.includes(longKey)).map((r) => r.type)).toEqual(['feature']);
+  });
+
+  test('on: a milestone without children, with its target and description as facts', async () => {
+    const planning = (await json(`${HARBOR}/planning`, on())) as unknown as Planning;
+    const { name, slug, target, description } = STUB_SIDEBAR.milestone;
+    expect(planning.milestones.find((m) => m.slug === slug)).toMatchObject({ name, target, description, specs: [], features: [], ideas: [] });
+    expect(planning.relations[`milestone:${slug}`]).toMatchObject({ type: 'milestone', title: name, children: [], facts: { target, description } });
+  });
+
+  test("on: every other value is harbor's golden, the title, spec.md's hash and the added milestone aside", async () => {
+    const plain = golden('harbor') as unknown as { specs: Array<{ id: string; title: string }> };
+    const old = plain.specs.find((s) => s.id === STUB_SIDEBAR.spec)?.title ?? '';
+    const back = (value: unknown): unknown => JSON.parse(JSON.stringify(value).replaceAll(STUB_SIDEBAR.title, old)) as unknown;
+    expect(back(await json(`${HARBOR}/dashboard`, on()))).toEqual(plain);
+    const planning = back(await json(`${HARBOR}/planning`, on())) as Planning;
+    const { slug } = STUB_SIDEBAR.milestone;
+    // spec.md changed, so its raw hash did: the one the board writes send back.
+    const unhashed = (p: unknown): unknown => JSON.parse(JSON.stringify(p).replace(/"hash":"[0-9a-f]{64}"/gu, '"hash":""')) as unknown;
+    const { [`milestone:${slug}`]: added, ...relations } = planning.relations;
+    expect(added).toBeDefined();
+    expect(unhashed({ ...planning, milestones: planning.milestones.filter((m) => m.slug !== slug), relations })).toEqual(unhashed(await json(`${HARBOR}/planning`)));
+    for (const id of ['002', STUB_SIDEBAR.spec]) {
+      for (const tail of ['', '/tasks', '/claims']) {
+        const path = `${HARBOR}/specs/${id}${tail}`;
+        expect({ path, body: back(await json(path, on())) }).toEqual({ path, body: await json(path) });
+      }
+    }
+    expect(await json('/api/workspaces/lantern/dashboard', on())).toEqual(golden('lantern'));
+  });
+
+  test('off or absent serves the goldens as they are', async () => {
+    expect(await json(`${HARBOR}/dashboard`, { [SIDEBAR_HEADER]: 'off' })).toEqual(golden('harbor'));
+    expect(await json(`${HARBOR}/planning`, { [SIDEBAR_HEADER]: 'off' })).toEqual(await json(`${HARBOR}/planning`));
+  });
+
+  test('an unknown value, or on beside an overlay, is a 400', async () => {
+    const unknown = await ask('/api/workspaces', { headers: { [SIDEBAR_HEADER]: 'yes' } });
+    expect([unknown.status, await unknown.json()]).toEqual([400, { error: 'unknown-stub-sidebar', sidebar: 'yes', states: [...SIDEBAR_STATES] }]);
+    const overlays: ReadonlyArray<Record<string, string>> = [
+      { [DENSE_HEADER]: 'on' },
+      { [WAITS_HEADER]: '7' },
+      { [LOCKS_HEADER]: 'runs' },
+      { [WORKTREES_HEADER]: 'on' },
+      { [EDGES_HEADER]: 'met' },
+      { [MIDNIGHT_HEADER]: 'on' },
+    ];
+    for (const extra of overlays) {
+      const res = await ask('/api/workspaces', { headers: on(extra) });
+      expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-sidebar-with-overlay' });
+    }
   });
 });

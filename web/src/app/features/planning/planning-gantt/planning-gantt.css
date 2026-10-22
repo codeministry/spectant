@@ -6,6 +6,8 @@
  * percent of the scale (`--l`, `--w`). The sheet keeps 64 px per month (`--min-scale`) at medium and wide and scrolls
  * in `.scroll` below that, never the page; compact squeezes the axis into the track width and never scrolls.
  */
+@import '../_detail-reserve.css';
+
 :host {
   display: block;
   min-inline-size: 0;

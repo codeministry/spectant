@@ -268,6 +268,26 @@ fill it (`stub-api.ts`, `stub-api.test.ts`, `-t "specs in work"`):
   frame goes to its open `/api/events` streams, as `bump` does: leave the stream connected and wait for its 200 before
   the POST. 400 `invalid-lock`, 404 for an unknown workspace or spec; `POST /api/__stub/reset` drops the session's locks.
 
+## Driving the detail sidebar from an e2e or browser spec
+
+The sidebar's overview (spec 067) reads the dashboard row of a spec and the planning tree's `relations`, whose
+`facts` (feature, milestone, claim, idea) the stub serves from core's planning golden as it is. Its fixtures
+(`stub-api.ts`, `stub-api.test.ts`, `-t "sidebar fixtures"`):
+
+- **Long title, childless milestone**: `X-Spectant-Stub-Sidebar: on` serves harbor rebuilt by core (`STUB_SIDEBAR`):
+  003's title is exactly 200 characters in its dashboard row, Next-up entry and planning relation (and so in F3's
+  link row), and the master gains `Harbor 3.0` (`milestone:harbor-3-0`), which nothing names: no children, target and
+  description as facts. Every other value stays the golden's; a 400 beside the dense, waits, `runs`, worktree, edge or
+  midnight overlays. Set it with `page.setExtraHTTPHeaders`.
+- **Open run**: `X-Spectant-Stub-Locks: runs` (see "Driving a run's state"): beacon 003 and its story `uptime-badges`
+  run; `POST …/beacon/runs/r-0308-1452/release` with the dashboard's `X-Spectant-Activity-Hash` answers 200 for the
+  test's session, and the next read shows the run ended.
+- **Open tasks**: harbor 002's T28 (ISC-75), T29 (ISC-76) and T32 (ISC-78) are open and no lock holds their claims;
+  `POST …/specs/002/tasks/:task/check` with the `X-Spectant-Tasks-Hash` of `GET …/specs/002/tasks` answers 200 (T27
+  on ISC-74 is held by `a:claude:sess-2`). Tick in the test's own `X-Spectant-Stub-Session` and reset it after.
+
+Reason: every body stays core's output over a fixture tree, never hand-written JSON.
+
 ## Driving what waits on you from an e2e spec
 
 The block "Waits on you" (spec 020, ISC-238) reads `guidance.waits` from each workspace's dashboard. Pick how many

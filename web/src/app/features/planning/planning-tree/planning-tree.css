@@ -6,6 +6,8 @@
  * fraction and the meter at the end, so it reads as the sum of its features; the "No milestone" group keeps that
  * geometry on the card surface.
  */
+@import '../_detail-reserve.css';
+
 :host {
   display: grid;
   gap: 16px;
