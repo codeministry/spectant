@@ -1,13 +1,13 @@
 /* The frame of a workspace tile on `/` (spec 066 T12, T14, design.md § Across viewports), shared by the workspace
    column (`:host(.ws-tile)`) and the page's loading and unreadable tiles (`.ws-tile`), so every kind is equally tall.
-   Four fixed tracks as tokens per shell tier, never a viewport query: medium and compact 48 · 72 · 184 · 136, wide
-   48 · 88 · 140 · 72. The card's 3 px edge takes the place of its top border, so a tile measures 3 + tracks + 1 (the
-   bottom border): 444 px, 352 px at wide. Hairlines (`--line`) part the blocks inside the track sizes, and every block
+   Four fixed tracks as tokens per shell tier, never a viewport query: medium and compact 48 · 152 · 184 · 136, wide
+   48 · 152 · 140 · 72; the preview is equally tall on every tier (ISC-523). The card's 3 px edge takes the place of its
+   top border, so a tile measures 3 + tracks + 1 (the bottom border): 524 px, 416 px at wide. Hairlines (`--line`) part the blocks inside the track sizes, and every block
    clips what it holds, so a track's height is a hard limit. */
 :host(.ws-tile),
 .ws-tile {
   --tile-head: 48px;
-  --tile-preview: 72px;
+  --tile-preview: 152px;
   --tile-list: 184px;
   --tile-row: 40px;
   --tile-kpi: 136px;
@@ -20,7 +20,6 @@
 @container shell (inline-size >= 1120px) {
   :host(.ws-tile),
   .ws-tile {
-    --tile-preview: 88px;
     --tile-list: 140px;
     --tile-row: 28px;
     --tile-kpi: 72px;

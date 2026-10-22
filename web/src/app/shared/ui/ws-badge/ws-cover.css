@@ -21,7 +21,7 @@
 :host([data-shape='tile']) {
   aspect-ratio: auto;
   inline-size: 100%;
-  block-size: var(--tile-preview, 88px);
+  block-size: var(--tile-preview, 152px);
   border: 0;
   border-radius: 0;
   background: color-mix(in oklab, var(--muted-ink) 6%, var(--color-base-100));
