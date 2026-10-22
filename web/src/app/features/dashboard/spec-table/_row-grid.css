@@ -93,6 +93,31 @@
   grid-area: star;
 }
 
+/* From 640 px every cell but the title's stands centred in its column, under its centred heading
+   (`spec-table-head.css`); below, the two lines keep their cells where they are. `:host` lifts these over the rows'
+   own alignments (the meter's `end`). The feature lines centre and still cut at the column's width. */
+@container specs (width >= 640px) {
+  :host .rid,
+  :host .rmark,
+  :host .ragent,
+  :host .rprio,
+  :host .rtrack,
+  :host .rphase,
+  :host .rmeter,
+  :host .rstar {
+    justify-content: center;
+  }
+
+  :host .rfeat {
+    align-items: center;
+  }
+
+  .rfeat-id,
+  .rfeat-ms {
+    max-inline-size: 100%;
+  }
+}
+
 /* An archived row's mark holds its archive date (spec 050) from 880 px. */
 @container specs (width >= 880px) {
   :host([data-archived]) {
