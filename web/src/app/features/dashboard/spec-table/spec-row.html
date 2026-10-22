@@ -61,8 +61,9 @@
   @if (row().archived) {
     <!-- Spec 050 (T2, ISC-287): the archive chip where the phase chip stands. -->
     <ui-chip class="rarchived" variant="plain" icon="archive" data-archived-chip [attr.title]="archivedTitle()">{{ 'specs.archivedChip' | transloco }}</ui-chip>
-  } @else if (row().phase; as phase) {
-    <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
+  } @else {
+    <!-- Spec 064 (T59, ISC-500): the status chip names the row's stage, not its coarse phase. -->
+    <ui-chip class="phase" [tone]="stageTone()" [dot]="true">{{ 'stages.' + row().stage | transloco }}</ui-chip>
   }
 </span>
 <span class="rmeter" data-cell="meter" role="img" [attr.aria-label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }">

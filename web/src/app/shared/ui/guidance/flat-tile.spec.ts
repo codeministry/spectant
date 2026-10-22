@@ -99,4 +99,21 @@ describe('UiFlatTile', () => {
     expect(link?.hasAttribute('aria-describedby')).toBe(false);
     expect(link?.hasAttribute('title')).toBe(false);
   });
+
+  // ISC-508 follow-up (principal: the pulsing dot sat too close to the left edge). The card's `[padding]="0"` writes an
+  // inline `padding: 0px` that beat the tile's own inset, so every mark stood against the border. The inset must win,
+  // and the mark column centres what it holds: the 8 px dot's ring (inset -4 px, scaled to 1.4) then reaches at most
+  // 3.2 px past the 16 px column, inside the 12 px inset.
+  it('keeps its 12 px inline inset over the card padding and centres the mark in its 16 px column', async () => {
+    const host = await render();
+    const card = host.querySelector<HTMLElement>('ui-card.tile');
+    expect(card?.style.padding).toBe('0px');
+
+    const css = (UiFlatTile as unknown as { ɵcmp: { styles: readonly string[] } }).ɵcmp.styles.join('').replace(/\s+/g, '');
+    expect(css).toMatch(/\.tile\[[^\]]+\]\{[^}]*padding-inline:12px!important[;}]/);
+    expect(css).toMatch(/\.tile\[[^\]]+\]\{[^}]*grid-template-columns:16px/);
+    expect(css).toMatch(/\.mark\[[^\]]+\]\{[^}]*place-items:center[;}]/);
+    const ringReach = (16 * 1.4 - 16) / 2;
+    expect(ringReach).toBeLessThan(12);
+  });
 });

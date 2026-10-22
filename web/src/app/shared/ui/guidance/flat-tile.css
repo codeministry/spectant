@@ -18,7 +18,13 @@
   align-items: center;
   overflow: visible;
   block-size: 72px;
-  padding-inline: 12px;
+
+  /*
+   * The 12 px inline inset (ISC-508 follow-up). `ui-card [padding]="0"` writes an inline `padding: 0px` on this host,
+   * which beats any class rule; without `!important` the mark stood against the border and the agent dot's ring
+   * (±4 px, pinging to 1.4) touched the edge. The block padding stays the card's 0, so the heights stay 72 / 48.
+   */
+  padding-inline: 12px !important;
 }
 
 .mark {

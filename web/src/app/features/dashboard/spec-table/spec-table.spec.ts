@@ -190,7 +190,7 @@ describe('SpecTable (T89)', () => {
     expect(strip?.querySelectorAll('i')).toHaveLength(2);
   });
 
-  it('renders a row as id | title + description | agent dot, mini track, phase chip | meter + a/b', async () => {
+  it('renders a row as id | title + description | agent dot, mini track, stage chip | meter + a/b', async () => {
     const { host } = await render();
     const [first, second] = [...host.querySelectorAll<HTMLAnchorElement>('[data-spec-row]')];
     // T69, spec 026 T27: a row's first activation selects it for the detail sidebar (`?sel=spec:<id>`); only the
@@ -204,7 +204,7 @@ describe('SpecTable (T89)', () => {
     expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
     expect(rowA.querySelector('.ragent .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
     expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
-    expect(text(rowA.querySelector('.rphase ui-chip.phase'))).toBe('building');
+    expect(text(rowA.querySelector('.rphase ui-chip.phase'))).toBe('Build');
     expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
     expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(rowB.querySelector('.rtitle .d')).toBeNull();
@@ -246,7 +246,7 @@ describe('SpecTable (T89)', () => {
     expect(lastFilter.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {
+  it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the status chip names the stage (spec 025, spec 064 ISC-500)', async () => {
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows({ specs: [wire('009', { phase: 'building', stage: 'blocked' })], archive: [] }));
@@ -258,7 +258,7 @@ describe('SpecTable (T89)', () => {
     expect([...(track?.querySelectorAll('.bar') ?? [])].map((bar) => bar.getAttribute('data-state'))).toEqual(['done', 'done', 'done', 'blocked', 'pending']);
     expect(text(track?.querySelector('[data-blocked]'))).toBe('Blocked');
     expect(track?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Stage 4 of 5: Build · Blocked');
-    expect(text(row.querySelector('.rphase ui-chip'))).toBe('building');
+    expect(text(row.querySelector('.rphase ui-chip'))).toBe('Blocked');
   });
 
   it('a row on any other stage has no blocked segment and no word (spec 025)', async () => {
@@ -791,9 +791,9 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
     expect(compact?.hasAttribute('data-desc')).toBe(false);
     expect(compact?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').not.toContain('desc-002');
     expect(text(compact?.querySelector('a.row-link'))).toBe('Spec 002');
-    // Only the description leaves: agent dot, phase chip, priority, track and a/b stay.
+    // Only the description leaves: agent dot, stage chip, priority, track and a/b stay.
     expect(compact?.querySelector('.ragent .agent-dot')).not.toBeNull();
-    expect(text(compact?.querySelector('.rphase ui-chip.phase'))).toBe('building');
+    expect(text(compact?.querySelector('.rphase ui-chip.phase'))).toBe('Build');
     expect(compact?.querySelector('.rprio ui-priority')).not.toBeNull();
     expect(text(compact?.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(writes()).toEqual([]);

@@ -15,7 +15,8 @@ import { LanguageService } from '../../../core/language.service';
 import { formatDay } from '../../../shared/time/format';
 import { UiTime } from '../../../shared/time/time';
 import { stageIndex } from '../../../core/model/stage-track';
-import { PHASE_TONES, type SpecTableRow } from './spec-table-model';
+import { toneOfStage } from '../../../shared/ui/stage-tone';
+import type { SpecTableRow } from './spec-table-model';
 
 /** i18n key for the agent dot's name; the English fallback stands until the key lands in both catalogues. */
 const AGENT_KEY = 'specs.agentWorking';
@@ -119,7 +120,7 @@ export class SpecRow {
   protected readonly stageCurrent = computed(() => stageIndex(this.row().stage));
   /**
    * Stage `blocked` (spec 025, principal 2026-10-14): the track keeps the progress (blocked sits on Build) and marks the
-   * current segment as the board's Blocked column, with the word "Blocked"; the phase chip stays as it is.
+   * current segment as the board's Blocked column, with the word "Blocked"; the status chip names it too (ISC-500).
    */
   protected readonly stageBlocked = computed(() => this.row().stage === 'blocked');
   protected readonly stageAria = computed(() => {
@@ -129,7 +130,8 @@ export class SpecRow {
     const word = this.stageBlocked() ? `${stage} · ${this.transloco.translate('stages.blocked')}` : stage;
     return this.transloco.translate('stages.position', { index: index + 1, total: labels.length, stage: word });
   });
-  protected readonly phaseTone = computed(() => PHASE_TONES[this.row().phase ?? ''] ?? 'neutral');
+  /** Spec 064 (T59, ISC-500): the status chip's tone, the row's stage's (`stage-tone.ts`). */
+  protected readonly stageTone = computed(() => toneOfStage(this.row().stage));
   private readonly appLang = inject(LanguageService).current;
   /** Spec 050 (T2, ISC-287): the archive chip's title, "Archived on <day>"; null without an archive date. */
   protected readonly archivedTitle = computed(() => {

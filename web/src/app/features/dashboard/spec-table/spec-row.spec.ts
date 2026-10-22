@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { toneOfStage } from '../../../shared/ui/stage-tone';
 import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import { SpecRow } from './spec-row';
 import { archivedTableRow, type SpecTableRow } from './spec-table-model';
@@ -267,5 +268,42 @@ describe('SpecRow more toggle cell (spec 064, T46, ISC-489)', () => {
     const host = await render(ACTIVE);
     expect(host.querySelector('.tline')?.getAttribute('style') ?? '').not.toContain('anchor');
     expect(host.querySelector('.d')?.getAttribute('style') ?? '').not.toContain('anchor');
+  });
+});
+
+/** The stages a spec row's status chip names (spec 064, ISC-500), each with a coarse phase beside it. */
+const STAGE_ROWS: ReadonlyArray<readonly [stage: string, phase: string]> = [
+  ['plan', 'scoping'],
+  ['tasks', 'scoping'],
+  ['review', 'scoping'],
+  ['build', 'building'],
+  ['code-review', 'climbing'],
+  ['close', 'climbing'],
+  ['close-pending', 'climbing'],
+  ['done', 'complete'],
+];
+
+describe('SpecRow status chip shows the stage (spec 064, T59, ISC-500)', () => {
+  for (const lang of LANGS) {
+    it(`names each row's stage with its stages.* word and the stage's tone, never the phase (${lang})`, async () => {
+      const catalogue = CATALOGUES[lang] as unknown as { stages: Record<string, string>; phases: Record<string, string> };
+      for (const [stage, phase] of STAGE_ROWS) {
+        const host = await render({ ...ACTIVE, stage, phase }, { lang });
+        const chip = host.querySelector('[data-cell="phase"] ui-chip.phase');
+        const word = chip?.textContent.trim();
+        expect(word, stage).toBe(catalogue.stages[stage]);
+        expect(chip?.getAttribute('data-tone'), stage).toBe(toneOfStage(stage));
+        expect(chip?.getAttribute('data-tone'), stage).not.toBe('neutral');
+        expect(Object.values(catalogue.phases), stage).not.toContain(word);
+      }
+    });
+  }
+
+  it('shows the stage chip on a row without a phase too; an archived row keeps its archive chip', async () => {
+    const plain = await render({ ...ACTIVE, stage: 'review', phase: null });
+    expect(plain.querySelector('ui-chip.phase')?.textContent.trim()).toBe('Review');
+    const archived = await render(ARCHIVED);
+    expect(archived.querySelector('[data-cell="phase"] ui-chip.phase')).toBeNull();
+    expect(archived.querySelector('[data-cell="phase"] [data-archived-chip]')).not.toBeNull();
   });
 });
