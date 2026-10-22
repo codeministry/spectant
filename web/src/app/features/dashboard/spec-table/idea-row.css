@@ -70,9 +70,10 @@
   white-space: nowrap;
 }
 
+/* Until the idea row maps its cells onto the grid's columns (T47), its priority and state span `prio` to `phase`. */
 .rtrack {
   display: flex;
-  grid-area: track;
+  grid-area: prio-start / prio-start / prio-end / phase-end;
   gap: 16px;
   align-items: center;
   min-inline-size: 0;
@@ -84,22 +85,10 @@
   min-inline-size: 0;
 }
 
-/* Below 640 px of list: line 1 glyph and title, line 2 priority and state, then the meta at the row's end. */
+/* Below 640 px of list: line 1 glyph and title with the meta, line 2 priority and state. */
 @container specs (width < 640px) {
-  .rtitle {
-    display: contents;
-  }
-
-  .where {
-    grid-area: desc;
-  }
-
   .rtrack {
     gap: 8px;
     overflow: hidden;
-  }
-
-  :host(:not([data-desc])) .rtrack {
-    grid-column: 2 / -1;
   }
 }

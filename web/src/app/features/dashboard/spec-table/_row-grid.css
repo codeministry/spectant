@@ -1,24 +1,91 @@
 /*
- * The row grid of the Specs list (spec 021, design § P3 heights), shared by `app-spec-row` and `app-idea-row`
- * (spec 064), each importing it first. The list declares `container: specs`; the row reads it, never the viewport.
- * From 640 px one 48 px line, `id | title | track | meter | star`; below 640 px two lines, `id title a/b` over
- * `star track desc`.
+ * The row grid of the Specs list (spec 021, design § P3 heights; fixed columns since spec 064, T45), shared by
+ * `app-spec-row` and `app-idea-row`, each importing it first. The list declares `container: specs`; the row reads it,
+ * never the viewport. Every cell names its column with `data-cell` and keeps it even when empty, so no cell moves with
+ * the title's length or a missing mark. From 640 px one 48 px line,
+ * `id | title | more | mark | agent | prio | track | phase | meter | star`; below 900 px the stage track's column is
+ * 0 wide (the stage stays in the phase chip), the others stay. Below 640 px two lines: `id title more star` over
+ * `· mark prio phase meter`.
  */
 :host {
+  --track-col: 88px;
+
   display: grid;
-  grid-template-areas: 'id title track meter star';
-  grid-template-columns: 48px minmax(0, 1fr) auto auto 32px;
-  gap: 4px 16px;
+  grid-template-areas: 'id title more mark agent prio track phase meter star';
+  grid-template-columns: 72px minmax(0, 1fr) 24px 136px 8px 48px var(--track-col, 88px) 104px 120px 32px;
+  gap: 4px 8px;
   align-items: center;
   min-block-size: 48px;
   padding: 8px 16px;
 }
 
+[data-cell='id'] {
+  grid-area: id;
+}
+
+[data-cell='title'] {
+  grid-area: title;
+}
+
+[data-cell='more'] {
+  grid-area: more;
+}
+
+[data-cell='mark'] {
+  grid-area: mark;
+}
+
+[data-cell='agent'] {
+  grid-area: agent;
+}
+
+[data-cell='prio'] {
+  grid-area: prio;
+}
+
+[data-cell='track'] {
+  grid-area: track;
+}
+
+[data-cell='phase'] {
+  grid-area: phase;
+}
+
+[data-cell='meter'] {
+  grid-area: meter;
+}
+
+[data-cell='star'] {
+  grid-area: star;
+}
+
+@container specs (width >= 1024px) {
+  :host {
+    column-gap: 16px;
+  }
+}
+
+@container specs (width < 900px) {
+  :host {
+    --track-col: 0px;
+  }
+
+  [data-cell='track'] {
+    display: none;
+  }
+}
+
+/* Below 640 px of list the agent dot and the stage track leave (the compact form has no column for them; the stage
+   stays in the phase chip); `auto` columns until the compact form fixes their widths (T48). */
 @container specs (width < 640px) {
   :host {
     grid-template:
-      'id title title meter' 24px
-      'fav track desc desc' 24px
-      / 48px auto minmax(0, 1fr) auto;
+      'id title title title more star' 24px
+      '. mark prio phase meter meter' 24px
+      / 48px auto auto minmax(0, 1fr) 24px 32px;
+  }
+
+  [data-cell='agent'] {
+    display: none;
   }
 }

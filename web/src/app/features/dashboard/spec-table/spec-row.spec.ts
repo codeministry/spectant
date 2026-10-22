@@ -150,18 +150,23 @@ describe('SpecRow agent dot (spec 064, T8, ISC-467)', () => {
     <app-spec-row [row]="row()" [stageLabels]="labels">
       <a class="row-link" href="#">{{ row().title }}</a>
       <button ui-star-toggle [label]="'Favorite: ' + row().id + ' ' + row().title"></button>
+      @if (more()) {
+        <button type="button" class="row-more" aria-label="More… 002 Dashboard">…</button>
+      }
     </app-spec-row>
   `,
 })
 class ProjectingHost {
   readonly row = signal<SpecTableRow>(ACTIVE);
+  readonly more = signal(false);
   readonly labels = LABELS;
 }
 
-async function renderProjected(row: SpecTableRow) {
+async function renderProjected(row: SpecTableRow, more = false) {
   TestBed.inject(TranslocoService).setActiveLang('en');
   const fixture = TestBed.createComponent(ProjectingHost);
   fixture.componentInstance.row.set(row);
+  fixture.componentInstance.more.set(more);
   await fixture.whenStable();
   return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('app-spec-row') as HTMLElement;
 }
@@ -183,5 +188,84 @@ describe('SpecRow star slot (spec 052, T17, ISC-300)', () => {
     expect(host.querySelector('button[ui-star-toggle]')).toBeNull();
     expect(host.querySelector('.rstar')).not.toBeNull();
     expect(host.querySelector('.tline > a.row-link')).not.toBeNull();
+  });
+});
+
+/** The row grid's named columns (spec 064, T45, ISC-487), in order; T47 maps the idea row onto them, T56 measures them. */
+const CELLS = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+
+/** The row's compiled stylesheet (the shared grid partial included), whitespace dropped. */
+function rowCss(): string {
+  const styles = (SpecRow as unknown as { ɵcmp: { styles: readonly string[] } }).ɵcmp.styles;
+  return styles.join('').replace(/\s+/g, '').replaceAll('--%NS%', '--');
+}
+
+const cellsOf = (host: HTMLElement) => [...host.children].map((c) => c.getAttribute('data-cell'));
+
+describe('SpecRow fixed columns (spec 064, T45, ISC-487)', () => {
+  it('from 640 px the grid names ten fixed columns with the design widths', () => {
+    const css = rowCss();
+    expect(css).toMatch(/grid-template-areas:["']idtitlemoremarkagentpriotrackphasemeterstar["']/);
+    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px136px8px48pxvar(--track-col,88px)104px120px32px');
+  });
+
+  it('maps every cell onto its own grid area by its data-cell name', () => {
+    const css = rowCss();
+    for (const name of CELLS) expect(css, name).toMatch(new RegExp(`\\[data-cell=["']?${name}["']?\\][^{}]*\\{grid-area:${name}[;}]`));
+  });
+
+  it('renders all ten cells in column order, a marked row as an unmarked one', async () => {
+    for (const mark of ['waits', 'next', null] as const) {
+      const host = await render(ACTIVE, { mark });
+      expect(cellsOf(host), String(mark)).toEqual(CELLS);
+    }
+    expect(cellsOf(await render({ ...ACTIVE, agent: null, phase: null, description: null }))).toEqual(CELLS);
+  });
+
+  it('keeps the mark cell, empty, on a row without a mark; the mark sits in it on a marked row', async () => {
+    const plain = await render(ACTIVE);
+    const cell = plain.querySelector('[data-cell="mark"]');
+    expect(cell).not.toBeNull();
+    expect(cell?.children).toHaveLength(0);
+    const waits = await render(ACTIVE, { mark: 'waits' });
+    expect(waits.querySelector('[data-waits-mark]')?.parentElement?.getAttribute('data-cell')).toBe('mark');
+    const next = await render(ACTIVE, { mark: 'next' });
+    expect(next.querySelector('[data-next-mark]')?.parentElement?.getAttribute('data-cell')).toBe('mark');
+  });
+
+  it('splits the old track cell: agent dot, priority, stage track and phase chip each in its own cell', async () => {
+    const host = await render(ACTIVE);
+    expect(host.querySelector('ui-agent-dot')?.parentElement?.getAttribute('data-cell')).toBe('agent');
+    expect(host.querySelector('ui-priority')?.parentElement?.getAttribute('data-cell')).toBe('prio');
+    expect(host.querySelector('ui-stage-track')?.parentElement?.getAttribute('data-cell')).toBe('track');
+    expect(host.querySelector('ui-chip.phase')?.parentElement?.getAttribute('data-cell')).toBe('phase');
+  });
+
+  it('keeps the archived row in the same columns: the date in the mark cell, the archive chip in the phase cell', async () => {
+    const host = await render(ARCHIVED);
+    expect(cellsOf(host)).toEqual(CELLS);
+    expect(host.querySelector('time')?.closest('[data-cell]')?.getAttribute('data-cell')).toBe('mark');
+    expect(host.querySelector('[data-archived-chip]')?.parentElement?.getAttribute('data-cell')).toBe('phase');
+  });
+});
+
+describe('SpecRow more toggle cell (spec 064, T46, ISC-489)', () => {
+  it("projects the list's toggle into its own more cell, outside the title, the id and the row link", async () => {
+    const host = await renderProjected(ACTIVE, true);
+    const more = host.querySelector<HTMLElement>('button.row-more');
+    expect(more?.parentElement?.getAttribute('data-cell')).toBe('more');
+    expect(more?.closest('a, .rtitle, .rid')).toBeNull();
+    expect(cellsOf(host)).toEqual(CELLS);
+  });
+
+  it('without a toggle the more cell stays, empty', async () => {
+    const host = await renderProjected(ACTIVE);
+    expect(host.querySelector('[data-cell="more"]')?.children).toHaveLength(0);
+  });
+
+  it('anchors nothing to the description any more: no anchor-name on the title line or the description', async () => {
+    const host = await render(ACTIVE);
+    expect(host.querySelector('.tline')?.getAttribute('style') ?? '').not.toContain('anchor');
+    expect(host.querySelector('.d')?.getAttribute('style') ?? '').not.toContain('anchor');
   });
 });

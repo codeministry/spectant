@@ -209,6 +209,7 @@
     "archivedHidden": "Archived specs hidden",
     "moreName": "More… {{id}} {{title}}",
     "lessName": "Less {{id}} {{title}}",
+    "moreGlyph": "…",
     "ideas": {
       "title": "Ideas · {{count}}",
       "label": "Ideas in the backlog"

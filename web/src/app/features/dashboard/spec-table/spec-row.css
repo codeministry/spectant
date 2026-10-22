@@ -2,17 +2,14 @@
 
 /*
  * The spec row (spec 021, design § P3 heights). The grid, shared with the idea row (spec 064), comes from
- * `_row-grid.css`. From 640 px one 48 px line, `48px | 1fr | auto | auto | 32px`: id, title with its description inline
- * behind it, the track cell (mark, agent dot, priority, mini track, phase), meter + a/b, the star (spec 052). Below
- * 640 px two lines, `id title a/b` over `star mark · phase · priority` (or `phase · priority · description`), without
- * meter bar and track. Compact
- * density (ISC-254) renders no description, so the title has the line to itself. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
+ * `_row-grid.css`: every cell sits in its own named column (T45). From 880 px the description stands inline behind
+ * the title; below it the description drops unless the row is opened. Compact density (ISC-254) renders no
+ * description. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
  */
 
 /* The id cell: the 16 px type glyph slot (empty for an unknown type, so ids align), 4 px, then the number. */
 .rid {
   display: flex;
-  grid-area: id;
   gap: 4px;
   align-items: center;
   white-space: nowrap;
@@ -34,7 +31,6 @@
 /* Title, then the description inline on the same line (ISC-249 keeps it to a differing sentence). */
 .rtitle {
   display: flex;
-  grid-area: title;
   gap: 8px;
   align-items: baseline;
   min-inline-size: 0;
@@ -60,8 +56,8 @@
   flex: none;
 }
 
-/* The description, one line cut at a whole word by `uiClamp` (ISC-111); the list renders "more…" / "less" outside the
-   row link, and it opens title and description. */
+/* The description, one line cut at a whole word by `uiClamp` (ISC-111); the list's "…" in the `more` cell opens title
+   and description. */
 .d {
   flex: 1 1 0;
   min-inline-size: 0;
@@ -82,30 +78,36 @@
   max-inline-size: none;
 }
 
-.rtrack {
+/* The cells right of the title: each holds one thing at its column's start, cut rather than pushing a neighbour. */
+.rmore,
+.rmark,
+.ragent,
+.rprio,
+.rtrack,
+.rphase {
   display: flex;
-  grid-area: track;
-  gap: 16px;
   align-items: center;
   min-inline-size: 0;
 }
 
-.rmark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
+/* The "…" toggle (spec 064, T46) sits above the row link's stretch, at the top of an opened row. */
+.rmore {
+  position: relative;
+  z-index: 1;
+  align-self: start;
 }
 
 .ragent {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  inline-size: 8px;
+  justify-content: center;
+}
+
+.rnext {
+  display: inline-flex;
+  align-items: center;
 }
 
 .rmeter {
   display: flex;
-  grid-area: meter;
   gap: 8px;
   align-items: center;
   justify-content: end;
@@ -115,13 +117,11 @@
   inline-size: 64px;
 }
 
-/* Spec 052 (T17): the star's cell, the end column from 640 px, above the row link's `::after`; its look is the
-   primitive's (`ui-star-toggle`). */
+/* Spec 052 (T17): the star's cell, the end column, above the row link's `::after`; its look is the primitive's. */
 .rstar {
   display: inline-flex;
   position: relative;
   z-index: 1;
-  grid-area: star;
 }
 
 .frac {
@@ -134,10 +134,9 @@
 }
 
 /*
- * Spec 050 (T2, ISC-287): the archived row. Its track cell holds only the archive chip, flush right under the phase
- * chips above; the chip is marked by its icon, word and dashed border, never by transparency. From 880 px (the desktop
- * column; design.md keeps the tablet row without it) the archive date stands before it and the title drops to 400 (the
- * list's link, projected into the title line).
+ * Spec 050 (T2, ISC-287): the archived row. Its archive chip stands in the phase column under the phase chips above,
+ * marked by its icon, word and dashed border, never by transparency. From 880 px the archive date stands in the mark
+ * column and the title drops to 400 (the list's link, projected into the title line).
  */
 .rarchived {
   flex: none;
@@ -153,23 +152,14 @@
   line-height: 20px;
 }
 
-@container specs (width >= 640px) {
-  :host([data-archived]) .rtrack {
-    justify-content: end;
-  }
-}
-
 @container specs (width < 880px) {
-  .rdate {
+  .rdate,
+  :host(:not([data-expanded])) .d {
     display: none;
   }
-}
 
-/* Spec 052: below 900 px the mini stage track leaves the one-line row, so the star's column does not starve the title;
-   the stage stays in the phase chip, as in the two-line row. */
-@container specs (width < 900px) {
-  :host ui-stage-track {
-    display: none;
+  .rtitle:has(.d) .tline {
+    max-inline-size: none;
   }
 }
 
@@ -192,64 +182,10 @@
   pointer-events: none;
 }
 
-/* Below 640 px of list: two lines (69 px with the hairline). Line 1 `id | title | a/b`, line 2 mark · phase · priority
-   (without guidance phase · priority · description); the meter bar and the stage track leave (the stage stays in the phase
-   chip and the a/b in the meter cell's name). */
+/* Below 640 px of list: two lines (69 px with the hairline), the grid's from `_row-grid.css`; the meter bar leaves,
+   the a/b stays (and in the meter cell's name). */
 @container specs (width < 640px) {
-  /* The two-line grid comes from `_row-grid.css`; the description ends line 2 at the row's end, where its anchored
-     "more…" stays clear of the title link. */
-
-  /* Spec 052 (T17): the star in line 2 under the type glyph, its bottom on the line's; the coarse hit area (the
-     primitive's `::before`) reaches up, never into the next row. */
-  .rstar {
-    grid-area: fav;
-    align-self: end;
-    margin-inline-start: -8px;
-  }
-
-  /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
-  .rstar ::ng-deep [ui-star-toggle]::before {
-    inset-block: -12px -8px;
-    block-size: auto;
-    translate: -50% 0;
-  }
-
-  :host .rtitle {
-    display: contents;
-  }
-
-  :host .tline {
-    grid-area: title;
-    max-inline-size: none;
-  }
-
-  :host .d {
-    grid-area: desc;
-  }
-
-  :host .rtrack {
-    gap: 8px;
-    overflow: hidden;
-  }
-
-  /* A marked row shows its mark where the description stood; without either, line 2 starts under the title. */
-  :host([data-mark]) .d {
-    display: none;
-  }
-
-  :host(:is([data-mark], :not([data-desc]))) .rtrack {
-    grid-column: 2 / -1;
-  }
-
-  :host .phase {
-    order: 1;
-  }
-
-  :host .rprio {
-    order: 2;
-  }
-
-  :host :is(ui-stage-track, .meter, .rdate) {
+  .meter {
     display: none;
   }
 
@@ -262,14 +198,5 @@
   /* The archive chip keeps its dashed border (the chip's own forced-colors border is solid). */
   .rarchived {
     border-color: CanvasText;
-  }
-}
-
-/* Spec 024: the room at the end of the one description line for the list's anchored "more…" (spec-table.css). Without
-   a description (none, or compact density) a cut title line keeps that room instead, being the anchor then. */
-@supports (position-anchor: --a) {
-  .d,
-  :host([data-overflow]:not([data-desc], [data-expanded])) .tline {
-    padding-inline-end: 56px;
   }
 }

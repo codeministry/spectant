@@ -31,10 +31,11 @@ const AGENT_KEY = 'specs.agentWorking';
  * link to the blocker, lifted above the stretched link. The title cuts first, the chip never; the partial scope lives
  * only in the chip's accessible name (no `.meta` in the list).
  *
- * Forms (spec 021, design § P3 heights): the row reads the `specs` container the list declares. From 640 px it is one
- * 48 px line, `id | title · description | mark | agent | priority | mini track | phase | meter + a/b`; below 640 px two
- * lines, `id | title | a/b` over `mark · phase · priority` (without guidance `phase · priority · description`),
- * without meter bar and track.
+ * Forms (spec 021, design § P3 heights): the row reads the `specs` container the list declares. Since spec 064 (T45,
+ * ISC-487) every cell names its fixed column of `_row-grid.css` with `data-cell` and renders even when empty: from
+ * 640 px one 48 px line, `id | title · description | more | mark | agent | prio | track | phase | meter | star`; below
+ * 640 px two lines, `id title more star` over `· mark prio phase meter`, without agent dot, meter bar and track. The
+ * list's "…" toggle (T46, ISC-489) is projected into the `more` cell (`.row-more`).
  *
  * Density (spec 021, ISC-254): the list resolves it, the stored setting or the view's `?density=`. `compact` drops the
  * description and nothing else: at wide the title stands alone on its line, below 640 px line 2 is `mark · phase ·

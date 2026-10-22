@@ -1,4 +1,5 @@
-<span class="rid" [id]="'rid-' + row().id">
+<!-- Spec 064 (T45, ISC-487): one cell per named column of `_row-grid.css`, each rendered even when empty. -->
+<span class="rid" data-cell="id" [id]="'rid-' + row().id">
   <span class="rglyph">
     @if (glyphType(); as type) {
       <ui-type-glyph [type]="type" />
@@ -6,10 +7,9 @@
   </span>
   <span class="rnum">{{ row().id }}</span>
 </span>
-<span class="rtitle">
+<span class="rtitle" data-cell="title">
   <!-- The title line: the list's row link (the clamped title, stretched over the row), then the waits chip (T24). -->
-  <!-- Without a description line (none, or compact density) the title line is the list's "more…" anchor. -->
-  <span class="tline" [style.anchor-name]="description() ? null : '--desc-' + row().id">
+  <span class="tline">
     <ng-content />
     @if (row().archived ? null : row().waits; as wait) {
       <ui-waits-chip class="rwaits" data-row-waits [wait]="wait" [ws]="ws()" [titles]="titles()" />
@@ -23,49 +23,55 @@
       [uiClamp]="description"
       [uiClampLines]="1"
       [uiClampExpanded]="descriptionExpanded()"
-      [style.anchor-name]="'--desc-' + row().id"
     ></span>
   }
 </span>
-<span class="rtrack">
+<!-- Spec 064 (T46, ISC-489): the list's "…" toggle, outside the row link, in its own column after the title. -->
+<span class="rmore" data-cell="more"><ng-content select=".row-more" /></span>
+<span class="rmark" data-cell="mark">
   @if (row().archived; as archived) {
-    <!-- Spec 050 (T2, ISC-287): the archive date (from 640 px) and the archive chip where the phase chip stands. -->
+    <!-- Spec 050 (T2, ISC-287): the archive date (from 880 px) where an active row's mark stands. -->
     @if (archived.on; as on) {
       <ui-time class="rdate" [value]="on" form="day" />
     }
-    <ui-chip class="rarchived" variant="plain" icon="archive" data-archived-chip [attr.title]="archivedTitle()">{{
-      'specs.archivedChip' | transloco
-    }}</ui-chip>
-  } @else {
-    <!-- Spec 021 (R1): the guidance mark sits in the row, "Waits on you" as the visible word or the Next ring; the reason
-         itself is the row link's description (the list's hidden `why-<id>`). -->
-    @if (mark() === 'waits') {
-      <ui-chip class="rmark" variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id">{{
-        'guidance.marker' | transloco
-      }}</ui-chip>
-    } @else if (mark() === 'next') {
-      <span class="rmark" data-next-mark><ui-glyph state="open" family="item" [size]="14" /></span>
-    }
-    <span class="ragent">
-      @if (row().agent) {
-        <!-- Spec 064 (T8): the shared dot; `agent-dot` stays the list's hook for the row's agent. -->
-        <ui-agent-dot class="agent-dot" [label]="agentLabel()" [title]="agentLabel()" />
-      }
-    </span>
-    <ui-priority class="rprio" [value]="row().priority" />
-    <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [blocked]="stageBlocked()" [ariaLabel]="stageAria()" />
-    @if (row().phase; as phase) {
-      <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
-    }
+  } @else if (mark() === 'waits') {
+    <!-- Spec 021 (R1): "Waits on you" as the visible word or the Next ring; the reason is the row link's description. -->
+    <ui-chip variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id">{{ 'guidance.marker' | transloco }}</ui-chip>
+  } @else if (mark() === 'next') {
+    <span class="rnext" data-next-mark><ui-glyph state="open" family="item" [size]="14" /></span>
   }
 </span>
-<span class="rmeter" role="img" [attr.aria-label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }">
+<span class="ragent" data-cell="agent">
+  @if (!row().archived && row().agent) {
+    <!-- Spec 064 (T8): the shared dot; `agent-dot` stays the list's hook for the row's agent. -->
+    <ui-agent-dot class="agent-dot" [label]="agentLabel()" [title]="agentLabel()" />
+  }
+</span>
+<span class="rprio" data-cell="prio">
+  @if (!row().archived) {
+    <ui-priority [value]="row().priority" />
+  }
+</span>
+<span class="rtrack" data-cell="track">
+  @if (!row().archived) {
+    <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [blocked]="stageBlocked()" [ariaLabel]="stageAria()" />
+  }
+</span>
+<span class="rphase" data-cell="phase">
+  @if (row().archived) {
+    <!-- Spec 050 (T2, ISC-287): the archive chip where the phase chip stands. -->
+    <ui-chip class="rarchived" variant="plain" icon="archive" data-archived-chip [attr.title]="archivedTitle()">{{ 'specs.archivedChip' | transloco }}</ui-chip>
+  } @else if (row().phase; as phase) {
+    <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
+  }
+</span>
+<span class="rmeter" data-cell="meter" role="img" [attr.aria-label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }">
   <ui-meter class="meter" [mini]="true" [value]="row().closed" [max]="row().total" aria-hidden="true" />
   <span class="frac" aria-hidden="true">{{ row().closed }}/{{ row().total }}</span>
 </span>
 <!-- Spec 052 (T17, ISC-300): the list's favorite star, its own target beside the row link, lifted above the link's
      stretch. An archived row gets none; its cell stays, empty, so the columns line up. -->
-<span class="rstar">
+<span class="rstar" data-cell="star">
   @if (!row().archived) {
     <ng-content select="[ui-star-toggle]" />
   }

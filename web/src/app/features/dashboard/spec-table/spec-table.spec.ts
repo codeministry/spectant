@@ -202,9 +202,9 @@ describe('SpecTable (T89)', () => {
     expect(text(rowA.querySelector('.rid'))).toBe('002');
     expect(text(first)).toBe('Spec 002');
     expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
-    expect(rowA.querySelector('.rtrack .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
+    expect(rowA.querySelector('.ragent .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
     expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
-    expect(text(rowA.querySelector('.rtrack ui-chip.phase'))).toBe('building');
+    expect(text(rowA.querySelector('.rphase ui-chip.phase'))).toBe('building');
     expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
     expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(rowB.querySelector('.rtitle .d')).toBeNull();
@@ -218,10 +218,10 @@ describe('SpecTable (T89)', () => {
     const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
     const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
     // Spec 052 (T17): the favorite star's cell closes the row.
-    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rtrack', 'rmeter', 'rstar']);
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rmore', 'rmark', 'ragent', 'rprio', 'rtrack', 'rphase', 'rmeter', 'rstar']);
     expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
     expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
-    expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ragent', 'rprio', 'ui-stage-track', 'phase']);
+    expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ui-stage-track']);
     expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(true);
     expect(rowB.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(false);
     expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
@@ -258,7 +258,7 @@ describe('SpecTable (T89)', () => {
     expect([...(track?.querySelectorAll('.bar') ?? [])].map((bar) => bar.getAttribute('data-state'))).toEqual(['done', 'done', 'done', 'blocked', 'pending']);
     expect(text(track?.querySelector('[data-blocked]'))).toBe('Blocked');
     expect(track?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Stage 4 of 5: Build · Blocked');
-    expect(text(row.querySelector('.rtrack ui-chip'))).toBe('building');
+    expect(text(row.querySelector('.rphase ui-chip'))).toBe('building');
   });
 
   it('a row on any other stage has no blocked segment and no word (spec 025)', async () => {
@@ -367,11 +367,11 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       const rid = row.querySelector('.rid') as HTMLElement;
       expect(rid.querySelector('ui-type-glyph')?.getAttribute('data-type')).toBe(spec.type);
       expect(rid.querySelector('ui-type-glyph + .rnum, .rglyph + .rnum')?.textContent.trim()).toBe(spec.id);
-      const priority = row.querySelector('.rtrack ui-priority');
+      const priority = row.querySelector('.rprio ui-priority');
       const level = spec.id === '006' ? 'P1' : spec.id === '002' ? 'P2' : 'P3';
       expect(priority?.getAttribute('data-level'), spec.id).toBe(level);
       expect(priority?.hasAttribute('data-unmarked')).toBe(false);
-      expect(priority?.nextElementSibling?.tagName.toLowerCase()).toBe('ui-stage-track');
+      expect(priority?.parentElement?.nextElementSibling?.firstElementChild?.tagName.toLowerCase()).toBe('ui-stage-track');
     }
   });
 
@@ -428,8 +428,8 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       const row = li.querySelector<HTMLElement>('app-spec-row');
       const link = li.querySelector<HTMLElement>('[data-spec-row]');
       expect(row?.getAttribute('data-mark'), entry.spec).toBe(kind);
-      // The mark leads the track cell, in the row's one line; outside the row link.
-      const mark = row?.querySelector('.rtrack > .rmark');
+      // The mark fills its own column (spec 064, T45), in the row's one line; outside the row link.
+      const mark = row?.querySelector('.rmark > [data-waits-mark], .rmark > [data-next-mark]');
       expect(mark?.parentElement?.firstElementChild).toBe(mark);
       expect(mark?.closest('a')).toBeNull();
       expect(text(row?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
@@ -447,7 +447,7 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     const guided = new Set([...waits, ...next].map((e) => e.spec));
     for (const spec of GOLDEN.specs.filter((s) => !guided.has(s.id))) {
       expect(rowOf(host, spec.id).querySelector('app-spec-row')?.hasAttribute('data-mark'), spec.id).toBe(false);
-      expect(rowOf(host, spec.id).querySelector('.rmark'), spec.id).toBeNull();
+      expect(rowOf(host, spec.id).querySelector('[data-waits-mark], [data-next-mark]'), spec.id).toBeNull();
     }
   });
 
@@ -473,13 +473,13 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       expect(row.querySelector('.rid .rnum')?.textContent.trim()).toBe(id);
       expect(row.querySelector('.tline [data-spec-row]')).not.toBeNull();
       expect(row.querySelector('.rmeter .frac')?.textContent).toMatch(/^\d+\/\d+$/);
-      // Line 2: phase and priority in the track cell, the mark first on a marked row.
-      expect(row.querySelector('.rtrack .phase')).not.toBeNull();
-      expect(row.querySelector('.rtrack .rprio')).not.toBeNull();
+      // Line 2: mark, priority and phase each in its own cell (spec 064, T45), the mark cell first.
+      expect(row.querySelector('.rphase .phase')).not.toBeNull();
+      expect(row.querySelector('.rprio ui-priority')).not.toBeNull();
     }
     const marked = rowOf(host, waiting?.spec ?? '').querySelector('app-spec-row') as HTMLElement;
     expect(marked.getAttribute('data-mark')).toBe('waits');
-    expect(marked.querySelector('.rtrack')?.firstElementChild?.hasAttribute('data-waits-mark')).toBe(true);
+    expect(marked.querySelector('.rmark')?.firstElementChild?.hasAttribute('data-waits-mark')).toBe(true);
     expect(rowOf(host, plain?.id ?? '').querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
   });
 });
@@ -722,12 +722,19 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     (fixture.componentInstance as unknown as { setOverflow(id: string, overflows: boolean): void }).setOverflow('002', true);
     await fixture.whenStable();
     const more = host.querySelector<HTMLButtonElement>('[data-more="002"]');
-    expect(text(more)).toBe('More…');
+    // Spec 064 (T46, ISC-489): visibly only "…", in the row's own `more` cell; the accessible name stays the long one.
+    expect(text(more)).toBe('…');
     expect(more?.getAttribute('aria-label')).toBe('More… 002 Spec 002');
+    expect(more?.parentElement?.getAttribute('data-cell')).toBe('more');
+    expect(more?.hasAttribute('style')).toBe(false);
     more?.click();
     await fixture.whenStable();
-    expect(text(more)).toBe('Less');
+    expect(text(more)).toBe('…');
     expect(more?.getAttribute('aria-label')).toBe('Less 002 Spec 002');
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(more)).toBe('…');
+    expect(more?.getAttribute('aria-label')).toBe('Weniger 002 Spec 002');
   });
 });
 
@@ -785,9 +792,9 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
     expect(compact?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').not.toContain('desc-002');
     expect(text(compact?.querySelector('a.row-link'))).toBe('Spec 002');
     // Only the description leaves: agent dot, phase chip, priority, track and a/b stay.
-    expect(compact?.querySelector('.rtrack .agent-dot')).not.toBeNull();
-    expect(text(compact?.querySelector('.rtrack ui-chip.phase'))).toBe('building');
-    expect(compact?.querySelector('.rtrack ui-priority')).not.toBeNull();
+    expect(compact?.querySelector('.ragent .agent-dot')).not.toBeNull();
+    expect(text(compact?.querySelector('.rphase ui-chip.phase'))).toBe('building');
+    expect(compact?.querySelector('.rprio ui-priority')).not.toBeNull();
     expect(text(compact?.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(writes()).toEqual([]);
   });

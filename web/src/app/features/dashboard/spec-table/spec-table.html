@@ -182,22 +182,20 @@
                 (toggled)="toggleFavorite(row)"
               ></button>
             }
+            <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). Spec 064 (T46,
+                 ISC-489): projected into the row's own `more` column, visibly only "…", named by its spec. -->
+            @if (overflowing().has(row.id)) {
+              <button
+                type="button"
+                class="row-more"
+                [attr.data-more]="row.id"
+                [attr.aria-expanded]="moreOpen().has(row.id)"
+                [attr.aria-controls]="(descShown(row) ? 'desc-' : 'rl-') + row.id"
+                [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
+                (click)="toggleMore(row.id)"
+              >{{ 'specs.moreGlyph' | transloco }}</button>
+            }
           </app-spec-row>
-          <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). -->
-          @if (overflowing().has(row.id)) {
-            <button
-              type="button"
-              class="row-more"
-              [style.position-anchor]="'--desc-' + row.id"
-              [attr.data-more]="row.id"
-              [attr.aria-expanded]="moreOpen().has(row.id)"
-              [attr.aria-controls]="(descShown(row) ? 'desc-' : 'rl-') + row.id"
-              [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
-              (click)="toggleMore(row.id)"
-            >
-              {{ (moreOpen().has(row.id) ? 'brief.less' : 'brief.more') | transloco }}
-            </button>
-          }
           <!-- The reason (ISC-122.3, ISC-240 refined by spec 021 R1): read as the row link's description, never shown as a
                line; the command lives in the rail's "Waits on you" and Next up. -->
           @if (why) {

@@ -330,19 +330,18 @@
   }
 }
 
-/* "more…" / "less" under a row whose description is cut (ISC-111): outside the row link, aligned with the title
-   column (16 px padding + 48 px id + 16 px gap), styled like the Brief's toggle. */
+/* Spec 064 (T46, ISC-489): the "…" toggle of a row whose title or description is cut (ISC-111), outside the row link,
+   projected into the row's own 24 px `more` column; visibly only "…", its name the long one. */
 .row-more {
-  display: block;
+  display: inline-grid;
   position: relative;
-  z-index: 1;
+  place-items: center;
+  min-inline-size: 24px;
   min-block-size: 24px;
-  margin: -8px 16px 8px 80px;
-  padding: 2px 0;
+  padding: 0;
   border: 0;
   background: none;
-  color: var(--ques-text);
-  font-family: var(--font-mono);
+  color: var(--disp-ink);
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
@@ -355,34 +354,12 @@
   }
 }
 
+/* A coarse pointer gets a 44 × 44 hit area without growing the row's line. */
 @media (pointer: coarse) {
-  .row-more {
-    min-block-size: 44px;
-  }
-}
-
-/* Spec 024 (principal 2026-10-13 "Hybrid", ISC-111 refined): the row's description is one muted line with "more…" at
-   its end. The button stays outside the row link and is anchored to the description cell's end edge (`--desc-<id>`,
-   set by the row); the row reserves the room at the line's end. Without anchor positioning it keeps its own line. */
-@supports (position-anchor: --a) {
-  .rows > li {
-    position: relative;
-  }
-
-  .row-more {
+  .row-more::before {
     position: absolute;
-    right: anchor(right);
-    bottom: anchor(bottom);
-    display: inline-flex;
-    align-items: flex-end;
-    min-block-size: 20px;
-    margin: 0;
-    padding: 0;
-  }
-
-  @media (pointer: coarse) {
-    .row-more {
-      min-block-size: 44px;
-    }
+    inset: -10px;
+    content: '';
   }
 }
+
