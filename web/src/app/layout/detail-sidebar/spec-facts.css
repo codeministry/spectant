@@ -7,6 +7,11 @@
   min-inline-size: 0;
 }
 
+/* The sheet packs the overview closer (spec 067, T16): the relations projected below it stay in its first screen. */
+:host-context([data-presentation='sheet']) {
+  gap: 8px;
+}
+
 .sf-meta {
   display: flex;
   flex-wrap: wrap;

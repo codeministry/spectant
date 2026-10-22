@@ -69,62 +69,27 @@
       </div>
     }
 
-    <!-- Spec 067 (T16, ISC-528): one section order for every type and shell: head, title, facts, actions, relations, foot. -->
+    <!--
+      Spec 067 (T16, ISC-528, ISC-171.1): one section order for every type and shell: head, title, the overview, the
+      relations in compact form, the facts list, actions, tasks, foot. A spec's facts take the relations between their
+      metrics and their facts list; every other object shows them right after its facts.
+    -->
     @if (specRow(); as row) {
-      <app-spec-facts data-section="facts" data-facts="spec" [row]="row" [ws]="ws()" [large]="presentation() === 'sheet'" [lockedBy]="running()?.run ?? null" />
-    } @else if (entry.type === 'idea' && selection.index(); as index) {
-      <app-idea-facts data-section="facts" data-facts="idea" [relation]="entry" [index]="index" [item]="ideaItem()" [large]="presentation() === 'sheet'" />
-    } @else if (entry.type === 'feature' || entry.type === 'milestone' || entry.type === 'claim') {
-      <app-planning-facts data-section="facts" data-facts="planning" [relation]="entry" [index]="selection.index()" />
+      <app-spec-facts data-section="facts" data-facts="spec" [row]="row" [ws]="ws()" [large]="presentation() === 'sheet'" [lockedBy]="running()?.run ?? null">
+        <ng-container [ngTemplateOutlet]="relations" />
+      </app-spec-facts>
+    } @else {
+      @if (entry.type === 'idea' && selection.index(); as index) {
+        <app-idea-facts data-section="facts" data-facts="idea" [relation]="entry" [index]="index" [item]="ideaItem()" [large]="presentation() === 'sheet'" />
+      } @else if (entry.type === 'feature' || entry.type === 'milestone' || entry.type === 'claim') {
+        <app-planning-facts data-section="facts" data-facts="planning" [relation]="entry" [index]="selection.index()" />
+      }
+      <ng-container [ngTemplateOutlet]="relations" />
     }
 
     <!-- Spec 067 (T28, ISC-533/534): stage change and run release as one action grid; then the open tasks (ISC-535). -->
     <app-sidebar-actions data-section="actions" [relation]="entry" [running]="running()" />
     <app-sidebar-tasks [relation]="entry" />
-
-    @if (parents().length > 0) {
-      <section class="sec" data-section="parents">
-        <h3 class="eyebrow">
-          <span>{{ 'sidebar.parents' | transloco }}</span><span class="count" data-count>{{ parents().length }}</span>
-        </h3>
-        @for (link of parents(); track link.entry.ref) {
-          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
-        }
-      </section>
-    }
-
-    <!-- Blockers before children (ISC-171.1): the short section stays in the sheet's first screen, the capped list goes last. -->
-    @if (blockers().length > 0 || blockable()) {
-      <section class="sec" data-section="blockers">
-        <h3 class="eyebrow">
-          <span>{{ 'sidebar.blockers' | transloco }}</span>
-          @if (blockers().length > 0) {
-            <span class="count" data-count>{{ blockers().length }}</span>
-          }
-        </h3>
-        @for (link of blockers(); track link.entry.ref) {
-          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
-        } @empty {
-          <p class="none"><ui-icon name="circle-check" [size]="14" />{{ 'sidebar.noBlockers' | transloco }}</p>
-        }
-      </section>
-    }
-
-    @if (children().length > 0) {
-      <section class="sec" data-section="children">
-        <h3 class="eyebrow">
-          <span>{{ 'sidebar.children' | transloco }}</span><span class="count" data-count>{{ children().length }}</span>
-        </h3>
-        @for (link of visibleChildren(); track link.entry.ref) {
-          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
-        }
-        @if (hiddenChildren() > 0) {
-          <button type="button" class="more" data-more (click)="allChildren.set(true)">
-            {{ (hiddenChildren() === 1 ? 'sidebar.more.one' : 'sidebar.more.other') | transloco: { count: hiddenChildren() } }}
-          </button>
-        }
-      </section>
-    }
   </div>
 
   @if (specPage(); as page) {
@@ -138,6 +103,65 @@
       <a ui-button variant="primary" data-open-idea [routerLink]="page">
         <ui-icon name="arrow-up-right" [size]="16" />{{ 'sidebar.openIdea' | transloco }}
       </a>
+    </div>
+  }
+</ng-template>
+
+<!--
+  The relations, compact (spec 067, T16, ISC-171.1): each section is its heading beside a wrapping row of link pills,
+  the children capped. Blockers before children: the short section stays in the sheet's first screen, the capped list last.
+-->
+<ng-template #relations>
+  @if (parents().length > 0 || blockers().length > 0 || blockable() || children().length > 0) {
+    <div class="rels" data-part="relations">
+      @if (parents().length > 0) {
+        <section class="rel" data-section="parents">
+          <h3 class="eyebrow">
+            <span>{{ 'sidebar.parents' | transloco }}</span><span class="count" data-count>{{ parents().length }}</span>
+          </h3>
+          <div class="ents">
+            @for (link of parents(); track link.entry.ref) {
+              <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+            }
+          </div>
+        </section>
+      }
+
+      @if (blockers().length > 0 || blockable()) {
+        <section class="rel" data-section="blockers">
+          <h3 class="eyebrow">
+            <span>{{ 'sidebar.blockers' | transloco }}</span>
+            @if (blockers().length > 0) {
+              <span class="count" data-count>{{ blockers().length }}</span>
+            }
+          </h3>
+          <div class="ents">
+            @for (link of blockers(); track link.entry.ref) {
+              <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+            } @empty {
+              <p class="none"><ui-icon name="circle-check" [size]="14" />{{ 'sidebar.noBlockers' | transloco }}</p>
+            }
+          </div>
+        </section>
+      }
+
+      @if (children().length > 0) {
+        <section class="rel" data-section="children">
+          <h3 class="eyebrow">
+            <span>{{ 'sidebar.children' | transloco }}</span><span class="count" data-count>{{ children().length }}</span>
+          </h3>
+          <div class="ents">
+            @for (link of visibleChildren(); track link.entry.ref) {
+              <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+            }
+            @if (hiddenChildren() > 0) {
+              <button type="button" class="more" data-more (click)="allChildren.set(true)">
+                {{ (hiddenChildren() === 1 ? 'sidebar.more.one' : 'sidebar.more.other') | transloco: { count: hiddenChildren() } }}
+              </button>
+            }
+          </div>
+        </section>
+      }
     </div>
   }
 </ng-template>
@@ -166,6 +190,5 @@
         {{ link.entry.closed }}/{{ link.entry.total }}
       }
     </span>
-    <ui-icon class="chev" name="chevron-right" [size]="14" />
   </a>
 </ng-template>

@@ -171,7 +171,10 @@ what it sends, never by a hidden switch:
 
 - **200**: send the hash the page read (the planning holder's `hash`, or `X-Spectant-Spec-Hash` on `GET …/specs/:id`;
   for a story `IdeaPage.hash`) and a move the spec's workflow row lists, on a spec no lock holds. The session's tree
-  then shows the card moved (stage, `stageSource: explicit`, a new `hash`, `stageCounts`); an allocation removes the
+  then shows the card moved (stage, `stageSource: explicit`, a new `hash`, `stageCounts`), and after a transition its
+  `…/dashboard` (body and ETag) is core's rebuild over the moved spec.md and events.jsonl (`movedDashboard`, spec 067
+  T29): the row's stage, group, source and item state, the counts and the guidance, as the server re-reads them; a
+  variant overlay (dense, sidebar, waits, `runs`, edges, worktrees) keeps its own dashboard. An allocation removes the
   story and adds the new spec at `plan` (`010-console-audit-log` on harbor). Reason: the next poll must render the move.
 - **409**: send any other hash (`'0'.repeat(64)`), or the old hash after a move; or `X-Spectant-Stub-Write: stale`.
 - **423**: transition a spec the lock fixture holds: harbor 002 under the default `activity` locks (`a:claude:sess-2`

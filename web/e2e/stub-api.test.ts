@@ -1852,6 +1852,37 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
     expect(holderIn(await boardTree(session), '006-partial-push')).toEqual(from);
   });
 
+  test('transition 200 (spec 067, T29): the session dashboard reads the move as core rebuilds it; a 409, another session and a reset keep the golden', async () => {
+    type Row = { id: string; stage: string; stageGroup: string; stageSource: string };
+    type Board = { specs: Row[]; stageCounts: Record<string, number>; diagnostics: unknown; kpis: unknown };
+    const session = 't067-move-dashboard';
+    const path = `/api/workspaces/${WS}/dashboard`;
+    const plain = golden(WS) as unknown as Board;
+    const plainBody = JSON.stringify(plain);
+    const rowOf = (b: Board): Row | undefined => b.specs.find((r) => r.id === '003');
+    const before = await ask(path, { session });
+    expect(await before.text()).toBe(plainBody);
+    expect(rowOf(plain)).toMatchObject({ stage: 'tasks', stageSource: 'derived' });
+    const hash = holderIn(await boardTree(session), '003-config-loader')?.hash;
+    expect((await move('003', { to: 'review', hash }, { session, headers: { [WRITE_HEADER]: 'stale' } })).status).toBe(409);
+    expect(await (await ask(path, { session })).text()).toBe(plainBody);
+
+    expect((await move('003', { to: 'review', hash }, { session })).status).toBe(200);
+    const res = await ask(path, { session });
+    const after = (await res.json()) as Board;
+    expect(res.headers.get('ETag')).not.toBe(before.headers.get('ETag'));
+    // The row stands where the move put it, as core derives an explicit stage the last event confirms.
+    expect(rowOf(after)).toMatchObject({ stage: 'review', stageGroup: rowOf(plain)?.stageGroup, stageSource: 'explicit' });
+    // Every other row as the golden has it; the counts move one from tasks to review; the event line reads clean.
+    expect(after.specs.filter((r) => r.id !== '003')).toEqual(plain.specs.filter((r) => r.id !== '003'));
+    expect([after.stageCounts['tasks'], after.stageCounts['review']]).toEqual([(plain.stageCounts['tasks'] ?? 0) - 1, (plain.stageCounts['review'] ?? 0) + 1]);
+    expect(after.diagnostics).toEqual(plain.diagnostics);
+    expect(after.kpis).toEqual(plain.kpis);
+    expect(await (await ask(path, { session: 't067-other' })).text()).toBe(plainBody);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await (await ask(path, { session })).text()).toBe(plainBody);
+  });
+
   test('backlog 200 (spec 037, T26): the next planning read of the session carries the new ranks, the priority and the hash; another session and a reset see the golden', async () => {
     const session = 't037-backlog-rank';
     const tree = async (s: string): Promise<PlanningModel & { backlogHash: string }> =>

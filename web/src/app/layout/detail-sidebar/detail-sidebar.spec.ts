@@ -552,15 +552,16 @@ describe('DetailSidebar', () => {
       updated: '2026-10-01',
       lastRound: null,
     };
-    /** The body's sections in document order, by `data-section`, the title block and the shell's progress. */
+    /**
+     * The body's parts in document order: the title, each section by `data-section` (a spec's relations sit inside its
+     * facts, ISC-171.1), the spec's facts list and the shell's progress; a hidden part (the actions without an action)
+     * is left out, and a section nested in its own host (the tasks part) counts once.
+     */
     const order = (host: HTMLElement): string[] =>
-      [...(q(host, '.body')?.children ?? [])].flatMap((el) => {
-        // A hidden part (the actions without an action) is not shown; the tasks part brings its own section.
-        if ((el as HTMLElement).hidden) return [];
-        const own = el.getAttribute('data-section') ?? el.querySelector(':scope > section[data-section]')?.getAttribute('data-section');
-        const name = own ?? (el.querySelector('[data-part="title"]') ? 'title' : el.getAttribute('data-part'));
-        return name ? [name] : [];
-      });
+      [...host.querySelectorAll('.body [data-part="title"], .body [data-section], .body [data-part="spec-facts"], .body > [data-part="progress"]')]
+        .filter((el) => el.closest('[hidden]') === null)
+        .map((el) => el.getAttribute('data-section') ?? el.getAttribute('data-part') ?? '')
+        .filter((name, i, all) => name !== all[i - 1]);
 
     it('mounts the spec facts from the dashboard row in place of the shell’s stage chip and progress', async () => {
       dashboard.set({ kind: 'ok', body: { specs: [ROW] } });
@@ -574,11 +575,11 @@ describe('DetailSidebar', () => {
       // One progress, the facts' claims metric; the shell's ring is gone.
       expect(host.querySelectorAll('[data-part="progress"]')).toHaveLength(1);
       expect(q(host, 'app-spec-facts [data-part="progress"]')).not.toBeNull();
-      expect(order(host)).toEqual(['title', 'facts', 'actions', 'parents', 'blockers', 'children']);
+      expect(order(host)).toEqual(['title', 'facts', 'parents', 'blockers', 'children', 'spec-facts', 'actions']);
     });
 
-    // Spec 067 (T28, T33): the actions and the open tasks are mounted after the facts, before the relations.
-    it('mounts the actions and the open tasks in the one order: head, title, run, facts, actions, tasks, relations, foot', async () => {
+    // Spec 067 (T16, T28, T33): the relations compact under the metrics, then the facts list, the actions and the open tasks.
+    it('mounts the relations between the overview and the facts list, then the actions and the open tasks (T16, ISC-171.1)', async () => {
       tasksBody = GOLDEN_TASKS;
       const run: ItemStateInfo = {
         kind: 'spec',
@@ -596,7 +597,7 @@ describe('DetailSidebar', () => {
       });
       const host = hostOf(fixture);
       expect([...(q(host, '.panel')?.children ?? [])].map((el) => el.className.split(' ')[0])).toEqual(['head', 'body', 'foot']);
-      expect(order(host)).toEqual(['title', 'run', 'facts', 'actions', 'tasks', 'parents', 'blockers', 'children']);
+      expect(order(host)).toEqual(['title', 'run', 'facts', 'parents', 'blockers', 'children', 'spec-facts', 'actions', 'tasks']);
       expect(q(host, 'app-sidebar-actions [data-stage-change]')).not.toBeNull();
       expect(q(host, 'app-sidebar-actions [data-release]')).not.toBeNull();
       // T23 (ISC-531): the facts' next step is locked by the open run.

@@ -61,6 +61,9 @@
   </div>
 }
 
+<!-- Spec 067 (T16, ISC-528): the host projects the relations here, right after the overview block, before the facts. -->
+<ng-content />
+
 @if (anyFact()) {
   <dl class="facts" data-part="spec-facts">
     @if (feature(); as feat) {

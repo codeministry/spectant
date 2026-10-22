@@ -59,7 +59,8 @@
  *   sorted, empty per session until a PUT (`isFavoriteSpec` → 400 `invalid-spec`), and `PUT|DELETE
  *   …/favorites/idea/:slug` for the ideas (spec 064, `isFavoriteIdea` → 400 `invalid-slug`);`GET …/specs/:id` adds `X-Spectant-Spec-Hash`, the holder's hash. The two board writes answer by the request:
  *   `POST …/specs/:id/transition` 400 → 409 (hash not the holder's, or `stale`) → 423 (a lock of the fixture on the
- *   spec, or `locked`) → 422 (a move the workflow row does not list) → 200 (the holder moved); `POST …/ideas/:slug/
+ *   spec, or `locked`) → 422 (a move the workflow row does not list) → 200 (the holder moved, and the session's
+ *   `…/dashboard` core's rebuild over the moved spec.md and events.jsonl, `movedDashboard`; spec 067, T29); `POST …/ideas/:slug/
  *   allocate` 400 → 404 → 409 (hash not the story file's, or `stale`) → 423 (`locked` only) → 422 (`not-in-index`
  *   from the golden's `ideas-index` finding) → 200 (the story gone, the new spec at `plan`).
  * - `GET /api/events` (`EVENTS_PATH`, spec 030, plan 030 § Interfaces) → 200 `text/event-stream`, `Cache-Control:
@@ -1367,6 +1368,8 @@ type EdgeCore = {
   runLockOf: (openRuns: readonly StubOpenRun[], target: { spec: string } | { idea: string }, options: { now: Date }) => unknown;
   activityConflict: (sent: string, now: string) => unknown;
   runReleaseEvent: (ts: string, run: StubOpenRun, viewer: string) => unknown;
+  /** The transition's event line appended to an `events.jsonl` text, as `writeTransition` appends it (spec 067, T29). */
+  eventAppendBytes: (existing: string | null, event: StageMove['event']) => string;
   runReleaseAppendBytes: (existing: string, event: unknown) => string;
 };
 
@@ -1409,6 +1412,7 @@ function loadEdgeCore(): EdgeCore {
     activityConflict: writes.activityConflict,
     runReleaseEvent: writes.runReleaseEvent,
     runReleaseAppendBytes: writes.runReleaseAppendBytes,
+    eventAppendBytes: writes.eventAppendBytes,
   };
   const missing = Object.entries(loaded).filter(([, value]) => (value as unknown) === undefined).map(([key]) => key);
   if (missing.length > 0) throw new Error(`stub-api: core exports no ${missing.join(', ')}`);
@@ -1621,16 +1625,63 @@ function runVariant(
 }
 
 /**
- * A tree rebuilt by core from edited inputs and an activity log text, as `runVariant` documents: the run variants and
- * the sidebar variant (spec 067, T7) share it, so both read exactly as the goldens' builders would read the edit.
+ * The dashboard of edited inputs and an activity log text, composed as the goldens' builders and the server's
+ * `loadDashboard` compose it: the items over the log's locks, the plain model, the guidance, both laid over it.
  */
-function rebuiltVariant(core: Core, edge: EdgeCore, base: TreeGoldens, input: TreeInput, activity: string, without: ReadonlySet<string> = new Set()): RunVariant {
+function rebuiltDashboard(edge: EdgeCore, input: TreeInput, activity: string) {
   const locks = edge.activityReading(activity);
   const workspace = { ...input, locks };
   const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS }) as ReadonlyArray<{ kind: string; id: string; spec?: string }>;
   const plain = edge.buildDashboard(input);
   const guidance = edge.guidanceOf({ workspace, dashboard: plain, items });
-  const model = edge.withGuidance(edge.withItemStates(plain, items), guidance);
+  return { locks, items, plain, guidance, model: edge.withGuidance(edge.withItemStates(plain, items), guidance) };
+}
+
+/** One stage move a session made (spec 067, T29): the spec folder and the event line the transition route answered. */
+type StageMove = { folder: string; event: { ts: string; from: string; to: string; command: string; actor: string } };
+
+/**
+ * spec.md with `stage: <stage>` in its frontmatter block, where core's `planTransition` puts it: the last top-level
+ * `stage:` line of the block replaced, else a line added before the closing delimiter. Loud without a block.
+ */
+function withStageLine(text: string, stage: string): string {
+  const lines = text.split('\n');
+  const close = lines.indexOf('---', 1); // single-core: allow — the stub writes the move's stage: line, core reads it back
+  if (lines[0] !== '---' || close < 0) throw new Error('stub-api: a moved spec.md has no frontmatter block'); // single-core: allow — guard of the edit above
+  const at = lines.slice(0, close).findLastIndex((line) => line.startsWith('stage:')); // single-core: allow — the key the move rewrites
+  if (at > 0) lines[at] = `stage: ${stage}`;
+  else lines.splice(close, 0, `stage: ${stage}`);
+  return lines.join('\n');
+}
+
+/**
+ * A workspace's dashboard after a session's stage moves (spec 067, T29), rebuilt by core over its files as
+ * `rebuiltDashboard` builds one: each moved spec.md carries `stage:` and its `events.jsonl` the route's event line, as
+ * `writeTransition` writes both, so the row's stage, group and source, its item state, the counts and the guidance
+ * read the move as the server re-reads it on the next poll.
+ */
+function movedDashboard(edge: EdgeCore, root: string, moves: readonly StageMove[]): unknown {
+  const read = edge.readTreeAt(root);
+  const specs = read.specs.map((f): SpecFiles => {
+    const own = moves.filter((m) => m.folder === f.folder);
+    let spec = f.texts.spec;
+    if (own.length === 0 || spec === undefined) return f;
+    let events: string | null = f.texts.events ?? null;
+    for (const { event } of own) {
+      spec = withStageLine(spec, event.to);
+      events = edge.eventAppendBytes(events, event);
+    }
+    return { folder: f.folder, texts: { ...f.texts, spec, ...(events === null ? {} : { events }) } };
+  });
+  return rebuiltDashboard(edge, { ...read, specs }, readFileSync(join(root, '.spectant', 'activity.jsonl'), 'utf8')).model;
+}
+
+/**
+ * A tree rebuilt by core from edited inputs and an activity log text, as `runVariant` documents: the run variants and
+ * the sidebar variant (spec 067, T7) share it, so both read exactly as the goldens' builders would read the edit.
+ */
+function rebuiltVariant(core: Core, edge: EdgeCore, base: TreeGoldens, input: TreeInput, activity: string, without: ReadonlySet<string> = new Set()): RunVariant {
+  const { locks, items, plain, guidance, model } = rebuiltDashboard(edge, input, activity);
   const { master, specs, archived, workflow, constitution, tldr } = input;
   const specTexts = new Map(specs.map((f) => [f.folder, f.texts.spec]));
   const specStates = plain.specs.map((row) => {
@@ -2267,7 +2318,17 @@ function snippetAt(text: string, at: number, length: number): string {
 type SessionWrites = { reviewed: Map<string, GateView>; marks: Map<string, Map<string, boolean>> };
 
 /** One session's board writes: the planning tree per workspace slug, the write count (it seeds the new hashes), allocations per slug. */
-type BoardSession = { planning: Map<string, PlanningModel>; writes: number; allocated: Map<string, number> };
+/**
+ * A session's board state per workspace slug: the planning tree after its writes, the write count, the allocations,
+ * and its stage moves with the dashboard core rebuilt over them (`movedDashboard`, spec 067, T29).
+ */
+type BoardSession = {
+  planning: Map<string, PlanningModel>;
+  writes: number;
+  allocated: Map<string, number>;
+  moves: Map<string, StageMove[]>;
+  dashboards: Map<string, unknown>;
+};
 
 type AllocateMatch = Extract<WorkspaceRouteMatch, { route: 'allocate' }>;
 type IdeaMatch = Extract<WorkspaceRouteMatch, { route: 'idea' }>;
@@ -2893,7 +2954,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const id = sessionOf(req);
     const found = boards.get(id);
     if (found) return found;
-    const fresh: BoardSession = { planning: new Map(), writes: 0, allocated: new Map() };
+    const fresh: BoardSession = { planning: new Map(), writes: 0, allocated: new Map(), moves: new Map(), dashboards: new Map() };
     boards.set(id, fresh);
     return fresh;
   };
@@ -2960,11 +3021,15 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    const source = (denseViewOf(req) ?? sidebarViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req))?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
+    const variant = denseViewOf(req) ?? sidebarViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req);
+    const source = variant?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
     const added = addedOf(req, slug);
-    const model = added ? adminGoldenOf(added.golden).dashboard.model : source.get(slug)?.model;
+    // After a 200 stage move the session's dashboard is core's over the moved files (spec 067, T29); a variant or the
+    // worktree overlay keeps its own body, which the move does not reach.
+    const moved = variant || worktreesOn(req) ? undefined : boards.get(sessionOf(req))?.dashboards.get(slug);
+    const model = added ? adminGoldenOf(added.golden).dashboard.model : (moved ?? source.get(slug)?.model);
     const fixture = req.headers.get(LOCKS_HEADER) === 'working' && slug === STUB_WORKING.workspace ? workingEdits : [];
     const body = takenDashboard(bumpDashboard(takenDashboard(model, fixture), bumpsOf(req, slug)), lockEditsOf(req, slug));
     return workspaceJson(req, 200, body, activityHash);
@@ -3657,6 +3722,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const next = fakeHex(`${tree.golden}:${spec.key}:spec.md:move-${String(own.writes)}:${body.to}`);
     own.planning.set(ws, movedPlanning(model, spec.folder, from, body.to, next));
     const event = { ts: new Date(STUB_NOW).toISOString(), from, to: body.to, command, actor: board.VIEWER_ACTOR_FALLBACK };
+    // The dashboard re-reads the moved files too (spec 067, T29): core rebuilds it over every move of the session.
+    const moves = [...(own.moves.get(ws) ?? []), { folder: spec.folder, event }];
+    own.moves.set(ws, moves);
+    own.dashboards.set(ws, movedDashboard(edgeCore, tree.root, moves));
     return workspaceJson(req, 200, { from, to: body.to, hash: next, event, lockSource: live.lockSource } satisfies TransitionWritten);
   };
 

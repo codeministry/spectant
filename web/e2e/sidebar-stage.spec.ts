@@ -5,11 +5,13 @@
  * - 200: at 1440 the board's "Move to…" menu for harbor 003 (no lock holds it) is read first; in the Specs list the
  *   sidebar's "Change stage" opens the same entries inline (same hints, same disabled ones, each disabled entry with its
  *   reason). Choosing an allowed one sends exactly one POST to the transition route, the sidebar stands on the new
- *   stage without a reload (no document request, no `load`, a `window` marker survives; see `expectShownStage`), the
- *   toast names the move and focus is back on the toggle.
+ *   stage without a reload (no document request, no `load`, a `window` marker survives; see `expectShownStage`): the
+ *   facts' stage chip names it and the reopened list marks it current; the toast names the move and focus is back on
+ *   the toggle.
  * - 409: under `X-Spectant-Stub-Write: stale` the one attempt is refused, the refusal notice shows inline under the
- *   entry, the chip keeps the stage, no further write follows and the session's planning tree still has the old stage.
- * - 390: in the bottom sheet the list opens inline with tall rows (≥ 44 px); choosing shows the new stage.
+ *   entry, the chip keeps the stage, no further write follows and the session's planning tree and dashboard row still
+ *   have the old stage.
+ * - 390: in the bottom sheet the list opens inline with tall rows (≥ 44 px); choosing shows the new stage in the chip.
  *
  * Which answer the stub gives is web/CLAUDE.md "Driving the board writes from an e2e spec". One stub session per test,
  * reset before and after (the moves live per session).
@@ -109,11 +111,12 @@ async function openList(page: Page): Promise<Locator> {
 }
 
 /**
- * The sidebar stands on `stage` without a reload: its reopened list marks `stage` as the current one (`aria-current`),
- * which the sidebar takes from the session's planning holder or its own accepted move. The facts chip reads the
- * dashboard row, which the stub does not move with a session's transition, so the chip is not the witness here.
+ * The sidebar stands on `stage` without a reload: the facts' stage chip, which reads the session's dashboard row (the
+ * stub rebuilds it by core after a 200 move, as the server re-reads spec.md), names it, and the reopened list marks it
+ * as the current one (`aria-current`), which the sidebar takes from the planning holder or its own accepted move.
  */
 async function expectShownStage(page: Page, stage: string): Promise<void> {
+  await expect(stageChip(page)).toHaveText(String(STAGE_WORDS[stage]));
   const list = await openList(page);
   await expect(list.locator('[data-move-to][aria-current="true"]')).toHaveAttribute('data-move-to', stage);
   await toggle(page).click();
@@ -127,6 +130,14 @@ async function servedStage(request: APIRequestContext): Promise<string | null> {
   expect(answer.status()).toBe(200);
   const model = (await answer.json()) as { features: Array<{ holders: Array<{ id: string; stage: string | null }> }> };
   return model.features.flatMap((f) => f.holders).find((h) => h.id === SPEC)?.stage ?? null;
+}
+
+/** The stage of harbor 003's row in the session's dashboard, the row the facts chip reads. */
+async function rowStage(request: APIRequestContext): Promise<string | null> {
+  const answer = await request.get(`/api/workspaces/${WS}/dashboard`, { headers: { [SESSION_HEADER]: session } });
+  expect(answer.status()).toBe(200);
+  const model = (await answer.json()) as { specs: Array<{ id: string; stage: string }> };
+  return model.specs.find((s) => s.id === SPEC)?.stage ?? null;
 }
 
 const firstAllowed = (entries: readonly Entry[]): Entry => {
@@ -215,6 +226,8 @@ test.describe(`sidebar stage change at ${String(WIDTHS.desktop)}`, () => {
     await page.waitForLoadState('networkidle');
     expect(posts).toHaveLength(1);
     expect(await servedStage(request)).toBe(stage);
+    expect(await rowStage(request)).toBe(stage);
+    await expect(stageChip(page)).toHaveText(before);
     await noReload();
   });
 });
