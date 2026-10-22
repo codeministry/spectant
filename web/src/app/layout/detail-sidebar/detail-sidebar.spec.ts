@@ -416,4 +416,73 @@ describe('DetailSidebar', () => {
       expect(star()).toBeNull();
     }
   });
+
+  // Spec 067 (T16, ISC-528): the facts component per type, in the one section order of every shell.
+  describe('facts', () => {
+    const ROW = {
+      id: '025',
+      slug: '025-spec-edges',
+      title: 'Spec edges',
+      type: 'feature',
+      priority: 'P2',
+      stage: 'build',
+      stageSource: 'derived',
+      nextCommand: '/spec implement 025',
+      nextReason: 'ISC-3 is takeable',
+      assignee: null,
+      goal: 'Specs name what they wait on.',
+      feature: 'F25',
+      featureName: 'Unified planning',
+      milestone: 'Version 1.0',
+      progress: { closed: 2, total: 7 },
+      tasks: { landed: 4, total: 9 },
+      taken: [],
+      warnings: [],
+      updated: '2026-10-01',
+      lastRound: null,
+    };
+    /** The body's sections in document order, by `data-section`, the title block and the shell's progress. */
+    const order = (host: HTMLElement): string[] =>
+      [...(q(host, '.body')?.children ?? [])].flatMap((el) => {
+        const name = el.getAttribute('data-section') ?? (el.querySelector('[data-part="title"]') ? 'title' : el.getAttribute('data-part'));
+        return name ? [name] : [];
+      });
+
+    it('mounts the spec facts from the dashboard row in place of the shell’s stage chip and progress', async () => {
+      dashboard.set({ kind: 'ok', body: { specs: [ROW] } });
+      await go('/w/harbor?sel=spec:025');
+      const host = hostOf(await render());
+      expect(q(host, 'app-spec-facts[data-facts="spec"]')).not.toBeNull();
+      expect(q(host, '[data-part="goal"]')?.textContent.trim()).toBe(ROW.goal);
+      expect(q(host, '[data-fact="feature"] dd')?.textContent.trim()).toBe('F25 · Unified planning');
+      expect(q(host, '[data-metric="claims"]')?.textContent).toMatch(/2\s*\/\s*7/);
+      expect(host.querySelectorAll('[data-part="stage"]')).toHaveLength(1);
+      // One progress, the facts' claims metric; the shell's ring is gone.
+      expect(host.querySelectorAll('[data-part="progress"]')).toHaveLength(1);
+      expect(q(host, 'app-spec-facts [data-part="progress"]')).not.toBeNull();
+      expect(order(host)).toEqual(['title', 'facts', 'parents', 'blockers', 'children']);
+    });
+
+    it('picks the idea facts for an idea and the planning facts for a feature, a milestone and a claim', async () => {
+      await go('/w/harbor?sel=idea:graph-zoom');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      expect(q(host, '[data-section="facts"]')?.tagName.toLowerCase()).toBe('app-idea-facts');
+      for (const ref of ['feature:F25', 'milestone:v1-0', 'claim:ISC-1']) {
+        await go(`/w/harbor?sel=${ref}`);
+        await fixture.whenStable();
+        expect(q(host, '[data-section="facts"]')?.tagName.toLowerCase()).toBe('app-planning-facts');
+        expect(q(host, 'app-spec-facts, app-idea-facts')).toBeNull();
+      }
+      expect(order(host)).toEqual(['title', 'progress', 'facts', 'parents', 'blockers']);
+    });
+
+    it('keeps the shell’s chip and progress for a spec the dashboard lists no row for, and no facts', async () => {
+      await go('/w/harbor?sel=spec:025');
+      const host = hostOf(await render());
+      expect(q(host, '[data-section="facts"]')).toBeNull();
+      expect(q(host, '[data-part="stage"]')?.textContent).toContain('Build');
+      expect(q(host, '[data-part="progress"]')).not.toBeNull();
+    });
+  });
 });

@@ -32,7 +32,10 @@ import { releasableRun, RunRelease } from '../run-release/run-release';
 import { specLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
+import { IdeaFacts } from './idea-facts';
+import { PlanningFacts } from './planning-facts';
 import { CHILD_CAP, DetailSelection, relationAt, SEL_PARAM, sidebarParents } from './selection';
+import { SpecFacts, specFactsRowOf, type SpecFactsRow } from './spec-facts';
 
 /** Where an instance sits: `rail` inside `app-rail-slot` (the docked presentation), `float` mounted once by the shell. */
 export type SidebarSlot = 'rail' | 'float';
@@ -74,7 +77,7 @@ interface SidebarStar {
  */
 @Component({
   selector: 'app-detail-sidebar',
-  imports: [NgTemplateOutlet, RouterLink, RunRelease, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet, UiStarToggle],
+  imports: [IdeaFacts, NgTemplateOutlet, PlanningFacts, RouterLink, RunRelease, SpecFacts, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet, UiStarToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './detail-sidebar.html',
   styleUrl: './detail-sidebar.css',
@@ -129,6 +132,16 @@ export class DetailSidebar {
   protected readonly hiddenChildren = computed(() => this.children().length - this.visibleChildren().length);
   /** Spec and claim carry edges; their empty Blockers section says so instead of disappearing. */
   protected readonly blockable = computed(() => this.shown()?.type === 'spec' || this.shown()?.type === 'claim');
+
+  /**
+   * Spec 067 (T16, ISC-528): the shown spec's active dashboard row, which its facts read; null for every other type,
+   * an archived spec and before the dashboard answers, and the shell then shows its own stage chip and progress.
+   */
+  protected readonly specRow = computed<SpecFactsRow | null>(() => {
+    const entry = this.shown();
+    const result = this.data.dashboard.value();
+    return entry?.type === 'spec' && !entry.archived && result?.kind === 'ok' ? specFactsRowOf(result.body, entry.id) : null;
+  });
 
   /** The shown spec's or story's item while a run line's run is open on it (T62); null otherwise. */
   protected readonly running = computed<ItemStateInfo | null>(() => {

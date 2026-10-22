@@ -35,7 +35,8 @@
   <div class="body">
     <div>
       <h2 #title class="title" data-part="title" data-autofocus tabindex="-1" [id]="titleId" [attr.data-type]="entry.type">{{ entry.title }}</h2>
-      @if (entry.archived || entry.stage) {
+      <!-- A spec with its dashboard row carries stage and the other chips in its facts; this is the fallback. -->
+      @if (!specRow() && (entry.archived || entry.stage)) {
         <div class="meta">
           @if (entry.archived) {
             <ui-chip data-part="archived" variant="plain" icon="archive">{{ 'sidebar.archived' | transloco }}</ui-chip>
@@ -55,17 +56,31 @@
       </section>
     }
 
-    <div class="prog" data-part="progress">
-      @if (percent() !== null) {
-        <ui-ring [value]="percent()" [size]="64" [stroke]="6" />
-        <div>
-          <b class="fraction">{{ entry.closed }}<small>/{{ entry.total }}</small></b>
-          <div class="muted">{{ 'sidebar.claimsClosed' | transloco }}</div>
-        </div>
-      } @else {
-        <p class="muted">{{ 'sidebar.noClaims' | transloco }}</p>
-      }
-    </div>
+    <!-- The spec facts carry the claims ring; every other object keeps the shell's progress. -->
+    @if (!specRow()) {
+      <div class="prog" data-part="progress">
+        @if (percent() !== null) {
+          <ui-ring [value]="percent()" [size]="64" [stroke]="6" />
+          <div>
+            <b class="fraction">{{ entry.closed }}<small>/{{ entry.total }}</small></b>
+            <div class="muted">{{ 'sidebar.claimsClosed' | transloco }}</div>
+          </div>
+        } @else {
+          <p class="muted">{{ 'sidebar.noClaims' | transloco }}</p>
+        }
+      </div>
+    }
+
+    <!-- Spec 067 (T16, ISC-528): one section order for every type and shell: head, title, facts, actions, relations, foot. -->
+    @if (specRow(); as row) {
+      <app-spec-facts data-section="facts" data-facts="spec" [row]="row" [ws]="ws()" [large]="presentation() === 'sheet'" />
+    } @else if (entry.type === 'idea' && selection.index(); as index) {
+      <app-idea-facts data-section="facts" data-facts="idea" [relation]="entry" [index]="index" />
+    } @else if (entry.type === 'feature' || entry.type === 'milestone' || entry.type === 'claim') {
+      <app-planning-facts data-section="facts" data-facts="planning" [relation]="entry" [index]="selection.index()" />
+    }
+
+    <!-- Actions (next round, spec 067 T28): stage change and run release as one action grid, between facts and relations. -->
 
     @if (parents().length > 0) {
       <section class="sec" data-section="parents">

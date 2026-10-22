@@ -2891,6 +2891,19 @@
     "failed": "Could not save the favorite."
   },
   "detailSidebar": {
+    "specFacts": {
+      "claims": "claims closed",
+      "tasks": "tasks done",
+      "warnings": {
+        "one": "warning",
+        "other": "warnings"
+      },
+      "nextFor": "next step for {{id}}",
+      "feature": "Feature",
+      "milestone": "Milestone",
+      "agent": "Agent",
+      "changed": "Changed"
+    },
     "ideaFacts": {
       "state": "State",
       "priority": "Priority",
@@ -2911,6 +2924,20 @@
       "probe": "Probe",
       "verification": "Verification",
       "lockHolder": "Held by"
+    },
+    "tasks": {
+      "open": "Open tasks",
+      "anchored": "Anchored tasks",
+      "runLocked": "Ticks locked while a run is open · {{session}}",
+      "more": {
+        "one": "+{{count}} more",
+        "other": "+{{count}} more"
+      }
+    },
+    "actions": {
+      "label": "Actions",
+      "stage": "Change stage",
+      "list": "Stages for {{id}}"
     }
   }
 }

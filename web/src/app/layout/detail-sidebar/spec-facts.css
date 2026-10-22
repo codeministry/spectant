@@ -1,0 +1,85 @@
+@import './_facts-list.css';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.sf-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* The goal is prose, never clamped (design.md: 14/20–22). */
+.sf-goal {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.sf-next {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.sf-reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-ink);
+}
+
+.sf-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+}
+
+.sf-metric {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 40px;
+}
+
+.sf-metric > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.sf-num {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.sf-num small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted-ink);
+}
+
+.sf-label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-ink);
+}
+
+/* The warning count is a link to the status tab in the warning tone, never colour alone: its word says it. */
+.sf-warn {
+  color: var(--hover-text);
+  text-decoration: none;
+}
+
+.sf-warn:hover .sf-label {
+  text-decoration: underline;
+}
+

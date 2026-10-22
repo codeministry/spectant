@@ -6,6 +6,8 @@
  * not a grid `1fr` row, which does not shrink reliably under a max size without a fixed height. Head and foot keep
  * their size; only the body shrinks and scrolls.
  */
+@import './_sidebar-eyebrow.css';
+
 :host {
   display: block;
 }
@@ -183,30 +185,9 @@
   gap: 4px;
 }
 
-.eyebrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 0 4px;
-  color: var(--muted-ink);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  line-height: 16px;
-  text-transform: uppercase;
-}
-
-.count {
-  display: inline-grid;
-  place-items: center;
-  min-inline-size: 22px;
-  block-size: 22px;
-  padding-inline: 6px;
-  border-radius: 999px;
-  background: var(--color-base-200);
-  font-variant-numeric: tabular-nums;
-  font-weight: 400;
-  letter-spacing: normal;
+/* A facts component with nothing to show leaves no track, so the body's gap does not open twice. */
+[data-section='facts']:empty {
+  display: none;
 }
 
 /*
