@@ -31,7 +31,8 @@ type TaskRow = ReturnType<SpecTasks['open']>[number];
   imports: [RouterLink, TranslocoPipe, UiIcon],
   providers: [SpecTasks],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-tier]': 'shell.tier()' },
+  // Hidden without an open task, so the empty host takes no track (and no gap) in the sidebar body's grid (ISC-525).
+  host: { '[attr.data-tier]': 'shell.tier()', '[hidden]': 'visible().length === 0' },
   styleUrl: './sidebar-tasks.css',
   templateUrl: './sidebar-tasks.html',
 })

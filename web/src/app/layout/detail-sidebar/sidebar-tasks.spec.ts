@@ -113,6 +113,7 @@ describe('SidebarTasks (spec 067, T33, ISC-535)', () => {
     expect(box(host, 'T28').checked).toBe(false);
     expect(host.querySelector('h3 [data-heading]')?.textContent.trim()).toBe('Open tasks');
     expect(host.querySelector('h3 [data-count]')?.textContent.trim()).toBe('7');
+    expect(host.hidden).toBe(false);
   });
 
   it('lists only the tasks anchored on a claim, read from its holding spec', async () => {
@@ -138,6 +139,8 @@ describe('SidebarTasks (spec 067, T33, ISC-535)', () => {
     expect(reads).toEqual(['harbor/002']);
     expect(host.querySelector('section')).toBeNull();
     expect(host.querySelector('h3')).toBeNull();
+    // The empty host is hidden, so it takes no track and no gap in the sidebar body's grid (ISC-525).
+    expect(host.hidden).toBe(true);
   });
 
   it('sends one write per tick, busy while it is in flight, and keeps the task listed, ticked, without a read', async () => {
