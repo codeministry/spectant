@@ -82,3 +82,60 @@ describe('workspace identity (spec 024 T54)', () => {
     expect(shot.querySelector('svg')).toBeNull();
   });
 });
+
+@Component({
+  imports: [UiWsCover],
+  template: `
+    <ui-ws-cover name="harbor" shape="tile" />
+    <ui-ws-cover name="spectant" shape="tile" monogram="SP" [logo]="logo()" />
+    <ui-ws-cover name="quay" shape="tile" image="assets/ws/quay.jpg" alt="Screenshot of quay" />
+  `,
+})
+class TileHost {
+  readonly logo = signal<string | null>(null);
+}
+
+describe('workspace cover, tile shape (spec 066 T7, ISC-519)', () => {
+  it('marks the host as a tile and draws the neutral placeholder with the 32 px badge, no ring and no dot', async () => {
+    const fixture = TestBed.createComponent(TileHost);
+    await fixture.whenStable();
+    const [plain] = [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('ui-ws-cover')];
+    expect(plain.getAttribute('data-shape')).toBe('tile');
+    const placeholder = plain.querySelector<HTMLElement>('[data-cover-placeholder]');
+    expect(placeholder).not.toBeNull();
+    const badge = placeholder?.querySelector<HTMLElement>('ui-ws-badge');
+    expect(badge?.getAttribute('data-size')).toBe('xl');
+    expect(badge?.getAttribute('data-tone')).toBe('neutral');
+    expect(badge?.textContent.trim()).toBe('HA');
+    expect(badge?.style.getPropertyValue('--ws')).toBe('var(--track)');
+    expect(badge?.style.getPropertyValue('--ws-ink')).toBe('var(--muted-ink)');
+    expect(plain.querySelector('svg, path, circle')).toBeNull();
+  });
+
+  it('shows the logo in the placeholder badge when one is set, the given monogram otherwise', async () => {
+    const fixture = TestBed.createComponent(TileHost);
+    await fixture.whenStable();
+    const given = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('ui-ws-cover')[1];
+    expect(given.querySelector('[data-cover-placeholder] ui-ws-badge')?.textContent.trim()).toBe('SP');
+    const loopback = '/api/workspaces/spectant/images/logo?v=0123456789abcdef';
+    fixture.componentInstance.logo.set(loopback);
+    await fixture.whenStable();
+    expect(given.querySelector('[data-cover-placeholder] ui-ws-badge img')?.getAttribute('src')).toBe(loopback);
+    fixture.componentInstance.logo.set('https://cdn.example/logo.png');
+    await fixture.whenStable();
+    expect(given.querySelector('[data-cover-placeholder] ui-ws-badge img')).toBeNull();
+  });
+
+  it('shows the screenshot without a placeholder, while card and thumb keep the name pattern', async () => {
+    const fixture = TestBed.createComponent(TileHost);
+    await fixture.whenStable();
+    const shot = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('ui-ws-cover')[2];
+    expect(shot.querySelector(':scope > img')?.getAttribute('alt')).toBe('Screenshot of quay');
+    expect(shot.querySelector('[data-cover-placeholder]')).toBeNull();
+    const host = TestBed.createComponent(Host);
+    await host.whenStable();
+    const root = host.nativeElement as HTMLElement;
+    expect(root.querySelector('ui-ws-cover [data-cover-placeholder]')).toBeNull();
+    expect(root.querySelector('ui-ws-cover svg[data-icon-exempt] circle')).not.toBeNull();
+  });
+});

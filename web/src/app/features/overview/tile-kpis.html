@@ -1,0 +1,39 @@
+@let k = kpis();
+@let warn = k.warnings > 0;
+<div class="cell" data-kpi="master">
+  <div class="eyebrow type-eyebrow" [title]="'kpi.masterClaims' | transloco">{{ 'kpi.master' | transloco }}</div>
+  <div class="val type-strip-value">
+    @if (k.master; as master) {
+      {{ master.closed }}<small>/{{ master.total }}</small>
+    } @else {
+      {{ 'common.noValue' | transloco }}
+    }
+  </div>
+  <ui-meter size="mini" [value]="k.master?.closed ?? 0" [max]="k.master?.total ?? 0" [label]="'kpi.masterClaims' | transloco" />
+</div>
+
+<div class="cell" data-kpi="claims">
+  <div class="eyebrow type-eyebrow" [title]="'kpi.specClaims' | transloco">{{ 'kpi.specClaims' | transloco }}</div>
+  <div class="val type-strip-value">{{ k.claims.closed }}<small>/{{ k.claims.total }}</small></div>
+  <ui-meter size="mini" tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+</div>
+
+<div class="cell" data-kpi="specs">
+  <div class="eyebrow type-eyebrow" [title]="'kpi.specs' | transloco">{{ 'kpi.specs' | transloco }}</div>
+  <div class="val type-strip-value">{{ k.specs }}</div>
+  <ui-meter size="mini" [segments]="split()" [value]="0" [label]="'kpi.specs' | transloco" />
+</div>
+
+<div class="cell" data-kpi="warnings" [attr.data-warn]="warn ? '' : null">
+  <div class="eyebrow type-eyebrow" [title]="'warnings.title' | transloco">{{ 'warnings.title' | transloco }}</div>
+  <div class="val type-strip-value">
+    {{ k.warnings }} <span class="fog">{{ 'kpi.fogShort' | transloco: { fog: k.fog } }}</span>
+  </div>
+  <ui-meter
+    size="mini"
+    [tone]="warn ? 'warning' : undefined"
+    [value]="warn ? 1 : 0"
+    [max]="1"
+    [label]="'warnings.title' | transloco"
+  />
+</div>

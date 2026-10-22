@@ -58,7 +58,8 @@ const OVERVIEW: LivePage = {
   main: (page) => page.locator('[data-ui="workspace-column"][data-ws="harbor"]'),
   change: lock,
   listMoves: true,
-  changed: (page) => page.locator('[data-ui="workspace-column"][data-ws="harbor"] ui-working-block ui-flat-tile [data-id]', { hasText: LOCK.spec }),
+  // Spec 066: the tile's list area shows a spec in work as a working row, first, ahead of what waits.
+  changed: (page) => page.locator(`[data-ui="workspace-column"][data-ws="harbor"] app-tile-list li[data-tile-row][data-kind="working"][data-id="${LOCK.spec}"]`),
 };
 const PAGES: readonly LivePage[] = [
   {

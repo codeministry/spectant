@@ -78,8 +78,11 @@ test.describe('guidance clipboard', () => {
     const command = commandOf(guidanceOf(body, WS).waits[0], 'start top entry');
 
     await page.goto('/');
-    // Spec 064 (ISC-478): the first flat tile carries the first entry's chip.
-    const chip = page.locator(`[data-ui="workspace-column"][data-ws="${WS}"] [data-ui="waits-block"] ui-flat-tile`).first().locator('ui-command-chip');
+    // Spec 066 (ISC-518): the first waiting row of the tile's list area carries the first entry's icon-only chip.
+    const chip = page
+      .locator(`[data-ui="workspace-column"][data-ws="${WS}"] [data-tile-block="list"] li[data-tile-row][data-kind="waiting"]`)
+      .first()
+      .locator('ui-command-chip[data-icon-only]');
     await expectCopies(page, chip, command, 'start');
   });
 

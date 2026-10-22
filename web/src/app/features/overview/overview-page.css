@@ -1,10 +1,13 @@
-/* The overview grid (.overview, workspace-column, ws-head) and the page head. The shell container is named
-   `shell` (layout/shell), so the three-column step is a container query on it. */
+/* The overview grid (.overview, workspace-column, ws-head) and the page head. The host is the size container
+   `overview`, so the column rule follows the width the tiles really get; the compact row gap follows the shell
+   container (layout/shell). */
 @import "./_ws-path.css";
+@import "./_tile.css";
 
 :host {
   display: grid;
   gap: 24px;
+  container: overview / inline-size;
 }
 
 .page-head {
@@ -16,43 +19,32 @@
   margin: 0;
 }
 
+/* One tile per row under 720 px of overview width, two from 720, three once three tiles of at least 360 px fit
+   (3 × 360 + 2 × 24 = 1128 px, inside the shell wide tier: three tracks of ≈ 442 px at 1440). A tile is at most
+   560 px wide and the grid stands start-aligned, so one or two workspaces never stretch over the full width. */
 .overview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  grid-template-columns: minmax(0, 560px);
+  justify-content: start;
   gap: 24px;
 }
 
-/* Capped at three columns from 1300 px (three workspaces side by side); with fewer workspaces auto-fit stretches the
-   columns over the width instead of leaving an empty track. */
-@container shell (min-width: 1300px) {
+@container overview (width >= 720px) {
   .overview {
-    grid-template-columns: repeat(auto-fit, minmax(max(360px, calc((100% - 2 * 24px) / 3)), 1fr));
+    grid-template-columns: repeat(2, minmax(0, 560px));
   }
 }
 
-/* The unreadable and loading columns: the column frame and ws-head without the component. They take the same three
-   row tracks as a workspace column (spec 020), so they never stretch the identity track of their grid row. */
-.plain {
-  grid-row: span 3;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-inline-size: 0;
+@container overview (width >= 1128px) {
+  .overview {
+    grid-template-columns: repeat(3, minmax(0, 560px));
+  }
 }
 
-.plain .ws-head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-block-size: 56px;
-  border-block-end: 1px solid var(--line);
-}
-
-.plain h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 24px;
+@container shell (width < 640px) {
+  .overview {
+    row-gap: 32px;
+  }
 }
 
 /* The notice's `[data-ui=notice] b` over the muted body. */
@@ -60,11 +52,16 @@
   display: block;
 }
 
+/* The reason, at most three lines in the unreadable tile's list block (spec 066 T14). */
 .reason {
-  display: block;
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--muted);
   white-space: normal;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 /* The h1's muted count, an `h1 span` (`Workspaces · 3`). */
@@ -98,12 +95,6 @@
   color: var(--muted);
 }
 
-.strip-skeleton {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
 .loading-note {
   margin: 0;
 }
@@ -114,4 +105,39 @@
   color: var(--muted-ink);
   font-size: 12px;
   line-height: 16px;
+}
+
+/* Spec 066 T14 (ISC-517): the loading and unreadable tiles. Frame, tokens and tracks are `_tile.css`, shared with the
+   workspace column; here only what these two tiles hold. The head mirrors the column's: name 16/20 600 over the path
+   tail, both cut with an ellipsis. */
+.plain-head {
+  display: grid;
+  align-content: center;
+  padding-inline: 16px;
+}
+
+.plain-head h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The neutral surface of the preview placeholder (design.md § Neutraler Platzhalter), without a badge to show. */
+.plain-preview {
+  background: color-mix(in oklab, var(--muted-ink) 6%, var(--color-base-100));
+}
+
+.plain-list {
+  padding: 8px 16px;
+}
+
+.plain-kpi {
+  display: grid;
+  place-items: center;
+  color: var(--muted-ink);
+  font-variant-numeric: tabular-nums;
 }

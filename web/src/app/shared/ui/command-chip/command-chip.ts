@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import {
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -12,7 +13,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoService } from '@jsverse/transloco';
 import type { ItemRun } from '../../../../../../core/src/files';
 import { LanguageService } from '../../../core/language.service';
 import { UiIcon } from '../../icons/icon';
@@ -77,13 +78,20 @@ function highlightMs(doc: Document): number {
  * · since 3 min"). Copying is refused; a press (a tap on touch, which has no tooltip) toggles the hint line "Running
  * for 3 min · copyable once it ends", which is also the tooltip. The duration comes from the run's `elapsedMs`.
  *
+ * `iconOnly` (spec 066, ISC-518): the chip shows only the copy button, for a one-line row of the overview tile. The
+ * command text stays in the DOM, visually hidden and `aria-hidden`, so a failed copy can still select it; the button's
+ * accessible name (with `context`) is also its tooltip, so the full command shows on hover; the manual hint always
+ * goes to the toast; the host carries `data-icon-only`. The square is `--chip-icon-size`, 32 px by default
+ * (medium and compact); a parent sets the token to 24px at the wide tier. Without it every user stays as it was.
+ *
  * TODO(T23): `copyLabel`, `copiedLabel` and `manualHint` come from Transloco; the defaults are English fallbacks.
  * TODO(T24): swap the plain button to `ui-icon-button`; the focus ring and the coarse-pointer hit area come with it.
  */
 @Component({
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslocoPipe, UiIcon, UiLiveRegion],
+  host: { '[attr.data-icon-only]': 'iconOnly() ? "" : null' },
+  imports: [UiIcon, UiLiveRegion],
   styleUrl: './command-chip.css',
   templateUrl: './command-chip.html',
 })
@@ -103,6 +111,8 @@ export class UiCommandChip {
    * command on one page still differ; null keeps the bare "Copy {command}".
    */
   readonly context = input<string | null>(null);
+  /** Only the copy icon, the command in the name and the tooltip (spec 066, ISC-518); see the class comment. */
+  readonly iconOnly = input(false, { transform: booleanAttribute });
   readonly copied = output<string>();
   /** The run that holds the item (spec 040, ISC-225.1): the chip is locked while it is set. */
   readonly lockedBy = input<ItemRun | null>(null);
@@ -124,6 +134,15 @@ export class UiCommandChip {
     const lang = this.lang();
     const locked = this.transloco.translate('itemState.locked.chip', { command: run.command ?? this.command(), actor: run.actor.id }, lang);
     return `${locked} · ${this.transloco.translate('itemState.since', { duration: this.duration() }, lang)}`;
+  });
+  /** "Copy /spec implement 012", plus " · {context}" when the surface names what the command stands for. */
+  protected readonly copyName = computed(() => {
+    const command = this.command();
+    const context = this.context();
+    const name: string = context
+      ? this.transloco.translate('orientation.copyCommandFor', { command, context }, this.lang())
+      : this.transloco.translate('orientation.copyCommand', { command }, this.lang());
+    return name;
   });
   protected readonly lockedHint = computed(() => this.transloco.translate('itemState.locked.hint', { duration: this.duration() }, this.lang()));
 
@@ -152,7 +171,7 @@ export class UiCommandChip {
     }
     const selection = this.doc.getSelection();
     selection?.selectAllChildren(this.code().nativeElement);
-    if (this.hint() === 'toast') {
+    if (this.hint() === 'toast' || this.iconOnly()) {
       this.state.set('idle');
       this.toasts.show(this.manualHint());
       return;

@@ -77,16 +77,14 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const columns = [...root.querySelectorAll('.overview [data-ui="workspace-column"]')];
     expect(columns.map((c) => c.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
     expect([...asked].sort()).toEqual(['harbor', 'lantern']);
-    // T54 (spec 024): one identity cover per column, a mock with its chip in the ws-head; the fixture holds no image
-    // for harbor or lantern, so each shows the name pattern and no <img> appears.
-    const covers = [...root.querySelectorAll('[data-ws-cover]')];
-    expect(covers.map((cover) => cover.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
-    for (const cover of covers) {
-      const mock = cover.closest('[data-demo]');
-      expect(mock?.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
-      expect(cover.querySelector('svg path')).not.toBeNull();
+    // T54 (spec 024): one identity head per column, a mock with its chip in the ws-head; the fixture holds no image
+    // for harbor or lantern, so no <img> appears. Spec 066 T10: the cover left the head for the tile's preview track.
+    const heads = [...root.querySelectorAll('app-ws-identity[data-tile-block="head"]')];
+    expect(heads.map((head) => head.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
+    for (const head of heads) {
+      expect(head.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
     }
-    expect(root.querySelectorAll('[data-ws-badge]').length).toBe(covers.length);
+    expect(root.querySelectorAll('[data-ws-badge]').length).toBe(heads.length);
     expect(root.querySelector('img')).toBeNull();
   });
 
@@ -104,137 +102,102 @@ describe('OverviewPage (T65, ISC-16)', () => {
     expect(new Set(identityLinks)).toEqual(new Set(['/w/harbor']));
   });
 
-  it('fills the 2 × 2 kpi-strip: master ring and fraction, spec claims meter, specs split, warnings with an orange edge above 0', async () => {
+  // spec 066 T12 (ISC-516): one card per tile with the accent edge and no glow; inside, the four blocks in a fixed order
+  it('frames each tile in one ui-card with the edge and no glow, holding head, preview, list and kpi in that order', async () => {
     const { root } = await render([entry('harbor'), entry('lantern')]);
-    const strip = (ws: string) => root.querySelector(`[data-ws="${ws}"] [data-ui="kpi-strip"]`);
-    const h = strip('harbor');
-    expect(h?.querySelectorAll('[data-ui="kpi-tile"]').length).toBe(4);
-    const master = h?.querySelector('[data-kpi="master"]');
-    expect(master?.querySelector('ui-ring')).not.toBeNull();
-    const kpis = harbor.kpis;
-    expect(text(master?.querySelector('.val'))).toBe(`${String(kpis.master.closed)}/${String(kpis.master.total)}`);
-    const claims = h?.querySelector('[data-kpi="claims"]');
-    expect(text(claims?.querySelector('.val'))).toBe(`${String(kpis.claims.closed)}/${String(kpis.claims.total)}`);
-    expect(claims?.querySelector('ui-meter')).not.toBeNull();
-    const specs = h?.querySelector('[data-kpi="specs"]');
-    expect(text(specs?.querySelector('.val'))).toBe(String(kpis.specs));
-    expect(specs?.querySelector('ui-meter')).not.toBeNull();
-    const warnings = h?.querySelector('[data-kpi="warnings"]');
-    expect(text(warnings?.querySelector('.val'))).toBe(String(kpis.warnings));
-    expect(text(warnings?.querySelector('.meta'))).toBe(`Open fog · ${String(kpis.fog)}`);
-    expect(warnings?.hasAttribute('data-edge')).toBe(true);
-    expect(strip('lantern')?.querySelector('[data-kpi="warnings"]')?.hasAttribute('data-edge')).toBe(false);
+    for (const ws of ['harbor', 'lantern']) {
+      const tile = root.querySelector(`.overview [data-ui="workspace-column"][data-ws="${ws}"]`);
+      // The tile is the identity mock's root (badge, monogram and accent read the fixture); its head holds the chip.
+      expect(tile?.hasAttribute('data-demo')).toBe(true);
+      const cards = [...(tile?.querySelectorAll('ui-card') ?? [])];
+      expect(cards.length).toBe(1);
+      expect(cards[0]?.hasAttribute('data-edge')).toBe(true);
+      expect(cards[0]?.hasAttribute('data-glow')).toBe(false);
+      const blocks = [...(tile?.querySelectorAll('[data-tile-block]') ?? [])].map((el) => el.getAttribute('data-tile-block'));
+      expect(blocks).toEqual(['head', 'preview', 'list', 'kpi']);
+      expect(tile?.querySelector('[data-tile-block="preview"] ui-ws-cover[data-shape="tile"][data-ws-cover]')).not.toBeNull();
+      expect(tile?.querySelector('[data-tile-block="preview"] a')?.getAttribute('href')).toBe(`/w/${ws}`);
+      expect(tile?.querySelector('[data-tile-block="list"] app-tile-list')).not.toBeNull();
+      expect(tile?.querySelector('[data-tile-block="kpi"] app-tile-kpis')).not.toBeNull();
+      // The /w/<ws> blocks and the old 2 × 2 card strip are gone from `/`.
+      expect(tile?.querySelector('ui-waits-block, ui-working-block, [data-ui="kpi-strip"], [data-lists]')).toBeNull();
+    }
   });
 
-  // spec 024: overview without lists (principal 2026-10-13)
-  it('shows per workspace only its identity and the four tiles: no Next up, no spec list, no open link; cover and name lead to the workspace', async () => {
+  // spec 024: overview without lists (principal 2026-10-13); spec 066: the only spec links and chips sit in the list area
+  it('shows no Next up, no spec list and no open link; head and preview lead to the workspace', async () => {
     const { root } = await render([entry('harbor'), entry('lantern')]);
     for (const ws of ['harbor', 'lantern']) {
       const column = root.querySelector(`.overview [data-ws="${ws}"]`);
       expect(column).not.toBeNull();
-      expect(column?.querySelectorAll('[data-ui="kpi-tile"]').length).toBe(4);
       expect(column?.querySelector('.next, .next-row, [data-next], .dense-list, .d-row, a.open-link, ui-empty-state')).toBeNull();
       expect(text(column)).not.toContain('Next up');
-      // Spec 020 T16: the only spec links and the only chip on `/` sit in the block "Waits on you".
-      const outside = (selector: string) => [...(column?.querySelectorAll(selector) ?? [])].filter((el) => !el.closest('[data-ui="waits-block"], ui-working-block'));
+      const outside = (selector: string) => [...(column?.querySelectorAll(selector) ?? [])].filter((el) => !el.closest('app-tile-list'));
       expect(outside('ui-command-chip, a[href*="/s/"]')).toEqual([]);
-      const links = outside('a[href]');
-      expect(links.map((link) => link.getAttribute('href'))).toEqual([`/w/${ws}`, `/w/${ws}`]);
-      expect(column?.querySelector('a [data-ws-cover]')).not.toBeNull();
-      expect(column?.querySelector('.ws-head a h2')).not.toBeNull();
+      expect(outside('a[href]').map((link) => link.getAttribute('href'))).toEqual([`/w/${ws}`, `/w/${ws}`, `/w/${ws}`]);
     }
     expect(root.querySelector('[data-footer-note]')).not.toBeNull();
   });
 
-  // spec 020 T16 (ISC-238), spec 064 T19 (ISC-462, ISC-478)
-  it('puts one lists wrapper between the identity and the kpi-strip: "Waits on you" as three flat tiles, "Show all n" to #waiting', async () => {
+  // spec 066 T12 (ISC-518): the list block renders the tile list, three rows, "Show all n" past three
+  it('puts the tile list in the list block: three waiting rows of seven and "Show all 7" to the workspace', async () => {
     const { root } = await render([entry('harbor'), entry('lantern')]);
-    const column = root.querySelector('.overview [data-ws="harbor"]');
-    const children = [...(column?.children ?? [])];
-    expect(children.map((el) => el.tagName.toLowerCase())).toEqual(['app-ws-identity', 'div', 'div']);
-    const lists = column?.querySelector('[data-lists]');
-    expect(children[1]?.hasAttribute('data-lists')).toBe(true);
-    expect(children[2]?.getAttribute('data-ui')).toBe('kpi-strip');
-    const block = lists?.querySelector('[data-ui="waits-block"]');
+    const list = root.querySelector('.overview [data-ws="harbor"] [data-tile-block="list"] app-tile-list');
     const waits = harbor.guidance.waits;
     expect(waits.length).toBe(7);
-    expect(block?.getAttribute('data-count')).toBe('7');
-    // ISC-478: every entry the same flat tile, no highlighted top card, the spec title as the main text.
-    expect(block?.querySelector('[data-top], [data-row]')).toBeNull();
-    const tiles = [...(block?.querySelectorAll('ol.tiles > li') ?? [])];
-    expect(tiles.length).toBe(3);
-    expect(tiles.every((tile) => tile.querySelector('ui-flat-tile') !== null)).toBe(true);
-    expect(tiles.map((tile) => text(tile.querySelector('[data-tile-id]')))).toEqual(waits.slice(0, 3).map((e) => e.spec));
-    expect(tiles.map((tile) => text(tile.querySelector('.title')))).toEqual(waits.slice(0, 3).map((e) => titleOf(e.spec)));
-    expect(tiles[0]?.querySelector('a')?.getAttribute('href')).toBe(`/w/harbor/s/${waits[0]?.spec ?? ''}`);
-    const more = block?.querySelector('a[data-more]');
-    expect(text(more?.querySelector('[data-visible]'))).toBe('Show all 7');
-    expect(more?.getAttribute('href')).toBe('/w/harbor#waiting');
-    expect(block?.querySelector('ui-disclosure')).toBeNull();
-    expect(block?.querySelector('h3')?.id).toBe('waits-harbor');
-    expect(text(column)).not.toContain('Next up');
+    expect(text(list?.querySelector('[data-tile-count="waits"]'))).toMatch(/\b7$/);
+    expect(text(list?.querySelector('[data-tile-count="working"]'))).toMatch(/\b0$/);
+    const rows = [...(list?.querySelectorAll('li[data-tile-row]') ?? [])];
+    expect(rows.map((row) => row.getAttribute('data-kind'))).toEqual(['waiting', 'waiting', 'waiting']);
+    expect(rows.map((row) => row.getAttribute('data-id'))).toEqual(waits.slice(0, 3).map((e) => e.spec));
+    expect(list?.querySelector('a[data-tile-more]')?.getAttribute('href')).toBe('/w/harbor');
   });
 
-  // spec 064 T19 (ISC-461, ISC-462)
-  it('puts "In progress" under "Waits on you" in the same wrapper when a session holds a claim, with the dashboard working tile', async () => {
+  // spec 064 (ISC-461), spec 066: a held claim is a working row, first in the list block
+  it('puts a held claim first in the list block as a working row', async () => {
     const { root } = await render([entry('harbor'), entry('lantern')], { harbor: harborLocked, lantern });
-    const column = root.querySelector('.overview [data-ws="harbor"]');
-    const children = [...(column?.children ?? [])];
-    expect(children.map((el) => el.tagName.toLowerCase())).toEqual(['app-ws-identity', 'div', 'div']);
-    expect(children[2]?.getAttribute('data-ui')).toBe('kpi-strip');
-    const lists = column?.querySelector('[data-lists]');
-    expect([...(lists?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-waits-block', 'ui-working-block']);
-    const working = lists?.querySelector('ui-working-block');
-    expect(working?.querySelector('h3')?.id).toBe('working-harbor');
-    const tiles = [...(working?.querySelectorAll('ol.tiles > li') ?? [])];
-    expect(tiles.length).toBe(1);
-    expect(tiles[0]?.querySelector('ui-flat-tile ui-agent-dot')).not.toBeNull();
-    expect(text(tiles[0]?.querySelector('[data-id]'))).toBe('004');
-    expect(text(tiles[0]?.querySelector('[data-title]'))).toBe(titleOf('004'));
-    expect(text(tiles[0]?.querySelector('[data-agent]'))).toBe('a:claude:spec-004/T2');
-    expect(tiles[0]?.querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/004/board');
+    const list = root.querySelector('.overview [data-ws="harbor"] [data-tile-block="list"] app-tile-list');
+    const first = list?.querySelector('li[data-tile-row]');
+    expect(first?.getAttribute('data-kind')).toBe('working');
+    expect(first?.getAttribute('data-id')).toBe('004');
+    expect(text(first?.querySelector('[data-title]'))).toBe(titleOf('004'));
+    expect(root.querySelector('ui-working-block')).toBeNull();
   });
 
-  // spec 064 T20 (ISC-462): without a held claim a column shows no element of "In progress", in either workspace (harbor
-  // has waiting entries, lantern none); the golden bodies carry `taken: []` on every row.
-  it('ISC-462: no In Arbeit element without a held claim', async () => {
+  // spec 064 T20 (ISC-462): without a held claim no working row, in either workspace
+  it('ISC-462: no In Arbeit row without a held claim', async () => {
     expect([...harbor.specs, ...lantern.specs].every((row) => row.taken.length === 0)).toBe(true);
     const { root } = await render([entry('harbor'), entry('lantern')]);
     for (const ws of ['harbor', 'lantern']) {
       const column = root.querySelector(`.overview [data-ws="${ws}"]`);
-      expect(column).not.toBeNull();
-      // The heading first: a block that drew its section header for 0 entries fails here.
-      expect(column?.querySelector(`#working-${ws}, [id^="working-"]`)).toBeNull();
-      const headings = [...(column?.querySelectorAll('h1, h2, h3, h4, [role="heading"]') ?? [])].map((el) => text(el));
-      expect(headings.filter((heading) => heading.includes('In progress'))).toEqual([]);
-      expect(column?.querySelector('ui-working-block')).toBeNull();
-      // No tile list beyond the waits one (lantern's waits block shows its sentence and no list at all).
-      const tiles = [...(column?.querySelectorAll('.tiles') ?? [])];
-      expect(tiles.filter((list) => !list.closest('[data-ui="waits-block"]'))).toEqual([]);
-      // Exactly three subgrid tracks: identity, the lists wrapper, the kpi-strip; the wrapper holds the waits block alone.
-      const children = [...(column?.children ?? [])];
-      expect(children.map((el) => el.tagName.toLowerCase())).toEqual(['app-ws-identity', 'div', 'div']);
-      expect(children[1]?.hasAttribute('data-lists')).toBe(true);
-      expect(children[2]?.getAttribute('data-ui')).toBe('kpi-strip');
-      expect([...(children[1]?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-waits-block']);
+      expect(column?.querySelector('[data-tile-block="list"] app-tile-list')).not.toBeNull();
+      expect(column?.querySelector('li[data-kind="working"], ui-working-block')).toBeNull();
     }
-    expect(root.querySelectorAll('[data-ws="harbor"] [data-ui="waits-block"] .tiles').length).toBe(1);
   });
 
-  it('says in one sentence that nothing waits, with no card and no link, when the workspace has no waiting entry', async () => {
+  it('says in one line that nothing waits when the workspace has no entry', async () => {
     const { root } = await render([entry('lantern')]);
-    const block = root.querySelector('[data-ws="lantern"] [data-ui="waits-block"]');
-    expect(block?.getAttribute('data-count')).toBe('0');
-    expect(text(block?.querySelector('[data-empty]'))).toBe('Nothing is waiting on you.');
-    expect(block?.querySelector('[data-top], [data-row], [data-more], ui-command-chip')).toBeNull();
+    const list = root.querySelector('[data-ws="lantern"] [data-tile-block="list"]');
+    expect(text(list?.querySelector('[data-tile-empty]'))).toBe('Nothing is waiting on you.');
+    expect(list?.querySelector('li[data-tile-row], a[data-tile-more], ui-command-chip')).toBeNull();
   });
 
-  it('shows an unreadable workspace as a notice in its column and loads no dashboard for it', async () => {
+  // spec 066 T14 (ISC-517): the unreadable tile in the same frame and blocks, the notice in the list block, "—" as kpi
+  it('shows an unreadable workspace in the same frame: the notice in the list block, "—" in the kpi block, no dashboard', async () => {
     const { root, asked } = await render([entry('harbor'), entry('broken', false, 'permission denied')]);
-    const column = root.querySelector('[data-ws="broken"]');
-    expect(column?.querySelector('ui-notice')).not.toBeNull();
-    expect(text(column)).toContain('permission denied');
-    expect(column?.querySelector('[data-ui="kpi-strip"]')).toBeNull();
+    const tile = root.querySelector('[data-ui="workspace-column"][data-ws="broken"]');
+    expect(tile?.hasAttribute('aria-busy')).toBe(false);
+    expect(tile?.querySelectorAll('ui-card').length).toBe(1);
+    expect(tile?.querySelector('ui-card')?.hasAttribute('data-edge')).toBe(true);
+    expect(tile?.querySelector('ui-card')?.hasAttribute('data-glow')).toBe(false);
+    const blocks = [...(tile?.querySelectorAll('[data-tile-block]') ?? [])].map((el) => el.getAttribute('data-tile-block'));
+    expect(blocks).toEqual(['head', 'preview', 'list', 'kpi']);
+    expect(text(tile?.querySelector('[data-tile-block="head"] h2'))).toBe('broken');
+    const notice = tile?.querySelector('[data-tile-block="list"] ui-notice');
+    expect(notice).not.toBeNull();
+    expect(text(notice)).toContain('permission denied');
+    expect(text(tile?.querySelector('[data-tile-block="kpi"]'))).toBe('—');
+    expect(tile?.querySelector('app-tile-list, app-tile-kpis')).toBeNull();
     expect(asked).toEqual(['harbor']);
   });
 

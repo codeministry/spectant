@@ -92,6 +92,7 @@
     "attention": "Handlungsbedarf",
     "attentionDetail": "{{warnings}} Warnungen · {{fog}} offener Fog",
     "attentionCompact": "{{warnings}} · {{fog}} Fog",
+    "fogShort": "· {{fog}} Fog",
     "warnings": "Warnungen",
     "fog": "Offener Fog",
     "of": "von {{total}}",
@@ -294,6 +295,14 @@
       "where": "{{file}} · {{id}}"
     }
   },
+  "relativeTime": {
+    "short": {
+      "s": "{{value}} s",
+      "min": "{{value}} Min.",
+      "h": "{{value}} Std.",
+      "d": "{{value}} T"
+    }
+  },
   "identity": {
     "open": "{{workspace}} öffnen",
     "screenshot": "Bildschirmfoto von {{workspace}}"
@@ -306,6 +315,13 @@
       "other": "Alle {{count}} in {{workspace}} anzeigen →"
     },
     "open": "{{workspace}} öffnen →",
+    "tile": {
+      "working": "In Arbeit",
+      "waits": "Liegt bei Ihnen",
+      "showAll": "Alle {{n}} anzeigen",
+      "showAllName": "Alle {{n}} in {{workspace}} anzeigen",
+      "copy": "{{command}} kopieren"
+    },
     "empty": {
       "title": "Fügen Sie Ihren ersten Workspace hinzu",
       "command": "spectant add <pfad-zum-repo>",

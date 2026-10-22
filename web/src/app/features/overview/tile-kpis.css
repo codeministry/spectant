@@ -1,0 +1,89 @@
+/* The kpi block of a workspace tile (spec 066 T11, design.md "Kennzahlen"): no cards, no glow, no shadow. Below a
+   420 px tile (`container: ws-tile`, declared by the tile) 2 × 2 with hairlines, values 18/24; from 420 px one row of
+   four cells, values 22/28, column-gap 16, no separators. `--tile-kpi-layout` mirrors the arrangement for the host's
+   `data-layout` (read by a ResizeObserver in `tile-kpis.ts`). */
+:host {
+  --tile-kpi-layout: grid;
+
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  min-inline-size: 0;
+  block-size: var(--tile-kpi, 136px);
+}
+
+.cell {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-inline-size: 0;
+  padding: 8px 16px;
+}
+
+/* The hairlines part the four cells of the 2 × 2 only; the row layout has none, and the block's top line is the tile's. */
+@container ws-tile (width < 420px) {
+  .cell:nth-child(even) {
+    border-inline-start: 1px solid var(--line);
+  }
+
+  .cell:nth-child(n + 3) {
+    border-block-start: 1px solid var(--line);
+  }
+}
+
+.eyebrow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.val {
+  overflow: hidden;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.val small,
+.fog {
+  color: var(--muted-ink);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.val small {
+  font-size: 14px;
+}
+
+.fog {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+[data-warn] .val {
+  color: var(--hover-ink);
+}
+
+@container ws-tile (min-width: 420px) {
+  :host {
+    --tile-kpi-layout: row;
+
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 16px;
+    padding-inline: 16px;
+  }
+
+  .cell {
+    padding: 8px 0;
+  }
+
+  .val {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .val small {
+    font-size: 16px;
+  }
+}

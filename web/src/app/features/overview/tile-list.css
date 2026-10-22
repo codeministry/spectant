@@ -1,0 +1,202 @@
+/*
+ * The list area of a workspace tile on `/` (spec 066 T5, ISC-518). Three tracks in the tile's fixed `--tile-list`:
+ * the counter band (32 = 8 + 20 + 4), three row places of `--tile-row` (28 wide, 40 medium and compact) and the foot,
+ * which takes what is left (24 wide, 32 otherwise) and stays reserved whether or not "Show all n" stands in it. No
+ * cards inside, no hairlines; a row shows a `--track` ground while hovered.
+ */
+:host {
+  display: grid;
+  grid-template-rows: 32px calc(3 * var(--tile-row, 40px)) minmax(0, 1fr);
+
+  /* One column no wider than the tile: a long title is cut, it never widens the list. */
+  grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+  overflow: hidden;
+  block-size: var(--tile-list, 184px);
+  min-inline-size: 0;
+
+  /* Counters, rows and the foot align with the head and the KPIs on x = 16. */
+  padding-inline: 16px;
+}
+
+.counts {
+  display: flex;
+  gap: 16px;
+  align-self: end;
+  margin: 0 0 4px;
+  color: var(--color-base-content);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.n {
+  color: var(--muted-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows {
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li,
+.empty {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  block-size: var(--tile-row, 40px);
+  min-inline-size: 0;
+}
+
+li {
+  /* The icon-only copy square follows the row: 24 at the 28 px row, 32 at the 40 px row. */
+  --chip-icon-size: clamp(24px, calc(var(--tile-row, 40px) - 8px), 32px);
+
+  position: relative;
+
+  /* The hover ground reaches 4 px past the text; the text itself stays on x = 16. */
+  margin-inline: -4px;
+  padding-inline: 4px;
+  border-radius: 6px;
+}
+
+/* The mark column is 16 px wide: the glyph is centred in it, the agent dot keeps its own 8 px between two margins. */
+ui-glyph.mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 16px;
+}
+
+ui-agent-dot.mark {
+  margin-inline: 4px;
+}
+
+/* The row's one link, stretched over the whole row; the copy chip stands above it and takes its own clicks. */
+.link {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  align-items: baseline;
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.link::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+}
+
+/* Every text of a row stays on its one line and is cut with an ellipsis where it runs out of room. */
+.title,
+.ref,
+.session,
+.since {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The row's main line: id and title, 13/20. */
+.id,
+.title {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.id,
+.ref,
+.session {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.id {
+  flex: none;
+  color: var(--disp-ink);
+  font-weight: 600;
+}
+
+/* The row's notes: ref, session and time, 12/16 muted. */
+.ref,
+.session,
+.since {
+  flex: none;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.ref {
+  max-inline-size: 8ch;
+}
+
+/* The session keeps its place at the row end (at most 12ch); the title gives way first. */
+.session {
+  max-inline-size: 12ch;
+}
+
+.title {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  color: var(--color-base-content);
+  font-weight: 500;
+  text-underline-offset: 3px;
+}
+
+.copy {
+  position: relative;
+  z-index: 1;
+  flex: none;
+}
+
+.empty {
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  min-block-size: 0;
+}
+
+.more {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--disp-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+@media (hover: hover) {
+  li:hover {
+    background: color-mix(in oklab, var(--track) 18%, transparent);
+  }
+
+  li:has(.link:hover) .title {
+    text-decoration: underline;
+  }
+}
+
+@media (forced-colors: active) {
+  .id,
+  .more {
+    color: LinkText;
+  }
+}

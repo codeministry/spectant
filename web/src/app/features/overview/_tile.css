@@ -1,0 +1,50 @@
+/* The frame of a workspace tile on `/` (spec 066 T12, T14, design.md § Across viewports), shared by the workspace
+   column (`:host(.ws-tile)`) and the page's loading and unreadable tiles (`.ws-tile`), so every kind is equally tall.
+   Four fixed tracks as tokens per shell tier, never a viewport query: medium and compact 48 · 152 · 184 · 136, wide
+   48 · 152 · 140 · 72; the preview is equally tall on every tier (ISC-523). The card's 3 px edge takes the place of its
+   top border, so a tile measures 3 + tracks + 1 (the bottom border): 524 px, 416 px at wide. Hairlines (`--line`) part the blocks inside the track sizes, and every block
+   clips what it holds, so a track's height is a hard limit. */
+:host(.ws-tile),
+.ws-tile {
+  --tile-head: 48px;
+  --tile-preview: 152px;
+  --tile-list: 184px;
+  --tile-row: 40px;
+  --tile-kpi: 136px;
+
+  display: block;
+  container: ws-tile / inline-size;
+  min-inline-size: 0;
+}
+
+@container shell (inline-size >= 1120px) {
+  :host(.ws-tile),
+  .ws-tile {
+    --tile-list: 140px;
+    --tile-row: 28px;
+    --tile-kpi: 72px;
+  }
+}
+
+/* No top border: the edge (ui-card's 3 px `::before`) stands on the grid's 3 px start padding instead. */
+.tile-frame {
+  border-block-start-width: 0;
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-rows: var(--tile-head) var(--tile-preview) var(--tile-list) var(--tile-kpi);
+  padding-block-start: 3px;
+  min-inline-size: 0;
+}
+
+.tile-grid > * {
+  box-sizing: border-box;
+  overflow: hidden;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+.tile-grid > [data-tile-block]:not([data-tile-block='head']) {
+  border-block-start: 1px solid var(--line);
+}

@@ -277,11 +277,14 @@ test.describe('narrow column', () => {
 
     test(`column at ${String(width)}: the guard reports an injected overflow`, async ({ page }, info) => {
       await openOverview(page, `narrow-column-control-${info.testId}-${String(info.retry)}`, 'two-workspaces');
-      await page.addStyleTag({ content: 'app-workspace-column .ws-head { min-inline-size: 720px; }' });
+      // Spec 066 (ISC-518): every block of the tile and its card clip what they hold, so an overflow inside a block
+      // (the old `.ws-head` injection) is cut off by design and reaches no scroll container. The control widens the
+      // tile's card itself, the column host's own child, which no fitting ancestor clips.
+      await page.addStyleTag({ content: 'app-workspace-column > ui-card.tile-frame { min-inline-size: 720px; }' });
 
       const found = await layout(page, OVERVIEW.host);
       expect((await columns(page)).some((c) => c.scroll > c.client)).toBe(true);
-      expect(found.wide.some((entry) => entry.includes('ws-head'))).toBe(true);
+      expect(found.wide.some((entry) => /ui-card\.tile-frame \+\d+$/u.test(entry)), `the guard names the widened card: ${found.wide.join('; ')}`).toBe(true);
       expect(() => {
         expectNoHorizontalOverflow(found, width);
       }).toThrow();

@@ -1,5 +1,6 @@
 /* Under a coarse pointer the `.copy` button gets a hit area of at least 44 × 44 (WCAG 2.5.8) from `_hit-area.css`. */
 @import '../_hit-area.css';
+@import '../_visually-hidden.css';
 
 :host {
   display: inline-flex;
@@ -67,4 +68,22 @@ code {
 .copy[data-locked] {
   pointer-events: auto;
   cursor: not-allowed;
+}
+
+/*
+ * Icon only (spec 066, ISC-518): a square of --chip-icon-size, 32 px by default (medium and compact tiers); the parent
+ * sets --chip-icon-size: 24px at the wide tier. The hidden command text stays positioned inside the chip.
+ */
+:host([data-icon-only]) .chip {
+  position: relative;
+  justify-content: center;
+  inline-size: var(--chip-icon-size, 32px);
+  block-size: var(--chip-icon-size, 32px);
+  padding-inline: 0;
+}
+
+:host([data-icon-only]) .copy {
+  inline-size: calc(var(--chip-icon-size, 32px) - 2px);
+  block-size: calc(var(--chip-icon-size, 32px) - 2px);
+  min-block-size: 0;
 }

@@ -16,6 +16,23 @@
   border-radius: var(--radius-sm);
 }
 
+/* The tile's preview: a fixed track instead of a ratio, no edge or border of its own (the tile draws the hairlines
+   and carries the accent), and a neutral surface instead of the accent tint (spec 066). */
+:host([data-shape='tile']) {
+  aspect-ratio: auto;
+  inline-size: 100%;
+  block-size: var(--tile-preview, 152px);
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in oklab, var(--muted-ink) 6%, var(--color-base-100));
+}
+
+[data-cover-placeholder] {
+  display: grid;
+  place-items: center;
+  block-size: 100%;
+}
+
 img, svg {
   position: absolute;
   inset: 0;
