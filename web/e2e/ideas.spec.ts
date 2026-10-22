@@ -3,8 +3,8 @@
  * by the stub API (`core/fixtures/harbor.planning.golden.json`, `harbor.golden.json`). `bun run e2e -- ideas`.
  *
  * - The Features page shows each story on its feature block (F2, F7), the Milestones page on its milestone (Harbor 1.0;
- *   the other story names a milestone the master does not hold), the Specs page (spec 064) as rows of the list's group
- *   "Ideas · n ideas", and the palette in its Ideas group.
+ *   the other story names a milestone the master does not hold), the Specs page (spec 064) as plain rows of the spec
+ *   list after the active specs (no heading of their own), and the palette in its Ideas group.
  * - The idea page `/w/harbor/ideas/console-audit-log` renders the chips, the heading and the body read-only: the page
  *   sends only GET or HEAD to the story route and holds no form, input, textarea, select or button. An unknown slug is
  *   the not-found page (ISC-71).
@@ -29,7 +29,7 @@ type Catalogue = {
   ideas: { source: string };
   palette: { groups: { ideas: string } };
   planning: { ideas: { label: string } };
-  specs: { ideasGroup: { label: string; count: { other: string } }; ideaRow: { name: string } };
+  specs: { ideaRow: { name: string } };
 };
 const en = read('../src/i18n/en.json') as Catalogue;
 
@@ -57,15 +57,19 @@ test.afterEach(async ({ request }) => {
 });
 
 test.describe('ideas on the dashboard', () => {
-  test('the list\'s group "Ideas · 2 ideas" lists both stories as rows of their own', async ({ page }) => {
+  test('the spec list lists both stories as plain rows after the active specs, under no heading of their own', async ({ page }) => {
     await page.goto('/w/harbor/specs');
-    // Spec 064 (ISC-484): the ideas are a group of the spec list, not a fold of their own.
-    const group = page.locator('app-spec-table li[data-ideas-group]');
-    await expect(group).toHaveCount(1);
-    await expect(group.locator('[data-ideas-label]')).toHaveText(en.specs.ideasGroup.label);
-    await expect(group.locator('[data-ideas-count]')).toHaveText(template(en.specs.ideasGroup.count.other, { count: dashboard.ideas.count }));
+    // Spec 064 (ISC-491): the ideas are items of the list `ol.rows` right after the active spec rows; the group
+    // heading "Ideas · n ideas" is gone.
+    const list = page.locator('app-spec-table ol.rows').first();
+    await expect(list.locator('> li > app-spec-row').first()).toBeVisible();
+    await expect(page.locator('app-spec-table [data-ideas-group], app-spec-table [data-ideas-label], app-spec-table [data-ideas-count]')).toHaveCount(0);
+    // Every idea item follows every spec item of the first list.
+    const kinds = await list.locator('> li').evaluateAll((items) => items.map((li) => (li.querySelector('app-idea-row') ? 'idea' : 'spec')));
+    expect(kinds.indexOf('idea'), 'the list holds the ideas').toBeGreaterThan(0);
+    expect(kinds.slice(kinds.indexOf('idea')), 'no spec row after the first idea').toEqual(Array.from({ length: dashboard.ideas.count }, () => 'idea'));
 
-    const rows = group.locator('app-idea-row[data-idea]');
+    const rows = list.locator('> li > app-idea-row[data-idea]');
     await expect(rows).toHaveCount(dashboard.ideas.count);
     for (const [index, idea] of dashboard.ideas.list.entries()) {
       const row = rows.nth(index);

@@ -105,15 +105,21 @@ async function speak(page: Page, language: Language): Promise<void> {
  * list states moved with the list; the old `/w/harbor?…` addresses redirect there.
  */
 const WORKSPACE_PAGES = [
-  { page: 'dashboard', host: 'app-dashboard-page', states: [{ name: 'default', url: '/w/harbor', sortSheet: false }] },
+  { page: 'dashboard', host: 'app-dashboard-page', states: [{ name: 'default', url: '/w/harbor', sortSheet: false, more: false }] },
   {
     page: 'specs page',
     host: 'app-specs-page',
     states: [
-      { name: 'default', url: '/w/harbor/specs', sortSheet: false },
-      { name: 'takeable, sorted by next', url: '/w/harbor/specs?takeable=1&sort=next', sortSheet: false },
-      { name: 'phase filter', url: '/w/harbor/specs?phase=building', sortSheet: false },
-      { name: 'sort sheet open', url: '/w/harbor/specs', sortSheet: true },
+      { name: 'default', url: '/w/harbor/specs', sortSheet: false, more: false },
+      { name: 'takeable, sorted by next', url: '/w/harbor/specs?takeable=1&sort=next', sortSheet: false, more: false },
+      // Spec 064 (T62): the stage chips; the old `?phase=` address redirects to `?stage=` and is measured after it.
+      { name: 'stage filter', url: '/w/harbor/specs?stage=build', sortSheet: false, more: false },
+      { name: 'old phase address', url: '/w/harbor/specs?phase=building', sortSheet: false, more: false },
+      // Spec 064 (T49, ISC-491): the ideas alone, plain rows of the list under no heading of their own.
+      { name: 'ideas only', url: '/w/harbor/specs?stage=idea', sortSheet: false, more: false },
+      { name: 'sort sheet open', url: '/w/harbor/specs', sortSheet: true, more: false },
+      // Spec 064 (T46, ISC-489): the first row's "…" toggle open, its title unfolded within the fixed columns.
+      { name: 'row unfolded', url: '/w/harbor/specs', sortSheet: false, more: true },
     ],
   },
 ] as const;
@@ -134,7 +140,8 @@ async function openWorkspacePage(page: Page, which: WorkspacePage, url: string):
     await expect(page.locator('app-spec-table')).toHaveCount(0);
   } else {
     await expect(page.locator('app-specs-page [data-panel="specs"]')).toBeVisible();
-    await expect(page.locator('app-specs-page [data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+    // A spec row or, under `?stage=idea`, an idea row: every row is an item of the list `ol.rows`.
+    await expect(page.locator('app-specs-page [data-panel="specs"] ol.rows > li').first()).toBeVisible();
   }
 }
 
@@ -156,6 +163,12 @@ test.describe('narrow dashboard', () => {
               if (state.sortSheet) {
                 await page.locator('app-spec-table [data-control="sort"]').click();
                 await expect(page.locator('app-spec-table ui-sheet dialog')).toBeVisible();
+              }
+              if (state.more) {
+                const more = page.locator('app-spec-table button[data-more]').first();
+                await expect(more).toBeVisible();
+                await more.click();
+                await expect(more).toHaveAttribute('aria-expanded', 'true');
               }
 
               expectNoHorizontalOverflow(await layout(page, host), width);
