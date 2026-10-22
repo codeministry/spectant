@@ -10,7 +10,8 @@
  *   compared with the body of the same route the page reads, fetched by the test (`page.request.get`). The test reads
  *   fields only, no arithmetic and no grouping of rows (T83): the master tile's open count and ring percent are
  *   `kpis.masterOpen` and `kpis.masterPercent`, the stage chips `stageCounts` (the Specs tile's split, spec 064) and
- *   `kpis.specsWithFog`, the type chips `kpis.byType`, the `all` chips `kpis.specs`.
+ *   `kpis.specsWithFog`, the type chips `kpis.byType`, the type `all` chip `kpis.specs` and the stage `all` chip
+ *   `kpis.specs` plus the story list `ideas.list` (spec 064, ISC-512).
  * - Loopback: every request and web socket the page opens while it loads the dashboard and the Specs page, opens and
  *   closes every 021 fold
  *   (spec list, TL;DR, overlaps, the compact "Details of <id>", library sections) and sets the density on the settings
@@ -194,16 +195,16 @@ for (const stub of STUBS) {
       const showAll = table.locator('[data-fold="specs"] button.summary');
       if (model.specs.length > 10) expect(await numbersOf(showAll)).toEqual([model.specs.length]);
 
-      // Filter chips: `all` is `kpis.specs`, each stage-group chip its `kpis.stageGroups` entry (the Specs tile's split,
-      // one derivation), fog `kpis.specsWithFog`, ideas (spec 064, ISC-480) the answer's story list, each type chip its
-      // `kpis.byType` entry.
+      // Filter chips: `all` is `kpis.specs` plus the answer's story list (spec 064, ISC-512: All counts the ideas it
+      // shows too), each stage chip its `stageCounts` entry (the Specs tile's split, one derivation), fog
+      // `kpis.specsWithFog`, ideas (spec 064, ISC-480) the story list, each type chip its `kpis.byType` entry.
       const chips = await chipsOf(table.locator('ui-filter-chips[data-filter="stage"]'));
-      const all = chips.get(SPECS_ALL);
-      expect(all?.count).toBe(k.specs);
-      expect(numbers(all?.name ?? null)).toEqual([k.specs]);
-      const stages = STAGES.filter((stage) => (model.stageCounts[stage] ?? 0) > 0);
       const ideas = model.ideas?.list?.length ?? 0;
       if (model.ideas?.count !== undefined) expect(model.ideas.count, 'ideas.count is the length of ideas.list').toBe(ideas);
+      const all = chips.get(SPECS_ALL);
+      expect(all?.count).toBe(k.specs + ideas);
+      expect(numbers(all?.name ?? null)).toEqual([k.specs + ideas]);
+      const stages = STAGES.filter((stage) => (model.stageCounts[stage] ?? 0) > 0);
       expect(chips.size).toBe(1 + stages.length + (k.specsWithFog > 0 ? 1 : 0) + (ideas > 0 ? 1 : 0));
       for (const stage of stages) expect(chips.get(stageLabel(stage))?.count, `stage chip ${stage}`).toBe(model.stageCounts[stage]);
       if (k.specsWithFog > 0) expect(chips.get(FOG_LABEL)?.count).toBe(k.specsWithFog);

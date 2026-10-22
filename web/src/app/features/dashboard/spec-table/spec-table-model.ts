@@ -373,11 +373,12 @@ export function holdNewRows(rows: readonly SpecTableRow[], seen: ReadonlySet<str
 /**
  * The stage chips (spec 064, T62, ISC-503): All, each stage with a spec in workflow order (`STAGE_ORDER`), then fog when
  * a spec has open fog; every count is the model's (`kpis.specs`, `stageCounts`, `kpis.specsWithFog`), none without it.
+ * All counts what it shows (ISC-512): the active specs plus the `ideas` the list receives; a stage chip only its specs.
  */
-export function stageOptions(counts: SpecListCounts | null): ListOption[] {
+export function stageOptions(counts: SpecListCounts | null, ideas = 0): ListOption[] {
   if (counts === null) return [];
   return [
-    { key: ALL, count: counts.specs },
+    { key: ALL, count: counts.specs + ideas },
     ...STAGE_ORDER.flatMap((key) => ((counts.stages[key] ?? 0) > 0 ? [{ key, count: counts.stages[key] ?? 0 }] : [])),
     ...(counts.specsWithFog > 0 ? [{ key: FOG, count: counts.specsWithFog }] : []),
   ];

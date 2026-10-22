@@ -776,7 +776,7 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
   it('names the two "all" chips by their group, so no two chips share a name', async () => {
     const { host } = await renderTyped();
     expect(text(allChip(host, 'stage'))).toBe('All 3');
-    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('All 3 stages');
+    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('All: 3 entries');
     expect(text(allChip(host, 'type'))).toBe('All 3');
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('All 3 types');
     const named = [...host.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map((b) => b.getAttribute('aria-label') ?? text(b));
@@ -787,7 +787,7 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     const { fixture, host } = await renderTyped();
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('Alle 3 Stages');
+    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('Alle: 3 Einträge');
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('Alle 3 Typen');
   });
 
@@ -1510,13 +1510,13 @@ describe('the stage chips of the spec list (spec 064, T62, ISC-503)', () => {
     kpis: { specs: 4, stageGroups: { scoping: 2, building: 2, complete: 0 }, specsWithFog: 1, byType: { feature: 4 } },
   };
 
-  async function renderStaged(query: ListQuery = DEFAULT_QUERY, lang = 'en') {
+  async function renderStaged(query: ListQuery = DEFAULT_QUERY, lang = 'en', body: Record<string, unknown> = STAGED, ideas: readonly unknown[] = harbor.ideas.list) {
     TestBed.inject(TranslocoService).setActiveLang(lang);
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
-    fixture.componentRef.setInput('rows', readSpecRows(STAGED));
-    fixture.componentRef.setInput('counts', readListCounts(STAGED));
-    fixture.componentRef.setInput('ideas', harbor.ideas.list);
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('counts', readListCounts(body));
+    fixture.componentRef.setInput('ideas', ideas);
     fixture.componentRef.setInput('query', query);
     const emitted: ListQuery[] = [];
     fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
@@ -1528,9 +1528,27 @@ describe('the stage chips of the spec list (spec 064, T62, ISC-503)', () => {
 
   it('offers All, one chip per stage present in workflow order with its count, then fog and ideas', async () => {
     const { chips } = await renderStaged();
-    expect(chips().map(text)).toEqual(['All 4', 'Plan 1', 'Review 1', 'Build 2', 'fog 1', 'Idea 2']);
+    // All counts what it shows, the 4 specs and the 2 ideas (ISC-512).
+    expect(chips().map(text)).toEqual(['All 6', 'Plan 1', 'Review 1', 'Build 2', 'fog 1', 'Idea 2']);
     const { chips: de } = await renderStaged(DEFAULT_QUERY, 'de');
-    expect(de().map(text)).toEqual(['Alle 4', 'Plan 1', 'Review 1', 'Bauen 2', 'fog 1', 'Idee 2']);
+    expect(de().map(text)).toEqual(['Alle 6', 'Plan 1', 'Review 1', 'Bauen 2', 'fog 1', 'Idee 2']);
+  });
+
+  it('counts the specs and the ideas in All, only their specs in a stage chip and the ideas in Idea (ISC-512)', async () => {
+    const two = {
+      specs: [wire('002', { stage: 'build' }), wire('003', { stage: 'review' })],
+      archive: [],
+      kpis: { specs: 2, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 2 } },
+    };
+    const three = [...harbor.ideas.list, { slug: 'sync-dry-run', title: 'A dry run.', feature: null, milestone: null, priority: 'P1' }];
+    const { chips, host } = await renderStaged(DEFAULT_QUERY, 'en', two, three);
+    expect(chips().map(text)).toEqual(['All 5', 'Review 1', 'Build 1', 'Idea 3']);
+    expect(chips()[0]?.getAttribute('aria-label')).toContain('5');
+    expect(host.querySelectorAll('[data-spec-row]')).toHaveLength(2);
+    expect(host.querySelectorAll('app-idea-row')).toHaveLength(3);
+    // Without a story All is the specs' count alone.
+    const none = await renderStaged(DEFAULT_QUERY, 'en', two, []);
+    expect(none.chips().map(text)).toEqual(['All 2', 'Review 1', 'Build 1']);
   });
 
   it('asks for ?stage=<stage> on a click, [idea] for the ideas chip and none for All', async () => {

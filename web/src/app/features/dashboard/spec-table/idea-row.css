@@ -77,19 +77,23 @@
   min-inline-size: 0;
 }
 
-/* The state chip and (spec 064, T53) the star's cell sit above the row link's `::after`, so each is its own target. */
-.rstate,
+/* The star's cell (spec 064, T53) sits above the row link's `::after`, its own target; its look is the primitive's. */
 .rstar {
   position: relative;
   z-index: 1;
+  display: inline-flex;
   min-inline-size: 0;
 }
 
+/* The state pill (T69, ISC-510) is at most the phase column wide; its text ends in an ellipsis rather than spilling. */
 .rstate {
+  max-inline-size: 100%;
   overflow: hidden;
 }
 
-/* The star's look is the primitive's, as in the spec row. */
-.rstar {
-  display: inline-flex;
+.stext {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

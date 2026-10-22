@@ -27,10 +27,19 @@
   <ui-priority [value]="priority()" />
 </span>
 <span data-cell="track"></span>
-<!-- The state where a spec row has its phase chip, without its command (ISC-482); the meter stays empty. -->
+<!-- Spec 064 (T69, ISC-510): the state as the spec row's stage chip, a dot in the state's tone, "Idea · open" as
+     before; no command and no actor (ISC-482, ISC-511). The meter stays empty. -->
 <span class="rphase" data-cell="phase">
   @if (state(); as state) {
-    <ui-item-state class="rstate" [info]="state" [ws]="ws()" noActor />
+    <ui-chip class="phase rstate" data-idea-state [attr.data-state]="state.state" [tone]="stateTone()" [dot]="true">
+      <span class="stext">
+        @if (state.stage) {
+          {{ 'itemState.line' | transloco: { stage: ('stages.' + state.stage | transloco), state: ('states.item.' + state.state | transloco) } }}
+        } @else {
+          {{ 'states.item.' + state.state | transloco }}
+        }
+      </span>
+    </ui-chip>
   }
 </span>
 <span data-cell="meter"></span>

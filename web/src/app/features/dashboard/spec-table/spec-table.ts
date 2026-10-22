@@ -323,7 +323,7 @@ export class SpecTable {
 
   protected readonly stageChips = computed<FilterOption[]>(() => {
     this.lang();
-    return withIdeaOption(stageOptions(this.counts()), this.ideas().length).map((option) => this.named(this.chip(option, this.stageWord(option.key), true), 'specs.filter.allStages'));
+    return withIdeaOption(stageOptions(this.counts(), this.ideas().length), this.ideas().length).map((option) => this.named(this.chip(option, this.stageWord(option.key), true), 'specs.filter.allStages'));
   });
   /** The chip the query presses: All, or the one stage asked for; several (a mapped `?phase=scoping`) press none. */
   protected readonly stageValue = computed(() => this.query().stage?.join(',') ?? ALL);

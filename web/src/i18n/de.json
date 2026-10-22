@@ -153,8 +153,8 @@
       "typeLabel": "Nach Typ filtern",
       "all": "Alle",
       "allStages": {
-        "one": "Alle {{count}} Stages",
-        "other": "Alle {{count}} Stages"
+        "one": "Alle: {{count}} Eintrag",
+        "other": "Alle: {{count}} Einträge"
       },
       "allTypes": {
         "one": "Alle {{count}} Typen",

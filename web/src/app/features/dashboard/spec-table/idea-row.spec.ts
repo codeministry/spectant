@@ -9,6 +9,8 @@ import { ShellState } from '../../../layout/shell/shell-state.service';
 import { ToastService } from '../../../shared/ui/toast/toast';
 import type { DashboardIdea } from './idea-rows';
 import { IdeaRow } from './idea-row';
+import { SpecRow } from './spec-row';
+import { readSpecRows } from './spec-table-model';
 
 /** A story as `DashboardModel.ideas.list` serves it: placed, prioritised and open with its command. */
 const IDEA: DashboardIdea = {
@@ -80,7 +82,7 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
     expect(row.querySelector('[data-idea-title]')?.textContent.trim()).toBe('Offline sync');
     expect(row.querySelector('[data-idea-where]')?.textContent.trim()).toBe('F3 · M2');
     expect(row.querySelector('ui-priority')?.getAttribute('data-level')).toBe('P2');
-    expect(row.querySelector('ui-item-state')?.getAttribute('data-state')).toBe('open');
+    expect(row.querySelector('[data-idea-state]')?.getAttribute('data-state')).toBe('open');
   });
 
   // Spec 064 (T47, ISC-488): the idea row fills the spec row's named columns, each cell rendered even when empty.
@@ -92,17 +94,17 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
     expect(cell('title')?.querySelector('[data-idea-title]')).not.toBeNull();
     expect(cell('title')?.querySelector('[data-idea-where]')?.textContent.trim()).toBe('F3 · M2');
     expect(cell('prio')?.querySelector('ui-priority')).not.toBeNull();
-    expect(cell('phase')?.querySelector('ui-item-state')).not.toBeNull();
+    expect(cell('phase')?.querySelector('[data-idea-state]')).not.toBeNull();
     expect(cell('phase')?.querySelector('ui-command-chip')).toBeNull();
     for (const empty of ['more', 'mark', 'agent', 'track', 'meter']) expect(cell(empty)?.children.length).toBe(0);
     expect(cell('star')?.querySelector('button[ui-star-toggle]')).not.toBeNull();
-    expect(row.querySelector('.rtrack ui-priority, .rtrack ui-item-state')).toBeNull();
+    expect(row.querySelector('.rtrack ui-priority, .rtrack [data-idea-state]')).toBeNull();
   });
 
   it('leaves out feature, milestone and state the story does not name', async () => {
     const row = await render({ ...IDEA, feature: null, milestone: 'M2', state: undefined });
     expect(row.querySelector('[data-idea-where]')?.textContent.trim()).toBe('M2');
-    expect(row.querySelector('ui-item-state')).toBeNull();
+    expect(row.querySelector('[data-idea-state]')).toBeNull();
     const bare = await render({ ...IDEA, feature: null, milestone: null, state: undefined });
     expect(bare.querySelector('[data-idea-where]')).toBeNull();
   });
@@ -134,7 +136,7 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
       expect(row.querySelector('ui-meter, .rmeter [role="img"], .frac')).toBeNull();
       expect(row.querySelector('ui-command-chip')).toBeNull();
       expect(row.querySelector('ui-agent-dot, ui-actor-chip')).toBeNull();
-      expect(row.querySelector('ui-item-state')).not.toBeNull();
+      expect(row.querySelector('[data-idea-state]')).not.toBeNull();
     }
   });
 });
@@ -174,5 +176,51 @@ describe('IdeaRow star (spec 064, T53, ISC-497)', () => {
     expect(writes).toEqual(['PUT harbor offline-sync', 'DELETE harbor offline-sync']);
     expect(star().getAttribute('aria-pressed')).toBe('false');
     expect(router.url).toBe(url);
+  });
+});
+
+describe('IdeaRow status pill (spec 064, T69, ISC-510)', () => {
+  type State = NonNullable<DashboardIdea['state']>['state'];
+  const inState = (state: State): DashboardIdea => ({ ...IDEA, state: { kind: 'idea', id: IDEA.slug, state, stage: 'idea' } });
+  const pill = (row: HTMLElement) => row.querySelector<HTMLElement>(':scope > [data-cell="phase"] > ui-chip');
+  const words = (el: Element | null) => el?.textContent.replace(/\s+/g, ' ').trim();
+
+  /** The spec row's stage chip, the form the idea's state pill takes. */
+  function stageChip(): HTMLElement {
+    const fixture = TestBed.createComponent(SpecRow);
+    fixture.componentRef.setInput('row', readSpecRows({ specs: [{ id: '005', title: 'Board', stage: 'plan' }] })[0]);
+    fixture.componentRef.setInput('stageLabels', ['Plan']);
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).querySelector(':scope > [data-cell="phase"] > ui-chip') as HTMLElement;
+  }
+
+  it("shows each state as the spec row's stage chip: the same ui-chip, variant and dot, one tone per state, text as before", async () => {
+    const stage = stageChip();
+    expect(stage.querySelector(':scope > .dot')).not.toBeNull();
+    // The tones of the item glyph family (ITEM_GLYPHS, spec 040): one per state, so no two states share a pill.
+    const cases: Array<[State, string, string]> = [
+      ['open', 'secondary', 'Idea · open'],
+      ['running', 'primary', 'Idea · running'],
+      ['waiting', 'neutral', 'Idea · waiting'],
+      ['aborted', 'warning', 'Idea · aborted'],
+      ['done', 'accent', 'Idea · done'],
+    ];
+    for (const [state, tone, text] of cases) {
+      const row = await render(inState(state));
+      const chip = pill(row);
+      expect(chip?.tagName).toBe(stage.tagName);
+      expect(chip?.getAttribute('data-variant')).toBe(stage.getAttribute('data-variant'));
+      expect(chip?.classList.contains('phase')).toBe(true);
+      expect(chip?.querySelector(':scope > .dot')).not.toBeNull();
+      expect(chip?.getAttribute('data-tone')).toBe(tone);
+      expect(words(chip)).toBe(text);
+      expect(row.querySelector('ui-item-state, ui-command-chip, ui-actor-chip')).toBeNull();
+    }
+    expect(new Set(cases.map(([, tone]) => tone)).size).toBe(cases.length);
+  });
+
+  it('keeps the text in German', async () => {
+    expect(words(pill(await render(inState('open'), 'de')))).toBe('Idee · offen');
+    expect(words(pill(await render(inState('running'), 'de')))).toBe('Idee · läuft');
   });
 });

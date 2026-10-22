@@ -2,29 +2,25 @@ import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { ItemStateInfo, Priority } from '../../../../../../core/src/files';
+import type { Priority } from '../../../../../../core/src/files';
 import type { RelationRef } from '../../../../../../core/src/relations';
 import { DetailSelection, selectedLook } from '../../../layout/detail-sidebar/selection';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { UiIcon } from '../../../shared/icons/icon';
-import { UiItemState } from '../../../shared/ui/item-state/item-state';
+import { UiChip } from '../../../shared/ui/chip/chip';
+import { ITEM_GLYPHS } from '../../../shared/ui/glyph/states';
+import type { Tone } from '../../../shared/ui/tone';
 import { PRIORITY_LOOK, UiPriority } from '../../../shared/ui/priority/priority';
 import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import type { DashboardIdea } from './idea-rows';
-
-/** The state line without a command: an idea's row carries no Next command (ISC-482); its page holds the chip. */
-function withoutCommand(info: ItemStateInfo): ItemStateInfo {
-  const { command, run, ...rest } = info;
-  if (command === undefined && run === undefined) return info;
-  return run === undefined ? rest : { ...rest, run: { ...run, command: null } };
-}
 
 /**
  * Spec 064 (T40, ISC-484, ISC-482): one story of `specs/ideas/` as a row of the Specs list, in the row grid of
  * `app-spec-row` (`_row-grid.css`: the same ten named columns and heights per tier, T47). In `id` the idea glyph; in
  * `title` the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`, with
  * feature and milestone as the muted description behind it; in `prio` `ui-priority`; in `phase`, when the model serves
- * one, `ui-item-state` without its command and actor; in `star` the idea favourite's `ui-star-toggle` (T53, ISC-497),
+ * one, the state as the spec row's stage chip (`ui-chip` with a dot in the state's item-glyph tone, "Idea · open";
+ * T69, ISC-510), without command or actor; in `star` the idea favourite's `ui-star-toggle` (T53, ISC-497),
  * its own target above the link. `more`, `mark`, `agent`, `track` and `meter` stay empty:
  * an idea has no stage track, claim progress, Next command or agent dot. Below 640 px it takes the spec row's two lines.
  *
@@ -34,7 +30,7 @@ function withoutCommand(info: ItemStateInfo): ItemStateInfo {
  */
 @Component({
   selector: 'app-idea-row',
-  imports: [TranslocoPipe, UiIcon, UiItemState, UiPriority, UiStarToggle],
+  imports: [TranslocoPipe, UiChip, UiIcon, UiPriority, UiStarToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './idea-row.html',
   styleUrl: './idea-row.css',
@@ -68,9 +64,12 @@ export class IdeaRow {
     const { feature, milestone } = this.idea();
     return [feature, milestone].filter((part): part is string => part !== null && part !== '').join(' · ');
   });
-  protected readonly state = computed(() => {
-    const state = this.idea().state;
-    return state === undefined ? null : withoutCommand(state);
+  protected readonly state = computed(() => this.idea().state ?? null);
+  /** The pill's tone: the state's own in the item glyph family (open secondary, waiting neutral, running primary,
+   *  aborted warning, done accent), so the pill and the state's glyph elsewhere read alike. */
+  protected readonly stateTone = computed<Tone>(() => {
+    const state = this.state();
+    return state === null ? 'neutral' : ITEM_GLYPHS[state.state].tone;
   });
   /** Spec 064 (T53, ISC-497): whether the story is a favourite of the open workspace, as `ShellData` holds it. */
   protected readonly favorite = computed(() => this.shell.isIdeaFavorite(this.idea().slug));
