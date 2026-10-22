@@ -14,6 +14,7 @@ import { ShellData } from '../../../layout/shell/shell-data.service';
 import { IdeaRow } from './idea-row';
 import { SpecRow } from './spec-row';
 import { SpecTable } from './spec-table';
+import { SpecTableHead } from './spec-table-head';
 import { DEFAULT_QUERY, type ListQuery, parseListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
 /** A dashboard row as the server sends it (`DashboardSpecRow`), only the fields that matter overridden. */
@@ -232,6 +233,36 @@ describe('SpecTable (T89)', () => {
     const strip = host.querySelector('.phase-strip');
     expect(strip?.getAttribute('role')).toBe('img');
     expect(strip?.querySelectorAll('i')).toHaveLength(2);
+  });
+
+  // Spec 064 (T68, ISC-509): one column header row over the rows, on the rows' own grid; `more`, `agent` and `star`
+  // stay without text. Where it sticks and how its edges line up is the browser probe's (spec-list-columns).
+  describe('column header (ISC-509)', () => {
+    const cols = (host: HTMLElement) => host.querySelector('.row-lists > [data-cols] [role="row"]');
+    const heads = (host: HTMLElement) => [...(cols(host)?.querySelectorAll('[role="columnheader"]') ?? [])];
+    const ten = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+
+    it('stands before the first row list with one columnheader per data-cell, texts in English', async () => {
+      const { host } = await render();
+      const row = cols(host);
+      expect(row).not.toBeNull();
+      expect(host.querySelector('.row-lists > [data-cols] + ol.rows')).not.toBeNull();
+      expect(heads(host).map((cell) => cell.getAttribute('data-cell'))).toEqual(ten);
+      expect(heads(host).map(text)).toEqual(['ID', 'Title', '', 'Waits', '', 'Priority', 'Track', 'Stage', 'Progress', '']);
+    });
+
+    it('reads the German column names', async () => {
+      const { fixture, host } = await render();
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      await fixture.whenStable();
+      expect(heads(host).map(text)).toEqual(['ID', 'Titel', '', 'Wartet', '', 'Priorität', 'Track', 'Stage', 'Fortschritt', '']);
+      TestBed.inject(TranslocoService).setActiveLang('en');
+    });
+
+    it('carries the rows’ grid: every template and area of the spec row', () => {
+      const head = gridOf(SpecTableHead);
+      for (const line of gridOf(SpecRow)) expect(head).toContain(line);
+    });
   });
 
   it('renders a row as id | title + description | agent dot, mini track, stage chip | meter + a/b', async () => {

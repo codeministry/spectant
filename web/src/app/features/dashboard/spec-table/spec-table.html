@@ -88,6 +88,10 @@
     <!-- Spec 021 (T25, ISC-246): one roving list over two lists, the first rows and those behind "show all N". The row
          template is declared inside the roving host, so the list's content query sees the rows of both. -->
     <div class="row-lists" uiRovingList [singleKeys]="singleKeys()">
+      <!-- Spec 064 (T68, ISC-509): the column headings on the rows' grid, sticky under the app header while the list
+           scrolls by. They only label the columns for the eye; each row's link already names its cells, and a row
+           outside a table is no row to assistive tech, so the box stays out of the accessibility tree. -->
+      <div class="cols" data-cols aria-hidden="true"><app-spec-table-head /></div>
       <ol class="rows">
         @for (row of headRows(); track row.id) {
           <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" />

@@ -38,6 +38,7 @@ import { toneMark } from '../../../shared/ui/tone';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../../core/model/stage-track';
 import { SpecRow } from './spec-row';
+import { SpecTableHead } from './spec-table-head';
 import { IdeaRow } from './idea-row';
 import { applyIdeaQuery, type DashboardIdea, listEntries, withIdeaOption } from './idea-rows';
 import {
@@ -101,6 +102,7 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
     UiStarToggle,
     UiSortMenu,
     SpecRow,
+    SpecTableHead,
     IdeaRow,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

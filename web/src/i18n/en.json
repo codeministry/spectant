@@ -174,7 +174,11 @@
       "title": "Title",
       "stage": "Stage",
       "phase": "Phase",
-      "claims": "Claims"
+      "claims": "Claims",
+      "mark": "Waits",
+      "prio": "Priority",
+      "track": "Track",
+      "meter": "Progress"
     },
     "archived": {
       "one": "{{count}} archived spec",

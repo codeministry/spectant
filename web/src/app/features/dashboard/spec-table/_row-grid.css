@@ -71,7 +71,9 @@
     --track-col: 0px;
   }
 
-  [data-cell='track'] {
+  /* `:host >` outweighs a row's own `display` on the cell (spec-row.css `.rtrack`, `.ragent`), which kept a
+     dropped column's cell on the grid, at no area, in an implicit track of its own (spec 064, T56). */
+  :host > [data-cell='track'] {
     display: none;
   }
 }
@@ -96,7 +98,7 @@
       / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px;
   }
 
-  [data-cell='agent'] {
+  :host > [data-cell='agent'] {
     display: none;
   }
 }

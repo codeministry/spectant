@@ -8,9 +8,11 @@
   min-inline-size: 0;
 }
 
+/* `clip`, not `hidden`: the card cuts its rounded edge without becoming the scroll container of the sticky column
+   header (spec 064, T68), which then sticks to the page's scroll (the library card's fix). */
 .panel {
   display: block;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .t-head {
@@ -123,6 +125,25 @@
   padding: 0;
   border-block-start: 1px solid var(--line);
   list-style: none;
+}
+
+/*
+ * Spec 064 (T68, ISC-509): the column header's box, a `specs` container as wide as the row lists, so its row takes
+ * the rows' tier. Sticky under the 64 px app header row (the tab bar's and the help nav's offset) on the card's
+ * background with a hairline below, which stands in for the first list's top hairline; inside `.row-lists` it leaves
+ * with the list's end.
+ */
+.cols {
+  container: specs / inline-size;
+  position: sticky;
+  z-index: 3;
+  inset-block-start: 64px;
+  border-block-end: 1px solid var(--line);
+  background: var(--color-base-100);
+}
+
+.cols + .rows {
+  border-block-start: 0;
 }
 
 /*
