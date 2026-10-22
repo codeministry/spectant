@@ -164,6 +164,19 @@ const TARGET_ROLES = new Set([
 /** A toggle's visible word: "More…", "Less", "Show all …", "Show whole …". Its name must name more than the word. */
 const TOGGLE_WORD = /^(?:more…|less|show (?:all|whole))(?=\s|,|$)/iu;
 
+/**
+ * Spec 064 (T46, ISC-489): the spec list's row toggle shows only the glyph "…"; its word ("More…" / "Less") stands
+ * in its accessible name alone, which still names the row after it (`specs.moreName` / `specs.lessName`).
+ */
+const TOGGLE_GLYPH = '…';
+
+/** A toggle's word: the visible one, or for a glyph-only toggle the one its name starts with; null for no toggle. */
+function toggleWord(target: Target): string | null {
+  const shown = TOGGLE_WORD.exec(target.text)?.[0];
+  if (shown !== undefined) return shown;
+  return target.text === TOGGLE_GLYPH ? (TOGGLE_WORD.exec(target.name)?.[0] ?? TOGGLE_GLYPH) : null;
+}
+
 /** One visible interactive target: Chromium's role and accessible name, and what it shows. */
 interface Target {
   readonly role: string;
@@ -241,7 +254,7 @@ function duplicates(targets: readonly Target[]): Record<string, string[]> {
   const byName = new Map<string, Target[]>();
   for (const target of targets) {
     if (target.name === '') continue;
-    if (!TOGGLE_WORD.test(target.text) && OUT_OF_SCOPE.some((excluded) => excluded(target))) continue;
+    if (toggleWord(target) === null && OUT_OF_SCOPE.some((excluded) => excluded(target))) continue;
     const key = target.name.toLowerCase();
     byName.set(key, [...(byName.get(key) ?? []), target]);
   }
@@ -320,14 +333,15 @@ for (const width of WIDTHS) {
         await page.goto(path);
         await togglesSettled(page, ready(page));
 
-        const toggles = (await visibleTargets(page)).filter((t) => TOGGLE_WORD.test(t.text));
+        const toggles = (await visibleTargets(page)).filter((t) => toggleWord(t) !== null);
         // Every overflow toggle of the view counts, plus its "Show all" / "Show whole" folds.
         expect(toggles.length).toBeGreaterThanOrEqual(await overflowToggles(page).count());
         const unnamed = toggles
           .filter((t) => {
-            const word = TOGGLE_WORD.exec(t.text)?.[0] ?? t.text;
+            const word = toggleWord(t) ?? t.text;
             const object = squash(t.name.slice(word.length).replace(/^[\s,]+/u, ''));
-            // Label in name (WCAG 2.5.3): the name starts with the visible word and names an object after it.
+            // Label in name (WCAG 2.5.3): the name starts with the toggle's word (the visible one, or the glyph's
+            // "More…" / "Less", which holds the visible "…") and names an object after it.
             return !t.name.toLowerCase().startsWith(word.toLowerCase()) || object === '';
           })
           .map((t) => `${t.hook}: "${t.text}" named "${t.name}"`);

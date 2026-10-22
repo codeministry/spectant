@@ -1,6 +1,6 @@
-// Schema migrations (T94, ISC-94, ISC-7, ISC-21): a fresh data directory migrates to schema_version 6 with the `note`
-// table, its workspace+anchor index, its `pinned` column, the `actor` table (T89), the `board_query` table (T90) and the
-// `spec_favorite` table (spec 052 T3); a version-1 database moves to 6 without touching its settings or registry
+// Schema migrations (T94, ISC-94, ISC-7, ISC-21): a fresh data directory migrates to schema_version 7 with the `note`
+// table, its workspace+anchor index, its `pinned` column, the `actor` table (T89), the `board_query` table (T90), the
+// `spec_favorite` table (spec 052 T3) and the `idea_favorite` table (spec 064 T50); a version-1 database moves to 7 without touching its settings or registry
 // rows; running `migrate` again is a no-op; the schema itself holds a note to at most one anchor and orphans a note
 // when its workspace is removed. Every test runs against a fresh temp data directory, never the real `~/.spectant`.
 import { Database } from "bun:sqlite";
@@ -11,14 +11,17 @@ import { join } from "node:path";
 import {
   SCHEMA_VERSION,
   addFavorite,
+  addIdeaFavorite,
   getActor,
   getBoardQuery,
   listActors,
   listFavorites,
+  listIdeaFavorites,
   migrate,
   openDatabase,
   openDatabaseUnmigrated,
   removeFavorite,
+  removeIdeaFavorite,
   rollback,
   schemaVersion,
   setBoardQuery,
@@ -82,18 +85,18 @@ function insertNote(db: Database, id: string, workspace: string | null, kind: st
 }
 
 describe("migration 2", () => {
-  test("a fresh data directory migrates to schema_version 6 with the note table, its index, the pinned column, the actor, the board_query and the spec_favorite table", () => {
-    expect(SCHEMA_VERSION).toBe(6);
+  test("a fresh data directory migrates to schema_version 7 with the note table, its index, the pinned column, the actor, the board_query, the spec_favorite and the idea_favorite table", () => {
+    expect(SCHEMA_VERSION).toBe(7);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
-    expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:actor", "table:board_query", "table:note", "table:setting", "table:spec_favorite", "table:workspace"]);
+    expect(version(db)).toBe("7");
+    expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:actor", "table:board_query", "table:idea_favorite", "table:note", "table:setting", "table:spec_favorite", "table:workspace"]);
     const columns = db.query<{ name: string }, []>("SELECT name FROM pragma_table_info('note') ORDER BY cid").all();
     expect(columns.map((c) => c.name)).toEqual(["id", "workspace", "anchor_kind", "anchor_spec", "anchor_id", "title", "body", "created_at", "updated_at", "pinned"]);
     const indexed = db.query<{ name: string }, []>("SELECT name FROM pragma_index_info('note_workspace_anchor') ORDER BY seqno").all();
     expect(indexed.map((c) => c.name)).toEqual(["workspace", "anchor_spec", "anchor_kind", "anchor_id"]);
   });
 
-  test("a version-1 database moves to 6 without touching its settings or registry rows", () => {
+  test("a version-1 database moves to 7 without touching its settings or registry rows", () => {
     const old = versionOneDatabase();
     const settingsBefore = old.query("SELECT key, value FROM setting WHERE key <> 'schema_version' ORDER BY key").all();
     const workspacesBefore = old.query("SELECT * FROM workspace").all();
@@ -101,7 +104,7 @@ describe("migration 2", () => {
     open.splice(0);
 
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect(db.query("SELECT key, value FROM setting WHERE key <> 'schema_version' ORDER BY key").all()).toEqual(settingsBefore);
     expect(db.query("SELECT * FROM workspace").all()).toEqual(workspacesBefore);
     expect(db.query<{ n: number }, []>("SELECT count(*) AS n FROM note").get()?.n).toBe(0);
@@ -125,7 +128,7 @@ describe("migration 2", () => {
     const before = { schema: db.query("SELECT sql FROM sqlite_master ORDER BY name").all(), notes: db.query("SELECT * FROM note").all() };
     migrate(db);
     migrate(db);
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect({ schema: db.query("SELECT sql FROM sqlite_master ORDER BY name").all(), notes: db.query("SELECT * FROM note").all() }).toEqual(before);
     expect(db.query<{ n: number }, []>("SELECT count(*) AS n FROM setting WHERE key = 'schema_version'").get()?.n).toBe(1);
   });
@@ -138,17 +141,17 @@ describe("migration 2", () => {
     first.close();
     open.splice(0);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect(schemaObjects(db)).toContain("index:note_workspace_anchor");
     expect(db.query("SELECT id, anchor_spec FROM note").all()).toEqual([{ id: "kept", anchor_spec: "002" }]);
   });
 
   test("a database from a newer build is refused, not downgraded", () => {
     const old = versionOneDatabase();
-    old.run("UPDATE setting SET value = '7' WHERE key = 'schema_version'");
+    old.run("UPDATE setting SET value = '8' WHERE key = 'schema_version'");
     old.close();
     open.splice(0);
-    expect(() => openDatabase(data)).toThrow(/schema version 7/);
+    expect(() => openDatabase(data)).toThrow(/schema version 8/);
   });
 });
 
@@ -200,7 +203,7 @@ describe("migration 3", () => {
     first.close();
     open.splice(0);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect(db.query("SELECT * FROM note").all()).toEqual(before.map((row) => ({ ...row, pinned: 0 })));
   });
 
@@ -210,7 +213,7 @@ describe("migration 3", () => {
     first.close();
     open.splice(0);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect(columnsOf(db).filter((c) => c === "pinned")).toEqual(["pinned"]);
   });
 
@@ -269,7 +272,7 @@ describe("migration 4: the actor table", () => {
     const db = track(openDatabase(data));
     insertNote(db, "kept", null, null, null, null);
     upsertActor(db, one);
-    expect(rollback(db, 3)).toEqual({ from: 6, to: 3 });
+    expect(rollback(db, 3)).toEqual({ from: 7, to: 3 });
     expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:note", "table:setting", "table:workspace"]);
     expect(db.query("SELECT id FROM note").all()).toEqual([{ id: "kept" }]);
     db.close();
@@ -306,7 +309,7 @@ describe("migration 5: the board_query table", () => {
     first.close();
     open.splice(0);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect(getBoardQuery(db, "harbor")?.query).toBe("group=feature");
   });
 
@@ -315,7 +318,7 @@ describe("migration 5: the board_query table", () => {
     insertNote(db, "kept", null, null, null, null);
     upsertActor(db, { id: "u:0123abcd", displayName: "Dev One", gitIdentities: ["dev@example.com"], updatedAt: "2026-10-12T08:00:00.000Z" });
     setBoardQuery(db, "harbor", "group=feature", "2026-10-12T08:00:00.000Z");
-    expect(rollback(db, 4)).toEqual({ from: 6, to: 4 });
+    expect(rollback(db, 4)).toEqual({ from: 7, to: 4 });
     expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:actor", "table:note", "table:setting", "table:workspace"]);
     expect(listActors(db).map((a) => a.id)).toEqual(["u:0123abcd"]);
     expect(db.query("SELECT id FROM note").all()).toEqual([{ id: "kept" }]);
@@ -364,7 +367,7 @@ describe("migration 6: the spec_favorite table", () => {
     first.close();
     open.splice(0);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("6");
+    expect(version(db)).toBe("7");
     expect(listFavorites(db, "harbor")).toEqual(["004-retention-policies"]);
   });
 
@@ -374,7 +377,7 @@ describe("migration 6: the spec_favorite table", () => {
     upsertActor(db, { id: "u:0123abcd", displayName: "Dev One", gitIdentities: ["dev@example.com"], updatedAt: "2026-10-20T08:00:00.000Z" });
     setBoardQuery(db, "harbor", "group=feature", "2026-10-20T08:00:00.000Z");
     addFavorite(db, "harbor", "004-retention-policies", "2026-10-20T08:00:00.000Z");
-    expect(rollback(db, 5)).toEqual({ from: 6, to: 5 });
+    expect(rollback(db, 5)).toEqual({ from: 7, to: 5 });
     expect(version(db)).toBe("5");
     expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:actor", "table:board_query", "table:note", "table:setting", "table:workspace"]);
     expect(getBoardQuery(db, "harbor")?.query).toBe("group=feature");
@@ -388,11 +391,94 @@ describe("migration 6: the spec_favorite table", () => {
   });
 });
 
+// Migration 7 (spec 064 T50, ISC-494): the `idea_favorite` table holds the favourite stories (ideas) per workspace, one
+// row per workspace slug and story slug, the pair its primary key, beside the spec favourites of migration 6. It is
+// the app's own state (ISC-7): losing it loses the marks and nothing a repository holds.
+describe("migration 7: the idea_favorite table", () => {
+  test("the table exists after open with ws, slug and created_at, all TEXT NOT NULL, and the primary key (ws, slug)", () => {
+    const db = track(openDatabase(data));
+    const columns = db
+      .query<{ name: string; type: string; notnull: number; pk: number }, []>("SELECT name, type, \"notnull\", pk FROM pragma_table_info('idea_favorite') ORDER BY cid")
+      .all();
+    expect(columns).toEqual([
+      { name: "ws", type: "TEXT", notnull: 1, pk: 1 },
+      { name: "slug", type: "TEXT", notnull: 1, pk: 2 },
+      { name: "created_at", type: "TEXT", notnull: 1, pk: 0 },
+    ]);
+    expect(listIdeaFavorites(db, "harbor")).toEqual([]);
+  });
+
+  test("set twice keeps one row, unset removes it, each workspace its own set, the spec favourites untouched", () => {
+    const db = track(openDatabase(data));
+    addFavorite(db, "harbor", "004-retention-policies", "2026-10-22T08:00:00.000Z");
+    addIdeaFavorite(db, "harbor", "tide-alerts", "2026-10-22T08:00:00.000Z");
+    addIdeaFavorite(db, "harbor", "tide-alerts", "2026-10-22T09:00:00.000Z");
+    addIdeaFavorite(db, "harbor", "buoy-map", "2026-10-22T08:30:00.000Z");
+    addIdeaFavorite(db, "lantern", "tide-alerts", "2026-10-22T08:00:00.000Z");
+    expect(listIdeaFavorites(db, "harbor")).toEqual(["buoy-map", "tide-alerts"]);
+    expect(db.query("SELECT created_at FROM idea_favorite WHERE ws = 'harbor' AND slug = 'tide-alerts'").all()).toEqual([
+      { created_at: "2026-10-22T08:00:00.000Z" },
+    ]);
+    removeIdeaFavorite(db, "harbor", "tide-alerts");
+    removeIdeaFavorite(db, "harbor", "never-set");
+    expect(listIdeaFavorites(db, "harbor")).toEqual(["buoy-map"]);
+    expect(listIdeaFavorites(db, "lantern")).toEqual(["tide-alerts"]);
+    expect(listFavorites(db, "harbor")).toEqual(["004-retention-policies"]);
+  });
+
+  test("a half-applied migration 7 (table present with its rows, version still 6) is adopted", () => {
+    const first = track(openDatabase(data));
+    addIdeaFavorite(first, "harbor", "tide-alerts", "2026-10-22T08:00:00.000Z");
+    first.run("UPDATE setting SET value = '6' WHERE key = 'schema_version'");
+    first.close();
+    open.splice(0);
+    const db = track(openDatabase(data));
+    expect(version(db)).toBe("7");
+    expect(listIdeaFavorites(db, "harbor")).toEqual(["tide-alerts"]);
+  });
+
+  test("a version-6 database moves to 7 with its spec favourites kept and no idea favourite", () => {
+    const first = track(openDatabase(data));
+    addFavorite(first, "harbor", "004-retention-policies", "2026-10-22T08:00:00.000Z");
+    rollback(first, 6);
+    expect(version(first)).toBe("6");
+    expect(schemaObjects(first)).not.toContain("table:idea_favorite");
+    first.close();
+    open.splice(0);
+    const db = track(openDatabase(data));
+    expect(version(db)).toBe("7");
+    expect(listFavorites(db, "harbor")).toEqual(["004-retention-policies"]);
+    expect(listIdeaFavorites(db, "harbor")).toEqual([]);
+  });
+
+  test("rollback 7 → 6 drops idea_favorite only, spec favourites, board query, actors and notes kept; the next open creates it again, empty", () => {
+    const db = track(openDatabase(data));
+    insertNote(db, "kept", null, null, null, null);
+    upsertActor(db, { id: "u:0123abcd", displayName: "Dev One", gitIdentities: ["dev@example.com"], updatedAt: "2026-10-22T08:00:00.000Z" });
+    setBoardQuery(db, "harbor", "group=feature", "2026-10-22T08:00:00.000Z");
+    addFavorite(db, "harbor", "004-retention-policies", "2026-10-22T08:00:00.000Z");
+    addIdeaFavorite(db, "harbor", "tide-alerts", "2026-10-22T08:00:00.000Z");
+    expect(rollback(db, 6)).toEqual({ from: 7, to: 6 });
+    expect(version(db)).toBe("6");
+    expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:actor", "table:board_query", "table:note", "table:setting", "table:spec_favorite", "table:workspace"]);
+    expect(listFavorites(db, "harbor")).toEqual(["004-retention-policies"]);
+    expect(getBoardQuery(db, "harbor")?.query).toBe("group=feature");
+    expect(listActors(db).map((a) => a.id)).toEqual(["u:0123abcd"]);
+    expect(db.query("SELECT id FROM note").all()).toEqual([{ id: "kept" }]);
+    db.close();
+    open.splice(0);
+    const reopened = track(openDatabase(data));
+    expect(schemaObjects(reopened)).toContain("table:idea_favorite");
+    expect(listIdeaFavorites(reopened, "harbor")).toEqual([]);
+    expect(listFavorites(reopened, "harbor")).toEqual(["004-retention-policies"]);
+  });
+});
+
 describe("rollback", () => {
   test("rollback to 2 drops pinned, to 1 drops the note table and its index, each moving schema_version", () => {
     const db = track(openDatabase(data));
     insertNote(db, "n1", null, null, null, null);
-    expect(rollback(db, 2)).toEqual({ from: 6, to: 2 });
+    expect(rollback(db, 2)).toEqual({ from: 7, to: 2 });
     expect(schemaVersion(db)).toBe(2);
     expect(columnsOf(db)).toEqual(["id", "workspace", "anchor_kind", "anchor_spec", "anchor_id", "title", "body", "created_at", "updated_at"]);
     expect(rollback(db, 1)).toEqual({ from: 2, to: 1 });
@@ -401,21 +487,21 @@ describe("rollback", () => {
     expect(rollback(db, 1)).toEqual({ from: 1, to: 1 });
   });
 
-  test("rollback from 6 straight to 1 reverses every migration; the next open migrates forward again", () => {
+  test("rollback from 7 straight to 1 reverses every migration; the next open migrates forward again", () => {
     const db = track(openDatabase(data));
-    expect(rollback(db, 1)).toEqual({ from: 6, to: 1 });
+    expect(rollback(db, 1)).toEqual({ from: 7, to: 1 });
     db.close();
     open.splice(0);
     const raw = track(openDatabaseUnmigrated(data));
     expect(schemaVersion(raw)).toBe(1);
     raw.close();
     open.splice(0);
-    expect(version(track(openDatabase(data)))).toBe("6");
+    expect(version(track(openDatabase(data)))).toBe("7");
   });
 
   test("a target outside 1 to SCHEMA_VERSION - 1 is refused and nothing changes", () => {
     const db = track(openDatabase(data));
-    for (const target of [0, 6, 7, -1, 1.5]) expect(() => rollback(db, target)).toThrow(/rollback target/);
-    expect(version(db)).toBe("6");
+    for (const target of [0, 7, 8, -1, 1.5]) expect(() => rollback(db, target)).toThrow(/rollback target/);
+    expect(version(db)).toBe("7");
   });
 });

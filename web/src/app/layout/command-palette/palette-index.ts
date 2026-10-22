@@ -11,7 +11,8 @@ export interface PaletteSpecRow {
   readonly id: string;
   readonly slug: string;
   readonly title: string;
-  readonly phase: string | null;
+  /** The dashboard row's `stage` (`plan` … `done`), the status the palette shows (spec 064, ISC-501). */
+  readonly stage: string | null;
   readonly nextCommand: string | null;
 }
 
@@ -75,7 +76,7 @@ export function readWorkspace(slug: string, name: string, body: DashboardBody): 
     const id = text(row['id']);
     if (id === null) return [];
     const title = text(row['title']) ?? id;
-    return [{ id, slug: text(row['slug']) ?? id, title, phase: text(row['phase']), nextCommand: text(row['nextCommand']) }];
+    return [{ id, slug: text(row['slug']) ?? id, title, stage: text(row['stage']), nextCommand: text(row['nextCommand']) }];
   });
   const archive = list(body, 'archive').flatMap((row): PaletteArchiveRow[] => {
     const id = text(row['id']);

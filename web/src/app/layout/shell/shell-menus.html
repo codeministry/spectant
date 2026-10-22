@@ -70,7 +70,8 @@
       <p class="menu-head" aria-hidden="true">{{ 'shell.spec.headFavorites' | transloco: { workspace: name } }}</p>
     }
     @let rows = data.favoriteRows();
-    @if (rows.length === 0) {
+    @let ideas = data.favoriteIdeas();
+    @if (rows.length === 0 && ideas.length === 0) {
       <p class="picker-empty">
         <ui-icon name="star" aria-hidden="true" [size]="14" />
         {{ 'shell.spec.favoritesEmpty' | transloco }}
@@ -92,11 +93,7 @@
           >
             <span class="entry-id">{{ spec.id }}</span>
             <span class="entry-name">{{ spec.title }}</span>
-            @if (spec.phase; as phase) {
-              <ui-chip [tone]="phaseTone(phase)" [icon]="phaseIcon(phase)">{{ 'phases.' + phase | transloco }}</ui-chip>
-            } @else {
-              <ui-chip tone="neutral">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
-            }
+            <ui-chip [tone]="stageTone(spec.stage)" [icon]="stageIcon(spec.stage)">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
             @if (current) {
               <ui-icon class="entry-check" name="check" [size]="16" />
             }
@@ -112,13 +109,42 @@
         </li>
       }
       @if (state.ws(); as ws) {
+        <!-- Spec 064 (T54, ISC-498): the favourite ideas under the favourite specs, behind a hairline, each its idea
+             page's link and its star; the star unsets it as a spec row's does (ISC-301). -->
+        @if (rows.length > 0 && ideas.length > 0) {
+          <li class="picker-sep" role="presentation" data-favorites-sep></li>
+        }
+        @for (idea of ideas; track idea.slug; let first = $first) {
+          <li class="fav-row">
+            <a
+              #ideaLink="uiRovingItem"
+              uiRovingItem
+              class="entry picker-entry"
+              [attr.data-idea]="idea.slug"
+              [routerLink]="['/w', ws, 'ideas', idea.slug]"
+              [attr.data-autofocus]="first && rows.length === 0 ? '' : null"
+              (click)="close('spec')"
+            >
+              <ui-icon name="lightbulb" [size]="16" />
+              <span class="entry-name">{{ idea.title }}</span>
+            </a>
+            <button
+              ui-star-toggle
+              [uiRovingCompanion]="ideaLink"
+              [pressed]="true"
+              [label]="'favorites.toggleIdea' | transloco: { title: idea.title }"
+              [attr.data-star]="'idea:' + idea.slug"
+              (click)="unstarIdea(idea, $event)"
+            ></button>
+          </li>
+        }
         <li class="picker-sep" role="presentation"></li>
         <li>
           <a
             uiRovingItem
             class="entry picker-entry picker-all"
             [routerLink]="['/w', ws, 'specs']"
-            [attr.data-autofocus]="rows.length === 0 ? '' : null"
+            [attr.data-autofocus]="rows.length === 0 && ideas.length === 0 ? '' : null"
             (click)="close('spec'); keyboard.followSectionLink($event, ws, 'specs')"
           >
             <ui-icon name="list" [size]="16" />

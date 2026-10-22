@@ -219,7 +219,7 @@ describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)
 
   it('still sends a list address on to /w/harbor/specs, sel included (the guard is the real one)', async () => {
     const { root } = await render('wide', '/w/harbor?phase=fog&sel=spec:002');
-    expect(TestBed.inject(Router).url).toBe('/w/harbor/specs?phase=fog&sel=spec:002');
+    expect(TestBed.inject(Router).url).toBe('/w/harbor/specs?sel=spec:002&stage=fog');
     expect(root.querySelector('app-specs-stub')).not.toBeNull();
   });
 });
@@ -231,8 +231,8 @@ const withTaken = (id: string): unknown => ({
   specs: harbor.specs.map((row) => (row.id === id ? { ...row, taken: [LOCK] } : row)),
 });
 
-// Spec 064 (T17, ISC-460, ISC-462): Waits on you and In progress share one row `.lists` after the TL;DR, before Next up.
-describe('DashboardPage lists row on /w/harbor (spec 064, ISC-460)', () => {
+// Spec 064 (T17, ISC-508, ISC-462): Waits on you and In progress share one row `.lists` after the TL;DR, before Next up.
+describe('DashboardPage lists row on /w/harbor (spec 064, ISC-508)', () => {
   it('holds the waits section and an In progress block with one tile for the held spec 002', async () => {
     body.set(withTaken('002'));
     const { page } = await render('wide');
@@ -248,7 +248,7 @@ describe('DashboardPage lists row on /w/harbor (spec 064, ISC-460)', () => {
     expect(text(tiles[0].querySelector('[data-title]'))).toBe(harbor.specs.find((row) => row.id === '002')?.title);
     expect(text(tiles[0].querySelector('[data-agent]'))).toBe(LOCK.session);
     expect(tiles[0].querySelector('ui-agent-dot')).not.toBeNull();
-    expect(tiles[0].querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(tiles[0].querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/002/board');
   });
 
 });

@@ -1,7 +1,8 @@
-<span class="rid">
+<!-- Spec 064 (T47, ISC-488): the spec row's ten named columns of `_row-grid.css`, each cell rendered even when empty. -->
+<span class="rid" data-cell="id">
   <ui-icon name="lightbulb" [size]="16" />
 </span>
-<span class="rtitle">
+<span class="rtitle" data-cell="title">
   <!-- The row link: the title, stretched over the whole row (`::after`), named "Idea <title>"; a first activation
        selects the story for the sidebar, one on the selected row opens the idea page (like a spec row, ISC-484). -->
   <a
@@ -19,10 +20,36 @@
     <span class="where" data-idea-where>{{ where }}</span>
   }
 </span>
-<!-- The track cell: priority and the state line; the meter and star cells stay empty (ISC-482). -->
-<span class="rtrack">
+<span data-cell="more"></span>
+<span data-cell="mark"></span>
+<span data-cell="agent"></span>
+<span class="rprio" data-cell="prio">
   <ui-priority [value]="priority()" />
+</span>
+<span data-cell="track"></span>
+<!-- Spec 064 (T69, ISC-510): the state as the spec row's stage chip, a dot in the state's tone, "Idea · open" as
+     before; no command and no actor (ISC-482, ISC-511). The meter stays empty. -->
+<span class="rphase" data-cell="phase">
   @if (state(); as state) {
-    <ui-item-state class="rstate" [info]="state" [ws]="ws()" noActor />
+    <ui-chip class="phase rstate" data-idea-state [attr.data-state]="state.state" [tone]="stateTone()" [dot]="true">
+      <span class="stext">
+        @if (state.stage) {
+          {{ 'itemState.line' | transloco: { stage: ('stages.' + state.stage | transloco), state: ('states.item.' + state.state | transloco) } }}
+        } @else {
+          {{ 'states.item.' + state.state | transloco }}
+        }
+      </span>
+    </ui-chip>
   }
+</span>
+<span data-cell="meter"></span>
+<!-- Spec 064 (T53, ISC-497): the idea favourite star, the spec row's primitive in the spec row's column; a sibling of
+     the row link lifted above its stretch, so a click on it neither selects the row nor opens the idea. -->
+<span class="rstar" data-cell="star">
+  <button
+    ui-star-toggle
+    [pressed]="favorite()"
+    [label]="'favorites.toggleIdea' | transloco: { title: title() }"
+    (click)="toggleFavorite($event)"
+  ></button>
 </span>

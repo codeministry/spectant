@@ -149,12 +149,12 @@
       }
     },
     "filter": {
-      "label": "Filter by phase",
+      "label": "Filter by stage",
       "typeLabel": "Filter by type",
       "all": "All",
       "allStages": {
-        "one": "All {{count}} stage",
-        "other": "All {{count}} stages"
+        "one": "All: {{count}} entry",
+        "other": "All: {{count}} entries"
       },
       "allTypes": {
         "one": "All {{count}} type",
@@ -174,7 +174,11 @@
       "title": "Title",
       "stage": "Stage",
       "phase": "Phase",
-      "claims": "Claims"
+      "claims": "Claims",
+      "mark": "Waits",
+      "prio": "Priority",
+      "track": "Track",
+      "meter": "Progress"
     },
     "archived": {
       "one": "{{count}} archived spec",
@@ -209,6 +213,7 @@
     "archivedHidden": "Archived specs hidden",
     "moreName": "More… {{id}} {{title}}",
     "lessName": "Less {{id}} {{title}}",
+    "moreGlyph": "…",
     "ideas": {
       "title": "Ideas · {{count}}",
       "label": "Ideas in the backlog"
@@ -379,7 +384,7 @@
       "goSpecs": "Go to Specs",
       "goNextUp": "Go to Next up",
       "goWarnings": "Go to Warnings",
-      "phaseFilter": "Phase filter: {{target}} (while the list has focus)",
+      "stageFilter": "Stage filter: {{target}} (while the list has focus)",
       "goTo": "Go to {{target}}",
       "prevSpec": "Previous spec in the workspace",
       "nextSpec": "Next spec in the workspace",
@@ -2863,6 +2868,7 @@
   },
   "favorites": {
     "toggle": "Favorite: {{id}} {{title}}",
+    "toggleIdea": "Favorite: idea {{title}}",
     "add": "Add to favorites",
     "remove": "Remove from favorites",
     "added": "{{id}} added to favorites",

@@ -11,7 +11,10 @@ import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { guidanceEntryOf } from '../../../core/model/guidance-entry';
 import { ShellData } from '../../../layout/shell/shell-data.service';
+import { IdeaRow } from './idea-row';
+import { SpecRow } from './spec-row';
 import { SpecTable } from './spec-table';
+import { SpecTableHead } from './spec-table-head';
 import { DEFAULT_QUERY, type ListQuery, parseListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
 /** A dashboard row as the server sends it (`DashboardSpecRow`), only the fields that matter overridden. */
@@ -45,6 +48,41 @@ const BODY = {
   kpis: { specs: 2, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 2 } },
 };
 
+/**
+ * A row component's grid as its compiled styles carry it (spec 064, T47, T48): every `grid-template*`, `grid-area`
+ * and `--*-col` declaration as "<container conditions> | <selector> | <declaration>", encapsulation attributes dropped.
+ */
+function gridOf(component: unknown): string[] {
+  const css = (component as { ɵcmp: { styles: string[] } }).ɵcmp.styles
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replaceAll('[_nghost-%COMP%]', ':host')
+    .replaceAll('[_ngcontent-%COMP%]', '')
+    .replaceAll('%NS%', '')
+    .replace(/\s+/g, ' ');
+  const found: string[] = [];
+  const open: string[] = [];
+  let head = '';
+  const take = (): void => {
+    const decl = head.trim();
+    const selector = open.at(-1) ?? '';
+    const shared = selector === ':host' || selector.startsWith('[data-cell=');
+    if (shared && /^(grid-template|grid-area|--[a-z]+-col)\b/.test(decl)) found.push([...open.filter((h) => h.startsWith('@')), selector, decl].join(' | '));
+    head = '';
+  };
+  for (const ch of css) {
+    if (ch === '{') {
+      open.push(head.trim());
+      head = '';
+    } else if (ch === '}') {
+      take();
+      open.pop();
+    } else if (ch === ';') take();
+    else head += ch;
+  }
+  return found;
+}
+
 const text = (el: Element | null | undefined): string => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
 
 /**
@@ -63,6 +101,13 @@ class FakeShellData {
     const ids = new Set(this.favoriteIds());
     if (!ids.delete(spec)) ids.add(spec);
     this.favoriteIds.set(ids);
+    return Promise.resolve(true);
+  }
+  // The idea row's star (spec 064, T53) reads and toggles idea favourites on the same service.
+  isIdeaFavorite(): boolean {
+    return false;
+  }
+  toggleIdeaFavorite(): Promise<boolean> {
     return Promise.resolve(true);
   }
 }
@@ -102,23 +147,23 @@ describe('SpecTable (T89)', () => {
     return { fixture, host: fixture.nativeElement as HTMLElement, emitted, shown: () => shown };
   }
 
-  it('heads the panel "Specs n · k archived" with the #specs heading and the phase chips', async () => {
+  it('heads the panel "Specs n · k archived" with the #specs heading and the stage chips', async () => {
     const { host } = await render();
     const heading = host.querySelector('.t-head h2#specs');
     expect(text(heading)).toBe('Specs');
     expect(heading?.getAttribute('tabindex')).toBe('-1');
     // Spec 021 (T25): the counters are chips now, the archived count among them (was the meta text "2 · 1 archived").
     expect([...host.querySelectorAll('.t-head [data-counts] ui-chip')].map(text)).toEqual(['2 specs', '1 archived spec']);
-    expect(host.querySelectorAll('.t-head [data-filter="phase"] button')).toHaveLength(3);
+    expect(host.querySelectorAll('.t-head [data-filter="stage"] button')).toHaveLength(3);
   });
 
   // Spec 021 · T83 (ISC-255): the chips carry the model's counts, the stage-group split the Specs tile shows, and the
   // type counts `kpis.byType`; the panel counts no rows itself, so served numbers no grouping of the rows gives stand.
   it('shows the served chip counts, never a count of its rows (ISC-255)', async () => {
-    const served = { specs: 9, stageGroups: { scoping: 7, building: 0, complete: 2 }, specsWithFog: 3, byType: { bug: 5, feature: 4 } };
+    const served = { specs: 9, stages: { review: 7, build: 0, done: 2 }, specsWithFog: 3, byType: { bug: 5, feature: 4 } };
     const { host } = await render(DEFAULT_QUERY, {}, served);
     const chips = (filter: string) => [...host.querySelectorAll(`.t-head [data-filter="${filter}"] button`)].map(text);
-    expect(chips('phase')).toEqual(['All 9', 'scoping 7', 'complete 2', 'fog 3']);
+    expect(chips('stage')).toEqual(['All 9', 'Review 7', 'Done 2', 'fog 3']);
     expect(chips('type')).toEqual(['All 9', 'bug 5', 'feature 4']);
   });
 
@@ -159,8 +204,8 @@ describe('SpecTable (T89)', () => {
       expect(emitted).toEqual([{ ...DEFAULT_QUERY, takeable: true, working: false }]);
     });
 
-    it('"reset all filters" drops working along with phase, type and takeable', async () => {
-      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, phase: 'complete', working: true });
+    it('"reset all filters" drops working along with stage, type and takeable', async () => {
+      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, stage: ['done'], working: true });
       const reset = host.querySelector<HTMLButtonElement>('p.empty button');
       expect(text(reset)).toBe('Clear filter');
       reset?.click();
@@ -190,7 +235,37 @@ describe('SpecTable (T89)', () => {
     expect(strip?.querySelectorAll('i')).toHaveLength(2);
   });
 
-  it('renders a row as id | title + description | agent dot, mini track, phase chip | meter + a/b', async () => {
+  // Spec 064 (T68, ISC-509): one column header row over the rows, on the rows' own grid; `more`, `agent` and `star`
+  // stay without text. Where it sticks and how its edges line up is the browser probe's (spec-list-columns).
+  describe('column header (ISC-509)', () => {
+    const cols = (host: HTMLElement) => host.querySelector('.row-lists > [data-cols] [role="row"]');
+    const heads = (host: HTMLElement) => [...(cols(host)?.querySelectorAll('[role="columnheader"]') ?? [])];
+    const ten = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+
+    it('stands before the first row list with one columnheader per data-cell, texts in English', async () => {
+      const { host } = await render();
+      const row = cols(host);
+      expect(row).not.toBeNull();
+      expect(host.querySelector('.row-lists > [data-cols] + ol.rows')).not.toBeNull();
+      expect(heads(host).map((cell) => cell.getAttribute('data-cell'))).toEqual(ten);
+      expect(heads(host).map(text)).toEqual(['ID', 'Title', '', 'Waits', '', 'Priority', 'Track', 'Stage', 'Progress', '']);
+    });
+
+    it('reads the German column names', async () => {
+      const { fixture, host } = await render();
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      await fixture.whenStable();
+      expect(heads(host).map(text)).toEqual(['ID', 'Titel', '', 'Wartet', '', 'Priorität', 'Track', 'Stage', 'Fortschritt', '']);
+      TestBed.inject(TranslocoService).setActiveLang('en');
+    });
+
+    it('carries the rows’ grid: every template and area of the spec row', () => {
+      const head = gridOf(SpecTableHead);
+      for (const line of gridOf(SpecRow)) expect(head).toContain(line);
+    });
+  });
+
+  it('renders a row as id | title + description | agent dot, mini track, stage chip | meter + a/b', async () => {
     const { host } = await render();
     const [first, second] = [...host.querySelectorAll<HTMLAnchorElement>('[data-spec-row]')];
     // T69, spec 026 T27: a row's first activation selects it for the detail sidebar (`?sel=spec:<id>`); only the
@@ -202,9 +277,9 @@ describe('SpecTable (T89)', () => {
     expect(text(rowA.querySelector('.rid'))).toBe('002');
     expect(text(first)).toBe('Spec 002');
     expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
-    expect(rowA.querySelector('.rtrack .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
+    expect(rowA.querySelector('.ragent .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
     expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
-    expect(text(rowA.querySelector('.rtrack ui-chip.phase'))).toBe('building');
+    expect(text(rowA.querySelector('.rphase ui-chip.phase'))).toBe('Build');
     expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
     expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(rowB.querySelector('.rtitle .d')).toBeNull();
@@ -218,10 +293,10 @@ describe('SpecTable (T89)', () => {
     const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
     const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
     // Spec 052 (T17): the favorite star's cell closes the row.
-    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rtrack', 'rmeter', 'rstar']);
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rmore', 'rmark', 'ragent', 'rprio', 'rtrack', 'rphase', 'rmeter', 'rstar']);
     expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
     expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
-    expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ragent', 'rprio', 'ui-stage-track', 'phase']);
+    expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ui-stage-track']);
     expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(true);
     expect(rowB.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(false);
     expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
@@ -238,7 +313,7 @@ describe('SpecTable (T89)', () => {
     const sort = head.querySelector('ui-sort-menu.sort') as HTMLElement;
     expect(sort.querySelectorAll('[data-control="sort"]')).toHaveLength(1);
     expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
-    const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
+    const filter = head.querySelector('ui-filter-chips[data-filter="stage"]') as HTMLElement;
     expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Spec 050: "Show archived" is the last of the filters, after the type chips, so the phase chips keep head line 1.
     const toggle = head.querySelector('[data-control="archived"]') as HTMLElement;
@@ -246,7 +321,7 @@ describe('SpecTable (T89)', () => {
     expect(lastFilter.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {
+  it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the status chip names the stage (spec 025, spec 064 ISC-500)', async () => {
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows({ specs: [wire('009', { phase: 'building', stage: 'blocked' })], archive: [] }));
@@ -258,7 +333,7 @@ describe('SpecTable (T89)', () => {
     expect([...(track?.querySelectorAll('.bar') ?? [])].map((bar) => bar.getAttribute('data-state'))).toEqual(['done', 'done', 'done', 'blocked', 'pending']);
     expect(text(track?.querySelector('[data-blocked]'))).toBe('Blocked');
     expect(track?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Stage 4 of 5: Build · Blocked');
-    expect(text(row.querySelector('.rtrack ui-chip'))).toBe('building');
+    expect(text(row.querySelector('.rphase ui-chip'))).toBe('Blocked');
   });
 
   it('a row on any other stage has no blocked segment and no word (spec 025)', async () => {
@@ -367,11 +442,11 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       const rid = row.querySelector('.rid') as HTMLElement;
       expect(rid.querySelector('ui-type-glyph')?.getAttribute('data-type')).toBe(spec.type);
       expect(rid.querySelector('ui-type-glyph + .rnum, .rglyph + .rnum')?.textContent.trim()).toBe(spec.id);
-      const priority = row.querySelector('.rtrack ui-priority');
+      const priority = row.querySelector('.rprio ui-priority');
       const level = spec.id === '006' ? 'P1' : spec.id === '002' ? 'P2' : 'P3';
       expect(priority?.getAttribute('data-level'), spec.id).toBe(level);
       expect(priority?.hasAttribute('data-unmarked')).toBe(false);
-      expect(priority?.nextElementSibling?.tagName.toLowerCase()).toBe('ui-stage-track');
+      expect(priority?.parentElement?.nextElementSibling?.firstElementChild?.tagName.toLowerCase()).toBe('ui-stage-track');
     }
   });
 
@@ -428,8 +503,8 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       const row = li.querySelector<HTMLElement>('app-spec-row');
       const link = li.querySelector<HTMLElement>('[data-spec-row]');
       expect(row?.getAttribute('data-mark'), entry.spec).toBe(kind);
-      // The mark leads the track cell, in the row's one line; outside the row link.
-      const mark = row?.querySelector('.rtrack > .rmark');
+      // The mark fills its own column (spec 064, T45), in the row's one line; outside the row link.
+      const mark = row?.querySelector('.rmark > [data-waits-mark], .rmark > [data-next-mark]');
       expect(mark?.parentElement?.firstElementChild).toBe(mark);
       expect(mark?.closest('a')).toBeNull();
       expect(text(row?.querySelector('[data-waits-mark]') ?? null)).toBe(kind === 'waits' ? 'Waits on you' : '');
@@ -447,7 +522,7 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     const guided = new Set([...waits, ...next].map((e) => e.spec));
     for (const spec of GOLDEN.specs.filter((s) => !guided.has(s.id))) {
       expect(rowOf(host, spec.id).querySelector('app-spec-row')?.hasAttribute('data-mark'), spec.id).toBe(false);
-      expect(rowOf(host, spec.id).querySelector('.rmark'), spec.id).toBeNull();
+      expect(rowOf(host, spec.id).querySelector('[data-waits-mark], [data-next-mark]'), spec.id).toBeNull();
     }
   });
 
@@ -473,13 +548,13 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       expect(row.querySelector('.rid .rnum')?.textContent.trim()).toBe(id);
       expect(row.querySelector('.tline [data-spec-row]')).not.toBeNull();
       expect(row.querySelector('.rmeter .frac')?.textContent).toMatch(/^\d+\/\d+$/);
-      // Line 2: phase and priority in the track cell, the mark first on a marked row.
-      expect(row.querySelector('.rtrack .phase')).not.toBeNull();
-      expect(row.querySelector('.rtrack .rprio')).not.toBeNull();
+      // Line 2: mark, priority and phase each in its own cell (spec 064, T45), the mark cell first.
+      expect(row.querySelector('.rphase .phase')).not.toBeNull();
+      expect(row.querySelector('.rprio ui-priority')).not.toBeNull();
     }
     const marked = rowOf(host, waiting?.spec ?? '').querySelector('app-spec-row') as HTMLElement;
     expect(marked.getAttribute('data-mark')).toBe('waits');
-    expect(marked.querySelector('.rtrack')?.firstElementChild?.hasAttribute('data-waits-mark')).toBe(true);
+    expect(marked.querySelector('.rmark')?.firstElementChild?.hasAttribute('data-waits-mark')).toBe(true);
     expect(rowOf(host, plain?.id ?? '').querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
   });
 });
@@ -648,7 +723,7 @@ describe('SpecTable fold (spec 021, T25)', () => {
   });
 
   it('caps a filtered list the same way and counts its rows; no fold for 10 rows or fewer', async () => {
-    const building = await renderMany('/', { ...DEFAULT_QUERY, phase: 'building' });
+    const building = await renderMany('/', { ...DEFAULT_QUERY, stage: ['build'] });
     expect(building.rowIds()).toHaveLength(10);
     expect(text(building.toggle())).toBe('Show all 11 specs');
 
@@ -700,8 +775,8 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
 
   it('names the two "all" chips by their group, so no two chips share a name', async () => {
     const { host } = await renderTyped();
-    expect(text(allChip(host, 'phase'))).toBe('All 3');
-    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('All 3 stages');
+    expect(text(allChip(host, 'stage'))).toBe('All 3');
+    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('All: 3 entries');
     expect(text(allChip(host, 'type'))).toBe('All 3');
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('All 3 types');
     const named = [...host.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map((b) => b.getAttribute('aria-label') ?? text(b));
@@ -712,7 +787,7 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     const { fixture, host } = await renderTyped();
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('Alle 3 Stages');
+    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('Alle: 3 Einträge');
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('Alle 3 Typen');
   });
 
@@ -722,12 +797,19 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     (fixture.componentInstance as unknown as { setOverflow(id: string, overflows: boolean): void }).setOverflow('002', true);
     await fixture.whenStable();
     const more = host.querySelector<HTMLButtonElement>('[data-more="002"]');
-    expect(text(more)).toBe('More…');
+    // Spec 064 (T46, ISC-489): visibly only "…", in the row's own `more` cell; the accessible name stays the long one.
+    expect(text(more)).toBe('…');
     expect(more?.getAttribute('aria-label')).toBe('More… 002 Spec 002');
+    expect(more?.parentElement?.getAttribute('data-cell')).toBe('more');
+    expect(more?.hasAttribute('style')).toBe(false);
     more?.click();
     await fixture.whenStable();
-    expect(text(more)).toBe('Less');
+    expect(text(more)).toBe('…');
     expect(more?.getAttribute('aria-label')).toBe('Less 002 Spec 002');
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    await fixture.whenStable();
+    expect(text(more)).toBe('…');
+    expect(more?.getAttribute('aria-label')).toBe('Weniger 002 Spec 002');
   });
 });
 
@@ -784,10 +866,10 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
     expect(compact?.hasAttribute('data-desc')).toBe(false);
     expect(compact?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').not.toContain('desc-002');
     expect(text(compact?.querySelector('a.row-link'))).toBe('Spec 002');
-    // Only the description leaves: agent dot, phase chip, priority, track and a/b stay.
-    expect(compact?.querySelector('.rtrack .agent-dot')).not.toBeNull();
-    expect(text(compact?.querySelector('.rtrack ui-chip.phase'))).toBe('building');
-    expect(compact?.querySelector('.rtrack ui-priority')).not.toBeNull();
+    // Only the description leaves: agent dot, stage chip, priority, track and a/b stay.
+    expect(compact?.querySelector('.ragent .agent-dot')).not.toBeNull();
+    expect(text(compact?.querySelector('.rphase ui-chip.phase'))).toBe('Build');
+    expect(compact?.querySelector('.rprio ui-priority')).not.toBeNull();
     expect(text(compact?.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(writes()).toEqual([]);
   });
@@ -1019,10 +1101,10 @@ describe('archived rows under filters and the fold (spec 050, ISC-288)', () => {
     expect(archivedIds()).toEqual(archivedBugs);
   });
 
-  it('every phase chip, fog and takeable hide every archived row and leave the active rows they match', async () => {
+  it('every stage chip, fog and takeable hide every archived row and leave the active rows they match', async () => {
     const cases: Array<{ query: ListQuery; active: string[] }> = [
-      ...['scoping', 'building', 'complete'].map((phase) => ({ query: { ...ON, phase }, active: activeOf((row) => row['stageGroup'] === phase) })),
-      { query: { ...ON, phase: 'fog' }, active: activeOf((row) => Number(row['fog']) > 0) },
+      ...['review', 'build', 'done'].map((stage) => ({ query: { ...ON, stage: [stage] }, active: activeOf((row) => row['stage'] === stage) })),
+      { query: { ...ON, stage: ['fog'] }, active: activeOf((row) => Number(row['fog']) > 0) },
       { query: { ...ON, takeable: true }, active: activeOf((row) => Array.isArray(row['takeable']) && row['takeable'].length > 0) },
     ];
     for (const { query, active } of cases) {
@@ -1280,7 +1362,7 @@ describe('favorite stars in the spec list (spec 052, T18, ISC-300)', () => {
   });
 });
 
-describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
+describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', () => {
   const IDEAS = [
     ...harbor.ideas.list,
     { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' },
@@ -1311,69 +1393,182 @@ describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
     fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
-    const group = () => host.querySelector<HTMLElement>('[data-ideas-group]');
-    const slugs = () => [...host.querySelectorAll<HTMLElement>('app-idea-row')].map((row) => row.dataset['idea']);
-    return { fixture, host, emitted, group, slugs };
+    const ideaRows = () => [...host.querySelectorAll<HTMLElement>('app-idea-row')];
+    const slugs = () => ideaRows().map((row) => row.dataset['idea']);
+    return { fixture, host, emitted, ideaRows, slugs };
   }
 
   const before = (a: Element | null, b: Element | null): boolean => !!a && !!b && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 
-  it('lists the ideas as a group after the active rows and before the archive block, under a heading with the count', async () => {
-    const { host, group, slugs } = await renderIdeas();
-    expect(group()).not.toBeNull();
+  // T49 (ISC-491): no group heading any more; each idea row is an item of the list itself, right after the active rows.
+  it('lists the ideas as rows of the list after the active rows and before the archive block, under no heading', async () => {
+    const { host, ideaRows, slugs } = await renderIdeas();
     expect(slugs()).toEqual(['console-audit-log', 'registry-webhooks', 'sync-dry-run']);
-    expect(before(host.querySelector('[data-spec-row="003"]'), group())).toBe(true);
-    expect(before(host.querySelector('[data-spec-row="002"]'), group())).toBe(true);
-    expect(before(group(), host.querySelector('[data-spec-row="001"]'))).toBe(true);
-    const heading = group()?.querySelector('h3');
-    expect(text(heading?.querySelector('[data-ideas-label]'))).toBe('Ideas');
-    expect(text(heading?.querySelector('[data-ideas-count]'))).toBe('3 ideas');
-    expect(group()?.querySelector('ol')?.getAttribute('aria-labelledby')).toBe(heading?.id);
+    const [first, , last] = ideaRows();
+    expect(before(host.querySelector('[data-spec-row="003"]'), first)).toBe(true);
+    expect(before(host.querySelector('[data-spec-row="002"]'), first)).toBe(true);
+    expect(before(last, host.querySelector('[data-spec-row="001"]'))).toBe(true);
+    expect(host.querySelector('#ideas-group-heading')).toBeNull();
+    expect(host.querySelector('.row-lists h3')).toBeNull();
+    expect(host.querySelector('[data-ideas-label], [data-ideas-count], [data-ideas-group]')).toBeNull();
+    // Each idea row sits in its own item of the same ordered list as the spec rows, no nested list.
+    const list = host.querySelector('.row-lists ol.rows');
+    for (const row of ideaRows()) expect(row.parentElement?.parentElement, row.dataset['idea']).toBe(list);
+    expect(host.querySelector('.row-lists ol ol')).toBeNull();
+  });
+
+  // Spec 064 (T47, T48, ISC-488, ISC-490): spec and idea rows are one grid. Each cell of either row names its column,
+  // and both components carry the same compiled grid: the wide template, the narrowing below 880 px, the fixed compact
+  // form below 640 px and every cell's area. The layout itself is measured by the browser probe (spec-list-columns).
+  it('lays spec and idea rows on the same grid: the same ten cells, templates and areas in every tier (T47, T48)', async () => {
+    const { host } = await renderIdeas();
+    const cells = (row: Element | null) => [...(row?.children ?? [])].map((cell) => cell.getAttribute('data-cell'));
+    const ten = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+    expect(cells(host.querySelector('app-spec-row'))).toEqual(ten);
+    const ideas = [...host.querySelectorAll('app-idea-row')];
+    expect(ideas.length).toBe(3);
+    for (const row of ideas) expect(cells(row)).toEqual(ten);
+    const grid = gridOf(SpecRow);
+    expect(gridOf(IdeaRow)).toEqual(grid);
+    for (const name of ten) expect(grid).toContain(`[data-cell=${name}] | grid-area: ${name}`);
+    // Fixed widths in every tier: no `auto` column left from the interim compact form.
+    expect(grid.some((line) => line.includes('grid-template') && / auto\b/.test(line))).toBe(false);
+    expect(grid).toEqual(
+      expect.arrayContaining([
+        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 136px 8px 48px var(--track-col, 88px) 104px 120px 32px',
+        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 24px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
+        '@container specs (width < 640px) | :host | grid-template: "id title title title title more star" 24px ". mark prio phase meter meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px',
+      ]),
+    );
   });
 
   it('links each idea row to /w/harbor/ideas/<slug>', async () => {
-    const { group } = await renderIdeas();
-    const hrefs = [...(group()?.querySelectorAll('app-idea-row a.link') ?? [])].map((a) => a.getAttribute('href'));
+    const { host } = await renderIdeas();
+    const hrefs = [...host.querySelectorAll('app-idea-row a.link')].map((a) => a.getAttribute('href'));
     expect(hrefs).toEqual(['/w/harbor/ideas/console-audit-log', '/w/harbor/ideas/registry-webhooks', '/w/harbor/ideas/sync-dry-run']);
   });
 
-  it('?phase=idea shows only the ideas, no spec row active or archived', async () => {
-    const { host, slugs } = await renderIdeas({ phase: 'idea' });
+  it('?stage=idea shows only the ideas, no spec row active or archived', async () => {
+    const { host, slugs } = await renderIdeas({ stage: ['idea'] });
     expect(host.querySelectorAll('[data-spec-row]')).toHaveLength(0);
     expect(slugs()).toHaveLength(3);
     expect(host.querySelector('p.empty')).toBeNull();
   });
 
-  it('any other phase, takeable, working or a type filter shows no idea group', async () => {
-    for (const over of [{ phase: 'building' }, { phase: 'scoping' }, { takeable: true }, { working: true }, { type: 'feature' }] as Array<Partial<ListQuery>>) {
-      const { group } = await renderIdeas(over);
-      expect(group(), JSON.stringify(over)).toBeNull();
+  it('any other stage, takeable, working or a type filter shows no idea row', async () => {
+    for (const over of [{ stage: ['build'] }, { stage: ['plan', 'tasks', 'review'] }, { takeable: true }, { working: true }, { type: 'feature' }] as Array<Partial<ListQuery>>) {
+      const { slugs } = await renderIdeas(over);
+      expect(slugs(), JSON.stringify(over)).toEqual([]);
     }
   });
 
-  it('offers the phase chip "ideas" with the count, which asks for phase idea; none without an idea', async () => {
+  it('offers the chip "ideas" with the count, which asks for stage idea; none without an idea', async () => {
     const { host, emitted } = await renderIdeas();
-    const chip = [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="phase"] button')].find((button) => text(button).startsWith('ideas'));
+    const chip = [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="stage"] button')].find((button) => text(button).startsWith('Idea'));
     expect(chip).toBeDefined();
     expect(text(chip)).toContain('3');
     chip?.click();
-    expect(emitted.at(-1)?.phase).toBe('idea');
+    expect(emitted.at(-1)?.stage).toEqual(['idea']);
     const without = await renderIdeas({}, []);
-    expect(without.group()).toBeNull();
-    expect([...without.host.querySelectorAll('.t-head [data-filter="phase"] button')].map(text).some((label) => label.startsWith('ideas'))).toBe(false);
+    expect(without.slugs()).toEqual([]);
+    expect([...without.host.querySelectorAll('.t-head [data-filter="stage"] button')].map(text).some((label) => label.startsWith('Idea'))).toBe(false);
   });
 
-  it('wraps the phase and type chips instead of scrolling them, so the chip "ideas" never hides at 600 px', async () => {
+  it('wraps the stage and type chips instead of scrolling them, so the chip "ideas" never hides at 600 px', async () => {
     const { host } = await renderIdeas();
     const groups = [...host.querySelectorAll('.t-head ui-filter-chips')];
     expect(groups.length).toBeGreaterThan(0);
     for (const group of groups) expect(group.hasAttribute('data-wrap'), group.getAttribute('data-filter') ?? '').toBe(true);
   });
 
-  it('heads the group in German: "Ideen" and "3 Ideen"', async () => {
+  it('shows no group heading in German either, the three rows still listed', async () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
-    const { group } = await renderIdeas();
-    expect(text(group()?.querySelector('[data-ideas-label]'))).toBe('Ideen');
-    expect(text(group()?.querySelector('[data-ideas-count]'))).toBe('3 Ideen');
+    const { host, slugs } = await renderIdeas();
+    expect(slugs()).toHaveLength(3);
+    expect(host.querySelector('.row-lists h3')).toBeNull();
+    expect(host.textContent).not.toContain('3 Ideen');
+  });
+});
+
+describe('the stage chips of the spec list (spec 064, T62, ISC-503)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  const STAGED = {
+    specs: [wire('002', { stage: 'build', fog: 1 }), wire('003', { stage: 'review' }), wire('004', { stage: 'build' }), wire('005', { stage: 'plan' })],
+    archive: [],
+    kpis: { specs: 4, stageGroups: { scoping: 2, building: 2, complete: 0 }, specsWithFog: 1, byType: { feature: 4 } },
+  };
+
+  async function renderStaged(query: ListQuery = DEFAULT_QUERY, lang = 'en', body: Record<string, unknown> = STAGED, ideas: readonly unknown[] = harbor.ideas.list) {
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(body));
+    fixture.componentRef.setInput('counts', readListCounts(body));
+    fixture.componentRef.setInput('ideas', ideas);
+    fixture.componentRef.setInput('query', query);
+    const emitted: ListQuery[] = [];
+    fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const chips = () => [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="stage"] button')];
+    return { fixture, host, emitted, chips };
+  }
+
+  it('offers All, one chip per stage present in workflow order with its count, then fog and ideas', async () => {
+    const { chips } = await renderStaged();
+    // All counts what it shows, the 4 specs and the 2 ideas (ISC-512).
+    expect(chips().map(text)).toEqual(['All 6', 'Plan 1', 'Review 1', 'Build 2', 'fog 1', 'Idea 2']);
+    const { chips: de } = await renderStaged(DEFAULT_QUERY, 'de');
+    expect(de().map(text)).toEqual(['Alle 6', 'Plan 1', 'Review 1', 'Bauen 2', 'fog 1', 'Idee 2']);
+  });
+
+  it('counts the specs and the ideas in All, only their specs in a stage chip and the ideas in Idea (ISC-512)', async () => {
+    const two = {
+      specs: [wire('002', { stage: 'build' }), wire('003', { stage: 'review' })],
+      archive: [],
+      kpis: { specs: 2, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 2 } },
+    };
+    const three = [...harbor.ideas.list, { slug: 'sync-dry-run', title: 'A dry run.', feature: null, milestone: null, priority: 'P1' }];
+    const { chips, host } = await renderStaged(DEFAULT_QUERY, 'en', two, three);
+    expect(chips().map(text)).toEqual(['All 5', 'Review 1', 'Build 1', 'Idea 3']);
+    expect(chips()[0]?.getAttribute('aria-label')).toContain('5');
+    expect(host.querySelectorAll('[data-spec-row]')).toHaveLength(2);
+    expect(host.querySelectorAll('app-idea-row')).toHaveLength(3);
+    // Without a story All is the specs' count alone.
+    const none = await renderStaged(DEFAULT_QUERY, 'en', two, []);
+    expect(none.chips().map(text)).toEqual(['All 2', 'Review 1', 'Build 1']);
+  });
+
+  it('asks for ?stage=<stage> on a click, [idea] for the ideas chip and none for All', async () => {
+    const { fixture, chips, emitted } = await renderStaged();
+    chips().find((chip) => text(chip).startsWith('Build'))?.click();
+    chips().find((chip) => text(chip).startsWith('Idea'))?.click();
+    await fixture.whenStable();
+    expect(emitted.map((query) => query.stage)).toEqual([['build'], ['idea']]);
+    const filtered = await renderStaged({ ...DEFAULT_QUERY, stage: ['build'] });
+    filtered.chips()[0]?.click();
+    expect(filtered.emitted.at(-1)?.stage).toBeNull();
+  });
+
+  it('filters the rows by their stage and presses the chip of the one stage asked for', async () => {
+    const { host, chips } = await renderStaged({ ...DEFAULT_QUERY, stage: ['build'] });
+    expect([...host.querySelectorAll('[data-spec-row]')].map((row) => row.getAttribute('data-spec-row'))).toEqual(['002', '004']);
+    expect(host.querySelectorAll('app-idea-row')).toHaveLength(0);
+    expect(chips().filter((chip) => chip.getAttribute('aria-pressed') === 'true').map(text)).toEqual(['Build 2']);
+    const ideas = await renderStaged({ ...DEFAULT_QUERY, stage: ['idea'] });
+    expect(ideas.host.querySelectorAll('[data-spec-row]')).toHaveLength(0);
+    expect(ideas.host.querySelectorAll('app-idea-row')).toHaveLength(2);
   });
 });

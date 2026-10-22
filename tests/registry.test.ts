@@ -168,14 +168,14 @@ describe("registry", () => {
     expect(delta.position).toBeGreaterThan(reg.get("bravo")?.position ?? Infinity);
   });
 
-  test("the first open sets schema_version to the latest (6, spec 002's notes and their pin, spec 008's actors and board query, spec 052's favourites), WAL mode and foreign keys", () => {
+  test("the first open sets schema_version to the latest (7, spec 002's notes and their pin, spec 008's actors and board query, spec 052's favourites, spec 064's idea favourites), WAL mode and foreign keys", () => {
     open().close();
     registry = undefined;
-    expect(SCHEMA_VERSION).toBe(6);
+    expect(SCHEMA_VERSION).toBe(7);
     const db = new Database(dbPath(data), { readonly: true });
     try {
       const row = db.query<{ value: string }, []>("SELECT value FROM setting WHERE key = 'schema_version'").get();
-      expect(row?.value).toBe("6");
+      expect(row?.value).toBe("7");
       const mode = db.query<{ journal_mode: string }, []>("PRAGMA journal_mode").get();
       expect(mode?.journal_mode).toBe("wal");
     } finally {
@@ -187,7 +187,7 @@ describe("registry", () => {
     const fk = new Database(dbPath(data), { readonly: true });
     try {
       expect(fk.query<{ value: string }, []>("SELECT value FROM setting WHERE key = 'schema_version'").all()).toEqual([
-        { value: "6" },
+        { value: "7" },
       ]);
     } finally {
       fk.close();

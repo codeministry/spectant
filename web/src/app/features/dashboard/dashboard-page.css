@@ -1,7 +1,7 @@
 /*
  * One column at every tier, no rail (spec 058, design.md § Across viewports). Rhythm on the 8 px scale: 16 px from
  * the head to the KPI band, between the KPI band and the TL;DR and before the footnote; 24 px before every block with
- * a section header (the row of Waits on you and In progress, Next up, the warnings).
+ * a section header (the stack of Waits on you and In progress, Next up, the warnings).
  */
 @import "./_workspace-page.css";
 
@@ -13,12 +13,12 @@
   min-inline-size: 0;
 }
 
-/* Spec 064 (design.md § Desktop Ziel): Waits on you and In progress side by side where both fit 480 px, stacked
-   below; without In progress `auto-fit` folds its empty track and the waits take the row. Before the spacing rules,
-   which set only its margin (no property shared, so the order changes no computed value). */
+/* Spec 064 (ISC-507, design.md § Anordnung neu): Waits on you and In progress stacked at every tier, In progress
+   directly below, both the main column's full width. Before the spacing rules, which set only its margin (no property
+   shared, so the order changes no computed value). */
 .lists {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: start;
   min-inline-size: 0;

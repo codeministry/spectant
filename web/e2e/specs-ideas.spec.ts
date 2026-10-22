@@ -6,7 +6,9 @@
  *   `?sel=idea:<slug>` and the detail sidebar shows the idea; a reload lands on the same sidebar.
  * - At 1440 px a second click on the selected row opens the idea's own page, `/w/harbor/ideas/<slug>`; at 390 px the
  *   sidebar is a modal sheet over the list, so the sheet's "Open idea" link (`a[data-open-idea]`) opens it.
- * - `/w/harbor/specs?phase=idea` lists the ideas group alone, no spec row; a reload keeps the same list.
+ * - The ideas are plain items of the list `ol.rows` after the active specs, under no heading of their own (ISC-491).
+ * - The stage chip "Idea" (`[data-filter="stage"]`, spec 064 T62) narrows the list to the ideas alone, no spec row, as
+ *   `?stage=idea`; a reload keeps the same list, and the old `?phase=idea` redirects there.
  *
  * Every expected value derives from the golden. Each test runs in its own stub session.
  */
@@ -16,9 +18,11 @@ import { atWidth, expect, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
-const dashboard = JSON.parse(readFileSync(new URL('../../core/fixtures/harbor.golden.json', import.meta.url), 'utf8')) as {
+const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
+const dashboard = read('../../core/fixtures/harbor.golden.json') as {
   ideas: { count: number; list: ReadonlyArray<{ slug: string; title: string }> };
 };
+const en = read('../src/i18n/en.json') as { stages: { idea: string } };
 const IDEA = dashboard.ideas.list.at(0);
 if (IDEA === undefined || dashboard.ideas.count < 1) throw new Error('the harbor golden no longer holds a story');
 
@@ -32,8 +36,11 @@ test.afterEach(async ({ request }) => {
   await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
 });
 
-const group = (page: Page): Locator => page.locator('app-spec-table li[data-ideas-group]');
-const ideaLink = (page: Page, slug: string): Locator => group(page).locator(`app-idea-row[data-idea="${slug}"] a.link`);
+/** The idea rows: items of the spec list's `ol.rows`, no group of their own. */
+const ideaRows = (page: Page): Locator => page.locator('app-spec-table ol.rows > li > app-idea-row[data-idea]');
+const ideaLink = (page: Page, slug: string): Locator => page.locator(`app-spec-table ol.rows > li > app-idea-row[data-idea="${slug}"] a.link`);
+const ideaChip = (page: Page): Locator =>
+  page.locator('app-spec-table ui-filter-chips[data-filter="stage"] button.chip', { hasText: en.stages.idea });
 const selParam = (page: Page): string | null => new URL(page.url()).searchParams.get('sel');
 
 /** The detail sidebar is open on the idea and the address names it. */
@@ -46,12 +53,14 @@ async function expectIdeaSidebar(page: Page, slug: string): Promise<void> {
   await expect(sidebar.locator('[data-part="id"]')).toHaveText(slug);
 }
 
-/** Only the ideas group is listed: every story of the golden, no spec row. */
+/** Only the ideas are listed: every story of the golden, no spec row, no heading, the chip "Idea" pressed. */
 async function expectIdeasOnly(page: Page): Promise<void> {
-  await expect(group(page)).toHaveCount(1);
-  await expect(group(page).locator('app-idea-row[data-idea]')).toHaveCount(dashboard.ideas.count);
+  await expect(page).toHaveURL((url) => url.searchParams.get('stage') === 'idea' && !url.searchParams.has('phase'));
+  await expect(ideaRows(page)).toHaveCount(dashboard.ideas.count);
+  await expect(page.locator('app-spec-table [data-ideas-group], app-spec-table [data-ideas-label]')).toHaveCount(0);
   await expect(page.locator('app-spec-table app-spec-row')).toHaveCount(0);
   await expect(page.locator('app-spec-table a.row-link')).toHaveCount(0);
+  await expect(ideaChip(page)).toHaveAttribute('aria-pressed', 'true');
 }
 
 /** How the idea page is reached from the selection: the row itself at 1440 px, the sheet's link at 390 px. */
@@ -81,11 +90,18 @@ for (const [label, width, opener] of [['1440', WIDTHS.desktop, 'row'], ['390', W
       await expect(page.locator('app-idea-page')).toBeVisible();
     });
 
-    test(`ideas list (${label}): ?phase=idea lists only the ideas group, a reload the same`, async ({ page }) => {
-      await page.goto('/w/harbor/specs?phase=idea');
+    test(`ideas list (${label}): the stage chip "Idea" lists only the ideas as ?stage=idea, a reload the same`, async ({ page }) => {
+      await page.goto('/w/harbor/specs');
+      await expect(ideaRows(page)).toHaveCount(dashboard.ideas.count);
+      await expect(ideaChip(page)).toHaveAttribute('aria-pressed', 'false');
+      await ideaChip(page).click();
       await expectIdeasOnly(page);
       await page.reload();
-      await expect(page).toHaveURL(/[?&]phase=idea(?:&|$)/u);
+      await expectIdeasOnly(page);
+    });
+
+    test(`ideas list (${label}): the old ?phase=idea redirects to ?stage=idea`, async ({ page }) => {
+      await page.goto('/w/harbor/specs?phase=idea');
       await expectIdeasOnly(page);
     });
   });

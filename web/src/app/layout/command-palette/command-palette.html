@@ -76,8 +76,8 @@
               @if (isDemo(option.entry)) {
                 <ui-chip class="p-demo" variant="demo" data-demo />
               }
-              @if (option.phase; as phase) {
-                <ui-chip class="p-phase" aria-hidden="true" [tone]="phase.tone" [icon]="phase.icon">{{ phase.label }}</ui-chip>
+              @if (option.stage; as stage) {
+                <ui-chip class="p-stage" aria-hidden="true" [tone]="stage.tone" [icon]="stage.icon">{{ stage.label }}</ui-chip>
               }
             </button>
           }

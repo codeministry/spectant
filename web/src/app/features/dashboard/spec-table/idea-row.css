@@ -1,8 +1,9 @@
 @import './_row-grid.css';
 
 /*
- * The idea row (spec 064, T40): the spec row's grid, its own cells. The host holds the stretched link; the state line
- * sits above the link's `::after`, so the links it may carry stay their own targets.
+ * The idea row (spec 064, T40, T47): the spec row's grid and its named columns (`_row-grid.css`), its own cells. The
+ * host holds the stretched link; the state line sits above the link's `::after`, so the links it may carry stay their
+ * own targets.
  */
 :host {
   position: relative;
@@ -10,14 +11,12 @@
 
 .rid {
   display: flex;
-  grid-area: id;
   align-items: center;
   color: var(--conc-ink);
 }
 
 .rtitle {
   display: flex;
-  grid-area: title;
   gap: 8px;
   align-items: baseline;
   min-inline-size: 0;
@@ -57,7 +56,7 @@
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-/* Feature and milestone, the ids in mono, muted like the spec row's description. */
+/* Feature and milestone, the ids in mono, muted: the title cell's description, as a spec row's goal is. */
 .where {
   flex: 0 1 auto;
   min-inline-size: 0;
@@ -70,36 +69,31 @@
   white-space: nowrap;
 }
 
-.rtrack {
+/* Priority and state each at their column's start, cut rather than pushing into the next column. */
+.rprio,
+.rphase {
   display: flex;
-  grid-area: track;
-  gap: 16px;
   align-items: center;
   min-inline-size: 0;
 }
 
-.rstate {
+/* The star's cell (spec 064, T53) sits above the row link's `::after`, its own target; its look is the primitive's. */
+.rstar {
   position: relative;
   z-index: 1;
+  display: inline-flex;
   min-inline-size: 0;
 }
 
-/* Below 640 px of list: line 1 glyph and title, line 2 priority and state, then the meta at the row's end. */
-@container specs (width < 640px) {
-  .rtitle {
-    display: contents;
-  }
+/* The state pill (T69, ISC-510) is at most the phase column wide; its text ends in an ellipsis rather than spilling. */
+.rstate {
+  max-inline-size: 100%;
+  overflow: hidden;
+}
 
-  .where {
-    grid-area: desc;
-  }
-
-  .rtrack {
-    gap: 8px;
-    overflow: hidden;
-  }
-
-  :host(:not([data-desc])) .rtrack {
-    grid-column: 2 / -1;
-  }
+.stext {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

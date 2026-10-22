@@ -149,12 +149,12 @@
       }
     },
     "filter": {
-      "label": "Nach Phase filtern",
+      "label": "Nach Stage filtern",
       "typeLabel": "Nach Typ filtern",
       "all": "Alle",
       "allStages": {
-        "one": "Alle {{count}} Stages",
-        "other": "Alle {{count}} Stages"
+        "one": "Alle: {{count}} Eintrag",
+        "other": "Alle: {{count}} Einträge"
       },
       "allTypes": {
         "one": "Alle {{count}} Typen",
@@ -174,7 +174,11 @@
       "title": "Titel",
       "stage": "Stage",
       "phase": "Phase",
-      "claims": "Claims"
+      "claims": "Claims",
+      "mark": "Wartet",
+      "prio": "Priorität",
+      "track": "Track",
+      "meter": "Fortschritt"
     },
     "archived": {
       "one": "{{count}} archivierte Spec",
@@ -209,6 +213,7 @@
     "archivedHidden": "Archivierte Specs ausgeblendet",
     "moreName": "Mehr… {{id}} {{title}}",
     "lessName": "Weniger {{id}} {{title}}",
+    "moreGlyph": "…",
     "ideas": {
       "title": "Ideen · {{count}}",
       "label": "Ideen im Backlog"
@@ -379,7 +384,7 @@
       "goSpecs": "Zu den Specs",
       "goNextUp": "Zu „Als Nächstes“",
       "goWarnings": "Zu den Warnungen",
-      "phaseFilter": "Phasenfilter: {{target}} (solange die Liste den Fokus hat)",
+      "stageFilter": "Stage-Filter: {{target}} (solange die Liste den Fokus hat)",
       "goTo": "Zu {{target}} wechseln",
       "prevSpec": "Vorherige Spec im Workspace",
       "nextSpec": "Nächste Spec im Workspace",
@@ -2863,6 +2868,7 @@
   },
   "favorites": {
     "toggle": "Favorit: {{id}} {{title}}",
+    "toggleIdea": "Favorit: Idee {{title}}",
     "add": "Zu den Favoriten hinzufügen",
     "remove": "Aus den Favoriten entfernen",
     "added": "{{id}} zu den Favoriten hinzugefügt",

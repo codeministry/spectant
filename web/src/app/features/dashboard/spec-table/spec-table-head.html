@@ -1,0 +1,4 @@
+<!-- Spec 064 (T68, ISC-509): every column of the row grid, the empty ones too, so each heading keeps its column. -->
+@for (cell of cells; track cell.name) {
+  <span role="columnheader" class="col" [attr.data-cell]="cell.name" [attr.title]="cell.key ? (cell.key | transloco) : null">@if (cell.key; as key) {{{ key | transloco }}}</span>
+}

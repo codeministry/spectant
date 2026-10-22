@@ -16,14 +16,15 @@
       [tier]="shell.tier()"
       (choose)="setSort($event)"
     />
-    <!-- Spec 064 (T41): the chips wrap, so the chip "ideas" never hides behind a sideways scroll at 600 px. -->
+    <!-- Spec 064 (T41): the chips wrap, so the chip "ideas" never hides behind a sideways scroll at 600 px. Spec 064
+         (T62, ISC-503): one chip per stage present, then fog and ideas (`?stage=`). -->
     <ui-filter-chips
-      data-filter="phase"
+      data-filter="stage"
       wrap
-      [options]="phaseChips()"
-      [value]="query().phase ?? 'all'"
+      [options]="stageChips()"
+      [value]="stageValue()"
       [label]="'specs.filter.label' | transloco"
-      (valueChange)="setPhase($event)"
+      (valueChange)="setStage($event)"
     />
     @if (typeChips().length > 0) {
       <ui-filter-chips
@@ -36,7 +37,7 @@
       />
     }
     <!-- Spec 050 (T3, ISC-287): "Show archived", only with an archive, the last of the filters (focus order counters,
-         sort, phase, type, toggle), so the head's first line keeps the phase chips (P3); the label stays the same in both
+         sort, stage, type, toggle), so the head's first line keeps the stage chips (P3); the label stays the same in both
          states, aria-pressed carries the state. -->
     @if (archive().length > 0) {
       <button
@@ -87,6 +88,10 @@
     <!-- Spec 021 (T25, ISC-246): one roving list over two lists, the first rows and those behind "show all N". The row
          template is declared inside the roving host, so the list's content query sees the rows of both. -->
     <div class="row-lists" uiRovingList [singleKeys]="singleKeys()">
+      <!-- Spec 064 (T68, ISC-509): the column headings on the rows' grid, sticky under the app header while the list
+           scrolls by. They only label the columns for the eye; each row's link already names its cells, and a row
+           outside a table is no row to assistive tech, so the box stays out of the accessibility tree. -->
+      <div class="cols" data-cols aria-hidden="true"><app-spec-table-head /></div>
       <ol class="rows">
         @for (row of headRows(); track row.id) {
           <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" />
@@ -112,19 +117,12 @@
       }
       <ng-template #rowTpl let-row>
         @if (row.group === 'ideas') {
-          <!-- Spec 064 (T41, ISC-479): the idea group between the active rows and the archive block, headed "Ideas · n";
-               each story is its own row with its own link to the idea page (not a roving item of the spec rows). -->
-          <li class="ideas-group" data-ideas-group>
-            <h3 class="ideas-head" id="ideas-group-heading">
-              <span data-ideas-label>{{ 'specs.ideasGroup.label' | transloco }}</span>
-              <span class="ideas-count" data-ideas-count>{{ (shownIdeas().length === 1 ? 'specs.ideasGroup.count.one' : 'specs.ideasGroup.count.other') | transloco: { count: shownIdeas().length } }}</span>
-            </h3>
-            <ol class="ideas" aria-labelledby="ideas-group-heading">
-              @for (idea of shownIdeas(); track idea.slug) {
-                <li><app-idea-row [idea]="idea" [ws]="ws()" /></li>
-              }
-            </ol>
-          </li>
+          <!-- Spec 064 (T41, T49; ISC-479, ISC-491): the ideas right after the active rows and before the archive block,
+               under no heading of their own: each story is an item of this list with its own link to the idea page
+               (not a roving item of the spec rows), so the list's own name covers them. -->
+          @for (idea of shownIdeas(); track idea.slug) {
+            <li><app-idea-row [idea]="idea" [ws]="ws()" /></li>
+          }
         } @else {
         <!-- Spec 021 (R1, ISC-240 refined): the row carries its guidance mark ("Waits on you" or the Next ring) in its
              line; the reason, the entry's sentence or a waiting spec's phrase, is the row link's description (and its
@@ -182,22 +180,20 @@
                 (toggled)="toggleFavorite(row)"
               ></button>
             }
+            <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). Spec 064 (T46,
+                 ISC-489): projected into the row's own `more` column, visibly only "…", named by its spec. -->
+            @if (overflowing().has(row.id)) {
+              <button
+                type="button"
+                class="row-more"
+                [attr.data-more]="row.id"
+                [attr.aria-expanded]="moreOpen().has(row.id)"
+                [attr.aria-controls]="(descShown(row) ? 'desc-' : 'rl-') + row.id"
+                [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
+                (click)="toggleMore(row.id)"
+              >{{ 'specs.moreGlyph' | transloco }}</button>
+            }
           </app-spec-row>
-          <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). -->
-          @if (overflowing().has(row.id)) {
-            <button
-              type="button"
-              class="row-more"
-              [style.position-anchor]="'--desc-' + row.id"
-              [attr.data-more]="row.id"
-              [attr.aria-expanded]="moreOpen().has(row.id)"
-              [attr.aria-controls]="(descShown(row) ? 'desc-' : 'rl-') + row.id"
-              [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
-              (click)="toggleMore(row.id)"
-            >
-              {{ (moreOpen().has(row.id) ? 'brief.less' : 'brief.more') | transloco }}
-            </button>
-          }
           <!-- The reason (ISC-122.3, ISC-240 refined by spec 021 R1): read as the row link's description, never shown as a
                line; the command lives in the rail's "Waits on you" and Next up. -->
           @if (why) {

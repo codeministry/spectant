@@ -542,14 +542,14 @@ describe('ApiClient favourites (spec 052, T9, ISC-300)', () => {
     const first = api.favorites('harbor');
     const request = http.expectOne(URL);
     expect(request.request.method).toBe('GET');
-    request.flush({ specs: ['004-retention-policies'] }, { headers: { ETag: '"f1"' } });
-    expect(await first).toEqual({ kind: 'ok', body: { specs: ['004-retention-policies'] }, etag: '"f1"', notModified: false });
+    request.flush({ specs: ['004-retention-policies'], ideas: [] }, { headers: { ETag: '"f1"' } });
+    expect(await first).toEqual({ kind: 'ok', body: { specs: ['004-retention-policies'], ideas: [] }, etag: '"f1"', notModified: false });
 
     const again = api.favorites('harbor');
     const conditional = http.expectOne(URL);
     expect(conditional.request.headers.get('If-None-Match')).toBe('"f1"');
     conditional.flush(null, { status: 304, statusText: 'Not Modified' });
-    expect(await again).toEqual({ kind: 'ok', body: { specs: ['004-retention-policies'] }, etag: '"f1"', notModified: true });
+    expect(await again).toEqual({ kind: 'ok', body: { specs: ['004-retention-policies'], ideas: [] }, etag: '"f1"', notModified: true });
   });
 
   it('answers a 404 as not-found and a body the contract does not fit as an error', async () => {
@@ -558,7 +558,7 @@ describe('ApiClient favourites (spec 052, T9, ISC-300)', () => {
     expect(await missing).toEqual({ kind: 'not-found', served: true });
 
     const unfit = api.favorites('harbor');
-    http.expectOne(URL).flush({ specs: ['004'] });
+    http.expectOne(URL).flush({ specs: ['004'], ideas: [] });
     expect(await unfit).toEqual({ kind: 'error', status: 200 });
   });
 
@@ -567,16 +567,16 @@ describe('ApiClient favourites (spec 052, T9, ISC-300)', () => {
     const request = http.expectOne(ONE);
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toBeNull();
-    request.flush({ specs: ['002-web-console', '004-retention-policies'] });
-    expect(await saved).toEqual({ kind: 'ok', body: { specs: ['002-web-console', '004-retention-policies'] } });
+    request.flush({ specs: ['002-web-console', '004-retention-policies'], ideas: [] });
+    expect(await saved).toEqual({ kind: 'ok', body: { specs: ['002-web-console', '004-retention-policies'], ideas: [] } });
   });
 
   it('DELETEs one spec and answers the whole set as stored', async () => {
     const removed = api.deleteFavorite('harbor', '004-retention-policies');
     const request = http.expectOne(ONE);
     expect(request.request.method).toBe('DELETE');
-    request.flush({ specs: [] });
-    expect(await removed).toEqual({ kind: 'ok', body: { specs: [] } });
+    request.flush({ specs: [], ideas: [] });
+    expect(await removed).toEqual({ kind: 'ok', body: { specs: [], ideas: [] } });
   });
 
   it('answers a 400 invalid-spec, a 500, an unfit 200 and no answer as errors', async () => {
@@ -589,7 +589,7 @@ describe('ApiClient favourites (spec 052, T9, ISC-300)', () => {
     expect(await broken).toEqual({ kind: 'error', status: 500, error: null });
 
     const unfit = api.putFavorite('harbor', '004-retention-policies');
-    http.expectOne(ONE).flush({ specs: ['004-retention-policies'], extra: 1 });
+    http.expectOne(ONE).flush({ specs: ['004-retention-policies'], ideas: [], extra: 1 });
     expect(await unfit).toEqual({ kind: 'error', status: 200, error: null });
 
     const offline = api.deleteFavorite('harbor', '004-retention-policies');
@@ -599,6 +599,6 @@ describe('ApiClient favourites (spec 052, T9, ISC-300)', () => {
 
   it('encodes the workspace and the spec through the contract builder', () => {
     void api.putFavorite('my ws', '004-retention-policies');
-    http.expectOne('/api/workspaces/my%20ws/favorites/004-retention-policies').flush({ specs: [] });
+    http.expectOne('/api/workspaces/my%20ws/favorites/004-retention-policies').flush({ specs: [], ideas: [] });
   });
 });

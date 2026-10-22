@@ -11,12 +11,13 @@ import { UiFlatTile } from './flat-tile';
 import { TILE_LIMIT } from './tiles';
 
 /**
- * The block "In progress" (spec 064, ISC-460 to ISC-462; design.md § Across viewports): every spec a session holds a
- * claim of, as `workingOf` reads it off the dashboard body. A section header (`level` 2 on `/w/<ws>`, 3 on `/`) with
- * the `running` item glyph and the total as a `count` chip, then at most `TILE_LIMIT` flat tiles: the agent dot
+ * The block "In progress" (spec 064, ISC-508, ISC-461, ISC-462; design.md § Across viewports): every spec a session
+ * holds a claim of, as `workingOf` reads it off the dashboard body. A section header (`level` 2 on `/w/<ws>`, 3 on `/`)
+ * with the `running` item glyph and the total as a `count` chip, then at most `TILE_LIMIT` flat tiles: the agent dot
  * (hidden from assistive tech, the tile's name says it), the id, the spec title cut with an ellipsis (full title as the
  * link's `title`), the agent session (mono, at most 16ch, full value in its `title`) and an empty end column. Each tile
- * links to `/w/<ws>/s/<id>`. With more entries a 44 px link "Show all n" leads to `/w/<ws>/specs?working=1`.
+ * links to the spec's live view `/w/<ws>/s/<id>/board`, the live area's first tab (ISC-508). With more entries a 44 px
+ * link "Show all n" leads to `/w/<ws>/specs?working=1`.
  * Without an entry the block renders nothing at all: no section, no heading, no space (ISC-462).
  */
 @Component({
@@ -42,6 +43,6 @@ export class UiWorkingBlock {
   protected readonly showAllQuery = { working: '1' } as const;
 
   protected specLink(entry: WorkingEntry): readonly string[] {
-    return ['/w', this.workspace(), 's', entry.id];
+    return ['/w', this.workspace(), 's', entry.id, 'board'];
   }
 }

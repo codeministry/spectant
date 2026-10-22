@@ -21,7 +21,9 @@
  * The favourites (spec 052, T1, ISC-296; plan 052 § Interfaces): `favorites` reads the favourite specs of a workspace
  * and `favorite` sets (`PUT`) or unsets (`DELETE`) one, both answered from the app database alone, never a
  * repository file. `favorite` is the family's one route whose methods are both writes, so `WorkspaceRouteEntry` takes
- * `PUT` as a `method` and `DELETE` as its `write`.
+ * `PUT` as a `method` and `DELETE` as its `write`. `ideaFavorite` (spec 064, T50, ISC-494) does the same for a story
+ * slug, at `favorites/idea/:slug`: one segment more than `favorites/:spec`, so the two never match the same path, and
+ * `idea` is no spec id `isFavoriteSpec` admits. All three answer the whole `Favorites`, `{specs, ideas}`.
  */
 import type { PlanningModel } from '../../../../core/src/planning.ts';
 import type { DocsPage, IdeaRef, LibraryCatalog, LibraryDoc, RepoFileSource } from '../../../../core/src/files.ts';
@@ -74,6 +76,7 @@ export type WorkspaceRouteName =
   | 'boardQuery'
   | 'favorites'
   | 'favorite'
+  | 'ideaFavorite'
   | 'allocate'
   | 'backlog'
   | 'runRelease'
@@ -108,6 +111,7 @@ export interface WorkspaceRouteParams {
   boardQuery: WorkspaceParams;
   favorites: WorkspaceParams;
   favorite: FavoriteParams;
+  ideaFavorite: StoryParams;
   allocate: StoryParams;
   backlog: WorkspaceParams;
   runRelease: RunParams;
@@ -133,6 +137,8 @@ export const workspaceRoutes = {
   favorites: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/favorites`,
   /** `spec` is the spec's folder name, `NNN-slug` (`isFavoriteSpec`). */
   favorite: (ws: string, spec: string): string => `${SPEC_API_ROOT}/${enc(ws)}/favorites/${enc(spec)}`,
+  /** `slug` is a story slug, kebab case (`isFavoriteIdea`). */
+  ideaFavorite: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/favorites/idea/${enc(slug)}`,
   allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
   backlog: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/backlog`,
   runRelease: (ws: string, run: string): string => `${SPEC_API_ROOT}/${enc(ws)}/runs/${enc(run)}/release`,
@@ -179,6 +185,7 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
   { route: 'favorites', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/favorites`, statuses: FAVORITES_READ, response: 'Favorites' },
   { route: 'favorite', method: 'PUT', write: 'DELETE', pattern: `${SPEC_API_ROOT}/:ws/favorites/:spec`, statuses: FAVORITE_WRITE, response: 'Favorites' },
+  { route: 'ideaFavorite', method: 'PUT', write: 'DELETE', pattern: `${SPEC_API_ROOT}/:ws/favorites/idea/:slug`, statuses: FAVORITE_WRITE, response: 'Favorites' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
   { route: 'backlog', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/backlog`, statuses: BACKLOG_WRITE, request: 'BacklogRequest', response: 'BacklogWritten' },
   { route: 'runRelease', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/runs/:run/release`, statuses: RUN_RELEASE_WRITE, request: 'RunReleaseRequest', response: 'RunReleased' },
@@ -192,7 +199,7 @@ const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.ro
 
 /**
  * The `Allow` header of a workspace route's 405: `GET, HEAD` for a read (plus its write method if it has one), `POST`
- * for `allocate` and `backlog`, `PUT, DELETE` for `favorite`.
+ * for `allocate` and `backlog`, `PUT, DELETE` for `favorite` and `ideaFavorite`.
  */
 export function allowForWorkspace(route: WorkspaceRouteName): string {
   const entry = WORKSPACE_ENTRIES.get(route);
@@ -230,10 +237,12 @@ export interface WorkspaceRouteResponses {
   idea: IdeaPage;
   /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */
   boardQuery: BoardQuery;
-  /** The database's favourites of the workspace, never a file; `{specs: []}` when none is stored. */
+  /** The database's favourites of the workspace, never a file; `{specs: [], ideas: []}` when none is stored. */
   favorites: Favorites;
   /** The whole set after the write, so the web takes the server's state rather than its own (plan 052). */
   favorite: Favorites;
+  /** The same whole set after an idea favourite's write (spec 064, T50). */
+  ideaFavorite: Favorites;
   allocate: IdeaAllocated;
   backlog: BacklogWritten;
   runRelease: RunReleased;

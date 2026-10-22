@@ -110,9 +110,9 @@ function setUp(
     spec: () => Promise.resolve(spec()),
     reviewedHashes: () => null,
     // Spec 052 (T16): the favourites route answers the stored set; a write answers the set it leaves.
-    favorites: () => Promise.resolve(ok({ specs: favorites })),
-    putFavorite: (_ws: string, id: string) => Promise.resolve(ok({ specs: [...favorites, id].sort() })),
-    deleteFavorite: (_ws: string, id: string) => Promise.resolve(ok({ specs: favorites.filter((other) => other !== id) })),
+    favorites: () => Promise.resolve(ok({ specs: favorites, ideas: [] })),
+    putFavorite: (_ws: string, id: string) => Promise.resolve(ok({ specs: [...favorites, id].sort(), ideas: [] })),
+    deleteFavorite: (_ws: string, id: string) => Promise.resolve(ok({ specs: favorites.filter((other) => other !== id), ideas: [] })),
   };
   TestBed.configureTestingModule({
     imports: [

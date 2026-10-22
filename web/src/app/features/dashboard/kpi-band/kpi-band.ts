@@ -7,7 +7,7 @@ import { UiCard } from '../../../shared/ui/card/card';
 import { UiKpiTile } from '../../../shared/ui/kpi-tile/kpi-tile';
 import { type MeterSegment, UiMeter } from '../../../shared/ui/meter/meter';
 import { UiRing } from '../../../shared/ui/ring/ring';
-import { PHASE_TONE } from '../../../shared/ui/phase-tone';
+import { STAGE_ORDER, type ToneStage, toneOfStage } from '../../../shared/ui/stage-tone';
 import { toneMark } from '../../../shared/ui/tone';
 import { FOG } from '../spec-table/spec-table-model';
 
@@ -42,6 +42,8 @@ export interface KpiBandModel {
     readonly fog: number;
     readonly specsWithFog?: number;
   };
+  /** Active specs per stage (`DashboardModel.stageCounts`): the Specs tile's split and legend (spec 064, ISC-502). */
+  readonly stageCounts?: Readonly<Partial<Record<string, number>>>;
 }
 
 /**
@@ -63,12 +65,10 @@ export const TAKEABLE_QUERY: Params = { sort: 'next', takeable: 1 };
 /** The Open fog tile's query state on `/w/:ws/specs`: the list on its fog chip, the specs with open fog only. */
 export const FOG_QUERY: Params = { phase: FOG };
 
-interface PhaseSegment extends MeterSegment {
-  readonly phase: StageGroup;
+interface StageSegment extends MeterSegment {
+  readonly stage: ToneStage;
   readonly mark: string;
 }
-
-const PHASE_ORDER: readonly StageGroup[] = ['building', 'scoping', 'complete'];
 
 /** The band's tiles, as their `data-kpi` names them (and the Pulse card's figures their `data-stat`). */
 export type KpiTile = 'master' | 'claims' | 'specs' | 'takeable' | 'warnings' | 'fog';
@@ -95,7 +95,7 @@ export function kpiTileOf(path: string): KpiTile | null {
 /**
  * The dashboard's KPI band (T61, reworked in T87 into the wide band and the compact Pulse card; six tiles since
  * spec 021, ISC-245): Master claims with its ring (112 px, 88 at wide), Spec claims with a lime
- * meter, Specs (complete of all, with the stage-group split; its legend below wide only), Takeable now (of the open claims), Warnings and Open
+ * meter, Specs (complete of all, with the stage split; its legend below wide only), Takeable now (of the open claims), Warnings and Open
  * fog (each with the specs it sits in). Every tile shows its number with a reference, a fraction or "of N", and a
  * statement line that says in words which direction is good; the archived count lives in the spec list's head. Every
  * tile is a `ui-card` with an explicit edge and glow (hero glow only). The shell's tier (`data-tier`)
@@ -161,16 +161,19 @@ export class KpiBand {
   protected readonly specsLink = computed(() => ['/w', this.ws(), 'specs']);
   protected readonly kpis = computed(() => this.model().kpis);
 
-  /** Specs by stage group for the split meter and its legend, as the model counts them; an empty group is left out. */
-  protected readonly phases = computed<readonly PhaseSegment[]>(() => {
-    const groups = this.kpis().stageGroups;
-    if (groups === undefined) return [];
-    return PHASE_ORDER.filter((phase) => groups[phase] > 0).map((phase) => ({
-      key: phase,
-      phase,
-      count: groups[phase],
-      tone: PHASE_TONE[phase],
-      mark: toneMark(PHASE_TONE[phase]),
+  /**
+   * Specs by stage for the split meter and its legend, as the model counts them (`stageCounts`), in workflow order with
+   * the stage tones (spec 064, ISC-502); an empty stage is left out, and without the counts the split stays empty.
+   */
+  protected readonly stages = computed<readonly StageSegment[]>(() => {
+    const counts = this.model().stageCounts;
+    if (counts === undefined) return [];
+    return STAGE_ORDER.filter((stage) => (counts[stage] ?? 0) > 0).map((stage) => ({
+      key: stage,
+      stage,
+      count: counts[stage] ?? 0,
+      tone: toneOfStage(stage),
+      mark: toneMark(toneOfStage(stage)),
     }));
   });
 

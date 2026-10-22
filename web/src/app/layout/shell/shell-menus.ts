@@ -24,7 +24,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { chipIcon } from '../../shared/ui/chip/chip-icons';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
-import { toneOfPhase } from '../../shared/ui/phase-tone';
+import { toneOfStage } from '../../shared/ui/stage-tone';
 import type { Tone } from '../../shared/ui/tone';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
@@ -36,7 +36,7 @@ import { AreaMenu } from '../area-menu/area-menu';
 import { AssistantDot } from '../assistant/assistant.service';
 import { Mascot } from '../assistant/mascot';
 import { switchSpecLink } from './areas';
-import { ShellData, type SpecRowView } from './shell-data.service';
+import { type IdeaFavoriteView, ShellData, type SpecRowView } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 import { specCountOf } from './spec-count';
 
@@ -80,7 +80,7 @@ const LANGS = ['en', 'de'] as const;
  * - **Workspace picker**: the head "All workspaces (n)", every workspace from `ShellData.workspaces()`
  *   as a link with its badge and spec count (or "cannot be read"), the current one marked, then "Show all n workspaces"
  *   (`g a`) and "Manage workspaces" → `/settings`.
- * - **Spec picker**: the head "Specs · <workspace>", the workspace's specs (muted id, title, phase
+ * - **Spec picker**: the head "Specs · <workspace>", the workspace's specs (muted id, title, stage
  *   chip, else the stage), the open one marked, then "Spec overview" (`g s`) → the dashboard's Specs panel.
  * - **Page menu** (spec 024 T80, ISC-150.2): `app-area-menu scope="page"`, the workspace pages, on every workspace route.
  * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37), the spec areas, on a spec page.
@@ -178,9 +178,9 @@ export class ShellMenus {
   private readonly specNav = viewChild<ElementRef<HTMLElement>>('specNav');
   private readonly announcer = viewChild(UiLiveRegion);
 
-  /** The phase chip of a spec row, its tone and icon. */
-  protected readonly phaseTone = (phase: string): Tone => toneOfPhase(phase);
-  protected readonly phaseIcon = chipIcon;
+  /** The stage chip of a spec row, its tone and icon: the row's stage, never its coarse phase (spec 064, ISC-501). */
+  protected readonly stageTone = (stage: string): Tone => toneOfStage(stage);
+  protected readonly stageIcon = chipIcon;
 
   /** Which menu's bottom sheet is open (compact only; the popovers keep their own state). */
   protected readonly sheet = signal<PanelKind | null>(null);
@@ -299,18 +299,28 @@ export class ShellMenus {
    * a double click is ignored: the next star slides under the pointer and would lose its favourite too.
    */
   protected unstar(spec: SpecRowView, event: MouseEvent): void {
+    this.unstarEntry(spec.id, spec.id, event, () => this.data.toggleFavorite(spec.slug ?? spec.id));
+  }
+
+  /** Spec 064 (T54, ISC-498): an idea row's star, as `unstar`; its star's key is `idea:<slug>`, its name the title. */
+  protected unstarIdea(idea: IdeaFavoriteView, event: MouseEvent): void {
+    this.unstarEntry(`idea:${idea.slug}`, idea.title, event, () => this.data.toggleIdeaFavorite(idea.slug));
+  }
+
+  /** Unsets the favourite whose star carries `data-star="<key>"`, over the spec rows and then the idea rows. */
+  private unstarEntry(key: string, name: string, event: MouseEvent, toggle: () => Promise<boolean>): void {
     if (event.detail > 1) return;
     const nav = this.specNav()?.nativeElement;
     if (this.compact() && !this.sheetHeight() && nav) this.sheetHeight.set(nav.getBoundingClientRect().height);
-    const rows = this.data.favoriteRows();
-    const index = rows.findIndex((row) => row.id === spec.id);
+    const keys = [...this.data.favoriteRows().map((row) => row.id), ...this.data.favoriteIdeas().map((idea) => `idea:${idea.slug}`)];
+    const index = keys.indexOf(key);
     // `at()` because index 0 must not wrap to the last row: the row above the first is "all specs".
-    const next = rows.at(index + 1) ?? (index > 0 ? rows.at(index - 1) : undefined);
-    void this.data.toggleFavorite(spec.slug ?? spec.id);
-    this.announcer()?.announce(this.transloco.translate('favorites.removed', { id: spec.id }));
+    const next = keys.at(index + 1) ?? (index > 0 ? keys.at(index - 1) : undefined);
+    void toggle();
+    this.announcer()?.announce(this.transloco.translate('favorites.removed', { id: name }));
     afterNextRender(
       () => {
-        const target = next ? nav?.querySelector(`[data-star="${next.id}"]`) : nav?.querySelector('.picker-all');
+        const target = next ? nav?.querySelector(`[data-star="${next}"]`) : nav?.querySelector('.picker-all');
         if (target instanceof HTMLElement) target.focus();
       },
       { injector: this.injector },

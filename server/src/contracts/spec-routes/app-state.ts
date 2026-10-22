@@ -38,9 +38,13 @@ export interface BoardQuery {
 
 export const BOARD_QUERY_MAX = 2048;
 
-/** A workspace's favourite specs (spec 052, T1, ISC-296): their folder names, `NNN-slug`, sorted, each once. */
+/**
+ * A workspace's favourites: the specs (spec 052, T1, ISC-296), their folder names, `NNN-slug`, and the ideas (spec
+ * 064, T50, ISC-494), the story slugs of `specs/ideas/<slug>.md`; each list sorted, each entry once.
+ */
 export interface Favorites {
   readonly specs: readonly string[];
+  readonly ideas: readonly string[];
 }
 
 /** The actor names route's 200 body (`GET` and `PUT`) and its `PUT` body: the whole mapping. */
@@ -83,9 +87,22 @@ export function isFavoriteSpec(spec: unknown): spec is string {
   return typeof spec === 'string' && SPEC_FOLDER.test(spec) && !spec.includes('/');
 }
 
-/** The `favorites` and `favorite` 200 body: `{specs}` and nothing else, each a favourite spec id. */
+/** A story slug as `specs/ideas/<slug>.md` names it: lower-case kebab case, as core writes and reads idea slugs. */
+const IDEA_SLUG = /^[a-z0-9][a-z0-9-]*$/u;
+
+/**
+ * A story slug an idea favourite may name (spec 064, T50): lower-case kebab case, so never a `/` or a `.`. Whether the
+ * workspace has the story is not checked, as for the spec favourites.
+ */
+export function isFavoriteIdea(slug: unknown): slug is string {
+  return typeof slug === 'string' && IDEA_SLUG.test(slug);
+}
+
+/** The `favorites`, `favorite` and `ideaFavorite` 200 body: `{specs, ideas}` and nothing else. */
 export function isFavorites(body: unknown): body is Favorites {
-  if (!isRecord(body) || !hasOnlyKeys(body, ['specs'])) return false;
-  const { specs } = body;
-  return Array.isArray(specs) && specs.every((spec) => isFavoriteSpec(spec));
+  if (!isRecord(body) || !hasOnlyKeys(body, ['specs', 'ideas'])) return false;
+  const { specs, ideas } = body;
+  return (
+    Array.isArray(specs) && specs.every((spec) => isFavoriteSpec(spec)) && Array.isArray(ideas) && ideas.every((slug) => isFavoriteIdea(slug))
+  );
 }

@@ -295,7 +295,7 @@ test.describe('keyboard: Enter opens the selected spec', () => {
 /**
  * ISC-61.2 (spec 001, T67): `?` opens the shortcut sheet on the workspace dashboard too, and it lists the dashboard
  * context beside the spec context, both from the one `SHORTCUTS` table. The dashboard keys work where the sheet says:
- * `g s` / `g n` / `g w` land on their section headings, `1`–`3` filter the phase while the list has focus, `g a`
+ * `g s` / `g n` / `g w` land on their section headings, `1`–`5` filter the stage (spec 064: all, build, review, tasks, plan) while the list has focus, `g a`
  * leaves for all workspaces and `l` / `h` move between their columns. `bun run e2e -- keyboard -g help`.
  */
 test.describe('keyboard help on the workspace dashboard', () => {
@@ -307,9 +307,11 @@ test.describe('keyboard help on the workspace dashboard', () => {
     'move',
     'column-prev',
     'column-next',
-    'phase-all',
-    'phase-building',
-    'phase-scoping',
+    'stage-all',
+    'stage-build',
+    'stage-review',
+    'stage-tasks',
+    'stage-plan',
     'go-specs',
     'go-next-up',
     'go-warnings',
@@ -361,11 +363,23 @@ test.describe('keyboard help on the workspace dashboard', () => {
     await expect(page).toHaveURL(/\/w\/harbor\/specs$/);
     await expect(page.locator('#specs')).toBeFocused();
 
+    // spec 064: 2–5 filter build, review, tasks and plan as `?stage=`, 1 clears it; no key writes the old `?phase=`.
+    for (const [key, stage] of [
+      ['2', 'build'],
+      ['3', 'review'],
+      ['4', 'tasks'],
+      ['5', 'plan'],
+    ] as const) {
+      await page.locator('[data-panel="specs"] [data-spec-row]').first().focus();
+      await page.keyboard.press(key);
+      await expect(page).toHaveURL(new RegExp(`/w/harbor/specs\\?(.*&)?stage=${stage}(&|$)`));
+    }
+    // harbor has no spec in plan, so that list is empty; back to the tasks list for a row to hold the focus.
+    await page.goBack();
+    await expect(page).toHaveURL(/[?&]stage=tasks(&|$)/);
     await page.locator('[data-panel="specs"] [data-spec-row]').first().focus();
-    await page.keyboard.press('2');
-    await expect(page).toHaveURL(/\/w\/harbor\/specs\?(.*&)?phase=building(&|$)/);
     await page.keyboard.press('1');
-    await expect(page).not.toHaveURL(/[?&]phase=/);
+    await expect(page).not.toHaveURL(/[?&](stage|phase)=/);
 
     await page.keyboard.press('g');
     await page.keyboard.press('a');

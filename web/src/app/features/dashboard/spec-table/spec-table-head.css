@@ -1,0 +1,50 @@
+@import './_row-grid.css';
+
+/*
+ * The column header row of the Specs list (spec 064, T68): the rows' grid from `_row-grid.css`, 32 px high, the
+ * headings 11/16 uppercase muted like the eyebrows. A heading may run on over the empty columns behind it (the agent
+ * dot, the stage track's 0 px, the star), so "Waits", "Priority" and "Progress" keep their words where `mark`, `prio`
+ * and `meter` narrow below 880 px; its left edge stays its column's. A heading still too long ends in an ellipsis.
+ */
+:host {
+  block-size: 32px;
+  min-block-size: 0;
+  padding-block: 0;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.col {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col[data-cell='mark'] {
+  grid-column: mark-start / agent-end;
+}
+
+.col[data-cell='prio'] {
+  grid-column: prio-start / track-end;
+}
+
+.col[data-cell='meter'] {
+  grid-column: meter-start / star-end;
+}
+
+/* Below 640 px only the compact form's first line: ID and Title (beside the empty `more` and `star`). */
+@container specs (width < 640px) {
+  :host {
+    grid-template-areas: 'id title title title title more star';
+    grid-template-rows: auto;
+  }
+
+  .col:is([data-cell='mark'], [data-cell='prio'], [data-cell='phase'], [data-cell='meter']) {
+    display: none;
+  }
+}

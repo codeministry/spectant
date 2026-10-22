@@ -188,8 +188,8 @@ export class KeyboardService {
         return false;
       case 'step-column':
         return this.stepColumn(action.delta);
-      case 'phase-filter':
-        return this.phaseFilter(action.phase);
+      case 'stage-filter':
+        return this.stageFilter(action.stage);
       default:
         return this.runInSpec(action);
     }
@@ -258,12 +258,12 @@ export class KeyboardService {
     return stepColumn(this.document, delta);
   }
 
-  /** `1`–`3` while the Specs panel has focus: its `phase` query param (All removes it). */
-  private phaseFilter(phase: string | null): boolean {
+  /** `1`–`5` while the Specs panel has focus: its `stage` query param (All removes it; spec 064, T62, ISC-503). */
+  private stageFilter(stage: string | null): boolean {
     const ws = this.workspace();
     if (ws === null || !specsPanelHasFocus(this.document)) return false;
-    // Spec 058 (ISC-395): the phase filter belongs to the spec list, on the Specs page.
-    void this.router.navigate(workspaceLink(ws, 'specs'), { queryParams: { phase }, queryParamsHandling: 'merge' });
+    // Spec 058 (ISC-395): the stage filter belongs to the spec list, on the Specs page.
+    void this.router.navigate(workspaceLink(ws, 'specs'), { queryParams: { stage }, queryParamsHandling: 'merge' });
     return true;
   }
 

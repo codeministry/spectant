@@ -38,9 +38,10 @@ class FakeResizeObserver {
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const HARBOR = {
   specs: [
-    { id: '004', title: 'Retention policies', type: 'feature', stage: 'code-review' },
-    { id: '002', title: 'Web console', type: 'feature', stage: 'build' },
-    { id: '003', title: 'Config loader', type: 'refactor', stage: 'tasks' },
+    // Each row carries its coarse phase beside its stage, as core's rows do: the header shows the stage (spec 064, ISC-501).
+    { id: '004', title: 'Retention policies', type: 'feature', stage: 'code-review', phase: 'climbing' },
+    { id: '002', title: 'Web console', type: 'feature', stage: 'build', phase: 'building' },
+    { id: '003', title: 'Config loader', type: 'refactor', stage: 'tasks', phase: 'scoping' },
   ],
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
@@ -53,7 +54,18 @@ const ALL_FAVORITES = ['002', '003', '004'];
 
 type FakeApi = Pick<
   ApiClient,
-  'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'library' | 'favorites' | 'putFavorite' | 'deleteFavorite'
+  | 'workspaces'
+  | 'dashboard'
+  | 'planning'
+  | 'spec'
+  | 'timeline'
+  | 'claims'
+  | 'library'
+  | 'favorites'
+  | 'putFavorite'
+  | 'deleteFavorite'
+  | 'putIdeaFavorite'
+  | 'deleteIdeaFavorite'
 >;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
@@ -69,9 +81,11 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
     library: () => Promise.resolve({ kind: 'not-found', served: false }),
-    favorites: () => Promise.resolve(ok({ specs: ALL_FAVORITES })),
+    favorites: () => Promise.resolve(ok({ specs: ALL_FAVORITES, ideas: [] })),
     putFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
     deleteFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
+    putIdeaFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
+    deleteIdeaFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
     ...overrides,
   };
 }
@@ -787,6 +801,8 @@ describe('ShellComponent', () => {
         'Config loader',
       ]);
       expect(texts(list?.querySelectorAll('[data-spec] ui-chip') as NodeListOf<Element>)).toEqual(['Code review', 'Build', 'Tasks']);
+      // Spec 064 (ISC-501): the chip names the stage in its own tone, never the phase.
+      expect([...(list?.querySelectorAll('[data-spec] ui-chip') ?? [])].map((chip) => chip.getAttribute('data-tone'))).toEqual(['warning', 'primary', 'secondary']);
       expect(rows.map((row) => row.getAttribute('aria-current'))).toEqual([null, 'true', null]);
       expect(document.activeElement).toBe(rows[1]);
 
@@ -948,14 +964,14 @@ describe('ShellComponent', () => {
         let stored = [...initial];
         const deleteFavorite = vi.fn((_ws: string, spec: string) => {
           stored = stored.filter((id) => id !== spec);
-          return Promise.resolve({ kind: 'ok' as const, body: { specs: [...stored] } });
+          return Promise.resolve({ kind: 'ok' as const, body: { specs: [...stored], ideas: [] } });
         });
         // The rows carry their folders here: a favourite is stored and unset by folder name, never by the bare id.
         const slugged = { ...HARBOR, specs: HARBOR.specs.map((spec) => ({ ...spec, slug: SLUGS[spec.id] })) };
         const api = fakeApi({
           ...TWO,
           dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(slugged) : { kind: 'not-found', served: true }),
-          favorites: () => Promise.resolve(ok({ specs: [...stored] })),
+          favorites: () => Promise.resolve(ok({ specs: [...stored], ideas: [] })),
           deleteFavorite,
         });
         return { api, deleteFavorite };
@@ -1065,6 +1081,86 @@ describe('ShellComponent', () => {
         click(nav.querySelector('li:has(> a[data-spec="004"]) > button[ui-star-toggle]') as HTMLElement);
         await harness.fixture.whenStable();
         expect(nav.style.minBlockSize).not.toBe('');
+      });
+
+      describe('with idea favourites (spec 064, T54, ISC-498)', () => {
+        const IDEAS = [
+          { slug: 'buoy-map', title: 'Buoy map' },
+          { slug: 'offline-sync', title: 'Offline sync' },
+          { slug: 'tide-alerts', title: 'Tide alerts' },
+        ];
+        /** Spec and idea favourites as stored; DELETE on an idea answers the remaining set, as the server does. */
+        const withIdeas = (specs: readonly string[], ideas: readonly string[]) => {
+          let stored = [...ideas];
+          const deleteIdeaFavorite = vi.fn((_ws: string, slug: string) => {
+            stored = stored.filter((entry) => entry !== slug);
+            return Promise.resolve({ kind: 'ok' as const, body: { specs: [...specs], ideas: [...stored] } });
+          });
+          const slugged = { ...HARBOR, specs: HARBOR.specs.map((spec) => ({ ...spec, slug: SLUGS[spec.id] })), ideas: { list: IDEAS } };
+          const api = fakeApi({
+            ...TWO,
+            dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(slugged) : { kind: 'not-found', served: true }),
+            favorites: () => Promise.resolve(ok({ specs: [...specs], ideas: [...stored] })),
+            deleteIdeaFavorite,
+          });
+          return { api, deleteIdeaFavorite };
+        };
+        const ideaLinks = (nav: HTMLElement) => [...nav.querySelectorAll<HTMLAnchorElement>('a[data-idea]')];
+        const ideaStar = (nav: HTMLElement, slug: string) =>
+          nav.querySelector<HTMLButtonElement>(`li:has(> a[data-idea="${slug}"]) > button[ui-star-toggle]`);
+
+        it('lists the idea favourites under the spec favourites, behind a hairline, each with icon, title, link and star', async () => {
+          // A stored slug the dashboard lists no story for (`gone`) is no row.
+          const { api } = withIdeas(['003-config-loader'], ['tide-alerts', 'offline-sync', 'gone']);
+          const { nav } = await openSelect(api, '/w/harbor/s/002', 1440, WIDTHS[0][2]);
+          expect(ids(nav)).toEqual(['003']);
+          const links = ideaLinks(nav);
+          expect(links.map((link) => link.getAttribute('data-idea'))).toEqual(['offline-sync', 'tide-alerts']);
+          expect(links.map((link) => link.getAttribute('href'))).toEqual(['/w/harbor/ideas/offline-sync', '/w/harbor/ideas/tide-alerts']);
+          expect(links.map((link) => link.querySelector('ui-icon')?.getAttribute('data-icon'))).toEqual(['lightbulb', 'lightbulb']);
+          expect(links.map((link) => link.querySelector('.entry-name')?.textContent.trim())).toEqual(['Offline sync', 'Tide alerts']);
+          expect(ideaStar(nav, 'offline-sync')?.getAttribute('aria-pressed')).toBe('true');
+          expect(ideaStar(nav, 'offline-sync')?.getAttribute('aria-label')).toBe('Favorite: idea Offline sync');
+          // Specs first, then the hairline, then the ideas.
+          const spec = nav.querySelector('li:has(> a[data-spec="003"])') as HTMLElement;
+          const sep = nav.querySelector('li[data-favorites-sep]') as HTMLElement;
+          expect(sep).not.toBeNull();
+          expect(spec.compareDocumentPosition(sep) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+          expect(sep.compareDocumentPosition(links[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+          expect(nav.querySelector('.picker-empty')).toBeNull();
+        });
+
+        it('unstars an idea without navigating and keeps the select open (ISC-301 for ideas)', async () => {
+          const { api, deleteIdeaFavorite } = withIdeas(['003-config-loader'], ['offline-sync', 'tide-alerts']);
+          const { harness, picker, nav } = await openSelect(api, '/w/harbor/s/002/claims', 1440, WIDTHS[0][2]);
+          const router = TestBed.inject(Router);
+          click(ideaStar(nav, 'offline-sync') as HTMLElement, { detail: 1 });
+          await harness.fixture.whenStable();
+          expect(deleteIdeaFavorite).toHaveBeenCalledWith('harbor', 'offline-sync');
+          expect(router.url).toBe('/w/harbor/s/002/claims');
+          expect(picker.getAttribute('aria-expanded')).toBe('true');
+          expect(ideaLinks(nav).map((link) => link.getAttribute('data-idea'))).toEqual(['tide-alerts']);
+          expect(document.activeElement).toBe(ideaStar(nav, 'tide-alerts'));
+          expect(nav.querySelector('ui-live-region')?.textContent.trim()).toBe('Offline sync removed from favorites');
+        });
+
+        it('shows only the ideas, no hairline and no empty state, with idea favourites alone', async () => {
+          const { api } = withIdeas([], ['tide-alerts']);
+          const { nav } = await openSelect(api, '/w/harbor/s/002', COMPACT, WIDTHS[1][2]);
+          expect(ids(nav)).toEqual([]);
+          expect(ideaLinks(nav).map((link) => link.getAttribute('data-idea'))).toEqual(['tide-alerts']);
+          expect(nav.querySelector('li[data-favorites-sep]')).toBeNull();
+          expect(nav.querySelector('.picker-empty')).toBeNull();
+          expect(document.activeElement?.getAttribute('data-idea')).toBe('tide-alerts');
+        });
+
+        it('shows the empty state only without spec and idea favourites, stale idea slugs included', async () => {
+          const { api } = withIdeas([], ['gone']);
+          const { nav } = await openSelect(api, '/w/harbor/s/002', 1440, WIDTHS[0][2]);
+          expect(ideaLinks(nav)).toEqual([]);
+          expect(nav.querySelector('p.picker-empty')).not.toBeNull();
+          expect(document.activeElement).toBe(nav.querySelector('.picker-all'));
+        });
       });
     });
   });

@@ -136,7 +136,7 @@ export function specsSource(): PaletteSource {
           id: `${ws.slug}/${spec.id}`,
           label: spec.title,
           meta: ws.name,
-          ...(spec.phase === null ? {} : { phase: spec.phase, phaseLabel: t(`phases.${spec.phase}`) }),
+          ...(spec.stage === null ? {} : { stage: spec.stage, stageLabel: t(`stages.${spec.stage}`) }),
           chip: spec.id,
           link: specLink(ws.slug, spec.id),
           keywords: [spec.id, spec.slug, ws.name],

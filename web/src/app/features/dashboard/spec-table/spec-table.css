@@ -8,9 +8,11 @@
   min-inline-size: 0;
 }
 
+/* `clip`, not `hidden`: the card cuts its rounded edge without becoming the scroll container of the sticky column
+   header (spec 064, T68), which then sticks to the page's scroll (the library card's fix). */
 .panel {
   display: block;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .t-head {
@@ -126,6 +128,25 @@
 }
 
 /*
+ * Spec 064 (T68, ISC-509): the column header's box, a `specs` container as wide as the row lists, so its row takes
+ * the rows' tier. Sticky under the 64 px app header row (the tab bar's and the help nav's offset) on the card's
+ * background with a hairline below, which stands in for the first list's top hairline; inside `.row-lists` it leaves
+ * with the list's end.
+ */
+.cols {
+  container: specs / inline-size;
+  position: sticky;
+  z-index: 3;
+  inset-block-start: 64px;
+  border-block-end: 1px solid var(--line);
+  background: var(--color-base-100);
+}
+
+.cols + .rows {
+  border-block-start: 0;
+}
+
+/*
  * "Show all N" (spec 021, T25): the fold insets its toggle 16 px like the head; the folded rows step back out to the
  * card edges and continue the first list's hairlines (the next-up fold's pattern).
  */
@@ -135,9 +156,7 @@
   border-block-end: 1px solid var(--line);
 }
 
-/* Spec 064 (T41): the idea group's heading reads like the fold's label, its count muted like the fold's suffix. */
-.show-all-label,
-.ideas-head {
+.show-all-label {
   color: var(--disp-ink);
   font-size: 13px;
   font-weight: 600;
@@ -145,36 +164,8 @@
 }
 
 /* Spec 050 (T6, ISC-288): the fold's "· K archived" suffix, muted behind the name. */
-.show-all-archived,
-.ideas-count {
+.show-all-archived {
   color: var(--muted-ink);
-}
-
-/* Spec 064 (T41, ISC-479): the idea group, its heading inset like the head, its rows on the list's hairlines. */
-.ideas-head {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  margin: 0;
-  padding: 16px 16px 8px;
-}
-
-.ideas {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ideas > li {
-  border-block-start: 1px solid var(--line);
-  transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
-}
-
-/* An idea row's hover tints its `li` like a spec row's (stated before the spec rule: lower specificity first). */
-@media (hover: hover) {
-  .ideas > li:has(> app-idea-row:hover) {
-    background: color-mix(in oklab, var(--color-base-300) 55%, transparent);
-  }
 }
 
 .rows-rest {
@@ -228,6 +219,8 @@
 }
 
 @media (hover: hover) {
+  /* Spec 064 (T49): an idea row (its own link, not `.row-link`) tints its `li` the same way. */
+  .rows > li:has(> app-idea-row:hover),
   .rows > li:has(.row-link:hover) {
     background: color-mix(in oklab, var(--color-base-300) 55%, transparent);
   }
@@ -330,19 +323,18 @@
   }
 }
 
-/* "more…" / "less" under a row whose description is cut (ISC-111): outside the row link, aligned with the title
-   column (16 px padding + 48 px id + 16 px gap), styled like the Brief's toggle. */
+/* Spec 064 (T46, ISC-489): the "…" toggle of a row whose title or description is cut (ISC-111), outside the row link,
+   projected into the row's own 24 px `more` column; visibly only "…", its name the long one. */
 .row-more {
-  display: block;
+  display: inline-grid;
   position: relative;
-  z-index: 1;
+  place-items: center;
+  min-inline-size: 24px;
   min-block-size: 24px;
-  margin: -8px 16px 8px 80px;
-  padding: 2px 0;
+  padding: 0;
   border: 0;
   background: none;
-  color: var(--ques-text);
-  font-family: var(--font-mono);
+  color: var(--disp-ink);
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
@@ -355,34 +347,12 @@
   }
 }
 
+/* A coarse pointer gets a 44 × 44 hit area without growing the row's line. */
 @media (pointer: coarse) {
-  .row-more {
-    min-block-size: 44px;
-  }
-}
-
-/* Spec 024 (principal 2026-10-13 "Hybrid", ISC-111 refined): the row's description is one muted line with "more…" at
-   its end. The button stays outside the row link and is anchored to the description cell's end edge (`--desc-<id>`,
-   set by the row); the row reserves the room at the line's end. Without anchor positioning it keeps its own line. */
-@supports (position-anchor: --a) {
-  .rows > li {
-    position: relative;
-  }
-
-  .row-more {
+  .row-more::before {
     position: absolute;
-    right: anchor(right);
-    bottom: anchor(bottom);
-    display: inline-flex;
-    align-items: flex-end;
-    min-block-size: 20px;
-    margin: 0;
-    padding: 0;
-  }
-
-  @media (pointer: coarse) {
-    .row-more {
-      min-block-size: 44px;
-    }
+    inset: -10px;
+    content: '';
   }
 }
+

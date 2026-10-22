@@ -39,7 +39,7 @@ function setUp(
   planning: (ws: string) => Promise<ApiResult<PlanningBody>>,
   initialWs: string | null,
   extra: Partial<
-    Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech' | 'dashboard' | 'favorites' | 'putFavorite' | 'deleteFavorite', unknown>
+    Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech' | 'dashboard' | 'favorites' | 'putFavorite' | 'deleteFavorite' | 'putIdeaFavorite' | 'deleteIdeaFavorite', unknown>
   > = {},
 ) {
   const ws = signal<string | null>(initialWs);
@@ -57,7 +57,7 @@ function setUp(
     },
     actors: () => Promise.resolve(ok([])),
     boardQuery: () => Promise.resolve(ok({ query: '' })),
-    favorites: () => Promise.resolve(ok({ specs: [] })),
+    favorites: () => Promise.resolve(ok({ specs: [], ideas: [] })),
     tech: (slug: string) => {
       techCalls.push(slug);
       return Promise.resolve(ok({ pages: null, specs: [] }));
@@ -246,7 +246,7 @@ describe('ShellData spec 008 (T112, ISC-129.1)', () => {
 // Spec 052, T10 and T11 · ISC-300, ISC-302: one favourite set per workspace, shared by every star, switched
 // optimistically, and the rows the header's spec select lists.
 describe('ShellData favourites (spec 052, T10, T11)', () => {
-  type Favorites = { readonly specs: readonly string[] };
+  type Favorites = { readonly specs: readonly string[]; readonly ideas: readonly string[] };
   type Answer = { readonly kind: 'ok'; readonly body: Favorites } | { readonly kind: 'error'; readonly status: number; readonly error: string | null };
   const row = (id: string, slug: string) => ({ id, slug, title: slug, stage: 'build' });
   const dashboard = () =>
@@ -296,7 +296,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
     const put = deferred();
     const puts: Array<[string, string]> = [];
     const { data, toasts } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
-      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'], ideas: [] })),
       putFavorite: (slug: string, spec: string) => {
         puts.push([slug, spec]);
         return put.promise;
@@ -308,7 +308,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
     expect([...data.favoriteIds()]).toEqual(['002-web-console', '004-retention-policies']);
     expect(puts).toEqual([['harbor', '004-retention-policies']]);
 
-    put.resolve({ kind: 'ok', body: { specs: ['004-retention-policies', '007-tide-tables'] } });
+    put.resolve({ kind: 'ok', body: { specs: ['004-retention-policies', '007-tide-tables'], ideas: [] } });
     expect(await toggled).toBe(true);
     TestBed.tick();
     expect([...data.favoriteIds()]).toEqual(['004-retention-policies', '007-tide-tables']);
@@ -318,10 +318,10 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('unstars at once and sends the DELETE', async () => {
     const deletes: Array<[string, string]> = [];
     const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
-      favorites: () => Promise.resolve(ok({ specs: ['002-web-console', '004-retention-policies'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console', '004-retention-policies'], ideas: [] })),
       deleteFavorite: (slug: string, spec: string) => {
         deletes.push([slug, spec]);
-        return Promise.resolve({ kind: 'ok', body: { specs: ['004-retention-policies'] } });
+        return Promise.resolve({ kind: 'ok', body: { specs: ['004-retention-policies'], ideas: [] } });
       },
     });
     await settle();
@@ -335,7 +335,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('reverts to the set before the click and toasts favorites.failed on a 500', async () => {
     const put = deferred();
     const { data, toasts } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
-      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'], ideas: [] })),
       putFavorite: () => put.promise,
     });
     await settle();
@@ -352,9 +352,9 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('reverts an unstar the server refuses, keeping a star another click set meanwhile', async () => {
     const removal = deferred();
     const { data, toasts } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
-      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'], ideas: [] })),
       deleteFavorite: () => removal.promise,
-      putFavorite: () => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console', '007-tide-tables'] } }),
+      putFavorite: () => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console', '007-tide-tables'], ideas: [] } }),
     });
     await settle();
     const unstar = data.toggleFavorite('002-web-console');
@@ -372,7 +372,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
     let writes = 0;
     const write = () => {
       writes += 1;
-      return Promise.resolve({ kind: 'ok', body: { specs: [] } });
+      return Promise.resolve({ kind: 'ok', body: { specs: [], ideas: [] } });
     };
     const { data, ws } = setUp(() => Promise.resolve(ok(model([]))), null, { putFavorite: write, deleteFavorite: write });
     await settle();
@@ -387,14 +387,14 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('drops an answer that lands after the workspace changed', async () => {
     const put = deferred();
     const { data, ws } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
-      favorites: (slug: string) => Promise.resolve(ok({ specs: slug === 'lantern' ? ['001-lamp'] : [] })),
+      favorites: (slug: string) => Promise.resolve(ok({ specs: slug === 'lantern' ? ['001-lamp'] : [], ideas: [] })),
       putFavorite: () => put.promise,
     });
     await settle();
     const toggled = data.toggleFavorite('004-retention-policies');
     ws.set('lantern');
     await settle();
-    put.resolve({ kind: 'ok', body: { specs: ['004-retention-policies'] } });
+    put.resolve({ kind: 'ok', body: { specs: ['004-retention-policies'], ideas: [] } });
     expect(await toggled).toBe(true);
     TestBed.tick();
     expect([...data.favoriteIds()]).toEqual(['001-lamp']);
@@ -403,7 +403,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('lists the favourite rows in the dashboard\'s row order', async () => {
     const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
       dashboard,
-      favorites: () => Promise.resolve(ok({ specs: ['002-web-console', '007-tide-tables'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console', '007-tide-tables'], ideas: [] })),
     });
     await settle();
     expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['007', '002']);
@@ -412,7 +412,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('drops archived and unknown ids, so stale ids alone leave the select empty (ISC-302)', async () => {
     const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
       dashboard,
-      favorites: () => Promise.resolve(ok({ specs: ['001-bootstrap', '009-renamed', '004-retention-policies'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['001-bootstrap', '009-renamed', '004-retention-policies'], ideas: [] })),
     });
     await settle();
     expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['004']);
@@ -420,7 +420,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
 
     const stale = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
       dashboard,
-      favorites: () => Promise.resolve(ok({ specs: ['001-bootstrap', '009-renamed'] })),
+      favorites: () => Promise.resolve(ok({ specs: ['001-bootstrap', '009-renamed'], ideas: [] })),
     });
     await settle();
     expect(stale.data.favoriteIds().size).toBe(2);
@@ -430,7 +430,7 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
   it('shows a new star in favoriteRows without a reload', async () => {
     const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
       dashboard,
-      putFavorite: () => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console'] } }),
+      putFavorite: () => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console'], ideas: [] } }),
     });
     await settle();
     expect(data.favoriteRows()).toEqual([]);
@@ -438,5 +438,47 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
     expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['002']);
     await toggled;
     expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['002']);
+  });
+});
+
+describe('ShellData idea favourites (spec 064, T53, ISC-497)', () => {
+  it('stars an idea at once through PUT, unstars it through DELETE and keeps the spec set', async () => {
+    const writes: string[] = [];
+    const answer = (ideas: string[]) => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console'], ideas } });
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'], ideas: [] })),
+      putIdeaFavorite: (ws: string, slug: string) => (writes.push(`PUT ${ws} ${slug}`), answer([slug])),
+      deleteIdeaFavorite: (ws: string, slug: string) => (writes.push(`DELETE ${ws} ${slug}`), answer([])),
+    });
+    await settle();
+    const starred = data.toggleIdeaFavorite('offline-sync');
+    expect(data.isIdeaFavorite('offline-sync')).toBe(true);
+    expect(await starred).toBe(true);
+    expect([...data.favoriteIdeaSlugs()]).toEqual(['offline-sync']);
+    expect(await data.toggleIdeaFavorite('offline-sync')).toBe(true);
+    expect(data.isIdeaFavorite('offline-sync')).toBe(false);
+    expect(writes).toEqual(['PUT harbor offline-sync', 'DELETE harbor offline-sync']);
+    expect([...data.favoriteIds()]).toEqual(['002-web-console']);
+  });
+
+  it('sends nothing for a slug that is no story slug', async () => {
+    const writes: string[] = [];
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { putIdeaFavorite: () => writes.push('PUT') });
+    await settle();
+    expect(await data.toggleIdeaFavorite('../x')).toBe(false);
+    expect(writes).toEqual([]);
+  });
+
+  it('lists the favourite ideas with their dashboard titles, skipping slugs without a story', async () => {
+    const list = [{ slug: 'offline-sync', title: 'Offline sync' }, { slug: 'tide-alerts' }, { title: 'No slug' }];
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      dashboard: () => Promise.resolve(ok({ specs: [], archive: [], ideas: { list } })),
+      favorites: () => Promise.resolve(ok({ specs: [], ideas: ['gone', 'offline-sync', 'tide-alerts'] })),
+    });
+    await settle();
+    expect(data.favoriteIdeas()).toEqual([
+      { slug: 'offline-sync', title: 'Offline sync' },
+      { slug: 'tide-alerts', title: 'tide-alerts' },
+    ]);
   });
 });

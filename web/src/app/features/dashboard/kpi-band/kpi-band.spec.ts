@@ -4,6 +4,8 @@ import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS, type Lang } from '../../../../i18n/catalogues';
 import { ShellState } from '../../../layout/shell/shell-state.service';
+import { STAGE_ORDER, toneOfStage } from '../../../shared/ui/stage-tone';
+import { toneMark } from '../../../shared/ui/tone';
 import { type KpiBandModel, KpiBand } from './kpi-band';
 
 // The fields the band read before the references existed, from the golden snapshot of the harbor fixture.
@@ -12,7 +14,9 @@ const BARE: KpiBandModel = { kpis: { specs, master, claims, takeable, warnings, 
 // The references core derives for harbor (core/tests/dashboard.test.ts, `kpi-band`), set here so the band is probed
 // against a model with warnings, fog and an archived spec whatever the golden carries yet.
 const REFS = { stageGroups: { scoping: 3, building: 4, complete: 1 }, openClaims: 24, specsWithWarnings: 5, specsWithFog: 1, masterFog: 2 };
-const HARBOR: KpiBandModel = { kpis: { ...harbor.kpis, ...REFS } };
+const HARBOR: KpiBandModel = { kpis: { ...harbor.kpis, ...REFS }, stageCounts: harbor.stageCounts };
+// The stages harbor holds specs in (count > 0), in workflow order: the Specs tile's legend lists exactly these.
+const HARBOR_STAGES = STAGE_ORDER.filter((stage) => (harbor.stageCounts as Record<string, number>)[stage] > 0);
 // The expected figures are read from the model, so the specs follow the fixture as it grows.
 const K = { ...harbor.kpis, ...REFS };
 const MASTER = `${String(K.master.closed)}/${String(K.master.total)}`;
@@ -106,17 +110,44 @@ describe('KpiBand', () => {
       expect(squash(host)).not.toContain('Attention');
     });
 
-    it('kpi-band: the Specs tile reads the stage groups the model counts, no split computed in the web', async () => {
+    it('kpi-band: the Specs tile reads the complete count the model groups, no split computed in the web', async () => {
       // Groups that disagree with `specs - building - scoping`: the band must show the model's numbers.
-      const model: KpiBandModel = { kpis: { ...HARBOR.kpis, stageGroups: { scoping: 2, building: 1, complete: 5 } } };
-      const { fixture, tile, text, squash } = await render(model);
-      // The legend stands below wide only (P3 heights); at medium it names the model's counts.
-      TestBed.inject(ShellState).tier.set('medium');
-      await fixture.whenStable();
-      const legend = [...(tile('specs')?.querySelectorAll('.legend .entry') ?? [])].map((entry) => squash(entry));
+      const model: KpiBandModel = { ...HARBOR, kpis: { ...HARBOR.kpis, stageGroups: { scoping: 2, building: 1, complete: 5 } } };
+      const { text } = await render(model);
 
       expect(text('specs', '.figure')?.replace(/ /g, '')).toBe(`5/${String(K.specs)}`);
-      expect(legend).toEqual(['building 1', 'scoping 2', 'complete 5']);
+    });
+
+    for (const lang of LANGS) {
+      it(`kpi-band: the Specs split and its legend name the stages the model counts, never a phase (spec 064, ISC-502, ${lang})`, async () => {
+        // Specs in four stages, out of workflow order and with empty stages between them: the parts are the stages
+        // with a count, in workflow order, each with its word from `stages.*`, its count and its tone.
+        const stageCounts = { done: 5, build: 3, plan: 2, review: 1, tasks: 0, blocked: 0, 'code-review': 0, 'close-pending': 0, close: 0 };
+        const { fixture, tile, squash } = await render({ ...HARBOR, stageCounts });
+        TestBed.inject(TranslocoService).setActiveLang(lang);
+        // The legend stands below wide only (P3 heights); at medium it names the model's counts.
+        TestBed.inject(ShellState).tier.set('medium');
+        await fixture.whenStable();
+        const stages = (CATALOGUES[lang] as unknown as { stages: Record<string, string>; phases: Record<string, string> }).stages;
+        const phases = Object.values((CATALOGUES[lang] as unknown as { phases: Record<string, string> }).phases);
+        const entries = [...(tile('specs')?.querySelectorAll<HTMLElement>('.legend .entry') ?? [])];
+        const segments = [...(tile('specs')?.querySelectorAll<HTMLElement>('ui-meter .seg') ?? [])];
+        const shown = ['plan', 'review', 'build', 'done'] as const;
+
+        expect(entries.map((entry) => squash(entry))).toEqual(shown.map((stage) => `${stages[stage] ?? ''} ${String(stageCounts[stage])}`));
+        expect(entries.map((entry) => entry.style.getPropertyValue('--dot'))).toEqual(shown.map((stage) => toneMark(toneOfStage(stage))));
+        expect(segments.map((seg) => seg.style.flexGrow)).toEqual(shown.map((stage) => String(stageCounts[stage])));
+        for (const entry of entries) for (const word of phases) expect(squash(entry)?.split(' ')[0], word).not.toBe(word);
+      });
+    }
+
+    it('kpi-band: without the model\'s stage counts the split stays empty, never a phase split', async () => {
+      const { fixture, tile } = await render({ kpis: HARBOR.kpis });
+      TestBed.inject(ShellState).tier.set('medium');
+      await fixture.whenStable();
+
+      expect(tile('specs')?.querySelectorAll('.legend .entry').length).toBe(0);
+      expect(tile('specs')?.querySelectorAll('ui-meter .seg').length).toBe(0);
     });
 
     for (const lang of LANGS) {
@@ -246,7 +277,7 @@ describe('KpiBand', () => {
       expect(look()).toEqual({ variant: 'hero', padding: '24px', ring: '112' });
     });
 
-    it('kpi-band heights: the Specs tile drops its phase legend at wide and keeps the labelled split meter', async () => {
+    it('kpi-band heights: the Specs tile drops its stage legend at wide and keeps the labelled split meter', async () => {
       const { fixture, tile } = await render();
       const meter = () => tile('specs')?.querySelector('ui-meter');
 
@@ -255,7 +286,7 @@ describe('KpiBand', () => {
       for (const tier of ['medium', 'compact'] as const) {
         TestBed.inject(ShellState).tier.set(tier);
         await fixture.whenStable();
-        expect(tile('specs')?.querySelectorAll('.legend .entry').length, tier).toBe(3);
+        expect(tile('specs')?.querySelectorAll('.legend .entry').length, tier).toBe(HARBOR_STAGES.length);
       }
     });
 
@@ -333,6 +364,7 @@ describe('KpiBand', () => {
   it('shows a dash for a workspace without a master and keeps the tile calm', async () => {
     const empty: KpiBandModel = {
       kpis: { ...HARBOR.kpis, master: null, masterOpen: null, masterPercent: null, specs: 0, stageGroups: { scoping: 0, building: 0, complete: 0 }, takeable: 0, warnings: 0, fog: 0 },
+      stageCounts: Object.fromEntries(STAGE_ORDER.map((stage) => [stage, 0])),
     };
     const { tile, text, pulse, squash } = await render(empty);
 

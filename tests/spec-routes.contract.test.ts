@@ -57,7 +57,9 @@ import {
   type IdeaPage,
   type Favorites,
   type InvalidBody,
+  type InvalidSlug,
   type InvalidSpec,
+  isFavoriteIdea,
   isFavoriteSpec,
   isFavorites,
   type LibraryDocPage,
@@ -281,9 +283,12 @@ const favoriteErrors: Equal<
   [NotFound | Forbidden | MethodNotAllowed, NotFound | Forbidden | MethodNotAllowed | InvalidSpec]
 > = true;
 const favoriteBodies: Equal<[WorkspaceRouteResponses["favorites"], WorkspaceRouteResponses["favorite"]], [Favorites, Favorites]> = true;
+// The idea favourite (spec 064 T50): the spec favourite's errors with 400 `invalid-slug`, the same whole set.
+const ideaFavoriteErrors: Equal<WorkspaceRouteError<"ideaFavorite">, NotFound | Forbidden | MethodNotAllowed | InvalidSlug> = true;
+const ideaFavoriteBody: Equal<WorkspaceRouteResponses["ideaFavorite"], Favorites> = true;
 const workspaceFamilies: Equal<
   Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>,
-  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "favorites" | "favorite" | "allocate" | "backlog" | "runRelease" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
+  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "favorites" | "favorite" | "ideaFavorite" | "allocate" | "backlog" | "runRelease" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
 > = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
@@ -318,6 +323,7 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
   favorites: (ws) => workspaceRoutes.favorites(ws),
   favorite: (ws) => workspaceRoutes.favorite(ws, "004-retention-policies"),
+  ideaFavorite: (ws) => workspaceRoutes.ideaFavorite(ws, "tide-alerts"),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
   backlog: (ws) => workspaceRoutes.backlog(ws),
   runRelease: (ws) => workspaceRoutes.runRelease(ws, "r-0308-1452"),
@@ -329,8 +335,8 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
 
 describe("workspace routes (spec 003, 008): planning and the story page beside the spec routes", () => {
   test("compile-time pins: PlanningModel and IdeaPage's parts are core's, every route has a 200 type and an error union", () => {
-    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, favoriteErrors, favoriteBodies, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, libraryDocIsDocsPlusCore, searchIsTheContracts, libraryErrors]).toEqual([
-      true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, favoriteErrors, favoriteBodies, ideaFavoriteErrors, ideaFavoriteBody, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, libraryDocIsDocsPlusCore, searchIsTheContracts, libraryErrors]).toEqual([
+      true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
     ]);
   });
 
@@ -447,7 +453,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     const write = SPEC_ROUTE_TABLE.find((entry) => entry.route === "transition")?.statuses;
     for (const entry of WORKSPACE_ROUTE_TABLE) {
       expect(entry.method).toBe(
-        entry.route === "allocate" || entry.route === "backlog" || entry.route === "runRelease" ? "POST" : entry.route === "favorite" ? "PUT" : "GET",
+        entry.route === "allocate" || entry.route === "backlog" || entry.route === "runRelease" ? "POST" : entry.route === "favorite" || entry.route === "ideaFavorite" ? "PUT" : "GET",
       );
       if (entry.method === "GET") expect(entry.request === undefined).toBe(entry.write === undefined);
       // The favourites (spec 052) read the database alone: the read statuses without 409, the set and unset no 304.
@@ -458,7 +464,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
             ? (write ?? []).filter((status) => status !== 423)
             : entry.route === "favorites"
               ? (read ?? []).filter((status) => status !== 409)
-              : entry.route === "favorite"
+              : entry.route === "favorite" || entry.route === "ideaFavorite"
                 ? [200, 400, 403, 404, 405]
                 : entry.write === undefined
                   ? (read ?? [])
@@ -472,6 +478,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["favorites", "GET", `${SPEC_API_ROOT}/:ws/favorites`, null, null, "Favorites"],
       ["favorite", "PUT", `${SPEC_API_ROOT}/:ws/favorites/:spec`, "DELETE", null, "Favorites"],
+      ["ideaFavorite", "PUT", `${SPEC_API_ROOT}/:ws/favorites/idea/:slug`, "DELETE", null, "Favorites"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
       ["backlog", "POST", `${SPEC_API_ROOT}/:ws/backlog`, null, "BacklogRequest", "BacklogWritten"],
       ["runRelease", "POST", `${SPEC_API_ROOT}/:ws/runs/:run/release`, null, "RunReleaseRequest", "RunReleased"],
@@ -740,16 +747,22 @@ describe("spec 008 bodies (T81): the shared shapes of the writes and resources",
     expect(isBoardQuery({ query: null })).toBe(false);
   });
 
-  test("favourites (spec 052): a spec id is a spec folder name, the body is {specs} and nothing else", () => {
+  test("favourites (spec 052, 064): a spec id is a spec folder name, an idea a kebab slug, the body is {specs, ideas} and nothing else", () => {
     expect(isFavoriteSpec("004-retention-policies")).toBe(true);
     for (const spec of ["004", "retention-policies", "04-x", "004-", "004-x/y", "../004-x", "", 4, null]) {
       expect({ spec, ok: isFavoriteSpec(spec) }).toEqual({ spec, ok: false });
     }
-    expect(isFavorites({ specs: [] })).toBe(true);
-    expect(isFavorites({ specs: ["002-web-console", "004-retention-policies"] })).toBe(true);
-    expect(isFavorites({ specs: ["004"] })).toBe(false);
-    expect(isFavorites({ specs: "004-retention-policies" })).toBe(false);
-    expect(isFavorites({ specs: [], ws: "harbor" })).toBe(false);
+    expect(isFavoriteIdea("tide-alerts")).toBe(true);
+    for (const slug of ["Tide", "-lead", "a_b", "a/b", "a.md", "", 4, null]) {
+      expect({ slug, ok: isFavoriteIdea(slug) }).toEqual({ slug, ok: false });
+    }
+    expect(isFavorites({ specs: [], ideas: [] })).toBe(true);
+    expect(isFavorites({ specs: ["002-web-console", "004-retention-policies"], ideas: ["tide-alerts"] })).toBe(true);
+    expect(isFavorites({ specs: [] })).toBe(false);
+    expect(isFavorites({ specs: ["004"], ideas: [] })).toBe(false);
+    expect(isFavorites({ specs: [], ideas: ["Tide"] })).toBe(false);
+    expect(isFavorites({ specs: "004-retention-policies", ideas: [] })).toBe(false);
+    expect(isFavorites({ specs: [], ideas: [], ws: "harbor" })).toBe(false);
     expect(isFavorites({})).toBe(false);
     expect(isFavorites(null)).toBe(false);
   });

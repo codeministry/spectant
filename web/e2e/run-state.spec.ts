@@ -91,10 +91,13 @@ async function boardCard(page: Page, key: string, column: string): Promise<Locat
   return item;
 }
 
-/** Opens `url` and resolves once a state line has rendered (the first read of a page carries one). */
-async function open(page: Page, url: string): Promise<void> {
+/**
+ * Opens `url` and resolves once a state has rendered (the first read of a page carries one): a state line, or on the
+ * spec list, whose idea rows carry their state as a pill (`ready`), that pill.
+ */
+async function open(page: Page, url: string, ready = 'ui-item-state'): Promise<void> {
   await page.goto(url);
-  await page.locator('ui-item-state').first().waitFor({ state: 'attached', timeout: 15_000 });
+  await page.locator(ready).first().waitFor({ state: 'attached', timeout: 15_000 });
 }
 
 /** The five forms of the spec item, one beacon spec each (core/fixtures/beacon.state.golden.json at `STUB_NOW`). */
@@ -153,20 +156,21 @@ test.describe('run-state surfaces', () => {
         for (const { slug, form } of IDEA_FORMS) await expectForm(await boardCard(page, `idea:${slug}`, 'Idea'), form);
         // The aborted run's state word is the warning chip in the head, set off from the line, as on a spec card.
         await expect((await boardCard(page, 'idea:cert-expiry', 'Idea')).locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
-        // beacon lists more specs than the fold shows, so the ideas group would sit behind "Show all"; the phase chip
-        // "ideas" lists it alone.
-        await open(page, `/w/${WS}/specs?phase=idea`);
-        // Spec 064 (ISC-482): the list's idea row carries the state line without its command and actor; the page holds them.
-        const ideaRow = (slug: string): Locator => page.locator(`li[data-ideas-group] app-idea-row[data-idea="${slug}"] ui-item-state`);
+        // beacon lists more specs than the fold shows, so the idea rows would sit behind "Show all"; the stage chip
+        // "Idea" (`?stage=idea`, spec 064) lists them alone.
+        const pill = '[data-idea-state]';
+        await open(page, `/w/${WS}/specs?stage=idea`, `app-spec-table app-idea-row ${pill}`);
+        // Spec 064 (ISC-482, T69 ISC-510): the list's idea row carries its state as a stage-like pill, "Idea · <state>",
+        // in the spec row's stage column, without the command, the actor or the run's details; the idea page holds them.
+        const ideaRow = (slug: string): Locator => page.locator(`app-spec-table app-idea-row[data-idea="${slug}"]`);
         for (const { slug, form } of IDEA_FORMS) {
-          const item = ideaRow(slug);
-          await expect(item).toBeVisible();
-          await expect(item).toHaveAttribute('data-state', form.state);
-          if (form.line !== undefined) await expect(item.locator('[data-item-line]')).toHaveText(form.line);
-          await expect(item.locator('ui-command-chip')).toHaveCount(0);
-          await expect(item.locator('ui-actor-chip')).toHaveCount(0);
+          const row = ideaRow(slug);
+          const state = row.locator(`[data-cell="phase"] ui-chip${pill}`);
+          await expect(state).toBeVisible();
+          await expect(state).toHaveAttribute('data-state', form.state);
+          await expect(state).toHaveText(new RegExp(`^\\s*Idea · ${form.state}\\s*$`, 'iu'));
+          await expect(row.locator('ui-item-state, ui-command-chip, ui-actor-chip, [data-started]')).toHaveCount(0);
         }
-        await expect(ideaRow('cert-expiry').locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
       });
 
       test(`surfaces: the claim row shows each of the five forms with its details (${project})`, async ({ page }) => {

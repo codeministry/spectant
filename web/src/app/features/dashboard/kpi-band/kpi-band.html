@@ -53,14 +53,14 @@
     [denominator]="k.specs"
     [href]="specsHref()"
   >
-    <ui-meter [segments]="phases()" [label]="'kpi.specs' | transloco" />
+    <ui-meter [segments]="stages()" [label]="'kpi.specs' | transloco" />
     <!-- Spans, not a list: the tile's body is phrasing content inside a link. None at wide, where the spec list's
          filter chips carry the same counts; the meter keeps its label. -->
     @if (!wide()) {
       <span class="legend">
-        @for (part of phases(); track part.key) {
+        @for (part of stages(); track part.key) {
           <span class="entry" [style.--dot]="part.mark">
-            {{ 'phases.' + part.phase | transloco }} <b class="count">{{ part.count }}</b>
+            {{ 'stages.' + part.stage | transloco }} <b class="count">{{ part.count }}</b>
           </span>
         }
       </span>

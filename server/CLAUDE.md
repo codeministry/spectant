@@ -21,7 +21,7 @@ A slice is a folder directly under `server/src/` whose `index.ts` is its one pub
 
 - `workspace/`: one registered repository read into the dashboard model, its worktree view, the read sources of its
   repository files and specs, and the workspace list and dashboard routes (`routes.ts`, `family.ts`).
-- `planning/`: the planning tree, the story page, the board's stored query and the favourites as handlers of the
+- `planning/`: the planning tree, the story page, the board's stored query and the favourites (specs and ideas) as handlers of the
   workspace family, and the favourites' scan before each live build (`favorites-scan.ts`).
 - `library/`: the document catalog of a workspace, its loads, the reader, the search and the asset route (spec 017).
 - `spec/`: every route under `/api/workspaces/:ws/specs`, its family and its read handlers, composed with the write
@@ -173,7 +173,7 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Never write into a registered repository beyond the eight write paths above: no other file, no `.git/` object, no index,
   no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
-- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array), the board query (spec 008, `board_query` table from migration 5: the board's last query string per workspace slug) and the favourite specs (spec 052, `spec_favorite` table from migration 6: one row per workspace slug and spec id; they live nowhere else, so losing the data directory loses them), never anything a repository says. Deleting it must lose nothing
+- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array), the board query (spec 008, `board_query` table from migration 5: the board's last query string per workspace slug), the favourite specs (spec 052, `spec_favorite` table from migration 6: one row per workspace slug and spec id) and the favourite ideas (spec 064, `idea_favorite` table from migration 7: one row per workspace slug and story slug; both live nowhere else, so losing the data directory loses them), never anything a repository says. Deleting it must lose nothing
   a re-add cannot rebuild (ISC-7).
 - The API never returns an absolute path. It returns only `pathTail`, the last path segment, because the model reaches
   the browser and screenshots (ISC-3).
@@ -223,7 +223,8 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Before each build the stream runs its `scan` hook (spec 057, ISC-352): `favoritesScan` deletes the `spec_favorite`
   rows of specs neither the main checkout (open, not archived) nor a live spec worktree carries. No GET handler prunes
   (ISC-353). Reason: a favourite of an archived spec must not come back when the spec is restored, and a read must
-  never write.
+  never write. The same scan settles idea favourites (spec 064, ISC-496): a story that is gone moves its
+  favourite to the open spec `NNN-<slug>` of the same slug, or drops it when there is none.
 - A `: ping` comment every `HEARTBEAT_MS` (5 s) keeps the stream under Bun's 10 s idle timeout and re-syncs the
   watchers with the registry and the worktrees.
 - Watchers exist only while a stream is open, and they only read: `tests/readonly.test.ts -t "readonly: live"`

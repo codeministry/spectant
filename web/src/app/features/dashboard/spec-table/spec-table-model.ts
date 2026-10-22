@@ -1,5 +1,7 @@
 import type { Priority, SpecWait } from '../../../../../../core/src/files';
 import { holderOf } from '../../../core/model/working';
+import { STAGE_ORDER } from '../../../shared/ui/stage-tone';
+import { ALL, FOG, stagesOf } from './stage-filter';
 import type { Tone } from '../../../shared/ui/tone';
 import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
 
@@ -7,7 +9,7 @@ import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
  * The Specs panel's view of the dashboard model (T63, ISC-61). Nothing here counts or derives a spec's state: every
  * field is read from the rows `core/src/dashboard.ts` built (the body stays `unknown` in web until core's dashboard
  * types move to a browser-safe module, see `DashboardBody`), and the helpers only filter and order those rows by the
- * query state the URL carries (`?phase=&type=&sort=&takeable=&working=&archived=`, design.md § Routes and state).
+ * query state the URL carries (`?stage=&type=&sort=&takeable=&working=&archived=`, design.md § Routes and state).
  */
 
 /** One active spec as the panel renders it: the fields of `DashboardSpecRow` the row shows. */
@@ -26,7 +28,7 @@ export interface SpecTableRow {
   readonly phase: string | null;
   /** The derived stage (`plan` … `done`). */
   readonly stage: string;
-  /** The row's stage group as core derives it (`stageGroup`): what the phase chips filter by; null when absent. */
+  /** The row's stage group as core derives it (`stageGroup`); null when absent. The stage chips filter by `stage`. */
   readonly stageGroup: StageGroup | null;
   readonly closed: number;
   readonly total: number;
@@ -79,11 +81,12 @@ export type SortKey = (typeof SORT_KEYS)[number];
 export const SORT_MENU: readonly SortKey[] = ['stage', 'id', 'progress'];
 
 /**
- * The panel's query state. `phase` is a stage group, `fog` or `idea` (spec 064, ISC-480: only the ideas); null means
- * all. A `?phase=` value that is none of them (an old frontmatter phase such as `climbing`) parses as all.
+ * The panel's query state. `stage` lists the stages a row may stand in (`STAGE_ORDER`), plus `fog` (open fog) and
+ * `idea` (the ideas, spec 064, ISC-480), in `STAGE_FILTERS` order (spec 064, T62, ISC-503); null means all. The URL
+ * carries it as `?stage=<stage>[,<stage>…]`; an old `?phase=` address is mapped onto it by the router (`stagesOfPhase`).
  */
 export interface ListQuery {
-  readonly phase: string | null;
+  readonly stage: readonly string[] | null;
   /** Spec 064 (T39, ISC-480): the search `?q=`, trimmed; absent when empty. The URL keeps it (the page merges params). */
   readonly q?: string;
   readonly type: string | null;
@@ -98,14 +101,11 @@ export interface ListQuery {
   readonly archived: boolean;
 }
 
-export const DEFAULT_QUERY: ListQuery = { phase: null, type: null, sort: 'stage', takeable: false, working: false, archived: false };
+export const DEFAULT_QUERY: ListQuery = { stage: null, type: null, sort: 'stage', takeable: false, working: false, archived: false };
 
-/** The filter chip key for "every phase", for "has open fog" and for "only the ideas" (spec 064, ISC-480). */
-export const ALL = 'all';
-export const FOG = 'fog';
-export const IDEA = 'idea';
+export { ALL, FOG, IDEA, STAGE_FILTERS, stagesOfPhase } from './stage-filter';
 
-/** The stage groups core derives (`StageGroup` in `core/src/dashboard.ts`), in lifecycle order: the phase chips' keys. */
+/** The stage groups core derives (`StageGroup` in `core/src/dashboard.ts`), in lifecycle order. */
 export const STAGE_GROUPS = ['scoping', 'building', 'complete'] as const;
 export type StageGroup = (typeof STAGE_GROUPS)[number];
 const stageGroupOf = (value: unknown): StageGroup | null => STAGE_GROUPS.find((group) => group === value) ?? null;
@@ -124,13 +124,14 @@ export interface ListOption {
 }
 
 /**
- * The counts the filter chips show, every one a field of the model's `kpis` (spec 021, ISC-255): the panel counts no
- * rows itself, so a chip and the Specs tile read the same number (`stageGroups`).
+ * The counts the filter chips show, every one the model's (spec 021, ISC-255): `kpis` and the active specs per stage
+ * `stageCounts`, the numbers the Specs tile's split shows too (spec 064, ISC-502, ISC-503).
  */
 export interface SpecListCounts {
   /** Every active spec: the `all` chips. */
   readonly specs: number;
-  readonly stageGroups: Readonly<Record<StageGroup, number>>;
+  /** The active specs per stage (`DashboardModel.stageCounts`; counted from the body's rows only when it has none). */
+  readonly stages: Readonly<Partial<Record<string, number>>>;
   /** The active specs with open fog: the fog chip. */
   readonly specsWithFog: number;
   /** The active specs per type present: the type chips. */
@@ -249,11 +250,12 @@ export function archivedTableRow(row: ArchiveRow): SpecTableRow {
 export function readListCounts(body: unknown): SpecListCounts | null {
   const kpis = isLoose(body) ? body['kpis'] : null;
   if (!isLoose(kpis)) return null;
-  const groups = isLoose(kpis['stageGroups']) ? kpis['stageGroups'] : {};
   const types = isLoose(kpis['byType']) ? kpis['byType'] : {};
+  const served = isLoose(body) && isLoose(body['stageCounts']) ? body['stageCounts'] : null;
+  const counted = (stage: string): number => listOf(body, 'specs').filter((row) => row['stage'] === stage).length;
   return {
     specs: count(kpis['specs']),
-    stageGroups: { scoping: count(groups['scoping']), building: count(groups['building']), complete: count(groups['complete']) },
+    stages: Object.fromEntries(STAGE_ORDER.map((stage) => [stage, served === null ? counted(stage) : count(served[stage])])),
     specsWithFog: count(kpis['specsWithFog']),
     byType: Object.fromEntries(Object.entries(types).flatMap(([type, n]) => (typeof n === 'number' && Number.isFinite(n) ? [[type, n]] : []))),
   };
@@ -261,12 +263,11 @@ export function readListCounts(body: unknown): SpecListCounts | null {
 
 /** Reads the query state from anything with `get` (the router's `ParamMap`); unknown values fall back to defaults. */
 export function parseListQuery(params: { get(name: string): string | null }): ListQuery {
-  const phase = params.get('phase');
   const type = params.get('type');
   const sort = params.get('sort');
   const q = params.get('q')?.trim() ?? '';
   return {
-    phase: phase === FOG || phase === IDEA ? phase : stageGroupOf(phase),
+    stage: stagesOf(params.get('stage')),
     ...(q !== '' ? { q } : {}),
     type: type === null || type === '' || type === ALL ? null : type,
     sort: SORT_KEYS.find((key) => key === sort) ?? DEFAULT_QUERY.sort,
@@ -278,19 +279,20 @@ export function parseListQuery(params: { get(name: string): string | null }): Li
 
 /**
  * Spec 058 (T5, ISC-396): every query param the spec list reads or writes: its filters and sort (`listQueryParams`),
- * the search `q`, the "show all" fold `all` and the row density. A workspace address carrying one of them means the
+ * the search `q`, the "show all" fold `all` and the row density, and `phase` as an input only, which the router maps
+ * onto `stage` (spec 064, T62). A workspace address carrying one of them means the
  * list, so the router sends it on to the Specs page with the same query. `sel` is never one: the dashboard keeps its
  * own selection (ISC-400).
  */
-export const LIST_QUERY_KEYS = ['phase', 'type', 'sort', 'takeable', 'working', 'archived', 'q', 'all', 'density'] as const;
+export const LIST_QUERY_KEYS = ['stage', 'phase', 'type', 'sort', 'takeable', 'working', 'archived', 'q', 'all', 'density'] as const;
 export type ListQueryKey = (typeof LIST_QUERY_KEYS)[number];
 
 /** The query params for `query`; a default is null, so the URL carries only what differs. Every key is a list key. */
 export function listQueryParams(
   query: ListQuery,
-): Pick<Record<ListQueryKey, string | null>, 'phase' | 'type' | 'sort' | 'takeable'> & { readonly working: '1' | null; readonly archived: '1' | null } {
+): Pick<Record<ListQueryKey, string | null>, 'stage' | 'type' | 'sort' | 'takeable'> & { readonly working: '1' | null; readonly archived: '1' | null } {
   return {
-    phase: query.phase,
+    stage: query.stage === null ? null : query.stage.join(','),
     type: query.type,
     sort: query.sort === DEFAULT_QUERY.sort ? null : query.sort,
     takeable: query.takeable ? '1' : null,
@@ -303,16 +305,17 @@ const ratio = (row: SpecTableRow): number => (row.total > 0 ? row.closed / row.t
 const nextRank = (row: SpecTableRow): number => (row.takeable.length > 0 ? 0 : row.nextCommand !== null ? 1 : 2);
 const byId = (a: SpecTableRow, b: SpecTableRow): number => a.id.localeCompare(b.id, 'en', { numeric: true });
 
-function matchesPhase(row: SpecTableRow, phase: string | null): boolean {
-  if (phase === null) return true;
-  return phase === FOG ? row.fog > 0 : row.stageGroup === phase;
+/** A row stands in one of the listed stages, or has open fog with `fog` listed; `idea` alone keeps no spec row. */
+function matchesStage(row: SpecTableRow, stages: readonly string[] | null): boolean {
+  if (stages === null) return true;
+  return stages.includes(row.stage) || (stages.includes(FOG) && row.fog > 0);
 }
 
 /** The rows the panel shows for `query`: filtered, then ordered; `Array.prototype.sort` is stable on the model order. */
 export function applyListQuery(rows: readonly SpecTableRow[], query: ListQuery): SpecTableRow[] {
   const kept = rows.filter(
     (row) =>
-      matchesPhase(row, query.phase) &&
+      matchesStage(row, query.stage) &&
       (query.type === null || row.type === query.type) &&
       (!query.takeable || row.takeable.length > 0) &&
       (!query.working || row.agent !== null),
@@ -331,14 +334,14 @@ export function applyListQuery(rows: readonly SpecTableRow[], query: ListQuery):
 
 /**
  * Spec 050 (T5, ISC-288): the archived rows the panel shows under the active ones for `query` (design.md § Across
- * viewports). None while the switch is off, under a phase or fog chip, with takeable on or with working on (an archived
+ * viewports). None while the switch is off, under a stage, fog or idea chip, with takeable on or with working on (an archived
  * spec holds no lock, spec 064, ISC-465); the type filter reaches them.
  * The block orders on its own, never interleaved with the active rows: Stage and Next by ID descending (the last
  * archived at the boundary), ID ascending, Progress by claim ratio descending, ties by ID descending. An empty archive
  * yields none, so `?archived=1` alone changes nothing.
  */
 export function applyArchivedQuery(rows: readonly ArchiveRow[], query: ListQuery): SpecTableRow[] {
-  if (!query.archived || query.phase !== null || query.takeable || query.working) return [];
+  if (!query.archived || query.stage !== null || query.takeable || query.working) return [];
   const kept = rows.map(archivedTableRow).filter((row) => query.type === null || row.type === query.type);
   switch (query.sort) {
     case 'stage':
@@ -368,14 +371,15 @@ export function holdNewRows(rows: readonly SpecTableRow[], seen: ReadonlySet<str
 }
 
 /**
- * The phase chips: All, each stage group with a spec in lifecycle order, then fog when a spec has open fog; every count
- * is the model's (`kpis.specs`, `kpis.stageGroups`, `kpis.specsWithFog`), none without the model.
+ * The stage chips (spec 064, T62, ISC-503): All, each stage with a spec in workflow order (`STAGE_ORDER`), then fog when
+ * a spec has open fog; every count is the model's (`kpis.specs`, `stageCounts`, `kpis.specsWithFog`), none without it.
+ * All counts what it shows (ISC-512): the active specs plus the `ideas` the list receives; a stage chip only its specs.
  */
-export function phaseOptions(counts: SpecListCounts | null): ListOption[] {
+export function stageOptions(counts: SpecListCounts | null, ideas = 0): ListOption[] {
   if (counts === null) return [];
   return [
-    { key: ALL, count: counts.specs },
-    ...STAGE_GROUPS.filter((group) => counts.stageGroups[group] > 0).map((key) => ({ key, count: counts.stageGroups[key] })),
+    { key: ALL, count: counts.specs + ideas },
+    ...STAGE_ORDER.flatMap((key) => ((counts.stages[key] ?? 0) > 0 ? [{ key, count: counts.stages[key] ?? 0 }] : [])),
     ...(counts.specsWithFog > 0 ? [{ key: FOG, count: counts.specsWithFog }] : []),
   ];
 }

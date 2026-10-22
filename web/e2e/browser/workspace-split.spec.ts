@@ -21,8 +21,8 @@
  *   columns with an inner grid of hairlines, two from 640 px of shell and three from 1120 px, in one column below.
  * - ISC-464 (spec 064 T21, `-g "flat tile heights"`): under `X-Spectant-Stub-Locks: working` at 390, 820 and 1440 px
  *   every item of the Waits on you and the In progress list of the `[data-lists]` row holds one `ui-flat-tile`, all of
- *   one height per tier (72 px at 390, 48 px at 820 and 1440 where each list is at least 560 px wide); the two lists
- *   stand side by side at 1440 and stacked below.
+ *   one height per tier (72 px at 390, 48 px at 820 and 1440 where each list is at least 560 px wide); since ISC-507
+ *   the two lists stand stacked at every tier, In progress directly below Waits on you, both the main column's width.
  */
 import type { Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from '../fixtures';
@@ -279,7 +279,7 @@ test.describe('flat tile heights (ISC-464)', () => {
     test.describe(`at ${String(width)}`, () => {
       test.use({ ...atWidth(width), extraHTTPHeaders: { [LOCKS_HEADER]: 'working' } });
 
-      test(`flat tile heights (ISC-464): ${String(width)} px, Waits on you and In progress share one tile of one height`, async ({ page }) => {
+      test(`flat tile heights (ISC-464): ${String(width)} px, Waits on you and In progress share one tile of one height, stacked`, async ({ page }) => {
         await dashboardReady(page);
         await expect(page.locator('[data-lists] ui-working-block ui-flat-tile')).toHaveCount(3);
         const lists = await tileLists(page);
@@ -298,15 +298,13 @@ test.describe('flat tile heights (ISC-464)', () => {
         const heights = lists.flatMap((l) => l.items.map((i) => i.height));
         expect(new Set(heights), `tile heights at ${String(width)} px`).toEqual(new Set([expected]));
 
-        // The row: side by side at 1440 (same top, Waits on the left), stacked below.
+        // Stacked at every tier (ISC-507): In progress directly below Waits on you, both as wide as the main column.
         const [a, b] = [waits?.box, working?.box];
-        if (width >= WIDTHS.desktop) {
-          expect(b?.top).toBe(a?.top);
-          expect(b?.left ?? 0).toBeGreaterThanOrEqual(a?.right ?? Infinity);
-        } else {
-          expect(b?.top ?? 0).toBeGreaterThanOrEqual(a?.bottom ?? Infinity);
-          expect(b?.left).toBe(a?.left);
-        }
+        const column = await page.locator('app-dashboard-page').evaluate((host) => host.getBoundingClientRect().width);
+        expect(b?.top ?? 0, 'In progress below Waits on you').toBeGreaterThanOrEqual(a?.bottom ?? Infinity);
+        expect(b?.left, 'same left edge').toBe(a?.left);
+        expect(b?.width, 'same width').toBe(a?.width);
+        expect(a?.width ?? 0, 'the main column wide').toBeCloseTo(column, 0);
       });
     });
   }
