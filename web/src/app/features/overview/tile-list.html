@@ -1,0 +1,62 @@
+<p class="counts">
+  <span data-tile-count="working">{{ 'overview.tile.working' | transloco }} <span class="n">{{ tile().workingCount }}</span></span>
+  <span data-tile-count="waits">{{ 'overview.tile.waits' | transloco }} <span class="n">{{ tile().waitsCount }}</span></span>
+</p>
+<div class="rows">
+  @if (tile().rows.length > 0) {
+    <ol>
+      @for (row of tile().rows; track row.kind + row.id + $index) {
+        <li data-tile-row [attr.data-kind]="row.kind" [attr.data-id]="row.id">
+          @if (row.kind === 'working') {
+            <ui-agent-dot class="mark" />
+            <a class="link" data-tile-link [routerLink]="specLink(row)">
+              <span class="id">{{ row.id }}</span>
+              <span class="title" data-title [title]="row.title">{{ row.title }}</span>
+            </a>
+            <span class="session" data-session [title]="row.session">{{ row.session }}</span>
+          } @else {
+            <ui-glyph class="mark" family="item" state="waiting" [size]="14" />
+            <a class="link" data-tile-link [routerLink]="specLink(row)">
+              <span class="id">{{ row.id }}</span>
+              @if (row.ref) {
+                <span class="ref" data-ref [title]="row.ref">{{ row.ref }}</span>
+              }
+              <span class="title" data-title [title]="row.title">{{ row.title }}</span>
+            </a>
+            @if (row.command; as cmd) {
+              <ui-command-chip
+                class="copy"
+                iconOnly
+                [command]="cmd"
+                [context]="'orientation.chipContext.waits' | transloco: { what: row.ref ? row.id + ' ' + row.ref : row.id }"
+                [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+                [manualHint]="'common.copyFallback' | transloco"
+              />
+            }
+            @if (row.since; as since) {
+              <ui-relative-time class="since" [date]="since" format="short" />
+            }
+          }
+        </li>
+      }
+    </ol>
+  } @else {
+    <p class="empty" data-tile-empty>
+      <ui-glyph class="mark" state="done" family="item" [size]="14" />
+      {{ 'guidance.waits.empty' | transloco }}
+    </p>
+  }
+</div>
+<div class="foot" data-tile-foot>
+  @if (tile().more) {
+    <a
+      class="more"
+      data-tile-more
+      [routerLink]="wsLink()"
+      [attr.aria-label]="'overview.tile.showAllName' | transloco: { n: tile().total, workspace: label() }"
+    >
+      {{ 'overview.tile.showAll' | transloco: { n: tile().total } }}
+      <ui-icon name="arrow-right" [size]="12" />
+    </a>
+  }
+</div>

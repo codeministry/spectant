@@ -35,8 +35,11 @@ export interface FiveWorkspacesOptions {
    * then 0, 1, 3 and 16.
    */
   readonly waits?: ReadonlyArray<number | null>;
-  /** Keep the "In Arbeit" entries (the specs' held locks) the harbor answer carries. Default: true. */
-  readonly working?: boolean;
+  /**
+   * Keep the "In Arbeit" entries (the specs' held locks) the harbor answer carries: one flag for all five, or one per
+   * workspace in list order (a missing entry keeps them). Default: true.
+   */
+  readonly working?: boolean | readonly boolean[];
   /** Which workspaces carry a stored screenshot, in list order. Default: none. */
   readonly screenshots?: readonly boolean[];
 }
@@ -104,6 +107,7 @@ function shapedDashboard(body: unknown, waits: number | null, working: boolean):
 export async function fiveWorkspaces(page: Page, opts: FiveWorkspacesOptions = {}): Promise<void> {
   const waits = opts.waits ?? DEFAULT_WAITS;
   const working = opts.working ?? true;
+  const workingAt = (i: number): boolean => (typeof working === 'boolean' ? working : (working[i] ?? true));
   const shots = opts.screenshots ?? [];
   const indexOf = (slug: string): number => FIVE_SLUGS.indexOf(slug as (typeof FIVE_SLUGS)[number]);
 
@@ -134,7 +138,7 @@ export async function fiveWorkspaces(page: Page, opts: FiveWorkspacesOptions = {
     }
     if (rest === 'dashboard' && route.request().method() === 'GET') {
       const body = await stubJson(route, '/api/workspaces/harbor/dashboard');
-      return fulfilJson(route, shapedDashboard(body, waits[i] ?? null, working));
+      return fulfilJson(route, shapedDashboard(body, waits[i] ?? null, workingAt(i)));
     }
     if (slug === 'harbor') return route.fallback();
     url.pathname = `/api/workspaces/harbor/${rest}`;
