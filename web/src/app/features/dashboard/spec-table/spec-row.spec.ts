@@ -207,9 +207,9 @@ describe('SpecRow fixed columns (spec 064, T45, ISC-487)', () => {
   it('from 640 px the grid names eleven fixed columns with the design widths', () => {
     const css = rowCss();
     expect(css).toMatch(/grid-template-areas:["']idtitlemorefeaturemarkagentpriotrackphasemeterstar["']/);
-    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px104px24px8px48pxvar(--track-col,88px)104px120px32px');
+    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px80px24px8px48pxvar(--track-col,88px)104px120px32px');
     // An archived row keeps 136 px of mark for its archive date from 880 px.
-    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px104px136px8px48pxvar(--track-col,88px)104px120px32px');
+    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px80px136px8px48pxvar(--track-col,88px)104px120px32px');
   });
 
   it('maps every cell onto its own grid area by its data-cell name', () => {

@@ -1435,7 +1435,7 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
     expect(grid.some((line) => line.includes('grid-template') && / auto\b/.test(line))).toBe(false);
     expect(grid).toEqual(
       expect.arrayContaining([
-        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 104px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
+        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
         '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 24px 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
         '@container specs (width < 640px) | :host | grid-template: "id title title title title more star" 24px ". mark prio phase meter meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px',
       ]),
