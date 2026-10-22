@@ -6,7 +6,7 @@ import type { WorkingEntry } from '../../../core/model/working';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { UiWorkingBlock } from './working-block';
 
-// T15 · ISC-460, ISC-461, ISC-462: the block "In progress" over `workingOf`'s entries — nothing at all without an
+// T15 · ISC-508, ISC-461, ISC-462: the block "In progress" over `workingOf`'s entries — nothing at all without an
 // entry, one flat tile per spec (dot, id, title, agent) linking to the spec, at most TILE_LIMIT tiles and then the
 // "Show all n" link to the filtered spec list.
 const entry = (id: string, title: string, session: string): WorkingEntry => ({ id, title, session, since: null });
@@ -41,14 +41,14 @@ async function render(entries: readonly WorkingEntry[], lang: 'en' | 'de' = 'en'
 
 const text = (el: Element | null | undefined): string => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-describe('ui-working-block (T15, ISC-460)', () => {
+describe('ui-working-block (T15, ISC-508)', () => {
   it('renders nothing without an entry: no section, no heading (ISC-462)', async () => {
     const host = await render([]);
     expect(host.children).toHaveLength(0);
     expect(host.querySelector('section, h2, h3')).toBeNull();
   });
 
-  it('shows one tile per held claim: dot, id, title, agent, link and name (ISC-460)', async () => {
+  it('shows one tile per held claim: dot, id, title, agent, link and name (ISC-508)', async () => {
     const host = await render(ONE);
     const section = host.querySelector('section');
     expect(section?.getAttribute('aria-labelledby')).toBe('working-heading');
@@ -69,7 +69,7 @@ describe('ui-working-block (T15, ISC-460)', () => {
     expect(text(agent)).toBe('a:claude:spec-002/T3');
     expect(agent?.getAttribute('title')).toBe('a:claude:spec-002/T3');
     const link = tile.querySelector('a');
-    expect(link?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(link?.getAttribute('href')).toBe('/w/harbor/s/002/board');
     expect(link?.getAttribute('aria-label')).toBe('002 Gate reviewed mark, agent a:claude:spec-002/T3 working');
     expect(link?.getAttribute('title')).toBe('Gate reviewed mark');
     expect(host.querySelector('[data-show-all]')).toBeNull();

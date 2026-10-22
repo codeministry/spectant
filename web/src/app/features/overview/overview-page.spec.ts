@@ -192,7 +192,7 @@ describe('OverviewPage (T65, ISC-16)', () => {
     expect(text(tiles[0]?.querySelector('[data-id]'))).toBe('004');
     expect(text(tiles[0]?.querySelector('[data-title]'))).toBe(titleOf('004'));
     expect(text(tiles[0]?.querySelector('[data-agent]'))).toBe('a:claude:spec-004/T2');
-    expect(tiles[0]?.querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/004');
+    expect(tiles[0]?.querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/004/board');
   });
 
   // spec 064 T20 (ISC-462): without a held claim a column shows no element of "In progress", in either workspace (harbor
