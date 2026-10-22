@@ -100,3 +100,15 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Target sizes (spec 067, T36, ISC-537): row and "more" are real 44 px boxes in the sheet and under a coarse pointer. */
+:host([data-tier='compact']) .more {
+  min-block-size: 44px;
+}
+
+@media (pointer: coarse) {
+  .hit,
+  .more {
+    min-block-size: 44px;
+  }
+}

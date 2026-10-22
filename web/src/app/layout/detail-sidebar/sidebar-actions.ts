@@ -189,9 +189,18 @@ export class SidebarActions {
 
   /** Escape closes the list before the sidebar (which skips a prevented Escape) and returns focus to the button. */
   protected escape(event: Event): void {
-    if (!this.open()) return;
+    if (!this.closeList()) return;
     event.preventDefault();
+  }
+
+  /**
+   * Closes an open list and returns focus to its button; false when none is open. The sidebar calls it for an Escape
+   * pressed anywhere in the panel (spec 067, T36, ISC-537), so an open list closes before the sidebar does.
+   */
+  closeList(): boolean {
+    if (!this.open()) return false;
     this.close();
+    return true;
   }
 
   protected dismiss(): void {

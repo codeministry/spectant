@@ -92,8 +92,13 @@
   color: var(--ques-ink);
 }
 
-/* The star (spec 067, T25): its own 32 px box beside close, a real 44 px box in the sheet (ISC-537), not a hit area. */
-:host([data-presentation="sheet"]) .star {
+/*
+ * Target sizes (spec 067, T36, ISC-537): every target is a real box, 32 px and up above compact, 44 px in the sheet and
+ * under a coarse pointer (the iPad at 820), since `_hit-area.css`'s `::before` leaves `getBoundingClientRect` alone.
+ * Star and close (32 px each) grow here; the coarse-pointer rules close the file.
+ */
+:host([data-presentation="sheet"]) .star,
+:host([data-presentation="sheet"]) .head [data-close] {
   inline-size: 44px;
   block-size: 44px;
 }
@@ -316,4 +321,25 @@
 
 :host([data-presentation="sheet"]) .foot {
   padding-block-end: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* The sheet's "more" and foot link: 44 px boxes (ISC-537); the link rows already are, see `.text-link` above. */
+:host([data-presentation="sheet"]) .more,
+:host([data-presentation="sheet"]) .foot a {
+  min-block-size: 44px;
+}
+
+/* A coarse pointer above compact: the same 44 px boxes as the sheet. */
+@media (pointer: coarse) {
+  .head .star,
+  .head [data-close] {
+    inline-size: 44px;
+    block-size: 44px;
+  }
+
+  .text-link,
+  .more,
+  .foot a {
+    min-block-size: 44px;
+  }
 }

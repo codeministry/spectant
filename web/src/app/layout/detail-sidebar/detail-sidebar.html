@@ -1,12 +1,12 @@
 @if (shown(); as entry) {
   @if (presentation() === 'sheet') {
     <ui-sheet tier="compact" [flush]="true" [open]="true" [label]="'sidebar.label' | transloco" (openChange)="sheetChange($event)">
-      <div class="panel">
+      <div class="panel" role="group" [attr.aria-labelledby]="titleId" (keydown.escape)="escape($event)">
         <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: entry }" />
       </div>
     </ui-sheet>
   } @else {
-    <aside class="panel" role="complementary" [attr.aria-labelledby]="titleId">
+    <aside class="panel" role="complementary" [attr.aria-labelledby]="titleId" (keydown.escape)="escape($event)">
       <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: entry }" />
     </aside>
   }
@@ -50,7 +50,7 @@
     @if (running(); as item) {
       <!-- T62 · ISC-226: the open run's state line; its "Release run" sits in the actions below (spec 067, ISC-534). -->
       <section class="sec run" data-section="run">
-        <ui-item-state [info]="item" [ws]="ws()" />
+        <ui-item-state [info]="item" [ws]="ws()" [chipSize]="presentation() === 'sheet' ? 'lg' : 'md'" />
       </section>
     }
 

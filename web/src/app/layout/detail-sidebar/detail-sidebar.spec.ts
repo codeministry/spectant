@@ -297,6 +297,93 @@ describe('DetailSidebar', () => {
     }
   });
 
+  describe('keyboard (spec 067, T36, ISC-537)', () => {
+    const escape = (target: Element | null) => target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    const settle = async (fixture: { whenStable: () => Promise<unknown> }) => {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+
+    it('closes an open stage list before the sidebar, wherever the focus sits in the panel, and returns focus to its button', async () => {
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      q(host, '[data-stage-change]')?.click();
+      await settle(fixture);
+      expect(q(host, '[data-stage-list]')).not.toBeNull();
+      escape(q(host, 'h2[data-part="title"]'));
+      await settle(fixture);
+      expect(q(host, '[data-stage-list]')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:025');
+      expect(document.activeElement).toBe(q(host, '[data-stage-change]'));
+      escape(q(host, '[data-stage-change]'));
+      await settle(fixture);
+      expect(TestBed.inject(Router).url).toBe('/w/harbor');
+    });
+
+    it('closes an open stage list before the compact sheet, whose dialog stays open until the next Escape', async () => {
+      width.set(390);
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      expect(host.getAttribute('data-presentation')).toBe('sheet');
+      q(host, '[data-stage-change]')?.click();
+      await settle(fixture);
+      for (const target of ['[data-stage-list] [data-move-to]', 'h2[data-part="title"]']) {
+        if (target !== '[data-stage-list] [data-move-to]') {
+          q(host, '[data-stage-change]')?.click();
+          await settle(fixture);
+        }
+        escape(q(host, target));
+        await settle(fixture);
+        expect(q(host, '[data-stage-list]'), target).toBeNull();
+        expect(q(host, 'ui-sheet dialog'), target).not.toBeNull();
+        expect(TestBed.inject(Router).url, target).toBe('/w/harbor?sel=spec:025');
+      }
+      escape(q(host, '[data-stage-change]'));
+      await settle(fixture);
+      expect(TestBed.inject(Router).url).toBe('/w/harbor');
+    });
+
+    it('leaves the sidebar and the stage list open while a dialog (the release question) is open', async () => {
+      const dialog = document.createElement('dialog');
+      dialog.setAttribute('open', '');
+      document.body.append(dialog);
+      try {
+        await go('/w/harbor?sel=spec:025');
+        const fixture = await render();
+        const host = hostOf(fixture);
+        q(host, '[data-stage-change]')?.click();
+        await settle(fixture);
+        escape(dialog);
+        await settle(fixture);
+        expect(q(host, '[data-stage-list]')).not.toBeNull();
+        expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:025');
+      } finally {
+        dialog.remove();
+      }
+    });
+
+    it('keeps the focus where a write left it on a live refresh; only another object moves it to the title', async () => {
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      const title = q(host, 'h2[data-part="title"]');
+      expect(document.activeElement).toBe(title);
+      const toggle = q(host, '[data-stage-change]');
+      toggle?.focus();
+      // The refresh after a write: a new dashboard and new favourites, the same ref.
+      dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', stage: 'build' }] } });
+      favSpecs.set(new Set(['025-spec-edges']));
+      await settle(fixture);
+      expect(document.activeElement).toBe(q(host, '[data-stage-change]'));
+      await go('/w/harbor?sel=spec:024');
+      await settle(fixture);
+      expect(document.activeElement).toBe(q(host, 'h2[data-part="title"]'));
+      expect(q(host, 'h2[data-part="title"]')?.textContent).toBe('Shell');
+    });
+  });
+
   it('is one component in two slots: docked in the rail at wide when the page docks, floating otherwise', async () => {
     width.set(1440);
     await go('/w/harbor?sel=feature:F25');

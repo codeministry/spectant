@@ -85,6 +85,17 @@
   background: var(--color-base-200);
 }
 
+/* Target sizes (spec 067, T36, ISC-537): a link row is a real 44 px box in the sheet and under a coarse pointer. */
+:host-context([data-presentation='sheet']) .pf-link {
+  min-block-size: 44px;
+}
+
+@media (pointer: coarse) {
+  .pf-link {
+    min-block-size: 44px;
+  }
+}
+
 .pf-top {
   display: flex;
   gap: 8px;

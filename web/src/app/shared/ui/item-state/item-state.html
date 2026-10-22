@@ -31,7 +31,7 @@
             <span class="reason" data-phrase data-reason-shown>{{ reason }}</span>
           }
           @if (info().command; as command) {
-            <ui-command-chip [command]="command" />
+            <ui-command-chip [command]="command" [size]="chipSize()" />
           }
           @if (!reasoned() && info().reason; as reason) {
             <span class="muted" data-phrase [class.vh]="!block()">{{ reason }}</span>
@@ -48,7 +48,7 @@
         @case ('running') {
           @if (run) {
             @if (run.command; as command) {
-              <ui-command-chip [command]="command" [lockedBy]="run" />
+              <ui-command-chip [command]="command" [size]="chipSize()" [lockedBy]="run" />
             }
             @if (!noActor()) {
               <ui-actor-chip [actor]="run.actor" [active]="true" />
@@ -72,7 +72,7 @@
               <ui-actor-chip [actor]="run.actor" [stale]="true" [staleAge]="duration() ?? undefined" />
             }
             @if (run.command; as command) {
-              <ui-command-chip [command]="command" />
+              <ui-command-chip [command]="command" [size]="chipSize()" />
             }
           }
           <ng-content select="[uiItemStateAction]" />

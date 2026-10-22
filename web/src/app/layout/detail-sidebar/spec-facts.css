@@ -83,3 +83,14 @@
   text-decoration: underline;
 }
 
+/* Target sizes (spec 067, T36, ISC-537): the warnings link is a real 44 px box in the sheet and under a coarse pointer. */
+:host-context([data-presentation='sheet']) .sf-warn {
+  min-block-size: 44px;
+}
+
+@media (pointer: coarse) {
+  .sf-warn {
+    min-block-size: 44px;
+  }
+}
+
