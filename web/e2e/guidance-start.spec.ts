@@ -3,12 +3,12 @@
  * `bun run --cwd web e2e -- -g "guidance start"`.
  *
  * With `X-Spectant-Stub-Waits: 0 | 1 | 7` the first workspace column holds 0, 1 or 7 entries in `guidance.waits`. At
- * 1440 × 900 every column's block "Waits on you" shows at most three flat tiles (spec 064, ISC-478: none highlighted,
- * each linking to its spec, its sentence the tile's description, its copy chip where it has a command) and, past them,
- * "Show all n" with the right n linking to `/w/<ws>#waiting`; with nothing waiting one sentence stands instead. Next up
- * is not on the start, and the first column's block lies above the fold without scrolling. Following "Show all n"
- * lands on the workspace dashboard's `#waiting` section, open and
- * focused, listing every entry in core's order. Every expectation is read from the API bodies the page renders
+ * 1440 × 900 every workspace tile's list area (`app-tile-list`, spec 066, ISC-518) counts what waits and shows at most
+ * three rows, the specs in progress first, then the waiting entries in core's order, each linking to its spec with its
+ * icon-only copy chip where it has a command, and, past them, "Show all n" with the right n linking to `/w/<ws>` (spec
+ * 066: no `#waiting` fragment any more); with nothing in the list one sentence stands instead. Next up is not on the
+ * start, and the first tile's list area lies above the fold without scrolling. Following "Show all n" lands on the
+ * workspace dashboard, whose `#waiting` section lists every entry in core's order once its own "Show all n" is open. Every expectation is read from the API bodies the page renders
  * (`GET /api/workspaces`, each dashboard) and the English catalogue (`guidance-sentence.ts`), never hand-typed.
  */
 import { readFileSync } from 'node:fs';
@@ -21,13 +21,14 @@ import { WAITS_HEADER, WAITS_STATES, type StubWaitsState } from './stub-api';
 const EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as {
   guidance: { waits: { empty: string; showAll: string; label: string } };
   nextUp: { title: string };
+  overview: { tile: { showAll: string } };
 };
 
-/** How many flat tiles stand on `/` before "Show all n" (`TILE_LIMIT`, spec 064, ISC-478). */
-const TILES = 3;
+/** How many rows a tile's list area on `/` holds before "Show all n" (`TILE_ROW_LIMIT`, spec 066, ISC-518). */
+const ROWS = 3;
 
-/** The fields of a guidance entry read here (structural; `GuidanceEntryView` plus the command). */
-type Entry = GuidanceView['waits'][number] & { readonly command: string | null };
+/** The fields of a guidance entry read here (structural; `GuidanceEntryView` plus the reference and the command). */
+type Entry = GuidanceView['waits'][number] & { readonly ref: string | null; readonly command: string | null };
 type WorkspaceRow = { readonly slug: string; readonly readable: boolean };
 type DashboardBody = { readonly guidance?: { readonly waits: readonly Entry[] } };
 
@@ -69,32 +70,49 @@ async function tilesOf(scope: Locator): Promise<TileView[]> {
 /** A tile as the API's entry should render it. */
 const tileOf = (ws: string, e: Entry): TileView => ({ id: e.spec, reason: text(sentenceOf(e.reason)), href: `/w/${ws}/s/${e.spec}`, command: e.command });
 
-/** The block of one column, checked against that workspace's `waits`. */
+/** One waiting row of a tile's list area on `/` (spec 066, ISC-518): its spec id, ref, link and copied command. */
+type RowView = { id: string; ref: string | null; href: string | null; command: string | null };
+async function waitingRowsOf(list: Locator): Promise<RowView[]> {
+  return list.locator('li[data-tile-row][data-kind="waiting"]').evaluateAll((els) =>
+    els.map((el) => ({
+      id: el.getAttribute('data-id') ?? '',
+      ref: el.querySelector('[data-ref]')?.textContent.trim() ?? null,
+      href: el.querySelector('a[data-tile-link]')?.getAttribute('href') ?? null,
+      command: el.querySelector('ui-command-chip[data-icon-only] code')?.textContent.trim() ?? null,
+    })),
+  );
+}
+
+/** A waiting row as the API's entry should render it. */
+const rowOf = (ws: string, e: Entry): RowView => ({ id: e.spec, ref: e.ref, href: `/w/${ws}/s/${e.spec}`, command: e.command });
+
+/** The list area of one tile (spec 066, ISC-518; the waits block before), checked against that workspace's `waits`. */
 async function expectBlock(page: Page, ws: string, waits: readonly Entry[]): Promise<void> {
-  const block = page.locator(`[data-ui="workspace-column"][data-ws="${ws}"] [data-ui="waits-block"]`);
-  await expect(block, `${ws}: the column holds the block`).toBeVisible();
-  await expect(block).toHaveAttribute('data-count', String(waits.length));
-  await expect(block.getByRole('heading', { name: EN.guidance.waits.label })).toBeVisible();
-  const more = block.locator('[data-more]');
-  // No top card and no "+n more" rows any more: every entry is the same flat tile (ISC-478).
-  await expect(block.locator('[data-top], [data-row]'), `${ws}: no highlighted entry, no row`).toHaveCount(0);
-  if (waits.length === 0) {
-    await expect(block.locator('[data-empty]'), `${ws}: one sentence instead of an empty block`).toHaveText(EN.guidance.waits.empty);
-    await expect(block.locator('ui-flat-tile')).toHaveCount(0);
+  const tile = page.locator(`[data-ui="workspace-column"][data-ws="${ws}"]`);
+  const list = tile.locator('[data-tile-block="list"] app-tile-list');
+  await expect(list, `${ws}: the tile holds its list area`).toBeVisible();
+  await expect(tile.locator('[data-ui="waits-block"]'), `${ws}: the waits block left the tile (it stays on /w/<ws>)`).toHaveCount(0);
+  await expect(list.locator('[data-tile-count="waits"]'), `${ws}: the counter names every waiting entry`).toContainText(String(waits.length));
+  const working = await list.locator('li[data-tile-row][data-kind="working"]').count();
+  const total = working + waits.length;
+  const more = list.locator('a[data-tile-more]');
+  await expect(list.locator('li[data-tile-row]'), `${ws}: at most ${ROWS} rows`).toHaveCount(Math.min(ROWS, total));
+  if (total === 0) {
+    await expect(list.locator('[data-tile-empty]'), `${ws}: one sentence instead of an empty list`).toHaveText(EN.guidance.waits.empty);
     await expect(more).toHaveCount(0);
     return;
   }
-  await expect(block.locator('[data-empty]')).toHaveCount(0);
-  const shown = waits.slice(0, TILES);
-  for (const tile of await block.locator('ui-flat-tile').all()) await expect(tile).toBeVisible();
-  const tiles = await tilesOf(block);
+  await expect(list.locator('[data-tile-empty]')).toHaveCount(0);
+  for (const row of await list.locator('li[data-tile-row]').all()) await expect(row).toBeVisible();
+  // The specs in progress stand first; the waiting entries fill the places left, the first ones in core's order.
+  const shown = waits.slice(0, Math.max(0, ROWS - working));
   expect(
-    tiles.map((t) => ({ ...t, reason: text(t.reason) })),
-    `${ws}: at most ${TILES} tiles, the first entries in core's order, each a link to its spec, its sentence the description, its chip its command`,
-  ).toEqual(shown.map((e) => tileOf(ws, e)));
-  if (waits.length > TILES) {
-    await expect(more.locator('[data-visible]'), `${ws}: "Show all n" names every entry`).toHaveText(EN.guidance.waits.showAll.replace('{{count}}', String(waits.length)));
-    await expect(more).toHaveAttribute('href', `/w/${ws}#waiting`);
+    await waitingRowsOf(list),
+    `${ws}: the waiting rows are the first entries in core's order, each a link to its spec, its chip its command`,
+  ).toEqual(shown.map((e) => rowOf(ws, e)));
+  if (total > ROWS) {
+    await expect(more, `${ws}: "Show all n" names every entry`).toHaveText(EN.overview.tile.showAll.replace('{{n}}', String(total)));
+    await expect(more, `${ws}: "Show all n" leads to the workspace dashboard, without a fragment`).toHaveAttribute('href', `/w/${ws}`);
   } else {
     await expect(more).toHaveCount(0);
   }
@@ -106,7 +124,7 @@ test.describe('guidance start', () => {
   const COUNTS: Readonly<Record<StubWaitsState, number>> = { '0': 0, '1': 1, '7': 7 };
 
   for (const variant of WAITS_STATES) {
-    test(`start: ${variant} waiting — the block per column, its tiles and "Show all n", no Next up, above the fold`, async ({ page, request }) => {
+    test(`start: ${variant} waiting — the list area per tile, its rows and "Show all n", no Next up, above the fold`, async ({ page, request }) => {
       const headers = { [WAITS_HEADER]: variant };
       await page.context().setExtraHTTPHeaders(headers);
       const workspaces = await workspacesOf(request, headers);
@@ -123,16 +141,16 @@ test.describe('guidance start', () => {
       await expect(page.locator('[data-next-up]')).toHaveCount(0);
       await expect(page.locator('main').getByText(EN.nextUp.title, { exact: true })).toHaveCount(0);
 
-      // The first column's block lies whole above the fold, without scrolling.
+      // The first tile's list area lies whole above the fold, without scrolling.
       expect(await page.evaluate(() => window.scrollY), 'the start is not scrolled').toBe(0);
-      const box = await page.locator(`[data-ui="workspace-column"][data-ws="${firstWs}"] [data-ui="waits-block"]`).boundingBox();
-      expect(box, 'the first block has a box').not.toBeNull();
-      expect(box?.y ?? -1, 'the block starts inside the viewport').toBeGreaterThanOrEqual(0);
-      expect((box?.y ?? 0) + (box?.height ?? Infinity), 'the block ends above the fold').toBeLessThanOrEqual(900);
+      const box = await page.locator(`[data-ui="workspace-column"][data-ws="${firstWs}"] [data-tile-block="list"]`).boundingBox();
+      expect(box, 'the first list area has a box').not.toBeNull();
+      expect(box?.y ?? -1, 'the list area starts inside the viewport').toBeGreaterThanOrEqual(0);
+      expect((box?.y ?? 0) + (box?.height ?? Infinity), 'the list area ends above the fold').toBeLessThanOrEqual(900);
     });
   }
 
-  test('start: "Show all n" leads to the dashboard\'s #waiting section, open and focused, listing every entry', async ({ page, request }) => {
+  test('start: "Show all n" leads to the workspace dashboard, whose #waiting section lists every entry', async ({ page, request }) => {
     const headers = { [WAITS_HEADER]: '7' };
     await page.context().setExtraHTTPHeaders(headers);
     const ws = (await workspacesOf(request, headers))[0]?.slug ?? '';
@@ -140,13 +158,16 @@ test.describe('guidance start', () => {
     expect(waits.length).toBe(7);
 
     await page.goto('/');
-    await page.locator(`[data-ui="workspace-column"][data-ws="${ws}"] [data-ui="waits-block"] [data-more]`).click();
-    await expect(page).toHaveURL(new RegExp(`/w/${ws}#waiting$`, 'u'));
+    // Spec 066: the tile's "Show all n" leads to `/w/<ws>` without the `#waiting` fragment (a design decision), so the
+    // dashboard opens at its top, unfocused, and its own "Show all n" unfolds the rest.
+    await page.locator(`[data-ui="workspace-column"][data-ws="${ws}"] [data-tile-block="list"] a[data-tile-more]`).click();
+    await expect(page).toHaveURL(new RegExp(`/w/${ws}$`, 'u'));
 
     const section = page.locator('#waiting');
-    await expect(section, 'the #waiting section is focused').toBeFocused();
     await expect(section).toHaveAttribute('data-count', String(waits.length));
-    await expect(section.locator('[data-show-all]'), 'arriving over #waiting opens "Show all n"').toHaveAttribute('data-open', '');
+    const showAll = section.locator('[data-show-all]');
+    if ((await showAll.getAttribute('data-open')) === null) await showAll.locator('[data-fold-toggle]').click();
+    await expect(showAll, 'the dashboard\'s "Show all n" opens').toHaveAttribute('data-open', '');
     const tiles = section.locator('ui-flat-tile');
     await expect(tiles, 'every entry stands as a tile').toHaveCount(waits.length);
     for (const tile of await tiles.all()) await expect(tile).toBeVisible();

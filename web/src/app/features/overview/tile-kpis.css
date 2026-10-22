@@ -20,12 +20,15 @@
   padding: 8px 16px;
 }
 
-.cell:nth-child(even) {
-  border-inline-start: 1px solid var(--line);
-}
+/* The hairlines part the four cells of the 2 × 2 only; the row layout has none, and the block's top line is the tile's. */
+@container ws-tile (width < 420px) {
+  .cell:nth-child(even) {
+    border-inline-start: 1px solid var(--line);
+  }
 
-.cell:nth-child(n + 3) {
-  border-block-start: 1px solid var(--line);
+  .cell:nth-child(n + 3) {
+    border-block-start: 1px solid var(--line);
+  }
 }
 
 .eyebrow {
@@ -73,7 +76,6 @@
 
   .cell {
     padding: 8px 0;
-    border: 0;
   }
 
   .val {

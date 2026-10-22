@@ -639,16 +639,17 @@ test.describe('polish', () => {
 
       // spec 024: overview without lists (principal 2026-10-13): Next up and its copy chips left `/` for the workspace
       // dashboard, so the probe reads the Next up chips there (one per spec, as on `/` before; a row's reason chip
-      // repeats its spec's command by design) and asserts `/` holds copy chips only inside its waits tiles (spec 064,
-      // ISC-478: every waiting entry is a flat tile, one chip per tile with a command, no top card).
-      test(`polish: every copy chip on the workspace dashboard names its command, the overview has none outside a waits tile, at ${String(width)}`, async ({ page }) => {
+      // repeats its spec's command by design) and asserts `/` holds copy chips only inside the waiting rows of its tiles'
+      // list areas (spec 066, ISC-518: one icon-only chip per waiting row with a command, none on a row in progress).
+      test(`polish: every copy chip on the workspace dashboard names its command, the overview has none outside a waiting row, at ${String(width)}`, async ({ page }) => {
         await page.goto('/');
         await expect(page.locator('app-workspace-column').first()).toBeVisible();
         const overviewChips = page.locator('app-overview-page ui-command-chip');
-        const tileChips = page.locator('app-overview-page [data-ui="waits-block"] ui-flat-tile ui-command-chip');
-        await expect(overviewChips, 'the overview shows no copy chip outside a waits tile').toHaveCount(await tileChips.count());
-        for (const tile of await page.locator('app-overview-page [data-ui="waits-block"] ui-flat-tile').all()) {
-          await expect(tile.locator('ui-command-chip'), 'at most one copy chip per tile').toHaveCount(Math.min(1, await tile.locator('ui-command-chip').count()));
+        const waitingRows = page.locator('app-overview-page [data-tile-block="list"] li[data-tile-row][data-kind="waiting"]');
+        const tileChips = waitingRows.locator('ui-command-chip[data-icon-only]');
+        await expect(overviewChips, 'the overview shows no copy chip outside a waiting row').toHaveCount(await tileChips.count());
+        for (const row of await waitingRows.all()) {
+          await expect(row.locator('ui-command-chip'), 'at most one copy chip per row').toHaveCount(Math.min(1, await row.locator('ui-command-chip').count()));
         }
         for (const chip of await tileChips.all()) {
           const command = normalized(await chip.locator('code').textContent());

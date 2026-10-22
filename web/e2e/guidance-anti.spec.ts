@@ -68,12 +68,12 @@ const waitingSpecs = (guidance: Guidance): string[] => [...new Set(guidance.wait
 
 // ---- DOM readers ----------------------------------------------------------------------------------------------------
 
-/** How many flat tiles stand before the fold or the more link (`TILE_LIMIT`, spec 064). */
+/** How many rows a tile's list area on `/` holds before "Show all n" (`TILE_ROW_LIMIT`, spec 066, ISC-518). */
 const TILE_LIMIT = 3;
 
 /**
  * Every entry a `ui-waits-block` lists, in DOM order. The `stack` form (the spec page): the highlighted one first, then
- * its rows, each with its visible sentence. The `tiles` form (spec 064, ISC-478; `/` and `#waiting`): every flat tile,
+ * its rows, each with its visible sentence. The `tiles` form (spec 064, ISC-478; `#waiting`): every flat tile,
  * the folded ones included, its label `[data-tile-id]` and its sentence, which stands only in its accessible description.
  */
 async function blockEntries(block: Locator): Promise<Shown[]> {
@@ -89,6 +89,16 @@ async function blockEntries(block: Locator): Promise<Shown[]> {
     }));
     return [...rows, ...tiles];
   });
+}
+
+/** What a waiting row of a tile's list area on `/` names an entry by (spec 066, ISC-518): its spec and its reference. */
+type TileShown = { readonly label: string; readonly ref: string | null };
+
+/** Every waiting row of an `app-tile-list`, in DOM order. */
+async function tileEntries(list: Locator): Promise<TileShown[]> {
+  return list.locator('li[data-tile-row][data-kind="waiting"]').evaluateAll((els) =>
+    els.map((el) => ({ label: el.getAttribute('data-id') ?? '', ref: el.querySelector('[data-ref]')?.textContent.trim() ?? null })),
+  );
 }
 
 /** Every `ui-waits-block` on the page, each as its listed entries. */
@@ -111,25 +121,29 @@ test.describe('guidance anti', () => {
     test(`anti: ${label} — the start shows only the API's waiting entries, in its order`, async ({ page, request }) => {
       await page.context().setExtraHTTPHeaders(headers);
       const slugs = await workspacesOf(request, headers);
-      const expected = new Map<string, Shown[]>();
-      for (const ws of slugs) expected.set(ws, (await dashboardOf(request, ws, headers)).guidance.waits.map((e) => shownOf(e, 'workspace')));
+      const expected = new Map<string, TileShown[]>();
+      for (const ws of slugs) expected.set(ws, (await dashboardOf(request, ws, headers)).guidance.waits.map((e) => ({ label: e.spec, ref: e.ref })));
 
       await page.goto('/');
       await expect(page.locator('[data-ui="workspace-column"]').first()).toBeVisible();
-      // No guidance block stands outside a workspace column, and no column lacks one.
-      await expect(page.locator('ui-waits-block'), 'one block per workspace, none elsewhere').toHaveCount(slugs.length);
-      await expect(page.locator('[data-ui="workspace-column"] ui-waits-block')).toHaveCount(slugs.length);
+      // Spec 066 (ISC-518): the waits block left `/`; every tile holds one list area, and nothing outside a tile lists
+      // a waiting entry.
+      await expect(page.locator('ui-waits-block'), 'no waits block on the start').toHaveCount(0);
+      await expect(page.locator('app-tile-list'), 'one list area per workspace, none elsewhere').toHaveCount(slugs.length);
+      await expect(page.locator('[data-ui="workspace-column"] [data-tile-block="list"] app-tile-list')).toHaveCount(slugs.length);
       // Next up stays off the start: no Next entry the start could show.
       await expect(page.locator('[data-next-up], app-next-up-entry, [data-guide]')).toHaveCount(0);
+      // The rows carry no sentence at all, so none can differ from the catalogue's.
+      await expect(page.locator('app-overview-page [data-reason], app-overview-page ui-flat-tile'), 'no guidance sentence on the start').toHaveCount(0);
 
       for (const ws of slugs) {
         const want = expected.get(ws) ?? [];
-        const block = page.locator(`[data-ui="workspace-column"][data-ws="${ws}"] ui-waits-block`);
-        await expect(block, `${ws}: the column's block`).toBeVisible();
-        await expect(block).toHaveAttribute('data-count', String(want.length));
-        // At most TILE_LIMIT tiles, the rest behind the more link: exactly the API's first entries, in its order, each
-        // with its sentence as its description.
-        expect(await blockEntries(block), `${ws}: the start lists the API's waits, in order`).toEqual(want.slice(0, TILE_LIMIT));
+        const list = page.locator(`[data-ui="workspace-column"][data-ws="${ws}"] app-tile-list`);
+        await expect(list, `${ws}: the tile's list area`).toBeVisible();
+        await expect(list.locator('[data-tile-count="waits"]'), `${ws}: the counter is the API's count`).toContainText(String(want.length));
+        // The specs in progress stand first; the places left show exactly the API's first waiting entries, in its order.
+        const working = await list.locator('li[data-tile-row][data-kind="working"]').count();
+        expect(await tileEntries(list), `${ws}: the start lists the API's waits, in order`).toEqual(want.slice(0, Math.max(0, TILE_LIMIT - working)));
       }
     });
 

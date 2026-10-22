@@ -7,9 +7,16 @@
 :host {
   display: grid;
   grid-template-rows: 32px calc(3 * var(--tile-row, 40px)) minmax(0, 1fr);
+
+  /* One column no wider than the tile: a long title is cut, it never widens the list. */
+  grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
   overflow: hidden;
   block-size: var(--tile-list, 184px);
   min-inline-size: 0;
+
+  /* Counters, rows and the foot align with the head and the KPIs on x = 16. */
+  padding-inline: 16px;
 }
 
 .counts {
@@ -31,6 +38,7 @@
 
 .rows {
   min-block-size: 0;
+  min-inline-size: 0;
 }
 
 ol {
@@ -53,15 +61,23 @@ li {
   --chip-icon-size: clamp(24px, calc(var(--tile-row, 40px) - 8px), 32px);
 
   position: relative;
+
+  /* The hover ground reaches 4 px past the text; the text itself stays on x = 16. */
+  margin-inline: -4px;
   padding-inline: 4px;
   border-radius: 6px;
 }
 
-.mark {
+/* The mark column is 16 px wide: the glyph is centred in it, the agent dot keeps its own 8 px between two margins. */
+ui-glyph.mark {
   display: grid;
   flex: none;
   place-items: center;
   inline-size: 16px;
+}
+
+ui-agent-dot.mark {
+  margin-inline: 4px;
 }
 
 /* The row's one link, stretched over the whole row; the copy chip stands above it and takes its own clicks. */
@@ -127,8 +143,8 @@ li {
   max-inline-size: 8ch;
 }
 
+/* The session keeps its place at the row end (at most 12ch); the title gives way first. */
 .session {
-  flex: 0 1 auto;
   max-inline-size: 12ch;
 }
 

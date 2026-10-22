@@ -2,11 +2,11 @@
 <div class="ws-head" data-demo-head>
   @if (link()) {
     <!-- The badge is a second, mouse-only way in; the name is the link the keyboard and the screen reader meet. -->
-    <a class="badge" [routerLink]="href()" tabindex="-1" aria-hidden="true">
+    <a class="head-badge" [routerLink]="href()" tabindex="-1" aria-hidden="true">
       <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
     </a>
   } @else {
-    <span class="badge">
+    <span class="head-badge">
       <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
     </span>
   }

@@ -22,7 +22,8 @@
   min-inline-size: 0;
 }
 
-.badge {
+/* Not `.badge`: that is daisyUI's badge class (padding, border, fill), which drew a second box around the badge. */
+.head-badge {
   display: flex;
   grid-area: badge;
   align-self: center;

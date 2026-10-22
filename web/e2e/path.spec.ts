@@ -16,7 +16,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { atWidth, expect, test } from './fixtures';
-import { type GuidanceView, sentenceOf } from './guidance-sentence';
+import type { GuidanceView } from './guidance-sentence';
 import { klm, StepCounter, StepRecorder, trail } from './steps';
 import { DENSE_HEADER, LOCKS_HEADER, RESET_PATH, SESSION_HEADER, STUB_WORKING, WAITS_HEADER } from './stub-api';
 
@@ -126,11 +126,13 @@ for (const width of [1440, 600, 390] as const) {
     // through the workspace column to the workspace dashboard and its spec row. The budget is unchanged but at 390 px.
     test(`P1 clicks @${width}: the workspace column, the spec row on its dashboard, the spec, its claims, the card → visible and focused in ≤ ${String(clickBudget(width))} steps`, async ({ page }) => {
       await page.goto('/');
-      // Spec 020 T16 (ISC-238): the only spec links on `/` are the entries of a column's block "Waits on you".
+      // Spec 020 T16 (ISC-238): the only spec links on `/` are the entries of a tile's list area (spec 066, ISC-518:
+      // its rows of specs in progress and of what waits replace the block "Waits on you" there).
       await expect(page.locator('app-overview-page app-workspace-column').first()).toBeVisible();
-      const outside = await page.locator('app-overview-page a[href*="/s/"]').evaluateAll((els) => els.filter((el) => !el.closest('[data-ui="waits-block"]')).length);
-      expect(outside, 'the overview lists no spec outside Waits on you').toBe(0);
-      const column = page.locator(`app-workspace-column[data-ws="${TARGET.ws}"] .ws-head a[href="/w/${TARGET.ws}"]`);
+      const outside = await page.locator('app-overview-page a[href*="/s/"]').evaluateAll((els) => els.filter((el) => !el.closest('app-tile-list')).length);
+      expect(outside, 'the overview lists no spec outside the tile list').toBe(0);
+      // Spec 066: the head holds two links to the workspace, the mouse-only badge and the name; the name is the one met.
+      const column = page.locator(`app-workspace-column[data-ws="${TARGET.ws}"] .ws-head a.name[href="/w/${TARGET.ws}"]`);
       await expect(column).toBeVisible();
       const steps = new StepCounter(page);
       const click = (target: Locator, label: string) => (touch ? steps.tapOn(target, label) : steps.clickOn(target, label));
@@ -280,29 +282,30 @@ for (const width of [1440, 600, 390] as const) {
 
 /*
  * Usage path P2 · waiting spec with its command (spec 020, ISC-242; notation of spec 018): from `/` at 1440 px to the
- * command of the top entry of "Waits on you" in the clipboard, its waiting spec and its reason on its tile.
+ * command of the top entry of "Waits on you" in the clipboard, its waiting spec and its ref on its row (spec 066).
  *
  *   bun run e2e -- path -g P2
  *
  * With `X-Spectant-Stub-Waits: 7` the first column is harbor, its golden as it is (the fixture of ISC-237). The top
- * entry is the first flat tile of the column's block "Waits on you" (spec 064, ISC-478): its ID, the waiting spec's
- * title as its main text and its copy chip above the fold, so the path is one click on the chip (M + P + B = 2.65 s);
- * reading the tile is not a step. The reason sentence is no visible text: it is the tile link's accessible description
- * (`aria-describedby`). The goal holds only when the clipboard holds the API body's `guidance.waits[0].command` byte
- * for byte, the tile's main text is that spec's title from the body's `specs`, and the tile link's description is the
- * top entry's sentence, built from the English catalogue (`guidance-sentence.ts`), on a tile wholly on screen. Spec
- * 018's Ist: 1 step and 2.7 s for the command; the reason and the waiting spec were not reachable.
+ * entry is the first row of the tile's list area (spec 066, ISC-518; no spec in progress under the default locks, so
+ * the first row is the first waiting one): its ID, its ref, the waiting spec's title and its icon-only copy chip above
+ * the fold, so the path is one click on the chip (M + P + B = 2.65 s); reading the row is not a step. The goal holds
+ * only when the clipboard holds the API body's `guidance.waits[0].command` byte for byte, the row's title is that
+ * spec's title from the body's `specs`, its ref is the top entry's ref, and its link leads to the waiting spec, on a
+ * row wholly on screen. The one-line row of spec 066 carries no reason sentence (design.md, list row anatomy: glyph,
+ * ID, ref, title, copy, time); the reason stands on the spec the row links to, so P2 reads the ref on `/` and the
+ * reason one click further. Spec 018's Ist: 1 step and 2.7 s for the command; the reason and the waiting spec were
+ * not reachable.
  */
 const P2 = { ws: 'harbor', headers: { [WAITS_HEADER]: '7' } } as const;
 const P2_BUDGET = { steps: 1, seconds: 3 } as const;
 
-type P2Entry = GuidanceView['waits'][number] & { readonly command: string | null };
+type P2Entry = GuidanceView['waits'][number] & { readonly command: string | null; readonly ref?: string | null };
 type P2Body = {
   readonly guidance?: { readonly waits: readonly P2Entry[] };
   readonly specs: ReadonlyArray<{ readonly id: string; readonly title: string }>;
 };
 
-const p2Text = (s: string | null | undefined): string => (s ?? '').replace(/\s+/gu, ' ').trim();
 
 test.describe('P2 · step counter', () => {
   test('P2 counter: one click on the copy chip costs M + P + B = 2.65 s, within the 3 s budget', () => {
@@ -316,7 +319,7 @@ test.describe('P2 · step counter', () => {
 test.describe('P2 · waiting spec with its command @1440', () => {
   test.use(atWidth(1440));
 
-  test(`P2 waits @1440: one click on the top waiting entry's copy chip → its command in the clipboard, its spec's title and its reason on its tile in ≤ ${P2_BUDGET.steps} step and ≤ ${P2_BUDGET.seconds} s`, async ({ page, context, request }) => {
+  test(`P2 waits @1440: one click on the top waiting entry's copy chip → its command in the clipboard, its spec's title, its ref and its link on its row in ≤ ${P2_BUDGET.steps} step and ≤ ${P2_BUDGET.seconds} s`, async ({ page, context, request }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.context().setExtraHTTPHeaders(P2.headers);
     const listed = await request.get('/api/workspaces', { headers: P2.headers });
@@ -331,19 +334,23 @@ test.describe('P2 · waiting spec with its command @1440', () => {
     expect(top, `${P2.ws}: something waits`).toBeDefined();
     const command = top?.command ?? '';
     expect(command, 'the top entry has a command').not.toBe('');
-    const sentence = top ? sentenceOf(top.reason) : '';
     const title = body.specs.find((row) => row.id === top?.spec)?.title ?? '';
     expect(title, 'the waiting spec has a title').not.toBe('');
 
     await page.goto('/');
-    const block = page.locator(`[data-ui="workspace-column"][data-ws="${P2.ws}"] [data-ui="waits-block"]`);
-    const entry = block.locator('ui-flat-tile').first();
-    await expect(entry, 'the top waiting entry is the first tile').toBeVisible();
-    await expect(block.locator('[data-top]'), 'no tile stands highlighted').toHaveCount(0);
-    await expect(entry.locator('[data-tile-id]')).toHaveText(top?.spec ?? '');
-    await expect(entry.locator('[tileMain]'), 'the tile\'s main text is the waiting spec\'s title').toHaveText(title);
-    const chip = entry.locator('ui-command-chip');
-    await expect(chip.locator('code'), 'the chip shows the top entry\'s command').toHaveText(command);
+    const block = page.locator(`[data-ui="workspace-column"][data-ws="${P2.ws}"] app-tile-list`);
+    const entry = block.locator('li[data-tile-row]').first();
+    await expect(entry, 'the top waiting entry is the first row').toBeVisible();
+    await expect(entry).toHaveAttribute('data-kind', 'waiting');
+    await expect(block.locator('[data-top]'), 'no row stands highlighted').toHaveCount(0);
+    await expect(entry).toHaveAttribute('data-id', top?.spec ?? '');
+    await expect(entry.locator('[data-title]'), 'the row\'s title is the waiting spec\'s title').toHaveText(title);
+    const ref = top?.ref ?? null;
+    if (ref === null) await expect(entry.locator('[data-ref]'), 'a spec entry shows no ref').toHaveCount(0);
+    else await expect(entry.locator('[data-ref]'), 'the row shows the top entry\'s ref').toHaveText(ref);
+    await expect(entry.locator('a[data-tile-link]'), 'the row leads to the waiting spec').toHaveAttribute('href', `/w/${P2.ws}/s/${top?.spec ?? ''}`);
+    const chip = entry.locator('ui-command-chip[data-icon-only]');
+    await expect(chip.locator('code'), 'the chip holds the top entry\'s command').toHaveText(command);
     expect(await page.evaluate(() => window.scrollY), 'the start opens unscrolled').toBe(0);
     await page.evaluate(() => navigator.clipboard.writeText(''));
     const steps = new StepCounter(page);
@@ -368,18 +375,7 @@ test.describe('P2 · waiting spec with its command @1440', () => {
 
     await expect(button, 'the visible confirmation').toHaveAttribute('data-copied', '');
     expect(await page.evaluate(() => navigator.clipboard.readText()), 'the clipboard holds the command byte for byte').toBe(command);
-    // Spec 064 (T10): the tile's link is the empty cover link over the tile; its id beside it is aria-hidden.
-    const link = entry.locator('a.cover');
-    await expect(link, 'the top entry\'s reason is the tile link\'s description').toHaveAccessibleDescription(p2Text(sentence));
-    await expect(entry.locator('[data-reason]'), 'no visible reason line on the tile').toHaveCount(0);
-    const described = await link.evaluate((a) => {
-      const node = document.getElementById(a.getAttribute('aria-describedby') ?? '');
-      const r = node?.getBoundingClientRect();
-      return r ? { text: node?.textContent ?? '', width: r.width, height: r.height } : null;
-    });
-    expect(p2Text(described?.text), 'the description node holds the sentence').toBe(p2Text(sentence));
-    expect((described?.width ?? 0) <= 1 && (described?.height ?? 0) <= 1, 'the sentence is visually hidden').toBe(true);
-    await expect(entry, 'the tile is wholly on screen').toBeInViewport({ ratio: 1 });
+    await expect(entry, 'the row is wholly on screen').toBeInViewport({ ratio: 1 });
   });
 });
 
@@ -508,7 +504,7 @@ async function walkP3(page: Page, lang: 'en' | 'de', width: number, variant: P3V
   const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('lang', lang);
-  const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
+  const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a.name[href="/w/${DENSE.ws}"]`);
   await expect(column).toBeVisible();
   const steps = new StepCounter(page);
   await openWorkspace(page, lang, steps, column);
@@ -616,7 +612,7 @@ for (const lang of ['en', 'de'] as const) {
       test(`P6 list @${width} in ${lang}: the column, the KPI band's Specs figure, then the list head and its first ${P6.rows} rows read in ≤ ${P6_BUDGET.steps} steps`, async ({ page }) => {
         await page.goto('/');
         await expect(page.locator('html')).toHaveAttribute('lang', lang);
-        const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
+        const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a.name[href="/w/${DENSE.ws}"]`);
         await expect(column).toBeVisible();
         const steps = new StepCounter(page);
         await openWorkspace(page, lang, steps, column);
