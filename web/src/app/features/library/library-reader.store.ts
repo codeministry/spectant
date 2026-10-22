@@ -26,7 +26,7 @@ import {
   type TechSection,
 } from './library-prose';
 import { readerSections, type ReaderSplit } from './library-sections';
-import { reloadOnRefresh } from './reload-on-refresh';
+import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 
 /** What the reader hands its store: its inputs, read as they are. */
 export interface ReaderInputs {

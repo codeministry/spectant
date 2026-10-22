@@ -178,11 +178,13 @@ export class RefreshService {
    * server built it for. The workspace list is no workspace's, so it reloads on every frame; the open workspace's frame
    * then refreshes the shell as a poll would, and the reads answer 304 with the frame's bodies. The open spec reloads
    * whether or not a view names its path, since the route may name it by folder or slug while the stream names the id;
-   * a frame for another workspace touches nothing else.
+   * a frame for another workspace touches nothing else. With no workspace open (the overview `/`, spec 065) every
+   * frame refreshes, since every workspace's dashboard is on screen there.
    */
   apply(update: LiveUpdate): void {
     for (const view of update.views) this.api.prime(view.path, view.etag, view.body);
-    if (update.ws === this.state.ws()) this.refresh();
+    const open = this.state.ws();
+    if (open === null || update.ws === open) this.refresh();
     else this.data.workspaces.reload();
   }
 
