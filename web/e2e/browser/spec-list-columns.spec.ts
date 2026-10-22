@@ -129,6 +129,31 @@ for (const width of [WIDTHS.tablet, WIDTHS.desktop]) {
         }
       }
     });
+
+    test(`stage centred: every stage chip, idea pill and the "Stage" heading sit in the middle of their column at ${String(width)} px`, async ({ page }) => {
+      await openList(page);
+      const offsets = await page.evaluate(() => {
+        const mid = (el: Element | Range): number => {
+          const r = el.getBoundingClientRect();
+          return (r.left + r.right) / 2;
+        };
+        /** The ink inside a cell: the chip, or the heading's text through a range. */
+        const ink = (cell: Element): number => {
+          const chip = cell.querySelector('ui-chip');
+          if (chip) return mid(chip);
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          return mid(range);
+        };
+        return [...document.querySelectorAll('app-spec-table-head, app-spec-row, app-idea-row')]
+          .map((row) => row.querySelector(':scope > [data-cell="phase"]'))
+          .filter((cell): cell is Element => cell !== null && cell.getClientRects().length > 0 && cell.textContent.trim() !== '')
+          .map((cell) => ({ row: cell.parentElement?.tagName ?? '', offset: ink(cell) - mid(cell) }));
+      });
+      expect(offsets.some((o) => o.row === 'APP-SPEC-TABLE-HEAD'), 'the heading').toBe(true);
+      expect(offsets.some((o) => o.row === 'APP-IDEA-ROW'), 'an idea pill').toBe(true);
+      for (const o of offsets) expect(Math.abs(o.offset), `${o.row} off centre by ${String(o.offset)}`).toBeLessThanOrEqual(TOLERANCE);
+    });
   });
 }
 

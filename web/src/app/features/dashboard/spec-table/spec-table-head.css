@@ -37,6 +37,11 @@
   grid-column: meter-start / star-end;
 }
 
+/* "Stage" centred over its column, like the chips below it. */
+.col[data-cell='phase'] {
+  text-align: center;
+}
+
 /* Below 640 px only the compact form's first line: ID and Title (beside the empty `more` and `star`). */
 @container specs (width < 640px) {
   :host {
