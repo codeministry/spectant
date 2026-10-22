@@ -155,9 +155,19 @@ test.describe('no phase word', () => {
       // The spec list: one status chip per row, each a stage word; the filter chips too.
       await page.goto(`/w/${WS}/specs`);
       await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
-      const status = page.locator('[data-panel="specs"] [data-cell="phase"] ui-chip');
+      const status = page.locator('[data-panel="specs"] app-spec-row [data-cell="phase"] ui-chip');
       await expect(status).toHaveCount(rows.length);
       expect(await phaseChips(status, words), `spec list (${lang})`).toEqual([]);
+      // Spec 064 (T69, ISC-510): the idea rows below the specs carry their state as a pill in the same column, read
+      // "<stages.idea> · <state>": the stage word, never a phase word.
+      const ideaPills = page.locator('[data-panel="specs"] app-idea-row [data-cell="phase"] ui-chip[data-idea-state]');
+      await expect.poll(() => ideaPills.count(), `idea pills (${lang})`).toBeGreaterThan(0);
+      expect(await phaseChips(ideaPills, words), `idea pills (${lang})`).toEqual([]);
+      for (const pill of await ideaPills.all()) {
+        const state = (await pill.getAttribute('data-state')) ?? '';
+        const line = `${textOf(catalogue(lang), 'stages.idea')} · ${textOf(catalogue(lang), `states.item.${state}`)}`;
+        await expect(pill, `idea pill ${state} (${lang})`).toHaveText(new RegExp(`^\\s*${escape(line)}\\s*$`, 'u'));
+      }
       for (const row of rows) {
         const chip = page.locator(`[data-panel="specs"] [data-spec-row="${row.id}"]`).locator('xpath=ancestor-or-self::li[1]').locator('[data-cell="phase"] ui-chip');
         await expect(chip, `${row.id} reads its stage`).toHaveText(textOf(catalogue(lang), `stages.${row.stage}`));

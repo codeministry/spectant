@@ -203,8 +203,9 @@ test.describe('sidebar: wide (1440)', () => {
 
   test('specs page ideas: an idea row docks the sidebar on the idea; its feature parent re-selects; reload; Escape', async ({ page }) => {
     const ref: RelationRef = 'idea:console-audit-log';
-    // Spec 064 (ISC-485): the idea is a row of the list's ideas group; its first click selects, as a spec row's does.
-    const row = page.locator('li[data-ideas-group] app-idea-row[data-idea="console-audit-log"] a.link');
+    // Spec 064 (ISC-485, refined 2026-10-22): the idea is a plain row of the list after the specs, without a group
+    // heading; its first click selects, as a spec row's does.
+    const row = page.locator('app-spec-table app-idea-row[data-idea="console-audit-log"] a.link');
     await page.goto('/w/harbor/specs');
     await row.click();
     await expect(page).toHaveURL(/\/w\/harbor\/specs\?/u);

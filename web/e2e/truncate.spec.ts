@@ -48,8 +48,9 @@ test.describe('truncate table', () => {
   test.use(atWidth(390));
 
   test('table: a long description is cut after one line at a whole word, and more… / less toggle it in place', async ({ page }) => {
-    // Spec 021 (design § P3 heights): below 640 px a marked row shows its mark where the description stood, and the
-    // first five rows of harbor are all marked; the open list (`?open=specs`) holds unmarked rows with a description.
+    // Spec 064 (T48): below 880 px of list a closed row shows no description; from 880 it stands inline behind the
+    // title, one line, so this check runs at 1440. The open list (`?open=specs`) holds every row.
+    await page.setViewportSize(atWidth(1440).viewport);
     await page.goto('/w/harbor/specs?open=specs');
     await expect(page.locator('[data-spec-row]').first()).toBeVisible();
     const cut = page.locator('[data-panel="specs"] app-spec-row .d[data-clamp="cut"]:visible');
@@ -60,8 +61,11 @@ test.describe('truncate table', () => {
     // spec 024: one line (principal 2026-10-13, ISC-111 refined)
     expectCutAtWord(await measure(description), 1);
 
+    // Spec 064 (T46, ISC-489): the toggle shows only "…"; "More…" / "Less" and the row stand in its accessible name.
     const more = page.locator(`[data-more="${id}"]`);
     await expect(more).toBeVisible();
+    await expect(more).toHaveText(ELLIPSIS);
+    await expect(more).toHaveAccessibleName(new RegExp(`^More… ${id} \\S`, 'u'));
     await expect(more).toHaveAttribute('aria-expanded', 'false');
     await expect(more).toHaveAttribute('aria-controls', `desc-${id}`);
     await expect(page.locator('.row-link [data-more]')).toHaveCount(0);
@@ -73,10 +77,13 @@ test.describe('truncate table', () => {
     // spec 024: one line (principal 2026-10-13, ISC-111 refined)
     expect(open.height).toBeGreaterThan(open.line * 1 + 1);
     await expect(more).toHaveAttribute('aria-expanded', 'true');
+    await expect(more).toHaveText(ELLIPSIS);
+    await expect(more).toHaveAccessibleName(new RegExp(`^Less ${id} \\S`, 'u'));
 
     await more.click();
     await expect(description).toHaveAttribute('data-clamp', 'cut');
     await expect(more).toHaveAttribute('aria-expanded', 'false');
+    await expect(more).toHaveAccessibleName(new RegExp(`^More… ${id} \\S`, 'u'));
   });
 
   test('table: every cut description has its button, and a description that fits has none', async ({ page }) => {

@@ -78,6 +78,12 @@
   max-inline-size: none;
 }
 
+/* In the column an opened row turns `.rtitle` into, the inline form's zero flex basis would collapse the description
+   to no height; it takes its content's height instead. */
+:host([data-expanded]) .d {
+  flex: none;
+}
+
 /* The cells right of the title: each holds one thing at its column's start, cut rather than pushing a neighbour. */
 .rmore,
 .rmark,
