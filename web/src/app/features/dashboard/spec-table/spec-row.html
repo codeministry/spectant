@@ -63,7 +63,9 @@
     <ui-chip class="rarchived" variant="plain" icon="archive" data-archived-chip [attr.title]="archivedTitle()">{{ 'specs.archivedChip' | transloco }}</ui-chip>
   } @else {
     <!-- Spec 064 (T59, ISC-500): the status chip names the row's stage, not its coarse phase. -->
-    <ui-chip class="phase" [tone]="stageTone()" [dot]="true">{{ 'stages.' + row().stage | transloco }}</ui-chip>
+    <ui-chip class="phase" [tone]="stageTone()" [dot]="true" [attr.title]="'stages.' + row().stage | transloco"
+      ><span class="stext">{{ 'stages.' + row().stage | transloco }}</span></ui-chip
+    >
   }
 </span>
 <span class="rmeter" data-cell="meter" role="img" [attr.aria-label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }">

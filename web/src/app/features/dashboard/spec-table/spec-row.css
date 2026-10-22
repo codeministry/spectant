@@ -96,6 +96,18 @@
   min-inline-size: 0;
 }
 
+/* The stage chip stays inside the phase column; a long stage word ("Close-pending") ends in an ellipsis. */
+.rphase .phase {
+  max-inline-size: 100%;
+  overflow: hidden;
+}
+
+.rphase .stext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The "…" toggle (spec 064, T46) sits above the row link's stretch, at the top of an opened row. */
 .rmore {
   position: relative;
