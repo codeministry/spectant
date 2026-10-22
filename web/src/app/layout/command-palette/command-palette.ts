@@ -17,11 +17,11 @@ import { formatDay, formatInstant, UiTime } from '../../shared/time';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
-import { toneOfPhase } from '../../shared/ui/phase-tone';
+import { toneOfStage } from '../../shared/ui/stage-tone';
 import type { Tone } from '../../shared/ui/tone';
 import { ShellState } from '../shell/shell-state.service';
 import { follow, isCommitEnter } from './navigate';
-import { hasPhase, isClaim, isCommand, isIdea } from './palette-groups';
+import { hasStage, isClaim, isCommand, isIdea } from './palette-groups';
 import { PaletteIndex } from './palette-index';
 import { excerpt, highlight, rankGroups, type Segment } from './palette-ranking';
 import { PaletteRecent } from './palette-recent';
@@ -44,8 +44,8 @@ interface PaletteOption {
   readonly icon: IconName | null;
   /** Next up and Services set their labels in mono. */
   readonly mono: boolean;
-  /** A spec's phase chip: its word, tone and icon; null on any other row. */
-  readonly phase: { readonly label: string; readonly tone: Tone; readonly icon: IconName | undefined } | null;
+  /** A spec's stage chip: its word, tone and icon; null on any other row (spec 064, ISC-501). */
+  readonly stage: { readonly label: string; readonly tone: Tone; readonly icon: IconName | undefined } | null;
   /** Next up leads with `terminal`, not the id chip. */
   readonly showChip: boolean;
 }
@@ -123,13 +123,13 @@ export class CommandPalette {
           label: highlight(text, query),
           ariaLabel:
             claim?.accessibleName ??
-            [entry.label, hasPhase(entry) ? entry.phaseLabel : null, when(entry.metaTime), entry.meta].filter((part) => part !== null && part !== undefined && part !== '').join(', '),
+            [entry.label, hasStage(entry) ? entry.stageLabel : null, when(entry.metaTime), entry.meta].filter((part) => part !== null && part !== undefined && part !== '').join(', '),
           status: claim === null ? null : { word: claim.statusWord, dot: claim.dot },
           chip: highlight(entry.chip ?? '', query),
           idea: isIdea(entry),
           icon: leadIcon(source.id, entry),
           mono: MONO_GROUPS.has(source.id),
-          phase: hasPhase(entry) ? { label: entry.phaseLabel, tone: toneOfPhase(entry.phase), icon: chipIcon(entry.phase) } : null,
+          stage: hasStage(entry) ? { label: entry.stageLabel, tone: toneOfStage(entry.stage), icon: chipIcon(entry.stage) } : null,
           showChip: source.id !== 'nextUp',
         };
       }),

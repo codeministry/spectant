@@ -38,9 +38,10 @@ class FakeResizeObserver {
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const HARBOR = {
   specs: [
-    { id: '004', title: 'Retention policies', type: 'feature', stage: 'code-review' },
-    { id: '002', title: 'Web console', type: 'feature', stage: 'build' },
-    { id: '003', title: 'Config loader', type: 'refactor', stage: 'tasks' },
+    // Each row carries its coarse phase beside its stage, as core's rows do: the header shows the stage (spec 064, ISC-501).
+    { id: '004', title: 'Retention policies', type: 'feature', stage: 'code-review', phase: 'climbing' },
+    { id: '002', title: 'Web console', type: 'feature', stage: 'build', phase: 'building' },
+    { id: '003', title: 'Config loader', type: 'refactor', stage: 'tasks', phase: 'scoping' },
   ],
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
@@ -787,6 +788,8 @@ describe('ShellComponent', () => {
         'Config loader',
       ]);
       expect(texts(list?.querySelectorAll('[data-spec] ui-chip') as NodeListOf<Element>)).toEqual(['Code review', 'Build', 'Tasks']);
+      // Spec 064 (ISC-501): the chip names the stage in its own tone, never the phase.
+      expect([...(list?.querySelectorAll('[data-spec] ui-chip') ?? [])].map((chip) => chip.getAttribute('data-tone'))).toEqual(['warning', 'primary', 'secondary']);
       expect(rows.map((row) => row.getAttribute('aria-current'))).toEqual([null, 'true', null]);
       expect(document.activeElement).toBe(rows[1]);
 

@@ -15,7 +15,7 @@ import {
 
 export {
   CLAIMS_ORDER,
-  hasPhase,
+  hasStage,
   IDEAS_ORDER,
   isClaim,
   isCommand,

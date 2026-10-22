@@ -38,13 +38,13 @@ export const CLAIMS_ORDER = 15;
 /** After Next up (20), before Workspaces (30). */
 export const PAGES_ORDER = 25;
 
-/** A spec of the Specs group: its phase as a chip (`.chip.building` / `.chip.scoping`). */
+/** A spec of the Specs group: its stage as a chip, the word from `stages.*` (spec 064, ISC-501). */
 export interface PaletteSpecEntry extends PaletteEntry {
-  readonly phase: string;
-  readonly phaseLabel: string;
+  readonly stage: string;
+  readonly stageLabel: string;
 }
 
-export const hasPhase = (entry: PaletteEntry): entry is PaletteSpecEntry => typeof (entry as Partial<PaletteSpecEntry>).phase === 'string';
+export const hasStage = (entry: PaletteEntry): entry is PaletteSpecEntry => typeof (entry as Partial<PaletteSpecEntry>).stage === 'string';
 
 /**
  * An idea of the open workspace (spec 008, ISC-124.2): the palette draws its chip in the idea chip's look (`lightbulb`,

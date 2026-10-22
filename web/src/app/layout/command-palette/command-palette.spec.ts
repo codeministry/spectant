@@ -8,7 +8,8 @@ import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../co
 import { formatDay } from '../../shared/time';
 import { ShellState } from '../shell/shell-state.service';
 import { CommandPalette } from './command-palette';
-import { PaletteIndex } from './palette-index';
+import { specsSource } from './palette-group-sources';
+import { PaletteIndex, readWorkspace } from './palette-index';
 import { PaletteRecent } from './palette-recent';
 
 /** A milestone row as the Milestones group builds it: its target as a calendar day beside the state word. */
@@ -77,4 +78,64 @@ describe('CommandPalette option', () => {
     expect(row.querySelector('time')?.textContent).toBe(formatDay('2026-03-15', 'de'));
     expect(row.getAttribute('aria-label')).toBe('Harbor 0.9, 15.03.2026, late');
   });
+});
+
+/** Three harbor specs in three stages, each with the coarse phase core's row carries beside it (spec 064, ISC-501). */
+const STAGED = readWorkspace('harbor', 'harbor', {
+  specs: [
+    { id: '004', slug: '004-retention', title: 'Retention policies', stage: 'code-review', phase: 'climbing' },
+    { id: '002', slug: '002-web-console', title: 'Web console', stage: 'build', phase: 'building' },
+    { id: '003', slug: '003-config-loader', title: 'Config loader', stage: 'review', phase: 'scoping' },
+  ],
+});
+
+describe('CommandPalette spec entries: the stage, never the phase (spec 064, ISC-501)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [
+        provideRouter([]),
+        { provide: PALETTE_SOURCES, useFactory: specsSource, multi: true },
+        { provide: KeyboardService, useValue: { paletteOpen: signal(true) } },
+        { provide: ShellState, useValue: { tier: signal('wide') } },
+        { provide: PaletteIndex, useValue: { settled: computed(() => true), workspaces: computed(() => [STAGED]), want: () => undefined } },
+        { provide: PaletteRecent, useValue: { remember: () => undefined } },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    document.querySelectorAll('[data-ui="command-palette"]').forEach((el) => el.closest('ui-dialog')?.remove());
+  });
+
+  for (const lang of LANGS) {
+    it(`shows each spec's stage word from stages.* in the stage's tone, in its name too (${lang})`, async () => {
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const fixture = TestBed.createComponent(CommandPalette);
+      await fixture.whenStable();
+      const catalogue = CATALOGUES[lang] as unknown as { stages: Record<string, string>; phases: Record<string, string> };
+      const phases = Object.values(catalogue.phases);
+      const row = (id: string) => document.querySelector<HTMLElement>(`[data-entry="harbor/${id}"]`);
+      const expected = [
+        ['004', 'code-review', 'warning'],
+        ['002', 'build', 'primary'],
+        ['003', 'review', 'concern'],
+      ] as const;
+
+      for (const [id, stage, tone] of expected) {
+        const chip = row(id)?.querySelector('ui-chip.p-stage');
+        const word = catalogue.stages[stage] ?? '';
+        expect(chip?.textContent.trim(), id).toBe(word);
+        expect(chip?.getAttribute('data-tone'), id).toBe(tone);
+        expect(row(id)?.getAttribute('aria-label'), id).toContain(word);
+        for (const phase of phases) expect(row(id)?.getAttribute('aria-label')?.split(', '), `${id} ${phase}`).not.toContain(phase);
+      }
+    });
+  }
 });

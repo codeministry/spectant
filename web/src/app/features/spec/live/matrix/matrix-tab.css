@@ -69,7 +69,11 @@
   outline-offset: -2px;
 }
 
-.grid {
+/* One table for every row (spec 064, ISC-506): the class must not be Tailwind's `.grid` utility, whose `display: grid`
+   turned thead and each lane's tbody into separate anonymous tables, each sizing Claim and Lane to its own content, so
+   the frame columns started at a different x per lane. As a real table every column has one width in every row. */
+.mx-grid {
+  display: table;
   border-collapse: separate;
   border-spacing: 0;
   inline-size: max-content;
@@ -247,7 +251,7 @@ th[data-current] {
 /* spec 024: the .matrix: Task (fixed), Claim, the lane marker and Lane as columns, the frames after them;
    the heads 11 px muted, the frame on screen raised; a struck cell hatched on the raised ground; the legend a meta line. */
 
-.grid > thead > tr > th {
+.mx-grid > thead > tr > th {
   color: var(--muted);
   font-size: 11px;
 }
