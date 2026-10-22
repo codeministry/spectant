@@ -50,6 +50,8 @@ interface DashboardModel {
     readonly archived: number;
   };
   readonly specs: readonly unknown[];
+  /** The stories under `specs/ideas/` (spec 064): the list's idea rows and its phase chip "ideas". */
+  readonly ideas?: { readonly count?: number; readonly list?: readonly unknown[] } | null;
   readonly brief: { readonly lang?: string | null } | null;
 }
 
@@ -191,15 +193,19 @@ for (const stub of STUBS) {
       if (model.specs.length > 10) expect(await numbersOf(showAll)).toEqual([model.specs.length]);
 
       // Filter chips: `all` is `kpis.specs`, each stage-group chip its `kpis.stageGroups` entry (the Specs tile's split,
-      // one derivation), fog `kpis.specsWithFog`, each type chip its `kpis.byType` entry.
+      // one derivation), fog `kpis.specsWithFog`, ideas (spec 064, ISC-480) the answer's story list, each type chip its
+      // `kpis.byType` entry.
       const phases = await chipsOf(table.locator('ui-filter-chips[data-filter="phase"]'));
       const all = phases.get(SPECS_ALL);
       expect(all?.count).toBe(k.specs);
       expect(numbers(all?.name ?? null)).toEqual([k.specs]);
       const groups = STAGE_GROUPS.filter((group) => k.stageGroups[group] > 0);
-      expect(phases.size).toBe(1 + groups.length + (k.specsWithFog > 0 ? 1 : 0));
+      const ideas = model.ideas?.list?.length ?? 0;
+      if (model.ideas?.count !== undefined) expect(model.ideas.count, 'ideas.count is the length of ideas.list').toBe(ideas);
+      expect(phases.size).toBe(1 + groups.length + (k.specsWithFog > 0 ? 1 : 0) + (ideas > 0 ? 1 : 0));
       for (const group of groups) expect(phases.get(phaseLabel(group))?.count, `phase chip ${group}`).toBe(k.stageGroups[group]);
       if (k.specsWithFog > 0) expect(phases.get(FOG_LABEL)?.count).toBe(k.specsWithFog);
+      if (ideas > 0) expect(phases.get(phaseLabel('idea'))?.count, 'phase chip ideas').toBe(ideas);
 
       const byType = Object.entries(k.byType);
       const typeGroup = table.locator('ui-filter-chips[data-filter="type"]');

@@ -1,0 +1,44 @@
+<!-- gallery: dev-only strings (see ui-gallery.ts). Spec 064: the flat tile in both densities and the agent dot. -->
+<section class="gallery-group" data-gallery="flat-tiles" aria-labelledby="g-flat-tiles">
+  <h2 id="g-flat-tiles">Flat tiles</h2>
+  @for (density of densities; track density.key) {
+    <div class="tg-frame" [style.max-inline-size.px]="density.width" [attr.data-gallery]="'flat-tiles-' + density.key">
+      <p class="tg-eyebrow">{{ density.key }} · list {{ density.width }} px · tile {{ density.height }} px</p>
+      <ol class="tiles">
+        <li>
+          <ui-flat-tile
+            link="/__ui"
+            name="002 Dashboard shell · review · waiting 2 d"
+            hint="Dashboard shell"
+            [attr.data-gallery]="'flat-tile-' + density.key + '-waits'"
+          >
+            <ui-glyph tileMark state="waiting" family="item" [size]="14" />
+            <span tileId>002</span>
+            <span tileMain>Dashboard shell</span>
+            <ui-command-chip tileAside command="/spec review 002" />
+            <span tileMeta>since 2 d</span>
+          </ui-flat-tile>
+        </li>
+        <li>
+          <ui-flat-tile
+            link="/__ui"
+            name="064 Flat dashboard tiles · a:claude:sess-2"
+            hint="Flat dashboard tiles"
+            [attr.data-gallery]="'flat-tile-' + density.key + '-working'"
+          >
+            <ui-agent-dot tileMark />
+            <span tileId>064</span>
+            <span tileMain>Flat dashboard tiles</span>
+            <span tileAside class="tg-agent">a:claude:sess-2</span>
+          </ui-flat-tile>
+        </li>
+      </ol>
+    </div>
+  }
+  <div class="tg-row">
+    <ui-agent-dot data-gallery="agent-dot" />
+    <span>decorative (aria-hidden)</span>
+    <ui-agent-dot label="Agent working" data-gallery="agent-dot-labelled" />
+    <span>labelled (role=img)</span>
+  </div>
+</section>

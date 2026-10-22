@@ -159,7 +159,7 @@ describe('KpiBand', () => {
       expect(cells.map((link) => link.getAttribute('href'))).toEqual([
         '/w/harbor/specs',
         '/w/harbor/specs?sort=next&takeable=1',
-        '/w/harbor#warnings',
+        '/w/harbor?open=warnings#warnings',
         '/w/harbor/specs?phase=fog',
       ]);
     });
@@ -306,13 +306,13 @@ describe('KpiBand', () => {
     expect(look('fog')).toEqual({ edge: true, glow: true, tone: 'secondary' });
   });
 
-  it('links the list tiles to /w/:ws/specs with their query state and Warnings to #warnings on /w/:ws (ISC-395)', async () => {
+  it('links the list tiles to /w/:ws/specs with their query state and Warnings to ?open=warnings#warnings on /w/:ws (ISC-395, ISC-475)', async () => {
     const { tile } = await render();
     const href = (kpi: string) => tile(kpi)?.querySelector('a.tile')?.getAttribute('href') ?? null;
 
     expect(href('specs')).toBe('/w/harbor/specs');
     expect(href('takeable')).toBe('/w/harbor/specs?sort=next&takeable=1');
-    expect(href('warnings')).toBe('/w/harbor#warnings');
+    expect(href('warnings')).toBe('/w/harbor?open=warnings#warnings');
     expect(href('fog')).toBe('/w/harbor/specs?phase=fog');
     expect(href('master')).toBeNull();
     expect(href('claims')).toBeNull();

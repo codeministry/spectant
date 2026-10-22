@@ -1,0 +1,79 @@
+import { LocationStrategy } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { Router } from '@angular/router';
+import { TranslocoPipe } from '@jsverse/transloco';
+import type { ItemStateInfo, Priority } from '../../../../../../core/src/files';
+import type { RelationRef } from '../../../../../../core/src/relations';
+import { DetailSelection, selectedLook } from '../../../layout/detail-sidebar/selection';
+import { UiIcon } from '../../../shared/icons/icon';
+import { UiItemState } from '../../../shared/ui/item-state/item-state';
+import { PRIORITY_LOOK, UiPriority } from '../../../shared/ui/priority/priority';
+import type { DashboardIdea } from './idea-rows';
+
+/** The state line without a command: an idea's row carries no Next command (ISC-482); its page holds the chip. */
+function withoutCommand(info: ItemStateInfo): ItemStateInfo {
+  const { command, run, ...rest } = info;
+  if (command === undefined && run === undefined) return info;
+  return run === undefined ? rest : { ...rest, run: { ...run, command: null } };
+}
+
+/**
+ * Spec 064 (T40, ISC-484, ISC-482): one story of `specs/ideas/` as a row of the Specs list, in the row grid of
+ * `app-spec-row` (`_row-grid.css`: the same columns and heights per tier). Where a spec row has its id, the idea glyph;
+ * then the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`, with
+ * feature and milestone as the muted meta behind it; in the track cell `ui-priority` and, when the model serves one,
+ * `ui-item-state` without its command and actor. The meter and star cells stay empty: an idea has no stage track, claim
+ * progress, Next command or agent dot. Below 640 px of list it stacks like the spec row, the meta ending line 2.
+ *
+ * The link activates like a spec row's (spec 026, ISC-171): a plain click (or Enter) selects the story for the detail
+ * sidebar (`?sel=idea:<slug>`, every other param kept), the row taking the selection look; on the selected row it
+ * opens the idea page. A Shift, Ctrl, Cmd or Alt click keeps the browser's own handling of the href.
+ */
+@Component({
+  selector: 'app-idea-row',
+  imports: [TranslocoPipe, UiIcon, UiItemState, UiPriority],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './idea-row.html',
+  styleUrl: './idea-row.css',
+  host: { '[attr.data-idea]': 'idea().slug', '[attr.data-desc]': "where() ? '' : null" },
+})
+export class IdeaRow {
+  readonly idea = input.required<DashboardIdea>();
+  /** The workspace slug the row links in. */
+  readonly ws = input.required<string>();
+
+  private readonly router = inject(Router);
+  private readonly location = inject(LocationStrategy);
+  private readonly selection = inject(DetailSelection);
+
+  private readonly link = computed(() => ['/w', this.ws(), 'ideas', this.idea().slug]);
+  /** The idea page as the link's href, as RouterLink writes it, so a modified click or "copy link" reaches it. */
+  protected readonly href = computed(() => this.location.prepareExternalUrl(this.router.serializeUrl(this.router.createUrlTree(this.link()))));
+  /** The story's selection ref (contract rule 2) and its look while selected (rule 3). */
+  protected readonly ref = computed<RelationRef>(() => `idea:${this.idea().slug}`);
+  protected readonly look = computed(() => selectedLook(this.selection, this.ref(), 'row'));
+  /** The title, or the slug for a story without one. */
+  protected readonly title = computed(() => this.idea().title || this.idea().slug);
+  /** The story's `priority:` as a level; anything else reads as the primitive's unmarked P3. */
+  protected readonly priority = computed<Priority | null>(() => {
+    const value = this.idea().priority;
+    return Object.hasOwn(PRIORITY_LOOK, value) ? (value as Priority) : null;
+  });
+  /** Feature and milestone, whichever the story names, joined by a middle dot; empty for neither. */
+  protected readonly where = computed(() => {
+    const { feature, milestone } = this.idea();
+    return [feature, milestone].filter((part): part is string => part !== null && part !== '').join(' · ');
+  });
+  protected readonly state = computed(() => {
+    const state = this.idea().state;
+    return state === undefined ? null : withoutCommand(state);
+  });
+
+  /** A plain click or Enter: select the story, or on the selected row open its page; modified clicks stay native. */
+  protected activate(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    event.preventDefault();
+    if (this.look() === null) void this.selection.select(this.ref());
+    else void this.router.navigate(this.link());
+  }
+}

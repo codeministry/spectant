@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type CanActivateFn, NavigationStart, provideRouter, type Route, Router } from '@angular/router';
@@ -13,10 +14,14 @@ import { RailContent } from '../../layout/shell/rail-content';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
+import { OPEN_PARAM, OpenState, parseOpen } from '../../shared/open-state';
 import { DashboardPage } from './dashboard-page';
 
-/** The dashboard's blocks in the one order every tier shares (spec 058, design.md § Across viewports). */
-const BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up-list', 'app-warnings-panel'] as const;
+/**
+ * The dashboard's blocks in the one order every tier shares (spec 058, design.md § Across viewports); since spec 064
+ * (T17) Waits on you and In progress share the row `[data-lists]`.
+ */
+const BLOCKS = ['app-kpi-band', 'app-brief', '[data-lists]', 'app-next-up-list', 'app-warnings-panel'] as const;
 
 /** Harbor's body with its TL;DR fresh or stale (the golden's own brief is stale), or with no TL;DR at all. */
 const withBrief = (stale: boolean | null): unknown => ({ ...harbor, brief: stale === null ? null : { ...harbor.brief, stale } });
@@ -88,7 +93,8 @@ async function render(tier: Tier, url = '/w/harbor') {
 
 const text = (el: Element | null | undefined): string | undefined => el?.textContent.replace(/\s+/g, ' ').trim();
 /** The page's direct children in DOM order, by tag. */
-const children = (page: HTMLElement): string[] => [...page.children].map((el) => el.tagName.toLowerCase());
+const children = (page: HTMLElement): string[] =>
+  [...page.children].map((el) => (el.hasAttribute('data-lists') ? '[data-lists]' : el.tagName.toLowerCase()));
 /** The dashboard blocks among the page's children, in DOM order. */
 const blocks = (page: HTMLElement): string[] => children(page).filter((tag) => (BLOCKS as readonly string[]).includes(tag));
 
@@ -112,7 +118,7 @@ describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
       expect(order.at(-1)).toBe('p');
       expect(page.lastElementChild?.hasAttribute('data-footer-note')).toBe(true);
       expect(root.querySelector('app-spec-table')).toBeNull();
-      expect(root.querySelector('app-ideas-panel')).toBeNull();
+      expect(root.querySelector('[data-ideas-group]')).toBeNull();
       expect(root.querySelector('app-context-rail')).toBeNull();
       // No rail blocks or strip badges are registered (T13).
       const rail = TestBed.inject(RailContent);
@@ -182,10 +188,13 @@ describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)
     ] as const) {
       it(`sets ?sel=spec:<id> from ${name} and stays on /w/harbor, the sidebar ${FLOATING[tier]}, at ${tier}`, async () => {
         const { page, harness } = await render(tier);
+        // Spec 064 (T32, T33): the warnings start folded; opening them writes `?open=warnings`, which the links keep.
+        page.querySelector<HTMLButtonElement>('app-warnings-panel [data-warnings-toggle]')?.click();
+        await harness.fixture.whenStable();
         const link = page.querySelector<HTMLAnchorElement>(selector);
         expect(link).not.toBeNull();
         const href = link?.getAttribute('href');
-        expect(href).toMatch(/^\/w\/harbor\?sel=spec:\d{3}$/);
+        expect(href).toMatch(/^\/w\/harbor\?open=warnings&sel=spec:\d{3}$/);
         const urls = navigations();
         link?.click();
         await harness.fixture.whenStable();
@@ -213,4 +222,153 @@ describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)
     expect(TestBed.inject(Router).url).toBe('/w/harbor/specs?phase=fog&sel=spec:002');
     expect(root.querySelector('app-specs-stub')).not.toBeNull();
   });
+});
+
+/** A held claim on `id` as core's row carries it (`taken`, held locks only). */
+const LOCK = { id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-10-21T09:00:00Z', source: 'activity' };
+const withTaken = (id: string): unknown => ({
+  ...(fresh as typeof harbor),
+  specs: harbor.specs.map((row) => (row.id === id ? { ...row, taken: [LOCK] } : row)),
+});
+
+// Spec 064 (T17, ISC-460, ISC-462): Waits on you and In progress share one row `.lists` after the TL;DR, before Next up.
+describe('DashboardPage lists row on /w/harbor (spec 064, ISC-460)', () => {
+  it('holds the waits section and an In progress block with one tile for the held spec 002', async () => {
+    body.set(withTaken('002'));
+    const { page } = await render('wide');
+    const lists = page.querySelector('[data-lists]') as HTMLElement;
+    expect(lists).not.toBeNull();
+    expect(lists.previousElementSibling?.tagName.toLowerCase()).toBe('app-brief');
+    expect(lists.nextElementSibling?.tagName.toLowerCase()).toBe('app-next-up-list');
+    expect([...lists.children].map((el) => el.tagName.toLowerCase())).toEqual(['app-waiting-section', 'ui-working-block']);
+    expect(text(lists.querySelector('ui-working-block h2#working-heading'))).toContain('In progress');
+    const tiles = lists.querySelectorAll('ui-working-block ui-flat-tile');
+    expect(tiles).toHaveLength(1);
+    expect(text(tiles[0].querySelector('[data-id]'))).toBe('002');
+    expect(text(tiles[0].querySelector('[data-title]'))).toBe(harbor.specs.find((row) => row.id === '002')?.title);
+    expect(text(tiles[0].querySelector('[data-agent]'))).toBe(LOCK.session);
+    expect(tiles[0].querySelector('ui-agent-dot')).not.toBeNull();
+    expect(tiles[0].querySelector('a')?.getAttribute('href')).toBe('/w/harbor/s/002');
+  });
+
+});
+
+// Spec 064 (T20, ISC-462): without a held claim the dashboard shows no element of "In progress": no block, no heading,
+// no tile list beyond the waits one and no empty slot in the lists row. The golden body carries `taken: []` everywhere.
+describe('DashboardPage without a held claim (spec 064, ISC-462)', () => {
+  it('ISC-462: no In Arbeit element without a held claim', async () => {
+    expect(harbor.specs.every((row) => row.taken.length === 0)).toBe(true);
+    const { page } = await render('wide');
+    // The heading first: a block that drew its section header for 0 entries fails here.
+    expect(page.querySelector('#working-heading, [id^="working-"]')).toBeNull();
+    const headings = [...page.querySelectorAll('h1, h2, h3, h4, [role="heading"]')].map((el) => text(el) ?? '');
+    expect(headings.filter((heading) => heading.includes('In progress'))).toEqual([]);
+    expect(page.querySelector('ui-working-block')).toBeNull();
+    // The one tile list is the waits one.
+    const tiles = [...page.querySelectorAll('.tiles')];
+    expect(tiles.length).toBeGreaterThan(0);
+    expect(tiles.filter((list) => !list.closest('app-waiting-section'))).toEqual([]);
+    // The lists row holds the waits section alone: no second, empty track.
+    const lists = page.querySelector('[data-lists]') as HTMLElement;
+    expect([...lists.children].map((el) => el.tagName.toLowerCase())).toEqual(['app-waiting-section']);
+  });
+});
+
+// Spec 064 (T33, ISC-473 to ISC-475): the warnings' fold is the key `warnings` of `?open=`, as the TL;DR's is `tldr`.
+describe('DashboardPage warnings fold in ?open= (spec 064, ISC-473)', () => {
+  const toggleOf = (page: HTMLElement) => page.querySelector('h2#warnings > button[data-warnings-toggle]') as HTMLButtonElement;
+  const settle = async (harness: RouterTestingHarness): Promise<void> => {
+    await harness.fixture.whenStable();
+    await harness.fixture.whenStable();
+  };
+
+  it('stands closed without the key; a click sets ?open=warnings, a second click removes it', async () => {
+    const { page, harness } = await render('wide');
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('false');
+    expect(page.querySelector('[data-warning-spec]')).toBeNull();
+    toggleOf(page).click();
+    await settle(harness);
+    expect(TestBed.inject(Router).url).toBe('/w/harbor?open=warnings');
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('true');
+    expect(page.querySelector('[data-warning-spec]')).not.toBeNull();
+    toggleOf(page).click();
+    await settle(harness);
+    expect(TestBed.inject(Router).url).toBe('/w/harbor');
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('opens from ?open=tldr,warnings next to the TL;DR, and closing keeps tldr', async () => {
+    const { page, harness } = await render('wide', '/w/harbor?open=tldr,warnings');
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('true');
+    expect(TestBed.inject(OpenState).isOpen('tldr')).toBe(true);
+    toggleOf(page).click();
+    await settle(harness);
+    expect(TestBed.inject(Router).url).toBe('/w/harbor?open=tldr');
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('arrives on #warnings open, with h2#warnings focused', async () => {
+    const { page, harness } = await render('wide', '/w/harbor?open=warnings#warnings');
+    await settle(harness);
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(page.querySelector('h2#warnings'));
+  });
+
+  it('arriving on #warnings alone opens the fold and writes the key', async () => {
+    const { page, harness } = await render('wide', '/w/harbor#warnings');
+    await settle(harness);
+    expect(TestBed.inject(Router).url).toBe('/w/harbor?open=warnings#warnings');
+    expect(toggleOf(page).getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(page.querySelector('h2#warnings'));
+  });
+});
+
+// Spec 064 (T34, ISC-477, anti): the warnings never stand open without `warnings` in `?open=`, nor closed with it; over
+// addresses with and without the key, after a click, after navigating back to the previous address and after history back.
+describe('DashboardPage warnings and ?open= never diverge (spec 064, ISC-477)', () => {
+  const STARTS = ['/w/harbor', '/w/harbor?open=warnings', '/w/harbor?open=tldr,warnings', '/w/harbor?open=tldr'] as const;
+  const settle = async (harness: RouterTestingHarness): Promise<void> => {
+    await harness.fixture.whenStable();
+    await harness.fixture.whenStable();
+  };
+  /** Whether the current address holds `warnings`, after checking the fold (toggle and region) says the same. */
+  const agrees = (harness: RouterTestingHarness, where: string): boolean => {
+    const router = TestBed.inject(Router);
+    const inAddress = parseOpen(router.parseUrl(router.url).queryParamMap.get(OPEN_PARAM)).includes('warnings');
+    const page = (harness.fixture.nativeElement as HTMLElement).querySelector('app-dashboard-page') as HTMLElement;
+    const toggle = page.querySelector('h2#warnings > button[data-warnings-toggle]');
+    expect(toggle?.getAttribute('aria-expanded'), `toggle ${where} at ${router.url}`).toBe(String(inAddress));
+    expect(page.querySelector('#warnings-region')?.hasAttribute('hidden'), `region ${where} at ${router.url}`).toBe(!inAddress);
+    return inAddress;
+  };
+
+  for (const start of STARTS) {
+    it(`ISC-477: from ${start} the fold and the address agree, after a click, a navigation back and history back`, async () => {
+      const { page, harness } = await render('wide', start);
+      const router = TestBed.inject(Router);
+      // The app's initial navigation listens to popstate; the harness does not, so the test router subscribes here.
+      router.setUpLocationChangeListener();
+      const keyed =parseOpen(router.parseUrl(start).queryParamMap.get(OPEN_PARAM)).includes('warnings');
+      expect(agrees(harness, 'on arrival')).toBe(keyed);
+
+      (page.querySelector('h2#warnings > button[data-warnings-toggle]') as HTMLButtonElement).click();
+      await settle(harness);
+      const clicked = router.url;
+      expect(agrees(harness, 'after the click')).toBe(!keyed);
+      expect(clicked).not.toBe(start);
+
+      await harness.navigateByUrl(start);
+      await settle(harness);
+      expect(router.url).toBe(start);
+      expect(agrees(harness, 'after navigating back')).toBe(keyed);
+
+      // History back: the router picks the popstate up in a later task, so wait a few ticks for it to sync.
+      const location = TestBed.inject(Location);
+      location.back();
+      for (let tick = 0; tick < 5 && router.url !== location.path(); tick++) await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle(harness);
+      expect(router.url).toBe(clicked);
+      expect(agrees(harness, 'after history back')).toBe(!keyed);
+    });
+  }
 });

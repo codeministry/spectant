@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, contentChildren, effect, inject, input, output, viewChildren } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { UiAgentDot } from '../../../shared/ui/agent-dot/agent-dot';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiGlyph } from '../../../shared/ui/glyph/glyph';
@@ -50,7 +51,7 @@ const AGENT_KEY = 'specs.agentWorking';
  */
 @Component({
   selector: 'app-spec-row',
-  imports: [TranslocoPipe, UiChip, UiClamp, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTime, UiTypeGlyph, UiWaitsChip],
+  imports: [TranslocoPipe, UiAgentDot, UiChip, UiClamp, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTime, UiTypeGlyph, UiWaitsChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-row.html',
   styleUrl: './spec-row.css',

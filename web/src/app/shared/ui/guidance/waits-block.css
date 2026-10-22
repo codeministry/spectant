@@ -1,3 +1,5 @@
+@import '../_visually-hidden.css';
+@import './_tiles.css';
 
     :host {
       display: block;
@@ -34,7 +36,7 @@
       font-weight: 600;
     }
 
-    .title {
+    .head .title {
       flex: 1 1 auto;
       overflow: hidden;
       min-inline-size: 0;
@@ -85,6 +87,10 @@
       padding-block: 8px;
       border-block-end: 1px solid var(--line);
     }
+    .rest li:last-child { border-block-end: 0; }
+
+    /* The short list without chips: the whole row is the 44 px link (design.md § Start: 44 to 64 px a row). */
+    :host(:not([data-chips])) .rest li { padding-block: 0; }
 
     .row {
       display: flex;
@@ -110,61 +116,26 @@
     /* Sets only text-decoration, which `.row .reason` does not, so it may follow it. */
     .row:hover .reason { text-decoration: underline; }
 
-    /* Form card-rows (spec 058 T46): Next up's card anatomy, 44 px rows 12 px in from the card edges under hairlines,
-       the chip beside the text (or under it, still 8 px off the hairline); the fold insets itself like a row. */
-    .entries {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .entries > li {
-      display: flex;
-      flex-wrap: wrap;
-      column-gap: 12px;
-      align-items: center;
-      padding-inline: 12px;
-    }
-    .entries > li + li, .fold, .fold .entries { border-block-start: 1px solid var(--line); }
-
-    /* Only `.rest li` above sets border-block-end, so this rule may follow the `.entries` rows. */
-    .rest li:last-child { border-block-end: 0; }
-
-    /* The short list on the start (no chips): the whole row is the 44 px link with 12 px inner padding (design.md § Start: 44 to 64 px a row). The `.entries` rows
-       above set padding-inline, never padding-block, so this rule may follow them. */
-    :host(:not([data-chips])) .rest li { padding-block: 0; }
-
-    .entries .row {
-      box-sizing: border-box;
-      padding-block: 12px;
-    }
-
-    /* The start's short list (no chips): its row link. Same values as `.entries .row`, which it outranks, so it may follow it. */
     :host(:not([data-chips])) .row {
       box-sizing: border-box;
       padding-block: 12px;
-    }
-    .entries ui-command-chip { margin-block: 8px; }
-
-    .fold {
-      display: block;
-      padding-inline: 12px;
-    }
-    .fold .entries { margin-inline: -12px; }
-
-    .visually-hidden {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
     }
 
     .row ui-icon {
       flex: none;
       padding-block-start: 2px;
       color: var(--muted-ink);
+    }
+
+    /* Form tiles (spec 064): the kind or ref chip stands in the tile's ID link, 8 px after the ID. */
+    .kind { margin-inline-start: 8px; }
+
+    /* The fold "Show all n" under the standing tiles; its tiles open below the toggle, 8 px apart as in the list. */
+    .fold {
+      display: block;
+      color: var(--disp-ink);
+      font-size: 13px;
+      line-height: 20px;
     }
 
     .more {
@@ -190,4 +161,3 @@
     @media (forced-colors: active) {
       .id, .meta, .more { color: LinkText; }
     }
-  

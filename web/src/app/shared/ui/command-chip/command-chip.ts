@@ -18,6 +18,7 @@ import { LanguageService } from '../../../core/language.service';
 import { UiIcon } from '../../icons/icon';
 import { elapsedText } from '../item-state/duration';
 import { UiLiveRegion } from '../live-region/live-region';
+import { ToastService } from '../toast/toast';
 
 /**
  * Copies `text`: the Clipboard API first, then a hidden textarea with the legacy copy command (WKWebView may refuse
@@ -63,7 +64,8 @@ function highlightMs(doc: Document): number {
  * holds until the button loses focus) and `copied` emits the command. The clipboard gets the command trimmed, never a
  * space before or after it, and the chip's own polite `ui-live-region` announces it ("Copied /spec implement 012",
  * `common.copied`; spec 020, ISC-241), so every surface confirms a copy the same way, without a toast. When every
- * copy path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
+ * copy path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown, under the chip or, with `hint="toast"`, as the app
+ * toast (spec 064, T12). Under a coarse pointer the copy button gets the 44 × 44 hit area of `_hit-area.css`.
  *
  * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec implement 012"; ISC-142),
  * plus, through `context`, what it stands for there (`orientation.copyCommandFor`: "Copy /spec review 006 · next up for
@@ -91,6 +93,11 @@ export class UiCommandChip {
   readonly copiedLabel = input('Copied');
   readonly manualHint = input('Select and press ⌘C');
   /**
+   * Where the manual hint goes when every copy path fails (spec 064, T12): `inline` (the default) under the chip,
+   * `toast` to the app's `ui-toast`, so a chip inside a fixed-height tile never wraps.
+   */
+  readonly hint = input<'inline' | 'toast'>('inline');
+  /**
    * What the command stands for on its surface (spec 057, ISC-354), already translated: "next up for 006", "waits on
    * you: 002 ISC-77", "warning 2 of 2 on 006". It joins the command in the accessible name, so two chips with the same
    * command on one page still differ; null keeps the bare "Copy {command}".
@@ -101,6 +108,7 @@ export class UiCommandChip {
   readonly lockedBy = input<ItemRun | null>(null);
 
   private readonly transloco = inject(TranslocoService);
+  private readonly toasts = inject(ToastService);
   private readonly lang = inject(LanguageService).current;
   /** The hint line under a locked chip; closed again whenever the lock changes. */
   protected readonly hintOpen = linkedSignal({ source: this.lockedBy, computation: () => false });
@@ -144,6 +152,11 @@ export class UiCommandChip {
     }
     const selection = this.doc.getSelection();
     selection?.selectAllChildren(this.code().nativeElement);
+    if (this.hint() === 'toast') {
+      this.state.set('idle');
+      this.toasts.show(this.manualHint());
+      return;
+    }
     this.state.set('manual');
   }
 

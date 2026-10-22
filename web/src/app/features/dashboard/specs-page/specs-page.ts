@@ -14,25 +14,25 @@ import { UiNotice } from '../../../shared/ui/notice/notice';
 import { UiPageHead } from '../../../shared/ui/page-head/page-head';
 import { UiWsBadge } from '../../../shared/ui/ws-badge/ws-badge';
 import type { DashboardView } from '../context-rail/dashboard-view';
-import { type DashboardIdeas, IdeasPanel } from '../ideas-panel/ideas-panel';
+import { readIdeaRows } from '../spec-table/idea-rows';
 import { SpecTable } from '../spec-table/spec-table';
 import { workspacePage } from '../workspace-page';
 import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readListCounts, readSpecRows } from '../spec-table/spec-table-model';
 
 /**
- * The workspace's Specs page `/w/:ws/specs` (spec 058, T6, ISC-391): the page head, the spec list and the backlog, the
+ * The workspace's Specs page `/w/:ws/specs` (spec 058, T6, ISC-391): the page head and the spec list, the backlog's stories its idea group (spec 064, T42), the
  * dashboard's blocks (KPI band, TL;DR, Waits on you, Next up, warnings) left on the dashboard. The eyebrow names the page
  * and its menu summary (`shell.pages.summary.specs`, active · archived), the h1 "Specs · <ws>".
  *
- * Filter, sort and takeable are query state (`?phase=&type=&sort=&takeable=`), read from and written to the URL, as on
- * the dashboard; the list holds back new specs behind its pill until the reader takes them in (design.md § Live update).
+ * Filter, sort, takeable and working are query state (`?phase=&type=&sort=&takeable=&working=`), read from and written
+ * to the URL, as on the dashboard (`working`: spec 064, T5, ISC-465, the target of "In Arbeit"'s "show all"); the list holds back new specs behind its pill until the reader takes them in (design.md § Live update).
  *
  * The selection (T8, ISC-393): a row's activation selects `?sel=spec:<id>` and the page docks the detail sidebar
  * (`DetailSelection.dock`); `[` `]` step the selection through the list's current order while a spec is selected.
  */
 @Component({
   selector: 'app-specs-page',
-  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiWsBadge, SpecTable, IdeasPanel],
+  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiWsBadge, SpecTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './specs-page.html',
   styleUrl: './specs-page.css',
@@ -63,8 +63,8 @@ export class SpecsPage {
   protected readonly rows = computed(() => readSpecRows(this.body()));
   protected readonly archive = computed(() => readArchiveRows(this.body()));
   protected readonly listCounts = computed(() => readListCounts(this.body()));
-  /** The backlog's stories (`DashboardModel.ideas`), none while the body lacks the block. */
-  protected readonly ideas = computed(() => readIdeas(this.body()));
+  /** The backlog's stories (`DashboardModel.ideas.list`), the list's idea group (spec 064, T42); none without the block. */
+  protected readonly ideas = computed(() => readIdeaRows(this.body()));
   /** The eyebrow's summary params, as the area menu's line for this page: active and archived specs. */
   protected readonly summary = computed(() => ({ active: this.rows().length, archived: this.page.view()?.kpis.archived ?? this.archive().length }));
 
@@ -144,15 +144,6 @@ export class SpecsPage {
       event.preventDefault();
     }
   }
-}
-
-const NO_IDEAS: DashboardIdeas = { count: 0, list: [] };
-
-/** The body's `ideas` block as served, or none when it is missing or malformed. */
-function readIdeas(body: unknown): DashboardIdeas {
-  if (typeof body !== 'object' || body === null) return NO_IDEAS;
-  const { ideas } = body as { ideas?: Partial<DashboardIdeas> | null };
-  return typeof ideas?.count === 'number' && Array.isArray(ideas.list) ? (ideas as DashboardIdeas) : NO_IDEAS;
 }
 
 /** The body as the list's view, or null when it lacks the KPI block and the spec rows. */

@@ -12,17 +12,24 @@
     </div>
   </ui-page-head>
   @if (page.view(); as view) {
-    <!-- One column, one order at every tier: KPI band, TL;DR (fresh or stale, always second), Waits on you, Next up,
-         the warnings. -->
+    <!-- One order at every tier: KPI band, TL;DR (fresh or stale, always second), the row of Waits on you and In
+         progress (spec 064), Next up, the warnings. -->
     <app-kpi-band [model]="view" [ws]="page.ws()" [changed]="refresh.changedKpis()" />
     @if (view.brief) {
       <app-brief [brief]="view.brief" />
     }
-    @if (view.guidance; as guidance) {
-      <app-waiting-section [entries]="guidance.waits" [workspace]="page.ws()" [level]="2" />
+    @if (view.guidance || view.working.length > 0) {
+      <div class="lists" data-lists>
+        @if (view.guidance; as guidance) {
+          <app-waiting-section [entries]="guidance.waits" [workspace]="page.ws()" [titles]="titles()" [level]="2" />
+        }
+        @if (view.working.length > 0) {
+          <ui-working-block [entries]="view.working" [workspace]="page.ws()" [level]="2" headingId="working-heading" />
+        }
+      </div>
     }
     <app-next-up-list [ws]="page.ws()" [specs]="view.specs" [ids]="view.nextUp" [guidance]="view.guidance" />
-    <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" />
+    <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" [open]="warningsOpen()" (openChange)="setWarningsOpen($event)" />
   } @else {
     <!-- Loading: the head alone, a placeholder where the KPI band and Next up will stand. -->
     <ui-skeleton class="skeleton-kpi" data-skeleton="kpi-band" height="96px" />

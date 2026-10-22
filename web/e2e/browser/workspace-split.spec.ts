@@ -16,12 +16,17 @@
  * - ISC-398 (T35, anti): at 1440 px neither the dashboard nor the spec list without a selection draws a rail or a rail
  *   slot, no block stands in an `aside`, and no block appears twice on a page.
  * - ISC-399 (T46, `-g "dashboard card rows (ISC-399)"`): at 390, 820 and 1440 px Waits on you, Next up and the warnings
- *   stand 8 px under their section headers; Waits on you is one card of three 44 px rows under hairlines with the fold
- *   at its bottom; the warning groups stand in equal columns with an inner grid of hairlines, two from 640 px of shell
- *   and three from 1120 px, in one column below.
+ *   stand 8 px under their section headers (the warnings opened with `?open=warnings`, spec 064); Waits on you is three
+ *   flat tiles 8 px apart without hairlines and the fold after them (spec 064); the warning groups stand in equal
+ *   columns with an inner grid of hairlines, two from 640 px of shell and three from 1120 px, in one column below.
+ * - ISC-464 (spec 064 T21, `-g "flat tile heights"`): under `X-Spectant-Stub-Locks: working` at 390, 820 and 1440 px
+ *   every item of the Waits on you and the In progress list of the `[data-lists]` row holds one `ui-flat-tile`, all of
+ *   one height per tier (72 px at 390, 48 px at 820 and 1440 where each list is at least 560 px wide); the two lists
+ *   stand side by side at 1440 and stacked below.
  */
 import type { Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from '../fixtures';
+import { LOCKS_HEADER } from '../stub-api';
 
 /** The dashboard's blocks in their binding order (spec 058, design.md § Across viewports). */
 const BLOCKS = ['app-kpi-band', 'app-brief', 'app-waiting-section', 'app-next-up-list', 'app-warnings-panel'] as const;
@@ -78,8 +83,8 @@ async function blockLayout(page: Page): Promise<Array<{ count: number; domIndex:
 }
 
 /** Wait until the dashboard has rendered its model (the skeletons gave way to the blocks). */
-async function dashboardReady(page: Page, ws = 'harbor'): Promise<void> {
-  await page.goto(`/w/${ws}`);
+async function dashboardReady(page: Page, ws = 'harbor', query = ''): Promise<void> {
+  await page.goto(`/w/${ws}${query}`);
   await expect(page.locator('app-dashboard-page app-kpi-band')).toHaveCount(1);
   await expect(page.locator('app-dashboard-page app-warnings-panel')).toHaveCount(1);
   await expect(page.locator('app-dashboard-page [data-skeleton]')).toHaveCount(0);
@@ -148,10 +153,13 @@ test.describe('dashboard one column (ISC-392)', () => {
   }
 });
 
-/** The gap from a block's section header to its card, in CSS px. */
+/**
+ * The gap from a block's section header to its card, in CSS px. The warnings' header is the folding `h2` of its
+ * section form (spec 064, T32), the others' a `ui-section-header`; the first of either in the block is the header.
+ */
 async function headerToCard(page: Page, block: string): Promise<number> {
   return page.locator(block).first().evaluate((el) => {
-    const header = el.querySelector('ui-section-header')?.getBoundingClientRect();
+    const header = el.querySelector('ui-section-header, h2')?.getBoundingClientRect();
     const card = el.querySelector('ui-card')?.getBoundingClientRect();
     return (card?.top ?? NaN) - (header?.bottom ?? NaN);
   });
@@ -163,30 +171,32 @@ test.describe('dashboard card rows (ISC-399)', () => {
       test.use(atWidth(width));
 
       test(`dashboard card rows (ISC-399): ${String(width)} px, Waits on you and warnings read like Next up`, async ({ page }) => {
-        await dashboardReady(page);
+        // The warnings fold by default (spec 064, T32); `?open=warnings` opens them, so their card is there to measure.
+        await dashboardReady(page, 'harbor', '?open=warnings');
+        await expect(page.locator('app-warnings-panel [data-warnings-toggle]')).toHaveAttribute('aria-expanded', 'true');
         // The header sits 8 px over its card in all three blocks.
         const nextGap = await headerToCard(page, 'app-next-up-list');
         expect(nextGap).toBeCloseTo(8, 0);
         expect(await headerToCard(page, 'app-waiting-section'), 'Waits on you: header to card').toBeCloseTo(nextGap, 0);
         expect(await headerToCard(page, 'app-warnings-panel'), 'Warnings: header to card').toBeCloseTo(nextGap, 0);
 
-        // Waits on you: one card, three rows standing under hairlines, the fold at its bottom.
+        // Waits on you (spec 064, T13): three flat tiles, 8 px apart without hairlines, the fold after the list. Their
+        // shared height is ISC-464's (`-g "flat tile heights"`).
         const waits = await page.locator('#waiting').evaluate((section) => {
-          const card = section.querySelector('ui-card[data-waits-card]');
-          const rows = [...(card?.querySelectorAll(':scope > ol > li') ?? [])];
-          const fold = card?.querySelector(':scope > ui-disclosure[data-show-all]');
+          const list = section.querySelector('ol.tiles');
+          const items = [...(list?.querySelectorAll(':scope > li') ?? [])];
+          const fold = section.querySelector('ui-disclosure[data-show-all]');
           return {
-            cards: section.querySelectorAll('ui-card').length,
-            heights: rows.map((li) => li.getBoundingClientRect().height),
-            lines: rows.map((li) => getComputedStyle(li).borderTopWidth),
-            foldLast: fold !== null && fold !== undefined && card?.lastElementChild === fold,
+            tiles: items.map((li) => li.querySelectorAll(':scope > ui-flat-tile').length),
+            lines: items.map((li) => getComputedStyle(li).borderTopWidth),
+            gap: list ? getComputedStyle(list).rowGap : null,
+            foldAfter: list !== null && fold !== null && (list.compareDocumentPosition(fold) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
           };
         });
-        expect(waits.cards).toBe(1);
-        expect(waits.heights).toHaveLength(3);
-        for (const h of waits.heights) expect(h).toBeGreaterThanOrEqual(44);
-        expect(waits.lines).toEqual(['0px', '1px', '1px']);
-        expect(waits.foldLast).toBe(true);
+        expect(waits.tiles).toEqual([1, 1, 1]);
+        expect(waits.lines).toEqual(['0px', '0px', '0px']);
+        expect(waits.gap).toBe('8px');
+        expect(waits.foldAfter).toBe(true);
 
         // Warnings: equal columns from 640 px of shell (two, three from 1120 px) under one grid of hairlines that also
         // runs through the empty cells of a short last row; one column below.
@@ -236,6 +246,72 @@ test.describe('dashboard card rows (ISC-399)', () => {
   }
 });
 
+/**
+ * The tile heights per tier (spec 064, `TILE_HEIGHT_STACKED` and `TILE_HEIGHT_LINE` in shared/ui/guidance/tiles.ts):
+ * `stacked` in a list narrower than `TILE_DENSITY_MIN` (560 px), `line` from there on.
+ */
+const TILE_HEIGHT = { stacked: 72, line: 48 } as const;
+const TILE_DENSITY_MIN = 560;
+
+/** Per list of the dashboard's `[data-lists]` row: its box, and per item the tags inside it and the tile's height. */
+async function tileLists(page: Page): Promise<Array<{ list: string; box: Box; items: Array<{ tiles: string[]; height: number }> }>> {
+  return page.locator('app-dashboard-page [data-lists]').evaluate((row) => {
+    const box = (el: Element): Box => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width };
+    };
+    return [...row.children].map((block) => ({
+      list: block.tagName.toLowerCase(),
+      box: box(block),
+      // Only the tiles on screen: the waits' folded rest stands in a closed disclosure.
+      items: [...block.querySelectorAll('ol.tiles > li')]
+        .filter((li) => li.getBoundingClientRect().height > 0)
+        .map((li) => ({
+          tiles: [...li.children].map((c) => c.tagName.toLowerCase()),
+          height: li.querySelector('ui-flat-tile')?.getBoundingClientRect().height ?? NaN,
+        })),
+    }));
+  });
+}
+
+test.describe('flat tile heights (ISC-464)', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use({ ...atWidth(width), extraHTTPHeaders: { [LOCKS_HEADER]: 'working' } });
+
+      test(`flat tile heights (ISC-464): ${String(width)} px, Waits on you and In progress share one tile of one height`, async ({ page }) => {
+        await dashboardReady(page);
+        await expect(page.locator('[data-lists] ui-working-block ui-flat-tile')).toHaveCount(3);
+        const lists = await tileLists(page);
+        expect(lists.map((l) => l.list)).toEqual(['app-waiting-section', 'ui-working-block']);
+        const [waits, working] = lists;
+        expect(waits?.items.length ?? 0, 'waits tiles on screen').toBeGreaterThanOrEqual(1);
+        expect(working?.items).toHaveLength(3);
+
+        // One component: every item of both lists holds exactly one `ui-flat-tile` and nothing else.
+        for (const l of lists) for (const item of l.items) expect(item.tiles, `${l.list}: one flat tile per item`).toEqual(['ui-flat-tile']);
+
+        // One height per tier, 0 px apart across both lists: `line` where the list is 560 px or wider, `stacked` below.
+        const wide = width >= WIDTHS.tablet;
+        for (const l of lists) expect(l.box.width >= TILE_DENSITY_MIN, `${l.list}: ${String(l.box.width)} px wide`).toBe(wide);
+        const expected = wide ? TILE_HEIGHT.line : TILE_HEIGHT.stacked;
+        const heights = lists.flatMap((l) => l.items.map((i) => i.height));
+        expect(new Set(heights), `tile heights at ${String(width)} px`).toEqual(new Set([expected]));
+
+        // The row: side by side at 1440 (same top, Waits on the left), stacked below.
+        const [a, b] = [waits?.box, working?.box];
+        if (width >= WIDTHS.desktop) {
+          expect(b?.top).toBe(a?.top);
+          expect(b?.left ?? 0).toBeGreaterThanOrEqual(a?.right ?? Infinity);
+        } else {
+          expect(b?.top ?? 0).toBeGreaterThanOrEqual(a?.bottom ?? Infinity);
+          expect(b?.left).toBe(a?.left);
+        }
+      });
+    });
+  }
+});
+
 test.describe('no rail anti (ISC-398)', () => {
   test.use(atWidth(WIDTHS.desktop));
 
@@ -243,7 +319,7 @@ test.describe('no rail anti (ISC-398)', () => {
   async function noRailNoDouble(page: Page, dashboard: boolean): Promise<void> {
     await expect(page.locator(RAIL)).toHaveCount(0);
     const counts = await page.evaluate((selectors) => {
-      const all = [...selectors, 'app-spec-table', 'app-ideas-panel', '#waiting', '#warnings', '[data-footer-note]'];
+      const all = [...selectors, 'app-spec-table', 'li[data-ideas-group]', '#waiting', '#warnings', '[data-footer-note]'];
       return {
         perBlock: Object.fromEntries(all.map((s) => [s, document.querySelectorAll(s).length])),
         inAside: selectors.filter((s) => [...document.querySelectorAll(s)].some((el) => el.closest('aside') !== null)),

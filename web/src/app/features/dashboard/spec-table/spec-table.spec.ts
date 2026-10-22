@@ -127,6 +127,49 @@ describe('SpecTable (T89)', () => {
     expect(host.querySelectorAll('.t-head [data-filter] button')).toHaveLength(0);
   });
 
+  // Spec 064 (T4, ISC-465): the working filter is named by a flag chip beside takeable; a click and the reset drop it.
+  describe('working flag (ISC-465)', () => {
+    const flag = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('.t-head button[data-filter="working"]');
+
+    it('shows no working chip while the filter is off', async () => {
+      const { host } = await render();
+      expect(flag(host)).toBeNull();
+    });
+
+    it('names the filter "In progress" with aria-pressed="true" while query.working is on', async () => {
+      const { host } = await render({ ...DEFAULT_QUERY, working: true });
+      expect(host.querySelectorAll('.t-head [data-filter="working"]')).toHaveLength(1);
+      expect(text(flag(host))).toBe('In progress');
+      expect(flag(host)?.getAttribute('aria-pressed')).toBe('true');
+      expect([...host.querySelectorAll<HTMLElement>('.row-link[data-spec-row]')].map((link) => link.dataset['specRow'])).toEqual(['002']);
+    });
+
+    it('reads "In Arbeit" in German', async () => {
+      const { fixture, host } = await render({ ...DEFAULT_QUERY, working: true });
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      await fixture.whenStable();
+      expect(text(flag(host))).toBe('In Arbeit');
+      TestBed.inject(TranslocoService).setActiveLang('en');
+    });
+
+    it('a click on the chip asks for the query with working: false', async () => {
+      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, working: true, takeable: true });
+      flag(host)?.click();
+      await fixture.whenStable();
+      expect(emitted).toEqual([{ ...DEFAULT_QUERY, takeable: true, working: false }]);
+    });
+
+    it('"reset all filters" drops working along with phase, type and takeable', async () => {
+      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, phase: 'complete', working: true });
+      const reset = host.querySelector<HTMLButtonElement>('p.empty button');
+      expect(text(reset)).toBe('Clear filter');
+      reset?.click();
+      await fixture.whenStable();
+      expect(emitted).toEqual([DEFAULT_QUERY]);
+      expect(emitted[0]?.working).toBe(false);
+    });
+  });
+
   it('sorts through a popover menu (Stage / ID / Progress), not a native select', async () => {
     const { host, emitted } = await render();
     expect(host.querySelector('select')).toBeNull();
@@ -1234,5 +1277,103 @@ describe('favorite stars in the spec list (spec 052, T18, ISC-300)', () => {
     await fixture.whenStable();
     expect(shell.toggled).toEqual(['013-slug']);
     expect(star('013')?.getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
+describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
+  const IDEAS = [
+    ...harbor.ideas.list,
+    { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' },
+  ];
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderIdeas(over: Partial<ListQuery> = {}, ideas: readonly unknown[] = IDEAS) {
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(BODY));
+    fixture.componentRef.setInput('archive', readArchiveRows(BODY));
+    fixture.componentRef.setInput('counts', readListCounts(BODY));
+    fixture.componentRef.setInput('ideas', ideas);
+    fixture.componentRef.setInput('query', { ...DEFAULT_QUERY, archived: true, ...over });
+    const emitted: ListQuery[] = [];
+    fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const group = () => host.querySelector<HTMLElement>('[data-ideas-group]');
+    const slugs = () => [...host.querySelectorAll<HTMLElement>('app-idea-row')].map((row) => row.dataset['idea']);
+    return { fixture, host, emitted, group, slugs };
+  }
+
+  const before = (a: Element | null, b: Element | null): boolean => !!a && !!b && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+  it('lists the ideas as a group after the active rows and before the archive block, under a heading with the count', async () => {
+    const { host, group, slugs } = await renderIdeas();
+    expect(group()).not.toBeNull();
+    expect(slugs()).toEqual(['console-audit-log', 'registry-webhooks', 'sync-dry-run']);
+    expect(before(host.querySelector('[data-spec-row="003"]'), group())).toBe(true);
+    expect(before(host.querySelector('[data-spec-row="002"]'), group())).toBe(true);
+    expect(before(group(), host.querySelector('[data-spec-row="001"]'))).toBe(true);
+    const heading = group()?.querySelector('h3');
+    expect(text(heading?.querySelector('[data-ideas-label]'))).toBe('Ideas');
+    expect(text(heading?.querySelector('[data-ideas-count]'))).toBe('3 ideas');
+    expect(group()?.querySelector('ol')?.getAttribute('aria-labelledby')).toBe(heading?.id);
+  });
+
+  it('links each idea row to /w/harbor/ideas/<slug>', async () => {
+    const { group } = await renderIdeas();
+    const hrefs = [...(group()?.querySelectorAll('app-idea-row a.link') ?? [])].map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/w/harbor/ideas/console-audit-log', '/w/harbor/ideas/registry-webhooks', '/w/harbor/ideas/sync-dry-run']);
+  });
+
+  it('?phase=idea shows only the ideas, no spec row active or archived', async () => {
+    const { host, slugs } = await renderIdeas({ phase: 'idea' });
+    expect(host.querySelectorAll('[data-spec-row]')).toHaveLength(0);
+    expect(slugs()).toHaveLength(3);
+    expect(host.querySelector('p.empty')).toBeNull();
+  });
+
+  it('any other phase, takeable, working or a type filter shows no idea group', async () => {
+    for (const over of [{ phase: 'building' }, { phase: 'scoping' }, { takeable: true }, { working: true }, { type: 'feature' }] as Array<Partial<ListQuery>>) {
+      const { group } = await renderIdeas(over);
+      expect(group(), JSON.stringify(over)).toBeNull();
+    }
+  });
+
+  it('offers the phase chip "ideas" with the count, which asks for phase idea; none without an idea', async () => {
+    const { host, emitted } = await renderIdeas();
+    const chip = [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="phase"] button')].find((button) => text(button).startsWith('ideas'));
+    expect(chip).toBeDefined();
+    expect(text(chip)).toContain('3');
+    chip?.click();
+    expect(emitted.at(-1)?.phase).toBe('idea');
+    const without = await renderIdeas({}, []);
+    expect(without.group()).toBeNull();
+    expect([...without.host.querySelectorAll('.t-head [data-filter="phase"] button')].map(text).some((label) => label.startsWith('ideas'))).toBe(false);
+  });
+
+  it('wraps the phase and type chips instead of scrolling them, so the chip "ideas" never hides at 600 px', async () => {
+    const { host } = await renderIdeas();
+    const groups = [...host.querySelectorAll('.t-head ui-filter-chips')];
+    expect(groups.length).toBeGreaterThan(0);
+    for (const group of groups) expect(group.hasAttribute('data-wrap'), group.getAttribute('data-filter') ?? '').toBe(true);
+  });
+
+  it('heads the group in German: "Ideen" and "3 Ideen"', async () => {
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    const { group } = await renderIdeas();
+    expect(text(group()?.querySelector('[data-ideas-label]'))).toBe('Ideen');
+    expect(text(group()?.querySelector('[data-ideas-count]'))).toBe('3 Ideen');
   });
 });

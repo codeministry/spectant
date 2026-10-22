@@ -7,31 +7,35 @@
         </span>
       </ui-section-header>
       @if (top(); as first) {
-        @if (form() === 'card-rows') {
-          <ui-card data-waits-card [padding]="0">
-            <ol class="entries">
-              @for (entry of lead(); track key(entry); let first = $first) {
-                <li [attr.data-top]="first ? '' : null" [attr.data-row]="first ? null : ''" [attr.data-item]="entry.item">
-                  <ng-container [ngTemplateOutlet]="waitRow" [ngTemplateOutletContext]="{ $implicit: entry }" />
-                </li>
-              }
-            </ol>
-            @if (folded().length > 0) {
+        @if (form() === 'tiles') {
+          <ol class="tiles">
+            @for (entry of lead(); track key(entry)) {
+              <li [attr.data-item]="entry.item">
+                <ng-container [ngTemplateOutlet]="tile" [ngTemplateOutletContext]="{ $implicit: entry }" />
+              </li>
+            }
+          </ol>
+          @if (folded().length > 0) {
+            @if (more() === 'fold') {
               <ui-disclosure class="fold" data-show-all [(open)]="open">
                 <span uiDisclosureSummary data-fold-toggle>
-                  <span aria-hidden="true" data-visible>{{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}</span>
-                  <span class="visually-hidden" data-name>{{ 'guidance.waits.showAllName' | transloco: { count: entries().length } }}</span>
+                  <ng-container [ngTemplateOutlet]="showAll" />
                 </span>
-                <ol class="entries">
+                <ol class="tiles">
                   @for (entry of folded(); track key(entry)) {
-                    <li data-row [attr.data-item]="entry.item">
-                      <ng-container [ngTemplateOutlet]="waitRow" [ngTemplateOutletContext]="{ $implicit: entry }" />
+                    <li [attr.data-item]="entry.item">
+                      <ng-container [ngTemplateOutlet]="tile" [ngTemplateOutletContext]="{ $implicit: entry }" />
                     </li>
                   }
                 </ol>
               </ui-disclosure>
+            } @else if (moreLink(); as link) {
+              <a class="more" data-more [routerLink]="link" [fragment]="moreFragment()">
+                <ng-container [ngTemplateOutlet]="showAll" />
+                <ui-icon name="arrow-right" [size]="12" />
+              </a>
             }
-          </ui-card>
+          }
         } @else {
           <ui-card class="top" side [padding]="16" data-top>
             <div class="head">
@@ -47,48 +51,42 @@
             <p class="reason" data-reason>{{ first.reason | guidanceReason }}</p>
             <div class="foot">
               @if (first.command; as cmd) {
-                <ui-command-chip
-                  [command]="cmd"
-                  [context]="'orientation.chipContext.waits' | transloco: { what: first.ref ? first.spec + ' ' + first.ref : first.spec }"
-                  [copyLabel]="'common.copyCommand' | transloco"
-                  [copiedLabel]="'common.copied' | transloco: { command: cmd }"
-                  [manualHint]="'common.copyFallback' | transloco"
-                />
+                <ng-container [ngTemplateOutlet]="copy" [ngTemplateOutletContext]="{ $implicit: first, cmd }" />
               }
               @if (first.since; as since) {
                 <ui-relative-time class="since" [date]="since" [format]="waiting" />
               }
             </div>
           </ui-card>
-        }
-        @if (form() === 'stack' && rest().length > 0) {
-          <ol class="rest">
-            @for (entry of rest(); track key(entry)) {
-              <li data-row [attr.data-item]="entry.item">
-                <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
-                  <ng-container [ngTemplateOutlet]="rowBody" [ngTemplateOutletContext]="{ $implicit: entry }" />
-                  @if (!chips()) {
-                    <ui-icon name="chevron-right" [size]="16" />
+          @if (rest().length > 0) {
+            <ol class="rest">
+              @for (entry of rest(); track key(entry)) {
+                <li data-row [attr.data-item]="entry.item">
+                  <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
+                    <span class="id">{{ label(entry) }}</span>
+                    @if (kindKey(entry); as kind) {
+                      <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+                    } @else if (entry.ref) {
+                      <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
+                    }
+                    <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+                    @if (!chips()) {
+                      <ui-icon name="chevron-right" [size]="16" />
+                    }
+                  </a>
+                  @if (chips() && entry.command; as cmd) {
+                    <ng-container [ngTemplateOutlet]="copy" [ngTemplateOutletContext]="{ $implicit: entry, cmd }" />
                   }
-                </a>
-                @if (chips() && entry.command; as cmd) {
-                  <ui-command-chip
-                    [command]="cmd"
-                    [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
-                    [copyLabel]="'common.copyCommand' | transloco"
-                    [copiedLabel]="'common.copied' | transloco: { command: cmd }"
-                    [manualHint]="'common.copyFallback' | transloco"
-                  />
-                }
-              </li>
-            }
-          </ol>
-        }
-        @if (form() === 'stack' && more() > 0 && moreLink(); as link) {
-          <a class="more" data-more [routerLink]="link" [fragment]="moreFragment()">
-            {{ 'guidance.waits.more' | transloco: { n: more() } }}
-            <ui-icon name="arrow-right" [size]="12" />
-          </a>
+                </li>
+              }
+            </ol>
+          }
+          @if (moreCount() > 0 && moreLink(); as link) {
+            <a class="more" data-more [routerLink]="link" [fragment]="moreFragment()">
+              {{ 'guidance.waits.more' | transloco: { n: moreCount() } }}
+              <ui-icon name="arrow-right" [size]="12" />
+            </a>
+          }
         }
       } @else {
         <p class="empty" data-empty>
@@ -97,29 +95,51 @@
         </p>
       }
     </section>
-    <!-- The inside of a row's ID link, in both forms: the ID, the kind or ref chip, the reason. -->
-    <ng-template #rowBody let-entry>
-      <span class="id">{{ label(entry) }}</span>
-      @if (kindKey(entry); as kind) {
-        <ui-chip variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
-      } @else if (entry.ref) {
-        <ui-chip variant="mono">{{ entry.ref }}</ui-chip>
-      }
-      <span class="reason" data-reason>{{ entry.reason | guidanceReason }}</span>
+    <!-- The copy chip of an entry with a command, in the stack form. -->
+    <ng-template #copy let-entry let-cmd="cmd">
+      <ui-command-chip
+        [command]="cmd"
+        [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
+        [copyLabel]="'common.copyCommand' | transloco"
+        [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+        [manualHint]="'common.copyFallback' | transloco"
+      />
     </ng-template>
-    <!-- One row of the card-rows form: the ID link with the reason, the copy chip beside it. -->
-    <ng-template #waitRow let-entry>
-      <a class="row" [routerLink]="specLink(entry)" [fragment]="fragmentOf(entry)">
-        <ng-container [ngTemplateOutlet]="rowBody" [ngTemplateOutletContext]="{ $implicit: entry }" />
-      </a>
-      @if (entry.command; as cmd) {
-        <ui-command-chip
-          [command]="cmd"
-          [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
-          [copyLabel]="'common.copyCommand' | transloco"
-          [copiedLabel]="'common.copied' | transloco: { command: cmd }"
-          [manualHint]="'common.copyFallback' | transloco"
-        />
-      }
+    <!-- "Show all n", visible, and its name that also names the list; the fold's toggle and the start's link. -->
+    <ng-template #showAll>
+      <span aria-hidden="true" data-visible>{{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}</span>
+      <span class="visually-hidden" data-name>{{ 'guidance.waits.showAllName' | transloco: { count: entries().length } }}</span>
     </ng-template>
-  
+    <!-- One flat tile (spec 064, ISC-478): the spec title as the main text, the reason only as the description. -->
+    <ng-template #tile let-entry>
+      <ui-flat-tile
+        [link]="specLink(entry)"
+        [fragment]="fragmentOf(entry)"
+        [name]="tileName(entry)"
+        [description]="entry.reason | guidanceReason"
+        [hint]="specTitle(entry)"
+      >
+        <ui-glyph tileMark family="item" state="waiting" [size]="14" />
+        <span tileId data-tile-id>{{ label(entry) }}</span>
+        @if (kindKey(entry); as kind) {
+          <ui-chip tileId class="kind" variant="small" data-kind>{{ 'specDashboard.context.kinds.' + kind | transloco }}</ui-chip>
+        } @else if (entry.ref) {
+          <ui-chip tileId class="kind" variant="mono">{{ entry.ref }}</ui-chip>
+        }
+        <span tileMain class="title">{{ specTitle(entry) }}</span>
+        @if (entry.command; as cmd) {
+          <ui-command-chip
+            tileAside
+            hint="toast"
+            [command]="cmd"
+            [context]="'orientation.chipContext.waits' | transloco: { what: entry.ref ? entry.spec + ' ' + entry.ref : entry.spec }"
+            [copyLabel]="'common.copyCommand' | transloco"
+            [copiedLabel]="'common.copied' | transloco: { command: cmd }"
+            [manualHint]="'common.copyFallback' | transloco"
+          />
+        }
+        @if (entry.since; as since) {
+          <ui-relative-time tileMeta [date]="since" [format]="waiting" />
+        }
+      </ui-flat-tile>
+    </ng-template>

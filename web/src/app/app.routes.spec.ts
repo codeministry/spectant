@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { type ActivatedRouteSnapshot, NavigationStart, provideRouter, Router } from '@angular/router';
-import { routes, TECH_REDIRECTS } from './app.routes';
+import { isListAddress, routes, TECH_REDIRECTS } from './app.routes';
 import { DashboardPage } from './features/dashboard/dashboard-page';
 import { LibraryPage } from './features/library/library-page';
 import { SpecsPage } from './features/dashboard/specs-page/specs-page';
@@ -138,6 +138,13 @@ describe('an old list address of the dashboard leads to the Specs page (spec 058
       expect(component).toBe(DashboardPage);
     });
   }
+
+  // Spec 064, T30 · ISC-473: the warnings fold is the dashboard's own, never the list's.
+  it('counts an open warnings fold as no list address', () => {
+    expect(isListAddress({ open: 'warnings' })).toBe(false);
+    expect(isListAddress({ open: 'tldr,warnings' })).toBe(false);
+    expect(isListAddress({ open: 'warnings,specs' })).toBe(true);
+  });
 
   it('replaces the history entry: the old list address never stays behind the Specs page', async () => {
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()] });

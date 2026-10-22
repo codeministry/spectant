@@ -51,9 +51,7 @@ const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXT
  * claimed and released), so its model differs from the golden by exactly that lock: ISC-74 leaves 002's takeable list
  * and next reason, and the takeable count drops by one. lantern has no log and answers its golden unchanged.
  *
- * The goldens list harbor's two stories (`ideas`, spec 008 T70); the server's loader does not read `specs/ideas/` yet
- * (a later task of spec 008), so until then the route answers no stories. Drop this override when the loader passes
- * them in.
+ * The goldens list harbor's two stories (`ideas`, spec 008 T70), and the loader passes `specs/ideas/` in (spec 064).
  */
 /**
  * harbor's activity log carries one unknown event (`ponder`, line 15 since the step lines of spec 015; spec 027, ISC-179): the reader skips it with one
@@ -67,7 +65,7 @@ const PONDER_WARNING = {
 } as const;
 
 function expected(name: Name): DashboardModel {
-  const model: DashboardModel = { ...golden(name), ideas: { count: 0, list: [] } };
+  const model: DashboardModel = golden(name);
   if (name !== "harbor") return model;
   return {
     ...model,

@@ -1,0 +1,28 @@
+<span class="rid">
+  <ui-icon name="lightbulb" [size]="16" />
+</span>
+<span class="rtitle">
+  <!-- The row link: the title, stretched over the whole row (`::after`), named "Idea <title>"; a first activation
+       selects the story for the sidebar, one on the selected row opens the idea page (like a spec row, ISC-484). -->
+  <a
+    class="link"
+    data-idea-title
+    [attr.href]="href()"
+    [attr.data-ref]="ref()"
+    [attr.data-selected]="look()"
+    [attr.aria-expanded]="look() !== null"
+    [attr.aria-label]="'specs.ideaRow.name' | transloco: { title: title() }"
+    (click)="activate($event)"
+    >{{ title() }}</a
+  >
+  @if (where(); as where) {
+    <span class="where" data-idea-where>{{ where }}</span>
+  }
+</span>
+<!-- The track cell: priority and the state line; the meter and star cells stay empty (ISC-482). -->
+<span class="rtrack">
+  <ui-priority [value]="priority()" />
+  @if (state(); as state) {
+    <ui-item-state class="rstate" [info]="state" [ws]="ws()" noActor />
+  }
+</span>

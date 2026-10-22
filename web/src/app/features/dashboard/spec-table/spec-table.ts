@@ -37,8 +37,11 @@ import { toneMark } from '../../../shared/ui/tone';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../../core/model/stage-track';
 import { SpecRow } from './spec-row';
+import { IdeaRow } from './idea-row';
+import { applyIdeaQuery, type DashboardIdea, listEntries, withIdeaOption } from './idea-rows';
 import {
   ALL,
+  IDEA,
   applyArchivedQuery,
   applyListQuery,
   type ArchiveRow,
@@ -72,11 +75,11 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
  * `queryChange`, it never holds them itself. The selection is the roving list's tab stop, exposed as `selectedId`
  * and marked `data-selected` on its row.
  *
- * Spec 021 (T25, ISC-246): the head carries the counters (active and archived specs) as one wrapping chip row, and
- * the list shows its first `SPEC_ROW_CAP` rows; the rest stand behind a "show all N" `ui-disclosure` whose open state is
- * `?open=specs` (`OpenState`), so a reload keeps it. The cap counts the listed rows, filtered and sorted: a filter
- * narrows the list, the fold still keeps it to one picture. The folded rows are rendered only while the fold is open,
- * so the roving list never steps into a hidden row.
+ * Spec 021 (T25, ISC-246): the head's counters are one wrapping chip row; the list shows its first `SPEC_ROW_CAP` rows,
+ * filtered and sorted, the rest behind a "show all N" `ui-disclosure` (`?open=specs`), rendered only while open.
+ *
+ * Spec 064 (T41, ISC-479): the stories (`ideas`) stand as the group "Ideas" between the active rows and the archive
+ * block, each an `app-idea-row` to its idea page; the phase chip "ideas" (`?phase=idea`) shows them alone.
  */
 @Component({
   selector: 'app-spec-table',
@@ -97,6 +100,7 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
     UiStarToggle,
     UiSortMenu,
     SpecRow,
+    IdeaRow,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-table.html',
@@ -123,6 +127,9 @@ export class SpecTable {
   readonly ws = input.required<string>();
   readonly rows = input.required<readonly SpecTableRow[]>();
   readonly archive = input<readonly ArchiveRow[]>([]);
+  /** The workspace's stories (`readIdeaRows`, spec 064 T41); the group shows those `applyIdeaQuery` keeps. */
+  readonly ideas = input<readonly DashboardIdea[]>([]);
+  protected readonly shownIdeas = computed(() => applyIdeaQuery(this.ideas(), this.query()));
   /** `DashboardModel.guidance` (spec 020): a row with its spec's own entry reads the entry's sentence (ISC-237.1). */
   readonly guidance = input<Guidance | undefined>(undefined);
   /**
@@ -158,10 +165,7 @@ export class SpecTable {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
-  /**
-   * The rows carrying the changed dot (design.md § Live update): every refresh adds its changed rows, and a row keeps
-   * its dot until it is hovered or focused, however many quiet refreshes pass in between.
-   */
+  /** The rows carrying the changed dot (design.md § Live update), each kept until it is hovered or focused. */
   protected readonly dots = linkedSignal<ReadonlySet<string>, ReadonlySet<string>>({
     source: this.changed,
     computation: (changed, previous) => new Set([...(previous?.value ?? []), ...changed]),
@@ -213,11 +217,10 @@ export class SpecTable {
   }
 
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
-  /**
-   * The listed rows: the active ones filtered and sorted, then the archived ones under `?archived=1` (spec 050, T3,
-   * ISC-287), so one roving list and the `SPEC_ROW_CAP` fold run over both blocks, never interleaved.
-   */
-  protected readonly visible = computed(() => [...applyListQuery(this.rows(), this.query()), ...applyArchivedQuery(this.archive(), this.query())]);
+  /** The active rows filtered and sorted, and the archived ones under `?archived=1` (spec 050, T3, ISC-287). */
+  private readonly listed = computed(() => ({ active: applyListQuery(this.rows(), this.query()), archived: applyArchivedQuery(this.archive(), this.query()) }));
+  /** The listed rows, the archive block after the active one: one roving list and fold over both, never interleaved. */
+  protected readonly visible = computed(() => [...this.listed().active, ...this.listed().archived]);
   /** The first archived row listed (spec 050, T3): its row draws the dashed boundary hairline (`archivedFirst`). */
   protected readonly firstArchivedId = computed(() => this.visible().find((row) => row.archived !== undefined)?.id ?? null);
   /**
@@ -240,23 +243,18 @@ export class SpecTable {
   });
 
   private readonly openState = inject(OpenState);
-  /**
-   * The workspace's archived specs (`DashboardKpis.archived`) for the head's counter; without it the panel counts the
-   * archive rows it lists, the same folders.
-   */
+  /** The workspace's archived specs (`DashboardKpis.archived`) for the head's counter; else the archive rows' count. */
   readonly archivedCount = input<number | null>(null);
-  /**
-   * The filter chips' counts, the model's `kpis` (`readListCounts`): the phase chips count by stage group as the Specs
-   * tile does, the type chips by `byType` (spec 021, ISC-255). Without them the panel shows no chips.
-   */
+  /** The filter chips' counts, the model's `kpis` (`readListCounts`, spec 021, ISC-255); without them no chips. */
   readonly counts = input<SpecListCounts | null>(null);
   protected readonly archivedTotal = computed(() => this.archivedCount() ?? this.archive().length);
   /** "Show all N" is open: `?open=specs` in the address. */
   protected readonly allOpen = computed(() => this.openState.isOpen('specs'));
   protected readonly cap = SPEC_ROW_CAP;
-  /** The rows always in view, and those behind "show all N". */
-  protected readonly headRows = computed(() => this.visible().slice(0, SPEC_ROW_CAP));
-  protected readonly restRows = computed(() => this.visible().slice(SPEC_ROW_CAP));
+  /** The entries always in view, and those behind "show all N": the rows, the idea group after the active ones (T41). */
+  private readonly parts = computed(() => listEntries(this.listed().active, this.shownIdeas().length, this.listed().archived, SPEC_ROW_CAP));
+  protected readonly headRows = computed(() => this.parts().head);
+  protected readonly restRows = computed(() => this.parts().rest);
 
   protected setAllOpen(open: boolean): void {
     void this.openState.set('specs', open);
@@ -322,7 +320,7 @@ export class SpecTable {
 
   protected readonly phaseChips = computed<FilterOption[]>(() => {
     this.lang();
-    return phaseOptions(this.counts()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true), 'specs.filter.allStages'));
+    return withIdeaOption(phaseOptions(this.counts()), this.ideas().length).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true), 'specs.filter.allStages'));
   });
   protected readonly typeChips = computed<FilterOption[]>(() => {
     this.lang();
@@ -335,7 +333,7 @@ export class SpecTable {
   protected readonly phaseStripLabel = computed(() => {
     this.lang();
     return this.phaseChips()
-      .filter((chip) => chip.key !== ALL && chip.key !== FOG)
+      .filter((chip) => chip.key !== ALL && chip.key !== FOG && chip.key !== IDEA)
       .map((chip) => `${chip.label} ${chip.count ?? 0}`)
       .join(' · ');
   });
@@ -370,8 +368,13 @@ export class SpecTable {
     this.queryChange.emit({ ...this.query(), takeable: false });
   }
 
+  /** Spec 064 (T4, ISC-465): the working flag's click drops the filter, the rest of the query stays. */
+  protected clearWorking(): void {
+    this.queryChange.emit({ ...this.query(), working: false });
+  }
+
   protected clearFilter(): void {
-    this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false });
+    this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false, working: false });
   }
 
   private chip(option: ListOption, key: string | null, toned: boolean): FilterOption {

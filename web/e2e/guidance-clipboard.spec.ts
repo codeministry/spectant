@@ -78,7 +78,8 @@ test.describe('guidance clipboard', () => {
     const command = commandOf(guidanceOf(body, WS).waits[0], 'start top entry');
 
     await page.goto('/');
-    const chip = page.locator(`[data-ui="workspace-column"][data-ws="${WS}"] [data-ui="waits-block"] [data-top] ui-command-chip`);
+    // Spec 064 (ISC-478): the first flat tile carries the first entry's chip.
+    const chip = page.locator(`[data-ui="workspace-column"][data-ws="${WS}"] [data-ui="waits-block"] ui-flat-tile`).first().locator('ui-command-chip');
     await expectCopies(page, chip, command, 'start');
   });
 
@@ -124,7 +125,7 @@ test.describe('guidance clipboard', () => {
     const nextUp = commandOf(first, 'Next up first entry');
 
     await page.goto(`/w/${WS}`);
-    await expectCopies(page, page.locator('#waiting [data-top] ui-command-chip'), waiting, '#waiting top entry');
+    await expectCopies(page, page.locator('#waiting ui-flat-tile').first().locator('ui-command-chip'), waiting, '#waiting first tile');
     const entry = page.locator(`app-next-up-list app-next-up-entry[data-next-entry="${first?.spec ?? ''}"] [data-next-guide] ui-command-chip`);
     await expectCopies(page, entry, nextUp, `Next up ${first?.spec ?? ''}`);
   });
@@ -148,7 +149,8 @@ const catalogue = (lang: Language): Catalogue =>
   JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8')) as Catalogue;
 
 const PAGES = [
-  { name: 'workspace dashboard', path: '/w/harbor', minChips: 4, minLinks: 4 },
+  // Spec 064: the warnings stand folded on the dashboard; `?open=warnings` opens them so their links render.
+  { name: 'workspace dashboard', path: '/w/harbor?open=warnings', minChips: 4, minLinks: 4 },
   { name: 'spec page', path: '/w/harbor/s/006', minChips: 2, minLinks: 0 },
 ] as const;
 

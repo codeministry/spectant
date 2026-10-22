@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import harbor from '../../../../../../core/fixtures/harbor.golden.json';
+import { workingOf } from '../../../core/model/working';
+import { applyIdeaQuery, readIdeaRows } from './idea-rows';
 import {
   applyArchivedQuery,
   applyListQuery,
@@ -7,6 +10,7 @@ import {
   DEFAULT_QUERY,
   FOG,
   holdNewRows,
+  IDEA,
   LIST_QUERY_KEYS,
   type ListQuery,
   listQueryParams,
@@ -81,6 +85,21 @@ describe('readSpecRows', () => {
     expect(rows[1]).toMatchObject({ description: null, agent: null });
   });
 
+  it('carries the agent dot on exactly the specs "In Arbeit" lists, with its session (spec 064, T2, ISC-466)', () => {
+    const lock = (session: unknown) => ({ id: 'ISC-3', session, since: '2026-10-21T09:00:00Z', source: 'activity' });
+    const bodies: unknown[] = [
+      harbor,
+      { specs: [wire('005', { taken: [lock('a:claude:sess-5')] }), wire('006'), wire('007', { taken: [] })] },
+      { specs: [wire('008', { taken: [{ id: 'ISC-1' }, lock('a:claude:sess-8')] }), wire('009', { taken: [lock(7)] })] },
+      { specs: [wire('010', { taken: [null, 'x'] }), { title: 'no id', taken: [lock('a:claude:sess-0')] }] },
+    ];
+    for (const body of bodies) {
+      const dotted = readSpecRows(body).flatMap((row) => (row.agent === null ? [] : [{ id: row.id, session: row.agent }]));
+      expect(dotted).toEqual(workingOf(body).map(({ id, session }) => ({ id, session })));
+    }
+    expect(readSpecRows(bodies[2]).map((row) => row.agent)).toEqual(['a:claude:sess-8', null]);
+  });
+
   it('reads nothing from a body that is not a dashboard, and skips rows without an id', () => {
     expect(readSpecRows(undefined)).toEqual([]);
     expect(readSpecRows({ specs: 'no' })).toEqual([]);
@@ -144,6 +163,7 @@ describe('parseListQuery and listQueryParams', () => {
       type: 'bug',
       sort: 'id',
       takeable: true,
+      working: false,
       archived: true,
     });
     expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes', archived: 'yes' }))).toEqual(DEFAULT_QUERY);
@@ -151,6 +171,15 @@ describe('parseListQuery and listQueryParams', () => {
     expect(parseListQuery(params({ phase: 'climbing' }))).toEqual(DEFAULT_QUERY);
     expect(parseListQuery(params({ phase: 'complete' })).phase).toBe('complete');
     expect(parseListQuery(params({ phase: 'fog' })).phase).toBe('fog');
+  });
+
+  it('starts with the working filter off and reads ?working=1 as on, like takeable (spec 064, T3, ISC-465)', () => {
+    expect(DEFAULT_QUERY.working).toBe(false);
+    expect(parseListQuery(params({ working: '1' }))).toEqual({ ...DEFAULT_QUERY, working: true });
+    expect(parseListQuery(params({ working: '0' })).working).toBe(false);
+    expect(parseListQuery(params({ working: 'yes' })).working).toBe(false);
+    expect(listQueryParams(query({ working: true })).working).toBe('1');
+    expect(listQueryParams(DEFAULT_QUERY).working).toBeNull();
   });
 
   it('starts with the archived specs hidden and reads ?archived=1 as shown (spec 050, ISC-287)', () => {
@@ -162,12 +191,13 @@ describe('parseListQuery and listQueryParams', () => {
   });
 
   it('writes defaults as null, so the URL only carries what differs', () => {
-    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, archived: null });
+    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, working: null, archived: null });
     expect(listQueryParams(query({ phase: 'fog', sort: 'next', takeable: true }))).toEqual({
       phase: 'fog',
       type: null,
       sort: 'next',
       takeable: '1',
+      working: null,
       archived: null,
     });
   });
@@ -175,12 +205,12 @@ describe('parseListQuery and listQueryParams', () => {
 
 describe('LIST_QUERY_KEYS (spec 058, T5, ISC-396)', () => {
   it('names every key listQueryParams can write', () => {
-    const every = listQueryParams({ phase: FOG, type: 'feature', sort: 'next', takeable: true, archived: true });
+    const every = listQueryParams({ phase: FOG, type: 'feature', sort: 'next', takeable: true, working: true, archived: true });
     for (const key of Object.keys(every)) expect(LIST_QUERY_KEYS).toContain(key);
   });
 
   it('names search, the show-all fold and density beside the filters', () => {
-    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'takeable', 'type']);
+    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'takeable', 'type', 'working']);
   });
 
   it('never names sel: the dashboard keeps its own selection (ISC-400)', () => {
@@ -203,6 +233,15 @@ describe('applyListQuery', () => {
     expect(ids(applyListQuery(rows, query({ phase: 'scoping' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ type: 'bug' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ takeable: true })))).toEqual(['002']);
+  });
+
+  it('keeps exactly the rows with an agent under the working filter (spec 064, T3, ISC-465)', () => {
+    const lock = { id: 'ISC-1', session: 'a:claude:sess-1', since: '2026-10-21T09:00:00Z', source: 'activity' };
+    const locked = readSpecRows({ specs: [wire('011', { taken: [lock] }), wire('012'), wire('013', { taken: [lock], type: 'bug' })] });
+    expect(ids(applyListQuery(locked, query({ working: true })))).toEqual(['011', '013']);
+    expect(ids(applyListQuery(locked, query({ working: true, type: 'bug' })))).toEqual(['013']);
+    expect(ids(applyListQuery(locked, DEFAULT_QUERY))).toEqual(['011', '012', '013']);
+    expect(applyListQuery(rows, query({ working: true }))).toEqual([]);
   });
 
   it('offers the sort menu: Stage, ID, Progress', () => {
@@ -351,6 +390,8 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
   it('hides every archived row under a phase chip, the fog chip or takeable', () => {
     for (const phase of [...STAGE_GROUPS, FOG]) expect(applyArchivedQuery(ARCHIVE, on({ phase }))).toEqual([]);
     expect(applyArchivedQuery(ARCHIVE, on({ takeable: true }))).toEqual([]);
+    // An archived spec holds no lock, so the working filter (spec 064, ISC-465) lists none of them either.
+    expect(applyArchivedQuery(ARCHIVE, on({ working: true }))).toEqual([]);
   });
 
   it('lets the type filter reach the archived rows', () => {
@@ -388,5 +429,81 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
   it('leaves the active rows to applyListQuery unchanged', () => {
     const rows = readSpecRows(BODY);
     expect(applyListQuery(rows, on({}))).toEqual(applyListQuery(rows, DEFAULT_QUERY));
+  });
+});
+
+/** Harbor's dashboard body with a third story (spec 064, T37, ISC-479): harbor's golden serves two. */
+const THIRD = { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' };
+const HARBOR_IDEAS = { ...harbor, ideas: { count: 3, list: [...harbor.ideas.list, THIRD] } };
+
+describe('readIdeaRows (spec 064, T37, ISC-479)', () => {
+  it("reads every story of the body's ideas.list in model order with slug, title, feature, milestone, priority and state", () => {
+    const ideas = readIdeaRows(HARBOR_IDEAS);
+    expect(ideas.map((idea) => idea.slug)).toEqual(['console-audit-log', 'registry-webhooks', 'sync-dry-run']);
+    expect(ideas[0]).toEqual(harbor.ideas.list[0]);
+    expect(ideas[1]).toMatchObject({ feature: 'F7', milestone: 'Harbor 1.0', priority: 'P2', state: { kind: 'idea', state: 'open' } });
+    expect(ideas[2]).toEqual(THIRD);
+    expect(ideas[2] && 'state' in ideas[2]).toBe(false);
+  });
+
+  it('stands beside the spec rows: the same body still reads its specs', () => {
+    expect(readSpecRows(HARBOR_IDEAS)).toEqual(readSpecRows(harbor));
+    expect(readIdeaRows(HARBOR_IDEAS)).toHaveLength(3);
+  });
+
+  it('reads none from a body without ideas or with a malformed ideas part', () => {
+    for (const body of [null, 'x', {}, { ideas: null }, { ideas: { list: 'x' } }, { ideas: { list: [null, 3] } }]) expect(readIdeaRows(body)).toEqual([]);
+  });
+
+  it('skips a story without a slug, falls back to the slug as title and P3 as priority, and drops a malformed state', () => {
+    const body = { ideas: { list: [{ title: 'No slug' }, { slug: 'bare', feature: 7, state: 'open' }] } };
+    expect(readIdeaRows(body)).toEqual([{ slug: 'bare', title: 'bare', feature: null, milestone: null, priority: 'P3' }]);
+  });
+});
+
+describe('applyIdeaQuery and the phase idea (spec 064, T39, ISC-480)', () => {
+  const ideas = readIdeaRows(HARBOR_IDEAS);
+  const specs = readSpecRows(HARBOR_IDEAS);
+  const slugs = (q: ListQuery): string[] => applyIdeaQuery(ideas, q).map((idea) => idea.slug);
+  const all = ['console-audit-log', 'registry-webhooks', 'sync-dry-run'];
+
+  it('parses ?phase=idea as the phase idea, and keeps it out of the URL only when null', () => {
+    expect(IDEA).toBe('idea');
+    expect(parseListQuery(params({ phase: 'idea' }))).toEqual({ ...DEFAULT_QUERY, phase: IDEA });
+    expect(listQueryParams(query({ phase: IDEA })).phase).toBe('idea');
+  });
+
+  it('?phase=idea: every idea and no spec row, active or archived', () => {
+    const q = parseListQuery(params({ phase: 'idea' }));
+    expect(slugs(q)).toEqual(all);
+    expect(specs.length).toBeGreaterThan(0);
+    expect(applyListQuery(specs, q)).toEqual([]);
+    expect(applyArchivedQuery(readArchiveRows(BODY), { ...q, archived: true })).toEqual([]);
+  });
+
+  it('no phase: every idea, in model order', () => {
+    expect(slugs(parseListQuery(params({})))).toEqual(all);
+  });
+
+  it('any other phase, takeable or working hides every idea', () => {
+    for (const phase of [...STAGE_GROUPS, FOG]) expect(slugs(parseListQuery(params({ phase })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ phase: 'building' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ takeable: '1' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ working: '1' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ phase: 'idea', working: '1' })))).toEqual([]);
+  });
+
+  it('any type filter hides every idea, a story carries no type (spec 064, T41)', () => {
+    expect(slugs(parseListQuery(params({ type: 'feature' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ type: 'bug', phase: 'idea' })))).toEqual([]);
+  });
+
+  it('?q= matches the idea titles, case-insensitive, every word', () => {
+    expect(parseListQuery(params({ q: 'Upstream' })).q).toBe('Upstream');
+    expect(parseListQuery(params({ q: '  ' })).q).toBeUndefined();
+    expect(slugs(parseListQuery(params({ q: 'upstream REPOSITORY' })))).toEqual(['registry-webhooks']);
+    expect(slugs(parseListQuery(params({ q: 'audit log', phase: 'idea' })))).toEqual(['console-audit-log']);
+    expect(slugs(parseListQuery(params({ q: 'no such words' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ q: 'dry', phase: 'building' })))).toEqual([]);
   });
 });

@@ -75,7 +75,7 @@ describe('SpecRow archive branch (spec 050, T2, ISC-287)', () => {
     expect(host.querySelector('ui-priority')).toBeNull();
     expect(host.querySelector('ui-stage-track')).toBeNull();
     expect(host.querySelector('.phase')).toBeNull();
-    expect(host.querySelector('.agent-dot')).toBeNull();
+    expect(host.querySelector('ui-agent-dot')).toBeNull();
     expect(host.querySelector('[data-waits-mark], [data-next-mark], [data-row-waits]')).toBeNull();
     expect(host.querySelector('.frac')?.textContent.trim()).toBe('7/9');
     expect(host.hasAttribute('data-archived')).toBe(true);
@@ -115,11 +115,30 @@ describe('SpecRow archive branch (spec 050, T2, ISC-287)', () => {
     expect(host.querySelector('ui-priority')).not.toBeNull();
     expect(host.querySelector('ui-stage-track')).not.toBeNull();
     expect(host.querySelector('.phase')).not.toBeNull();
-    expect(host.querySelector('.agent-dot')).not.toBeNull();
+    expect(host.querySelector('ui-agent-dot')).not.toBeNull();
     expect(host.querySelector('[data-next-mark]')).not.toBeNull();
     expect(host.getAttribute('data-mark')).toBe('next');
     expect(host.hasAttribute('data-archived')).toBe(false);
     expect(host.querySelector('.frac')?.textContent.trim()).toBe('25/30');
+  });
+});
+
+describe('SpecRow agent dot (spec 064, T8, ISC-467)', () => {
+  it('renders the shared ui-agent-dot in the agent cell, named and titled by the agent label', async () => {
+    const host = await render(ACTIVE);
+    const dot = host.querySelector('.ragent ui-agent-dot');
+    expect(dot).not.toBeNull();
+    expect(dot?.getAttribute('role')).toBe('img');
+    expect(dot?.getAttribute('aria-label')).toBe('Agent a:claude:sess-2 working');
+    expect(dot?.getAttribute('title')).toBe('Agent a:claude:sess-2 working');
+    expect(dot?.querySelector('.ring')).not.toBeNull();
+    expect(host.querySelector('span.agent-dot')).toBeNull();
+  });
+
+  it('a row without an agent keeps the empty cell and renders no dot', async () => {
+    const host = await render({ ...ACTIVE, agent: null });
+    expect(host.querySelector('.ragent')).not.toBeNull();
+    expect(host.querySelector('ui-agent-dot')).toBeNull();
   });
 });
 

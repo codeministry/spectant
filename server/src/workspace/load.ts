@@ -54,7 +54,8 @@ export async function loadDashboard(root: string, probe: ServicesProbe | null, l
   const { input } = reading;
   const labels = input.constitution === null ? new Map<number, string>() : devServiceLabels(input.constitution);
   const probed = probe === null ? [] : await probe(root, labels).catch(() => []);
-  const model = buildDashboard({ ...input, services: probed.map((s) => toLocalService(s, labels)) });
+  // The stories of `specs/ideas/` ride beside the input (`reading.ideas`); the model lists them (spec 064, ISC-484).
+  const model = buildDashboard({ ...input, ideas: reading.ideas, services: probed.map((s) => toLocalService(s, labels)) });
   const items = workspaceItemStates(input, model, clock);
   return { readable: true, model: withGuidance(withItemStates(model, items), guidanceOf({ workspace: input, dashboard: model, items })) };
 }

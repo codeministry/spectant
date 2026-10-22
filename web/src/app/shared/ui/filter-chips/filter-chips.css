@@ -48,6 +48,15 @@
       }
     }
 
+    /* Spec 064 (T41): the wrapping form keeps every chip in view, so it needs no scroller, no fade and no edge inset;
+     * it follows the compact rule so it overrides it at every width. */
+    :host([data-wrap]) .row {
+      flex-wrap: wrap;
+      overflow-x: visible;
+      mask-image: none;
+      padding-inline: 0;
+    }
+
     @media (forced-colors: active) {
       .dot { background: CanvasText; }
     }

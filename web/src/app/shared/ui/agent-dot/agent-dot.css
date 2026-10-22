@@ -1,0 +1,52 @@
+/*
+ * The agent dot (spec 064): the prototype's `.agent-dot`, an orange 8 px dot with a ping ring, moved out of the spec
+ * row. The ring beats on `--motion-duration-pulse` (0ms under reduced motion, plus `animation: none` below, ISC-467);
+ * the dot itself never moves and stays visible.
+ */
+:host {
+  display: inline-block;
+  position: relative;
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.ring {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-warning);
+  border-radius: 50%;
+  opacity: 0;
+  animation: agent-ping var(--motion-duration-pulse) var(--motion-ease-standard) infinite;
+  pointer-events: none;
+}
+
+@keyframes agent-ping {
+  0% {
+    opacity: 0.8;
+    scale: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    scale: 1.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :host {
+    background: CanvasText;
+  }
+
+  .ring {
+    display: none;
+  }
+}

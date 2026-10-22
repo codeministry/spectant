@@ -1,4 +1,5 @@
 import type { Guidance, SpecWarning } from '../../../../../../core/src/files';
+import { type WorkingEntry, workingOf } from '../../../core/model/working';
 
 /**
  * The fields of core's `DashboardModel` (`core/src/dashboard.ts`) that Next up, Warnings and the context rail read —
@@ -37,4 +38,21 @@ export interface DashboardView {
   readonly nextUp: readonly string[];
   /** The workspace guidance (spec 020, ISC-237); absent from a server without a clock. */
   readonly guidance?: Guidance;
+  /**
+   * The specs a session holds a claim of, for the block "In progress" (spec 064, ISC-460): not a field of core's
+   * model but `workingOf(body)`, added by `dashboardViewOf`, so the list and the spec table's agent dot share one source.
+   */
+  readonly working: readonly WorkingEntry[];
+}
+
+/**
+ * The body as a dashboard view with `working` from `workingOf(body)`, or null when it lacks the KPI block and the spec
+ * rows every component reads. The body's own fields stay as served (no reshaped copy, see above), so a page that
+ * reads more of the body may narrow the result to its own wider view.
+ */
+export function dashboardViewOf(body: unknown): DashboardView | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const { kpis, specs } = body as { kpis?: unknown; specs?: unknown };
+  if (typeof kpis !== 'object' || kpis === null || !Array.isArray(specs)) return null;
+  return { ...(body as DashboardView), working: workingOf(body) };
 }

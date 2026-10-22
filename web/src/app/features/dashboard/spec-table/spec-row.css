@@ -1,22 +1,13 @@
+@import './_row-grid.css';
+
 /*
- * The spec row (spec 021, design § P3 heights). The list declares `container: specs`; the row reads it, never the
- * viewport. From 640 px one 48 px line, `48px | 1fr | auto | auto | 32px`: id, title with its description inline
+ * The spec row (spec 021, design § P3 heights). The grid, shared with the idea row (spec 064), comes from
+ * `_row-grid.css`. From 640 px one 48 px line, `48px | 1fr | auto | auto | 32px`: id, title with its description inline
  * behind it, the track cell (mark, agent dot, priority, mini track, phase), meter + a/b, the star (spec 052). Below
  * 640 px two lines, `id title a/b` over `star mark · phase · priority` (or `phase · priority · description`), without
  * meter bar and track. Compact
  * density (ISC-254) renders no description, so the title has the line to itself. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
  */
-@import "../../../shared/ui/_agent-dot.css";
-
-:host {
-  display: grid;
-  grid-template-areas: 'id title track meter star';
-  grid-template-columns: 48px minmax(0, 1fr) auto auto 32px;
-  gap: 4px 16px;
-  align-items: center;
-  min-block-size: 48px;
-  padding: 8px 16px;
-}
 
 /* The id cell: the 16 px type glyph slot (empty for an unknown type, so ids align), 4 px, then the number. */
 .rid {
@@ -112,23 +103,6 @@
   inline-size: 8px;
 }
 
-/* The shared `.agent-dot` (shared/ui/_agent-dot.css) as an inline block in the track cell. */
-.agent-dot {
-  display: inline-block;
-}
-
-@keyframes agent-ping {
-  0% {
-    opacity: 0.8;
-    scale: 0.5;
-  }
-
-  100% {
-    opacity: 0;
-    scale: 1.4;
-  }
-}
-
 .rmeter {
   display: flex;
   grid-area: meter;
@@ -222,13 +196,8 @@
    (without guidance phase · priority · description); the meter bar and the stage track leave (the stage stays in the phase
    chip and the a/b in the meter cell's name). */
 @container specs (width < 640px) {
-  /* The description ends line 2 at the row's end, where its anchored "more…" stays clear of the title link. */
-  :host {
-    grid-template:
-      'id title title meter' 24px
-      'fav track desc desc' 24px
-      / 48px auto minmax(0, 1fr) auto;
-  }
+  /* The two-line grid comes from `_row-grid.css`; the description ends line 2 at the row's end, where its anchored
+     "more…" stays clear of the title link. */
 
   /* Spec 052 (T17): the star in line 2 under the type glyph, its bottom on the line's; the coarse hit area (the
      primitive's `::before`) reaches up, never into the next row. */
@@ -290,14 +259,6 @@
 }
 
 @media (forced-colors: active) {
-  .agent-dot {
-    background: CanvasText;
-  }
-
-  .agent-dot::after {
-    display: none;
-  }
-
   /* The archive chip keeps its dashed border (the chip's own forced-colors border is solid). */
   .rarchived {
     border-color: CanvasText;

@@ -1,0 +1,105 @@
+@import './_row-grid.css';
+
+/*
+ * The idea row (spec 064, T40): the spec row's grid, its own cells. The host holds the stretched link; the state line
+ * sits above the link's `::after`, so the links it may carry stay their own targets.
+ */
+:host {
+  position: relative;
+}
+
+.rid {
+  display: flex;
+  grid-area: id;
+  align-items: center;
+  color: var(--conc-ink);
+}
+
+.rtitle {
+  display: flex;
+  grid-area: title;
+  gap: 8px;
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+.link {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--color-base-content);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+.link:focus-visible {
+  outline: none;
+}
+
+.link:focus-visible::after {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* The sidebar's selected story (selection.css look, contract rule 3) paints the whole row, as a spec row's does. */
+:host:has(> .rtitle > .link[data-selected='row']) {
+  background: var(--disp-t);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* Feature and milestone, the ids in mono, muted like the spec row's description. */
+.where {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rtrack {
+  display: flex;
+  grid-area: track;
+  gap: 16px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.rstate {
+  position: relative;
+  z-index: 1;
+  min-inline-size: 0;
+}
+
+/* Below 640 px of list: line 1 glyph and title, line 2 priority and state, then the meta at the row's end. */
+@container specs (width < 640px) {
+  .rtitle {
+    display: contents;
+  }
+
+  .where {
+    grid-area: desc;
+  }
+
+  .rtrack {
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  :host(:not([data-desc])) .rtrack {
+    grid-column: 2 / -1;
+  }
+}

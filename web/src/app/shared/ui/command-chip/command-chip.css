@@ -1,3 +1,6 @@
+/* Under a coarse pointer the `.copy` button gets a hit area of at least 44 × 44 (WCAG 2.5.8) from `_hit-area.css`. */
+@import '../_hit-area.css';
+
 :host {
   display: inline-flex;
   flex-wrap: wrap;
@@ -33,6 +36,7 @@ code {
 }
 
 .copy {
+  position: relative;
   inline-size: 26px;
   block-size: 26px;
   min-block-size: 26px;

@@ -3,10 +3,11 @@
  * `bun run --cwd web e2e -- -g "guidance start"`.
  *
  * With `X-Spectant-Stub-Waits: 0 | 1 | 7` the first workspace column holds 0, 1 or 7 entries in `guidance.waits`. At
- * 1440 × 900 every column's block "Waits on you" shows the top entry highlighted (spec, sentence, copy chip), at most
- * four more rows linking to their spec with their sentence, and "+n more" with the right n linking to `/w/<ws>#waiting`;
- * with nothing waiting one sentence stands instead. Next up is not on the start, and the first column's block lies
- * above the fold without scrolling. Following "+n more" lands on the workspace dashboard's `#waiting` section, open and
+ * 1440 × 900 every column's block "Waits on you" shows at most three flat tiles (spec 064, ISC-478: none highlighted,
+ * each linking to its spec, its sentence the tile's description, its copy chip where it has a command) and, past them,
+ * "Show all n" with the right n linking to `/w/<ws>#waiting`; with nothing waiting one sentence stands instead. Next up
+ * is not on the start, and the first column's block lies above the fold without scrolling. Following "Show all n"
+ * lands on the workspace dashboard's `#waiting` section, open and
  * focused, listing every entry in core's order. Every expectation is read from the API bodies the page renders
  * (`GET /api/workspaces`, each dashboard) and the English catalogue (`guidance-sentence.ts`), never hand-typed.
  */
@@ -18,12 +19,12 @@ import { WAITS_HEADER, WAITS_STATES, type StubWaitsState } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as {
-  guidance: { waits: { empty: string; more: string; label: string } };
+  guidance: { waits: { empty: string; showAll: string; label: string } };
   nextUp: { title: string };
 };
 
-/** How many entries follow the highlighted one on `/` (ISC-238). */
-const ROWS = 4;
+/** How many flat tiles stand on `/` before "Show all n" (`TILE_LIMIT`, spec 064, ISC-478). */
+const TILES = 3;
 
 /** The fields of a guidance entry read here (structural; `GuidanceEntryView` plus the command). */
 type Entry = GuidanceView['waits'][number] & { readonly command: string | null };
@@ -48,17 +49,25 @@ async function waitsOf(request: APIRequestContext, ws: string, headers: Record<s
   return body.guidance?.waits ?? [];
 }
 
-/** One rendered row: its spec id, its sentence and its link. */
-type RowView = { id: string; reason: string; href: string | null };
-async function rowsOf(scope: Locator): Promise<RowView[]> {
-  return scope.locator('[data-row]').evaluateAll((els) =>
-    els.map((el) => ({
-      id: el.querySelector('.id')?.textContent.trim() ?? '',
-      reason: el.querySelector('[data-reason]')?.textContent ?? '',
-      href: el.querySelector('a')?.getAttribute('href') ?? null,
-    })),
+/** One rendered flat tile (spec 064, ISC-478): its spec id, its sentence (the description), link and copied command. */
+type TileView = { id: string; reason: string; href: string | null; command: string | null };
+async function tilesOf(scope: Locator): Promise<TileView[]> {
+  return scope.locator('ui-flat-tile').evaluateAll((els) =>
+    els.map((el) => {
+      const link = el.querySelector('a[aria-describedby]');
+      const described = link?.getAttribute('aria-describedby') ?? '';
+      return {
+        id: el.querySelector('[data-tile-id]')?.textContent.trim() ?? '',
+        reason: described === '' ? '' : (document.getElementById(described)?.textContent ?? ''),
+        href: link?.getAttribute('href') ?? null,
+        command: el.querySelector('ui-command-chip code')?.textContent.trim() ?? null,
+      };
+    }),
   );
 }
+
+/** A tile as the API's entry should render it. */
+const tileOf = (ws: string, e: Entry): TileView => ({ id: e.spec, reason: text(sentenceOf(e.reason)), href: `/w/${ws}/s/${e.spec}`, command: e.command });
 
 /** The block of one column, checked against that workspace's `waits`. */
 async function expectBlock(page: Page, ws: string, waits: readonly Entry[]): Promise<void> {
@@ -66,37 +75,25 @@ async function expectBlock(page: Page, ws: string, waits: readonly Entry[]): Pro
   await expect(block, `${ws}: the column holds the block`).toBeVisible();
   await expect(block).toHaveAttribute('data-count', String(waits.length));
   await expect(block.getByRole('heading', { name: EN.guidance.waits.label })).toBeVisible();
-  const top = block.locator('[data-top]');
   const more = block.locator('[data-more]');
-  const [first, ...rest] = waits;
-  if (first === undefined) {
+  // No top card and no "+n more" rows any more: every entry is the same flat tile (ISC-478).
+  await expect(block.locator('[data-top], [data-row]'), `${ws}: no highlighted entry, no row`).toHaveCount(0);
+  if (waits.length === 0) {
     await expect(block.locator('[data-empty]'), `${ws}: one sentence instead of an empty block`).toHaveText(EN.guidance.waits.empty);
-    await expect(top).toHaveCount(0);
-    await expect(block.locator('[data-row]')).toHaveCount(0);
+    await expect(block.locator('ui-flat-tile')).toHaveCount(0);
     await expect(more).toHaveCount(0);
     return;
   }
   await expect(block.locator('[data-empty]')).toHaveCount(0);
-  await expect(top, `${ws}: the top entry stands highlighted`).toBeVisible();
-  const id = top.locator('.id');
-  await expect(id).toHaveText(first.spec);
-  await expect(id).toHaveAttribute('href', `/w/${ws}/s/${first.spec}`);
-  expect(text(await top.locator('[data-reason]').textContent()), `${ws}: the top entry's sentence`).toBe(text(sentenceOf(first.reason)));
-  if (first.command !== null) {
-    const chip = top.locator('ui-command-chip');
-    await expect(chip.locator('code')).toHaveText(first.command);
-    await expect(chip.getByRole('button')).toBeVisible();
-  }
-  const shown = rest.slice(0, ROWS);
-  const rows = await rowsOf(block);
-  expect(rows.length, `${ws}: at most ${ROWS} more rows`).toBeLessThanOrEqual(ROWS);
+  const shown = waits.slice(0, TILES);
+  for (const tile of await block.locator('ui-flat-tile').all()) await expect(tile).toBeVisible();
+  const tiles = await tilesOf(block);
   expect(
-    rows.map((r) => ({ id: r.id, reason: text(r.reason), href: r.href })),
-    `${ws}: the rows are the next entries in core's order, each a link to its spec with its sentence`,
-  ).toEqual(shown.map((e) => ({ id: e.spec, reason: text(sentenceOf(e.reason)), href: `/w/${ws}/s/${e.spec}` })));
-  const n = rest.length - shown.length;
-  if (n > 0) {
-    await expect(more, `${ws}: "+n more" names the rest`).toHaveText(EN.guidance.waits.more.replace('{{n}}', String(n)));
+    tiles.map((t) => ({ ...t, reason: text(t.reason) })),
+    `${ws}: at most ${TILES} tiles, the first entries in core's order, each a link to its spec, its sentence the description, its chip its command`,
+  ).toEqual(shown.map((e) => tileOf(ws, e)));
+  if (waits.length > TILES) {
+    await expect(more.locator('[data-visible]'), `${ws}: "Show all n" names every entry`).toHaveText(EN.guidance.waits.showAll.replace('{{count}}', String(waits.length)));
     await expect(more).toHaveAttribute('href', `/w/${ws}#waiting`);
   } else {
     await expect(more).toHaveCount(0);
@@ -109,7 +106,7 @@ test.describe('guidance start', () => {
   const COUNTS: Readonly<Record<StubWaitsState, number>> = { '0': 0, '1': 1, '7': 7 };
 
   for (const variant of WAITS_STATES) {
-    test(`start: ${variant} waiting — the block per column, its rows and "+n more", no Next up, above the fold`, async ({ page, request }) => {
+    test(`start: ${variant} waiting — the block per column, its tiles and "Show all n", no Next up, above the fold`, async ({ page, request }) => {
       const headers = { [WAITS_HEADER]: variant };
       await page.context().setExtraHTTPHeaders(headers);
       const workspaces = await workspacesOf(request, headers);
@@ -135,7 +132,7 @@ test.describe('guidance start', () => {
     });
   }
 
-  test('start: "+n more" leads to the dashboard\'s #waiting section, open and focused, listing every entry', async ({ page, request }) => {
+  test('start: "Show all n" leads to the dashboard\'s #waiting section, open and focused, listing every entry', async ({ page, request }) => {
     const headers = { [WAITS_HEADER]: '7' };
     await page.context().setExtraHTTPHeaders(headers);
     const ws = (await workspacesOf(request, headers))[0]?.slug ?? '';
@@ -150,23 +147,13 @@ test.describe('guidance start', () => {
     await expect(section, 'the #waiting section is focused').toBeFocused();
     await expect(section).toHaveAttribute('data-count', String(waits.length));
     await expect(section.locator('[data-show-all]'), 'arriving over #waiting opens "Show all n"').toHaveAttribute('data-open', '');
-    await expect(section.locator('[data-top]')).toBeVisible();
-    for (const row of await section.locator('[data-row]').all()) await expect(row).toBeVisible();
+    const tiles = section.locator('ui-flat-tile');
+    await expect(tiles, 'every entry stands as a tile').toHaveCount(waits.length);
+    for (const tile of await tiles.all()) await expect(tile).toBeVisible();
     await expect(section).toBeInViewport();
 
-    const top = section.locator('[data-top]');
-    const listed = [
-      { id: text(await top.locator('.id').textContent()), reason: text(await top.locator('[data-reason]').textContent()) },
-      ...(await rowsOf(section)).map((r) => ({ id: r.id, reason: text(r.reason) })),
-    ];
-    expect(listed, 'the section lists every entry in core\'s order with its sentence').toEqual(
-      waits.map((e) => ({ id: e.spec, reason: text(sentenceOf(e.reason)) })),
-    );
-    // Every row of the section carries its own copy chip.
-    for (const [i, entry] of waits.entries()) {
-      if (entry.command === null) continue;
-      const scope = i === 0 ? top : section.locator('[data-row]').nth(i - 1);
-      await expect(scope.locator('ui-command-chip code')).toHaveText(entry.command);
-    }
+    // Every tile in core's order with its sentence as its description, and its own copy chip where it has a command.
+    const listed = (await tilesOf(section)).map((t) => ({ ...t, reason: text(t.reason) }));
+    expect(listed, 'the section lists every entry in core\'s order with its sentence and its chip').toEqual(waits.map((e) => tileOf(ws, e)));
   });
 });

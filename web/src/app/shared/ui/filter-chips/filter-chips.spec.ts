@@ -38,4 +38,15 @@ describe('UiFilterChips', () => {
     expect(buttons[0].getAttribute('aria-label')).toBe('All 6 stages');
     expect(buttons[1].hasAttribute('aria-label')).toBe(false);
   });
+
+  it('marks the host data-wrap only with `wrap`, the form whose row wraps instead of scrolling (spec 064, T41)', async () => {
+    const fixture = TestBed.createComponent(UiFilterChips);
+    fixture.componentRef.setInput('options', [{ key: 'all', label: 'All', count: 6 }]);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.hasAttribute('data-wrap')).toBe(false);
+    fixture.componentRef.setInput('wrap', true);
+    await fixture.whenStable();
+    expect(host.hasAttribute('data-wrap')).toBe(true);
+  });
 });

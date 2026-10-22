@@ -51,6 +51,12 @@ export interface KpiBandModel {
  */
 export const KPI_TARGETS = { warnings: 'warnings' } as const;
 
+/**
+ * The Warnings tile's query state on `/w/:ws`: the folded section stands open on arrival (`?open=warnings`, spec 064,
+ * ISC-475); the dashboard page reads it, opens the section and focuses its heading.
+ */
+export const WARNINGS_QUERY: Params = { open: KPI_TARGETS.warnings };
+
 /** The Takeable tile's query state on `/w/:ws/specs`: the list sorted by next step, takeable specs only (design.md § Routes and state). */
 export const TAKEABLE_QUERY: Params = { sort: 'next', takeable: 1 };
 
@@ -96,7 +102,7 @@ export function kpiTileOf(path: string): KpiTile | null {
  * places them: wide one row with a wider master tile, medium three columns by two rows, compact the Pulse card (the
  * master row and the spec-claims meter over a 2 × 2 grid). Both forms live in the DOM and the tier shows one. Tiles
  * with a destination are links: Specs, Takeable and Fog on the Specs page `/w/:ws/specs` with their query state, Warnings
- * on `/w/:ws` with its section's fragment (spec 058, ISC-395). Renders the model as
+ * on `/w/:ws` with `?open=warnings` and its section's fragment (spec 058, ISC-395; spec 064, ISC-475). Renders the model as
  * it is; derives no number: the open count and the ring percent are served fields too (ISC-255).
  */
 @Component({
@@ -109,7 +115,7 @@ export function kpiTileOf(path: string): KpiTile | null {
 })
 export class KpiBand {
   readonly model = input.required<KpiBandModel>();
-  /** The workspace slug; the list tiles target `/w/:ws/specs`, the Warnings tile `/w/:ws#warnings`. */
+  /** The workspace slug; the list tiles target `/w/:ws/specs`, the Warnings tile `/w/:ws?open=warnings#warnings`. */
   readonly ws = input.required<string>();
   /** The KPI paths the last refresh changed (`RefreshService.changedKpis`): their tiles get the fading tint. */
   readonly changed = input<ReadonlySet<string>>(new Set());
@@ -146,6 +152,7 @@ export class KpiBand {
   protected readonly targets = KPI_TARGETS;
   protected readonly takeableQuery = TAKEABLE_QUERY;
   protected readonly fogQuery = FOG_QUERY;
+  protected readonly warningsQuery = WARNINGS_QUERY;
   /** The workspace page `/w/:ws`, where the Warnings section stands. */
   protected readonly href = computed(() => `/w/${encodeURIComponent(this.ws())}`);
   /** The Specs page `/w/:ws/specs`, the list the Specs, Takeable and Fog tiles filter (a string: `ui-kpi-tile` takes one). */

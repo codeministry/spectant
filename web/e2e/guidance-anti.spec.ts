@@ -68,14 +68,27 @@ const waitingSpecs = (guidance: Guidance): string[] => [...new Set(guidance.wait
 
 // ---- DOM readers ----------------------------------------------------------------------------------------------------
 
-/** Every entry a `ui-waits-block` lists, the highlighted one first, then its rows, in DOM order. */
+/** How many flat tiles stand before the fold or the more link (`TILE_LIMIT`, spec 064). */
+const TILE_LIMIT = 3;
+
+/**
+ * Every entry a `ui-waits-block` lists, in DOM order. The `stack` form (the spec page): the highlighted one first, then
+ * its rows, each with its visible sentence. The `tiles` form (spec 064, ISC-478; `/` and `#waiting`): every flat tile,
+ * the folded ones included, its label `[data-tile-id]` and its sentence, which stands only in its accessible description.
+ */
 async function blockEntries(block: Locator): Promise<Shown[]> {
-  return block.evaluate((el) =>
-    [...el.querySelectorAll('[data-top], [data-row]')].map((row) => ({
-      label: (row.querySelector('.id')?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
-      sentence: (row.querySelector('[data-reason]')?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
-    })),
-  );
+  return block.evaluate((el) => {
+    const clean = (s: string | null | undefined): string => (s ?? '').replace(/\s+/gu, ' ').trim();
+    const tiles = [...el.querySelectorAll('ui-flat-tile')].map((tile) => {
+      const described = tile.querySelector('a[aria-describedby]')?.getAttribute('aria-describedby') ?? '';
+      return { label: clean(tile.querySelector('[data-tile-id]')?.textContent), sentence: clean(described === '' ? '' : document.getElementById(described)?.textContent) };
+    });
+    const rows = [...el.querySelectorAll('[data-top], [data-row]')].map((row) => ({
+      label: clean(row.querySelector('.id')?.textContent),
+      sentence: clean(row.querySelector('[data-reason]')?.textContent),
+    }));
+    return [...rows, ...tiles];
+  });
 }
 
 /** Every `ui-waits-block` on the page, each as its listed entries. */
@@ -114,8 +127,9 @@ test.describe('guidance anti', () => {
         const block = page.locator(`[data-ui="workspace-column"][data-ws="${ws}"] ui-waits-block`);
         await expect(block, `${ws}: the column's block`).toBeVisible();
         await expect(block).toHaveAttribute('data-count', String(want.length));
-        // The top entry and at most four rows: exactly the API's first entries, in its order, each with its sentence.
-        expect(await blockEntries(block), `${ws}: the start lists the API's waits, in order`).toEqual(want.slice(0, 5));
+        // At most TILE_LIMIT tiles, the rest behind the more link: exactly the API's first entries, in its order, each
+        // with its sentence as its description.
+        expect(await blockEntries(block), `${ws}: the start lists the API's waits, in order`).toEqual(want.slice(0, TILE_LIMIT));
       }
     });
 
@@ -127,15 +141,10 @@ test.describe('guidance anti', () => {
         const section = page.locator('#waiting');
         await expect(section, `${ws}: the #waiting section`).toBeVisible();
 
-        // #waiting: open "Show all n", then the block and the folded rows list the API's waits exactly, in order.
+        // #waiting: open "Show all n", then the standing and the folded tiles list the API's waits exactly, in order.
         const fold = section.locator('[data-show-all] button').first();
         if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
-        const listed = await section.evaluate((el) =>
-          [...el.querySelectorAll('[data-top], [data-row]')].map((row) => ({
-            label: (row.querySelector('.id')?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
-            sentence: (row.querySelector('[data-reason]')?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
-          })),
-        );
+        const listed = await blockEntries(section);
         expect(listed, `${ws}: #waiting lists the API's waits, in order`).toEqual(guidance.waits.map((e) => shownOf(e, 'workspace')));
         await expect(page.locator('ui-waits-block'), `${ws}: no waits block outside #waiting`).toHaveCount(await section.locator('ui-waits-block').count());
 

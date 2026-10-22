@@ -48,7 +48,8 @@
     }
     <span class="ragent">
       @if (row().agent) {
-        <span class="agent-dot" role="img" [attr.aria-label]="agentLabel()" [title]="agentLabel()"></span>
+        <!-- Spec 064 (T8): the shared dot; `agent-dot` stays the list's hook for the row's agent. -->
+        <ui-agent-dot class="agent-dot" [label]="agentLabel()" [title]="agentLabel()" />
       }
     </span>
     <ui-priority class="rprio" [value]="row().priority" />

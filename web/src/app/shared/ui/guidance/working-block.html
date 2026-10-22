@@ -1,0 +1,38 @@
+@if (entries().length > 0) {
+  <section [attr.aria-labelledby]="headingId()">
+    <ui-section-header [heading]="'guidance.working.label' | transloco" [level]="level()" [headingId]="headingId()">
+      <span meta class="meta">
+        <ui-glyph family="item" state="running" [size]="14" />
+        <ui-chip variant="count" tone="secondary">{{ entries().length }}</ui-chip>
+      </span>
+    </ui-section-header>
+    <ol class="tiles">
+      @for (entry of shown(); track entry.id) {
+        <li>
+          <ui-flat-tile
+            [link]="specLink(entry)"
+            [name]="'guidance.working.tileName' | transloco: { id: entry.id, title: entry.title, session: entry.session }"
+            [hint]="entry.title"
+          >
+            <ui-agent-dot tileMark />
+            <span tileId data-id>{{ entry.id }}</span>
+            <span tileMain data-title>{{ entry.title }}</span>
+            <span tileAside class="agent" data-agent [title]="entry.session">{{ entry.session }}</span>
+          </ui-flat-tile>
+        </li>
+      }
+    </ol>
+    @if (more()) {
+      <a
+        class="more"
+        data-show-all
+        [routerLink]="specsLink()"
+        [queryParams]="showAllQuery"
+        [attr.aria-label]="'guidance.working.showAllName' | transloco: { count: entries().length }"
+      >
+        {{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}
+        <ui-icon name="arrow-right" [size]="12" />
+      </a>
+    }
+  </section>
+}

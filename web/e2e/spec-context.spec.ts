@@ -154,7 +154,7 @@ test.describe('elements', () => {
       test.use(atWidth(width));
 
       test('the workspace Warnings list follows Next up and names spec, warning and command', async ({ page }) => {
-        await page.goto('/w/harbor');
+        await page.goto('/w/harbor?open=warnings');
         await expect(page.locator('app-shell')).toHaveAttribute('data-tier', tier);
 
         // Spec 058 (ISC-394): one column at every tier, no rail on the dashboard; the list sits in the main column.

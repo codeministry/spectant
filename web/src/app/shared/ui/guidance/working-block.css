@@ -1,0 +1,43 @@
+@import './_tiles.css';
+
+/* The block "In progress" (spec 064, design.md § Across viewports): header 8 px above the first tile. */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+ui-section-header {
+  margin-block-end: 8px;
+}
+
+/* The only orange in the block is the dot; the header glyph and count stay in their own tones. */
+.meta {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* The agent session: mono 12/16, at most 16ch, cut with an ellipsis; the full value is its title. */
+.agent {
+  overflow: hidden;
+  max-inline-size: 16ch;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The "Show all" row (design.md § Mehr-Zeile): a full-width row of 44 px under the list, so the whole row is the target. */
+.more {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--disp-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Under forced colors the user agent draws the link in LinkText itself; the tile's own rules live in flat-tile.css. */

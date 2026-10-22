@@ -254,6 +254,20 @@ with `&result=red|green` on a `probe` and `&text=` on a `question`, under the te
   clock every refresh stamps the same instant, so a view keyed on the clock would never re-read. Reason: a step must
   reach the page through the stream within 2 s, and only the count moves on every refresh.
 
+## Driving specs in work from an e2e spec
+
+The block "In Arbeit" (spec 064) reads each dashboard row's `taken`, which the harbor golden leaves empty. Two ways to
+fill it (`stub-api.ts`, `stub-api.test.ts`, `-t "specs in work"`):
+
+- **Over the limit**: `X-Spectant-Stub-Locks: working` puts one `taken` entry on harbor 005, 006, 002 and 009
+  (`STUB_WORKING`: ISC-94, ISC-1, ISC-74, ISC-131; session `a:claude:stub-<NNN>-<claim>`, since `STUB_NOW`), one more
+  than the tile limit of three. Only harbor's dashboard body changes; every other value keeps it byte for byte.
+- **Live**: `POST /api/__stub/lock?ws=harbor` with `{"spec": "003", "claim": "ISC-81", "session": "a:claude:stub-live",
+  "release": false}` under the test's `X-Spectant-Stub-Session` stands in for a claim line, `"release": true` for its
+  release (a fixture's entry too). 204; the session's dashboard body and ETag change, and before the 204 one `update`
+  frame goes to its open `/api/events` streams, as `bump` does: leave the stream connected and wait for its 200 before
+  the POST. 400 `invalid-lock`, 404 for an unknown workspace or spec; `POST /api/__stub/reset` drops the session's locks.
+
 ## Driving what waits on you from an e2e spec
 
 The block "Waits on you" (spec 020, ISC-238) reads `guidance.waits` from each workspace's dashboard. Pick how many

@@ -18,7 +18,7 @@ import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
 import { type GuidanceView, sentenceOf } from './guidance-sentence';
 import { klm, StepCounter, StepRecorder, trail } from './steps';
-import { DENSE_HEADER, RESET_PATH, SESSION_HEADER, WAITS_HEADER } from './stub-api';
+import { DENSE_HEADER, LOCKS_HEADER, RESET_PATH, SESSION_HEADER, STUB_WORKING, WAITS_HEADER } from './stub-api';
 
 const TARGET = { ws: 'harbor', spec: '007', claim: 'ISC-126', number: '126' };
 const ENTRY = `claim:${TARGET.ws}:${TARGET.claim}`;
@@ -280,22 +280,27 @@ for (const width of [1440, 600, 390] as const) {
 
 /*
  * Usage path P2 · waiting spec with its command (spec 020, ISC-242; notation of spec 018): from `/` at 1440 px to the
- * command of the top entry of "Waits on you" in the clipboard and its reason on screen.
+ * command of the top entry of "Waits on you" in the clipboard, its waiting spec and its reason on its tile.
  *
  *   bun run e2e -- path -g P2
  *
  * With `X-Spectant-Stub-Waits: 7` the first column is harbor, its golden as it is (the fixture of ISC-237). The top
- * entry stands highlighted in the column's block "Waits on you" with its sentence and its copy chip above the fold, so
- * the path is one click on the chip (M + P + B = 2.65 s); reading the reason is not a step. The goal holds only when
- * the clipboard holds the API body's `guidance.waits[0].command` byte for byte and the top entry's sentence, built from
- * the English catalogue (`guidance-sentence.ts`), is wholly on screen. Spec 018's Ist: 1 step and 2.7 s for the
- * command; the reason and the waiting spec were not reachable.
+ * entry is the first flat tile of the column's block "Waits on you" (spec 064, ISC-478): its ID, the waiting spec's
+ * title as its main text and its copy chip above the fold, so the path is one click on the chip (M + P + B = 2.65 s);
+ * reading the tile is not a step. The reason sentence is no visible text: it is the tile link's accessible description
+ * (`aria-describedby`). The goal holds only when the clipboard holds the API body's `guidance.waits[0].command` byte
+ * for byte, the tile's main text is that spec's title from the body's `specs`, and the tile link's description is the
+ * top entry's sentence, built from the English catalogue (`guidance-sentence.ts`), on a tile wholly on screen. Spec
+ * 018's Ist: 1 step and 2.7 s for the command; the reason and the waiting spec were not reachable.
  */
 const P2 = { ws: 'harbor', headers: { [WAITS_HEADER]: '7' } } as const;
 const P2_BUDGET = { steps: 1, seconds: 3 } as const;
 
 type P2Entry = GuidanceView['waits'][number] & { readonly command: string | null };
-type P2Body = { readonly guidance?: { readonly waits: readonly P2Entry[] } };
+type P2Body = {
+  readonly guidance?: { readonly waits: readonly P2Entry[] };
+  readonly specs: ReadonlyArray<{ readonly id: string; readonly title: string }>;
+};
 
 const p2Text = (s: string | null | undefined): string => (s ?? '').replace(/\s+/gu, ' ').trim();
 
@@ -311,7 +316,7 @@ test.describe('P2 · step counter', () => {
 test.describe('P2 · waiting spec with its command @1440', () => {
   test.use(atWidth(1440));
 
-  test(`P2 waits @1440: one click on the top waiting entry's copy chip → its command in the clipboard and its reason on screen in ≤ ${P2_BUDGET.steps} step and ≤ ${P2_BUDGET.seconds} s`, async ({ page, context, request }) => {
+  test(`P2 waits @1440: one click on the top waiting entry's copy chip → its command in the clipboard, its spec's title and its reason on its tile in ≤ ${P2_BUDGET.steps} step and ≤ ${P2_BUDGET.seconds} s`, async ({ page, context, request }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.context().setExtraHTTPHeaders(P2.headers);
     const listed = await request.get('/api/workspaces', { headers: P2.headers });
@@ -327,11 +332,16 @@ test.describe('P2 · waiting spec with its command @1440', () => {
     const command = top?.command ?? '';
     expect(command, 'the top entry has a command').not.toBe('');
     const sentence = top ? sentenceOf(top.reason) : '';
+    const title = body.specs.find((row) => row.id === top?.spec)?.title ?? '';
+    expect(title, 'the waiting spec has a title').not.toBe('');
 
     await page.goto('/');
-    const entry = page.locator(`[data-ui="workspace-column"][data-ws="${P2.ws}"] [data-ui="waits-block"] [data-top]`);
-    await expect(entry, 'the top waiting entry stands highlighted').toBeVisible();
-    await expect(entry.locator('.id')).toHaveText(top?.spec ?? '');
+    const block = page.locator(`[data-ui="workspace-column"][data-ws="${P2.ws}"] [data-ui="waits-block"]`);
+    const entry = block.locator('ui-flat-tile').first();
+    await expect(entry, 'the top waiting entry is the first tile').toBeVisible();
+    await expect(block.locator('[data-top]'), 'no tile stands highlighted').toHaveCount(0);
+    await expect(entry.locator('[data-tile-id]')).toHaveText(top?.spec ?? '');
+    await expect(entry.locator('[tileMain]'), 'the tile\'s main text is the waiting spec\'s title').toHaveText(title);
     const chip = entry.locator('ui-command-chip');
     await expect(chip.locator('code'), 'the chip shows the top entry\'s command').toHaveText(command);
     expect(await page.evaluate(() => window.scrollY), 'the start opens unscrolled').toBe(0);
@@ -358,9 +368,18 @@ test.describe('P2 · waiting spec with its command @1440', () => {
 
     await expect(button, 'the visible confirmation').toHaveAttribute('data-copied', '');
     expect(await page.evaluate(() => navigator.clipboard.readText()), 'the clipboard holds the command byte for byte').toBe(command);
-    const reason = entry.locator('[data-reason]');
-    expect(p2Text(await reason.textContent()), 'the top entry\'s reason').toBe(p2Text(sentence));
-    await expect(reason, 'the reason is wholly on screen').toBeInViewport({ ratio: 1 });
+    // Spec 064 (T10): the tile's link is the empty cover link over the tile; its id beside it is aria-hidden.
+    const link = entry.locator('a.cover');
+    await expect(link, 'the top entry\'s reason is the tile link\'s description').toHaveAccessibleDescription(p2Text(sentence));
+    await expect(entry.locator('[data-reason]'), 'no visible reason line on the tile').toHaveCount(0);
+    const described = await link.evaluate((a) => {
+      const node = document.getElementById(a.getAttribute('aria-describedby') ?? '');
+      const r = node?.getBoundingClientRect();
+      return r ? { text: node?.textContent ?? '', width: r.width, height: r.height } : null;
+    });
+    expect(p2Text(described?.text), 'the description node holds the sentence').toBe(p2Text(sentence));
+    expect((described?.width ?? 0) <= 1 && (described?.height ?? 0) <= 1, 'the sentence is visually hidden').toBe(true);
+    await expect(entry, 'the tile is wholly on screen').toBeInViewport({ ratio: 1 });
   });
 });
 
@@ -385,12 +404,15 @@ const whollyOnScreen = (target: Locator): Promise<boolean> =>
     return r.top >= 0 && r.bottom <= window.innerHeight;
   });
 
-/** One stub session per test, so the language and density set here never leak into another worker's case. */
-function useDenseSession(prefix: string, lang: 'en' | 'de', width: number): void {
+/**
+ * One stub session per test, so the language and density set here never leak into another worker's case. `extra`
+ * adds stub headers to the page's requests (P3 with specs in work: the lock fixture `working`).
+ */
+function useDenseSession(prefix: string, lang: 'en' | 'de', width: number, extra: Readonly<Record<string, string>> = {}): void {
   let session = '';
   test.beforeEach(async ({ page, request }, info) => {
     session = `${prefix}-${lang}-${String(width)}-${info.testId}`;
-    await page.context().setExtraHTTPHeaders({ [DENSE_HEADER]: 'on', [SESSION_HEADER]: session });
+    await page.context().setExtraHTTPHeaders({ ...extra, [DENSE_HEADER]: 'on', [SESSION_HEADER]: session });
     const saved = await request.put('/api/settings', {
       data: { language: lang, density: 'comfortable' },
       headers: { [SESSION_HEADER]: session },
@@ -474,50 +496,85 @@ test.describe('P3 · step counter', () => {
   });
 });
 
+/** The fixture P3 runs on: the dense harbor alone, or with `STUB_WORKING`'s four specs in work as well. */
+type P3Variant = 'dense' | 'working';
+
+/**
+ * Walks P3 on the dense harbor and writes the Ist into the report: the click on the column, then each block of the
+ * dashboard's one column read in its order. Under `working` the row of Waits on you and In progress holds both lists,
+ * In progress three tiles and "Show all 4", and P3 reads In progress as a block of its own before Next up.
+ */
+async function walkP3(page: Page, lang: 'en' | 'de', width: number, variant: P3Variant): Promise<void> {
+  const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('lang', lang);
+  const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
+  await expect(column).toBeVisible();
+  const steps = new StepCounter(page);
+  await openWorkspace(page, lang, steps, column);
+
+  const nextUp = page.locator('app-next-up-list:visible').first();
+  const working = page.locator('ui-working-block section');
+  // The dashboard's one column, in its order; the spec list is not on it (spec 058).
+  const targets: readonly Block[] = [
+    ['kpi band', page.locator('app-kpi-band')],
+    ['tldr', page.locator('[data-ui="brief"]').first()],
+    ['waits', page.locator('#waiting')],
+    ...(variant === 'working' ? [['in progress', working] as const] : []),
+    ['next up', nextUp],
+  ];
+  for (const [name, target] of targets) await expect(target, `${name} is on the page`).toBeVisible();
+  if (variant === 'working') {
+    // Both lists populated: Waits on you holds its tiles, In progress three of STUB_WORKING's four and "Show all 4".
+    await expect(page.locator('#waiting ui-flat-tile').first(), 'Waits on you holds tiles').toBeVisible();
+    await expect(working.locator('ui-flat-tile [data-id]')).toHaveText(STUB_WORKING.specs.slice(0, 3));
+    await expect(working.locator('a.more[data-show-all]')).toContainText(String(STUB_WORKING.specs.length));
+  } else {
+    await expect(working, 'no spec in work without the lock fixture').toHaveCount(0);
+  }
+  await expect(page.locator('app-spec-table'), 'the dashboard holds no spec list').toHaveCount(0);
+  expect(await page.evaluate(() => window.scrollY), 'the dashboard opens unscrolled').toBe(0);
+  const height = page.viewportSize()?.height ?? 0;
+  const geometry = await geometryOf(targets);
+  const nextUpBottom = await nextUp.evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
+
+  const unreadNames = await readAll(page, steps, targets, width);
+
+  const seconds = klm(steps.sequence);
+  const label = variant === 'working' ? 'P3 working' : 'P3 workspace';
+  test.info().annotations.push(
+    {
+      type: `${label} @${width} ${lang}`,
+      description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; next up bottom y ${String(nextUpBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
+    },
+    { type: `${label} heights @${width} ${lang}`, description: geometry },
+  );
+  expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
+  expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
+  expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
+  expect(unreadNames, 'every block read').toEqual([]);
+}
+
 for (const lang of ['en', 'de'] as const) {
   for (const width of [1440, 600] as const) {
+    const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
     test.describe(`P3 · state of a workspace @${width} in ${lang}`, () => {
       test.use(atWidth(width));
       useDenseSession('p3', lang, width);
 
-      const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
       test(`P3 workspace @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you and Next up read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
-        await page.goto('/');
-        await expect(page.locator('html')).toHaveAttribute('lang', lang);
-        const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a[href="/w/${DENSE.ws}"]`);
-        await expect(column).toBeVisible();
-        const steps = new StepCounter(page);
-        await openWorkspace(page, lang, steps, column);
+        await walkP3(page, lang, width, 'dense');
+      });
+    });
 
-        const nextUp = page.locator('app-next-up-list:visible').first();
-        // The dashboard's one column, in its order; the spec list is not on it (spec 058).
-        const targets: readonly Block[] = [
-          ['kpi band', page.locator('app-kpi-band')],
-          ['tldr', page.locator('[data-ui="brief"]').first()],
-          ['waits', page.locator('#waiting')],
-          ['next up', nextUp],
-        ];
-        for (const [name, target] of targets) await expect(target, `${name} is on the page`).toBeVisible();
-        await expect(page.locator('app-spec-table'), 'the dashboard holds no spec list').toHaveCount(0);
-        expect(await page.evaluate(() => window.scrollY), 'the dashboard opens unscrolled').toBe(0);
-        const height = page.viewportSize()?.height ?? 0;
-        const geometry = await geometryOf(targets);
-        const nextUpBottom = await nextUp.evaluate((el) => Math.round(el.getBoundingClientRect().bottom + window.scrollY));
+    // P3 with both lists populated (spec 064, ISC-472): the dense harbor under `X-Spectant-Stub-Locks: working`, so
+    // Waits on you and In progress stand in their row before Next up, and the budget of ISC-401 still holds.
+    test.describe(`P3 · state of a workspace with specs in work @${width} in ${lang}`, () => {
+      test.use(atWidth(width));
+      useDenseSession('p3w', lang, width, { [LOCKS_HEADER]: 'working' });
 
-        const unreadNames = await readAll(page, steps, targets, width);
-
-        const seconds = klm(steps.sequence);
-        test.info().annotations.push(
-          {
-            type: `P3 workspace @${width} ${lang}`,
-            description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}; next up bottom y ${String(nextUpBottom)} of viewport ${String(height)}${unreadNames.length > 0 ? `; unread: ${unreadNames.join(', ')}` : ''}`,
-          },
-          { type: `P3 heights @${width} ${lang}`, description: geometry },
-        );
-        expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
-        expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
-        expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
-        expect(unreadNames, 'every block read').toEqual([]);
+      test(`P3 working @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you, In progress and Next up read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
+        await walkP3(page, lang, width, 'working');
       });
     });
   }

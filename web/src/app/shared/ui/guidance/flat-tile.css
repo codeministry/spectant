@@ -1,0 +1,129 @@
+@import '../_visually-hidden.css';
+
+/*
+ * The flat tile (spec 064, ISC-464). The heights are `TILE_HEIGHT_STACKED` and `TILE_HEIGHT_LINE`, the threshold
+ * `TILE_DENSITY_MIN` in tiles.ts. The block size includes the card's 1 px border; the rows are centred in what is
+ * left, so the content sits 8 px from the outer edge in `stacked` (1 + 7 + 24 + 4 + 28 + 7 + 1 = 72).
+ */
+:host {
+  display: block;
+}
+
+.tile {
+  display: grid;
+  grid-template-rows: 24px 28px;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-content: center;
+  align-items: center;
+  overflow: visible;
+  block-size: 72px;
+  padding-inline: 12px;
+}
+
+.mark {
+  display: grid;
+  grid-area: 1 / 1;
+  place-items: center;
+}
+
+.id {
+  grid-area: 1 / 2;
+  min-inline-size: 3ch;
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+/*
+ * The tile's one link is its cover: an empty, absolutely placed `<a>` over the whole card, border included, so the
+ * whole tile is the target and the link itself carries the global focus ring (primitives.css, ISC-64) around the
+ * tile. The aside stands above it (z-index 1); the card's clip is lifted so ring and halo show outside the border.
+ */
+.cover {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+}
+
+.main {
+  overflow: hidden;
+  grid-area: 1 / 3 / 2 / 5;
+  min-inline-size: 0;
+  color: var(--color-base-content);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+}
+
+/* `stacked`: aside and meta are cells of row 2 of their own. */
+.end {
+  display: contents;
+}
+
+.aside {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  grid-area: 2 / 2 / 3 / 4;
+  align-items: center;
+  justify-self: start;
+  min-inline-size: 0;
+  max-inline-size: 60%;
+}
+
+.meta {
+  grid-area: 2 / 4;
+  justify-self: end;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .tile:has(.cover:hover) .main {
+    text-decoration: underline;
+  }
+}
+
+/* `line`: one row; aside and meta share the end column. */
+@container tiles (min-width: 560px) {
+  .tile {
+    grid-template-rows: 28px;
+    block-size: 48px;
+  }
+
+  .main {
+    grid-area: 1 / 3;
+  }
+
+  .end {
+    display: flex;
+    grid-area: 1 / 4;
+    gap: 8px;
+    align-items: center;
+    min-inline-size: 0;
+  }
+
+  .aside {
+    max-inline-size: min(40cqi, 280px);
+  }
+}
+
+@media (forced-colors: active) {
+  .tile {
+    border-color: CanvasText;
+  }
+
+  .id {
+    color: LinkText;
+  }
+}
