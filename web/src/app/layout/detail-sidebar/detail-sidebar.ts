@@ -28,13 +28,15 @@ import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRing } from '../../shared/ui/ring/ring';
 import { UiStarToggle } from '../../shared/ui/star-toggle/star-toggle';
-import { releasableRun, RunRelease } from '../run-release/run-release';
+import { releasableRun } from '../run-release/run-release';
 import { specLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { IdeaFacts } from './idea-facts';
 import { PlanningFacts } from './planning-facts';
 import { CHILD_CAP, DetailSelection, relationAt, SEL_PARAM, sidebarParents } from './selection';
+import { SidebarActions } from './sidebar-actions';
+import { SidebarTasks } from './sidebar-tasks';
 import { SpecFacts, specFactsRowOf, type SpecFactsRow } from './spec-facts';
 
 /** Where an instance sits: `rail` inside `app-rail-slot` (the docked presentation), `float` mounted once by the shell. */
@@ -70,14 +72,15 @@ interface SidebarStar {
  * compact. Escape closes in each and returns focus to the selected object's `[data-ref]` element; the selection
  * contract the views follow is in `selection.ts`.
  *
- * Spec 040 (T62, ISC-226): a spec or story whose run is open shows its state line under the header, with "Release
- * run" (`app-run-release`) in the line's action slot, in every presentation, the compact sheet included. The state is
+ * Spec 040 (T62, ISC-226): a spec or story whose run is open shows its state line under the header, in every
+ * presentation, the compact sheet included; its "Release run" (`app-run-release`) moved into the actions grid
+ * (`app-sidebar-actions`, spec 067), which follows the facts, then the open tasks (`app-sidebar-tasks`). The state is
  * the API's: the dashboard row's `state` for a spec, the planning tree's for a story. The API serves an item's newest
  * open run only, so the section holds one button, for that run.
  */
 @Component({
   selector: 'app-detail-sidebar',
-  imports: [IdeaFacts, NgTemplateOutlet, PlanningFacts, RouterLink, RunRelease, SpecFacts, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet, UiStarToggle],
+  imports: [IdeaFacts, NgTemplateOutlet, PlanningFacts, RouterLink, SidebarActions, SidebarTasks, SpecFacts, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet, UiStarToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './detail-sidebar.html',
   styleUrl: './detail-sidebar.css',
@@ -152,10 +155,15 @@ export class DetailSidebar {
       return releasableRun(row?.state) ? (row?.state ?? null) : null;
     }
     if (entry?.type === 'idea') {
-      const state = this.data.ideas().find((idea) => idea.slug === entry.id)?.state;
-      return releasableRun(state) ? (state ?? null) : null;
+      const state = this.ideaItem();
+      return releasableRun(state) ? state : null;
     }
     return null;
+  });
+  /** The shown story's item state as the planning tree serves it (its next step, its run); null for every other type. */
+  protected readonly ideaItem = computed<ItemStateInfo | null>(() => {
+    const entry = this.shown();
+    return entry?.type === 'idea' ? (this.data.ideas().find((idea) => idea.slug === entry.id)?.state ?? null) : null;
   });
   protected readonly ws = computed(() => this.state.ws() ?? '');
 

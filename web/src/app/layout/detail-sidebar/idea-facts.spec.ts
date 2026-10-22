@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { IdeaFacts as IdeaFactsData, Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { IdeaFacts } from './idea-facts';
@@ -23,7 +24,27 @@ const INDEX: RelationIndex = Object.fromEntries(
   ].map((entry) => [entry.ref, entry]),
 );
 
-function render(ref: RelationRef): HTMLElement {
+/** The story's served item state while it is open: row 1's step, `/spec new <slug>`, and its reason. */
+const OPEN: ItemStateInfo = { kind: 'idea', id: 'bare', stage: 'idea', state: 'open', command: '/spec new bare', reason: 'the story is ready to shape' };
+/** The same story while a run on it is open; the item then carries the run, not the step. */
+const RUNNING: ItemStateInfo = {
+  kind: 'idea',
+  id: 'bare',
+  stage: 'idea',
+  state: 'running',
+  run: {
+    run: 'r-2',
+    command: '/spec new bare',
+    session: 'a:claude:s2',
+    actor: { raw: 'a:claude:s2', kind: 'agent', id: 'a:claude:s2', legacy: false },
+    since: '2026-10-17T14:02:00Z',
+    elapsedMs: 120_000,
+    openRuns: 1,
+    source: 'run',
+  },
+};
+
+function render(ref: RelationRef, item: ItemStateInfo | null = null): HTMLElement {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -36,6 +57,7 @@ function render(ref: RelationRef): HTMLElement {
   const fixture = TestBed.createComponent(IdeaFacts);
   fixture.componentRef.setInput('relation', INDEX[ref]);
   fixture.componentRef.setInput('index', INDEX);
+  fixture.componentRef.setInput('item', item);
   fixture.detectChanges();
   return fixture.nativeElement as HTMLElement;
 }
@@ -73,5 +95,42 @@ describe('IdeaFacts (spec 067, T18, ISC-529)', () => {
     TestBed.resetTestingModule();
     const host = render('feature:F25');
     expect(host.querySelector('dl')).toBeNull();
+  });
+
+  // Spec 067 (T23, ISC-531): the story's next step is the command its served item state names, `/spec new <slug>`.
+  describe('next step', () => {
+    afterEach(() => Reflect.deleteProperty(navigator, 'clipboard'));
+
+    it('shows the open story’s command with its reason after the facts, copies it and announces the copy politely', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const host = render('idea:bare', OPEN);
+      const parts = [...host.children].map((el) => el.getAttribute('data-part'));
+      expect(parts).toEqual(['idea-facts', 'next']);
+      expect(host.querySelector('[data-part="reason"]')?.textContent.trim()).toBe('the story is ready to shape');
+      const button = host.querySelector<HTMLElement>('[data-part="next"] ui-command-chip button');
+      expect(button?.getAttribute('aria-label')).toBe('Copy /spec new bare · next step for bare');
+      expect(host.querySelector('[data-part="next"] ui-live-region')?.getAttribute('aria-live')).toBe('polite');
+      button?.click();
+      await vi.waitFor(() => expect(button?.hasAttribute('data-copied')).toBe(true));
+      expect(writeText).toHaveBeenCalledWith('/spec new bare');
+      await vi.waitFor(() => expect(host.querySelector('[data-part="next"] ui-live-region')?.textContent.trim()).toBe('Copied /spec new bare'));
+    });
+
+    it('locks the chip on the run’s command while a run is open on the story, and copies nothing', () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const host = render('idea:bare', RUNNING);
+      const button = host.querySelector<HTMLElement>('[data-part="next"] ui-command-chip button');
+      expect(host.querySelector('[data-part="next"] code')?.textContent.trim()).toBe('/spec new bare');
+      expect(button?.getAttribute('aria-disabled')).toBe('true');
+      expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock');
+      button?.click();
+      expect(writeText).not.toHaveBeenCalled();
+    });
+
+    it('has no next-step row without a served item state', () => {
+      expect(render('idea:bare').querySelector('[data-part="next"]')).toBeNull();
+    });
   });
 });

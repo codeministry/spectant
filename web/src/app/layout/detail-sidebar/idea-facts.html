@@ -30,4 +30,21 @@
   @if (f.excerpt; as excerpt) {
     <p class="excerpt" data-part="excerpt" [title]="excerpt">{{ excerpt }}</p>
   }
+  @if (next(); as step) {
+    <!-- ISC-531: the story's next step from its served item state, locked while a run is open on it. -->
+    <div class="next" data-part="next">
+      <ui-command-chip
+        [command]="step.command"
+        [size]="large() ? 'lg' : 'default'"
+        [lockedBy]="step.run"
+        [context]="'detailSidebar.ideaFacts.nextFor' | transloco: { id: relation().id }"
+        [copyLabel]="'common.copyCommand' | transloco"
+        [copiedLabel]="'common.copied' | transloco: { command: step.command }"
+        [manualHint]="'common.copyFallback' | transloco"
+      />
+      @if (step.reason) {
+        <p class="reason" data-part="reason">{{ step.reason }}</p>
+      }
+    </div>
+  }
 }

@@ -2909,7 +2909,8 @@
       "priority": "Priorität",
       "type": "Typ",
       "feature": "Feature",
-      "milestone": "Meilenstein"
+      "milestone": "Meilenstein",
+      "nextFor": "nächster Schritt für {{id}}"
     },
     "planningFacts": {
       "why": "Warum",

@@ -2,8 +2,10 @@ import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import tasksGolden from '../../../../../core/fixtures/harbor.tasks.golden.json';
 import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
+import { DEFAULT_WORKFLOW, WORKFLOW_STAGES } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
 import { RefreshService } from '../shell/refresh.service';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
@@ -13,6 +15,9 @@ import { ShellState } from '../shell/shell-state.service';
 import { DOCK_MIN, TIER_MEDIUM_MIN, TIER_WIDE_MIN, tierFor } from '../shell/tier';
 import { DetailSidebar } from './detail-sidebar';
 import { DetailSelection, parseSel, presentationFor, refSelector, selectedLook, sidebarParents } from './selection';
+
+/** harbor 002's tasks.md as the tasks route serves it: T27, T28, T29, T31 and T32 open. */
+const GOLDEN_TASKS = tasksGolden['specs/002-web-console'];
 
 const rel = (ref: RelationRef, title: string, extra: Partial<Relation> = {}): Relation => {
   const [type, ...rest] = ref.split(':');
@@ -29,7 +34,7 @@ const INDEX: RelationIndex = Object.fromEntries(
     rel('spec:024', 'Shell', { stage: 'review' }),
     rel('spec:003', 'Old pages', { archived: true }),
     ...CLAIMS.map((ref, i) => rel(ref, `Claim ${i + 1}`, { total: 1, closed: i < 2 ? 1 : 0, parents: ['spec:025', 'feature:F25'] })),
-    rel('idea:graph-zoom', 'Graph zoom'),
+    rel('idea:graph-zoom', 'Graph zoom', { facts: { state: 'open', priority: 'P2' } }),
   ].map((entry) => [entry.ref, entry]),
 );
 
@@ -55,8 +60,12 @@ const favSpecs = signal<ReadonlySet<string>>(new Set());
 const favIdeas = signal<ReadonlySet<string>>(new Set());
 const toggleFavorite = vi.fn<(spec: string) => Promise<boolean>>(() => Promise.resolve(true));
 const toggleIdeaFavorite = vi.fn<(slug: string) => Promise<boolean>>(() => Promise.resolve(true));
+/** What `GET …/specs/:id/tasks` answers (spec 067, T33): none open unless a test serves the golden's open tasks. */
+const EMPTY_TASKS = { ...GOLDEN_TASKS, tasks: [] };
+let tasksBody: unknown = EMPTY_TASKS;
 
 function setup(): void {
+  tasksBody = EMPTY_TASKS;
   width.set(820);
   dashboard.set(undefined);
   ideas.set([]);
@@ -74,12 +83,15 @@ function setup(): void {
     ],
     providers: [
       provideRouter([{ path: '**', component: Blank }]),
-      { provide: ShellState, useValue: { width, tier, ws: signal('harbor') } },
+      { provide: ShellState, useValue: { width, tier, ws: signal('harbor'), specId: signal(null) } },
       {
         provide: ShellData,
         useValue: {
-          planningModel: signal({ relations: INDEX }),
-          dashboard: { value: dashboard },
+          planningModel: signal({ relations: INDEX, features: [], milestones: [] }),
+          workflow: signal({ rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] }),
+          stages: signal(WORKFLOW_STAGES),
+          planning: { reload: vi.fn() },
+          dashboard: { value: dashboard, reload: vi.fn() },
           ideas,
           specRows: () => [{ id: '025', slug: '025-spec-edges', title: 'Spec edges', type: null, stage: 'build', priority: null }],
           isFavorite: (spec: string) => favSpecs().has(spec),
@@ -88,7 +100,16 @@ function setup(): void {
           toggleIdeaFavorite,
         },
       },
-      { provide: ApiClient, useValue: { activityHash: () => null, releaseRun: vi.fn() } },
+      {
+        provide: ApiClient,
+        useValue: {
+          activityHash: () => null,
+          releaseRun: vi.fn(),
+          transition: vi.fn(),
+          taskCheck: vi.fn(),
+          tasks: () => Promise.resolve({ kind: 'ok', body: tasksBody, etag: null, notModified: false, hash: 'h0' }),
+        },
+      },
       { provide: RefreshService, useValue: { refresh: vi.fn() } },
     ],
   });
@@ -332,7 +353,10 @@ describe('DetailSidebar', () => {
     const fixture = await render();
     const host = hostOf(fixture);
     expect(q(host, '[data-section="run"] ui-item-state')?.getAttribute('data-state')).toBe('running');
-    expect(q(host, '[data-section="run"] [data-release]')?.textContent).toContain('Release run');
+    // Spec 067 (ISC-534): "Release run" shows once, in the actions grid, no longer in the run line's action slot.
+    expect(q(host, '[data-section="actions"] [data-release]')?.textContent).toContain('Release run');
+    expect(host.querySelectorAll('[data-release]')).toHaveLength(1);
+    expect(q(host, '[data-section="run"] app-run-release')).toBeNull();
     dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', state: { ...running, state: 'open', run: undefined } }] } });
     await fixture.whenStable();
     expect(q(host, '[data-section="run"]')).toBeNull();
@@ -444,7 +468,10 @@ describe('DetailSidebar', () => {
     /** The body's sections in document order, by `data-section`, the title block and the shell's progress. */
     const order = (host: HTMLElement): string[] =>
       [...(q(host, '.body')?.children ?? [])].flatMap((el) => {
-        const name = el.getAttribute('data-section') ?? (el.querySelector('[data-part="title"]') ? 'title' : el.getAttribute('data-part'));
+        // A hidden part (the actions without an action) is not shown; the tasks part brings its own section.
+        if ((el as HTMLElement).hidden) return [];
+        const own = el.getAttribute('data-section') ?? el.querySelector(':scope > section[data-section]')?.getAttribute('data-section');
+        const name = own ?? (el.querySelector('[data-part="title"]') ? 'title' : el.getAttribute('data-part'));
         return name ? [name] : [];
       });
 
@@ -460,7 +487,41 @@ describe('DetailSidebar', () => {
       // One progress, the facts' claims metric; the shell's ring is gone.
       expect(host.querySelectorAll('[data-part="progress"]')).toHaveLength(1);
       expect(q(host, 'app-spec-facts [data-part="progress"]')).not.toBeNull();
-      expect(order(host)).toEqual(['title', 'facts', 'parents', 'blockers', 'children']);
+      expect(order(host)).toEqual(['title', 'facts', 'actions', 'parents', 'blockers', 'children']);
+    });
+
+    // Spec 067 (T28, T33): the actions and the open tasks are mounted after the facts, before the relations.
+    it('mounts the actions and the open tasks in the one order: head, title, run, facts, actions, tasks, relations, foot', async () => {
+      tasksBody = GOLDEN_TASKS;
+      const run: ItemStateInfo = {
+        kind: 'spec',
+        id: '025',
+        state: 'running',
+        stage: 'build',
+        run: { run: 'r-1', command: '/spec implement 025', session: 'a:claude:s1', actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false }, since: '2026-10-17T14:02:00Z', elapsedMs: 180_000, openRuns: 1, source: 'run' },
+      };
+      dashboard.set({ kind: 'ok', body: { specs: [{ ...ROW, state: run }] } });
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      await vi.waitFor(async () => {
+        await fixture.whenStable();
+        expect(q(hostOf(fixture), '[data-section="tasks"]')).not.toBeNull();
+      });
+      const host = hostOf(fixture);
+      expect([...(q(host, '.panel')?.children ?? [])].map((el) => el.className.split(' ')[0])).toEqual(['head', 'body', 'foot']);
+      expect(order(host)).toEqual(['title', 'run', 'facts', 'actions', 'tasks', 'parents', 'blockers', 'children']);
+      expect(q(host, 'app-sidebar-actions [data-stage-change]')).not.toBeNull();
+      expect(q(host, 'app-sidebar-actions [data-release]')).not.toBeNull();
+      // T23 (ISC-531): the facts' next step is locked by the open run.
+      expect(q(host, 'app-spec-facts [data-part="next"] ui-command-chip button')?.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('gives an open story its next step, `/spec new <slug>`, from the item state the planning tree serves', async () => {
+      ideas.set([{ slug: 'graph-zoom', state: { kind: 'idea', id: 'graph-zoom', stage: 'idea', state: 'open', command: '/spec new graph-zoom', reason: 'shape it' } }]);
+      await go('/w/harbor?sel=idea:graph-zoom');
+      const host = hostOf(await render());
+      expect(q(host, 'app-idea-facts [data-part="next"] code')?.textContent.trim()).toBe('/spec new graph-zoom');
+      expect(q(host, 'app-idea-facts [data-part="next"] ui-command-chip button')?.getAttribute('aria-label')).toBe('Copy /spec new graph-zoom · next step for graph-zoom');
     });
 
     it('picks the idea facts for an idea and the planning facts for a feature, a milestone and a claim', async () => {

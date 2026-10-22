@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { parseActor } from '../../../../../core/src/actor';
-import type { ActorRef } from '../../../../../core/src/files';
+import type { ActorRef, ItemRun } from '../../../../../core/src/files';
 import type { BoardRow } from '../../core/model/board-rows';
 import { UiTime, type UiTimeForm } from '../../shared/time/time';
 import { UiActorChip } from '../../shared/ui/actor-chip/actor-chip';
@@ -85,6 +85,11 @@ export class SpecFacts {
   readonly ws = input.required<string>();
   /** The 44 px copy box of the compact sheet. */
   readonly large = input(false);
+  /**
+   * The run open on the spec (T23, ISC-531), as the sidebar's run line reads it: the next step's chip is locked while
+   * it is set, as every command chip of a running item is (spec 040, ISC-225.1).
+   */
+  readonly lockedBy = input<ItemRun | null>(null);
 
   protected readonly stageTone = computed(() => toneOfStage(this.row().stage));
   protected readonly goal = computed(() => this.row().goal.trim());

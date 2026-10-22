@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import type { ItemRun } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { lastChangeOf, SpecFacts, type SpecFactsRow, specFactsRowOf } from './spec-facts';
 
@@ -47,7 +48,19 @@ const BARE: SpecFactsRow = {
   lastRound: null,
 };
 
-function render(row: SpecFactsRow, large = false): HTMLElement {
+/** An open run on the spec, as the sidebar's run line reads it. */
+const RUN: ItemRun = {
+  run: 'r-1',
+  command: '/spec implement 002',
+  session: 'a:claude:s1',
+  actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false },
+  since: '2026-10-17T14:02:00Z',
+  elapsedMs: 180_000,
+  openRuns: 1,
+  source: 'run',
+};
+
+function render(row: SpecFactsRow, large = false, lockedBy: ItemRun | null = null): HTMLElement {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -62,6 +75,7 @@ function render(row: SpecFactsRow, large = false): HTMLElement {
   fixture.componentRef.setInput('row', row);
   fixture.componentRef.setInput('ws', 'harbor');
   fixture.componentRef.setInput('large', large);
+  fixture.componentRef.setInput('lockedBy', lockedBy);
   fixture.detectChanges();
   return fixture.nativeElement as HTMLElement;
 }
@@ -121,5 +135,37 @@ describe('SpecFacts (spec 067, T16, ISC-528)', () => {
     expect(specFactsRowOf({ archive: [FULL] }, '002')).toBeNull();
     expect(lastChangeOf({ updated: '2026-03-09', lastRound: '2026-03-08T11:15:00.000Z' })).toEqual({ value: '2026-03-09', form: 'day' });
     expect(lastChangeOf({ updated: null, lastRound: null })).toBeNull();
+  });
+
+  // Spec 067 (T23, ISC-531): the next step copies exactly its command, names it, confirms the copy through the chip's
+  // polite live region, and is locked while a run is open on the spec.
+  describe('next step', () => {
+    afterEach(() => Reflect.deleteProperty(navigator, 'clipboard'));
+
+    it('copies the next command, names it in the copy button and announces the copy politely', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const host = render(FULL);
+      const button = q(host, '[data-part="next"] ui-command-chip button');
+      expect(button?.getAttribute('aria-label')).toBe('Copy /spec implement 002 · next step for 002');
+      expect(q(host, '[data-part="next"] ui-live-region')?.getAttribute('aria-live')).toBe('polite');
+      button?.click();
+      await vi.waitFor(() => expect(button?.hasAttribute('data-copied')).toBe(true));
+      expect(writeText).toHaveBeenCalledWith('/spec implement 002');
+      expect(button?.getAttribute('aria-label')).toBe('Copied /spec implement 002');
+      await vi.waitFor(() => expect(q(host, '[data-part="next"] ui-live-region')?.textContent.trim()).toBe('Copied /spec implement 002'));
+    });
+
+    it('locks the copy chip while a run is open on the spec, copies nothing and keeps the reason', () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const host = render(FULL, false, RUN);
+      const button = q(host, '[data-part="next"] ui-command-chip button');
+      expect(button?.getAttribute('aria-disabled')).toBe('true');
+      expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('lock');
+      button?.click();
+      expect(writeText).not.toHaveBeenCalled();
+      expect(q(host, '[data-part="reason"]')?.textContent.trim()).toBe('ISC-75 is takeable');
+    });
   });
 });

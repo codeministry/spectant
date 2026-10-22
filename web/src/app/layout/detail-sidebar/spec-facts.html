@@ -14,9 +14,17 @@
 }
 
 @if (r.nextCommand; as command) {
-  <!-- ISC-531: the next step, its command to copy and the one phrase why. -->
+  <!-- ISC-531: the next step, its command to copy and the one phrase why; locked while a run is open on the spec. -->
   <div class="sf-next" data-part="next">
-    <ui-command-chip [command]="command" [size]="large() ? 'lg' : 'default'" [context]="'detailSidebar.specFacts.nextFor' | transloco: { id: r.id }" />
+    <ui-command-chip
+      [command]="command"
+      [size]="large() ? 'lg' : 'default'"
+      [lockedBy]="lockedBy()"
+      [context]="'detailSidebar.specFacts.nextFor' | transloco: { id: r.id }"
+      [copyLabel]="'common.copyCommand' | transloco"
+      [copiedLabel]="'common.copied' | transloco: { command }"
+      [manualHint]="'common.copyFallback' | transloco"
+    />
     @if (r.nextReason) {
       <p class="sf-reason" data-part="reason">{{ r.nextReason }}</p>
     }

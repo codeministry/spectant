@@ -48,11 +48,9 @@
     </div>
 
     @if (running(); as item) {
-      <!-- T62 · ISC-226: the open run with "Release run"; never on a board card. -->
+      <!-- T62 · ISC-226: the open run's state line; its "Release run" sits in the actions below (spec 067, ISC-534). -->
       <section class="sec run" data-section="run">
-        <ui-item-state [info]="item" [ws]="ws()">
-          <app-run-release uiItemStateAction [info]="item" />
-        </ui-item-state>
+        <ui-item-state [info]="item" [ws]="ws()" />
       </section>
     }
 
@@ -73,14 +71,16 @@
 
     <!-- Spec 067 (T16, ISC-528): one section order for every type and shell: head, title, facts, actions, relations, foot. -->
     @if (specRow(); as row) {
-      <app-spec-facts data-section="facts" data-facts="spec" [row]="row" [ws]="ws()" [large]="presentation() === 'sheet'" />
+      <app-spec-facts data-section="facts" data-facts="spec" [row]="row" [ws]="ws()" [large]="presentation() === 'sheet'" [lockedBy]="running()?.run ?? null" />
     } @else if (entry.type === 'idea' && selection.index(); as index) {
-      <app-idea-facts data-section="facts" data-facts="idea" [relation]="entry" [index]="index" />
+      <app-idea-facts data-section="facts" data-facts="idea" [relation]="entry" [index]="index" [item]="ideaItem()" [large]="presentation() === 'sheet'" />
     } @else if (entry.type === 'feature' || entry.type === 'milestone' || entry.type === 'claim') {
       <app-planning-facts data-section="facts" data-facts="planning" [relation]="entry" [index]="selection.index()" />
     }
 
-    <!-- Actions (next round, spec 067 T28): stage change and run release as one action grid, between facts and relations. -->
+    <!-- Spec 067 (T28, ISC-533/534): stage change and run release as one action grid; then the open tasks (ISC-535). -->
+    <app-sidebar-actions data-section="actions" [relation]="entry" [running]="running()" />
+    <app-sidebar-tasks [relation]="entry" />
 
     @if (parents().length > 0) {
       <section class="sec" data-section="parents">

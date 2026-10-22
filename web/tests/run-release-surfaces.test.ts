@@ -9,8 +9,7 @@ import { join, relative } from "node:path";
 const SRC = join(import.meta.dir, "..", "src");
 const ALLOWED = [
   "app/features/spec/status/status-block.html",
-  "app/layout/detail-sidebar/detail-sidebar.html",
-  // The sidebar's actions grid (spec 067, ISC-534) is part of the detail sidebar.
+  // The detail sidebar's actions grid (spec 067, ISC-534), its one "Release run".
   "app/layout/detail-sidebar/sidebar-actions.html",
 ];
 

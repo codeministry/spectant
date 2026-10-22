@@ -18,3 +18,18 @@
   font-size: 14px;
   line-height: 20px;
 }
+
+/* The next step: the copy chip, the reason under it 13/20 muted (design.md, as the spec facts' row). */
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-ink);
+}
