@@ -223,7 +223,8 @@ differ, `spectant tokens --yes` included (`-t tokens`).
 - Before each build the stream runs its `scan` hook (spec 057, ISC-352): `favoritesScan` deletes the `spec_favorite`
   rows of specs neither the main checkout (open, not archived) nor a live spec worktree carries. No GET handler prunes
   (ISC-353). Reason: a favourite of an archived spec must not come back when the spec is restored, and a read must
-  never write.
+  never write. The same scan settles idea favourites (spec 064, ISC-496): a story that is gone moves its
+  favourite to the open spec `NNN-<slug>` of the same slug, or drops it when there is none.
 - A `: ping` comment every `HEARTBEAT_MS` (5 s) keeps the stream under Bun's 10 s idle timeout and re-syncs the
   watchers with the registry and the worktrees.
 - Watchers exist only while a stream is open, and they only read: `tests/readonly.test.ts -t "readonly: live"`

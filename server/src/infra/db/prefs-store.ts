@@ -143,3 +143,25 @@ export function addIdeaFavorite(db: Db, ws: string, slug: string, createdAt: str
 export function removeIdeaFavorite(db: Db, ws: string, slug: string): void {
   db.run("DELETE FROM idea_favorite WHERE ws = ? AND slug = ?", [ws, slug]);
 }
+
+/**
+ * Settles the idea favourites of workspace `ws` whose story is gone (spec 064 T52, ISC-496), in one transaction: each
+ * slug with a `spec` (the folder `NNN-<slug>` of the open spec it became) stars that spec with the idea's `createdAt`,
+ * a spec already starred keeping its row; every slug's idea row is deleted. Only the workspace scan calls it, never a
+ * GET handler (ISC-353).
+ */
+export function settleIdeaFavorites(db: Db, ws: string, gone: ReadonlyArray<{ readonly slug: string; readonly spec: string | null }>): void {
+  if (gone.length === 0) return;
+  db.transaction(() => {
+    for (const { slug, spec } of gone) {
+      if (spec !== null) {
+        db.run(
+          `INSERT INTO spec_favorite (ws, spec, created_at) SELECT ws, ?, created_at FROM idea_favorite WHERE ws = ? AND slug = ?
+           ON CONFLICT (ws, spec) DO NOTHING`,
+          [spec, ws, slug],
+        );
+      }
+      removeIdeaFavorite(db, ws, slug);
+    }
+  })();
+}
