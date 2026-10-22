@@ -49,6 +49,21 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
     expect(row.querySelector('ui-item-state')?.getAttribute('data-state')).toBe('open');
   });
 
+  // Spec 064 (T47, ISC-488): the idea row fills the spec row's named columns, each cell rendered even when empty.
+  it('puts each part in the spec row\'s column: glyph in id, title and meta in title, priority in prio, state in phase (T47)', async () => {
+    const row = await render(IDEA);
+    const cell = (name: string) => row.querySelector<HTMLElement>(`:scope > [data-cell="${name}"]`);
+    expect([...row.children].map((child) => child.getAttribute('data-cell'))).toEqual(['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star']);
+    expect(cell('id')?.querySelector('ui-icon')).not.toBeNull();
+    expect(cell('title')?.querySelector('[data-idea-title]')).not.toBeNull();
+    expect(cell('title')?.querySelector('[data-idea-where]')?.textContent.trim()).toBe('F3 · M2');
+    expect(cell('prio')?.querySelector('ui-priority')).not.toBeNull();
+    expect(cell('phase')?.querySelector('ui-item-state')).not.toBeNull();
+    expect(cell('phase')?.querySelector('ui-command-chip')).toBeNull();
+    for (const empty of ['more', 'mark', 'agent', 'track', 'meter', 'star']) expect(cell(empty)?.children.length).toBe(0);
+    expect(row.querySelector('.rtrack ui-priority, .rtrack ui-item-state')).toBeNull();
+  });
+
   it('leaves out feature, milestone and state the story does not name', async () => {
     const row = await render({ ...IDEA, feature: null, milestone: 'M2', state: undefined });
     expect(row.querySelector('[data-idea-where]')?.textContent.trim()).toBe('M2');

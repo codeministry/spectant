@@ -152,10 +152,21 @@
   line-height: 20px;
 }
 
+/* Below 880 px of list (spec 064, T48) the mark and meter columns narrow (`_row-grid.css`): "Waits on you" keeps its
+   icon, the word stays in the chip (and so in the row link's description, `mark-<id>`) at no width, and the meter
+   keeps its a/b. */
 @container specs (width < 880px) {
   .rdate,
+  .meter,
   :host(:not([data-expanded])) .d {
     display: none;
+  }
+
+  .rmark [data-waits-mark] {
+    gap: 0;
+    padding-inline: 5px;
+    font-size: 0;
+    letter-spacing: 0;
   }
 
   .rtitle:has(.d) .tline {
@@ -182,13 +193,9 @@
   pointer-events: none;
 }
 
-/* Below 640 px of list: two lines (69 px with the hairline), the grid's from `_row-grid.css`; the meter bar leaves,
-   the a/b stays (and in the meter cell's name). */
+/* Below 640 px of list: two lines (69 px with the hairline), the grid's from `_row-grid.css`; the meter bar is gone
+   from 880 px down, the a/b stays (and in the meter cell's name). */
 @container specs (width < 640px) {
-  .meter {
-    display: none;
-  }
-
   :host([data-expanded]) {
     grid-template-rows: auto auto;
   }

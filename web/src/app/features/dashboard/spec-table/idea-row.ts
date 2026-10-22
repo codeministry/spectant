@@ -19,11 +19,11 @@ function withoutCommand(info: ItemStateInfo): ItemStateInfo {
 
 /**
  * Spec 064 (T40, ISC-484, ISC-482): one story of `specs/ideas/` as a row of the Specs list, in the row grid of
- * `app-spec-row` (`_row-grid.css`: the same columns and heights per tier). Where a spec row has its id, the idea glyph;
- * then the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`, with
- * feature and milestone as the muted meta behind it; in the track cell `ui-priority` and, when the model serves one,
- * `ui-item-state` without its command and actor. The meter and star cells stay empty: an idea has no stage track, claim
- * progress, Next command or agent dot. Below 640 px of list it stacks like the spec row, the meta ending line 2.
+ * `app-spec-row` (`_row-grid.css`: the same ten named columns and heights per tier, T47). In `id` the idea glyph; in
+ * `title` the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`, with
+ * feature and milestone as the muted description behind it; in `prio` `ui-priority`; in `phase`, when the model serves
+ * one, `ui-item-state` without its command and actor. `more`, `mark`, `agent`, `track`, `meter` and `star` stay empty:
+ * an idea has no stage track, claim progress, Next command or agent dot. Below 640 px it takes the spec row's two lines.
  *
  * The link activates like a spec row's (spec 026, ISC-171): a plain click (or Enter) selects the story for the detail
  * sidebar (`?sel=idea:<slug>`, every other param kept), the row taking the selection look; on the selected row it

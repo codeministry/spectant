@@ -4,8 +4,9 @@
  * never the viewport. Every cell names its column with `data-cell` and keeps it even when empty, so no cell moves with
  * the title's length or a missing mark. From 640 px one 48 px line,
  * `id | title | more | mark | agent | prio | track | phase | meter | star`; below 900 px the stage track's column is
- * 0 wide (the stage stays in the phase chip), the others stay. Below 640 px two lines: `id title more star` over
- * `· mark prio phase meter`.
+ * 0 wide (the stage stays in the phase chip); below 880 px `mark` narrows to the waits chip's icon (24) and `meter` to
+ * the a/b (48), so the title keeps its room (≥ 200 px at 740 px of list, T48). Below 640 px two lines of fixed columns:
+ * `id title more star` over `· mark prio phase meter`.
  */
 :host {
   --track-col: 88px;
@@ -75,14 +76,24 @@
   }
 }
 
-/* Below 640 px of list the agent dot and the stage track leave (the compact form has no column for them; the stage
-   stays in the phase chip); `auto` columns until the compact form fixes their widths (T48). */
+/* Below 880 px of list the waits chip shows its icon only and the meter its a/b (spec-row.css), so `mark` narrows to
+   24 px and `meter` to 48; the other columns keep their widths (the track's 0 from 900 px down). */
+@container specs (width < 880px) {
+  :host {
+    grid-template-columns: 72px minmax(0, 1fr) 24px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px;
+  }
+}
+
+/* Below 640 px of list two lines of fixed columns, the same for spec and idea rows (T48): `id 44 | title | more 24 |
+   star 32` over `· | mark 24 | prio 44 | phase 104 | meter`, the meter running to the row's end under `more` and
+   `star`. At 390 px (356 px of list, 324 inside the padding) the title gets 200 px and the meter 76. The agent dot
+   and the stage track leave (no column for them; the stage stays in the phase chip). */
 @container specs (width < 640px) {
   :host {
     grid-template:
-      'id title title title more star' 24px
-      '. mark prio phase meter meter' 24px
-      / 48px auto auto minmax(0, 1fr) 24px 32px;
+      'id title title title title more star' 24px
+      '. mark prio phase meter meter meter' 24px
+      / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px;
   }
 
   [data-cell='agent'] {

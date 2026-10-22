@@ -1,8 +1,9 @@
 @import './_row-grid.css';
 
 /*
- * The idea row (spec 064, T40): the spec row's grid, its own cells. The host holds the stretched link; the state line
- * sits above the link's `::after`, so the links it may carry stay their own targets.
+ * The idea row (spec 064, T40, T47): the spec row's grid and its named columns (`_row-grid.css`), its own cells. The
+ * host holds the stretched link; the state line sits above the link's `::after`, so the links it may carry stay their
+ * own targets.
  */
 :host {
   position: relative;
@@ -10,14 +11,12 @@
 
 .rid {
   display: flex;
-  grid-area: id;
   align-items: center;
   color: var(--conc-ink);
 }
 
 .rtitle {
   display: flex;
-  grid-area: title;
   gap: 8px;
   align-items: baseline;
   min-inline-size: 0;
@@ -57,7 +56,7 @@
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-/* Feature and milestone, the ids in mono, muted like the spec row's description. */
+/* Feature and milestone, the ids in mono, muted: the title cell's description, as a spec row's goal is. */
 .where {
   flex: 0 1 auto;
   min-inline-size: 0;
@@ -70,11 +69,10 @@
   white-space: nowrap;
 }
 
-/* Until the idea row maps its cells onto the grid's columns (T47), its priority and state span `prio` to `phase`. */
-.rtrack {
+/* Priority and state each at their column's start, cut rather than pushing into the next column. */
+.rprio,
+.rphase {
   display: flex;
-  grid-area: prio-start / prio-start / prio-end / phase-end;
-  gap: 16px;
   align-items: center;
   min-inline-size: 0;
 }
@@ -83,12 +81,5 @@
   position: relative;
   z-index: 1;
   min-inline-size: 0;
-}
-
-/* Below 640 px of list: line 1 glyph and title with the meta, line 2 priority and state. */
-@container specs (width < 640px) {
-  .rtrack {
-    gap: 8px;
-    overflow: hidden;
-  }
+  overflow: hidden;
 }

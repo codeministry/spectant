@@ -1,7 +1,8 @@
-<span class="rid">
+<!-- Spec 064 (T47, ISC-488): the spec row's ten named columns of `_row-grid.css`, each cell rendered even when empty. -->
+<span class="rid" data-cell="id">
   <ui-icon name="lightbulb" [size]="16" />
 </span>
-<span class="rtitle">
+<span class="rtitle" data-cell="title">
   <!-- The row link: the title, stretched over the whole row (`::after`), named "Idea <title>"; a first activation
        selects the story for the sidebar, one on the selected row opens the idea page (like a spec row, ISC-484). -->
   <a
@@ -19,10 +20,18 @@
     <span class="where" data-idea-where>{{ where }}</span>
   }
 </span>
-<!-- The track cell: priority and the state line; the meter and star cells stay empty (ISC-482). -->
-<span class="rtrack">
+<span data-cell="more"></span>
+<span data-cell="mark"></span>
+<span data-cell="agent"></span>
+<span class="rprio" data-cell="prio">
   <ui-priority [value]="priority()" />
+</span>
+<span data-cell="track"></span>
+<!-- The state where a spec row has its phase chip, without its command (ISC-482); meter and star stay empty. -->
+<span class="rphase" data-cell="phase">
   @if (state(); as state) {
     <ui-item-state class="rstate" [info]="state" [ws]="ws()" noActor />
   }
 </span>
+<span data-cell="meter"></span>
+<span data-cell="star"></span>

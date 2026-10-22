@@ -11,6 +11,8 @@ import type { Guidance, GuidanceEntry } from '../../../../../../core/src/files';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { guidanceEntryOf } from '../../../core/model/guidance-entry';
 import { ShellData } from '../../../layout/shell/shell-data.service';
+import { IdeaRow } from './idea-row';
+import { SpecRow } from './spec-row';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, parseListQuery, readArchiveRows, readListCounts, readSpecRows, type SpecListCounts } from './spec-table-model';
 
@@ -44,6 +46,41 @@ const BODY = {
   archive: [{ id: '001', slug: '001-manifest-sync', title: 'Manifest sync', type: 'feature' }],
   kpis: { specs: 2, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 2 } },
 };
+
+/**
+ * A row component's grid as its compiled styles carry it (spec 064, T47, T48): every `grid-template*`, `grid-area`
+ * and `--*-col` declaration as "<container conditions> | <selector> | <declaration>", encapsulation attributes dropped.
+ */
+function gridOf(component: unknown): string[] {
+  const css = (component as { ɵcmp: { styles: string[] } }).ɵcmp.styles
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replaceAll('[_nghost-%COMP%]', ':host')
+    .replaceAll('[_ngcontent-%COMP%]', '')
+    .replaceAll('%NS%', '')
+    .replace(/\s+/g, ' ');
+  const found: string[] = [];
+  const open: string[] = [];
+  let head = '';
+  const take = (): void => {
+    const decl = head.trim();
+    const selector = open.at(-1) ?? '';
+    const shared = selector === ':host' || selector.startsWith('[data-cell=');
+    if (shared && /^(grid-template|grid-area|--[a-z]+-col)\b/.test(decl)) found.push([...open.filter((h) => h.startsWith('@')), selector, decl].join(' | '));
+    head = '';
+  };
+  for (const ch of css) {
+    if (ch === '{') {
+      open.push(head.trim());
+      head = '';
+    } else if (ch === '}') {
+      take();
+      open.pop();
+    } else if (ch === ';') take();
+    else head += ch;
+  }
+  return found;
+}
 
 const text = (el: Element | null | undefined): string => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
 
@@ -1336,6 +1373,31 @@ describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
     expect(text(heading?.querySelector('[data-ideas-label]'))).toBe('Ideas');
     expect(text(heading?.querySelector('[data-ideas-count]'))).toBe('3 ideas');
     expect(group()?.querySelector('ol')?.getAttribute('aria-labelledby')).toBe(heading?.id);
+  });
+
+  // Spec 064 (T47, T48, ISC-488, ISC-490): spec and idea rows are one grid. Each cell of either row names its column,
+  // and both components carry the same compiled grid: the wide template, the narrowing below 880 px, the fixed compact
+  // form below 640 px and every cell's area. The layout itself is measured by the browser probe (spec-list-columns).
+  it('lays spec and idea rows on the same grid: the same ten cells, templates and areas in every tier (T47, T48)', async () => {
+    const { host } = await renderIdeas();
+    const cells = (row: Element | null) => [...(row?.children ?? [])].map((cell) => cell.getAttribute('data-cell'));
+    const ten = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+    expect(cells(host.querySelector('app-spec-row'))).toEqual(ten);
+    const ideas = [...host.querySelectorAll('app-idea-row')];
+    expect(ideas.length).toBe(3);
+    for (const row of ideas) expect(cells(row)).toEqual(ten);
+    const grid = gridOf(SpecRow);
+    expect(gridOf(IdeaRow)).toEqual(grid);
+    for (const name of ten) expect(grid).toContain(`[data-cell=${name}] | grid-area: ${name}`);
+    // Fixed widths in every tier: no `auto` column left from the interim compact form.
+    expect(grid.some((line) => line.includes('grid-template') && / auto\b/.test(line))).toBe(false);
+    expect(grid).toEqual(
+      expect.arrayContaining([
+        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 136px 8px 48px var(--track-col, 88px) 104px 120px 32px',
+        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 24px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
+        '@container specs (width < 640px) | :host | grid-template: "id title title title title more star" 24px ". mark prio phase meter meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px',
+      ]),
+    );
   });
 
   it('links each idea row to /w/harbor/ideas/<slug>', async () => {
