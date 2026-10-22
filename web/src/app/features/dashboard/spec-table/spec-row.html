@@ -35,8 +35,8 @@
       <ui-time class="rdate" [value]="on" form="day" />
     }
   } @else if (mark() === 'waits') {
-    <!-- Spec 021 (R1): "Waits on you" as the visible word or the Next ring; the reason is the row link's description. -->
-    <ui-chip variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id">{{ 'guidance.marker' | transloco }}</ui-chip>
+    <!-- Spec 021 (R1): "Waits on you" as its icon (the word in its title) or the Next ring; the reason is the row link's description. -->
+    <ui-chip variant="status" tone="secondary" icon="user-round" data-waits-mark [id]="'mark-' + row().id" [attr.title]="'guidance.marker' | transloco">{{ 'guidance.marker' | transloco }}</ui-chip>
   } @else if (mark() === 'next') {
     <span class="rnext" data-next-mark><ui-glyph state="open" family="item" [size]="14" /></span>
   }

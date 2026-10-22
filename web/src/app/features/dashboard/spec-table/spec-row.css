@@ -37,17 +37,14 @@
 }
 
 /* The title line (spec 025, T24): the list's projected row link, the title cut at a whole word by `uiClamp` (its type
-   lives in spec-table.css, which owns the link), then the waits chip, lifted above the link stretched over the row. */
+   lives in spec-table.css, which owns the link), then the waits chip, lifted above the link stretched over the row.
+   The title takes the whole cell before it is cut, as an idea row's does; the description gets what is left. */
 .tline {
   display: flex;
   flex: 0 1 auto;
   gap: 8px;
   align-items: center;
   min-inline-size: 0;
-}
-
-.rtitle:has(.d) .tline {
-  max-inline-size: 70%;
 }
 
 .rwaits {
@@ -72,10 +69,6 @@
 :host([data-expanded]) .rtitle {
   flex-direction: column;
   gap: 0;
-}
-
-:host([data-expanded]) .tline {
-  max-inline-size: none;
 }
 
 /* In the column an opened row turns `.rtitle` into, the inline form's zero flex basis would collapse the description
@@ -170,25 +163,22 @@
   line-height: 20px;
 }
 
-/* Below 880 px of list (spec 064, T48) the mark and meter columns narrow (`_row-grid.css`): "Waits on you" keeps its
-   icon, the word stays in the chip (and so in the row link's description, `mark-<id>`) at no width, and the meter
-   keeps its a/b. */
+/* "Waits on you" shows its icon only, in every tier (`mark` is 24 px, `_row-grid.css`): the word stays in the chip
+   (and so in the row link's description, `mark-<id>`) at no width, and in the chip's title. */
+.rmark [data-waits-mark] {
+  gap: 0;
+  padding-inline: 5px;
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+/* Below 880 px of list (spec 064, T48) the meter column narrows (`_row-grid.css`) and keeps its a/b; the archive date
+   leaves. */
 @container specs (width < 880px) {
   .rdate,
   .meter,
   :host(:not([data-expanded])) .d {
     display: none;
-  }
-
-  .rmark [data-waits-mark] {
-    gap: 0;
-    padding-inline: 5px;
-    font-size: 0;
-    letter-spacing: 0;
-  }
-
-  .rtitle:has(.d) .tline {
-    max-inline-size: none;
   }
 }
 
