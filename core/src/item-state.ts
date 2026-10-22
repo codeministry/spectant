@@ -53,6 +53,7 @@ import { parseEvents } from './events.ts';
 import type { ClaimLock, GateState, GateView, IdeaRef, ItemKind, ItemRun, ItemState, ItemStateInfo, ItemWaits, MarkState, OpenRun, RunState, SpecEdge, SpecFiles, TaskRow, TaskRun, Workflow } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { PlanningModel } from './planning.ts';
+import type { RelationIndex } from './relations.ts';
 import { resolveEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
 import { codeReviewOf, commandFor, commandKey, commandWith, fillReason, fillsTemplate, pluginCommand, SPEC_RULES, storyStep } from './stage.ts';
@@ -742,16 +743,29 @@ export function ideaStateOf(slug: string, openRuns: readonly OpenRun[], options:
 /**
  * The planning model with each story's item on it (spec 040, ISC-224): every `IdeaRef` of the payload, the top-level
  * `ideas` and those under a feature or a milestone, carries the `idea` item of `items` with its slug as `state`; a
- * story without one stays as it is. As `withItemStates` for the dashboard: pure, the items come from the caller.
+ * story without one stays as it is. As `withItemStates` for the dashboard: pure, the items come from the caller. The
+ * story's relation entry takes the same state into its facts (spec 067, ISC-529), so the sidebar shows it always.
  */
 export function withIdeaStates(model: PlanningModel, items: readonly ItemStateInfo[]): PlanningModel {
   const ideas = new Map(items.filter((i) => i.kind === 'idea').map((i) => [i.id, i]));
   const withState = (list: readonly IdeaRef[]): IdeaRef[] =>
     list.map((idea) => ((state) => (state === undefined ? idea : { ...idea, state }))(ideas.get(idea.slug)));
+  const relations =
+    model.relations === undefined
+      ? {}
+      : {
+          relations: Object.fromEntries(
+            Object.entries(model.relations).map(([ref, r]) => {
+              const item = r.type === 'idea' && r.facts !== undefined ? ideas.get(r.id) : undefined;
+              return [ref, item === undefined ? r : { ...r, facts: { ...r.facts, state: item.state } }];
+            }),
+          ) as RelationIndex,
+        };
   return {
     ...model,
     features: model.features.map((f) => ({ ...f, ideas: withState(f.ideas) })),
     milestones: model.milestones.map((m) => ({ ...m, ideas: withState(m.ideas) })),
     ideas: withState(model.ideas),
+    ...relations,
   };
 }

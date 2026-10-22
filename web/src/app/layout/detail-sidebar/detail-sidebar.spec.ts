@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -10,7 +10,7 @@ import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { RailSlot } from '../shell/rail-slot';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
-import type { Tier } from '../shell/tier';
+import { DOCK_MIN, TIER_MEDIUM_MIN, TIER_WIDE_MIN, tierFor } from '../shell/tier';
 import { DetailSidebar } from './detail-sidebar';
 import { DetailSelection, parseSel, presentationFor, refSelector, selectedLook, sidebarParents } from './selection';
 
@@ -43,14 +43,16 @@ class DockHost {
   }
 }
 
-const tier = signal<Tier>('medium');
+/** The shell container's width as `ShellState.width` holds it, and the tier it yields (820 is medium). */
+const width = signal(820);
+const tier = computed(() => tierFor(width()));
 
 /** The dashboard as `ShellData.dashboard.value()` serves it; a test sets a row's `state` (spec 040, T62). */
 const dashboard = signal<unknown>(undefined);
 const ideas = signal<ReadonlyArray<{ readonly slug: string; readonly state?: ItemStateInfo }>>([]);
 
 function setup(): void {
-  tier.set('medium');
+  width.set(820);
   dashboard.set(undefined);
   ideas.set([]);
   TestBed.configureTestingModule({
@@ -63,7 +65,7 @@ function setup(): void {
     ],
     providers: [
       provideRouter([{ path: '**', component: Blank }]),
-      { provide: ShellState, useValue: { tier, ws: signal('harbor') } },
+      { provide: ShellState, useValue: { width, tier, ws: signal('harbor') } },
       { provide: ShellData, useValue: { planningModel: signal({ relations: INDEX }), dashboard: { value: dashboard }, ideas } },
       { provide: ApiClient, useValue: { activityHash: () => null, releaseRun: vi.fn() } },
       { provide: RefreshService, useValue: { refresh: vi.fn() } },
@@ -100,13 +102,21 @@ describe('detail sidebar · selection contract', () => {
     expect(parseSel('025')).toBeNull();
   });
 
-  it('picks the presentation from the container tier and whether the page docks', () => {
-    expect(presentationFor('wide', true)).toBe('docked');
-    expect(presentationFor('wide', false)).toBe('floating');
-    expect(presentationFor('medium', true)).toBe('overlay');
-    expect(presentationFor('medium', false)).toBe('overlay');
-    expect(presentationFor('compact', true)).toBe('sheet');
-    expect(presentationFor('compact', false)).toBe('sheet');
+  // Spec 067 (ISC-524): docked only from DOCK_MIN on, so the main column keeps 704 px beside the 480 px sidebar.
+  it('picks the presentation from the container width and whether the page docks', () => {
+    expect(DOCK_MIN).toBe(1280);
+    expect(DOCK_MIN).toBeGreaterThan(TIER_WIDE_MIN);
+    expect(presentationFor(1440, true)).toBe('docked');
+    expect(presentationFor(DOCK_MIN, true)).toBe('docked');
+    expect(presentationFor(DOCK_MIN - 1, true)).toBe('floating');
+    expect(presentationFor(TIER_WIDE_MIN, true)).toBe('floating');
+    expect(presentationFor(1440, false)).toBe('floating');
+    expect(presentationFor(TIER_WIDE_MIN, false)).toBe('floating');
+    expect(presentationFor(TIER_WIDE_MIN - 1, true)).toBe('overlay');
+    expect(presentationFor(820, false)).toBe('overlay');
+    expect(presentationFor(TIER_MEDIUM_MIN, true)).toBe('overlay');
+    expect(presentationFor(TIER_MEDIUM_MIN - 1, true)).toBe('sheet');
+    expect(presentationFor(390, false)).toBe('sheet');
   });
 
   it('adds the main feature’s milestone to a spec’s and a claim’s parents, once', () => {
@@ -246,7 +256,7 @@ describe('DetailSidebar', () => {
   });
 
   it('is one component in two slots: docked in the rail at wide when the page docks, floating otherwise', async () => {
-    tier.set('wide');
+    width.set(1440);
     await go('/w/harbor?sel=feature:F25');
     const float = await render('float');
     expect(hostOf(float).getAttribute('data-presentation')).toBe('floating');
@@ -267,6 +277,24 @@ describe('DetailSidebar', () => {
     dock.destroy();
     await float.whenStable();
     expect(q(hostOf(float), 'h2[data-part="title"]')).not.toBeNull();
+  });
+
+  // Spec 067 (ISC-524): between the wide tier and DOCK_MIN a docking page's selection floats, the rail keeps its blocks.
+  it('floats on a docking page below DOCK_MIN', async () => {
+    width.set(DOCK_MIN - 1);
+    await go('/w/harbor?sel=feature:F25');
+    const float = await render('float');
+    const dock = TestBed.createComponent(DockHost);
+    dock.detectChanges();
+    await float.whenStable();
+    expect(TestBed.inject(DetailSelection).docked()).toBe(true);
+    expect(hostOf(float).getAttribute('data-presentation')).toBe('floating');
+    expect(q(hostOf(float), 'h2[data-part="title"]')).not.toBeNull();
+
+    width.set(DOCK_MIN);
+    await float.whenStable();
+    expect(q(hostOf(float), 'h2[data-part="title"]')).toBeNull();
+    dock.destroy();
   });
 
   // Spec 040, T62 · ISC-226: a spec or story whose run is open shows its state line with "Release run".
@@ -291,7 +319,7 @@ describe('DetailSidebar', () => {
   });
 
   it('is a modal bottom sheet below 640', async () => {
-    tier.set('compact');
+    width.set(390);
     await go('/w/harbor?sel=milestone:v1-0');
     const fixture = await render();
     const host: HTMLElement = hostOf(fixture);

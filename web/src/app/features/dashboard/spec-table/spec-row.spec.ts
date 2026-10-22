@@ -201,10 +201,14 @@ describe('SpecRow fixed columns (spec 064, T45, ISC-487)', () => {
     const css = rowCss();
     expect(css).toMatch(/grid-template-areas:["']idtitlefeaturemarkagentpriotrackphasemeterstar["']/);
     expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)80px24px8px48pxvar(--track-col,88px)104px120px32px');
-    // An archived row keeps 136 px of mark for its archive date from 880 px.
+    // An archived row keeps 136 px of mark for its archive date from 848 px.
     expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)80px136px8px48pxvar(--track-col,88px)104px120px32px');
-    // Below 880 px the feature and the meter narrow to 48.
+    expect(css).toMatch(/@containerspecs\(width>=848px\)\{[^{}]+\{grid-template-columns:72pxminmax\(0,1fr\)80px136px/);
+    // Below 848 px the feature and the meter narrow to 48 (spec 067, T38, ISC-538): beside the 480 px docked sidebar
+    // (864 px of main column) the list keeps meter 120 and feature over milestone 80; only the stage track drops.
     expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)48px24px8px48pxvar(--track-col,88px)104px48px32px');
+    expect(css).toMatch(/@containerspecs\(width<848px\)\{[^{}]+\{grid-template-columns:72pxminmax\(0,1fr\)48px24px/);
+    expect(css).not.toContain('880px');
     expect(css).not.toContain('more');
   });
 

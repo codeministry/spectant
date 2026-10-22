@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter, tap } from 'rxjs';
@@ -15,7 +15,7 @@ import {
   type WorkspacePageId,
 } from './areas';
 import { isPlanningLensId, type PlanningLensId } from './page-tabs';
-import type { Tier } from './tier';
+import { DOCK_MIN, type Tier, tierFor } from './tier';
 
 /** What the current route says, read once per navigation from the whole snapshot chain. */
 export interface ShellRoute {
@@ -95,8 +95,13 @@ export class ShellState {
   private readonly router = inject(Router);
   private readonly settings = inject(SettingsService);
 
-  /** Set by `ShellComponent`'s ResizeObserver through `tierFor`. */
-  readonly tier = signal<Tier>('wide');
+  /**
+   * The shell container's inline size in px, set by `ShellComponent`'s ResizeObserver; the detail sidebar docks only
+   * from `DOCK_MIN` on (spec 067). Until the first measurement it is `DOCK_MIN`, the wide default the tier had before.
+   */
+  readonly width = signal(DOCK_MIN);
+  /** The tier of `width` through `tierFor`; writable so a test can pin a tier without a width. */
+  readonly tier = linkedSignal<Tier>(() => tierFor(this.width()));
   /** Zen (ISC-75): the header tools, the spec head and the rail hide; `app-zen-footer` takes the head's place. */
   readonly zen = signal(false);
   /** The stored choice, `railCollapsed` in `/api/settings`, so it survives a reload (ISC-75). */

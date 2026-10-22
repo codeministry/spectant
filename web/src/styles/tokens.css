@@ -44,6 +44,7 @@
   --radius: 8px; /* fields, buttons, popovers */
   --radius-card: 12px; /* cards */
   --rail: 352px; /* the right rail from the wide tier on */
+  --detail: 480px; /* the detail sidebar: docked rail column, floating and overlay panel, the pages' reserve (spec 067) */
 }
 
 /* Theme-independent helpers; declared on each theme element so a `var()` resolves against that theme. */

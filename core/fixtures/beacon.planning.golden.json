@@ -271,6 +271,7 @@
           "feature": "F2",
           "milestone": null,
           "priority": "P2",
+          "excerpt": null,
           "path": "specs/ideas/uptime-badges.md",
           "state": {
             "kind": "idea",
@@ -380,6 +381,7 @@
           "feature": "F3",
           "milestone": null,
           "priority": "P2",
+          "excerpt": null,
           "path": "specs/ideas/cert-expiry.md",
           "state": {
             "kind": "idea",
@@ -410,6 +412,7 @@
           "feature": "F3",
           "milestone": null,
           "priority": "P3",
+          "excerpt": null,
           "path": "specs/ideas/digest-emails.md",
           "state": {
             "kind": "idea",
@@ -683,6 +686,7 @@
       "feature": "F3",
       "milestone": null,
       "priority": "P2",
+      "excerpt": null,
       "path": "specs/ideas/cert-expiry.md",
       "state": {
         "kind": "idea",
@@ -713,6 +717,7 @@
       "feature": "F3",
       "milestone": null,
       "priority": "P3",
+      "excerpt": null,
       "path": "specs/ideas/digest-emails.md",
       "state": {
         "kind": "idea",
@@ -730,6 +735,7 @@
       "feature": "F2",
       "milestone": null,
       "priority": "P2",
+      "excerpt": null,
       "path": "specs/ideas/uptime-badges.md",
       "state": {
         "kind": "idea",
@@ -777,7 +783,10 @@
         "claim:ISC-20",
         "claim:ISC-21"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "checks run on time and an outage is never recorded twice."
+      }
     },
     "feature:F2": {
       "ref": "feature:F2",
@@ -796,7 +805,10 @@
         "claim:ISC-26",
         "idea:uptime-badges"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "the people who depend on a service see its state without asking."
+      }
     },
     "feature:F3": {
       "ref": "feature:F3",
@@ -817,7 +829,10 @@
         "idea:cert-expiry",
         "idea:digest-emails"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "the on-call person hears about an outage once, on the right channel."
+      }
     },
     "feature:F4": {
       "ref": "feature:F4",
@@ -833,7 +848,10 @@
         "claim:ISC-11",
         "claim:ISC-12"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "an outage on the status page says what happened, in words."
+      }
     },
     "feature:F5": {
       "ref": "feature:F5",
@@ -853,7 +871,10 @@
         "claim:ISC-18",
         "claim:ISC-19"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "checks run from where the users are, not only from one host."
+      }
     },
     "feature:F6": {
       "ref": "feature:F6",
@@ -871,7 +892,10 @@
         "claim:ISC-24",
         "claim:ISC-25"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "a team takes its uptime history elsewhere without a support ticket."
+      }
     },
     "feature:F7": {
       "ref": "feature:F7",
@@ -886,7 +910,10 @@
         "claim:ISC-27",
         "claim:ISC-28"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "the service's own credentials and dependencies stay current."
+      }
     },
     "spec:001": {
       "ref": "spec:001",
@@ -1095,7 +1122,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/scheduler.test.ts -t interval`",
+        "verification": "`bun test tests/scheduler.test.ts -t interval` passed, 2026-03-04"
+      }
     },
     "claim:ISC-2": {
       "ref": "claim:ISC-2",
@@ -1109,7 +1142,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/scheduler.test.ts -t timeout`",
+        "verification": "`bun test tests/scheduler.test.ts -t timeout` passed, 2026-03-04"
+      }
     },
     "claim:ISC-3": {
       "ref": "claim:ISC-3",
@@ -1123,7 +1162,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/scheduler.test.ts -t spread`",
+        "verification": "`bun test tests/scheduler.test.ts -t spread` passed, 2026-03-04"
+      }
     },
     "claim:ISC-20": {
       "ref": "claim:ISC-20",
@@ -1137,7 +1182,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/retry.test.ts -t backoff`",
+        "verification": "`bun test tests/retry.test.ts -t backoff` passed, 2026-03-08"
+      }
     },
     "claim:ISC-21": {
       "ref": "claim:ISC-21",
@@ -1151,7 +1202,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "closed",
+        "probe": "`bun test tests/retry.test.ts -t outage`",
+        "verification": "`bun test tests/retry.test.ts -t outage` passed, 2026-03-08"
+      }
     },
     "claim:ISC-4": {
       "ref": "claim:ISC-4",
@@ -1165,7 +1222,12 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- status -g list`"
+      }
     },
     "claim:ISC-5": {
       "ref": "claim:ISC-5",
@@ -1179,7 +1241,12 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:browser -- status`"
+      }
     },
     "claim:ISC-6": {
       "ref": "claim:ISC-6",
@@ -1193,7 +1260,12 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun test tests/status.test.ts -t private`"
+      }
     },
     "claim:ISC-26": {
       "ref": "claim:ISC-26",
@@ -1207,7 +1279,13 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run e2e -- status -g timezone`",
+        "verification": "`bun run e2e -- status -g timezone` passed, 2026-03-08"
+      }
     },
     "claim:ISC-7": {
       "ref": "claim:ISC-7",
@@ -1221,7 +1299,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/rules.test.ts -t shape`"
+      }
     },
     "claim:ISC-8": {
       "ref": "claim:ISC-8",
@@ -1235,7 +1318,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/rules.test.ts -t once`"
+      }
     },
     "claim:ISC-9": {
       "ref": "claim:ISC-9",
@@ -1249,7 +1337,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/rules.test.ts -t channel`"
+      }
     },
     "claim:ISC-29": {
       "ref": "claim:ISC-29",
@@ -1263,7 +1356,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- status -g maintenance`"
+      }
     },
     "claim:ISC-30": {
       "ref": "claim:ISC-30",
@@ -1277,7 +1375,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- status -g announce`"
+      }
     },
     "claim:ISC-10": {
       "ref": "claim:ISC-10",
@@ -1291,7 +1394,12 @@
         "feature:F4"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/notes.test.ts -t attach`"
+      }
     },
     "claim:ISC-11": {
       "ref": "claim:ISC-11",
@@ -1305,7 +1413,12 @@
         "feature:F4"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- notes -g order`"
+      }
     },
     "claim:ISC-12": {
       "ref": "claim:ISC-12",
@@ -1319,7 +1432,12 @@
         "feature:F4"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/notes.test.ts -t edit`"
+      }
     },
     "claim:ISC-13": {
       "ref": "claim:ISC-13",
@@ -1333,7 +1451,13 @@
         "feature:F5"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/agents.test.ts -t register`",
+        "verification": "`bun test tests/agents.test.ts -t register` passed, 2026-03-08"
+      }
     },
     "claim:ISC-14": {
       "ref": "claim:ISC-14",
@@ -1347,7 +1471,13 @@
         "feature:F5"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/agents.test.ts -t report`",
+        "verification": "`bun test tests/agents.test.ts -t report` passed, 2026-03-08"
+      }
     },
     "claim:ISC-15": {
       "ref": "claim:ISC-15",
@@ -1361,7 +1491,12 @@
         "feature:F5"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/agents.test.ts -t silent`"
+      }
     },
     "claim:ISC-16": {
       "ref": "claim:ISC-16",
@@ -1375,7 +1510,12 @@
         "feature:F5"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/agents.test.ts -t region`"
+      }
     },
     "claim:ISC-17": {
       "ref": "claim:ISC-17",
@@ -1391,7 +1531,12 @@
       "children": [],
       "blockers": [
         "claim:ISC-18"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/agents.test.ts -t revoked`"
+      }
     },
     "claim:ISC-18": {
       "ref": "claim:ISC-18",
@@ -1405,7 +1550,12 @@
         "feature:F5"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/agents.test.ts -t signed`"
+      }
     },
     "claim:ISC-19": {
       "ref": "claim:ISC-19",
@@ -1419,7 +1569,12 @@
         "feature:F5"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "dropped",
+        "probe": "`bun test tests/agents.test.ts -t update`"
+      }
     },
     "claim:ISC-22": {
       "ref": "claim:ISC-22",
@@ -1433,7 +1588,13 @@
         "feature:F6"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run cli -- survey exports`",
+        "verification": "`bun run cli -- survey exports` passed, 2026-03-08"
+      }
     },
     "claim:ISC-23": {
       "ref": "claim:ISC-23",
@@ -1447,7 +1608,13 @@
         "feature:F6"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run cli -- survey exports --decision`",
+        "verification": "`bun run cli -- survey exports --decision` passed, 2026-03-08"
+      }
     },
     "claim:ISC-24": {
       "ref": "claim:ISC-24",
@@ -1461,7 +1628,13 @@
         "feature:F6"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run cli -- probe exports`",
+        "verification": "`bun run cli -- probe exports` passed, 2026-03-08"
+      }
     },
     "claim:ISC-25": {
       "ref": "claim:ISC-25",
@@ -1475,7 +1648,12 @@
         "feature:F6"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun test tests/export.test.ts -t limit`"
+      }
     },
     "claim:ISC-27": {
       "ref": "claim:ISC-27",
@@ -1489,7 +1667,13 @@
         "feature:F7"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run cli -- keys rotate --dry-run`",
+        "verification": "`bun run cli -- keys rotate --dry-run` passed, 2026-03-07"
+      }
     },
     "claim:ISC-28": {
       "ref": "claim:ISC-28",
@@ -1503,7 +1687,13 @@
         "feature:F7"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run cli -- keys check`",
+        "verification": "`bun run cli -- keys check` passed, 2026-03-07"
+      }
     },
     "idea:cert-expiry": {
       "ref": "idea:cert-expiry",
@@ -1516,7 +1706,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "state": "aborted",
+        "priority": "P2",
+        "type": "feature"
+      }
     },
     "idea:digest-emails": {
       "ref": "idea:digest-emails",
@@ -1529,7 +1724,12 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "state": "open",
+        "priority": "P3",
+        "type": "feature"
+      }
     },
     "idea:uptime-badges": {
       "ref": "idea:uptime-badges",
@@ -1542,7 +1742,12 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "state": "running",
+        "priority": "P2",
+        "type": "feature"
+      }
     }
   }
 }

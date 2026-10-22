@@ -6,13 +6,14 @@
   @if (showRail()) {
     <aside
       class="shell-rail"
-      [attr.data-rail-strip]="state.railStrip() ? '' : null"
+      [attr.data-rail-strip]="railStrip() ? '' : null"
       [attr.aria-label]="'shell.rail.label' | transloco"
     >
-      @if (state.tier() === 'wide') {
-        <app-rail-toggle class="rail-toggle" [collapsed]="state.railStrip()" />
+      <!-- Spec 067: the docked detail sidebar holds the rail open and closes with its own button, so no fold toggle. -->
+      @if (state.tier() === 'wide' && !detailDocked()) {
+        <app-rail-toggle class="rail-toggle" [collapsed]="railStrip()" />
       }
-      @if (!state.railStrip()) {
+      @if (!railStrip()) {
         <app-rail-slot />
       }
     </aside>

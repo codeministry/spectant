@@ -714,6 +714,7 @@ describe('planning: milestones', () => {
           feature: 'F7',
           milestone: 'Harbor 1.0',
           priority: 'P2',
+          excerpt: 'A moved upstream tag reaches the mirror only on the next scheduled run, so a build in between pulls the old digest.',
           path: 'specs/ideas/registry-webhooks.md',
           // Spec 040 (ISC-224): no run is open on the story, so it offers `/spec new` (the planning golden's state).
           state: { kind: 'idea', id: 'registry-webhooks', stage: 'idea', state: 'open', command: '/spec new registry-webhooks', reason: 'the story is shaped but has no spec' },

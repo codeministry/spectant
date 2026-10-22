@@ -1,0 +1,34 @@
+
+    @for (e of entries(); track e.stage) {
+      <li>
+        <button
+          type="button"
+          class="entry"
+          [attr.data-move-to]="e.stage"
+          [attr.data-hint]="e.hint"
+          [attr.aria-current]="e.hint === 'current' ? 'true' : null"
+          [attr.aria-disabled]="e.enabled ? null : 'true'"
+          [attr.data-autofocus]="e.stage === focusStage() ? '' : null"
+          (click)="chose(e)"
+        >
+          <!-- &ngsp; keeps a space between the name and the hint in the button's accessible name. -->
+          <span class="name">{{ 'stages.' + e.stage | transloco }}</span>&ngsp;
+          @switch (e.hint) {
+            @case ('not-next') {
+              <span class="hint"><ui-icon name="ban" [size]="14" /><span>{{ 'board.workspace.drag.notNext' | transloco: { stage: fromLabel() } }}</span></span>
+            }
+            @case ('gate') {
+              <span class="hint" data-gate><ui-icon name="shield-check" [size]="14" /><span>{{ 'board.workspace.drag.gate' | transloco }}</span></span>
+            }
+            @case ('current') {
+              <span class="hint">{{ 'board.workspace.drag.current' | transloco }}</span>
+            }
+          }
+        </button>
+        @if (refusal(); as r) {
+          @if (r.to === e.stage && r.kind !== 'run-locked') {
+            <app-refusal-notice [refusal]="r" (closed)="dismiss.emit()" />
+          }
+        }
+      </li>
+    }

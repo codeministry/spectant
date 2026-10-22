@@ -4,21 +4,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../core/src/files';
 import type { Tier } from '../../layout/shell/tier';
-import { UiIcon } from '../../shared/icons/icon';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
-import { type BoardRefusal, type DropHint, dropHint, runHoldOf } from './board-drag';
+import { type BoardRefusal, runHoldOf } from './board-drag';
 import type { BoardCard, BoardModel } from '../../core/model/board-types';
 import { RefusalNotice } from '../../shared/ui/refusal-notice/refusal-notice';
+import { UiStageTargets } from '../../shared/ui/stage-targets/stage-targets';
 
 /** `stepTarget` and `MovedCard` live in `board-view.ts` since spec 061; the menu's spec reads them from here. */
 export { type MovedCard, stepTarget } from './board-view';
-
-interface MoveEntry {
-  readonly stage: WorkflowStage;
-  readonly hint: DropHint;
-  readonly enabled: boolean;
-}
 
 /** A chosen entry: the card and the stage it moves to. */
 export interface MoveChoice {
@@ -31,7 +25,8 @@ export interface MoveChoice {
  * and keyboard path to the move a drag makes. A click on a card's grip (`openFor`) lists every board stage in column
  * order: the card's own stage marked current, the stages core's table admits (`card.targets`) enabled, every other one
  * disabled (`aria-disabled`, still focusable so its reason is read) with the drag's own hint words, "not next from …"
- * or "gate" (`dropHint`).
+ * or "gate" (`dropHint`). The entries are the shared stage-target list (`ul[ui-stage-targets]`, spec 067, T27), which
+ * the detail sidebar renders inline too; this menu keeps the surface, the heading, the card and the run's refusal.
  *
  * An entry emits `choose`, and the page sends `BoardDrag.move`, the one move of a drop, so the held move, toast, count
  * morph, tint and reload, and the refusal notice, are the drop's. On a 200 the page closes the menu and follows the
@@ -48,7 +43,7 @@ export interface MoveChoice {
  */
 @Component({
   selector: 'app-move-to-menu',
-  imports: [NgTemplateOutlet, RefusalNotice, TranslocoPipe, UiIcon, UiPopover, UiSheet],
+  imports: [NgTemplateOutlet, RefusalNotice, TranslocoPipe, UiPopover, UiSheet, UiStageTargets],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './move-to-menu.css',
   templateUrl: './move-to-menu.html',
@@ -81,19 +76,6 @@ export class MoveToMenu {
     return key === null ? null : (this.board().cards.find((c) => c.key === key) ?? null);
   });
 
-  protected readonly entries = computed<readonly MoveEntry[]>(() => {
-    const card = this.card();
-    if (card === null) return [];
-    const movable = this.draggable()(card);
-    return this.board().stages.map((stage) => {
-      const hint = dropHint(card, stage);
-      return { stage, hint, enabled: movable && hint === 'allowed' };
-    });
-  });
-
-  /** The first enabled entry takes focus on open; the current one when none is enabled. */
-  protected readonly focusStage = computed(() => this.entries().find((e) => e.enabled)?.stage ?? this.card()?.stage ?? null);
-
   protected readonly refusal = computed(() => {
     const card = this.card();
     return card === null ? null : this.refusalOf()(card);
@@ -111,11 +93,6 @@ export class MoveToMenu {
     const card = this.card();
     if (card === null) return '';
     return this.transloco.translate('board.workspace.move.title', { id: card.id ?? card.slug, title: card.title }, this.lang());
-  });
-
-  protected readonly fromLabel = computed(() => {
-    const card = this.card();
-    return card === null ? '' : this.transloco.translate(`stages.${card.stage}`, {}, this.lang());
   });
 
   /** Opens the menu for `card`, anchored to its grip at medium and wide. The caller has focused the grip. */
@@ -138,9 +115,10 @@ export class MoveToMenu {
     this.open.set(open);
   }
 
-  protected chose(entry: MoveEntry): void {
+  /** An enabled entry of the list was chosen; the list emits nothing for a disabled one. */
+  protected chose(to: WorkflowStage): void {
     const card = this.card();
-    if (card === null || !entry.enabled) return;
-    this.choose.emit({ card, to: entry.stage });
+    if (card === null) return;
+    this.choose.emit({ card, to });
   }
 }

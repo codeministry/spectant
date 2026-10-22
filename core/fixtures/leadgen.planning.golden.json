@@ -465,7 +465,8 @@
         "claim:ISC-335",
         "claim:ISC-336"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {}
     },
     "feature:F41": {
       "ref": "feature:F41",
@@ -493,7 +494,8 @@
         "claim:ISC-350",
         "claim:ISC-351"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {}
     },
     "feature:F50": {
       "ref": "feature:F50",
@@ -514,7 +516,8 @@
         "claim:ISC-479",
         "claim:ISC-480"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {}
     },
     "spec:012": {
       "ref": "spec:012",
@@ -606,7 +609,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest",
+        "verification": "· 2026-09-24 · `manifest.spec.ts` + `theme-colors.spec.ts` 23/23 (red first: missing export); manifest standalone, scope `/`, both colours the dark surface held to its oklch; link and theme-color in `index.html` · second look Max: pass (icons arrive with ISC-328)"
+      }
     },
     "claim:ISC-328": {
       "ref": "claim:ISC-328",
@@ -620,7 +629,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest, bash",
+        "verification": "· 2026-09-24 · `manifest.spec.ts` 21/21: every named icon at its size, 8-bit, plate by colour type and corner, mark inside the safe zone (red at 228.9 px, green at 197.6 of 204.8 at 512; 68.8 of 72 at 180), two script runs byte-identical, favicon set unchanged · second look Max: fail on the safe zone, fixed and remeasured independently"
+      }
     },
     "claim:ISC-329": {
       "ref": "claim:ISC-329",
@@ -634,7 +649,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest, rg",
+        "verification": "· 2026-09-24 · `ngsw-config.spec.ts` 15/15 (red first on the missing file, then on the /api navigation rule): app group prefetch, i18n prefetch, help and fonts lazy, no data group, `/api` only as `!/api/**` in navigationUrls, `enabled: !isDevMode()`; production build emits ngsw.json with the negative /api regex; @angular/service-worker 22.1.4 like core · second look Max: concerns, five findings adopted"
+      }
     },
     "claim:ISC-330": {
       "ref": "claim:ISC-330",
@@ -648,7 +669,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Interceptor",
+        "verification": "· 2026-09-24 · manual: prod image served locally, worker `activated` and controlling, server stopped (curl 000), reload renders the shell with header and nav and each screen its error state, no browser offline page (`~/Downloads/interceptor-capture-20260924-174836-12644.png`); operator, verbatim: \"Ja, schließen\""
+      }
     },
     "claim:ISC-331": {
       "ref": "claim:ISC-331",
@@ -662,7 +689,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest",
+        "verification": "· 2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted"
+      }
     },
     "claim:ISC-332": {
       "ref": "claim:ISC-332",
@@ -676,7 +709,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, curl",
+        "verification": "· 2026-09-24 · curl against the built web image: `/`, SPA routes, `/index.html`, `/ngsw.json`, `/manifest.webmanifest` (application/manifest+json) and both worker scripts `no-cache` with 304 on revalidation; hashed bundles and fonts `immutable`; icons, i18n, help without a policy (red first: no header anywhere); the chart ConfigMap mirrors the blocks, `helm template` + `nginx -t` green, rollout pending · second look Max: pass, two findings adopted"
+      }
     },
     "claim:ISC-333": {
       "ref": "claim:ISC-333",
@@ -690,7 +729,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest, rg",
+        "verification": "· 2026-09-24 · `theme.store.spec.ts` + `manifest.spec.ts` 27/27; the inline script executed for dark, light, system × OS, unset and garbage (4 red with the meta write removed, green after); the store follows each switch · second look Max: pass, one finding adopted (a comment-satisfiable assertion replaced by the executing test)"
+      }
     },
     "claim:ISC-334": {
       "ref": "claim:ISC-334",
@@ -704,7 +749,12 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "Interceptor, a device"
+      }
     },
     "claim:ISC-335": {
       "ref": "claim:ISC-335",
@@ -718,7 +768,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "closed",
+        "probe": "rg",
+        "verification": "· 2026-09-24 · `rg` for `\"/api` in `ngsw-config.json`: 0 hits; manifest and worker config against 18 `.env` values, the `config/` hosts and the model names: 0 hits beyond the public product name and the `html` extension; no URL, no address · probe only, no second look"
+      }
     },
     "claim:ISC-336": {
       "ref": "claim:ISC-336",
@@ -732,7 +788,13 @@
         "feature:F40"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "JUnit, rg",
+        "verification": "· 2026-09-24 · `WorkingNotesStaySmallTest` 3/3 (budgets 17,261/18,000 and 11,769/12,000); `rg` hits in the decision record, CHANGELOG and README went from 0/unrelated/0 to 15/10/3; `check:static` clean · second look Max: pass, four text findings adopted (ngsw failure mode, unmeasured mime claim, Safari/Firefox, block count)"
+      }
     },
     "claim:ISC-337": {
       "ref": "claim:ISC-337",
@@ -747,7 +809,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "wc, JUnit",
+        "verification": "2026-09-24. bash + JUnit — `wc -c` 15,064 / 9,188 / 10,060 (was 17,261 / 12,010 / 11,769; thresholds 15,300 / 10,200 / 10,200); 16 paragraphs moved whole into docs/decisions/, one-line rule with pointer left; `WorkingNotesStaySmallTest` 3/3 green in the main tree; second look (Max) concerns adopted: lost measurement restored in configuration.md, two table topics renamed, root cut for headroom, Interceptor and accessibility-tree wording restored"
+      }
     },
     "claim:ISC-338": {
       "ref": "claim:ISC-338",
@@ -762,7 +830,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg",
+        "verification": "2026-09-24. bash — `rg -n -i spotless README.md docs/DEVELOPMENT.md .github/workflows/release.yml` filtered for off/disabled: 0 hits; `rg -n config/local CLAUDE.md .dockerignore`: 0 hits (was README:169-173, DEVELOPMENT.md:27, release.yml:32, .dockerignore:10, CLAUDE.md:18); second look (Max) pass, `/config` anchored and the formatter set named"
+      }
     },
     "claim:ISC-339": {
       "ref": "claim:ISC-339",
@@ -777,7 +851,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "JUnit",
+        "verification": "2026-09-24. JUnit — `EnvExampleTest` red on [LEADGEN_CONFIG_MOUNT, RETRIEVAL_TOPIC_FLOOR] missing and [SEARCHAGENT_FOLDER] stray, green 3/3 after `.env.example` gained the two keys and lost the stray one; `everyOperatorConfigKeyIsDocumented` binds the four exempt keys to docs/CONFIGURATION.md; `.env.example`, `docker-compose.yml`, `frontend/proxy.conf.js` are Gradle test inputs; second look (Max) concerns adopted"
+      }
     },
     "claim:ISC-340": {
       "ref": "claim:ISC-340",
@@ -792,7 +872,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "docker",
+        "verification": "2026-09-24. docker — `docker compose config | rg -c healthcheck:` 3 (was 1); `up -d --wait` exit 0 on a clean HEAD export with `SERVER_PORT=9999` in .env: api/postgres/web all `running healthy`, restart=unless-stopped on all three, `$SERVER_PORT` inside api 8080 (pinned in `environment` after Max's major finding), torn down with `down -v`"
+      }
     },
     "claim:ISC-341": {
       "ref": "claim:ISC-341",
@@ -807,7 +893,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, docker",
+        "verification": "2026-09-24. rg + docker — build stage `node:22.23.3-alpine` with `COPY --from=oven/bun:1.3.12-alpine` (bun 1.3.12's node shim is below the Angular CLI's floor; the floating tag only built because it resolves to 1.4.x), runtime `nginxinc/nginx-unprivileged:1.27-alpine` on 8080 with `nginx.conf` and compose moved along, `|| true` gone; probe on a clean stack: both images built, api/postgres/web healthy, web uid 101, `GET /` and `GET /api/v1/status` 200 through the proxy, torn down; second look (Max) pass, minors adopted: `BunPinTest` holds the four bun pins to one version, a Renovate rule groups the tag with `packageManager`, the Node-floor note in the Dockerfile, the nginx comment; the office chart's port follows (master § Remaining Work)"
+      }
     },
     "claim:ISC-342": {
       "ref": "claim:ISC-342",
@@ -822,7 +914,12 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "dropped",
+        "probe": "JUnit, rg"
+      }
     },
     "claim:ISC-343": {
       "ref": "claim:ISC-343",
@@ -837,7 +934,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest",
+        "verification": "2026-09-24. Vitest — new teardown specs red on the unchanged components (listener count 1 after destroy; request not cancelled), green after `DestroyRef.onDestroy` removes the media-query listener and `takeUntilDestroyed` ends the ask request; second look (Max) pass, finding adopted: the spec now also reads `bothColumns` after the fire; main tree `check:static` 0, `bun run test` 553/553, `bun run build` 0"
+      }
     },
     "claim:ISC-344": {
       "ref": "claim:ISC-344",
@@ -852,7 +955,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest, rg",
+        "verification": "2026-09-24. Vitest + rg — `CatalogTitleStrategy` (selectTranslate, BRAND 'Lead Generation') provided beside the router, route titles as `title.*` keys, manual fallbacks as `error.manual*` keys; `i18n-parity.spec.ts` unused-key check red on six dead keys, then two more after the second look (Max, major) made the match token-bounded over comment-stripped source; all eight removed from both catalogs; `title.strategy.spec.ts` pins every English title byte-identical; i18n specs 7/7, main tree `check:static` 0, `bun run test` 553/553; `rg \"Lead Generation'\" app.routes.ts` and the sentence probe on manual.store.ts 0 hits"
+      }
     },
     "claim:ISC-345": {
       "ref": "claim:ISC-345",
@@ -867,7 +976,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, bun",
+        "verification": "2026-09-24. bash + bun — `angular.json` prefix `lg` (was `app`); `experimentalDecorators` 0 hits (was 1); `@angular/forms` kept as a required peer of `@angular/cdk` 22.1.7 (claim refined); main tree `check:static` 0, `bun run test` 553/553 (65 files), `bun run build` 0 with the pre-existing initial-bundle budget warning; second look skipped for cause (two configuration lines, three green probes)"
+      }
     },
     "claim:ISC-346": {
       "ref": "claim:ISC-346",
@@ -882,7 +997,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, Gradle, git",
+        "verification": "2026-09-24. rg -a + Gradle + git — assignments 171 → 31 (binary-safe; the blind count read 165 → 32): 57 classes on `@RequiredArgsConstructor` (27 assignment-only, 26 that take Boot's `JdbcClient` instead of building one from a `DataSource`, 3 nested enums, `QueryEmbedder` after its raw NUL byte became `'\\0'`), `IngestService` keeps its connector list with a lookup helper and a `@PostConstruct` guard for duplicate types; `JdbcClient.create` 33 → 7; every remaining assignment is in a constructor that does work, has a sibling, calls `super`, or is hand-built by a test; full backend suite green in an rsync copy (860 tests, 0 failures, 0 errors), `spotlessCheck` green, `git diff --stat -- backend/src/test` empty of this spec's changes; second look (Max) concerns adopted"
+      }
     },
     "claim:ISC-347": {
       "ref": "claim:ISC-347",
@@ -897,7 +1018,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, Gradle",
+        "verification": "2026-09-24. rg + Gradle — `new IngestReport(` under backend/src/main 2 → 0 (the four test constructions stay); `@Builder` on the record, one builder site after the try in `IngestService.runOnce`, the catch stores the failure and the failure branch still rethrows `StageFailed` before `record`; main tree: `IngestControllerTest` 8/8, `LastRunQueryServiceTest` 13/13, `spotlessCheck` green; second look (Max) concerns: only the missing test artifact, produced by this run"
+      }
     },
     "claim:ISC-348": {
       "ref": "claim:ISC-348",
@@ -912,7 +1039,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, Gradle",
+        "verification": "2026-09-24. rg + Gradle — `@Value(` under backend/src/main 5 → 0; `version`, `ingestCron`, both poll intervals and `security.allowOpenBind` bind on `ConfigProperties` with `@DefaultValue` from one constant per default; `@EnableConfigurationProperties(ConfigProperties.class)` on the application class replaces the scan; `StatusController` on `@RequiredArgsConstructor`; main tree: StatusControllerTest 1/1, SecurityConfigTest 5+1+5, ScheduledPassTest 1+1, OperatorConfigTest 1/1, ConfigurationBannerTest 10/10, LeadGenRuntimeHintsTest 1/1, ConfigFixturesTest 4/4, all unchanged; second look (Max) failed the first patch on `@NotBlank version` vs the empty `LEADGEN_VERSION=` of `.env.example`, adopted; the redispatched look passed, minors adopted (defaults hoisted, unreachable `@NotNull`s dropped)"
+      }
     },
     "claim:ISC-349": {
       "ref": "claim:ISC-349",
@@ -927,7 +1060,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, Gradle",
+        "verification": "2026-09-24. rg + Gradle — `scoringChoices()` under backend/src/main: the declaration in `PipelineConfig`, one call and one Javadoc mention in `llm/ModelChoice` (was six readers in four files); main tree: `ScoringWithoutAModelTest` 15/15, `JudgesTest` 7/7, `ContentClassifierWireFormatTest` 9/9, `FieldExtractorWireFormatTest` 12/12, `LlmStrategyTest` 3/3, `LlmExtractorsTest` 4/4, `LlmExtractorWireFormatTest` 14/14; second look (Max) concerns: the missing artifact (produced by this run) and `AdvertAskService.model()` answering by its own rule, recorded as fog"
+      }
     },
     "claim:ISC-350": {
       "ref": "claim:ISC-350",
@@ -942,7 +1081,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "anti",
+        "state": "closed",
+        "probe": "git, rg, Gradle, smoke.sh",
+        "verification": "2026-09-24. git + Gradle + docker — migrations byte-identical to `origin/main`; no `Mapping(` line changed under `web/`; all eight `*ControllerTest` classes, `LeadGenRuntimeHintsTest` and `WorkingNotesStaySmallTest` green; `processAot` regenerated the AOT sources on the final tree; `leadgen-api:spec013` built from the final tree (`processAot` inside the image build) and `backend/smoke/smoke.sh` passed all 23 checks, boot 9.3 s; the one failed smoke in between was Docker's disk full of build cache, pruned"
+      }
     },
     "claim:ISC-351": {
       "ref": "claim:ISC-351",
@@ -957,7 +1102,13 @@
       ],
       "children": [],
       "blockers": [],
-      "archived": true
+      "archived": true,
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "rg, JUnit",
+        "verification": "2026-09-24. rg + JUnit — `CHANGELOG.md` § Unreleased carries the spec's changes (non-root web image on 8080 with the chart note, compose health, `.env.example` held by `EnvExampleTest`, `ConfigProperties`, the Lombok sweep, the working-notes trim, the frontend items); `docs/decisions/configuration.md` gains the `.env.example` contract, why the version mechanism stays, the record-and-slice wiring and the bun pins; `WorkingNotesStaySmallTest` green, backend notes at 9,484 of 12,000 with the NUL-byte trap added"
+      }
     },
     "claim:ISC-473": {
       "ref": "claim:ISC-473",
@@ -971,7 +1122,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "JUnit, Testcontainers",
+        "verification": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-474": {
       "ref": "claim:ISC-474",
@@ -985,7 +1142,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest browser mode",
+        "verification": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-475": {
       "ref": "claim:ISC-475",
@@ -999,7 +1162,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest browser mode",
+        "verification": "bun-test — `chat-panel.browser.spec.ts` § opens on keyboard focus (aria-label 'Answer status: Incomplete', aria-describedby the popover, open on focus, closed on blur, no animation on the mark under emulated reduced motion) and `i18n-parity.spec.ts` 3/3 with `chat.status.*` in both catalogs; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-476": {
       "ref": "claim:ISC-476",
@@ -1013,7 +1182,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest browser mode, JUnit",
+        "verification": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-477": {
       "ref": "claim:ISC-477",
@@ -1027,7 +1202,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "JUnit, MockMvc",
+        "verification": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-478": {
       "ref": "claim:ISC-478",
@@ -1041,7 +1222,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest browser mode",
+        "verification": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-479": {
       "ref": "claim:ISC-479",
@@ -1055,7 +1242,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "Vitest browser mode",
+        "verification": "bun-test — `shortlist.browser.spec.ts` § the cited row in view 3/3 (2560 docked: row 35 inside the pane, pane scrolled, document at 0; 1440 docked then chat closed: row 35 inside the pane; offer 99 outside the loaded page: pane at 0, detail open), file 14/14 over two runs, shortlist units 106/106, `check:static` green; red first: 2/3 with row 35 outside the pane; second look: off (default) (spec 022, 2026-09-28)"
+      }
     },
     "claim:ISC-480": {
       "ref": "claim:ISC-480",
@@ -1069,7 +1262,13 @@
         "feature:F50"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "closed",
+        "probe": "green unchanged; green; green; a hit; a hit in each; green",
+        "verification": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)"
+      }
     }
   }
 }

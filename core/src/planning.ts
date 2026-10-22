@@ -23,7 +23,7 @@ import { assigneeOf } from './assignee.ts';
 import { BACKLOG_FILE, parseBacklog } from './backlog.ts';
 import type { BacklogPriority } from './backlog.ts';
 import { parseClaims } from './claims.ts';
-import type { Claim, FeatureBlock } from './claims.ts';
+import type { Claim, ClaimsDocument, FeatureBlock } from './claims.ts';
 import { parseEvents } from './events.ts';
 import { specFilePath } from './files.ts';
 import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecEdge, SpecFiles, SpecWait, StageSource, Workflow, WorkflowStage } from './files.ts';
@@ -32,7 +32,7 @@ import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
 import type { Milestone } from './milestones.ts';
 import { buildRelations } from './relations.ts';
-import type { RelationIndex } from './relations.ts';
+import type { ClaimFacts, RelationIndex } from './relations.ts';
 import type { Progress } from './frontmatter.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
 import { DEFAULT_WORKFLOW } from './stage.ts';
@@ -359,6 +359,42 @@ interface Folder {
   readonly milestone: string | null;
   /** The folder's spec.md path relative to the root, as a diagnostic names it. */
   readonly file: string;
+  /** What the spec.md says of its claims' probes and verifications (spec 067), from the one parse of `ids`. */
+  readonly evidence: ClaimEvidence;
+}
+
+/** Per claim id the probe of its first Test Strategy row (`tool`, else `check`) and the text of its first Verification line. */
+interface ClaimEvidence {
+  readonly probes: ReadonlyMap<string, string>;
+  readonly verifications: ReadonlyMap<string, string>;
+}
+
+/** The evidence of one parsed file; the first row and the first line of an id win, as on the Claims tab (`claim-view.ts`). */
+function evidenceOf(doc: Pick<ClaimsDocument, 'testStrategy' | 'verification'>): ClaimEvidence {
+  const probes = new Map<string, string>();
+  for (const r of doc.testStrategy) if (!probes.has(r.isc)) probes.set(r.isc, r.tool.trim() === '' ? r.check : r.tool);
+  const verifications = new Map<string, string>();
+  for (const v of doc.verification) if (!verifications.has(v.id)) verifications.set(v.id, v.text);
+  return { probes, verifications };
+}
+
+/**
+ * The facts of one claim of a block (spec 067, ISC-530): the master's kind and state; the probe and, when closed, the
+ * Verification line of the holding spec, else of the master; the session of the last lock on an open claim.
+ */
+function claimFactsOf(claim: ResolvedClaim, kind: Claim['kind'] | undefined, master: ClaimEvidence, locks: ReadonlyMap<string, ClaimLock>): ClaimFacts {
+  const state = claim.dropped ? 'dropped' : claim.closed ? 'closed' : 'open';
+  const own = claim.folder?.evidence;
+  const probe = own?.probes.get(claim.id) ?? master.probes.get(claim.id);
+  const verification = state === 'closed' ? (own?.verifications.get(claim.id) ?? master.verifications.get(claim.id)) : undefined;
+  const lock = state === 'open' ? locks.get(claim.id) : undefined;
+  return {
+    kind: kind ?? 'normal',
+    state,
+    ...(probe === undefined || probe.trim() === '' ? {} : { probe }),
+    ...(verification === undefined || verification.trim() === '' ? {} : { verification }),
+    ...(lock === undefined ? {} : { lockHolder: lock.session }),
+  };
 }
 
 const byFolderName = (a: SpecFiles, b: SpecFiles): number => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0);
@@ -379,7 +415,8 @@ function readFolders(
       if (spec === undefined) return [];
       const { data } = parseFrontmatter(spec);
       const milestone = data.milestone?.trim();
-      const ids = new Set(parseClaims(spec).claims.map((c) => c.id));
+      const doc = parseClaims(spec);
+      const ids = new Set(doc.claims.map((c) => c.id));
       // An archived spec is never given a stage (`PlanningHolder.archived`), whatever the caller's states say.
       const state = isArchived ? undefined : states.get(f.folder);
       const events = f.texts.events === undefined ? [] : parseEvents(f.texts.events).events;
@@ -400,6 +437,7 @@ function readFolders(
           holder,
           feature: mainFeatureOf(data.isaFeature),
           ids,
+          evidence: evidenceOf(doc),
           milestone: milestone === undefined || milestone === '' ? null : milestone,
           file: specFilePath(`specs/${isArchived ? 'archive/' : ''}${f.folder}`, 'spec'),
         },
@@ -670,6 +708,11 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const features = blocks.map((block) => planningFeature(block, folders, claimless, ideas));
   const milestones = byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now, byLines));
   const after = Object.fromEntries([...claimById].flatMap(([id, claim]) => (claim.after.length === 0 ? [] : [[id, claim.after]])));
+  // Spec 067: each claim's facts; the later lock of a claim wins, as in `partitionClaims`.
+  const masterEvidence = evidenceOf(master);
+  const lockOf = new Map((input.locks?.locks ?? []).map((l) => [l.claim, l]));
+  const claimFacts: Record<string, ClaimFacts> = {};
+  for (const { claims } of blocks) for (const c of claims) claimFacts[c.id] ??= claimFactsOf(c, claimById.get(c.id)?.kind, masterEvidence, lockOf);
   return {
     ...board,
     features,
@@ -687,7 +730,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
       ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
       ...backlog.diagnostics.map((diagnostic) => ({ file: BACKLOG_FILE, diagnostic })),
     ],
-    relations: buildRelations({ features, milestones, ideas, specs, after }),
+    relations: buildRelations({ features, milestones, ideas, specs, after, claimFacts }),
     ...specEdgesOf(input),
     ...backlogHashOf(input),
   };

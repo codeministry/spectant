@@ -80,8 +80,11 @@ beforeEach(() => {
   });
 });
 
+/** A shell container width of each tier; the sidebar's presentation reads the width (spec 067), the tier follows it. */
+const WIDTH: Record<Tier, number> = { compact: 390, medium: 820, wide: 1440 };
+
 async function render(tier: Tier, url = '/w/harbor') {
-  TestBed.inject(ShellState).tier.set(tier);
+  TestBed.inject(ShellState).width.set(WIDTH[tier]);
   const harness = await RouterTestingHarness.create();
   await harness.navigateByUrl(url);
   await harness.fixture.whenStable();

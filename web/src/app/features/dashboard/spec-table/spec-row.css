@@ -113,7 +113,7 @@
 
 /*
  * Spec 050 (T2, ISC-287): the archived row. Its archive chip stands in the phase column under the phase chips above,
- * marked by its icon, word and dashed border, never by transparency. From 880 px the archive date stands in the mark
+ * marked by its icon, word and dashed border, never by transparency. From 848 px the archive date stands in the mark
  * column and the title drops to 400 (the list's link, projected into the title line).
  */
 .rarchived {
@@ -139,16 +139,16 @@
   letter-spacing: 0;
 }
 
-/* Below 880 px of list (spec 064, T48) the meter column narrows (`_row-grid.css`) and keeps its a/b; the archive date
+/* Below 848 px of list (spec 064, T48) the meter column narrows (`_row-grid.css`) and keeps its a/b; the archive date
    leaves. */
-@container specs (width < 880px) {
+@container specs (width < 848px) {
   .rdate,
   .meter {
     display: none;
   }
 }
 
-@container specs (width >= 880px) {
+@container specs (width >= 848px) {
   /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
   :host([data-archived]) .tline ::ng-deep .row-link {
     font-weight: 400;

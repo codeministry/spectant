@@ -35,7 +35,7 @@
 </span>
 <span class="rmark" data-cell="mark">
   @if (row().archived; as archived) {
-    <!-- Spec 050 (T2, ISC-287): the archive date (from 880 px) where an active row's mark stands. -->
+    <!-- Spec 050 (T2, ISC-287): the archive date (from 848 px) where an active row's mark stands. -->
     @if (archived.on; as on) {
       <ui-time class="rdate" [value]="on" form="day" />
     }

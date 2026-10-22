@@ -2097,15 +2097,17 @@ function keyValue(value) {
   const v = value?.trim();
   return v === undefined || v === "" ? null : v;
 }
-function goalLine(body) {
+function sectionLines(body, heading) {
   const lines = body.split(`
 `);
-  const start = lines.findIndex((line) => /^##\s+Goal\b/.test(line));
+  const start = lines.findIndex((line) => new RegExp(`^##\\s+${heading}\\b`).test(line));
   if (start < 0)
-    return null;
+    return [];
+  const out = [];
   let comment = false;
   for (const raw of lines.slice(start + 1)) {
     let line = raw.trim();
+    const blank = line === "";
     if (comment) {
       const end = line.indexOf("-->");
       if (end < 0)
@@ -2114,7 +2116,7 @@ function goalLine(body) {
       line = line.slice(end + 3).trim();
     }
     if (/^#{1,6}\s/.test(line))
-      return null;
+      break;
     while (line.startsWith("<!--")) {
       const end = line.indexOf("-->");
       if (end < 0) {
@@ -2124,8 +2126,28 @@ function goalLine(body) {
       }
       line = line.slice(end + 3).trim();
     }
-    if (line !== "")
-      return line;
+    if (line !== "" || blank)
+      out.push(line);
+  }
+  return out;
+}
+function goalLine(body) {
+  return sectionLines(body, "Goal").find((line) => line !== "") ?? null;
+}
+var EXCERPT_MAX = 280;
+function excerptOf(body) {
+  for (const heading of ["Problem", "Vision"]) {
+    const lines = sectionLines(body, heading);
+    const from = lines.findIndex((line) => line !== "");
+    if (from < 0)
+      continue;
+    const end = lines.indexOf("", from);
+    const text = lines.slice(from, end < 0 ? undefined : end).join(" ");
+    if (text.length <= EXCERPT_MAX)
+      return text;
+    const room = text.slice(0, EXCERPT_MAX - 1);
+    const space = room.lastIndexOf(" ");
+    return `${(space > 0 ? room.slice(0, space) : room).trimEnd()}\u2026`;
   }
   return null;
 }
@@ -2209,6 +2231,7 @@ function readIdeas(files) {
       feature: keyValue(feature),
       milestone: keyValue(fm.data.milestone),
       priority: fm.data.priority,
+      excerpt: excerptOf(fm.body),
       path
     });
   }

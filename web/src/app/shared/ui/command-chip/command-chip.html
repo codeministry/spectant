@@ -11,7 +11,7 @@
           [title]="lockedHint()"
           (click)="hintOpen.set(!hintOpen())"
         >
-          <ui-icon name="lock" [size]="14" />
+          <ui-icon name="lock" [size]="iconSize()" />
         </button>
       } @else {
         <button
@@ -24,9 +24,9 @@
           (blur)="onBlur()"
         >
           @if (state() === 'copied') {
-            <ui-icon name="check" [size]="14" />
+            <ui-icon name="check" [size]="iconSize()" />
           } @else {
-            <ui-icon name="copy" [size]="14" />
+            <ui-icon name="copy" [size]="iconSize()" />
           }
         </button>
       }

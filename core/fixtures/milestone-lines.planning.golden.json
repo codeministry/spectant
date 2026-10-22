@@ -418,7 +418,11 @@
       "children": [
         "feature:F1"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "target": "2026-03-12",
+        "description": "Signals arrive at one endpoint."
+      }
     },
     "milestone:beacon-1-0": {
       "ref": "milestone:beacon-1-0",
@@ -431,7 +435,11 @@
       "children": [
         "feature:F2"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "target": "2026-04-30",
+        "description": "Every signal reaches the person on call."
+      }
     },
     "feature:F0": {
       "ref": "feature:F0",
@@ -446,7 +454,10 @@
         "claim:ISC-1",
         "claim:ISC-2"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "what would break trust in any release — a signal lost on the way or a contact detail in the repository."
+      }
     },
     "feature:F1": {
       "ref": "feature:F1",
@@ -464,7 +475,11 @@
         "claim:ISC-4",
         "claim:ISC-5"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "every monitoring tool can hand its signals to one endpoint.",
+        "milestone": "Beacon 0.5"
+      }
     },
     "feature:F2": {
       "ref": "feature:F2",
@@ -482,7 +497,11 @@
         "claim:ISC-7",
         "claim:ISC-8"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "a signal reaches the person on call for its service, not a shared channel.",
+        "milestone": "Beacon 1.0"
+      }
     },
     "feature:F3": {
       "ref": "feature:F3",
@@ -497,7 +516,10 @@
         "claim:ISC-9",
         "claim:ISC-10"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "a signal nobody acknowledges moves up the chain on its own."
+      }
     },
     "spec:001": {
       "ref": "spec:001",
@@ -566,7 +588,11 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open"
+      }
     },
     "claim:ISC-2": {
       "ref": "claim:ISC-2",
@@ -579,7 +605,11 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open"
+      }
     },
     "claim:ISC-3": {
       "ref": "claim:ISC-3",
@@ -593,7 +623,11 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed"
+      }
     },
     "claim:ISC-4": {
       "ref": "claim:ISC-4",
@@ -607,7 +641,11 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed"
+      }
     },
     "claim:ISC-5": {
       "ref": "claim:ISC-5",
@@ -621,7 +659,11 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed"
+      }
     },
     "claim:ISC-6": {
       "ref": "claim:ISC-6",
@@ -635,7 +677,11 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-7": {
       "ref": "claim:ISC-7",
@@ -651,7 +697,11 @@
       "children": [],
       "blockers": [
         "claim:ISC-6"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-8": {
       "ref": "claim:ISC-8",
@@ -665,7 +715,11 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-9": {
       "ref": "claim:ISC-9",
@@ -679,7 +733,11 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-10": {
       "ref": "claim:ISC-10",
@@ -695,7 +753,11 @@
       "children": [],
       "blockers": [
         "claim:ISC-9"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     }
   }
 }

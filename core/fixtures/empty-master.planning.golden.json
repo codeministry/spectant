@@ -190,7 +190,10 @@
       "children": [
         "claim:ISC-3"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "notes stay on the machine they were written on."
+      }
     },
     "feature:F1": {
       "ref": "feature:F1",
@@ -204,7 +207,10 @@
         "claim:ISC-1",
         "claim:ISC-2"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "last week's notes are read at least once, in one sitting."
+      }
     },
     "claim:ISC-3": {
       "ref": "claim:ISC-3",
@@ -217,7 +223,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun test tests/offline.test.ts`"
+      }
     },
     "claim:ISC-1": {
       "ref": "claim:ISC-1",
@@ -230,7 +241,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/read.test.ts`"
+      }
     },
     "claim:ISC-2": {
       "ref": "claim:ISC-2",
@@ -245,7 +261,12 @@
       "children": [],
       "blockers": [
         "claim:ISC-1"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/digest.test.ts -t length`"
+      }
     }
   }
 }

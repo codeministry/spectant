@@ -25,6 +25,7 @@ describe('ideas: story (T51, ISC-124)', () => {
         feature: 'F2',
         milestone: 'Harbor 2.0',
         priority: 'P3',
+        excerpt: 'A setting changed in the console leaves no trace; when a mirror stops, nobody can say who changed what, or when.',
         path: 'specs/ideas/console-audit-log.md',
       },
       {
@@ -34,6 +35,7 @@ describe('ideas: story (T51, ISC-124)', () => {
         feature: 'F7',
         milestone: 'Harbor 1.0',
         priority: 'P2',
+        excerpt: 'A moved upstream tag reaches the mirror only on the next scheduled run, so a build in between pulls the old digest.',
         path: 'specs/ideas/registry-webhooks.md',
       },
     ];
@@ -73,8 +75,8 @@ describe('ideas: story (T51, ISC-124)', () => {
     };
     const reading = readIdeas(files);
     expect(reading.ideas).toEqual([
-      { slug: 'bare', title: 'A bare story.', type: null, feature: null, milestone: null, priority: 'P3', path: 'specs/ideas/bare.md' },
-      { slug: 'odd', title: 'odd', type: null, feature: null, milestone: null, priority: 'P3', path: 'specs/ideas/odd.md' },
+      { slug: 'bare', title: 'A bare story.', type: null, feature: null, milestone: null, priority: 'P3', excerpt: null, path: 'specs/ideas/bare.md' },
+      { slug: 'odd', title: 'odd', type: null, feature: null, milestone: null, priority: 'P3', excerpt: null, path: 'specs/ideas/odd.md' },
     ]);
     expect(codes(reading)).toEqual(['specs/ideas/odd.md: frontmatter-priority', 'specs/ideas/odd.md: ideas-type epic']);
   });

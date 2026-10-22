@@ -234,6 +234,22 @@ describe('ShellComponent', () => {
     expect(selected.querySelector('.shell-rail')).toBeNull();
   });
 
+  // Spec 067 (T9, ISC-524): the docked sidebar widens the rail column to `--detail`, only from DOCK_MIN (1280) on;
+  // between the wide tier and DOCK_MIN the selection floats and the spec list keeps the full width.
+  it('marks the rail column as the docked detail sidebar only from DOCK_MIN on (spec 067, ISC-524)', async () => {
+    setUp(fakeApi({ planning: () => Promise.resolve(ok(PLANNING_002)) }), splitRoutes(routes));
+    const { root, harness } = await open('/w/harbor/specs?sel=spec:002');
+    const shell = root.querySelector('app-shell');
+    expect(shell?.hasAttribute('data-detail-docked')).toBe(true);
+    expect(root.querySelector('.shell-rail app-detail-sidebar[data-presentation="docked"]')).not.toBeNull();
+
+    FakeResizeObserver.last?.resize(1279);
+    await harness.fixture.whenStable();
+    expect(shell?.hasAttribute('data-detail-docked')).toBe(false);
+    expect(shell?.hasAttribute('data-no-rail')).toBe(true);
+    expect(root.querySelector('app-detail-sidebar[slot="float"]')?.getAttribute('data-presentation')).toBe('floating');
+  });
+
   it('sets data-tier and the tier class from the measured container width', async () => {
     setUp();
     const { root, harness } = await open('/w/harbor');

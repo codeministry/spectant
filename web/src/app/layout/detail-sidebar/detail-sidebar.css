@@ -1,15 +1,18 @@
 /*
  * app-detail-sidebar (spec 026 design.md § Across viewports): one panel, three shells.
  * Docked it fills the rail slot; floating (wide, a page without a rail) and overlay (medium) it is a non-modal panel
- * at the right edge, 352 px (`--rail`), no scrim; at compact the content sits in `ui-sheet`'s modal bottom sheet.
+ * at the right edge, 480 px (`--detail`, spec 067), no scrim; at compact the content sits in `ui-sheet`'s modal
+ * bottom sheet. Its height follows the content up to each shell's `max-block-size` (spec 067, ISC-525): a flex column,
+ * not a grid `1fr` row, which does not shrink reliably under a max size without a fixed height. Head and foot keep
+ * their size; only the body shrinks and scrolls.
  */
 :host {
   display: block;
 }
 
 .panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   min-block-size: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
@@ -25,9 +28,10 @@
 :host([data-presentation="overlay"]) .panel {
   position: fixed;
   z-index: 20;
-  inset-block: 80px 16px;
+  inset-block-start: 80px;
   inset-inline-end: 16px;
-  inline-size: min(var(--rail), calc(100% - 32px));
+  inline-size: min(var(--detail), calc(100% - 32px));
+  max-block-size: calc(100dvh - 96px);
   box-shadow: var(--shadow);
   transition: translate var(--motion-duration-base) var(--motion-ease-emphasized);
 }
@@ -43,9 +47,16 @@
   }
 }
 
+/* Inside the compact sheet the panel stops where the sheet does, so head and foot stay put and only the body scrolls. */
 :host([data-presentation="sheet"]) .panel {
+  max-block-size: calc(75dvh - 12px);
   border: 0;
   border-radius: 0;
+}
+
+.head,
+.foot {
+  flex: none;
 }
 
 .head {
@@ -87,6 +98,8 @@
 }
 
 .body {
+  flex: 0 1 auto;
+  min-block-size: 0;
   display: grid;
   gap: 24px;
   align-content: start;

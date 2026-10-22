@@ -532,7 +532,10 @@
         "claim:ISC-5.1",
         "claim:ISC-5.2"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "what would sink the project whichever slice slipped — data leaving the machine, a private detail going public, the app and the skill disagreeing about the format, or the database quietly becoming a second truth."
+      }
     },
     "feature:F1": {
       "ref": "feature:F1",
@@ -583,7 +586,10 @@
         "claim:ISC-67",
         "claim:ISC-67.1"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "the first time the author types `spectant` and sees two real repositories on one page in the look they know — the smallest thing that already replaces a per-repo HTML file."
+      }
     },
     "spec:001": {
       "ref": "spec:001",
@@ -660,7 +666,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun test tests/server.test.ts -t \"loopback\"`"
+      }
     },
     "claim:ISC-2": {
       "ref": "claim:ISC-2",
@@ -674,7 +685,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun run e2e -- offline` (Playwright `context.route('**')` fails every non-loopback host, every route, both themes) plus `bun run test:offline:server` (binary in `docker run --network none`)"
+      }
     },
     "claim:ISC-3": {
       "ref": "claim:ISC-3",
@@ -688,7 +704,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun run check:leak`"
+      }
     },
     "claim:ISC-4": {
       "ref": "claim:ISC-4",
@@ -702,7 +723,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`test -f LICENSE && rg -q 'Apache License' LICENSE && test -f THIRD_PARTY_NOTICES.md`"
+      }
     },
     "claim:ISC-5": {
       "ref": "claim:ISC-5",
@@ -716,7 +742,13 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "closed",
+        "probe": "`bun run check:single-core`",
+        "verification": "bash — bun run check:single-core → exit 0, 0 hits (red on a throwaway split(\"---\") under server/), round 2, T45"
+      }
     },
     "claim:ISC-6": {
       "ref": "claim:ISC-6",
@@ -730,7 +762,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test core/`"
+      }
     },
     "claim:ISC-7": {
       "ref": "claim:ISC-7",
@@ -744,7 +781,12 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/rebuild.test.ts`"
+      }
     },
     "claim:ISC-5.1": {
       "ref": "claim:ISC-5.1",
@@ -758,7 +800,13 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md`",
+        "verification": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)"
+      }
     },
     "claim:ISC-5.2": {
       "ref": "claim:ISC-5.2",
@@ -772,7 +820,13 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run check:static`",
+        "verification": "bash — bun run check:static → exit 0 (eslint 9.39.5 + angular-eslint 22.5.0 + typescript-eslint 8.70.1, stylelint 17.15.0, tsc 6.0.3; red on a throwaway @Input/*ngIf/| async/hex/literal-duration proof), round 5, T8"
+      }
     },
     "claim:ISC-8": {
       "ref": "claim:ISC-8",
@@ -786,7 +840,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4`",
+        "verification": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+      }
     },
     "claim:ISC-8.1": {
       "ref": "claim:ISC-8.1",
@@ -800,7 +860,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run test:binary` (copies the binary to a temp dir, `--no-browser --port 0`, curls `/`, one `main-*.js`, `/w/x`)",
+        "verification": "bash — bun run test:binary → exit 0, 6 pass (host binary alone in a mkdtemp dir, --port 0: / html, main-*.js immutable text/javascript, /w/x = index, 404 elsewhere, lsof loopback only, SIGTERM exit 0), round 7, T12"
+      }
     },
     "claim:ISC-9": {
       "ref": "claim:ISC-9",
@@ -814,7 +880,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run check:version`",
+        "verification": "bash — bun run check:version → exit 0, 'check:version: ok 0.1.0' (root and web package.json agree; host binary prints exactly 'spectant 0.1.0\\n'; red on a 0.1.1 mismatch), round 7, T13"
+      }
     },
     "claim:ISC-10": {
       "ref": "claim:ISC-10",
@@ -828,7 +900,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run test:install:linux`",
+        "verification": "bash — bun run test:install:linux → exit 0, 14 checks on linux/amd64 (ubuntu:24.04, non-root, file:///release, ~/.local/bin fallback, PATH hint, --version, HEAD / main-*.js /w/x all 200), round 7, T14"
+      }
     },
     "claim:ISC-11": {
       "ref": "claim:ISC-11",
@@ -842,7 +920,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "transcript with a fresh `HOME`"
+      }
     },
     "claim:ISC-12": {
       "ref": "claim:ISC-12",
@@ -856,7 +939,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun run test:install:linux -- INSTALL_DIR=/opt/x/bin`",
+        "verification": "bash — bun run test:install:linux -- INSTALL_DIR=/opt/x/bin → exit 0, 19 checks on linux/amd64 (binary exactly at /opt/x/bin/spectant, nothing elsewhere, PATH hint names it; red with INSTALL_DIR ignored), round 8, T15"
+      }
     },
     "claim:ISC-13": {
       "ref": "claim:ISC-13",
@@ -870,7 +959,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/workspaces.test.ts`"
+      }
     },
     "claim:ISC-14": {
       "ref": "claim:ISC-14",
@@ -884,7 +978,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test core/tests/stage-parity.test.ts` (reads `SPECTANT_PARITY_TREES`)"
+      }
     },
     "claim:ISC-15": {
       "ref": "claim:ISC-15",
@@ -898,7 +997,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun run test:readonly` (recursive hash of the fixture repo before and after)"
+      }
     },
     "claim:ISC-16": {
       "ref": "claim:ISC-16",
@@ -912,7 +1016,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/dashboard.test.ts -t \"multi-workspace\"`"
+      }
     },
     "claim:ISC-16.1": {
       "ref": "claim:ISC-16.1",
@@ -926,7 +1035,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:visual -- overview`"
+      }
     },
     "claim:ISC-16.2": {
       "ref": "claim:ISC-16.2",
@@ -940,7 +1054,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:visual -- overview --theme dark`"
+      }
     },
     "claim:ISC-17": {
       "ref": "claim:ISC-17",
@@ -954,7 +1073,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:visual -- dashboard` (Playwright `toHaveScreenshot` against `web/e2e/__screenshots__/`)"
+      }
     },
     "claim:ISC-17.1": {
       "ref": "claim:ISC-17.1",
@@ -968,7 +1092,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:visual -- dashboard --theme dark`"
+      }
     },
     "claim:ISC-18": {
       "ref": "claim:ISC-18",
@@ -982,7 +1111,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "antecedent",
+        "state": "closed",
+        "probe": "`bun test web/tests/theme-colors.test.ts` (pure TS, parses `styles.css`)",
+        "verification": "bun-test — bun test web/tests/theme-colors.test.ts → 12 pass, 0 fail (ΔE_OK×100 ≤ 0.5 for 23 tokens per theme; red on the placeholder, red on a 0.01 chroma nudge), round 5, T17"
+      }
     },
     "claim:ISC-18.2": {
       "ref": "claim:ISC-18.2",
@@ -996,7 +1131,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "antecedent",
+        "state": "closed",
+        "probe": "`bun test web/tests/icons.test.ts`",
+        "verification": "bun-test — bun test web/tests/icons.test.ts → exit 0, 11 pass (lucide-static pinned 1.48.0, icons.ts byte-identical to regeneration, no foreign name or raw svg under web/src; red on a hand-edited path, a 'rocket' name and a raw svg), round 8, T22"
+      }
     },
     "claim:ISC-18.1": {
       "ref": "claim:ISC-18.1",
@@ -1010,7 +1151,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- theme -g system` (`emulateMedia`)"
+      }
     },
     "claim:ISC-18.3": {
       "ref": "claim:ISC-18.3",
@@ -1024,7 +1170,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- theme -g persist` (settings from `/api/settings`)"
+      }
     },
     "claim:ISC-19": {
       "ref": "claim:ISC-19",
@@ -1038,7 +1189,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "Interceptor / cmux screenshot"
+      }
     },
     "claim:ISC-19.1": {
       "ref": "claim:ISC-19.1",
@@ -1052,7 +1208,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- --project webkit smoke`"
+      }
     },
     "claim:ISC-20": {
       "ref": "claim:ISC-20",
@@ -1066,7 +1227,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun test tests/cli.test.ts -t \"start\"`"
+      }
     },
     "claim:ISC-21": {
       "ref": "claim:ISC-21",
@@ -1080,7 +1246,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test tests/cli.test.ts -t \"data dir\"`",
+        "verification": "bun-test — bun test tests/cli.test.ts -t \"data dir\" → 3 pass, 0 fail (round 2, T46)"
+      }
     },
     "claim:ISC-22": {
       "ref": "claim:ISC-22",
@@ -1094,7 +1266,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed",
+        "probe": "`bun test web/tests/i18n-parity.test.ts`",
+        "verification": "bun-test — bun test web/tests/i18n-parity.test.ts → exit 0, 17 pass (174 keys in en.json and de.json, 0 missing, 0 informal German, 0 param mismatches; Transloco 8.4.0 with a bundled loader; red on a dropped key, a dropped param and 'deinen'), round 9, T23"
+      }
     },
     "claim:ISC-60": {
       "ref": "claim:ISC-60",
@@ -1108,7 +1286,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- palette -g open`"
+      }
     },
     "claim:ISC-60.1": {
       "ref": "claim:ISC-60.1",
@@ -1124,7 +1307,12 @@
       "children": [],
       "blockers": [
         "claim:ISC-60"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- palette -g filter`"
+      }
     },
     "claim:ISC-60.2": {
       "ref": "claim:ISC-60.2",
@@ -1140,7 +1328,12 @@
       "children": [],
       "blockers": [
         "claim:ISC-60"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- palette -g enter`"
+      }
     },
     "claim:ISC-61": {
       "ref": "claim:ISC-61",
@@ -1154,7 +1347,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- keyboard -g move`"
+      }
     },
     "claim:ISC-61.1": {
       "ref": "claim:ISC-61.1",
@@ -1170,7 +1368,12 @@
       "children": [],
       "blockers": [
         "claim:ISC-61"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- keyboard -g enter`"
+      }
     },
     "claim:ISC-61.2": {
       "ref": "claim:ISC-61.2",
@@ -1184,7 +1387,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- keyboard -g help`"
+      }
     },
     "claim:ISC-62": {
       "ref": "claim:ISC-62",
@@ -1198,7 +1406,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- refresh -g in-place`"
+      }
     },
     "claim:ISC-62.1": {
       "ref": "claim:ISC-62.1",
@@ -1214,7 +1427,12 @@
       "children": [],
       "blockers": [
         "claim:ISC-62"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- refresh -g cls`"
+      }
     },
     "claim:ISC-63": {
       "ref": "claim:ISC-63",
@@ -1228,7 +1446,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- narrow -g dashboard`"
+      }
     },
     "claim:ISC-63.1": {
       "ref": "claim:ISC-63.1",
@@ -1242,7 +1465,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run e2e -- narrow -g column`"
+      }
     },
     "claim:ISC-64": {
       "ref": "claim:ISC-64",
@@ -1256,7 +1484,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:browser -- focus`"
+      }
     },
     "claim:ISC-65": {
       "ref": "claim:ISC-65",
@@ -1270,7 +1503,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open",
+        "probe": "`bun run test:browser -- contrast`"
+      }
     },
     "claim:ISC-66": {
       "ref": "claim:ISC-66",
@@ -1284,7 +1522,12 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open",
+        "probe": "`bun run test:browser -- motion`"
+      }
     },
     "claim:ISC-67": {
       "ref": "claim:ISC-67",
@@ -1298,7 +1541,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "antecedent",
+        "state": "closed",
+        "probe": "`bun test web/tests/fonts.test.ts -t \"local\"`",
+        "verification": "bun-test — bun test web/tests/fonts.test.ts -t \"local\" → exit 0 (Inter Variable 4.1 352 KB + JetBrains Mono 2.304 114 KB as woff2 under web/public/fonts, OFL texts beside them, @font-face local, copied into web/dist/browser/fonts), round 8, T19"
+      }
     },
     "claim:ISC-67.1": {
       "ref": "claim:ISC-67.1",
@@ -1312,7 +1561,13 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "closed",
+        "probe": "`bun test web/tests/fonts.test.ts -t \"external\"`",
+        "verification": "bun-test — bun test web/tests/fonts.test.ts -t \"external\" → exit 0, 13 pass (no external font/stylesheet URL under web/src or the build; red on a throwaway Google Fonts @import and on 13 synthetic offenders), round 9, T20"
+      }
     }
   }
 }

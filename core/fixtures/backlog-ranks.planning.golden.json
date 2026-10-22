@@ -389,7 +389,11 @@
         "feature:F2",
         "feature:F1"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "target": "2026-04-15",
+        "description": "Tickets are sold online."
+      }
     },
     "milestone:ferry-2-0": {
       "ref": "milestone:ferry-2-0",
@@ -403,7 +407,11 @@
         "feature:F3",
         "feature:F4"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "target": "2026-06-30",
+        "description": "Passengers board with a pass on the phone."
+      }
     },
     "feature:F2": {
       "ref": "feature:F2",
@@ -419,7 +427,11 @@
         "claim:ISC-5",
         "claim:ISC-6"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "the crossings a passenger can book are the ones the ferry actually runs.",
+        "milestone": "Ferry 1.0"
+      }
     },
     "feature:F3": {
       "ref": "feature:F3",
@@ -435,7 +447,11 @@
         "claim:ISC-7",
         "claim:ISC-8"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "a passenger boards with the phone instead of a paper ticket.",
+        "milestone": "Ferry 2.0"
+      }
     },
     "feature:F1": {
       "ref": "feature:F1",
@@ -451,7 +467,11 @@
         "claim:ISC-3",
         "claim:ISC-4"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "a passenger can buy a ticket without going to the pier.",
+        "milestone": "Ferry 1.0"
+      }
     },
     "feature:F4": {
       "ref": "feature:F4",
@@ -468,7 +488,11 @@
         "claim:ISC-10",
         "claim:ISC-11"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "the crew sees the passenger list of a crossing before it leaves.",
+        "milestone": "Ferry 2.0"
+      }
     },
     "feature:F0": {
       "ref": "feature:F0",
@@ -482,7 +506,10 @@
         "claim:ISC-1",
         "claim:ISC-2"
       ],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "why": "what would break trust in any release — a ticket sold twice or a passenger's details in the repository."
+      }
     },
     "claim:ISC-5": {
       "ref": "claim:ISC-5",
@@ -495,7 +522,11 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed"
+      }
     },
     "claim:ISC-6": {
       "ref": "claim:ISC-6",
@@ -508,7 +539,11 @@
         "feature:F2"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed"
+      }
     },
     "claim:ISC-7": {
       "ref": "claim:ISC-7",
@@ -521,7 +556,11 @@
         "feature:F3"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-8": {
       "ref": "claim:ISC-8",
@@ -536,7 +575,11 @@
       "children": [],
       "blockers": [
         "claim:ISC-7"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-3": {
       "ref": "claim:ISC-3",
@@ -549,7 +592,11 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "closed"
+      }
     },
     "claim:ISC-4": {
       "ref": "claim:ISC-4",
@@ -562,7 +609,11 @@
         "feature:F1"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-9": {
       "ref": "claim:ISC-9",
@@ -575,7 +626,11 @@
         "feature:F4"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-10": {
       "ref": "claim:ISC-10",
@@ -590,7 +645,11 @@
       "children": [],
       "blockers": [
         "claim:ISC-9"
-      ]
+      ],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-11": {
       "ref": "claim:ISC-11",
@@ -603,7 +662,11 @@
         "feature:F4"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "normal",
+        "state": "open"
+      }
     },
     "claim:ISC-1": {
       "ref": "claim:ISC-1",
@@ -616,7 +679,11 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open"
+      }
     },
     "claim:ISC-2": {
       "ref": "claim:ISC-2",
@@ -629,7 +696,11 @@
         "feature:F0"
       ],
       "children": [],
-      "blockers": []
+      "blockers": [],
+      "facts": {
+        "kind": "anti",
+        "state": "open"
+      }
     }
   }
 }

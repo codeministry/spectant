@@ -1,5 +1,6 @@
+import { signal } from '@angular/core';
 import type { TaskCheckResult } from '../../../../core/api.service';
-import { type CheckState, checkBlock, checkedFromLine, IDLE, landedDelta, nextCheckState, rowChecked, withCheck } from './checkbox';
+import { type CheckState, checkBlock, checkedFromLine, IDLE, landedDelta, nextCheckState, rowChecked, TaskChecks, type TaskCheckWrite, withCheck } from './checkbox';
 import type { TaskRowView } from './tasks-tab';
 
 const row = (over: Partial<TaskRowView> = {}): TaskRowView =>
@@ -119,5 +120,76 @@ describe('row view', () => {
     expect(checkBlock(row(), { kind: 'saving', checked: true }, null, 'h')).toEqual({ kind: 'saving' });
     expect(checkBlock(row(), IDLE, lock, 'h')).toEqual({ kind: 'locked', session: 'spec-002-ISC-77' });
     expect(checkBlock(row(), IDLE, null, null)).toEqual({ kind: 'no-hash' });
+  });
+});
+
+// Spec 067 (T32, ISC-535): the checkbox as a building block outside the Tasks tab, given a spec, a task, the state
+// wanted and the hash of the read it was rendered from; the write is path 2 (`taskCheck`) unchanged.
+describe('TaskChecks', () => {
+  const okFor = (_n: number, checked: boolean) => ok(checked, `- [${checked ? 'x' : ' '}] T31 · ISC-77 · operator — pass`);
+
+  function setUp(answer: (n: number, checked: boolean) => TaskCheckResult = okFor) {
+    const read = signal<{ hash: string | null }>({ hash: 'h0' });
+    const lock = signal<{ claim: string; session: string } | null>(null);
+    const sent: Array<{ ws: string; id: string; tid: string; hash: string; checked: boolean }> = [];
+    const write: TaskCheckWrite = (ws, id, tid, hash, checked) => {
+      sent.push({ ws, id, tid, hash, checked });
+      const result = answer(sent.length, checked);
+      return Promise.resolve(result.kind === 'ok' ? { ...result, body: { ...result.body, hash: `h${String(sent.length)}` } } : result);
+    };
+    const checks = new TaskChecks({ read, hash: () => read().hash, write, lock });
+    return { read, lock, sent, checks };
+  }
+
+  it('posts one write with the read hash, shows the state wanted while in flight and the written row after', async () => {
+    const { sent, checks } = setUp();
+    const pending = checks.tick('harbor', '002', row(), true);
+    expect(checks.stateOf('T31')).toEqual({ kind: 'saving', checked: true });
+    expect(checks.checked(row())).toBe(true);
+    expect(checks.block(row())).toEqual({ kind: 'saving' });
+    expect((await pending)?.kind).toBe('ok');
+    expect(sent).toEqual([{ ws: 'harbor', id: '002', tid: 'T31', hash: 'h0', checked: true }]);
+    expect(checks.row(row())).toMatchObject({ state: 'done', status: 'done' });
+    expect(checks.delta(row())).toBe(1);
+    expect(checks.block(row())).toBeNull();
+  });
+
+  it('sends each accepted write hash with the next tick, so a second tick is not stale', async () => {
+    const { sent, checks } = setUp();
+    await checks.tick('harbor', '002', row(), true);
+    await checks.tick('harbor', '002', row({ id: 'T32', claim: 'ISC-78' }), true);
+    expect(sent.map((s) => s.hash)).toEqual(['h0', 'h1']);
+  });
+
+  it('keeps a 409 and a 423 inline as the check line, and a reset clears the 409', async () => {
+    const conflicted = setUp(() => conflict);
+    expect((await conflicted.checks.tick('harbor', '002', row(), true))?.kind).toBe('conflict');
+    expect(conflicted.checks.line(row())).toEqual({ kind: 'conflict' });
+    conflicted.checks.reset('T31');
+    expect(conflicted.checks.stateOf('T31')).toBe(IDLE);
+    const lockedOut = setUp(() => locked);
+    await lockedOut.checks.tick('harbor', '002', row(), false);
+    expect(lockedOut.checks.line(row())).toEqual({ kind: 'locked', session: 'spec-002-ISC-77' });
+  });
+
+  it('sends nothing under a lock on the row claim or without a hash, and names why', async () => {
+    const { read, lock, sent, checks } = setUp();
+    lock.set({ claim: 'ISC-77', session: 's-1' });
+    expect(await checks.tick('harbor', '002', row(), true)).toBeNull();
+    expect(checks.line(row())).toEqual({ kind: 'locked', session: 's-1' });
+    lock.set(null);
+    read.set({ hash: null });
+    expect(await checks.tick('harbor', '002', row(), true)).toBeNull();
+    expect(checks.line(row())).toEqual({ kind: 'no-hash' });
+    expect(sent).toEqual([]);
+  });
+
+  it('drops every state when the list is read again; an answer for a dropped state changes nothing', async () => {
+    const { read, checks } = setUp();
+    const pending = checks.tick('harbor', '002', row(), true);
+    read.set({ hash: 'h9' });
+    expect(checks.stateOf('T31')).toBe(IDLE);
+    expect(await pending).toBeNull();
+    expect(checks.stateOf('T31')).toBe(IDLE);
   });
 });

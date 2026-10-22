@@ -11,13 +11,12 @@ import { RailSlot } from './rail-slot';
 import { ShellData } from './shell-data.service';
 import { ShellHeader } from './shell-header';
 import { ShellState } from './shell-state.service';
-import { tierFor } from './tier';
 
 /**
  * The one shell every route renders in (ISC-73, T35): the header, `main` with the router outlet, and the 352 px
  * context rail at wide (stacked below main at medium, absent at compact). The host is the `shell` size container the
- * CSS tiers query; a ResizeObserver mirrors the same width into `ShellState.tier` through `tierFor`, so the tab-bar
- * slot and the `data-tier` attribute agree with the CSS.
+ * CSS tiers query; a ResizeObserver mirrors the same width into `ShellState.width` (and through `tierFor` its tier),
+ * so the tab-bar slot, the `data-tier` attribute and the detail sidebar's presentation agree with the CSS.
  */
 @Component({
   selector: 'app-shell',
@@ -31,7 +30,9 @@ import { tierFor } from './tier';
     '[class.tier-medium]': "state.tier() === 'medium'",
     '[class.tier-wide]': "state.tier() === 'wide'",
     '[attr.data-zen]': "state.zen() ? '' : null",
-    '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
+    '[attr.data-rail-collapsed]': "railStrip() ? '' : null",
+    // Spec 067 (ISC-524): the rail column is `--detail` wide only while it holds the docked detail sidebar.
+    '[attr.data-detail-docked]': "detailDocked() ? '' : null",
     // Outside a workspace (the overview `/`, settings) the page has no rail column at all; the
     // workspace board (spec 008), the Library and a spec area marked `noRail` (the spec's
     // Library, spec 017) have nothing for the rail either and take the full width.
@@ -50,7 +51,7 @@ export class ShellComponent {
    * (design.md § Desktop: the axis rescales to the rest of the width); without a selection it takes the full width.
    */
   private readonly ganttRail = computed(
-    () => this.state.route().lens === 'gantt' && this.state.tier() === 'wide' && this.selection.entry() !== null && !this.data.workspaceMissing() && !this.data.planningMissing(),
+    () => this.state.route().lens === 'gantt' && this.selection.presentation() === 'docked' && !this.data.workspaceMissing() && !this.data.planningMissing(),
   );
 
   /**
@@ -60,11 +61,16 @@ export class ShellComponent {
   private readonly specsRail = computed(
     () =>
       this.state.wsPage() === 'specs' &&
-      this.state.tier() === 'wide' &&
-      this.selection.entry() !== null &&
+      this.selection.presentation() === 'docked' &&
       !this.data.workspaceMissing() &&
       !this.data.workspaceUnavailable(),
   );
+
+  /** The rail holds the docked detail sidebar (spec 067): its column is `--detail` wide and a folded rail opens. */
+  protected readonly detailDocked = computed(() => this.showRail() && this.selection.presentation() === 'docked');
+
+  /** The rail shows as its strip only while folded and no docked selection holds it open (spec 067, ISC-524). */
+  protected readonly railStrip = computed(() => this.state.railStrip() && !this.detailDocked());
 
   /** No rail column at all: outside a workspace, on the full-width workspace pages, in a `noRail` area. */
   protected readonly noRail = computed(() => {
@@ -108,7 +114,7 @@ export class ShellComponent {
       if (typeof ResizeObserver === 'undefined') return;
       const observer = new ResizeObserver((entries) => {
         const entry = entries.at(-1);
-        if (entry) this.state.tier.set(tierFor(entry.contentRect.width));
+        if (entry) this.state.width.set(entry.contentRect.width);
       });
       observer.observe(host);
       destroyRef.onDestroy(() => {
