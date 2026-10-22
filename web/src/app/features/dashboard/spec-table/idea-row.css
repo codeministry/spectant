@@ -56,19 +56,6 @@
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-/* Feature and milestone, the ids in mono, muted: the title cell's description, as a spec row's goal is. */
-.where {
-  flex: 0 1 auto;
-  min-inline-size: 0;
-  overflow: hidden;
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Priority and state each at their column's start, cut rather than pushing into the next column. */
 .rprio,
 .rphase {

@@ -177,6 +177,8 @@
       "phase": "Phase",
       "claims": "Claims",
       "mark": "Wartet",
+      "feature": "Feature",
+      "featureLabel": "Feature {{id}}: {{name}}",
       "prio": "Priorität",
       "track": "Track",
       "meter": "Fortschritt"

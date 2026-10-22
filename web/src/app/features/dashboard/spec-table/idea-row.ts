@@ -17,8 +17,8 @@ import type { DashboardIdea } from './idea-rows';
 /**
  * Spec 064 (T40, ISC-484, ISC-482): one story of `specs/ideas/` as a row of the Specs list, in the row grid of
  * `app-spec-row` (`_row-grid.css`: the same ten named columns and heights per tier, T47). In `id` the idea glyph; in
- * `title` the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`, with
- * feature and milestone as the muted description behind it; in `prio` `ui-priority`; in `phase`, when the model serves
+ * `title` the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`; in
+ * `feature` the feature over the milestone, as a spec row's; in `prio` `ui-priority`; in `phase`, when the model serves
  * one, the state as the spec row's stage chip (`ui-chip` with a dot in the state's item-glyph tone, "Idea · open";
  * T69, ISC-510), without command or actor; in `star` the idea favourite's `ui-star-toggle` (T53, ISC-497),
  * its own target above the link. `more`, `mark`, `agent`, `track` and `meter` stay empty:
@@ -34,7 +34,7 @@ import type { DashboardIdea } from './idea-rows';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './idea-row.html',
   styleUrl: './idea-row.css',
-  host: { '[attr.data-idea]': 'idea().slug', '[attr.data-desc]': "where() ? '' : null" },
+  host: { '[attr.data-idea]': 'idea().slug' },
 })
 export class IdeaRow {
   readonly idea = input.required<DashboardIdea>();
@@ -58,11 +58,6 @@ export class IdeaRow {
   protected readonly priority = computed<Priority | null>(() => {
     const value = this.idea().priority;
     return Object.hasOwn(PRIORITY_LOOK, value) ? (value as Priority) : null;
-  });
-  /** Feature and milestone, whichever the story names, joined by a middle dot; empty for neither. */
-  protected readonly where = computed(() => {
-    const { feature, milestone } = this.idea();
-    return [feature, milestone].filter((part): part is string => part !== null && part !== '').join(' · ');
   });
   protected readonly state = computed(() => this.idea().state ?? null);
   /** The pill's tone: the state's own in the item glyph family (open secondary, waiting neutral, running primary,

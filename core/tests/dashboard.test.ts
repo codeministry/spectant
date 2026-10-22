@@ -498,12 +498,13 @@ describe('reason: the dashboard row and the spec head carry the same phrase (T69
 // ─── The stories on the dashboard (spec 008, T70, ISC-124.2) ───────────────────────────────────────────────────────
 
 describe('ideas: the dashboard lists the stories (T70)', () => {
-  test('harbor: two stories with feature, milestone, slug, title and priority, in file-name order', () => {
+  test('harbor: two stories with feature, its name, milestone, slug, title and priority, in file-name order', () => {
     expect(model('harbor').ideas).toEqual({
       count: 2,
       list: [
         {
           feature: 'F2',
+          featureName: 'Web console',
           milestone: 'Harbor 2.0',
           slug: 'console-audit-log',
           title: 'Every change made in the web console is written to an audit log a teammate can read back.',
@@ -511,6 +512,7 @@ describe('ideas: the dashboard lists the stories (T70)', () => {
         },
         {
           feature: 'F7',
+          featureName: 'Registry webhooks',
           milestone: 'Harbor 1.0',
           slug: 'registry-webhooks',
           title: 'A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.',

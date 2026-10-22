@@ -28,6 +28,22 @@
 </span>
 <!-- Spec 064 (T46, ISC-489): the list's "…" toggle, outside the row link, in its own column after the title. -->
 <span class="rmore" data-cell="more"><ng-content select=".row-more" /></span>
+<!-- The feature column (`_row-grid.css`): the main feature over the milestone, each left out when it names none; the
+     feature's name from the master is the id's tooltip and accessible name, never shown in the cell. -->
+<span class="rfeat" data-cell="feature">
+  @if (row().feature; as feature) {
+    <abbr
+      class="rfeat-id"
+      data-row-feature
+      [attr.title]="row().featureName || null"
+      [attr.aria-label]="row().featureName ? ('specs.columns.featureLabel' | transloco: { id: feature, name: row().featureName }) : null"
+      >{{ feature }}</abbr
+    >
+  }
+  @if (row().milestone; as milestone) {
+    <span class="rfeat-ms" data-row-milestone [title]="milestone">{{ milestone }}</span>
+  }
+</span>
 <span class="rmark" data-cell="mark">
   @if (row().archived; as archived) {
     <!-- Spec 050 (T2, ISC-287): the archive date (from 880 px) where an active row's mark stands. -->

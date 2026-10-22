@@ -77,7 +77,11 @@ test.describe('ideas on the dashboard', () => {
       await expect(row.locator('a.link')).toBeVisible();
       await expect(row.locator('a.link')).toHaveText(idea.title);
       await expect(row.locator('a.link')).toHaveAttribute('aria-label', template(en.specs.ideaRow.name, { title: idea.title }));
-      await expect(row.locator('[data-idea-where]')).toHaveText([idea.feature, idea.milestone].filter(Boolean).join(' · '));
+      const feature = row.locator('[data-cell="feature"]');
+      await expect(feature.locator('[data-row-feature]')).toHaveCount(idea.feature ? 1 : 0);
+      if (idea.feature) await expect(feature.locator('[data-row-feature]')).toHaveText(idea.feature);
+      await expect(feature.locator('[data-row-milestone]')).toHaveCount(idea.milestone ? 1 : 0);
+      if (idea.milestone) await expect(feature.locator('[data-row-milestone]')).toHaveText(idea.milestone);
     }
   });
 });

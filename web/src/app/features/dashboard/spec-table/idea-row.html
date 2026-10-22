@@ -16,11 +16,24 @@
     (click)="activate($event)"
     >{{ title() }}</a
   >
-  @if (where(); as where) {
-    <span class="where" data-idea-where>{{ where }}</span>
-  }
 </span>
 <span data-cell="more"></span>
+<!-- The feature column (`_row-grid.css`): the main feature over the milestone, each left out when it names none; the
+     feature's name from the master is the id's tooltip and accessible name, never shown in the cell. -->
+<span class="rfeat" data-cell="feature">
+  @if (idea().feature; as feature) {
+    <abbr
+      class="rfeat-id"
+      data-row-feature
+      [attr.title]="idea().featureName || null"
+      [attr.aria-label]="idea().featureName ? ('specs.columns.featureLabel' | transloco: { id: feature, name: idea().featureName }) : null"
+      >{{ feature }}</abbr
+    >
+  }
+  @if (idea().milestone; as milestone) {
+    <span class="rfeat-ms" data-row-milestone [title]="milestone">{{ milestone }}</span>
+  }
+</span>
 <span data-cell="mark"></span>
 <span data-cell="agent"></span>
 <span class="rprio" data-cell="prio">

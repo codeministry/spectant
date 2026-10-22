@@ -2,6 +2,7 @@ import type { Priority, SpecWait } from '../../../../../../core/src/files';
 import { holderOf } from '../../../core/model/working';
 import { STAGE_ORDER } from '../../../shared/ui/stage-tone';
 import { ALL, FOG, stagesOf } from './stage-filter';
+import { featureOf, type FeatureFields } from './feature-fields';
 import type { Tone } from '../../../shared/ui/tone';
 import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
 
@@ -12,8 +13,8 @@ import { count, isLoose, type Loose, text } from '../../../layout/shell/loose';
  * query state the URL carries (`?stage=&type=&sort=&takeable=&working=&archived=`, design.md § Routes and state).
  */
 
-/** One active spec as the panel renders it: the fields of `DashboardSpecRow` the row shows. */
-export interface SpecTableRow {
+/** One active spec as the panel renders it: the fields of `DashboardSpecRow` the row shows (the feature ones optional). */
+export interface SpecTableRow extends Partial<FeatureFields> {
   readonly id: string;
   /**
    * The folder name (`NNN-slug`), the key a favourite is stored under (spec 052, T18, ISC-300). Optional so hand-built
@@ -179,6 +180,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         title,
         type: text(row['type']),
         priority: priorityOf(row['priority']),
+        ...featureOf(row),
         phase: text(row['phase']),
         stage: text(row['stage']) ?? 'plan',
         stageGroup: stageGroupOf(row['stageGroup']),

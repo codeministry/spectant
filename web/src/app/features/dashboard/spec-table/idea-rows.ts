@@ -1,5 +1,6 @@
 import type { ItemStateInfo } from '../../../../../../core/src/files';
 import { isLoose, text } from '../../../layout/shell/loose';
+import { featureOf } from './feature-fields';
 import { IDEA, type ListOption, type ListQuery, type SpecTableRow } from './spec-table-model';
 
 /**
@@ -13,6 +14,8 @@ export interface DashboardIdea {
   readonly slug: string;
   readonly title: string;
   readonly feature: string | null;
+  /** The feature block's name from the master; optional so hand-built stories in specs need not name it. */
+  readonly featureName?: string | null;
   readonly milestone: string | null;
   readonly priority: string;
   /** The story's item state (spec 040, ISC-224); absent when the server read it without a clock. */
@@ -32,8 +35,7 @@ export function readIdeaRows(body: unknown): readonly DashboardIdea[] {
     const slug = text(row['slug']);
     if (slug === null) return [];
     const state = isLoose(row['state']) ? { state: row['state'] as unknown as ItemStateInfo } : {};
-    const [feature, milestone] = [text(row['feature']), text(row['milestone'])];
-    return [{ slug, title: text(row['title']) ?? slug, feature, milestone, priority: text(row['priority']) ?? 'P3', ...state }];
+    return [{ slug, title: text(row['title']) ?? slug, ...featureOf(row), priority: text(row['priority']) ?? 'P3', ...state }];
   });
 }
 

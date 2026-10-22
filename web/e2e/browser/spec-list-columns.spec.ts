@@ -3,10 +3,10 @@
  * `X-Spectant-Stub-Locks: working` (so harbor 002, 005, 006 and 009 carry the agent dot), with the "show all" fold
  * open so every active row, mark or none, and both ideas are on the page:
  *
- *   bun run test:browser -- spec-list-columns -g "spec columns"     ISC-487, T56: at 820 and 1440 px each of the ten
+ *   bun run test:browser -- spec-list-columns -g "spec columns"     ISC-487, T56: at 820 and 1440 px each of the eleven
  *                                                                   cells starts at the same x in every spec row
- *   bun run test:browser -- spec-list-columns -g "idea columns"     ISC-488, T56: an idea row's id, title, prio, phase
- *                                                                   and star start where a spec row's do
+ *   bun run test:browser -- spec-list-columns -g "idea columns"     ISC-488, T56: an idea row's id, title, feature,
+ *                                                                   prio, phase and star start where a spec row's do
  *   bun run test:browser -- spec-list-columns -g "more toggle"      ISC-489, T56: the toggle reads "…", keeps its long
  *                                                                   name, stands at one x and overlaps no other cell
  *   bun run test:browser -- spec-list-columns -g "compact columns"  ISC-490, T56: at 390 px both lines of spec and
@@ -23,8 +23,8 @@ import { LOCKS_HEADER } from '../stub-api';
 
 const LIST = '/w/harbor/specs';
 const TOLERANCE = 1;
-const TEN = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'] as const;
-const IDEA_CELLS = ['id', 'title', 'prio', 'phase', 'star'] as const;
+const TEN = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'] as const;
+const IDEA_CELLS = ['id', 'title', 'feature', 'prio', 'phase', 'star'] as const;
 
 interface Box {
   readonly left: number;

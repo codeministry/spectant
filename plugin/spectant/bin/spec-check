@@ -4039,6 +4039,9 @@ function specRow(f, ctx, diagnostics) {
     title: specTitle(summary, f.folder),
     type,
     priority: fm.data.priority,
+    feature: stageInput.mainFeature,
+    featureName: featureNameOf(ctx.master, stageInput.mainFeature),
+    milestone: fm.data.milestone,
     phase,
     stage: next.stage,
     stageGroup: stageGroupOf(next.stage),
@@ -4342,11 +4345,12 @@ function buildDashboard(input) {
     brief,
     services,
     diagnostics,
-    ideas: ideasOf(input.ideas)
+    ideas: ideasOf(input.ideas, master)
   };
 }
-function ideasOf(files) {
-  const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, milestone, slug, title, priority }));
+var featureNameOf = (master, feature) => feature === null ? null : master?.features.find((block) => block.id === feature)?.name ?? null;
+function ideasOf(files, master) {
+  const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, featureName: featureNameOf(master, feature), milestone, slug, title, priority }));
   return { count: list.length, list };
 }
 

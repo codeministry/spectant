@@ -80,19 +80,21 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
     const row = await render(IDEA);
     expect(row.querySelector('.rid ui-icon')).not.toBeNull();
     expect(row.querySelector('[data-idea-title]')?.textContent.trim()).toBe('Offline sync');
-    expect(row.querySelector('[data-idea-where]')?.textContent.trim()).toBe('F3 · M2');
+    expect(row.querySelector('[data-row-feature]')?.textContent.trim()).toBe('F3');
+    expect(row.querySelector('[data-row-milestone]')?.textContent.trim()).toBe('M2');
     expect(row.querySelector('ui-priority')?.getAttribute('data-level')).toBe('P2');
     expect(row.querySelector('[data-idea-state]')?.getAttribute('data-state')).toBe('open');
   });
 
   // Spec 064 (T47, ISC-488): the idea row fills the spec row's named columns, each cell rendered even when empty.
-  it('puts each part in the spec row\'s column: glyph in id, title and meta in title, priority in prio, state in phase (T47)', async () => {
+  it('puts each part in the spec row\'s column: glyph in id, title in title, feature and milestone in feature, priority in prio, state in phase (T47)', async () => {
     const row = await render(IDEA);
     const cell = (name: string) => row.querySelector<HTMLElement>(`:scope > [data-cell="${name}"]`);
-    expect([...row.children].map((child) => child.getAttribute('data-cell'))).toEqual(['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star']);
+    expect([...row.children].map((child) => child.getAttribute('data-cell'))).toEqual(['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star']);
     expect(cell('id')?.querySelector('ui-icon')).not.toBeNull();
     expect(cell('title')?.querySelector('[data-idea-title]')).not.toBeNull();
-    expect(cell('title')?.querySelector('[data-idea-where]')?.textContent.trim()).toBe('F3 · M2');
+    expect(cell('feature')?.querySelector('[data-row-feature]')?.textContent.trim()).toBe('F3');
+    expect(cell('feature')?.querySelector('[data-row-milestone]')?.textContent.trim()).toBe('M2');
     expect(cell('prio')?.querySelector('ui-priority')).not.toBeNull();
     expect(cell('phase')?.querySelector('[data-idea-state]')).not.toBeNull();
     expect(cell('phase')?.querySelector('ui-command-chip')).toBeNull();
@@ -103,10 +105,11 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
 
   it('leaves out feature, milestone and state the story does not name', async () => {
     const row = await render({ ...IDEA, feature: null, milestone: 'M2', state: undefined });
-    expect(row.querySelector('[data-idea-where]')?.textContent.trim()).toBe('M2');
+    expect(row.querySelector('[data-row-feature]')).toBeNull();
+    expect(row.querySelector('[data-row-milestone]')?.textContent.trim()).toBe('M2');
     expect(row.querySelector('[data-idea-state]')).toBeNull();
     const bare = await render({ ...IDEA, feature: null, milestone: null, state: undefined });
-    expect(bare.querySelector('[data-idea-where]')).toBeNull();
+    expect(bare.querySelector('[data-row-feature], [data-row-milestone]')).toBeNull();
   });
 
   it('is one link to the idea page, named by the idea', async () => {

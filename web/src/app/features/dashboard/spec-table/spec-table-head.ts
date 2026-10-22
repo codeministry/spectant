@@ -11,6 +11,7 @@ const CELLS: readonly HeadCell[] = [
   { name: 'id', key: 'specs.columns.id' },
   { name: 'title', key: 'specs.columns.title' },
   { name: 'more', key: null },
+  { name: 'feature', key: 'specs.columns.feature' },
   { name: 'mark', key: 'specs.columns.mark' },
   { name: 'agent', key: null },
   { name: 'prio', key: 'specs.columns.prio' },

@@ -105,6 +105,12 @@ export interface DashboardSpecRow {
   readonly type: SpecType | null;
   /** Frontmatter `priority:`, `P3` when absent or invalid (T39); the spec head carries the same value (T67, ISC-118). */
   readonly priority: Priority;
+  /** The main feature, the first word of frontmatter `isa_feature:` (`F<n>`); null when the spec names none. */
+  readonly feature: string | null;
+  /** The master block's heading after `F<n> ·` (`FeatureBlock.name`); null without `feature` or a block of that id. */
+  readonly featureName: string | null;
+  /** Frontmatter `milestone:` as written; null when the spec belongs to no milestone. */
+  readonly milestone: string | null;
   /** Frontmatter `phase:` as written: a tooltip only, the stage is derived. */
   readonly phase: string | null;
   readonly stage: Stage;
@@ -215,6 +221,8 @@ export type { FileDiagnostic } from './files.ts';
 export interface DashboardIdea {
   /** Frontmatter `feature:`, `F<n>`; null when the story belongs to no feature. */
   readonly feature: string | null;
+  /** The master block's heading after `F<n> ·`; null without `feature` or a block of that id. */
+  readonly featureName: string | null;
   /** Frontmatter `milestone:`; null when the story belongs to no milestone. */
   readonly milestone: string | null;
   /** The file name without `.md`; `/spec new <slug>` starts its spec. */
@@ -679,6 +687,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     title: specTitle(summary, f.folder),
     type,
     priority: fm.data.priority,
+    feature: stageInput.mainFeature,
+    featureName: featureNameOf(ctx.master, stageInput.mainFeature),
+    milestone: fm.data.milestone,
     phase,
     stage: next.stage,
     stageGroup: stageGroupOf(next.stage),
@@ -1047,12 +1058,16 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     brief,
     services,
     diagnostics,
-    ideas: ideasOf(input.ideas),
+    ideas: ideasOf(input.ideas, master),
   };
 }
 
+/** A feature block's name from the master, as a row shows it beside the block's id. */
+const featureNameOf = (master: ClaimsDocument | null, feature: string | null): string | null =>
+  feature === null ? null : (master?.features.find((block) => block.id === feature)?.name ?? null);
+
 /** The stories for the disclosure and the palette: what each needs to be listed and started, nothing more. */
-function ideasOf(files: IdeaFiles | undefined): DashboardIdeas {
-  const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, milestone, slug, title, priority }));
+function ideasOf(files: IdeaFiles | undefined, master: ClaimsDocument | null): DashboardIdeas {
+  const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, featureName: featureNameOf(master, feature), milestone, slug, title, priority }));
   return { count: list.length, list };
 }

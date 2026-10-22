@@ -54,10 +54,10 @@
 }
 
 /* The description, one line cut at a whole word by `uiClamp` (ISC-111); the list's "…" in the `more` cell opens title
-   and description. */
+   and description. It keeps 64 px beside a long title, so its cut still fits one line. */
 .d {
   flex: 1 1 0;
-  min-inline-size: 0;
+  min-inline-size: 64px;
   overflow: hidden;
   overflow-wrap: anywhere;
   color: var(--muted-ink);

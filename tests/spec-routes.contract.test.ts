@@ -923,7 +923,7 @@ describe("the dashboard golden (core/fixtures/<tree>.golden.json) is a Dashboard
       services: "req", diagnostics: "req", ideas: "req", guidance: "opt",
     });
     // spec 040: `state`, the story's item state (ISC-224), set by the server's loader at its clock.
-    const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req", state: "opt" });
+    const idea = keysOf<DashboardIdea>({ feature: "req", featureName: "req", milestone: "req", slug: "req", title: "req", priority: "req", state: "opt" });
     expect([
       ...shapeProblems("dashboard", value, model),
       ...shapeProblems("dashboard.ideas", value.ideas, keysOf<DashboardIdeas>({ count: "req", list: "req" })),

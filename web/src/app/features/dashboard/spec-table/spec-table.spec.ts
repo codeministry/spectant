@@ -240,7 +240,7 @@ describe('SpecTable (T89)', () => {
   describe('column header (ISC-509)', () => {
     const cols = (host: HTMLElement) => host.querySelector('.row-lists > [data-cols] [role="row"]');
     const heads = (host: HTMLElement) => [...(cols(host)?.querySelectorAll('[role="columnheader"]') ?? [])];
-    const ten = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+    const ten = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
 
     it('stands before the first row list with one columnheader per data-cell, texts in English', async () => {
       const { host } = await render();
@@ -248,14 +248,14 @@ describe('SpecTable (T89)', () => {
       expect(row).not.toBeNull();
       expect(host.querySelector('.row-lists > [data-cols] + ol.rows')).not.toBeNull();
       expect(heads(host).map((cell) => cell.getAttribute('data-cell'))).toEqual(ten);
-      expect(heads(host).map(text)).toEqual(['ID', 'Title', '', 'Waits', '', 'Priority', 'Track', 'Stage', 'Progress', '']);
+      expect(heads(host).map(text)).toEqual(['ID', 'Title', '', 'Feature', 'Waits', '', 'Priority', 'Track', 'Stage', 'Progress', '']);
     });
 
     it('reads the German column names', async () => {
       const { fixture, host } = await render();
       TestBed.inject(TranslocoService).setActiveLang('de');
       await fixture.whenStable();
-      expect(heads(host).map(text)).toEqual(['ID', 'Titel', '', 'Wartet', '', 'Priorität', 'Track', 'Stage', 'Fortschritt', '']);
+      expect(heads(host).map(text)).toEqual(['ID', 'Titel', '', 'Feature', 'Wartet', '', 'Priorität', 'Track', 'Stage', 'Fortschritt', '']);
       TestBed.inject(TranslocoService).setActiveLang('en');
     });
 
@@ -293,7 +293,7 @@ describe('SpecTable (T89)', () => {
     const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
     const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
     // Spec 052 (T17): the favorite star's cell closes the row.
-    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rmore', 'rmark', 'ragent', 'rprio', 'rtrack', 'rphase', 'rmeter', 'rstar']);
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rmore', 'rfeat', 'rmark', 'ragent', 'rprio', 'rtrack', 'rphase', 'rmeter', 'rstar']);
     expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
     expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
     expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ui-stage-track']);
@@ -1420,10 +1420,10 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
   // Spec 064 (T47, T48, ISC-488, ISC-490): spec and idea rows are one grid. Each cell of either row names its column,
   // and both components carry the same compiled grid: the wide template, the narrowing below 880 px, the fixed compact
   // form below 640 px and every cell's area. The layout itself is measured by the browser probe (spec-list-columns).
-  it('lays spec and idea rows on the same grid: the same ten cells, templates and areas in every tier (T47, T48)', async () => {
+  it('lays spec and idea rows on the same grid: the same eleven cells, templates and areas in every tier (T47, T48)', async () => {
     const { host } = await renderIdeas();
     const cells = (row: Element | null) => [...(row?.children ?? [])].map((cell) => cell.getAttribute('data-cell'));
-    const ten = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+    const ten = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
     expect(cells(host.querySelector('app-spec-row'))).toEqual(ten);
     const ideas = [...host.querySelectorAll('app-idea-row')];
     expect(ideas.length).toBe(3);
@@ -1435,9 +1435,8 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
     expect(grid.some((line) => line.includes('grid-template') && / auto\b/.test(line))).toBe(false);
     expect(grid).toEqual(
       expect.arrayContaining([
-        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
-        '@container specs (width >= 880px) | :host([data-archived]) | grid-template-columns: 72px minmax(0, 1fr) 24px 136px 8px 48px var(--track-col, 88px) 104px 120px 32px',
-        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 24px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
+        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 104px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
+        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 24px 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
         '@container specs (width < 640px) | :host | grid-template: "id title title title title more star" 24px ". mark prio phase meter meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px',
       ]),
     );

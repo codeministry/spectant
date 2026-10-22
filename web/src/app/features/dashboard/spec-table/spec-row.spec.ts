@@ -193,7 +193,7 @@ describe('SpecRow star slot (spec 052, T17, ISC-300)', () => {
 });
 
 /** The row grid's named columns (spec 064, T45, ISC-487), in order; T47 maps the idea row onto them, T56 measures them. */
-const CELLS = ['id', 'title', 'more', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+const CELLS = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
 
 /** The row's compiled stylesheet (the shared grid partial included), whitespace dropped. */
 function rowCss(): string {
@@ -204,10 +204,12 @@ function rowCss(): string {
 const cellsOf = (host: HTMLElement) => [...host.children].map((c) => c.getAttribute('data-cell'));
 
 describe('SpecRow fixed columns (spec 064, T45, ISC-487)', () => {
-  it('from 640 px the grid names ten fixed columns with the design widths', () => {
+  it('from 640 px the grid names eleven fixed columns with the design widths', () => {
     const css = rowCss();
-    expect(css).toMatch(/grid-template-areas:["']idtitlemoremarkagentpriotrackphasemeterstar["']/);
-    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px136px8px48pxvar(--track-col,88px)104px120px32px');
+    expect(css).toMatch(/grid-template-areas:["']idtitlemorefeaturemarkagentpriotrackphasemeterstar["']/);
+    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px104px24px8px48pxvar(--track-col,88px)104px120px32px');
+    // An archived row keeps 136 px of mark for its archive date from 880 px.
+    expect(css).toContain('grid-template-columns:72pxminmax(0,1fr)24px104px136px8px48pxvar(--track-col,88px)104px120px32px');
   });
 
   it('maps every cell onto its own grid area by its data-cell name', () => {
@@ -215,7 +217,7 @@ describe('SpecRow fixed columns (spec 064, T45, ISC-487)', () => {
     for (const name of CELLS) expect(css, name).toMatch(new RegExp(`\\[data-cell=["']?${name}["']?\\][^{}]*\\{grid-area:${name}[;}]`));
   });
 
-  it('renders all ten cells in column order, a marked row as an unmarked one', async () => {
+  it('renders all eleven cells in column order, a marked row as an unmarked one', async () => {
     for (const mark of ['waits', 'next', null] as const) {
       const host = await render(ACTIVE, { mark });
       expect(cellsOf(host), String(mark)).toEqual(CELLS);
@@ -240,6 +242,15 @@ describe('SpecRow fixed columns (spec 064, T45, ISC-487)', () => {
     expect(host.querySelector('ui-priority')?.parentElement?.getAttribute('data-cell')).toBe('prio');
     expect(host.querySelector('ui-stage-track')?.parentElement?.getAttribute('data-cell')).toBe('track');
     expect(host.querySelector('ui-chip.phase')?.parentElement?.getAttribute('data-cell')).toBe('phase');
+  });
+
+  it('puts the main feature over the milestone in the feature cell, each left out when the row names none', async () => {
+    const host = await render({ ...ACTIVE, feature: 'F22', milestone: 'Free' });
+    const cell = host.querySelector('[data-cell="feature"]');
+    expect(cell?.querySelector('[data-row-feature]')?.textContent.trim()).toBe('F22');
+    expect(cell?.querySelector('[data-row-milestone]')?.textContent.trim()).toBe('Free');
+    const bare = await render({ ...ACTIVE, feature: null, milestone: null });
+    expect(bare.querySelector('[data-cell="feature"]')?.children).toHaveLength(0);
   });
 
   it('keeps the archived row in the same columns: the date in the mark cell, the archive chip in the phase cell', async () => {

@@ -427,7 +427,7 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
 });
 
 /** Harbor's dashboard body with a third story (spec 064, T37, ISC-479): harbor's golden serves two. */
-const THIRD = { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' };
+const THIRD = { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, featureName: null, milestone: 'Harbor 2.0', priority: 'P1' };
 const HARBOR_IDEAS = { ...harbor, ideas: { count: 3, list: [...harbor.ideas.list, THIRD] } };
 
 describe('readIdeaRows (spec 064, T37, ISC-479)', () => {
@@ -451,7 +451,7 @@ describe('readIdeaRows (spec 064, T37, ISC-479)', () => {
 
   it('skips a story without a slug, falls back to the slug as title and P3 as priority, and drops a malformed state', () => {
     const body = { ideas: { list: [{ title: 'No slug' }, { slug: 'bare', feature: 7, state: 'open' }] } };
-    expect(readIdeaRows(body)).toEqual([{ slug: 'bare', title: 'bare', feature: null, milestone: null, priority: 'P3' }]);
+    expect(readIdeaRows(body)).toEqual([{ slug: 'bare', title: 'bare', feature: null, featureName: null, milestone: null, priority: 'P3' }]);
   });
 });
 
