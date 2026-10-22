@@ -9,7 +9,7 @@
  *   route), the Tasks tab (head line, `all` and per-lane / per-status chips) and the spec head (partial waits text) shows is
  *   compared with the body of the same route the page reads, fetched by the test (`page.request.get`). The test reads
  *   fields only, no arithmetic and no grouping of rows (T83): the master tile's open count and ring percent are
- *   `kpis.masterOpen` and `kpis.masterPercent`, the phase chips `kpis.stageGroups` (the Specs tile's split) and
+ *   `kpis.masterOpen` and `kpis.masterPercent`, the stage chips `stageCounts` (the Specs tile's split, spec 064) and
  *   `kpis.specsWithFog`, the type chips `kpis.byType`, the `all` chips `kpis.specs`.
  * - Loopback: every request and web socket the page opens while it loads the dashboard and the Specs page, opens and
  *   closes every 021 fold
@@ -49,8 +49,10 @@ interface DashboardModel {
     readonly specsWithFog: number;
     readonly archived: number;
   };
+  /** The active specs per workflow stage (spec 064): the stage chips' counts and the Specs tile's split. */
+  readonly stageCounts: Readonly<Partial<Record<string, number>>>;
   readonly specs: readonly unknown[];
-  /** The stories under `specs/ideas/` (spec 064): the list's idea rows and its phase chip "ideas". */
+  /** The stories under `specs/ideas/` (spec 064): the list's idea rows and its stage chip "Idea". */
   readonly ideas?: { readonly count?: number; readonly list?: readonly unknown[] } | null;
   readonly brief: { readonly lang?: string | null } | null;
 }
@@ -74,7 +76,7 @@ const text = (path: string): string => {
   if (typeof value !== 'string') throw new Error(`en.json has no ${path}`);
   return value;
 };
-const phaseLabel = (key: string): string => text(`phases.${key}`);
+const stageLabel = (key: string): string => text(`stages.${key}`);
 const statusLabel = (key: string): string => text(`tasks.status.${key}`);
 const FOG_LABEL = text('specs.filter.fog');
 const SPECS_ALL = text('specs.filter.all');
@@ -104,8 +106,8 @@ async function chipsOf(group: Locator): Promise<Map<string, { count: number; nam
   return out;
 }
 
-/** The stage groups in the order the phase chips list them (core's `StageGroup`). */
-const STAGE_GROUPS = ['scoping', 'building', 'complete'] as const;
+/** The workflow stages in the order the stage chips list them (spec 064; the web's `STAGE_ORDER`). */
+const STAGES = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close-pending', 'close', 'done'] as const;
 
 const tile = (page: Page, kpi: string): Locator => page.locator(`app-kpi-band .band [data-kpi="${kpi}"]`);
 const valueOf = (t: Locator): Locator => t.locator('.figure .value');
@@ -195,17 +197,17 @@ for (const stub of STUBS) {
       // Filter chips: `all` is `kpis.specs`, each stage-group chip its `kpis.stageGroups` entry (the Specs tile's split,
       // one derivation), fog `kpis.specsWithFog`, ideas (spec 064, ISC-480) the answer's story list, each type chip its
       // `kpis.byType` entry.
-      const phases = await chipsOf(table.locator('ui-filter-chips[data-filter="phase"]'));
-      const all = phases.get(SPECS_ALL);
+      const chips = await chipsOf(table.locator('ui-filter-chips[data-filter="stage"]'));
+      const all = chips.get(SPECS_ALL);
       expect(all?.count).toBe(k.specs);
       expect(numbers(all?.name ?? null)).toEqual([k.specs]);
-      const groups = STAGE_GROUPS.filter((group) => k.stageGroups[group] > 0);
+      const stages = STAGES.filter((stage) => (model.stageCounts[stage] ?? 0) > 0);
       const ideas = model.ideas?.list?.length ?? 0;
       if (model.ideas?.count !== undefined) expect(model.ideas.count, 'ideas.count is the length of ideas.list').toBe(ideas);
-      expect(phases.size).toBe(1 + groups.length + (k.specsWithFog > 0 ? 1 : 0) + (ideas > 0 ? 1 : 0));
-      for (const group of groups) expect(phases.get(phaseLabel(group))?.count, `phase chip ${group}`).toBe(k.stageGroups[group]);
-      if (k.specsWithFog > 0) expect(phases.get(FOG_LABEL)?.count).toBe(k.specsWithFog);
-      if (ideas > 0) expect(phases.get(phaseLabel('idea'))?.count, 'phase chip ideas').toBe(ideas);
+      expect(chips.size).toBe(1 + stages.length + (k.specsWithFog > 0 ? 1 : 0) + (ideas > 0 ? 1 : 0));
+      for (const stage of stages) expect(chips.get(stageLabel(stage))?.count, `stage chip ${stage}`).toBe(model.stageCounts[stage]);
+      if (k.specsWithFog > 0) expect(chips.get(FOG_LABEL)?.count).toBe(k.specsWithFog);
+      if (ideas > 0) expect(chips.get(stageLabel('idea'))?.count, 'stage chip idea').toBe(ideas);
 
       const byType = Object.entries(k.byType);
       const typeGroup = table.locator('ui-filter-chips[data-filter="type"]');

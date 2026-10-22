@@ -153,11 +153,11 @@ test.describe('run-state surfaces', () => {
         for (const { slug, form } of IDEA_FORMS) await expectForm(await boardCard(page, `idea:${slug}`, 'Idea'), form);
         // The aborted run's state word is the warning chip in the head, set off from the line, as on a spec card.
         await expect((await boardCard(page, 'idea:cert-expiry', 'Idea')).locator('[data-item-line] ui-state-chip')).toHaveText(/aborted/i);
-        // beacon lists more specs than the fold shows, so the ideas group would sit behind "Show all"; the phase chip
-        // "ideas" lists it alone.
-        await open(page, `/w/${WS}/specs?phase=idea`);
+        // beacon lists more specs than the fold shows, so the idea rows would sit behind "Show all"; the stage chip
+        // "Idea" (`?stage=idea`, spec 064) lists them alone.
+        await open(page, `/w/${WS}/specs?stage=idea`);
         // Spec 064 (ISC-482): the list's idea row carries the state line without its command and actor; the page holds them.
-        const ideaRow = (slug: string): Locator => page.locator(`li[data-ideas-group] app-idea-row[data-idea="${slug}"] ui-item-state`);
+        const ideaRow = (slug: string): Locator => page.locator(`app-spec-table app-idea-row[data-idea="${slug}"] ui-item-state`);
         for (const { slug, form } of IDEA_FORMS) {
           const item = ideaRow(slug);
           await expect(item).toBeVisible();
