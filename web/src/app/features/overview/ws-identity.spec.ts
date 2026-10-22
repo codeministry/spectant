@@ -40,8 +40,9 @@ describe('WsIdentity, the tile head (spec 066 T10, ISC-516)', () => {
     const head = await render();
     expect(head.getAttribute('data-tile-block')).toBe('head');
     expect(head.querySelector('ui-ws-cover, [data-ws-cover]')).toBeNull();
-    // Still the identity mock: its ws-head carries the demo chip.
-    expect(head.hasAttribute('data-demo')).toBe(true);
+    // Still the identity mock's head: its ws-head carries the demo chip. Since spec 066 T12 the tile, which also shows
+    // the fixture's monogram in its preview, is the `[data-demo]` root, not the head.
+    expect(head.hasAttribute('data-demo')).toBe(false);
     expect(head.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
   });
 

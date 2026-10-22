@@ -1,67 +1,31 @@
 @let c = column();
-@let k = kpis();
-<app-ws-identity [name]="c.name" [slug]="c.slug" [pathTail]="c.pathTail" [logo]="c.logo" [screenshot]="c.screenshot">
-  <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
-</app-ws-identity>
+@let id = identity();
+<ui-card class="tile-frame" [padding]="0" edge [glow]="false" [style.--edge]="id.edge">
+  <div class="tile-grid">
+    <app-ws-identity [name]="c.name" [slug]="c.slug" [pathTail]="c.pathTail" [logo]="c.logo">
+      <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
+    </app-ws-identity>
 
-<!-- Spec 020 T16 (ISC-238), spec 064 T19 (ISC-461, ISC-462): what waits on you and, with a held lock, what is in
-     progress, in one wrapper on the middle row track between the identity and the kpi-strip; Next up stays off `/`. -->
-<div class="lists" data-lists>
-  <ui-waits-block
-    data-ui="waits-block"
-    form="tiles"
-    more="link"
-    [entries]="c.waits"
-    [workspace]="c.slug"
-    [titles]="titles()"
-    [level]="3"
-    [moreLink]="'/w/' + c.slug"
-    moreFragment="waiting"
-    [headingId]="'waits-' + c.slug"
-  />
-  @if (c.working.length > 0) {
-    <ui-working-block [entries]="c.working" [workspace]="c.slug" [level]="3" [headingId]="'working-' + c.slug" />
-  }
-</div>
-
-<div data-ui="kpi-strip">
-  <ui-card data-ui="kpi-tile" data-kpi="master" [padding]="0">
-    <div class="tile mini-ring">
-      <ui-ring [value]="masterPercent()" [size]="56" [stroke]="6" />
-      <div class="body">
-        <div class="eyebrow type-eyebrow" [title]="'kpi.masterClaims' | transloco">{{ 'kpi.master' | transloco }}</div>
-        @if (k.master; as master) {
-          <div class="val type-strip-value">{{ master.closed }}<small>/{{ master.total }}</small></div>
-        } @else {
-          <div class="val type-strip-value">{{ 'common.noValue' | transloco }}</div>
-        }
-      </div>
+    <div data-tile-block="preview">
+      <a class="preview-link" [routerLink]="href()" [attr.aria-label]="'identity.open' | transloco: { workspace: c.name }">
+        <ui-ws-cover
+          data-ws-cover
+          shape="tile"
+          [name]="c.name"
+          [image]="c.screenshot ?? id.image"
+          [alt]="'identity.screenshot' | transloco: { workspace: c.name }"
+          [logo]="c.logo"
+          [monogram]="id.monogram"
+        />
+      </a>
     </div>
-  </ui-card>
 
-  <ui-card data-ui="kpi-tile" data-kpi="claims" [padding]="0">
-    <div class="tile">
-      <div class="eyebrow type-eyebrow">{{ 'kpi.specClaims' | transloco }}</div>
-      <div class="val type-strip-value">{{ k.claims.closed }}<small>/{{ k.claims.total }}</small></div>
-      <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+    <div data-tile-block="list">
+      <app-tile-list [tile]="c.tile" [workspace]="c.slug" [name]="c.name" />
     </div>
-  </ui-card>
 
-  <ui-card data-ui="kpi-tile" data-kpi="specs" [padding]="0">
-    <div class="tile">
-      <div class="eyebrow type-eyebrow">{{ 'kpi.specs' | transloco }}</div>
-      <div class="val type-strip-value">{{ k.specs }}</div>
-      @if (split().length > 0) {
-        <ui-meter [segments]="split()" [label]="'kpi.specs' | transloco" />
-      }
+    <div data-tile-block="kpi">
+      <app-tile-kpis [kpis]="c.kpis" />
     </div>
-  </ui-card>
-
-  <ui-card data-ui="kpi-tile" data-kpi="warnings" [padding]="0" [edge]="k.warnings > 0" [glow]="false" style="--edge: var(--color-warning)">
-    <div class="tile">
-      <div class="eyebrow type-eyebrow">{{ 'warnings.title' | transloco }}</div>
-      <div class="val type-strip-value">{{ k.warnings }}</div>
-      <div class="meta type-meta">{{ 'warnings.openFog' | transloco: { count: k.fog } }}</div>
-    </div>
-  </ui-card>
-</div>
+  </div>
+</ui-card>

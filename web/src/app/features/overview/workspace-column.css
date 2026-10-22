@@ -1,69 +1,10 @@
-/* The workspace column and its kpi-strip; the ws-head and its badge live in `ws-identity.ts` (T54).
-   Next up, the dense list and the open link are gone from `/` (spec 024 T79, principal 2026-10-13). Spec 020 T16:
-   identity, Waits on you and the kpi-strip take three row tracks of the page grid (`subgrid`), so the columns of one
-   grid row keep their strips on one line however many entries wait in each (design.md § Start). Spec 064 T19: Waits
-   on you and In progress share the middle track in one wrapper, 24 px apart; the gap goes with the working block. */
-:host {
-  display: grid;
-  grid-row: span 3;
-  grid-template-rows: subgrid;
-  row-gap: 12px;
-  align-content: start;
-  min-inline-size: 0;
-}
+/* The workspace tile on `/` (spec 066 T12): the frame, the tokens and the four tracks are `_tile.css`, shared with the
+   page's loading and unreadable tiles; the head is `ws-identity.css`, the list area `tile-list.css`, the KPIs
+   `tile-kpis.css`. Here only the preview's link, which fills its track. */
+@import "./_tile.css";
 
-.lists {
-  display: grid;
-  gap: 24px;
-  align-content: start;
-  min-inline-size: 0;
-}
-
-.eyebrow {
-  overflow: hidden;
-  min-inline-size: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-[data-ui='kpi-strip'] {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-[data-ui='kpi-tile'] {
-  block-size: 96px;
-}
-
-.tile {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.preview-link {
+  display: block;
   block-size: 100%;
-  padding: 12px;
-}
-
-.tile.mini-ring {
-  flex-direction: row;
-  gap: 12px;
-  align-items: center;
-}
-
-.body {
-  display: grid;
-  gap: 4px;
-  min-inline-size: 0;
-}
-
-.val {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.val small {
-  color: var(--muted-ink);
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 0;
+  color: inherit;
 }
