@@ -1,5 +1,6 @@
-import { computed, inject, Injectable, resource } from '@angular/core';
+import { computed, inject, Injectable, linkedSignal, resource } from '@angular/core';
 import { ApiClient, type WorkspaceListEntry } from '../../core/api.service';
+import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { type OverviewColumn, readColumn } from './overview-model';
 
@@ -51,9 +52,23 @@ export class OverviewData {
     },
   });
 
+  /**
+   * The last dashboards read, kept while a changed list loads them again (spec 065): a resource whose params change
+   * drops its value until the new read settles, and the columns would fall back to their skeleton.
+   */
+  private readonly loaded = linkedSignal<Map<string, OverviewSlot> | undefined, Map<string, OverviewSlot> | undefined>({
+    source: () => this.dashboards.value(),
+    computation: (now, previous) => now ?? previous?.value,
+  });
+
+  constructor() {
+    // Every refresh, streamed or polled, re-reads the dashboards in place: a frame primes the cache, the reads answer 304.
+    reloadOnRefresh(() => this.dashboards.reload());
+  }
+
   /** One slot per registered workspace, in list order. */
   readonly slots = computed<readonly OverviewSlot[]>(() => {
-    const loaded = this.dashboards.value();
+    const loaded = this.loaded();
     return (this.list() ?? []).map((entry): OverviewSlot => {
       if (!entry.readable) return { kind: 'unreadable', entry, reason: entry.error ?? null };
       return loaded?.get(entry.slug) ?? { kind: 'loading', entry };

@@ -48,7 +48,7 @@ import {
   type Translate,
   withPlaceholder,
 } from './library-view';
-import { reloadOnRefresh } from './reload-on-refresh';
+import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 
 /**
  * The library list's state (spec 017, T27, T30, T32, T45, T46, T48; spec 034; spec 061, ISC-436): the catalog read
