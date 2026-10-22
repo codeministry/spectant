@@ -48,8 +48,10 @@
   grid-area: track;
 }
 
+/* The stage chip (and an idea's state pill) stands centred in its column, in every tier. */
 [data-cell='phase'] {
   grid-area: phase;
+  justify-content: center;
 }
 
 [data-cell='meter'] {
