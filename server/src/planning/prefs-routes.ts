@@ -10,15 +10,25 @@
  * are not read.
  *
  * The favourites (spec 052 T4, ISC-296): `GET`/`HEAD /api/workspaces/:ws/favorites` and `PUT`/`DELETE
- * /api/workspaces/:ws/favorites/:spec` → `Favorites`, from the `spec_favorite` table. Every answer is `{specs}`, the
- * workspace's whole set, sorted, so the web takes the server's state after a write. `PUT` sets and `DELETE` unsets,
+ * /api/workspaces/:ws/favorites/:spec` → `Favorites`, from the `spec_favorite` table, and since spec 064 (T50,
+ * ISC-494) `PUT`/`DELETE /api/workspaces/:ws/favorites/idea/:slug` from the `idea_favorite` table. Every answer is
+ * `{specs, ideas}`, the workspace's whole set of both, each sorted, so the web takes the server's state after a write. `PUT` sets and `DELETE` unsets,
  * both idempotent; the spec need not exist in the workspace (plan 052). Guard order: 403, 405 with `allowForWorkspace`
  * (`GET, HEAD` or `PUT, DELETE`), 404 for an unknown workspace, 400 `invalid-spec` for an id the contract's
- * `isFavoriteSpec` refuses. No 409.
+ * `isFavoriteSpec` refuses, 400 `invalid-slug` for a story slug `isFavoriteIdea` refuses. No 409.
  */
-import { type WorkspaceRouteResponses, allowForWorkspace, isBoardQuery, isFavoriteSpec } from "../contracts/spec-routes.contract.ts";
+import { type WorkspaceRouteResponses, allowForWorkspace, isBoardQuery, isFavoriteIdea, isFavoriteSpec } from "../contracts/spec-routes.contract.ts";
 import type { Db } from "../infra/db/db.ts";
-import { addFavorite, getBoardQuery, listFavorites, removeFavorite, setBoardQuery } from "../infra/db/prefs-store.ts";
+import {
+  addFavorite,
+  addIdeaFavorite,
+  getBoardQuery,
+  listFavorites,
+  listIdeaFavorites,
+  removeFavorite,
+  removeIdeaFavorite,
+  setBoardQuery,
+} from "../infra/db/prefs-store.ts";
 import { methodNotAllowed } from "../infra/http/guard.ts";
 import { json, readJson } from "../infra/http/json.ts";
 import type { WorkspaceContext } from "../workspace/index.ts";
@@ -28,6 +38,7 @@ export function prefsRoutes(ctx: Pick<WorkspaceContext, "registry">): {
   boardQuery: (req: Request, slug: string, db: Db) => Promise<Response>;
   favorites: (req: Request, slug: string, db: Db) => Response;
   favorite: (req: Request, slug: string, spec: string, db: Db) => Response;
+  ideaFavorite: (req: Request, slug: string, story: string, db: Db) => Response;
 } {
   const { registry } = ctx;
 
@@ -49,13 +60,14 @@ export function prefsRoutes(ctx: Pick<WorkspaceContext, "registry">): {
   };
 
   // The favourites (spec 052 T4): the database alone like the board query, so no 409; every answer is the whole set.
+  const all = (db: Db, slug: string): WorkspaceRouteResponses["favorites"] => ({ specs: listFavorites(db, slug), ideas: listIdeaFavorites(db, slug) });
+
   const favorites = (req: Request, slug: string, db: Db): Response => {
     if (req.method !== "GET" && req.method !== "HEAD") {
       return methodNotAllowed(req, allowForWorkspace("favorites"));
     }
     if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
-    const body: WorkspaceRouteResponses["favorites"] = { specs: listFavorites(db, slug) };
-    return json(req, 200, body);
+    return json(req, 200, all(db, slug));
   };
 
   const favorite = (req: Request, slug: string, spec: string, db: Db): Response => {
@@ -66,9 +78,20 @@ export function prefsRoutes(ctx: Pick<WorkspaceContext, "registry">): {
     if (!isFavoriteSpec(spec)) return json(req, 400, { error: "invalid-spec" });
     if (req.method === "PUT") addFavorite(db, slug, spec, new Date().toISOString());
     else removeFavorite(db, slug, spec);
-    const body: WorkspaceRouteResponses["favorite"] = { specs: listFavorites(db, slug) };
-    return json(req, 200, body);
+    return json(req, 200, all(db, slug));
   };
 
-  return { boardQuery, favorites, favorite };
+  // An idea favourite (spec 064 T50, ISC-494): `favorite`'s guard order and answer, for a story slug.
+  const ideaFavorite = (req: Request, slug: string, story: string, db: Db): Response => {
+    if (req.method !== "PUT" && req.method !== "DELETE") {
+      return methodNotAllowed(req, allowForWorkspace("ideaFavorite"));
+    }
+    if (!registry.get(slug)) return json(req, 404, { error: "not-found" });
+    if (!isFavoriteIdea(story)) return json(req, 400, { error: "invalid-slug" });
+    if (req.method === "PUT") addIdeaFavorite(db, slug, story, new Date().toISOString());
+    else removeIdeaFavorite(db, slug, story);
+    return json(req, 200, all(db, slug));
+  };
+
+  return { boardQuery, favorites, favorite, ideaFavorite };
 }

@@ -70,7 +70,7 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
     library: () => Promise.resolve({ kind: 'not-found', served: false }),
-    favorites: () => Promise.resolve(ok({ specs: ALL_FAVORITES })),
+    favorites: () => Promise.resolve(ok({ specs: ALL_FAVORITES, ideas: [] })),
     putFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
     deleteFavorite: () => Promise.resolve({ kind: 'error', status: 0, error: null }),
     ...overrides,
@@ -951,14 +951,14 @@ describe('ShellComponent', () => {
         let stored = [...initial];
         const deleteFavorite = vi.fn((_ws: string, spec: string) => {
           stored = stored.filter((id) => id !== spec);
-          return Promise.resolve({ kind: 'ok' as const, body: { specs: [...stored] } });
+          return Promise.resolve({ kind: 'ok' as const, body: { specs: [...stored], ideas: [] } });
         });
         // The rows carry their folders here: a favourite is stored and unset by folder name, never by the bare id.
         const slugged = { ...HARBOR, specs: HARBOR.specs.map((spec) => ({ ...spec, slug: SLUGS[spec.id] })) };
         const api = fakeApi({
           ...TWO,
           dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(slugged) : { kind: 'not-found', served: true }),
-          favorites: () => Promise.resolve(ok({ specs: [...stored] })),
+          favorites: () => Promise.resolve(ok({ specs: [...stored], ideas: [] })),
           deleteFavorite,
         });
         return { api, deleteFavorite };

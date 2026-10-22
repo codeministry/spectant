@@ -534,6 +534,17 @@ const DATABASE_WRITES: readonly WriteCase[] = [
     },
     request: () => send("favorite delete valid", "DELETE", `${H}/favorites/002-web-console`),
   },
+  // Spec 064 T50: the idea favourite beside the spec favourite, the database alone.
+  { name: "ideaFavorite put valid", request: () => send("ideaFavorite put valid", "PUT", `${H}/favorites/idea/tide-alerts`) },
+  { name: "ideaFavorite put invalid", request: () => send("ideaFavorite put invalid", "PUT", `${H}/favorites/idea/Tide_Alerts`) },
+  { name: "ideaFavorite put unknown workspace", request: () => send("ideaFavorite put unknown workspace", "PUT", `${W}/nowhere/favorites/idea/tide-alerts`) },
+  {
+    name: "ideaFavorite delete valid",
+    prepare: async (s) => {
+      await setupCall(s, { name: "idea favourite", method: "PUT", path: `${H}/favorites/idea/tide-alerts` });
+    },
+    request: () => send("ideaFavorite delete valid", "DELETE", `${H}/favorites/idea/tide-alerts`),
+  },
   { name: "favorite delete unknown workspace", request: () => send("favorite delete unknown workspace", "DELETE", `${W}/nowhere/favorites/002-web-console`) },
   // notes
   {

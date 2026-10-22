@@ -253,7 +253,10 @@ export class ShellData {
 
   /** A local value of the `favorites` resource; the client's ETag cache for the route stays as the last read left it. */
   private setFavorites(specs: readonly string[]): void {
-    this.favorites.set({ kind: 'ok', body: { specs }, etag: null, notModified: false });
+    // The idea favourites (spec 064) stay as the last answer left them; only the spec set changes here.
+    const last = this.favorites.hasValue() ? this.favorites.value() : undefined;
+    const ideas = last?.kind === 'ok' ? last.body.ideas : [];
+    this.favorites.set({ kind: 'ok', body: { specs, ideas }, etag: null, notModified: false });
   }
 
   /**

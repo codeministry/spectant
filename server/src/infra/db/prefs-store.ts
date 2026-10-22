@@ -1,6 +1,7 @@
 /**
  * The app's own preferences in `spectant.db` beside the settings: the actor names (`actor`, migration 4), the board
- * query per workspace (`board_query`, migration 5) and the favourite specs (`spec_favorite`, migration 6). The tables
+ * query per workspace (`board_query`, migration 5), the favourite specs (`spec_favorite`, migration 6) and the favourite
+ * ideas (`idea_favorite`, migration 7). The tables
  * and their migrations are `db.ts`'s; this file holds their SQL, so a slice calls these accessors and runs no SQL itself.
  */
 import type { Db } from "./db.ts";
@@ -121,4 +122,24 @@ export function pruneFavorites(db: Db, ws: string, open: readonly string[]): num
 /** Unsets `spec` as a favourite of workspace `ws`; one never set is no error (idempotent). */
 export function removeFavorite(db: Db, ws: string, spec: string): void {
   db.run("DELETE FROM spec_favorite WHERE ws = ? AND spec = ?", [ws, spec]);
+}
+
+// ── the idea_favorite table (migration 7, spec 064 T50, ISC-494) ─────────────────────────────────────────────────────
+
+/** The favourite stories of workspace `ws`: their slugs (`specs/ideas/<slug>.md` without `.md`), sorted, each once. */
+export function listIdeaFavorites(db: Db, ws: string): string[] {
+  return db
+    .query<{ slug: string }, [string]>("SELECT slug FROM idea_favorite WHERE ws = ? ORDER BY slug")
+    .all(ws)
+    .map((row) => row.slug);
+}
+
+/** Marks story `slug` a favourite of workspace `ws`; a second set keeps the row and its first `createdAt` (idempotent). */
+export function addIdeaFavorite(db: Db, ws: string, slug: string, createdAt: string): void {
+  db.run("INSERT INTO idea_favorite (ws, slug, created_at) VALUES (?, ?, ?) ON CONFLICT (ws, slug) DO NOTHING", [ws, slug, createdAt]);
+}
+
+/** Unsets story `slug` as a favourite of workspace `ws`; one never set is no error (idempotent). */
+export function removeIdeaFavorite(db: Db, ws: string, slug: string): void {
+  db.run("DELETE FROM idea_favorite WHERE ws = ? AND slug = ?", [ws, slug]);
 }

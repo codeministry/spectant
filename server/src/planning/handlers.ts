@@ -9,13 +9,13 @@ import { prefsRoutes } from "./prefs-routes.ts";
 import { planningRoutes } from "./routes.ts";
 
 /** The workspace family's routes this slice answers. */
-export type PlanningRoute = "planning" | "idea" | "boardQuery" | "favorites" | "favorite";
+export type PlanningRoute = "planning" | "idea" | "boardQuery" | "favorites" | "favorite" | "ideaFavorite";
 
 export function planningHandlers(ctx: WorkspaceContext): RouteHandlers<Extract<WorkspaceRouteMatch, { route: PlanningRoute }>> {
   const { planning, idea } = planningRoutes(ctx);
-  const { boardQuery, favorites, favorite } = prefsRoutes(ctx);
+  const { boardQuery, favorites, favorite, ideaFavorite } = prefsRoutes(ctx);
   const { db } = ctx;
-  // Without a database the family does not claim the three database routes (`workspace/family.ts`), so they are never
+  // Without a database the family does not claim the four database routes (`workspace/family.ts`), so they are never
   // reached; were one reached, it would decline all the same.
   return {
     planning: (req, _url, match) => planning(req, match.params.ws),
@@ -23,5 +23,6 @@ export function planningHandlers(ctx: WorkspaceContext): RouteHandlers<Extract<W
     boardQuery: (req, _url, match) => (db === undefined ? null : boardQuery(req, match.params.ws, db)),
     favorites: (req, _url, match) => (db === undefined ? null : favorites(req, match.params.ws, db)),
     favorite: (req, _url, match) => (db === undefined ? null : favorite(req, match.params.ws, match.params.spec, db)),
+    ideaFavorite: (req, _url, match) => (db === undefined ? null : ideaFavorite(req, match.params.ws, match.params.slug, db)),
   } satisfies RouteHandlers<Extract<WorkspaceRouteMatch, { route: PlanningRoute }>>;
 }

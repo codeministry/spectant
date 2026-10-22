@@ -44,7 +44,7 @@ export type WorkspaceFamilyMatch =
   | { readonly route: "dashboard"; readonly params: { readonly slug: string } };
 
 /** The routes answered from the app database alone, served only with one. */
-const DB_ROUTES: ReadonlySet<string> = new Set<WorkspaceRouteName>(["boardQuery", "favorites", "favorite"]);
+const DB_ROUTES: ReadonlySet<string> = new Set<WorkspaceRouteName>(["boardQuery", "favorites", "favorite", "ideaFavorite"]);
 
 /** The list path's `Allow`: the admin route's `POST` beside the reads. */
 const LIST_ALLOW = workspaceAdminAllowFor(WORKSPACES_PATH) ?? WORKSPACE_READ_ALLOW;

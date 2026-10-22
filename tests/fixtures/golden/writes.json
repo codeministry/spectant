@@ -1646,10 +1646,10 @@
       "headers": {
         "cache-control": "no-cache",
         "content-type": "application/json; charset=utf-8",
-        "etag": "\"DNR4ZEe_XT4aWZEhP8gS2RBPEGzbQg6hS7SV4HD72I0\""
+        "etag": "\"FCDjPDeIvQr7BQcFlkOn52inJ6tck_KLc9Xevw6_XFU\""
       },
       "encoding": "utf8",
-      "body": "{\"specs\":[\"002-web-console\"]}",
+      "body": "{\"specs\":[\"002-web-console\"],\"ideas\":[]}",
       "sent": null,
       "diff": {
         "harbor": {
@@ -1718,10 +1718,106 @@
       "headers": {
         "cache-control": "no-cache",
         "content-type": "application/json; charset=utf-8",
-        "etag": "\"qdfDWQ1LvlGYkKIdqHNpn_e528XxZat1zXwNPCly3LI\""
+        "etag": "\"VeS79ewXymGiXmYv8H5lwQ7dlD4Ah6GxswfdoD1mDNo\""
       },
       "encoding": "utf8",
-      "body": "{\"specs\":[]}",
+      "body": "{\"specs\":[],\"ideas\":[]}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "ideaFavorite put valid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/favorites/idea/tide-alerts",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"VaWZdY5Oomtixotb3YlflPF0a5dWHVHSEu56d3Vg2A8\""
+      },
+      "encoding": "utf8",
+      "body": "{\"specs\":[],\"ideas\":[\"tide-alerts\"]}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "ideaFavorite put invalid",
+      "method": "PUT",
+      "path": "/api/workspaces/harbor/favorites/idea/Tide_Alerts",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"fe59lbZbUWlm-69Rd2uoxAtaAT5XQenNjz7HYI__px0\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"invalid-slug\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "ideaFavorite put unknown workspace",
+      "method": "PUT",
+      "path": "/api/workspaces/nowhere/favorites/idea/tide-alerts",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"gDyw6bM79SxWF_gtmFfUMtiwgMDSrcCov3cnvQRUclY\""
+      },
+      "encoding": "utf8",
+      "body": "{\"error\":\"not-found\"}",
+      "sent": null,
+      "diff": {
+        "harbor": {
+          "changes": {},
+          "touched": []
+        },
+        "library": {
+          "changes": {},
+          "touched": []
+        }
+      }
+    },
+    {
+      "name": "ideaFavorite delete valid",
+      "method": "DELETE",
+      "path": "/api/workspaces/harbor/favorites/idea/tide-alerts",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "application/json; charset=utf-8",
+        "etag": "\"VeS79ewXymGiXmYv8H5lwQ7dlD4Ah6GxswfdoD1mDNo\""
+      },
+      "encoding": "utf8",
+      "body": "{\"specs\":[],\"ideas\":[]}",
       "sent": null,
       "diff": {
         "harbor": {

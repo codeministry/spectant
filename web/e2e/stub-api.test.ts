@@ -1352,6 +1352,7 @@ describe('stub API matches the real server handlers byte for byte', () => {
       'boardQuery',
       'favorites',
       'favorite',
+      'ideaFavorite',
       'allocate',
       'backlog',
       'runRelease',
@@ -1988,22 +1989,33 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
     const list = workspaceRoutes.favorites(WS);
     const put = async (spec: string, init: Parameters<typeof request>[1] = {}): Promise<Response> =>
       ask(workspaceRoutes.favorite(WS, spec), { session, method: 'PUT', ...init });
-    expect(await (await ask(list, { session })).json()).toEqual({ specs: [] });
-    expect(await (await put('006-partial-push')).json()).toEqual({ specs: ['006-partial-push'] });
-    expect(await (await put('002-web-console')).json()).toEqual({ specs: ['002-web-console', '006-partial-push'] });
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: [], ideas: [] });
+    expect(await (await put('006-partial-push')).json()).toEqual({ specs: ['006-partial-push'], ideas: [] });
+    expect(await (await put('002-web-console')).json()).toEqual({ specs: ['002-web-console', '006-partial-push'], ideas: [] });
     // A second set keeps the one entry; the workspace's specs are not checked, so an unknown id is kept too.
-    expect(await (await put('002-web-console')).json()).toEqual({ specs: ['002-web-console', '006-partial-push'] });
-    expect(await (await put('999-not-there')).json()).toEqual({ specs: ['002-web-console', '006-partial-push', '999-not-there'] });
-    expect(await (await ask(list, { session })).json()).toEqual({ specs: ['002-web-console', '006-partial-push', '999-not-there'] });
-    expect(await (await ask(list, { session: 't052-mem-other' })).json()).toEqual({ specs: [] });
-    expect(await (await ask(workspaceRoutes.favorites('lantern'), { session })).json()).toEqual({ specs: [] });
-    expect(await (await put('006-partial-push', { method: 'DELETE' })).json()).toEqual({ specs: ['002-web-console', '999-not-there'] });
-    expect(await (await put('006-partial-push', { method: 'DELETE' })).json()).toEqual({ specs: ['002-web-console', '999-not-there'] });
+    expect(await (await put('002-web-console')).json()).toEqual({ specs: ['002-web-console', '006-partial-push'], ideas: [] });
+    expect(await (await put('999-not-there')).json()).toEqual({ specs: ['002-web-console', '006-partial-push', '999-not-there'], ideas: [] });
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: ['002-web-console', '006-partial-push', '999-not-there'], ideas: [] });
+    expect(await (await ask(list, { session: 't052-mem-other' })).json()).toEqual({ specs: [], ideas: [] });
+    expect(await (await ask(workspaceRoutes.favorites('lantern'), { session })).json()).toEqual({ specs: [], ideas: [] });
+    expect(await (await put('006-partial-push', { method: 'DELETE' })).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: [] });
+    expect(await (await put('006-partial-push', { method: 'DELETE' })).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: [] });
     const refused = await put('web-console');
     expect([refused.status, await refused.json()]).toEqual([400, { error: 'invalid-spec' }]);
     expect((await ask(workspaceRoutes.favorite('nope', '002-web-console'), { session, method: 'PUT' })).status).toBe(404);
+    // Spec 064 T50: the idea favourites beside them, the same session scope, the whole {specs, ideas} on every answer.
+    const idea = async (slug: string, method = 'PUT'): Promise<Response> => ask(workspaceRoutes.ideaFavorite(WS, slug), { session, method });
+    expect(await (await idea('tide-alerts')).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: ['tide-alerts'] });
+    expect(await (await idea('buoy-map')).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: ['buoy-map', 'tide-alerts'] });
+    expect(await (await idea('buoy-map')).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: ['buoy-map', 'tide-alerts'] });
+    expect(await (await idea('buoy-map', 'DELETE')).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: ['tide-alerts'] });
+    expect(await (await idea('buoy-map', 'DELETE')).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: ['tide-alerts'] });
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: ['002-web-console', '999-not-there'], ideas: ['tide-alerts'] });
+    expect(await (await ask(list, { session: 't052-mem-other' })).json()).toEqual({ specs: [], ideas: [] });
+    const badSlug = await idea('Tide_Alerts');
+    expect([badSlug.status, await badSlug.json()]).toEqual([400, { error: 'invalid-slug' }]);
     expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
-    expect(await (await ask(list, { session })).json()).toEqual({ specs: [] });
+    expect(await (await ask(list, { session })).json()).toEqual({ specs: [], ideas: [] });
   });
 
   // Every registered route, every status its contract row names and no other; each 405 names the table's Allow.
@@ -2089,6 +2101,15 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         [workspaceRoutes.favorite(WS, '002-web-console'), { method: 'GET' }],
         [workspaceRoutes.favorite('lantern', '001-reading-list'), { method: 'PUT', state: 'unreadable', session: 't052-favorite-status' }],
       ],
+      // Spec 064 T50: the idea favourite, the spec favourite's statuses for a story slug.
+      ideaFavorite: [
+        [workspaceRoutes.ideaFavorite(WS, 'tide-alerts'), { method: 'PUT', session: 't064-idea-favorite-status' }],
+        [workspaceRoutes.ideaFavorite(WS, 'tide-alerts'), { method: 'DELETE', session: 't064-idea-favorite-status' }],
+        [workspaceRoutes.ideaFavorite(WS, 'Tide_Alerts'), { method: 'PUT' }],
+        [workspaceRoutes.ideaFavorite(WS, 'tide-alerts'), { method: 'PUT', headers: evil }],
+        [workspaceRoutes.ideaFavorite('nope', 'tide-alerts'), { method: 'PUT' }],
+        [workspaceRoutes.ideaFavorite(WS, 'tide-alerts'), { method: 'GET' }],
+      ],
       allocate: [
         ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
         [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
@@ -2144,6 +2165,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       'boardQuery',
       'favorites',
       'favorite',
+      'ideaFavorite',
       'allocate',
       'backlog',
       'runRelease',

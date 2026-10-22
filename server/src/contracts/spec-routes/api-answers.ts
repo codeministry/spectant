@@ -98,6 +98,7 @@ export const API_ERRORS = [
   'method-not-allowed',
   'invalid-body',
   'invalid-spec',
+  'invalid-slug',
   'hash-mismatch',
   'locked',
   'run-locked',
@@ -134,6 +135,11 @@ export interface InvalidBody {
 /** 400 on a favourite's set or unset whose spec id is not a spec folder name, `NNN-slug` (`isFavoriteSpec`, spec 052). */
 export interface InvalidSpec {
   readonly error: 'invalid-spec';
+}
+
+/** 400 on an idea favourite's set or unset whose slug is not kebab case (`isFavoriteIdea`, spec 064). */
+export interface InvalidSlug {
+  readonly error: 'invalid-slug';
 }
 
 /** 409 on a write: the file changed since it was rendered. `expected` is what the files hash to now; nothing was written. */
@@ -179,7 +185,7 @@ export type SpecRouteError<R extends SpecRouteName> =
  * The error body a workspace route may send: 404 unknown slug, 403 guard, 405 wrong method, 409 unreadable workspace
  * (the same `Unavailable` summary the dashboard sends). The board query (T92) reads the database alone: no 409, and
  * its `PUT` adds 400 `invalid-body`. The favourites (spec 052) read the database alone too: no 409, and the set and
- * the unset add 400 `invalid-spec`. The allocation (T87) adds its write answers: 400, the 409 `hash-mismatch` of the
+ * the unset add 400 `invalid-spec` (`invalid-slug` for an idea favourite, spec 064). The allocation (T87) adds its write answers: 400, the 409 `hash-mismatch` of the
  * story, the 422 `allocate-refused` and the 423 the contract keeps (unreachable for a story, `writes.ts` `writeAllocate`).
  * Without a route named, the union of the file reads.
  */
@@ -187,7 +193,7 @@ export type WorkspaceRouteError<R extends WorkspaceRouteName = 'planning' | 'ide
   | NotFound
   | Forbidden
   | MethodNotAllowed
-  | ([R] extends ['boardQuery'] ? InvalidBody : [R] extends ['favorites'] ? never : [R] extends ['favorite'] ? InvalidSpec : Unavailable)
+  | ([R] extends ['boardQuery'] ? InvalidBody : [R] extends ['favorites'] ? never : [R] extends ['favorite'] ? InvalidSpec : [R] extends ['ideaFavorite'] ? InvalidSlug : Unavailable)
   | ([R] extends ['allocate'] ? InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked : never)
   | ([R] extends ['backlog'] ? InvalidBody | Conflict<{ readonly backlog: string }> | BacklogRefused : never)
   | ([R] extends ['runRelease'] ? InvalidBody | Conflict<{ readonly activity: string }> | RunReleaseRefused : never);

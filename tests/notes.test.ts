@@ -512,11 +512,11 @@ describe("notes db rollback", () => {
     expect(refused.code).toBe(1);
     expect(refused.err.join("\n")).toContain("--yes");
     expect(refused.err.join("\n")).toContain("drop the board_query table (0 workspaces");
-    expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(6);
-    for (const argv of [["db"], ["db", "rollback"], ["db", "rollback", "0"], ["db", "rollback", "6"], ["db", "rollback", "x", "--yes"], ["db", "migrate"], ["list", "--yes"]]) {
+    expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(7);
+    for (const argv of [["db"], ["db", "rollback"], ["db", "rollback", "0"], ["db", "rollback", "7"], ["db", "rollback", "x", "--yes"], ["db", "migrate"], ["list", "--yes"]]) {
       expect((await cli(argv, env)).code).toBe(2);
     }
-    expect(await cli(["db", "rollback", "2", "--yes"], env)).toMatchObject({ code: 0, out: ["schema version 6 → 2"] });
+    expect(await cli(["db", "rollback", "2", "--yes"], env)).toMatchObject({ code: 0, out: ["schema version 7 → 2"] });
     expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(2);
     expect(await cli(["db", "rollback", "1", "--yes"], env)).toMatchObject({ code: 0, out: ["schema version 2 → 1"] });
     expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(1);

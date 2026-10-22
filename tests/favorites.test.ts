@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dashboardApi } from "../server/src/cli/index.ts";
-import { listFavorites, openDatabase } from "../server/src/infra/db/db.ts";
+import { listFavorites, listIdeaFavorites, openDatabase } from "../server/src/infra/db/db.ts";
 import { eventsApi, type LiveChange, type LiveListener, type WatchHub } from "../server/src/live/index.ts";
 import type { ApiHandler } from "../server/src/infra/http/server.ts";
 import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
@@ -96,6 +96,81 @@ describe("the favourite routes in the workspace family (spec 052 T1)", () => {
     expect(allowForWorkspace("favorites")).toBe("GET, HEAD");
     expect(allowForWorkspace("favorite")).toBe("PUT, DELETE");
   });
+
+  test("the idea favourite (spec 064 T50): builder, matcher, table entry, Allow; it never collides with /favorites/:spec", () => {
+    expect(workspaceRoutes.ideaFavorite("a b", "tide-alerts")).toBe("/api/workspaces/a%20b/favorites/idea/tide-alerts");
+    expect(matchWorkspacePath(workspaceRoutes.ideaFavorite("a b", "tide-alerts"))).toEqual({
+      route: "ideaFavorite",
+      params: { ws: "a b", slug: "tide-alerts" },
+    });
+    // A slug spelled like a spec id still lands on the idea route, and `idea` is no spec id the spec route admits.
+    expect(matchWorkspacePath(workspaceRoutes.ideaFavorite("harbor", "002-quay"))?.route).toBe("ideaFavorite");
+    expect(matchWorkspacePath("/api/workspaces/harbor/favorites/idea")).toEqual({ route: "favorite", params: { ws: "harbor", spec: "idea" } });
+    expect(WORKSPACE_ROUTE_TABLE.filter((e) => e.route === "ideaFavorite")).toEqual([
+      { route: "ideaFavorite", method: "PUT", write: "DELETE", pattern: "/api/workspaces/:ws/favorites/idea/:slug", statuses: [200, 400, 403, 404, 405], response: "Favorites" },
+    ]);
+    expect(allowForWorkspace("ideaFavorite")).toBe("PUT, DELETE");
+  });
+});
+
+const setIdea = async (ws: string, slug: string) => answer(await call(workspaceRoutes.ideaFavorite(ws, slug), { method: "PUT" }));
+const unsetIdea = async (ws: string, slug: string) => answer(await call(workspaceRoutes.ideaFavorite(ws, slug), { method: "DELETE" }));
+
+describe("PUT and DELETE /favorites/idea/:slug (spec 064 T50, ISC-494)", () => {
+  test("set, set twice, unset, unset twice, list: every answer is the whole {specs, ideas}, sorted", async () => {
+    await set("harbor", "003-tide-tables");
+    expect(await setIdea("harbor", "tide-alerts")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["tide-alerts"] } });
+    expect(await setIdea("harbor", "buoy-map")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map", "tide-alerts"] } });
+    expect(await setIdea("harbor", "tide-alerts")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map", "tide-alerts"] } });
+    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map", "tide-alerts"] } });
+    expect(await unsetIdea("harbor", "tide-alerts")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map"] } });
+    expect(await unsetIdea("harbor", "tide-alerts")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map"] } });
+    expect(await unsetIdea("harbor", "never-set")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map"] } });
+    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: ["buoy-map"] } });
+    // The spec routes answer the idea favourites too, and leave them alone.
+    expect(await unset("harbor", "003-tide-tables")).toEqual({ status: 200, body: { specs: [], ideas: ["buoy-map"] } });
+    expect(listIdeaFavorites(db, "harbor")).toEqual(["buoy-map"]);
+  });
+
+  test("the slug need not name a story of the workspace; two workspaces keep their idea favourites apart; a restart keeps them", async () => {
+    await setIdea("harbor", "no-such-story");
+    await setIdea("lantern", "wick-trim");
+    expect(await list("lantern")).toEqual({ status: 200, body: { specs: [], ideas: ["wick-trim"] } });
+    stop();
+    start();
+    expect(await list("harbor")).toEqual({ status: 200, body: { specs: [], ideas: ["no-such-story"] } });
+    expect(await list("lantern")).toEqual({ status: 200, body: { specs: [], ideas: ["wick-trim"] } });
+  });
+
+  test("a slug outside kebab-case is 400 invalid-slug for PUT and DELETE, and nothing is stored", async () => {
+    await setIdea("harbor", "buoy-map");
+    for (const slug of ["Tide", "-lead", "a_b", "a b", "a/b", "a.md", "ü-mlaut"]) {
+      for (const method of ["PUT", "DELETE"]) {
+        const res = await call(workspaceRoutes.ideaFavorite("harbor", slug), { method });
+        expect({ slug, method, ...(await answer(res)) }).toEqual({ slug, method, status: 400, body: { error: "invalid-slug" } });
+      }
+    }
+    expect(listIdeaFavorites(db, "harbor")).toEqual(["buoy-map"]);
+  });
+
+  test("an unknown workspace is 404; any other method 405 with Allow PUT, DELETE; a foreign Origin 403 before anything is stored", async () => {
+    expect(await setIdea("nowhere", "buoy-map")).toEqual({ status: 404, body: { error: "not-found" } });
+    expect(await unsetIdea("nowhere", "buoy-map")).toEqual({ status: 404, body: { error: "not-found" } });
+    for (const method of ["GET", "HEAD", "POST"]) {
+      const res = await call(workspaceRoutes.ideaFavorite("harbor", "buoy-map"), { method });
+      expect({ method, status: res.status, allow: res.headers.get("allow") }).toEqual({ method, status: 405, allow: "PUT, DELETE" });
+    }
+    const cross = await call(workspaceRoutes.ideaFavorite("harbor", "buoy-map"), { method: "PUT", headers: { Origin: "https://evil.example" } });
+    expect(cross.status).toBe(403);
+    expect(listIdeaFavorites(db, "harbor")).toEqual([]);
+    expect(listIdeaFavorites(db, "nowhere")).toEqual([]);
+  });
+
+  test("without a database the route is declined, so the server's JSON 404 applies", () => {
+    const bare = dashboardApi({ registry, services: () => Promise.resolve([]) });
+    const url = new URL(`http://127.0.0.1:7717${workspaceRoutes.ideaFavorite("harbor", "buoy-map")}`);
+    expect(bare(new Request(url.href, { method: "PUT", headers: HOST }), url)).toBeNull();
+  });
 });
 
 describe("GET /favorites, PUT and DELETE /favorites/:spec (spec 052 T4, ISC-296)", () => {
@@ -106,7 +181,7 @@ describe("GET /favorites, PUT and DELETE /favorites/:spec (spec 052 T4, ISC-296)
     expect(res.headers.get("cache-control")).toBe(JSON_ANSWER.cacheControl);
     const etag = res.headers.get("etag") ?? "";
     expect(etag).toMatch(/^"[A-Za-z0-9_-]{43}"$/);
-    expect(await res.json()).toEqual({ specs: [] });
+    expect(await res.json()).toEqual({ specs: [], ideas: [] });
     expect((await call(workspaceRoutes.favorites("harbor"), { headers: { "If-None-Match": etag } })).status).toBe(304);
     const head = await call(workspaceRoutes.favorites("harbor"), { method: "HEAD" });
     expect(head.status).toBe(200);
@@ -114,21 +189,21 @@ describe("GET /favorites, PUT and DELETE /favorites/:spec (spec 052 T4, ISC-296)
   });
 
   test("set, set twice, unset, unset never set: every answer is the whole set, sorted", async () => {
-    expect(await set("harbor", "003-tide-tables")).toEqual({ status: 200, body: { specs: ["003-tide-tables"] } });
-    expect(await set("harbor", "001-moorings")).toEqual({ status: 200, body: { specs: ["001-moorings", "003-tide-tables"] } });
+    expect(await set("harbor", "003-tide-tables")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: [] } });
+    expect(await set("harbor", "001-moorings")).toEqual({ status: 200, body: { specs: ["001-moorings", "003-tide-tables"], ideas: [] } });
     // Setting again keeps one entry.
-    expect(await set("harbor", "003-tide-tables")).toEqual({ status: 200, body: { specs: ["001-moorings", "003-tide-tables"] } });
-    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["001-moorings", "003-tide-tables"] } });
-    expect(await unset("harbor", "001-moorings")).toEqual({ status: 200, body: { specs: ["003-tide-tables"] } });
+    expect(await set("harbor", "003-tide-tables")).toEqual({ status: 200, body: { specs: ["001-moorings", "003-tide-tables"], ideas: [] } });
+    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["001-moorings", "003-tide-tables"], ideas: [] } });
+    expect(await unset("harbor", "001-moorings")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: [] } });
     // Unsetting again, and unsetting an id never set, are 200 with the set unchanged.
-    expect(await unset("harbor", "001-moorings")).toEqual({ status: 200, body: { specs: ["003-tide-tables"] } });
-    expect(await unset("harbor", "999-never-set")).toEqual({ status: 200, body: { specs: ["003-tide-tables"] } });
+    expect(await unset("harbor", "001-moorings")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: [] } });
+    expect(await unset("harbor", "999-never-set")).toEqual({ status: 200, body: { specs: ["003-tide-tables"], ideas: [] } });
     expect(listFavorites(db, "harbor")).toEqual(["003-tide-tables"]);
   });
 
   test("the route does not check the spec exists in the workspace: an unknown id is set and unset like any other", async () => {
-    expect(await set("harbor", "042-not-in-harbor")).toEqual({ status: 200, body: { specs: ["042-not-in-harbor"] } });
-    expect(await unset("harbor", "042-not-in-harbor")).toEqual({ status: 200, body: { specs: [] } });
+    expect(await set("harbor", "042-not-in-harbor")).toEqual({ status: 200, body: { specs: ["042-not-in-harbor"], ideas: [] } });
+    expect(await unset("harbor", "042-not-in-harbor")).toEqual({ status: 200, body: { specs: [], ideas: [] } });
   });
 
   test("after a restart over the same data directory the route answers the same set", async () => {
@@ -139,17 +214,17 @@ describe("GET /favorites, PUT and DELETE /favorites/:spec (spec 052 T4, ISC-296)
     stop();
     start();
     expect(await list("harbor")).toEqual(before);
-    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["002-quay", "005-buoys"] } });
-    expect(await list("lantern")).toEqual({ status: 200, body: { specs: ["001-wick"] } });
+    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["002-quay", "005-buoys"], ideas: [] } });
+    expect(await list("lantern")).toEqual({ status: 200, body: { specs: ["001-wick"], ideas: [] } });
   });
 
   test("two workspaces keep their favourites apart, the same spec id included", async () => {
     await set("harbor", "001-shared-id");
     await set("harbor", "002-harbor-only");
-    expect(await list("lantern")).toEqual({ status: 200, body: { specs: [] } });
+    expect(await list("lantern")).toEqual({ status: 200, body: { specs: [], ideas: [] } });
     await set("lantern", "001-shared-id");
-    expect(await unset("lantern", "001-shared-id")).toEqual({ status: 200, body: { specs: [] } });
-    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["001-shared-id", "002-harbor-only"] } });
+    expect(await unset("lantern", "001-shared-id")).toEqual({ status: 200, body: { specs: [], ideas: [] } });
+    expect(await list("harbor")).toEqual({ status: 200, body: { specs: ["001-shared-id", "002-harbor-only"], ideas: [] } });
   });
 
   test("a spec id outside NNN-slug is 400 invalid-spec for PUT and DELETE, and nothing is stored", async () => {

@@ -534,18 +534,18 @@ describe("ISC-297: setting and unsetting a favorite leaves the repository byte-i
 
       // The list: empty, revalidated to a 304 and HEAD.
       const first = await fetch(list);
-      expect(await first.json()).toEqual({ specs: [] });
+      expect(await first.json()).toEqual({ specs: [], ideas: [] });
       expect((await fetch(list, { headers: { "If-None-Match": first.headers.get("etag") ?? "" } })).status).toBe(304);
       expect((await fetch(list, { method: "HEAD" })).status).toBe(200);
 
       // Set it twice (one row), list it, unset it twice (the second removes nothing).
-      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [MARKED_SPEC] });
-      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [MARKED_SPEC] });
-      expect(await (await fetch(list)).json()).toEqual({ specs: [MARKED_SPEC] });
+      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [MARKED_SPEC], ideas: [] });
+      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [MARKED_SPEC], ideas: [] });
+      expect(await (await fetch(list)).json()).toEqual({ specs: [MARKED_SPEC], ideas: [] });
       expect((await fetch(list, { method: "HEAD" })).status).toBe(200);
-      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [] });
-      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [] });
-      expect(await (await fetch(list)).json()).toEqual({ specs: [] });
+      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [], ideas: [] });
+      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [], ideas: [] });
+      expect(await (await fetch(list)).json()).toEqual({ specs: [], ideas: [] });
 
       // The refusals: a malformed spec id, an unknown workspace, a method neither route takes.
       expect((await fetch(`${app.url}${workspaceRoutes.favorite(SLUG, "retention")}`, { method: "PUT" })).status).toBe(400);
@@ -554,6 +554,43 @@ describe("ISC-297: setting and unsetting a favorite leaves the repository byte-i
       expect((await fetch(`${app.url}${workspaceRoutes.favorites("nowhere")}`)).status).toBe(404);
       expect((await fetch(one, { method: "POST" })).status).toBe(405);
       expect((await fetch(list, { method: "PUT" })).status).toBe(405);
+    } finally {
+      await app.stop();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+  });
+
+  // Spec 064 T51 (ISC-495): the idea favourite under the same guard. It touches only the `idea_favorite` table.
+  test("readonly: idea favorite PUT and DELETE change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "idea-favorite-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+
+    const app = await serve(copy, "idea-favorite");
+    try {
+      const list = `${app.url}${workspaceRoutes.favorites(SLUG)}`;
+      const one = `${app.url}${workspaceRoutes.ideaFavorite(SLUG, "tide-alerts")}`;
+
+      // Set it twice (one row), list it, unset it twice (the second removes nothing).
+      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [], ideas: ["tide-alerts"] });
+      expect(await (await fetch(one, { method: "PUT" })).json()).toEqual({ specs: [], ideas: ["tide-alerts"] });
+      expect(await (await fetch(list)).json()).toEqual({ specs: [], ideas: ["tide-alerts"] });
+      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [], ideas: [] });
+      expect(await (await fetch(one, { method: "DELETE" })).json()).toEqual({ specs: [], ideas: [] });
+      expect(await (await fetch(list)).json()).toEqual({ specs: [], ideas: [] });
+
+      // The refusals: a slug outside kebab-case, an unknown workspace, a method the route does not take.
+      expect((await fetch(`${app.url}${workspaceRoutes.ideaFavorite(SLUG, "Tide_Alerts")}`, { method: "PUT" })).status).toBe(400);
+      expect((await fetch(`${app.url}${workspaceRoutes.ideaFavorite("nowhere", "tide-alerts")}`, { method: "PUT" })).status).toBe(404);
+      expect((await fetch(`${app.url}${workspaceRoutes.ideaFavorite("nowhere", "tide-alerts")}`, { method: "DELETE" })).status).toBe(404);
+      expect((await fetch(one, { method: "GET" })).status).toBe(405);
+      expect((await fetch(one, { method: "POST" })).status).toBe(405);
     } finally {
       await app.stop();
     }

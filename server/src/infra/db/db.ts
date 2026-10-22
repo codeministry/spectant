@@ -1,7 +1,7 @@
 /**
  * The SQLite connection and its schema migrations (T42, T94). `spectant.db` lives in the data directory from
  * `paths.ts` (ISC-21) and holds the workspace registry, the settings, the developer's notes, the actor names, the
- * board queries and the favourite specs, never anything a repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except
+ * board queries, the favourite specs and the favourite ideas, never anything a repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except
  * the notes, which live here and nowhere else, never in a registered repository (ISC-94, ISC-15).
  *
  * The schema version is the `schema_version` row of the `setting` table. `migrate` walks it forward one step at a
@@ -34,8 +34,15 @@
  * key, like `board_query`: a re-added workspace keeps its favourites, and a favourite on a spec the workspace no longer
  * lists stays until it is unset. Losing it loses the marks, nothing a repository holds (ISC-7). Its accessors are in `prefs-store.ts`.
  *
+ * Migration 7 (spec 064, T50, ISC-494) is expand-only: it creates `idea_favorite` (CREATE TABLE IF NOT EXISTS, adopted
+ * like migration 2's), migration 6's table for the stories of `specs/ideas/`: one row per workspace slug and story
+ * slug (the file name without `.md`) the developer marked as a favourite, with the time it was first set, the pair the
+ * primary key. No foreign key, like `spec_favorite`. Losing it loses the idea marks, nothing a repository holds
+ * (ISC-7). Its accessors are in `prefs-store.ts`.
+ *
  * No down migration runs on open. The documented reversals are `REVERSALS`, applied only by `rollback` (the CLI's
- * `spectant db rollback <version> --yes`, T98), newest first: 6 → 5 is `DROP TABLE spec_favorite` (loses every
+ * `spectant db rollback <version> --yes`, T98), newest first: 7 → 6 is `DROP TABLE idea_favorite` (loses every idea
+ * favourite, the spec favourites kept), 6 → 5 is `DROP TABLE spec_favorite` (loses every
  * favourite; the header's spec select shows its empty state), 5 → 4 is `DROP TABLE board_query` (loses every
  * remembered board query; the board opens unfiltered), 4 → 3 is `DROP TABLE actor` (loses every display name;
  * the ids come back from git config), 3 → 2 is `ALTER TABLE note DROP COLUMN pinned` (loses
@@ -49,11 +56,11 @@ import { dbPath, ensureDataDir } from "../paths.ts";
 /** The SQLite connection type, so a slice types its `db` parameter without importing `bun:sqlite` itself. */
 export type { Database as Db } from "bun:sqlite";
 
-/** The accessors of the actor, board_query and spec_favorite tables, kept importable from here. */
+/** The accessors of the actor, board_query, spec_favorite and idea_favorite tables, kept importable from here. */
 export * from "./prefs-store.ts";
 
 /** The schema version this build writes. A database from a newer build is refused rather than downgraded. */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /** Opens (creating on first use) `spectant.db` in `dir`, in WAL mode with foreign keys on, migrated to the latest schema. */
 export function openDatabase(dir: string): Database {
@@ -156,6 +163,14 @@ export function migrate(db: Database): void {
             PRIMARY KEY (ws, spec)
           )`);
           break;
+        case 6:
+          db.run(`CREATE TABLE IF NOT EXISTS idea_favorite (
+            ws         TEXT NOT NULL,
+            slug       TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (ws, slug)
+          )`);
+          break;
       }
       version++;
       db.run("INSERT INTO setting (key, value) VALUES ('schema_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [
@@ -167,6 +182,7 @@ export function migrate(db: Database): void {
 
 /** Each migration's documented reversal, keyed by the version it undoes. Every statement drops what that step made. */
 const REVERSALS: Readonly<Record<number, readonly string[]>> = {
+  7: ["DROP TABLE IF EXISTS idea_favorite"],
   6: ["DROP TABLE IF EXISTS spec_favorite"],
   5: ["DROP TABLE IF EXISTS board_query"],
   4: ["DROP TABLE IF EXISTS actor"],
