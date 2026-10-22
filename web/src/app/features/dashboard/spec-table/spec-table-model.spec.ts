@@ -15,15 +15,15 @@ import {
   type ListQuery,
   listQueryParams,
   parseListQuery,
-  phaseOptions,
   readArchiveRows,
   readListCounts,
   readSpecRows,
   SORT_KEYS,
   SORT_MENU,
   type SpecTableRow,
-  STAGE_GROUPS,
   typeOptions,
+  stageOptions,
+  stagesOfPhase,
 } from './spec-table-model';
 
 /** A dashboard row as the server sends it (`DashboardSpecRow`), only the fields that matter overridden. */
@@ -158,8 +158,8 @@ describe('archivedTableRow (spec 050, ISC-287)', () => {
 describe('parseListQuery and listQueryParams', () => {
   it('reads the five query params and falls back to the defaults', () => {
     expect(parseListQuery(params({}))).toEqual(DEFAULT_QUERY);
-    expect(parseListQuery(params({ phase: 'building', type: 'bug', sort: 'id', takeable: '1', archived: '1' }))).toEqual({
-      phase: 'building',
+    expect(parseListQuery(params({ stage: 'build', type: 'bug', sort: 'id', takeable: '1', archived: '1' }))).toEqual({
+      stage: ['build'],
       type: 'bug',
       sort: 'id',
       takeable: true,
@@ -167,10 +167,10 @@ describe('parseListQuery and listQueryParams', () => {
       archived: true,
     });
     expect(parseListQuery(params({ sort: 'nonsense', takeable: 'yes', archived: 'yes' }))).toEqual(DEFAULT_QUERY);
-    // The phase chips filter by stage group (ISC-255): an old frontmatter value such as `climbing` reads as all.
+    // Spec 064 (T62): the chips filter by stage; an old `?phase=` is the router's to map, the list reads it as all.
     expect(parseListQuery(params({ phase: 'climbing' }))).toEqual(DEFAULT_QUERY);
-    expect(parseListQuery(params({ phase: 'complete' })).phase).toBe('complete');
-    expect(parseListQuery(params({ phase: 'fog' })).phase).toBe('fog');
+    expect(parseListQuery(params({ stage: 'done' })).stage).toEqual(['done']);
+    expect(parseListQuery(params({ stage: 'fog' })).stage).toEqual(['fog']);
   });
 
   it('starts with the working filter off and reads ?working=1 as on, like takeable (spec 064, T3, ISC-465)', () => {
@@ -191,9 +191,9 @@ describe('parseListQuery and listQueryParams', () => {
   });
 
   it('writes defaults as null, so the URL only carries what differs', () => {
-    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ phase: null, type: null, sort: null, takeable: null, working: null, archived: null });
-    expect(listQueryParams(query({ phase: 'fog', sort: 'next', takeable: true }))).toEqual({
-      phase: 'fog',
+    expect(listQueryParams(DEFAULT_QUERY)).toEqual({ stage: null, type: null, sort: null, takeable: null, working: null, archived: null });
+    expect(listQueryParams(query({ stage: ['fog'], sort: 'next', takeable: true }))).toEqual({
+      stage: 'fog',
       type: null,
       sort: 'next',
       takeable: '1',
@@ -205,12 +205,12 @@ describe('parseListQuery and listQueryParams', () => {
 
 describe('LIST_QUERY_KEYS (spec 058, T5, ISC-396)', () => {
   it('names every key listQueryParams can write', () => {
-    const every = listQueryParams({ phase: FOG, type: 'feature', sort: 'next', takeable: true, working: true, archived: true });
+    const every = listQueryParams({ stage: [FOG], type: 'feature', sort: 'next', takeable: true, working: true, archived: true });
     for (const key of Object.keys(every)) expect(LIST_QUERY_KEYS).toContain(key);
   });
 
   it('names search, the show-all fold and density beside the filters', () => {
-    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'takeable', 'type', 'working']);
+    expect([...LIST_QUERY_KEYS].sort()).toEqual(['all', 'archived', 'density', 'phase', 'q', 'sort', 'stage', 'takeable', 'type', 'working']);
   });
 
   it('never names sel: the dashboard keeps its own selection (ISC-400)', () => {
@@ -225,12 +225,12 @@ describe('applyListQuery', () => {
     expect(ids(applyListQuery(rows, DEFAULT_QUERY))).toEqual(['004', '010', '002', '003']);
   });
 
-  it('filters by phase, by fog, by type and by takeable', () => {
-    expect(ids(applyListQuery(rows, query({ phase: 'building' })))).toEqual(['004', '002']);
-    expect(ids(applyListQuery(rows, query({ phase: 'fog' })))).toEqual(['010']);
-    // By the stage group core derives, not the frontmatter `phase:` (003 is written `climbing`, grouped complete).
-    expect(ids(applyListQuery(rows, query({ phase: 'complete' })))).toEqual(['003']);
-    expect(ids(applyListQuery(rows, query({ phase: 'scoping' })))).toEqual(['010']);
+  it('filters by stage, by fog, by type and by takeable', () => {
+    expect(ids(applyListQuery(rows, query({ stage: ['build', 'code-review'] })))).toEqual(['004', '002']);
+    expect(ids(applyListQuery(rows, query({ stage: ['fog'] })))).toEqual(['010']);
+    // By the stage core derives, not the frontmatter `phase:` (003 is written `climbing`, at stage tasks).
+    expect(ids(applyListQuery(rows, query({ stage: ['tasks'] })))).toEqual(['003']);
+    expect(ids(applyListQuery(rows, query({ stage: ['review'] })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ type: 'bug' })))).toEqual(['010']);
     expect(ids(applyListQuery(rows, query({ takeable: true })))).toEqual(['002']);
   });
@@ -255,33 +255,27 @@ describe('applyListQuery', () => {
   });
 });
 
-describe('phaseOptions and typeOptions (spec 021, ISC-255: every count is the model\'s)', () => {
+describe('stageOptions and typeOptions (spec 021, ISC-255: every count is the model\'s)', () => {
   const counts = readListCounts(BODY);
 
   it('reads the chip counts from the model kpis, and none from a body without them', () => {
-    expect(counts).toEqual(BODY.kpis);
+    expect(counts).toEqual({ specs: 4, specsWithFog: 1, byType: BODY.kpis.byType, stages: { plan: 0, tasks: 1, review: 1, build: 1, blocked: 0, 'code-review': 1, 'close-pending': 0, close: 0, done: 0 } });
     expect(readListCounts({ specs: [] })).toBeNull();
-    expect(phaseOptions(null)).toEqual([]);
+    expect(stageOptions(null)).toEqual([]);
     expect(typeOptions(null)).toEqual([]);
   });
 
-  it('lists All, the stage groups in lifecycle order with the served counts, and fog when a spec has fog', () => {
-    expect(phaseOptions(counts)).toEqual([
-      { key: 'all', count: 4 },
-      { key: 'scoping', count: 1 },
-      { key: 'building', count: 2 },
-      { key: 'complete', count: 1 },
-      { key: 'fog', count: 1 },
-    ]);
+  it('lists All, the stages in workflow order with their counts, and fog when a spec has fog', () => {
+    expect(stageOptions(counts).map((option) => option.key)).toEqual(['all', 'tasks', 'review', 'build', 'code-review', 'fog']);
   });
 
   it('shows the served numbers, never a count of the rows', () => {
     // Counts no grouping of BODY's rows gives: the chips must carry these.
-    const served = { specs: 9, stageGroups: { scoping: 7, building: 0, complete: 2 }, specsWithFog: 0, byType: { bug: 5, chore: 4 } };
-    expect(phaseOptions(served)).toEqual([
+    const served = { specs: 9, stages: { review: 7, build: 0, done: 2 }, specsWithFog: 0, byType: { bug: 5, chore: 4 } };
+    expect(stageOptions(served)).toEqual([
       { key: 'all', count: 9 },
-      { key: 'scoping', count: 7 },
-      { key: 'complete', count: 2 },
+      { key: 'review', count: 7 },
+      { key: 'done', count: 2 },
     ]);
     expect(typeOptions(served)).toEqual([
       { key: 'all', count: 9 },
@@ -297,7 +291,7 @@ describe('phaseOptions and typeOptions (spec 021, ISC-255: every count is the mo
       { key: 'feature', count: 2 },
       { key: 'refactor', count: 1 },
     ]);
-    expect(typeOptions({ ...BODY.kpis, byType: { feature: 4 } })).toEqual([]);
+    expect(typeOptions({ ...BODY.kpis, stages: {}, byType: { feature: 4 } })).toEqual([]);
   });
 });
 
@@ -387,8 +381,8 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
     expect(rows.find((row) => row.id === '009')).toEqual(archivedTableRow(archive('009', { closed: 3, total: 4 })));
   });
 
-  it('hides every archived row under a phase chip, the fog chip or takeable', () => {
-    for (const phase of [...STAGE_GROUPS, FOG]) expect(applyArchivedQuery(ARCHIVE, on({ phase }))).toEqual([]);
+  it('hides every archived row under a stage chip, the fog chip or takeable', () => {
+    for (const stage of [['plan'], ['build'], ['done'], [FOG], [IDEA]]) expect(applyArchivedQuery(ARCHIVE, on({ stage }))).toEqual([]);
     expect(applyArchivedQuery(ARCHIVE, on({ takeable: true }))).toEqual([]);
     // An archived spec holds no lock, so the working filter (spec 064, ISC-465) lists none of them either.
     expect(applyArchivedQuery(ARCHIVE, on({ working: true }))).toEqual([]);
@@ -461,49 +455,123 @@ describe('readIdeaRows (spec 064, T37, ISC-479)', () => {
   });
 });
 
-describe('applyIdeaQuery and the phase idea (spec 064, T39, ISC-480)', () => {
+describe('applyIdeaQuery and the stage idea (spec 064, T39, T62, ISC-480)', () => {
   const ideas = readIdeaRows(HARBOR_IDEAS);
   const specs = readSpecRows(HARBOR_IDEAS);
   const slugs = (q: ListQuery): string[] => applyIdeaQuery(ideas, q).map((idea) => idea.slug);
   const all = ['console-audit-log', 'registry-webhooks', 'sync-dry-run'];
 
-  it('parses ?phase=idea as the phase idea, and keeps it out of the URL only when null', () => {
+  it('parses ?stage=idea as the stage idea, and keeps it out of the URL only when null', () => {
     expect(IDEA).toBe('idea');
-    expect(parseListQuery(params({ phase: 'idea' }))).toEqual({ ...DEFAULT_QUERY, phase: IDEA });
-    expect(listQueryParams(query({ phase: IDEA })).phase).toBe('idea');
+    expect(parseListQuery(params({ stage: 'idea' }))).toEqual({ ...DEFAULT_QUERY, stage: [IDEA] });
+    expect(listQueryParams(query({ stage: [IDEA] })).stage).toBe('idea');
   });
 
-  it('?phase=idea: every idea and no spec row, active or archived', () => {
-    const q = parseListQuery(params({ phase: 'idea' }));
+  it('?stage=idea: every idea and no spec row, active or archived', () => {
+    const q = parseListQuery(params({ stage: 'idea' }));
     expect(slugs(q)).toEqual(all);
     expect(specs.length).toBeGreaterThan(0);
     expect(applyListQuery(specs, q)).toEqual([]);
     expect(applyArchivedQuery(readArchiveRows(BODY), { ...q, archived: true })).toEqual([]);
   });
 
-  it('no phase: every idea, in model order', () => {
+  it('no stage filter: every idea, in model order', () => {
     expect(slugs(parseListQuery(params({})))).toEqual(all);
   });
 
-  it('any other phase, takeable or working hides every idea', () => {
-    for (const phase of [...STAGE_GROUPS, FOG]) expect(slugs(parseListQuery(params({ phase })))).toEqual([]);
-    expect(slugs(parseListQuery(params({ phase: 'building' })))).toEqual([]);
+  it('any other stage, takeable or working hides every idea', () => {
+    for (const stage of ['plan', 'build', 'done', FOG]) expect(slugs(parseListQuery(params({ stage })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ stage: 'build,idea' })))).toEqual(all);
     expect(slugs(parseListQuery(params({ takeable: '1' })))).toEqual([]);
     expect(slugs(parseListQuery(params({ working: '1' })))).toEqual([]);
-    expect(slugs(parseListQuery(params({ phase: 'idea', working: '1' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ stage: 'idea', working: '1' })))).toEqual([]);
   });
 
   it('any type filter hides every idea, a story carries no type (spec 064, T41)', () => {
     expect(slugs(parseListQuery(params({ type: 'feature' })))).toEqual([]);
-    expect(slugs(parseListQuery(params({ type: 'bug', phase: 'idea' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ type: 'bug', stage: 'idea' })))).toEqual([]);
   });
 
   it('?q= matches the idea titles, case-insensitive, every word', () => {
     expect(parseListQuery(params({ q: 'Upstream' })).q).toBe('Upstream');
     expect(parseListQuery(params({ q: '  ' })).q).toBeUndefined();
     expect(slugs(parseListQuery(params({ q: 'upstream REPOSITORY' })))).toEqual(['registry-webhooks']);
-    expect(slugs(parseListQuery(params({ q: 'audit log', phase: 'idea' })))).toEqual(['console-audit-log']);
+    expect(slugs(parseListQuery(params({ q: 'audit log', stage: 'idea' })))).toEqual(['console-audit-log']);
     expect(slugs(parseListQuery(params({ q: 'no such words' })))).toEqual([]);
-    expect(slugs(parseListQuery(params({ q: 'dry', phase: 'building' })))).toEqual([]);
+    expect(slugs(parseListQuery(params({ q: 'dry', stage: 'build' })))).toEqual([]);
+  });
+});
+
+describe('the stage filter ?stage= (spec 064, T62, ISC-503)', () => {
+  const rows = readSpecRows(BODY);
+
+  it('parses ?stage= as a stage list in workflow order, fog and idea last; unknown words drop, nothing left is all', () => {
+    expect(parseListQuery(params({ stage: 'build' })).stage).toEqual(['build']);
+    expect(parseListQuery(params({ stage: 'review,plan,tasks' })).stage).toEqual(['plan', 'tasks', 'review']);
+    expect(parseListQuery(params({ stage: 'idea,fog,done,close' })).stage).toEqual(['close', 'done', 'fog', 'idea']);
+    expect(parseListQuery(params({ stage: 'build,build, nope' })).stage).toEqual(['build']);
+    expect(parseListQuery(params({ stage: 'nope' })).stage).toBeNull();
+    expect(parseListQuery(params({ stage: '' })).stage).toBeNull();
+    expect(parseListQuery(params({})).stage).toBeNull();
+    // ?phase= is only an input of the router's redirect; the list itself never reads it.
+    expect(parseListQuery(params({ phase: 'building' })).stage).toBeNull();
+  });
+
+  it('writes the stage list back comma-separated, none for all', () => {
+    expect(listQueryParams(query({ stage: ['plan', 'tasks', 'review'] })).stage).toBe('plan,tasks,review');
+    expect(listQueryParams(query({ stage: ['idea'] })).stage).toBe('idea');
+    expect(listQueryParams(DEFAULT_QUERY).stage).toBeNull();
+    expect(LIST_QUERY_KEYS).toContain('stage');
+    expect(LIST_QUERY_KEYS).toContain('phase');
+  });
+
+  it('keeps the rows of every listed stage, fog by open fog, and no spec row under idea alone', () => {
+    expect(ids(applyListQuery(rows, query({ stage: ['build'] })))).toEqual(['002']);
+    expect(ids(applyListQuery(rows, query({ stage: ['code-review'] })))).toEqual(['004']);
+    expect(ids(applyListQuery(rows, query({ stage: ['plan', 'tasks', 'review'] })))).toEqual(['010', '003']);
+    expect(ids(applyListQuery(rows, query({ stage: ['fog'] })))).toEqual(['010']);
+    expect(ids(applyListQuery(rows, query({ stage: ['done'] })))).toEqual([]);
+    expect(ids(applyListQuery(rows, query({ stage: ['idea'] })))).toEqual([]);
+  });
+
+  it('shows the ideas with no stage filter or with idea listed, none under a spec stage', () => {
+    const ideas = readIdeaRows(HARBOR_IDEAS);
+    expect(applyIdeaQuery(ideas, query({ stage: ['idea'] }))).toHaveLength(3);
+    expect(applyIdeaQuery(ideas, query({ stage: null }))).toHaveLength(3);
+    expect(applyIdeaQuery(ideas, query({ stage: ['build'] }))).toEqual([]);
+    expect(applyIdeaQuery(ideas, query({ stage: ['fog'] }))).toEqual([]);
+  });
+
+  it('hides the archive block under any stage filter', () => {
+    const archive = readArchiveRows(BODY);
+    expect(applyArchivedQuery(archive, query({ archived: true }))).toHaveLength(1);
+    for (const stage of [['build'], ['done'], ['fog'], ['idea']]) expect(applyArchivedQuery(archive, query({ archived: true, stage }))).toEqual([]);
+  });
+
+  it('offers All, then each stage present in workflow order with its count, then fog; counted from the rows without stageCounts', () => {
+    expect(stageOptions(null)).toEqual([]);
+    expect(stageOptions(readListCounts(BODY))).toEqual([
+      { key: 'all', count: 4 },
+      { key: 'tasks', count: 1 },
+      { key: 'review', count: 1 },
+      { key: 'build', count: 1 },
+      { key: 'code-review', count: 1 },
+      { key: 'fog', count: 1 },
+    ]);
+  });
+
+  it('takes the served stageCounts when the body carries them', () => {
+    const served = readListCounts({ ...BODY, stageCounts: { plan: 0, tasks: 0, review: 3, build: 5, blocked: 0, 'code-review': 0, 'close-pending': 0, close: 0, done: 1 } });
+    expect(stageOptions(served).map((option) => `${option.key} ${String(option.count)}`)).toEqual(['all 4', 'review 3', 'build 5', 'done 1', 'fog 1']);
+  });
+
+  it('maps every old phase onto its stages', () => {
+    expect(stagesOfPhase('scoping')).toEqual(['plan', 'tasks', 'review']);
+    expect(stagesOfPhase('building')).toEqual(['build']);
+    expect(stagesOfPhase('climbing')).toEqual(['build']);
+    expect(stagesOfPhase('complete')).toEqual(['close', 'done']);
+    expect(stagesOfPhase('idea')).toEqual(['idea']);
+    expect(stagesOfPhase('fog')).toEqual(['fog']);
+    expect(stagesOfPhase('nope')).toEqual([]);
   });
 });

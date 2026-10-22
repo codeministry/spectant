@@ -103,9 +103,9 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
     expect(root.querySelector('[data-waits-link]')).toBeNull();
   });
 
-  it('lists the specs filtered by ?phase=building, then the backlog and the footnote, and no dashboard block', async () => {
-    const { root } = await render('/w/harbor/specs?phase=building');
-    const building = harbor.specs.filter((spec) => spec.stageGroup === 'building').map((spec) => spec.id);
+  it('lists the specs filtered by ?stage=build, then the backlog and the footnote, and no dashboard block', async () => {
+    const { root } = await render('/w/harbor/specs?stage=build');
+    const building = harbor.specs.filter((spec) => spec.stage === 'build').map((spec) => spec.id);
     expect(building.length).toBeGreaterThan(0);
     expect(building.length).toBeLessThan(harbor.specs.length);
     expect(rowIds(root)).toEqual(building.sort());
@@ -114,12 +114,14 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
     for (const block of DASHBOARD_BLOCKS) expect(root.querySelector(block), block).toBeNull();
   });
 
-  it('lists the stories as the idea group of the spec list, linked to their pages, and no ideas panel (spec 064, T42, ISC-479)', async () => {
+  it('lists the stories as rows of the spec list under no heading, linked to their pages, and no ideas panel (spec 064, T42, T49; ISC-491)', async () => {
     const { root } = await render('/w/harbor/specs');
-    const group = root.querySelector('app-spec-table [data-ideas-group]');
-    expect(group).not.toBeNull();
-    expect(text(group?.querySelector('[data-ideas-count]'))).toBe(`${String(harbor.ideas.list.length)} ideas`);
-    const hrefs = [...(group?.querySelectorAll('app-idea-row a.link') ?? [])].map((a) => a.getAttribute('href'));
+    const list = root.querySelector('app-spec-table .row-lists ol.rows');
+    expect(root.querySelector('app-spec-table #ideas-group-heading, app-spec-table [data-ideas-group], app-spec-table .row-lists h3')).toBeNull();
+    const rows = [...root.querySelectorAll('app-spec-table app-idea-row')];
+    expect(rows).toHaveLength(harbor.ideas.list.length);
+    for (const row of rows) expect(row.parentElement?.parentElement).toBe(list);
+    const hrefs = rows.map((row) => row.querySelector('a.link')?.getAttribute('href'));
     expect(hrefs).toEqual(harbor.ideas.list.map((idea) => `/w/harbor/ideas/${idea.slug}`));
     expect(root.querySelector('[data-ideas]')).toBeNull();
     expect(root.querySelector('app-ideas-panel')).toBeNull();
@@ -133,9 +135,9 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
   it('writes the list query into the URL', async () => {
     const { harness } = await render('/w/harbor/specs');
     const page = harness.routeDebugElement?.componentInstance as { setQuery: (query: unknown) => void };
-    page.setQuery({ phase: 'scoping', type: null, sort: 'stage', takeable: false, archived: false });
+    page.setQuery({ stage: ['plan', 'tasks', 'review'], type: null, sort: 'stage', takeable: false, working: false, archived: false });
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toContain('phase=scoping');
+    expect(TestBed.inject(Router).url).toContain('stage=plan,tasks,review');
   });
 
   it('lists exactly the specs with an agent on ?working=1 and drops the param when the filter resets (spec 064, T5, ISC-465)', async () => {
@@ -272,12 +274,14 @@ describe('SpecsPage · anti: an idea is no active spec (spec 064, T43, ISC-482)'
       .filter((spec) => TWO.includes(spec.id))
       .map((spec) => ({ ...spec, taken: [{ id: 'ISC-1', session: `a:claude:sess-${spec.id}`, since: '2026-10-21T09:00:00Z', source: 'activity' }] })),
     kpis: { ...harbor.kpis, specs: 2, building: 1, scoping: 1, stageGroups: { scoping: 1, building: 1, complete: 0 }, specsWithFog: 0, byType: { feature: 1, spike: 1 } },
+    // The model's per-stage counts for those two (004 code-review, 005 review), the stage chips' numbers (T62).
+    stageCounts: { ...harbor.stageCounts, tasks: 0, review: 1, build: 0, 'code-review': 1, 'close-pending': 0, done: 0 },
     ideas: { count: THREE_IDEAS.length, list: THREE_IDEAS },
   };
   /** The last number in a chip's text, its count. */
   const countOf = (el: Element): number => Number(/(\d+)\D*$/.exec(text(el) ?? '')?.[1] ?? Number.NaN);
 
-  it('counts 2 active specs in the eyebrow, the h1, the counters and the phase chips, with 3 idea rows listed', async () => {
+  it('counts 2 active specs in the eyebrow, the h1, the counters and the stage chips, with 3 idea rows listed', async () => {
     body.set(twoSpecs);
     const { root } = await render('/w/harbor/specs');
     expect(root.querySelectorAll('app-idea-row')).toHaveLength(3);
@@ -285,13 +289,13 @@ describe('SpecsPage · anti: an idea is no active spec (spec 064, T43, ISC-482)'
     expect(text(root.querySelector('ui-page-head [data-page-eyebrow]'))).toBe(`harbor · Specs · 2 active · ${String(harbor.kpis.archived)} archived`);
     expect(text(root.querySelector('ui-page-head h1'))).toBe('Specs · harbor');
     expect(countOf(root.querySelector('[data-count="active"]') as Element)).toBe(2);
-    const chips = [...root.querySelectorAll('.t-head [data-filter="phase"] button')];
+    const chips = [...root.querySelectorAll('.t-head [data-filter="stage"] button')];
     const all = chips.find((chip) => text(chip)?.startsWith('All'));
     expect(all && countOf(all)).toBe(2);
-    const stages = chips.filter((chip) => chip !== all && !text(chip)?.startsWith('ideas'));
+    const stages = chips.filter((chip) => chip !== all && !text(chip)?.startsWith('Idea'));
     expect(stages.reduce((sum, chip) => sum + countOf(chip), 0)).toBe(2);
     // The ideas chip counts the stories, its own filter; never an active spec's.
-    expect(countOf(chips.find((chip) => text(chip)?.startsWith('ideas')) as Element)).toBe(3);
+    expect(countOf(chips.find((chip) => text(chip)?.startsWith('Idea')) as Element)).toBe(3);
   });
 
   it('carries no spec trait in an idea row: no stage track, claim progress, command chip or agent dot', async () => {

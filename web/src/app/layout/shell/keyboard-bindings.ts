@@ -78,7 +78,7 @@ export type ShortcutAction =
   /** Listed only: `UiRovingList` moves the selection itself, the service never takes these keys. */
   | { readonly kind: 'move-selection' }
   | { readonly kind: 'step-column'; readonly delta: -1 | 1 }
-  | { readonly kind: 'phase-filter'; readonly phase: string | null }
+  | { readonly kind: 'stage-filter'; readonly stage: string | null }
   | { readonly kind: 'go-area'; readonly area: AreaId }
   | { readonly kind: 'go-tab'; readonly tab: TabId }
   | { readonly kind: 'step-spec'; readonly delta: -1 | 1 }
@@ -191,18 +191,22 @@ const workspaceShortcuts: Shortcut[] = [
   { id: 'refresh', keys: ['r'], group: 'workspace', action: { kind: 'refresh' }, label: 'shortcuts.actions.refresh' },
   { id: 'column-prev', keys: ['h'], group: 'workspace', action: { kind: 'step-column', delta: -1 }, label: 'shortcuts.actions.prevColumn' },
   { id: 'column-next', keys: ['l'], group: 'workspace', action: { kind: 'step-column', delta: 1 }, label: 'shortcuts.actions.nextColumn' },
+  // Spec 064 (T62, ISC-503): the digits pick a stage chip of the spec list, the busiest stages first: 1 all, 2 build,
+  // 3 review, 4 tasks, 5 plan; the other stages are a click away.
   ...(
     [
       ['1', null, 'specs.filter.all'],
-      ['2', 'building', 'phases.building'],
-      ['3', 'scoping', 'phases.scoping'],
+      ['2', 'build', 'stages.build'],
+      ['3', 'review', 'stages.review'],
+      ['4', 'tasks', 'stages.tasks'],
+      ['5', 'plan', 'stages.plan'],
     ] as const
-  ).map(([key, phase, target]): Shortcut => ({
-    id: `phase-${phase ?? 'all'}`,
+  ).map(([key, stage, target]): Shortcut => ({
+    id: `stage-${stage ?? 'all'}`,
     keys: [key],
     group: 'workspace',
-    action: { kind: 'phase-filter', phase },
-    label: 'shortcuts.actions.phaseFilter',
+    action: { kind: 'stage-filter', stage },
+    label: 'shortcuts.actions.stageFilter',
     target,
   })),
 ];

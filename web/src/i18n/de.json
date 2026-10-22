@@ -149,7 +149,7 @@
       }
     },
     "filter": {
-      "label": "Nach Phase filtern",
+      "label": "Nach Stage filtern",
       "typeLabel": "Nach Typ filtern",
       "all": "Alle",
       "allStages": {
@@ -380,7 +380,7 @@
       "goSpecs": "Zu den Specs",
       "goNextUp": "Zu „Als Nächstes“",
       "goWarnings": "Zu den Warnungen",
-      "phaseFilter": "Phasenfilter: {{target}} (solange die Liste den Fokus hat)",
+      "stageFilter": "Stage-Filter: {{target}} (solange die Liste den Fokus hat)",
       "goTo": "Zu {{target}} wechseln",
       "prevSpec": "Vorherige Spec im Workspace",
       "nextSpec": "Nächste Spec im Workspace",

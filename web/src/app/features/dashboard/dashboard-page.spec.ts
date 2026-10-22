@@ -219,7 +219,7 @@ describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)
 
   it('still sends a list address on to /w/harbor/specs, sel included (the guard is the real one)', async () => {
     const { root } = await render('wide', '/w/harbor?phase=fog&sel=spec:002');
-    expect(TestBed.inject(Router).url).toBe('/w/harbor/specs?phase=fog&sel=spec:002');
+    expect(TestBed.inject(Router).url).toBe('/w/harbor/specs?sel=spec:002&stage=fog');
     expect(root.querySelector('app-specs-stub')).not.toBeNull();
   });
 });

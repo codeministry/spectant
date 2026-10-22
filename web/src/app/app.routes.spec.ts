@@ -103,8 +103,8 @@ describe('the workspace dashboard and the Specs page are two routes (spec 058, T
     expect(specs?.data).toEqual({ page: 'specs' });
     expect(specs?.loadComponent).toBeTypeOf('function');
     expect(specs === undefined ? -1 : children.indexOf(specs)).toBeLessThan(children.findIndex((route) => route.path === '**'));
-    const { url, route, component } = await at('/w/harbor/specs?phase=building');
-    expect(url).toBe('/w/harbor/specs?phase=building');
+    const { url, route, component } = await at('/w/harbor/specs?stage=build');
+    expect(url).toBe('/w/harbor/specs?stage=build');
     expect(component).toBe(SpecsPage);
     expect(route.ws).toBe('harbor');
     expect(route.notFound).toBe(false);
@@ -115,7 +115,7 @@ describe('an old list address of the dashboard leads to the Specs page (spec 058
   afterEach(() => TestBed.resetTestingModule());
 
   const moved: Record<string, string> = {
-    '/w/harbor?phase=building&sort=next': '/w/harbor/specs?phase=building&sort=next',
+    '/w/harbor?phase=building&sort=next': '/w/harbor/specs?sort=next&stage=build',
     '/w/harbor?q=api': '/w/harbor/specs?q=api',
     '/w/harbor?takeable=1&sel=spec:002#top': '/w/harbor/specs?takeable=1&sel=spec:002#top',
     '/w/harbor?open=specs': '/w/harbor/specs?open=specs',
@@ -156,5 +156,34 @@ describe('an old list address of the dashboard leads to the Specs page (spec 058
     await router.navigateByUrl('/w/harbor?q=api');
     expect(router.url).toBe('/w/harbor/specs?q=api');
     expect(replaced.at(-1)).toBe(true);
+  });
+});
+
+describe('an old ?phase= list address lands on the same list as ?stage= (spec 064, T62, ISC-503)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const moved: Record<string, string> = {
+    '/w/harbor/specs?phase=scoping': '/w/harbor/specs?stage=plan,tasks,review',
+    '/w/harbor/specs?phase=building&sort=next': '/w/harbor/specs?sort=next&stage=build',
+    '/w/harbor/specs?phase=climbing': '/w/harbor/specs?stage=build',
+    '/w/harbor/specs?phase=complete&archived=1#specs': '/w/harbor/specs?archived=1&stage=close,done#specs',
+    '/w/harbor/specs?phase=idea&q=audit': '/w/harbor/specs?q=audit&stage=idea',
+    '/w/harbor/specs?phase=fog': '/w/harbor/specs?stage=fog',
+    '/w/harbor/specs?phase=nope&type=bug': '/w/harbor/specs?type=bug',
+    '/w/harbor?phase=building': '/w/harbor/specs?stage=build',
+    '/w/harbor?stage=review': '/w/harbor/specs?stage=review',
+  };
+
+  for (const [from, to] of Object.entries(moved)) {
+    it(`redirects ${from} to ${to}`, async () => {
+      const { url, component } = await at(from);
+      expect(url).toBe(to);
+      expect(component).toBe(SpecsPage);
+    });
+  }
+
+  it('keeps a ?stage= address as it is, so a reload shows the same list', async () => {
+    const { url } = await at('/w/harbor/specs?stage=plan,tasks,review');
+    expect(url).toBe('/w/harbor/specs?stage=plan,tasks,review');
   });
 });

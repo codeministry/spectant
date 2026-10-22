@@ -135,9 +135,7 @@
   border-block-end: 1px solid var(--line);
 }
 
-/* Spec 064 (T41): the idea group's heading reads like the fold's label, its count muted like the fold's suffix. */
-.show-all-label,
-.ideas-head {
+.show-all-label {
   color: var(--disp-ink);
   font-size: 13px;
   font-weight: 600;
@@ -145,36 +143,8 @@
 }
 
 /* Spec 050 (T6, ISC-288): the fold's "· K archived" suffix, muted behind the name. */
-.show-all-archived,
-.ideas-count {
+.show-all-archived {
   color: var(--muted-ink);
-}
-
-/* Spec 064 (T41, ISC-479): the idea group, its heading inset like the head, its rows on the list's hairlines. */
-.ideas-head {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  margin: 0;
-  padding: 16px 16px 8px;
-}
-
-.ideas {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ideas > li {
-  border-block-start: 1px solid var(--line);
-  transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
-}
-
-/* An idea row's hover tints its `li` like a spec row's (stated before the spec rule: lower specificity first). */
-@media (hover: hover) {
-  .ideas > li:has(> app-idea-row:hover) {
-    background: color-mix(in oklab, var(--color-base-300) 55%, transparent);
-  }
 }
 
 .rows-rest {
@@ -228,6 +198,8 @@
 }
 
 @media (hover: hover) {
+  /* Spec 064 (T49): an idea row (its own link, not `.row-link`) tints its `li` the same way. */
+  .rows > li:has(> app-idea-row:hover),
   .rows > li:has(.row-link:hover) {
     background: color-mix(in oklab, var(--color-base-300) 55%, transparent);
   }

@@ -33,6 +33,7 @@ import { UiRovingCompanion, UiRovingItem, UiRovingList } from '../../../shared/u
 import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { type SortOption, UiSortMenu } from '../../../shared/ui/sort-menu/sort-menu';
+import { toneOfStage } from '../../../shared/ui/stage-tone';
 import { toneMark } from '../../../shared/ui/tone';
 import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../../core/model/stage-track';
@@ -48,11 +49,10 @@ import {
   FOG,
   type ListOption,
   type ListQuery,
-  PHASE_TONES,
-  phaseOptions,
   SORT_MENU,
   type SpecListCounts,
   type SpecTableRow,
+  stageOptions,
   typeOptions,
 } from './spec-table-model';
 
@@ -64,8 +64,8 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
 
 /**
  * The Specs panel of the workspace dashboard (T63, ISC-61; `spec-table`, reworked in T89): the head "Specs n · k archived" with the `#specs` heading the `g s` jump and the spec
- * picker land on, the phase chips (plus type chips from two types and the takeable flag) and the sort menu
- * (`ui-sort-menu`: a popover, a bottom sheet at compact), the 8 px phase strip (one segment per active spec), the rows as one
+ * picker land on, the stage chips (plus type chips from two types and the takeable flag) and the sort menu
+ * (`ui-sort-menu`: a popover, a bottom sheet at compact), the 8 px strip (one segment per active spec), the rows as one
  * roving list (↓ ↑ j k Home End, one tab stop, no wrap).
  *
  * Spec 050 (T8, ISC-289): the archived footer under `#archive` is gone; the archived specs list as rows behind the
@@ -78,8 +78,9 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
  * Spec 021 (T25, ISC-246): the head's counters are one wrapping chip row; the list shows its first `SPEC_ROW_CAP` rows,
  * filtered and sorted, the rest behind a "show all N" `ui-disclosure` (`?open=specs`), rendered only while open.
  *
- * Spec 064 (T41, ISC-479): the stories (`ideas`) stand as the group "Ideas" between the active rows and the archive
- * block, each an `app-idea-row` to its idea page; the phase chip "ideas" (`?phase=idea`) shows them alone.
+ * Spec 064 (T41, T49; ISC-479, ISC-491): the stories (`ideas`) stand as rows between the active rows and the archive
+ * block, under no heading, each an `app-idea-row` to its idea page; the chip "ideas" (`?stage=idea`) shows them alone.
+ * Spec 064 (T62, ISC-503): the chips filter by stage (`?stage=`), one per stage present, in workflow order.
  */
 @Component({
   selector: 'app-spec-table',
@@ -318,21 +319,21 @@ export class SpecTable {
     return SORT_MENU.map((key) => ({ key, label: this.transloco.translate(`specs.sort.${key}`) }));
   });
 
-  protected readonly phaseChips = computed<FilterOption[]>(() => {
+  protected readonly stageChips = computed<FilterOption[]>(() => {
     this.lang();
-    return withIdeaOption(phaseOptions(this.counts()), this.ideas().length).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : option.key === FOG ? 'specs.filter.fog' : `phases.${option.key}`, true), 'specs.filter.allStages'));
+    return withIdeaOption(stageOptions(this.counts()), this.ideas().length).map((option) => this.named(this.chip(option, this.stageWord(option.key), true), 'specs.filter.allStages'));
   });
+  /** The chip the query presses: All, or the one stage asked for; several (a mapped `?phase=scoping`) press none. */
+  protected readonly stageValue = computed(() => this.query().stage?.join(',') ?? ALL);
   protected readonly typeChips = computed<FilterOption[]>(() => {
     this.lang();
     return typeOptions(this.counts()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false), 'specs.filter.allTypes'));
   });
-  /** The strip under the head (`.phase-strip`): one equal segment per active spec, in its stage group's tone. */
-  protected readonly strip = computed(() =>
-    this.rows().map((row) => ({ id: row.id, color: toneMark(PHASE_TONES[row.stageGroup ?? ''] ?? 'neutral') })),
-  );
+  /** The strip under the head (`.phase-strip`): one equal segment per active spec, in its stage's tone (T62). */
+  protected readonly strip = computed(() => this.rows().map((row) => ({ id: row.id, color: toneMark(toneOfStage(row.stage)) })));
   protected readonly phaseStripLabel = computed(() => {
     this.lang();
-    return this.phaseChips()
+    return this.stageChips()
       .filter((chip) => chip.key !== ALL && chip.key !== FOG && chip.key !== IDEA)
       .map((chip) => `${chip.label} ${chip.count ?? 0}`)
       .join(' · ');
@@ -340,13 +341,16 @@ export class SpecTable {
 
   protected readonly noMatchPhase = computed(() => {
     this.lang();
-    const phase = this.query().phase;
-    if (phase === null) return '';
-    return phase === FOG ? this.transloco.translate('specs.filter.fog') : this.transloco.translate(`phases.${phase}`);
+    return (this.query().stage ?? []).map((stage) => this.transloco.translate(this.stageWord(stage))).join(', ');
   });
 
-  protected setPhase(key: string | undefined): void {
-    this.queryChange.emit({ ...this.query(), phase: key === undefined || key === ALL ? null : key });
+  /** A chip's word: All, fog, or `stages.<stage>` (`idea` included). */
+  private stageWord(key: string): string {
+    return key === ALL ? 'specs.filter.all' : key === FOG ? 'specs.filter.fog' : `stages.${key}`;
+  }
+
+  protected setStage(key: string | undefined): void {
+    this.queryChange.emit({ ...this.query(), stage: key === undefined || key === ALL ? null : [key] });
   }
 
   protected setType(key: string | undefined): void {
@@ -374,11 +378,11 @@ export class SpecTable {
   }
 
   protected clearFilter(): void {
-    this.queryChange.emit({ ...this.query(), phase: null, type: null, takeable: false, working: false });
+    this.queryChange.emit({ ...this.query(), stage: null, type: null, takeable: false, working: false });
   }
 
   private chip(option: ListOption, key: string | null, toned: boolean): FilterOption {
-    const tone = toned ? PHASE_TONES[option.key] : undefined;
+    const tone = toned && option.key !== ALL && option.key !== IDEA ? toneOfStage(option.key) : undefined;
     return {
       key: option.key,
       label: key === null ? option.key : this.transloco.translate(key),

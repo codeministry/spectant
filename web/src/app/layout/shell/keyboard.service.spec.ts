@@ -420,7 +420,7 @@ describe('KeyboardService', () => {
       }
       expect(navigate).not.toHaveBeenCalled();
       TestBed.resetTestingModule();
-      const onSpecs = setup({ url: '/w/harbor/specs?phase=building', specId: null });
+      const onSpecs = setup({ url: '/w/harbor/specs?stage=build', specId: null });
       document.body.innerHTML = '<h2 id="specs">S</h2>';
       onSpecs.press('g');
       expect(onSpecs.press('s').defaultPrevented).toBe(true);
@@ -533,16 +533,18 @@ describe('KeyboardService', () => {
       expect(press('j').defaultPrevented).toBe(false);
     });
 
-    it('1 to 3 set the phase query only while the Specs panel has focus', () => {
+    // Spec 064 (T62, ISC-503): 1 all, 2 build, 3 review, 4 tasks, 5 plan.
+    it('1 to 5 set the stage query only while the Specs panel has focus', () => {
       const { press, navigate } = onDashboard();
       document.body.innerHTML = '<div data-panel="specs"><button type="button">row</button></div>';
       expect(press('2').defaultPrevented).toBe(false);
       document.querySelector('button')?.focus();
-      press('2');
       // Spec 058 (ISC-395): the filter belongs to the spec list, on the Specs page.
-      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor', 'specs'], { queryParams: { phase: 'building' }, queryParamsHandling: 'merge' });
-      press('1');
-      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor', 'specs'], { queryParams: { phase: null }, queryParamsHandling: 'merge' });
+      for (const [key, stage] of [['2', 'build'], ['3', 'review'], ['4', 'tasks'], ['5', 'plan'], ['1', null]] as const) {
+        press(key);
+        expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor', 'specs'], { queryParams: { stage }, queryParamsHandling: 'merge' });
+      }
+      expect(SHORTCUTS.filter((shortcut) => shortcut.action.kind === 'stage-filter').map((shortcut) => shortcut.keys[0])).toEqual(['1', '2', '3', '4', '5']);
     });
 
     it('h and l keep the row index across the workspace columns on /', () => {

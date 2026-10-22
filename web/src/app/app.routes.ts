@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
-import { type CanActivateFn, RedirectCommand, type RedirectFunction, Router, type Routes } from '@angular/router';
-import { LIST_QUERY_KEYS } from './features/dashboard/spec-table/spec-table-model';
+import { type CanActivateFn, type Params, RedirectCommand, type RedirectFunction, Router, type Routes } from '@angular/router';
+import { LIST_QUERY_KEYS, stagesOfPhase } from './features/dashboard/spec-table/spec-table-model';
 import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './spec-area.routes';
 import { anchorRef, planningTreeLink, type ShellRouteData } from './layout/shell/areas';
 import { PLANNING_LENSES, type PlanningLensId } from './layout/shell/page-tabs';
@@ -74,10 +74,30 @@ export function isListAddress(queryParams: Readonly<Record<string, unknown>>): b
  */
 const listAddressToSpecs: CanActivateFn = ({ params, queryParams, fragment }) => {
   if (!isListAddress(queryParams)) return true;
-  const router = inject(Router);
-  const target = router.createUrlTree(['/w', params['ws'] ?? '', 'specs'], { queryParams, ...(fragment === null ? {} : { fragment }) });
-  return new RedirectCommand(target, { replaceUrl: true });
+  return toSpecs(params, queryParams, fragment);
 };
+
+/** The redirect to the Specs page of `ws` with the query (its `?phase=` mapped, `withStage`) and fragment kept. */
+function toSpecs(params: Params, queryParams: Params, fragment: string | null): RedirectCommand {
+  const target = inject(Router).createUrlTree(['/w', params['ws'] ?? '', 'specs'], { queryParams: withStage(queryParams), ...(fragment === null ? {} : { fragment }) });
+  return new RedirectCommand(target, { replaceUrl: true });
+}
+
+/**
+ * Spec 064 (T62, ISC-503): the query with an old `?phase=` replaced by the `?stage=` it stands for (`stagesOfPhase`:
+ * scoping → plan,tasks,review; building and climbing → build; complete → close,done; idea and fog stay), every other
+ * param kept; a `?stage=` already there wins, and a phase that maps onto nothing is dropped.
+ */
+function withStage(queryParams: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  if (!('phase' in queryParams)) return { ...queryParams };
+  const { phase, ...rest } = queryParams;
+  if ('stage' in rest) return rest;
+  const stages = typeof phase === 'string' ? stagesOfPhase(phase) : [];
+  return stages.length > 0 ? { ...rest, stage: stages.join(',') } : rest;
+}
+
+/** An old `?phase=` address of the Specs page goes on to the same address with `?stage=`, replacing the entry. */
+const phaseToStage: CanActivateFn = ({ params, queryParams, fragment }) => ('phase' in queryParams ? toSpecs(params, queryParams, fragment) : true);
 
 export const routes: Routes = [
   // The primitives gallery the browser tier measures (T29 to T31). Lazy, so it ships as a separate chunk that only
@@ -112,6 +132,8 @@ export const routes: Routes = [
       {
         path: 'w/:ws/specs',
         loadComponent: () => import('./features/dashboard/specs-page/specs-page').then((m) => m.SpecsPage),
+        // Spec 064 (T62, ISC-503): a list address with `?phase=` lands on its `?stage=` equivalent.
+        canActivate: [phaseToStage],
         data: specsPage,
       },
       // Spec 008 (ISC-129, ISC-124.2): the workspace board, a sibling of the planning pages, and a story's read-only

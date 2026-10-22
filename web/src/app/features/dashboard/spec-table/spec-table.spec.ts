@@ -139,23 +139,23 @@ describe('SpecTable (T89)', () => {
     return { fixture, host: fixture.nativeElement as HTMLElement, emitted, shown: () => shown };
   }
 
-  it('heads the panel "Specs n · k archived" with the #specs heading and the phase chips', async () => {
+  it('heads the panel "Specs n · k archived" with the #specs heading and the stage chips', async () => {
     const { host } = await render();
     const heading = host.querySelector('.t-head h2#specs');
     expect(text(heading)).toBe('Specs');
     expect(heading?.getAttribute('tabindex')).toBe('-1');
     // Spec 021 (T25): the counters are chips now, the archived count among them (was the meta text "2 · 1 archived").
     expect([...host.querySelectorAll('.t-head [data-counts] ui-chip')].map(text)).toEqual(['2 specs', '1 archived spec']);
-    expect(host.querySelectorAll('.t-head [data-filter="phase"] button')).toHaveLength(3);
+    expect(host.querySelectorAll('.t-head [data-filter="stage"] button')).toHaveLength(3);
   });
 
   // Spec 021 · T83 (ISC-255): the chips carry the model's counts, the stage-group split the Specs tile shows, and the
   // type counts `kpis.byType`; the panel counts no rows itself, so served numbers no grouping of the rows gives stand.
   it('shows the served chip counts, never a count of its rows (ISC-255)', async () => {
-    const served = { specs: 9, stageGroups: { scoping: 7, building: 0, complete: 2 }, specsWithFog: 3, byType: { bug: 5, feature: 4 } };
+    const served = { specs: 9, stages: { review: 7, build: 0, done: 2 }, specsWithFog: 3, byType: { bug: 5, feature: 4 } };
     const { host } = await render(DEFAULT_QUERY, {}, served);
     const chips = (filter: string) => [...host.querySelectorAll(`.t-head [data-filter="${filter}"] button`)].map(text);
-    expect(chips('phase')).toEqual(['All 9', 'scoping 7', 'complete 2', 'fog 3']);
+    expect(chips('stage')).toEqual(['All 9', 'Review 7', 'Done 2', 'fog 3']);
     expect(chips('type')).toEqual(['All 9', 'bug 5', 'feature 4']);
   });
 
@@ -196,8 +196,8 @@ describe('SpecTable (T89)', () => {
       expect(emitted).toEqual([{ ...DEFAULT_QUERY, takeable: true, working: false }]);
     });
 
-    it('"reset all filters" drops working along with phase, type and takeable', async () => {
-      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, phase: 'complete', working: true });
+    it('"reset all filters" drops working along with stage, type and takeable', async () => {
+      const { fixture, host, emitted } = await render({ ...DEFAULT_QUERY, stage: ['done'], working: true });
       const reset = host.querySelector<HTMLButtonElement>('p.empty button');
       expect(text(reset)).toBe('Clear filter');
       reset?.click();
@@ -275,7 +275,7 @@ describe('SpecTable (T89)', () => {
     const sort = head.querySelector('ui-sort-menu.sort') as HTMLElement;
     expect(sort.querySelectorAll('[data-control="sort"]')).toHaveLength(1);
     expect(sort.previousElementSibling?.hasAttribute('data-counts')).toBe(true);
-    const filter = head.querySelector('ui-filter-chips[data-filter="phase"]') as HTMLElement;
+    const filter = head.querySelector('ui-filter-chips[data-filter="stage"]') as HTMLElement;
     expect(sort.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Spec 050: "Show archived" is the last of the filters, after the type chips, so the phase chips keep head line 1.
     const toggle = head.querySelector('[data-control="archived"]') as HTMLElement;
@@ -685,7 +685,7 @@ describe('SpecTable fold (spec 021, T25)', () => {
   });
 
   it('caps a filtered list the same way and counts its rows; no fold for 10 rows or fewer', async () => {
-    const building = await renderMany('/', { ...DEFAULT_QUERY, phase: 'building' });
+    const building = await renderMany('/', { ...DEFAULT_QUERY, stage: ['build'] });
     expect(building.rowIds()).toHaveLength(10);
     expect(text(building.toggle())).toBe('Show all 11 specs');
 
@@ -737,8 +737,8 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
 
   it('names the two "all" chips by their group, so no two chips share a name', async () => {
     const { host } = await renderTyped();
-    expect(text(allChip(host, 'phase'))).toBe('All 3');
-    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('All 3 stages');
+    expect(text(allChip(host, 'stage'))).toBe('All 3');
+    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('All 3 stages');
     expect(text(allChip(host, 'type'))).toBe('All 3');
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('All 3 types');
     const named = [...host.querySelectorAll<HTMLButtonElement>('[data-filter] button')].map((b) => b.getAttribute('aria-label') ?? text(b));
@@ -749,7 +749,7 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     const { fixture, host } = await renderTyped();
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(allChip(host, 'phase')?.getAttribute('aria-label')).toBe('Alle 3 Stages');
+    expect(allChip(host, 'stage')?.getAttribute('aria-label')).toBe('Alle 3 Stages');
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('Alle 3 Typen');
   });
 
@@ -1063,10 +1063,10 @@ describe('archived rows under filters and the fold (spec 050, ISC-288)', () => {
     expect(archivedIds()).toEqual(archivedBugs);
   });
 
-  it('every phase chip, fog and takeable hide every archived row and leave the active rows they match', async () => {
+  it('every stage chip, fog and takeable hide every archived row and leave the active rows they match', async () => {
     const cases: Array<{ query: ListQuery; active: string[] }> = [
-      ...['scoping', 'building', 'complete'].map((phase) => ({ query: { ...ON, phase }, active: activeOf((row) => row['stageGroup'] === phase) })),
-      { query: { ...ON, phase: 'fog' }, active: activeOf((row) => Number(row['fog']) > 0) },
+      ...['review', 'build', 'done'].map((stage) => ({ query: { ...ON, stage: [stage] }, active: activeOf((row) => row['stage'] === stage) })),
+      { query: { ...ON, stage: ['fog'] }, active: activeOf((row) => Number(row['fog']) > 0) },
       { query: { ...ON, takeable: true }, active: activeOf((row) => Array.isArray(row['takeable']) && row['takeable'].length > 0) },
     ];
     for (const { query, active } of cases) {
@@ -1324,7 +1324,7 @@ describe('favorite stars in the spec list (spec 052, T18, ISC-300)', () => {
   });
 });
 
-describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
+describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', () => {
   const IDEAS = [
     ...harbor.ideas.list,
     { slug: 'sync-dry-run', title: 'A dry run shows what a sync would change.', feature: null, milestone: 'Harbor 2.0', priority: 'P1' },
@@ -1355,24 +1355,28 @@ describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
     fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
-    const group = () => host.querySelector<HTMLElement>('[data-ideas-group]');
-    const slugs = () => [...host.querySelectorAll<HTMLElement>('app-idea-row')].map((row) => row.dataset['idea']);
-    return { fixture, host, emitted, group, slugs };
+    const ideaRows = () => [...host.querySelectorAll<HTMLElement>('app-idea-row')];
+    const slugs = () => ideaRows().map((row) => row.dataset['idea']);
+    return { fixture, host, emitted, ideaRows, slugs };
   }
 
   const before = (a: Element | null, b: Element | null): boolean => !!a && !!b && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 
-  it('lists the ideas as a group after the active rows and before the archive block, under a heading with the count', async () => {
-    const { host, group, slugs } = await renderIdeas();
-    expect(group()).not.toBeNull();
+  // T49 (ISC-491): no group heading any more; each idea row is an item of the list itself, right after the active rows.
+  it('lists the ideas as rows of the list after the active rows and before the archive block, under no heading', async () => {
+    const { host, ideaRows, slugs } = await renderIdeas();
     expect(slugs()).toEqual(['console-audit-log', 'registry-webhooks', 'sync-dry-run']);
-    expect(before(host.querySelector('[data-spec-row="003"]'), group())).toBe(true);
-    expect(before(host.querySelector('[data-spec-row="002"]'), group())).toBe(true);
-    expect(before(group(), host.querySelector('[data-spec-row="001"]'))).toBe(true);
-    const heading = group()?.querySelector('h3');
-    expect(text(heading?.querySelector('[data-ideas-label]'))).toBe('Ideas');
-    expect(text(heading?.querySelector('[data-ideas-count]'))).toBe('3 ideas');
-    expect(group()?.querySelector('ol')?.getAttribute('aria-labelledby')).toBe(heading?.id);
+    const [first, , last] = ideaRows();
+    expect(before(host.querySelector('[data-spec-row="003"]'), first)).toBe(true);
+    expect(before(host.querySelector('[data-spec-row="002"]'), first)).toBe(true);
+    expect(before(last, host.querySelector('[data-spec-row="001"]'))).toBe(true);
+    expect(host.querySelector('#ideas-group-heading')).toBeNull();
+    expect(host.querySelector('.row-lists h3')).toBeNull();
+    expect(host.querySelector('[data-ideas-label], [data-ideas-count], [data-ideas-group]')).toBeNull();
+    // Each idea row sits in its own item of the same ordered list as the spec rows, no nested list.
+    const list = host.querySelector('.row-lists ol.rows');
+    for (const row of ideaRows()) expect(row.parentElement?.parentElement, row.dataset['idea']).toBe(list);
+    expect(host.querySelector('.row-lists ol ol')).toBeNull();
   });
 
   // Spec 064 (T47, T48, ISC-488, ISC-490): spec and idea rows are one grid. Each cell of either row names its column,
@@ -1401,48 +1405,114 @@ describe('idea group in the spec list (spec 064, T41, ISC-479)', () => {
   });
 
   it('links each idea row to /w/harbor/ideas/<slug>', async () => {
-    const { group } = await renderIdeas();
-    const hrefs = [...(group()?.querySelectorAll('app-idea-row a.link') ?? [])].map((a) => a.getAttribute('href'));
+    const { host } = await renderIdeas();
+    const hrefs = [...host.querySelectorAll('app-idea-row a.link')].map((a) => a.getAttribute('href'));
     expect(hrefs).toEqual(['/w/harbor/ideas/console-audit-log', '/w/harbor/ideas/registry-webhooks', '/w/harbor/ideas/sync-dry-run']);
   });
 
-  it('?phase=idea shows only the ideas, no spec row active or archived', async () => {
-    const { host, slugs } = await renderIdeas({ phase: 'idea' });
+  it('?stage=idea shows only the ideas, no spec row active or archived', async () => {
+    const { host, slugs } = await renderIdeas({ stage: ['idea'] });
     expect(host.querySelectorAll('[data-spec-row]')).toHaveLength(0);
     expect(slugs()).toHaveLength(3);
     expect(host.querySelector('p.empty')).toBeNull();
   });
 
-  it('any other phase, takeable, working or a type filter shows no idea group', async () => {
-    for (const over of [{ phase: 'building' }, { phase: 'scoping' }, { takeable: true }, { working: true }, { type: 'feature' }] as Array<Partial<ListQuery>>) {
-      const { group } = await renderIdeas(over);
-      expect(group(), JSON.stringify(over)).toBeNull();
+  it('any other stage, takeable, working or a type filter shows no idea row', async () => {
+    for (const over of [{ stage: ['build'] }, { stage: ['plan', 'tasks', 'review'] }, { takeable: true }, { working: true }, { type: 'feature' }] as Array<Partial<ListQuery>>) {
+      const { slugs } = await renderIdeas(over);
+      expect(slugs(), JSON.stringify(over)).toEqual([]);
     }
   });
 
-  it('offers the phase chip "ideas" with the count, which asks for phase idea; none without an idea', async () => {
+  it('offers the chip "ideas" with the count, which asks for stage idea; none without an idea', async () => {
     const { host, emitted } = await renderIdeas();
-    const chip = [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="phase"] button')].find((button) => text(button).startsWith('ideas'));
+    const chip = [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="stage"] button')].find((button) => text(button).startsWith('Idea'));
     expect(chip).toBeDefined();
     expect(text(chip)).toContain('3');
     chip?.click();
-    expect(emitted.at(-1)?.phase).toBe('idea');
+    expect(emitted.at(-1)?.stage).toEqual(['idea']);
     const without = await renderIdeas({}, []);
-    expect(without.group()).toBeNull();
-    expect([...without.host.querySelectorAll('.t-head [data-filter="phase"] button')].map(text).some((label) => label.startsWith('ideas'))).toBe(false);
+    expect(without.slugs()).toEqual([]);
+    expect([...without.host.querySelectorAll('.t-head [data-filter="stage"] button')].map(text).some((label) => label.startsWith('Idea'))).toBe(false);
   });
 
-  it('wraps the phase and type chips instead of scrolling them, so the chip "ideas" never hides at 600 px', async () => {
+  it('wraps the stage and type chips instead of scrolling them, so the chip "ideas" never hides at 600 px', async () => {
     const { host } = await renderIdeas();
     const groups = [...host.querySelectorAll('.t-head ui-filter-chips')];
     expect(groups.length).toBeGreaterThan(0);
     for (const group of groups) expect(group.hasAttribute('data-wrap'), group.getAttribute('data-filter') ?? '').toBe(true);
   });
 
-  it('heads the group in German: "Ideen" and "3 Ideen"', async () => {
+  it('shows no group heading in German either, the three rows still listed', async () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
-    const { group } = await renderIdeas();
-    expect(text(group()?.querySelector('[data-ideas-label]'))).toBe('Ideen');
-    expect(text(group()?.querySelector('[data-ideas-count]'))).toBe('3 Ideen');
+    const { host, slugs } = await renderIdeas();
+    expect(slugs()).toHaveLength(3);
+    expect(host.querySelector('.row-lists h3')).toBeNull();
+    expect(host.textContent).not.toContain('3 Ideen');
+  });
+});
+
+describe('the stage chips of the spec list (spec 064, T62, ISC-503)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  const STAGED = {
+    specs: [wire('002', { stage: 'build', fog: 1 }), wire('003', { stage: 'review' }), wire('004', { stage: 'build' }), wire('005', { stage: 'plan' })],
+    archive: [],
+    kpis: { specs: 4, stageGroups: { scoping: 2, building: 2, complete: 0 }, specsWithFog: 1, byType: { feature: 4 } },
+  };
+
+  async function renderStaged(query: ListQuery = DEFAULT_QUERY, lang = 'en') {
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(STAGED));
+    fixture.componentRef.setInput('counts', readListCounts(STAGED));
+    fixture.componentRef.setInput('ideas', harbor.ideas.list);
+    fixture.componentRef.setInput('query', query);
+    const emitted: ListQuery[] = [];
+    fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const chips = () => [...host.querySelectorAll<HTMLButtonElement>('.t-head [data-filter="stage"] button')];
+    return { fixture, host, emitted, chips };
+  }
+
+  it('offers All, one chip per stage present in workflow order with its count, then fog and ideas', async () => {
+    const { chips } = await renderStaged();
+    expect(chips().map(text)).toEqual(['All 4', 'Plan 1', 'Review 1', 'Build 2', 'fog 1', 'Idea 2']);
+    const { chips: de } = await renderStaged(DEFAULT_QUERY, 'de');
+    expect(de().map(text)).toEqual(['Alle 4', 'Plan 1', 'Review 1', 'Bauen 2', 'fog 1', 'Idee 2']);
+  });
+
+  it('asks for ?stage=<stage> on a click, [idea] for the ideas chip and none for All', async () => {
+    const { fixture, chips, emitted } = await renderStaged();
+    chips().find((chip) => text(chip).startsWith('Build'))?.click();
+    chips().find((chip) => text(chip).startsWith('Idea'))?.click();
+    await fixture.whenStable();
+    expect(emitted.map((query) => query.stage)).toEqual([['build'], ['idea']]);
+    const filtered = await renderStaged({ ...DEFAULT_QUERY, stage: ['build'] });
+    filtered.chips()[0]?.click();
+    expect(filtered.emitted.at(-1)?.stage).toBeNull();
+  });
+
+  it('filters the rows by their stage and presses the chip of the one stage asked for', async () => {
+    const { host, chips } = await renderStaged({ ...DEFAULT_QUERY, stage: ['build'] });
+    expect([...host.querySelectorAll('[data-spec-row]')].map((row) => row.getAttribute('data-spec-row'))).toEqual(['002', '004']);
+    expect(host.querySelectorAll('app-idea-row')).toHaveLength(0);
+    expect(chips().filter((chip) => chip.getAttribute('aria-pressed') === 'true').map(text)).toEqual(['Build 2']);
+    const ideas = await renderStaged({ ...DEFAULT_QUERY, stage: ['idea'] });
+    expect(ideas.host.querySelectorAll('[data-spec-row]')).toHaveLength(0);
+    expect(ideas.host.querySelectorAll('app-idea-row')).toHaveLength(2);
   });
 });
