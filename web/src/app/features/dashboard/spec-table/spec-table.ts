@@ -40,7 +40,7 @@ import { TRACK_STAGES } from '../../../core/model/stage-track';
 import { SpecRow } from './spec-row';
 import { SpecTableHead } from './spec-table-head';
 import { IdeaRow } from './idea-row';
-import { applyIdeaQuery, type DashboardIdea, listEntries, withIdeaOption } from './idea-rows';
+import { applyIdeaQuery, type DashboardIdea, ideaSegments, listEntries, withIdeaOption } from './idea-rows';
 import {
   ALL,
   IDEA,
@@ -331,12 +331,12 @@ export class SpecTable {
     this.lang();
     return typeOptions(this.counts()).map((option) => this.named(this.chip(option, option.key === ALL ? 'specs.filter.all' : null, false), 'specs.filter.allTypes'));
   });
-  /** The strip under the head (`.phase-strip`): one equal segment per active spec, in its stage's tone (T62). */
-  protected readonly strip = computed(() => this.rows().map((row) => ({ id: row.id, color: toneMark(toneOfStage(row.stage)) })));
+  /** The strip under the head (`.phase-strip`): one equal segment per active spec in its stage's tone (T62), then per idea. */
+  protected readonly strip = computed(() => [...this.rows().map((row) => ({ id: row.id, color: toneMark(toneOfStage(row.stage)) })), ...ideaSegments(this.ideas())]);
   protected readonly phaseStripLabel = computed(() => {
     this.lang();
     return this.stageChips()
-      .filter((chip) => chip.key !== ALL && chip.key !== FOG && chip.key !== IDEA)
+      .filter((chip) => chip.key !== ALL && chip.key !== FOG)
       .map((chip) => `${chip.label} ${chip.count ?? 0}`)
       .join(' · ');
   });

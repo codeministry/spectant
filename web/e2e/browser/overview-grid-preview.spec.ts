@@ -6,8 +6,9 @@
  *                                                        screenshot, harbor, ws-b and ws-d without; at 1440 and 820 px
  *                                                        every `[data-tile-block="preview"]` has the same height, and a
  *                                                        tile without a screenshot shows the neutral placeholder of
- *                                                        `ui-ws-cover[data-shape="tile"]`: the badge, no svg (the old
- *                                                        ring and dot), no surface or edge in an accent or its tint
+ *                                                        `ui-ws-cover[data-shape="tile"]`: the badge in the workspace's
+ *                                                        accent, no svg (the old ring and dot), no surface or edge
+ *                                                        around it in an accent or its tint
  *
  * Threshold: 1 px.
  */
@@ -38,7 +39,9 @@ async function accentTinted(cover: Locator): Promise<string[]> {
       }
       resolved.delete('rgba(0, 0, 0, 0)');
       const placeholder = host.querySelector('[data-cover-placeholder]');
-      const all = [host, ...(placeholder === null ? [] : [placeholder, ...placeholder.querySelectorAll('*')])];
+      // The badge carries the workspace's accent (as beside its name); the surface around it stays neutral.
+      const around = placeholder === null ? [] : [...placeholder.querySelectorAll('*')].filter((el) => el.closest('ui-ws-badge') === null);
+      const all = [host, ...(placeholder === null ? [] : [placeholder, ...around])];
       return all.flatMap((el) => {
         const s = getComputedStyle(el);
         const hits = [s.backgroundColor, s.borderTopColor, s.borderRightColor, s.borderBottomColor, s.borderLeftColor].filter((c) => resolved.has(c));
@@ -71,6 +74,7 @@ for (const width of [WIDTHS.desktop, WIDTHS.tablet]) {
         const placeholder = cover.locator('[data-cover-placeholder]');
         await expect(placeholder, `${slug}: placeholder`).toHaveCount(1);
         await expect(placeholder.locator('ui-ws-badge'), `${slug}: badge in the placeholder`).toHaveCount(1);
+        await expect(placeholder.locator('ui-ws-badge'), `${slug}: badge in the accent`).toHaveAttribute('data-tone', 'accent');
         await expect(placeholder.locator('svg'), `${slug}: ring or dot in the placeholder`).toHaveCount(0);
         expect(await accentTinted(cover), `${slug}: accent-tinted elements`).toEqual([]);
       }

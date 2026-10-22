@@ -2,9 +2,10 @@
     @if (src(); as src) {
       <img [src]="src" [alt]="alt()" loading="lazy" />
     } @else if (shape() === 'tile') {
-      <!-- The neutral placeholder of a tile (spec 066, ISC-519): the badge centred, no arc, no dot, no accent tint. -->
+      <!-- The neutral placeholder of a tile (spec 066, ISC-519): the badge centred in the workspace's accent, as beside
+           its name; no arc, no dot, no accent tint on the surface. -->
       <div data-cover-placeholder>
-        <ui-ws-badge [name]="name()" [monogram]="monogram()" [logo]="logo()" size="xl" tone="neutral" />
+        <ui-ws-badge [name]="name()" [monogram]="monogram()" [logo]="logo()" [accent]="accent()" size="xl" />
       </div>
     } @else {
       @let p = pattern();

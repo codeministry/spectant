@@ -16,7 +16,7 @@ export type WsCoverShape = 'card' | 'thumb' | 'tile';
  * same-origin path only (`wsLocalImage`): a bundled asset or the loopback image route with its cache-bust (spec 016
  * T18); a remote URL falls back to the pattern. `shape="thumb"` is the 16:10 preview a settings row sizes.
  * `shape="tile"` is borderless (the tile draws the hairlines) and, without a screenshot, shows the neutral placeholder
- * `[data-cover-placeholder]`: the badge at 32 px in the neutral tone, its `logo` if set, else the monogram.
+ * `[data-cover-placeholder]`: the badge at 88 px in the workspace's accent, its `logo` if set, else the monogram.
  */
 @Component({
   selector: 'ui-ws-cover',

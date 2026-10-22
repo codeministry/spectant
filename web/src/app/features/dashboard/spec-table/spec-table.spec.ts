@@ -1442,6 +1442,13 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
     );
   });
 
+  it('adds one strip segment per idea after the spec segments and counts the ideas in the strip name', async () => {
+    const { host } = await renderIdeas();
+    const specs = readSpecRows(BODY).length;
+    expect(host.querySelectorAll('.phase-strip i')).toHaveLength(specs + 3);
+    expect(host.querySelector('.phase-strip')?.getAttribute('aria-label')).toMatch(/Idea 3$/u);
+  });
+
   it('links each idea row to /w/harbor/ideas/<slug>', async () => {
     const { host } = await renderIdeas();
     const hrefs = [...host.querySelectorAll('app-idea-row a.link')].map((a) => a.getAttribute('href'));

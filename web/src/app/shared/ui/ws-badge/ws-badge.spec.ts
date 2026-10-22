@@ -2,7 +2,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { UiWsBadge } from './ws-badge';
 import { UiWsCover } from './ws-cover';
-import { wsAccent, wsMonogram, wsPattern } from './ws-identity';
+import { WS_ACCENT_TOKENS, wsAccent, wsMonogram, wsPattern } from './ws-identity';
 
 @Component({
   imports: [UiWsBadge, UiWsCover],
@@ -96,7 +96,7 @@ class TileHost {
 }
 
 describe('workspace cover, tile shape (spec 066 T7, ISC-519)', () => {
-  it('marks the host as a tile and draws the neutral placeholder with the 32 px badge, no ring and no dot', async () => {
+  it('marks the host as a tile and draws the neutral placeholder with the 88 px badge in the accent, no ring and no dot', async () => {
     const fixture = TestBed.createComponent(TileHost);
     await fixture.whenStable();
     const [plain] = [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('ui-ws-cover')];
@@ -105,10 +105,10 @@ describe('workspace cover, tile shape (spec 066 T7, ISC-519)', () => {
     expect(placeholder).not.toBeNull();
     const badge = placeholder?.querySelector<HTMLElement>('ui-ws-badge');
     expect(badge?.getAttribute('data-size')).toBe('xl');
-    expect(badge?.getAttribute('data-tone')).toBe('neutral');
+    expect(badge?.getAttribute('data-tone')).toBe('accent');
     expect(badge?.textContent.trim()).toBe('HA');
-    expect(badge?.style.getPropertyValue('--ws')).toBe('var(--track)');
-    expect(badge?.style.getPropertyValue('--ws-ink')).toBe('var(--muted-ink)');
+    expect(badge?.style.getPropertyValue('--ws')).toBe(WS_ACCENT_TOKENS[wsAccent('harbor')].mark);
+    expect(badge?.style.getPropertyValue('--ws-ink')).toBe(WS_ACCENT_TOKENS[wsAccent('harbor')].ink);
     expect(plain.querySelector('svg, path, circle')).toBeNull();
   });
 

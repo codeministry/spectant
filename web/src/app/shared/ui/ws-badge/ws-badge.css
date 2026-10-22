@@ -33,11 +33,12 @@
   font-size: 12px;
 }
 
+/* The tile placeholder's badge on `/` (spec 066): large initials in the middle of the 152 px preview. */
 :host([data-size='xl']) {
-  inline-size: 32px;
-  block-size: 32px;
-  border-radius: 8px;
-  font-size: 13px;
+  inline-size: 88px;
+  block-size: 88px;
+  border-radius: 16px;
+  font-size: 34px;
 }
 
 :host([data-logo]) {

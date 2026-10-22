@@ -1,5 +1,7 @@
 import type { ItemStateInfo } from '../../../../../../core/src/files';
 import { isLoose, text } from '../../../layout/shell/loose';
+import { ITEM_GLYPHS } from '../../../shared/ui/glyph/states';
+import { toneMark } from '../../../shared/ui/tone';
 import { featureOf } from './feature-fields';
 import { IDEA, type ListOption, type ListQuery, type SpecTableRow } from './spec-table-model';
 
@@ -76,3 +78,7 @@ export function listEntries(active: readonly SpecTableRow[], ideas: number, arch
   const split = entries.findIndex((entry) => entry !== IDEAS_GROUP && ++specs > cap);
   return split < 0 ? { head: entries, rest: [] } : { head: entries.slice(0, split), rest: entries.slice(split) };
 }
+
+/** The strip's segments of the stories (`.phase-strip`), one per story after the specs', in its state pill's tone. */
+export const ideaSegments = (ideas: readonly DashboardIdea[]): Array<{ id: string; color: string }> =>
+  ideas.map((idea) => ({ id: `idea:${idea.slug}`, color: toneMark(idea.state === undefined ? 'neutral' : ITEM_GLYPHS[idea.state.state].tone) }));

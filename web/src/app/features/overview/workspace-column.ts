@@ -5,7 +5,7 @@ import { DEMO_BLOCK_ATTR, DemoData } from '../../shared/demo/demo-data';
 import { UiCard } from '../../shared/ui/card/card';
 import { type RelativeUnit, relativeParts } from '../../shared/ui/relative-time/relative-time';
 import { UiWsCover } from '../../shared/ui/ws-badge/ws-cover';
-import { WS_ACCENT_TOKENS, wsAccent } from '../../shared/ui/ws-badge/ws-identity';
+import { WS_ACCENT_TOKENS, type WsAccent, wsAccent } from '../../shared/ui/ws-badge/ws-identity';
 import type { OverviewColumn } from './overview-model';
 import { TileKpis } from './tile-kpis';
 import { TileList } from './tile-list';
@@ -18,6 +18,8 @@ const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = {
 /** What a tile shows of the identity mock: the edge colour, the monogram and the fixture's screenshot. */
 export interface TileIdentity {
   readonly edge: string;
+  /** The fixture's accent; null lets the cover's badge take its name hash's, as the head badge does. */
+  readonly accent: WsAccent | null;
   readonly monogram: string | null;
   readonly image: string | null;
 }
@@ -29,7 +31,7 @@ export interface TileIdentity {
  */
 export function tileIdentity(demo: DemoData, slug: string, name: string): TileIdentity {
   const id = demo.identity(slug) ?? demo.identity(name);
-  return { edge: WS_ACCENT_TOKENS[id?.accent ?? wsAccent(name)].mark, monogram: id?.monogram ?? null, image: id?.image ?? null };
+  return { edge: WS_ACCENT_TOKENS[id?.accent ?? wsAccent(name)].mark, accent: id?.accent ?? null, monogram: id?.monogram ?? null, image: id?.image ?? null };
 }
 
 /**
