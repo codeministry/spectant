@@ -1,6 +1,5 @@
 @let c = column();
-@let id = identity();
-<ui-card class="tile-frame" [padding]="0" edge [glow]="false" [style.--edge]="id.edge">
+<ui-card class="tile-frame" [padding]="0" edge [glow]="false" [style.--edge]="edge()">
   <div class="tile-grid">
     <app-ws-identity [name]="c.name" [slug]="c.slug" [pathTail]="c.pathTail" [logo]="c.logo">
       <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
@@ -12,11 +11,9 @@
           data-ws-cover
           shape="tile"
           [name]="c.name"
-          [image]="c.screenshot ?? id.image"
+          [image]="c.screenshot"
           [alt]="'identity.screenshot' | transloco: { workspace: c.name }"
           [logo]="c.logo"
-          [monogram]="id.monogram"
-          [accent]="id.accent"
         />
       </a>
     </div>

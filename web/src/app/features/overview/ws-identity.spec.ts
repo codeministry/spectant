@@ -40,13 +40,11 @@ describe('WsIdentity, the tile head (spec 066 T10, ISC-516)', () => {
     const head = await render();
     expect(head.getAttribute('data-tile-block')).toBe('head');
     expect(head.querySelector('ui-ws-cover, [data-ws-cover]')).toBeNull();
-    // Still the identity mock's head: its ws-head carries the demo chip. Since spec 066 T12 the tile, which also shows
-    // the fixture's monogram in its preview, is the `[data-demo]` root, not the head.
-    expect(head.hasAttribute('data-demo')).toBe(false);
-    expect(head.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
+    // The identity is core's data, no mock (ISC-149.1): no `[data-demo]` mark and no demo chip in the head.
+    expect(head.matches('[data-demo], [data-demo-head]') || head.querySelector('[data-demo], [data-demo-head], [data-demo-chip]') !== null).toBe(false);
   });
 
-  it('stacks two lines beside the lg badge: name and demo chip, then path tail, separator and the updated time', async () => {
+  it('stacks two lines beside the lg badge: the name alone, then path tail, separator and the updated time', async () => {
     const head = await render();
     const badge = head.querySelector('.ws-head [data-ws-badge]');
     expect(badge?.getAttribute('data-size')).toBe('lg');
@@ -54,8 +52,7 @@ describe('WsIdentity, the tile head (spec 066 T10, ISC-516)', () => {
     const line1 = head.querySelector('[data-head-line="1"]');
     const line2 = head.querySelector('[data-head-line="2"]');
     expect(text(line1?.querySelector('h2'))).toBe('harbor');
-    expect(line1?.querySelector('[data-demo-chip]')).not.toBeNull();
-    expect(line1?.querySelector('[data-ws-badge], .path, [data-updated]')).toBeNull();
+    expect(line1?.querySelector('[data-ws-badge], .path, [data-updated], ui-chip')).toBeNull();
     const parts = [...(line2?.children ?? [])].map((el) => (el.classList.contains('path') ? 'path' : el.classList.contains('sep') ? 'sep' : el.querySelector('[data-updated]') ? 'updated' : el.tagName));
     expect(parts).toEqual(['path', 'sep', 'updated']);
     expect(text(line2?.querySelector('.path'))).toBe('code/harbor');

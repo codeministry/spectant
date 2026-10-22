@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { DEMO_BLOCK_ATTR, DemoData } from '../../shared/demo/demo-data';
 import { UiCard } from '../../shared/ui/card/card';
 import { type RelativeUnit, relativeParts } from '../../shared/ui/relative-time/relative-time';
 import { UiWsCover } from '../../shared/ui/ws-badge/ws-cover';
-import { WS_ACCENT_TOKENS, type WsAccent, wsAccent } from '../../shared/ui/ws-badge/ws-identity';
+import { WS_ACCENT_TOKENS, wsAccent } from '../../shared/ui/ws-badge/ws-identity';
 import type { OverviewColumn } from './overview-model';
 import { TileKpis } from './tile-kpis';
 import { TileList } from './tile-list';
@@ -15,23 +14,12 @@ import { WsIdentity } from './ws-identity';
 const TICK_MS = 10_000;
 const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = { s: 'second', min: 'minute', h: 'hour', d: 'day' };
 
-/** What a tile shows of the identity mock: the edge colour, the monogram and the fixture's screenshot. */
-export interface TileIdentity {
-  readonly edge: string;
-  /** The fixture's accent; null lets the cover's badge take its name hash's, as the head badge does. */
-  readonly accent: WsAccent | null;
-  readonly monogram: string | null;
-  readonly image: string | null;
-}
-
 /**
- * The identity a tile reads from the fixture (by slug, then by name), with the stand-in accent of the name hash when
- * the fixture does not know the workspace. The loading and unreadable tiles of the page use it too, so a tile keeps its
- * edge colour from loading to loaded.
+ * The edge colour of a tile: the accent its name hash picks, as the badge and the cover take it. The loading and
+ * unreadable tiles of the page use it too, so a tile keeps its edge colour from loading to loaded.
  */
-export function tileIdentity(demo: DemoData, slug: string, name: string): TileIdentity {
-  const id = demo.identity(slug) ?? demo.identity(name);
-  return { edge: WS_ACCENT_TOKENS[id?.accent ?? wsAccent(name)].mark, accent: id?.accent ?? null, monogram: id?.monogram ?? null, image: id?.image ?? null };
+export function tileEdge(name: string): string {
+  return WS_ACCENT_TOKENS[wsAccent(name)].mark;
 }
 
 /**
@@ -40,14 +28,15 @@ export function tileIdentity(demo: DemoData, slug: string, name: string): TileId
  * "Updated n s ago"), the preview (`ui-ws-cover` in the `tile` shape, the screenshot or the neutral placeholder,
  * linking to `/w/:ws`), the list area (`TileList`: what is in work, then what waits, at most three rows) and the KPIs
  * (`TileKpis`). The track heights are tokens per shell tier, so every tile of a row is equally tall and its blocks
- * start on one line whatever the workspace holds. The tile is the identity mock's `[data-demo]` root: badge, monogram
- * and accent read the fixture (ISC-149.1), and the head carries the demo chip. Renders the model as it is.
+ * start on one line whatever the workspace holds. No part of the tile is a mock: name, path, logo (spec 016),
+ * screenshot, lists and KPIs are core's data, and badge, cover and edge take the accent of the name hash, so the tile
+ * carries no demo chip (ISC-149.1). Renders the model as it is.
  */
 @Component({
   selector: 'app-workspace-column',
   imports: [RouterLink, TileKpis, TileList, TranslocoPipe, UiCard, UiWsCover, WsIdentity],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'ws-tile', 'data-ui': 'workspace-column', '[attr.data-ws]': 'column().slug', [DEMO_BLOCK_ATTR]: '' },
+  host: { class: 'ws-tile', 'data-ui': 'workspace-column', '[attr.data-ws]': 'column().slug' },
   templateUrl: './workspace-column.html',
   styleUrl: './workspace-column.css',
 })
@@ -55,10 +44,9 @@ export class WorkspaceColumn {
   readonly column = input.required<OverviewColumn>();
 
   private readonly transloco = inject(TranslocoService);
-  private readonly demo = inject(DemoData);
   private readonly now = signal(Date.now());
 
-  protected readonly identity = computed(() => tileIdentity(this.demo, this.column().slug, this.column().name));
+  protected readonly edge = computed(() => tileEdge(this.column().name));
   protected readonly href = computed(() => ['/w', this.column().slug]);
 
   /** "12 seconds ago" in the active language, from the time the dashboard answered. */

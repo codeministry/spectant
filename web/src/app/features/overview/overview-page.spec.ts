@@ -77,13 +77,11 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const columns = [...root.querySelectorAll('.overview [data-ui="workspace-column"]')];
     expect(columns.map((c) => c.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
     expect([...asked].sort()).toEqual(['harbor', 'lantern']);
-    // T54 (spec 024): one identity head per column, a mock with its chip in the ws-head; the fixture holds no image
-    // for harbor or lantern, so no <img> appears. Spec 066 T10: the cover left the head for the tile's preview track.
+    // T54 (spec 024): one identity head per column, core's data without a demo chip (ISC-149.1); the entries
+    // carry no image, so no <img> appears. Spec 066 T10: the cover left the head for the tile's preview track.
     const heads = [...root.querySelectorAll('app-ws-identity[data-tile-block="head"]')];
     expect(heads.map((head) => head.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
-    for (const head of heads) {
-      expect(head.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
-    }
+    expect(root.querySelector('[data-demo], [data-demo-chip]')).toBeNull();
     expect(root.querySelectorAll('[data-ws-badge]').length).toBe(heads.length);
     expect(root.querySelector('img')).toBeNull();
   });
@@ -107,8 +105,8 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const { root } = await render([entry('harbor'), entry('lantern')]);
     for (const ws of ['harbor', 'lantern']) {
       const tile = root.querySelector(`.overview [data-ui="workspace-column"][data-ws="${ws}"]`);
-      // The tile is the identity mock's root (badge, monogram and accent read the fixture); its head holds the chip.
-      expect(tile?.hasAttribute('data-demo')).toBe(true);
+      // No part of the tile is a mock any more (ISC-149.1): no `[data-demo]` root.
+      expect(tile?.hasAttribute('data-demo')).toBe(false);
       const cards = [...(tile?.querySelectorAll('ui-card') ?? [])];
       expect(cards.length).toBe(1);
       expect(cards[0]?.hasAttribute('data-edge')).toBe(true);

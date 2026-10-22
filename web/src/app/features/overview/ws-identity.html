@@ -1,13 +1,12 @@
-@let id = identity();
-<div class="ws-head" data-demo-head>
+<div class="ws-head">
   @if (link()) {
     <!-- The badge is a second, mouse-only way in; the name is the link the keyboard and the screen reader meet. -->
     <a class="head-badge" [routerLink]="href()" tabindex="-1" aria-hidden="true">
-      <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
+      <ui-ws-badge data-ws-badge size="lg" [name]="name()" [logo]="logo()" />
     </a>
   } @else {
     <span class="head-badge">
-      <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
+      <ui-ws-badge data-ws-badge size="lg" [name]="name()" [logo]="logo()" />
     </span>
   }
   <div class="line line-1" data-head-line="1">
@@ -16,7 +15,6 @@
     } @else {
       <span class="name"><h2>{{ name() }}</h2></span>
     }
-    <ui-chip variant="demo" />
   </div>
   <div class="line line-2" data-head-line="2">
     <span class="path">{{ pathTail() }}</span>

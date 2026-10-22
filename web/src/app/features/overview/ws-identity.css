@@ -1,6 +1,6 @@
-/* The tile head (spec 066 T10): 48 px, two lines beside the 30 px badge. Line 1 the name (16/20 600, ellipsis) and the
-   demo chip at its end; line 2 the path tail, `·` and the projected "Updated" time, the path shrinking first. Every
-   track may shrink to 0, so nothing scrolls sideways at 390 px. The path tail is _ws-path.css. */
+/* The tile head (spec 066 T10): 48 px, two lines beside the 30 px badge. Line 1 the name (16/20 600, ellipsis); line 2
+   the path tail, `·` and the projected "Updated" time, the path shrinking first. Every track may shrink to 0, so
+   nothing scrolls sideways at 390 px. The path tail is _ws-path.css. */
 @import "./_ws-path.css";
 
 :host {
@@ -50,11 +50,6 @@
   border-radius: var(--radius-field);
   color: inherit;
   text-decoration: none;
-}
-
-.line-1 ui-chip {
-  flex: none;
-  margin-inline-start: auto;
 }
 
 h2 {

@@ -1,7 +1,7 @@
 /**
  * Workspace identity, the display half (spec 024 T54): the accent names, the monogram, the
  * name hash and the name pattern that stands in where no screenshot exists. Pure functions only; where an identity
- * comes from (core's workspace name, or the demo fixture through `DemoData`) is the caller's business.
+ * comes from (core's workspace name and the images stored with spec 016) is the caller's business.
  */
 
 /** The accent names a workspace identity picks from. */

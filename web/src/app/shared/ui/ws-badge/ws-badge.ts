@@ -11,7 +11,7 @@ const NEUTRAL_TOKENS = { mark: 'var(--track)', ink: 'var(--muted-ink)' } as cons
  * The workspace badge: the monogram, or a logo, on the
  * accent tint with a 45 % ring, Sora 700. Sizes: `sm` 18 px, `md` 22 px (the default), `page` 24 px beside an h1,
  * `lg` 30 px in a ws-head, `xl` 88 px centred in a tile cover's placeholder (spec 066). With nothing but `name` it renders core's data: the initials of the workspace name on the
- * accent its hash picks, so it is no mock; a caller that passes a fixture's `logo` or `accent` owns the demo mark.
+ * accent its hash picks, so it is no mock; the `logo` is the image stored with spec 016.
  * The logo is a same-origin path only (`wsLocalImage`): a bundled asset or the loopback image route with its
  * cache-bust (spec 016 T18); a remote URL falls back to the initials.
  * Decorative: the name always stands beside it.
@@ -34,7 +34,7 @@ const NEUTRAL_TOKENS = { mark: 'var(--track)', ink: 'var(--muted-ink)' } as cons
 export class UiWsBadge {
   /** The workspace name; the initials and the default accent derive from it. */
   readonly name = input.required<string>();
-  /** Initials to show instead of the derived ones (a fixture's `monogram`). */
+  /** Initials to show instead of the derived ones. */
   readonly monogram = input<string | null>(null);
   readonly accent = input<WsAccent | null>(null);
   /** A bundled image path or the loopback image route; a remote URL is refused. */

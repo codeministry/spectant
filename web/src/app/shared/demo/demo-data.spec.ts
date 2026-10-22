@@ -6,10 +6,9 @@ describe('DemoData', () => {
   it('hands out the fixtures synchronously as read-only signals (ISC-149.1)', () => {
     const demo = TestBed.inject(DemoData);
 
-    expect(demo.workspaces().length).toBeGreaterThan(0);
     expect(demo.assistantSuggestions().length).toBeGreaterThan(0);
-    expect(Object.isFrozen(demo.workspaces())).toBe(true);
-    expect('set' in demo.workspaces).toBe(false);
+    expect(Object.isFrozen(demo.assistantSuggestions())).toBe(true);
+    expect('set' in demo.assistantSuggestions).toBe(false);
   });
 
   it('answers a known suggestion from the fixture and anything else with the fallback', () => {
@@ -18,7 +17,5 @@ describe('DemoData', () => {
 
     expect(demo.assistantReply(` ${first.prompt.toUpperCase()} `)).toBe(first.reply);
     expect(demo.assistantReply('anything else')).toBe(DEMO_ASSISTANT_FALLBACK);
-    expect(demo.identity('spectant')?.monogram).toBe('SP');
-    expect(demo.identity('unknown')).toBeUndefined();
   });
 });

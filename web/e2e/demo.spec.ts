@@ -16,10 +16,10 @@
  *   - `[data-demo-chip]`                 `<ui-chip variant="demo">` (the chip's host sets it). Exactly one visible chip
  *                                        per visible root whose nearest `[data-demo]` is that root, inside that
  *                                        root's `[data-demo-head]`. No chip outside a `[data-demo]`.
- *   - Real pages carry no `[data-demo]` and no chip: the spec dashboard `/w/:ws/s/:id` and the status tab
- *     `/w/:ws/s/:id/status` (Spec context, gates, warnings and waiting items are core's). The header's assistant
- *     trigger is a control, not a mock, and carries none; a workspace badge on these pages renders from core's data
- *     (the workspace name), never from the identity fixture, or it would need the chip.
+ *   - Real pages carry no `[data-demo]` and no chip: the overview `/` (name, path, logo, screenshot, lists and KPIs
+ *     of every tile are core's; badge, cover and edge take the accent of the name hash), the spec dashboard
+ *     `/w/:ws/s/:id` and the status tab `/w/:ws/s/:id/status` (Spec context, gates, warnings and waiting items are
+ *     core's). The header's assistant trigger is a control, not a mock, and carries none.
  */
 import type { BrowserContext, Page } from '@playwright/test';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
@@ -119,16 +119,6 @@ const useAssistant = async (page: Page): Promise<void> => {
 const MOCK_HOSTS: readonly MockHost[] = [
   { name: 'assistant dot', route: '/w/harbor/s/002', open: openAssistant, root: '[data-assistant][data-demo]', use: useAssistant },
   { name: 'assistant dot', route: '/w/harbor/s/002', width: 390, open: openAssistant, root: '[data-assistant][data-demo]', use: useAssistant },
-  {
-    name: 'identity images',
-    route: '/',
-    root: '[data-ws-cover]',
-    use: async (page) => {
-      const covers = page.locator('[data-ws-cover]');
-      expect(await covers.count()).toBeGreaterThan(0);
-      expect(await covers.evaluateAll((all) => all.filter((cover) => cover.closest('[data-demo]') === null).length)).toBe(0);
-    },
-  },
 ];
 
 /** Real pages that may hold a mock somewhere (the chip rule holds wherever one is), each with the hook that says it rendered. */
@@ -141,6 +131,7 @@ const SAMPLE_PAGES: ReadonlyArray<{ readonly route: string; readonly ready: stri
 
 /** Pages with real data only: no `[data-demo]`, no chip. */
 const REAL_ONLY: ReadonlyArray<{ readonly route: string; readonly ready: string }> = [
+  { route: '/', ready: '.overview [data-ui="workspace-column"] [data-ws-cover]' },
   { route: '/w/harbor/s/002', ready: '[data-spec-context]' },
   { route: '/w/harbor/s/002/status', ready: 'app-status-tab' },
   { route: '/settings/workspaces', ready: '[data-page="settings-workspaces"] [data-ws-row]' },
