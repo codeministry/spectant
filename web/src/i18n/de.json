@@ -214,9 +214,6 @@
       "other": "{{count}} archivierte Specs eingeblendet"
     },
     "archivedHidden": "Archivierte Specs ausgeblendet",
-    "moreName": "Mehr… {{id}} {{title}}",
-    "lessName": "Weniger {{id}} {{title}}",
-    "moreGlyph": "…",
     "ideas": {
       "title": "Ideen · {{count}}",
       "label": "Ideen im Backlog"

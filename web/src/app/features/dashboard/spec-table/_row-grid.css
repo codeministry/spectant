@@ -3,19 +3,20 @@
  * `app-spec-row` and `app-idea-row`, each importing it first. The list declares `container: specs`; the row reads it,
  * never the viewport. Every cell names its column with `data-cell` and keeps it even when empty, so no cell moves with
  * the title's length or a missing mark. From 640 px one 48 px line,
- * `id | title | more | feature | mark | agent | prio | track | phase | meter | star`; `feature` holds the main feature
+ * `id | title | feature | mark | agent | prio | track | phase | meter | star`; `feature` holds the main feature
  * over the milestone (80 px, below 880 px the feature alone in 48), `mark` is 24 px for the waits chip's icon
  * in every tier, 136 px only on an archived row from 880 px (its archive date; the columns right of it stay aligned,
  * the title absorbs the difference). Below 900 px the stage track's column is 0 wide (the stage stays in the phase
  * chip); below 880 px `meter` narrows to the a/b (48), so the title keeps its room (≥ 200 px at 740 px of list, T48). Below 640 px two lines of fixed columns:
- * `id title more star` over `· mark prio phase meter`, without the feature column.
+ * `id title star` over `· mark prio phase meter`, without the feature column. A spec row's title stands alone, one line
+ * cut by an ellipsis like an idea row's, so no column holds a "more" toggle any more.
  */
 :host {
   --track-col: 88px;
 
   display: grid;
-  grid-template-areas: 'id title more feature mark agent prio track phase meter star';
-  grid-template-columns: 72px minmax(0, 1fr) 24px 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px;
+  grid-template-areas: 'id title feature mark agent prio track phase meter star';
+  grid-template-columns: 72px minmax(0, 1fr) 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px;
   gap: 4px 8px;
   align-items: center;
   min-block-size: 48px;
@@ -28,10 +29,6 @@
 
 [data-cell='title'] {
   grid-area: title;
-}
-
-[data-cell='more'] {
-  grid-area: more;
 }
 
 /* The main feature in mono over the milestone, muted, each one line cut with an ellipsis; either is left out when the
@@ -99,7 +96,7 @@
 /* An archived row's mark holds its archive date (spec 050) from 880 px. */
 @container specs (width >= 880px) {
   :host([data-archived]) {
-    grid-template-columns: 72px minmax(0, 1fr) 24px 80px 136px 8px 48px var(--track-col, 88px) 104px 120px 32px;
+    grid-template-columns: 72px minmax(0, 1fr) 80px 136px 8px 48px var(--track-col, 88px) 104px 120px 32px;
   }
 }
 
@@ -125,7 +122,7 @@
    `meter` and `feature` narrow to 48; the other columns keep their widths (the track's 0 from 900 px down). */
 @container specs (width < 880px) {
   :host {
-    grid-template-columns: 72px minmax(0, 1fr) 24px 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px;
+    grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px;
   }
 
   .rfeat-ms {
@@ -133,16 +130,16 @@
   }
 }
 
-/* Below 640 px of list two lines of fixed columns, the same for spec and idea rows (T48): `id 44 | title | more 24 |
-   star 32` over `· | mark 24 | prio 44 | phase 104 | meter`, the meter running to the row's end under `more` and
-   `star`. At 390 px (356 px of list, 324 inside the padding) the title gets 200 px and the meter 76. The agent dot
-   and the stage track leave (no column for them; the stage stays in the phase chip). */
+/* Below 640 px of list two lines of fixed columns, the same for spec and idea rows (T48): `id 44 | title | star 32`
+   over `· | mark 24 | prio 44 | phase 104 | meter`, the meter running to the row's end under `star`. At 390 px
+   (356 px of list, 324 inside the padding) the title gets 232 px and the meter 76. The agent dot and the stage track
+   leave (no column for them; the stage stays in the phase chip). */
 @container specs (width < 640px) {
   :host {
     grid-template:
-      'id title title title title more star' 24px
-      '. mark prio phase meter meter meter' 24px
-      / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px;
+      'id title title title title star' 24px
+      '. mark prio phase meter meter' 24px
+      / 44px 24px 44px 104px minmax(0, 1fr) 32px;
   }
 
   :host > [data-cell='agent'],

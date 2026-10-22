@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 
-/** One column of the row grid (`_row-grid.css`) and its heading's key; `more`, `agent` and `star` carry none. */
+/** One column of the row grid (`_row-grid.css`) and its heading's key; `agent` and `star` carry none. */
 interface HeadCell {
   readonly name: string;
   readonly key: string | null;
@@ -10,7 +10,6 @@ interface HeadCell {
 const CELLS: readonly HeadCell[] = [
   { name: 'id', key: 'specs.columns.id' },
   { name: 'title', key: 'specs.columns.title' },
-  { name: 'more', key: null },
   { name: 'feature', key: 'specs.columns.feature' },
   { name: 'mark', key: 'specs.columns.mark' },
   { name: 'agent', key: null },

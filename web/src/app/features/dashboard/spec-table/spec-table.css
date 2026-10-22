@@ -185,21 +185,23 @@
 }
 
 /*
- * The row link (spec 025, T24): the clamped title, 15/24 500, stretched over the whole row by `::after`, so the row
- * stays one target while the waits chip behind the title (lifted above it) is a link of its own. The row look (hover,
- * current, selected) moves to the `li`; the focus ring draws on the stretched area, inset as before.
+ * The row link (spec 025, T24): the title, 15/24 500, stretched over the whole row by `::after`, so the row stays one
+ * target while the waits chip behind the title (lifted above it) is a link of its own. The title stays on one line and
+ * ends in an ellipsis when it is too long, like an idea row's (`idea-row.css` `.link`); the full title is its tooltip.
+ * The row look (hover, current, selected) moves to the `li`; the focus ring draws on the stretched area, inset as before.
  */
 .row-link {
   display: block;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-inline-size: 0;
   overflow: hidden;
-  overflow-wrap: anywhere;
   color: var(--color-base-content);
   font-size: 15px;
   font-weight: 500;
   line-height: 24px;
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-link::after {
@@ -320,39 +322,6 @@
 @media (forced-colors: active) {
   .row-link[data-changed]::before {
     background: CanvasText;
-  }
-}
-
-/* Spec 064 (T46, ISC-489): the "…" toggle of a row whose title or description is cut (ISC-111), outside the row link,
-   projected into the row's own 24 px `more` column; visibly only "…", its name the long one. */
-.row-more {
-  display: inline-grid;
-  position: relative;
-  place-items: center;
-  min-inline-size: 24px;
-  min-block-size: 24px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--disp-ink);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  .row-more:hover {
-    text-decoration: underline;
-  }
-}
-
-/* A coarse pointer gets a 44 × 44 hit area without growing the row's line. */
-@media (pointer: coarse) {
-  .row-more::before {
-    position: absolute;
-    inset: -10px;
-    content: '';
   }
 }
 

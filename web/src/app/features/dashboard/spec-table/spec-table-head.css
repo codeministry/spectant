@@ -2,9 +2,11 @@
 
 /*
  * The column header row of the Specs list (spec 064, T68): the rows' grid from `_row-grid.css`, 32 px high, the
- * headings 11/16 uppercase muted like the eyebrows. A heading may run on over the empty columns behind it (the agent
- * dot, the stage track's 0 px, the star), so "Waits", "Priority" and "Progress" keep their words where `mark`, `prio`
- * and `meter` narrow below 880 px; its left edge stays its column's. A heading still too long ends in an ellipsis.
+ * headings 11/16 uppercase muted like the eyebrows. Every heading but "Title" stands centred over its column; the
+ * title's stays at the start, over the titles. Each heading box starts where its column starts. Where a column is too
+ * narrow for its word, the heading runs on over the empty column behind it and centres over both: "Waits" over the
+ * agent dot's column in every tier, "Priority" over the stage track's 0 px below 900 px, "Progress" over the star below
+ * 880 px. A heading still too long ends in an ellipsis.
  */
 :host {
   block-size: 32px;
@@ -21,31 +23,44 @@
 .col {
   min-inline-size: 0;
   overflow: hidden;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.col[data-cell='title'] {
+  text-align: start;
 }
 
 .col[data-cell='mark'] {
   grid-column: mark-start / agent-end;
 }
 
+/* "Priority" is a little wider than its 48 px column, and from 900 px the stage track's own heading stands right of
+   it, so it cannot centre over a span there: it centres over its own column as a flex item, whose overflow a centred
+   flex line shares between both sides, a few px into the gaps, instead of being cut. */
 .col[data-cell='prio'] {
-  grid-column: prio-start / track-end;
+  display: flex;
+  justify-content: center;
+  overflow: visible;
 }
 
-.col[data-cell='meter'] {
-  grid-column: meter-start / star-end;
+@container specs (width < 900px) {
+  .col[data-cell='prio'] {
+    grid-column: prio-start / track-end;
+  }
 }
 
-/* "Stage" centred over its column, like the chips below it. */
-.col[data-cell='phase'] {
-  text-align: center;
+@container specs (width < 880px) {
+  .col[data-cell='meter'] {
+    grid-column: meter-start / star-end;
+  }
 }
 
-/* Below 640 px only the compact form's first line: ID and Title (beside the empty `more` and `star`). */
+/* Below 640 px only the compact form's first line: ID and Title (beside the empty `star`). */
 @container specs (width < 640px) {
   :host {
-    grid-template-areas: 'id title title title title more star';
+    grid-template-areas: 'id title title title title star';
     grid-template-rows: auto;
   }
 

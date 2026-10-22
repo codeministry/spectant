@@ -8,26 +8,15 @@
   <span class="rnum">{{ row().id }}</span>
 </span>
 <span class="rtitle" data-cell="title">
-  <!-- The title line: the list's row link (the clamped title, stretched over the row), then the waits chip (T24). -->
+  <!-- The title line: the list's row link (the title, stretched over the row, cut by an ellipsis), then the waits chip
+       (T24), which never cuts. -->
   <span class="tline">
     <ng-content />
     @if (row().archived ? null : row().waits; as wait) {
       <ui-waits-chip class="rwaits" data-row-waits [wait]="wait" [ws]="ws()" [titles]="titles()" />
     }
   </span>
-  @if (description(); as description) {
-    <span
-      class="d"
-      [id]="'desc-' + row().id"
-      [title]="description"
-      [uiClamp]="description"
-      [uiClampLines]="1"
-      [uiClampExpanded]="descriptionExpanded()"
-    ></span>
-  }
 </span>
-<!-- Spec 064 (T46, ISC-489): the list's "…" toggle, outside the row link, in its own column after the title. -->
-<span class="rmore" data-cell="more"><ng-content select=".row-more" /></span>
 <!-- The feature column (`_row-grid.css`): the main feature over the milestone, each left out when it names none; the
      feature's name from the master is the id's tooltip and accessible name, never shown in the cell. -->
 <span class="rfeat" data-cell="feature">

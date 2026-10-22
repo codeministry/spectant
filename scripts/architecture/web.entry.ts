@@ -45,22 +45,16 @@ export const web: LaneEntry = {
           "the import prologue of the list and its entry component: the same dependencies, no shared code (spec 061)",
       },
       {
-        files: ["features/dashboard/next-up-list/next-up-entry.css", "features/dashboard/spec-table/spec-table.css"],
-        why:
-          "the mono 'more' toggle's declarations on two different selectors (.more, .row-more) with different " +
-          "margins and positions; no shared rule without a common class, a DOM change (spec 061)",
-      },
-      {
         files: ["features/dashboard/next-up-list/next-up-entry.css", "shared/brief/brief.css"],
         why:
           "the mono 'more' toggle's declarations on .more and on app-brief .brief-more; the Brief's styles are " +
           "unencapsulated, so a partial both import would turn .more into a global rule (spec 061)",
       },
       {
-        files: ["features/dashboard/spec-table/spec-table.css", "shared/brief/brief.css"],
+        files: ["features/dashboard/spec-table/idea-row.css", "features/dashboard/spec-table/spec-table.css"],
         why:
-          "the mono 'more' toggle's declarations on .row-more and on app-brief .brief-more; the Brief's styles are " +
-          "unencapsulated, so a partial both import would turn .row-more into a global rule (spec 061)",
+          "the one-line title link cut by an ellipsis on two different selectors (.link of the idea row, .row-link of " +
+          "the spec row, styled by the list that projects it); no shared rule without a common class, a DOM change",
       },
       {
         files: ["features/dashboard/spec-table/spec-row.css", "features/spec/status/timeline/timeline-tab.css"],

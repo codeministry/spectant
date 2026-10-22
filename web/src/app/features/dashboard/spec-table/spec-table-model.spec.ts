@@ -78,11 +78,12 @@ describe('readSpecRows', () => {
     expect(rows[3]?.nextCommand).toBeNull();
   });
 
-  it('reads the goal line as the row description and the first lock holder as its agent', () => {
+  it('reads the first lock holder as the row agent, and no description from the goal line', () => {
     const lock = { id: 'ISC-3', session: 'spec-005-ISC-3', since: '2026-09-30T10:00:00Z', source: 'activity' };
     const rows = readSpecRows({ specs: [wire('005', { goal: 'Keeps the manifest in step.', taken: [lock] }), wire('006')] });
-    expect(rows[0]).toMatchObject({ description: 'Keeps the manifest in step.', agent: 'spec-005-ISC-3' });
-    expect(rows[1]).toMatchObject({ description: null, agent: null });
+    expect(rows[0]).toMatchObject({ agent: 'spec-005-ISC-3' });
+    expect(rows[1]).toMatchObject({ agent: null });
+    for (const row of rows) expect(row).not.toHaveProperty('description');
   });
 
   it('carries the agent dot on exactly the specs "In Arbeit" lists, with its session (spec 064, T2, ISC-466)', () => {
@@ -106,15 +107,13 @@ describe('readSpecRows', () => {
     expect(ids(readSpecRows({ specs: [{ title: 'x' }, wire('007')] }))).toEqual(['007']);
   });
 
-  it('reads the archive rows with their claims, goal and archive date (spec 050, ISC-287)', () => {
-    expect(readArchiveRows(BODY)).toEqual([
-      { id: '001', slug: '001-first', title: 'First', type: 'feature', closed: 5, total: 6, goal: 'Starts the workspace.', archived: '2026-09-01' },
-    ]);
+  it('reads the archive rows with their claims and archive date (spec 050, ISC-287)', () => {
+    expect(readArchiveRows(BODY)).toEqual([{ id: '001', slug: '001-first', title: 'First', type: 'feature', closed: 5, total: 6, archived: '2026-09-01' }]);
   });
 
-  it('reads an archive row without claims, goal or date as zero claims, no goal and no date', () => {
+  it('reads an archive row without claims or date as zero claims and no date', () => {
     expect(readArchiveRows({ archive: [{ id: '007', slug: '007-old', title: 'Old', type: null, claims: 'no', goal: 3 }, { title: 'x' }] })).toEqual([
-      { id: '007', slug: '007-old', title: 'Old', type: null, closed: 0, total: 0, goal: '', archived: null },
+      { id: '007', slug: '007-old', title: 'Old', type: null, closed: 0, total: 0, archived: null },
     ]);
   });
 });
@@ -138,16 +137,15 @@ describe('archivedTableRow (spec 050, ISC-287)', () => {
       takeable: [],
       warnings: 0,
       fog: 0,
-      description: 'Starts the workspace.',
       agent: null,
       waits: null,
       archived: { on: '2026-09-01' },
     });
   });
 
-  it('drops a goal that repeats the title and keeps a missing date as null', () => {
-    const row = archivedTableRow({ id: '008', slug: '008-same', title: 'Same', type: null, closed: 0, total: 0, goal: 'Same.', archived: null });
-    expect(row).toMatchObject({ description: null, archived: { on: null } });
+  it('keeps a missing date as null', () => {
+    const row = archivedTableRow({ id: '008', slug: '008-same', title: 'Same', type: null, closed: 0, total: 0, archived: null });
+    expect(row).toMatchObject({ archived: { on: null } });
   });
 
   it('leaves every active row without the archive mark', () => {
@@ -313,26 +311,6 @@ describe('holdNewRows (design.md § Live update: new specs never reflow under th
   });
 });
 
-describe('spec-table-model description beside the title (ISC-249)', () => {
-  const described = (title: string, goal: string): SpecTableRow | undefined => readSpecRows({ specs: [wire('021', { title, goal })] })[0];
-
-  it('spec-table-model drops the description when it equals the title', () => {
-    expect(described('Keeps the manifest in step', 'Keeps the manifest in step')?.description).toBeNull();
-  });
-
-  it('spec-table-model drops the description when it differs from the title only by the trailing full stop or whitespace', () => {
-    expect(described('Keeps the manifest in step', 'Keeps the manifest in step.')?.description).toBeNull();
-    expect(described('Keeps the manifest  in step.', '  Keeps the manifest in\tstep ')?.description).toBeNull();
-    expect(described('Keeps the manifest in step!', 'Keeps the manifest in step …')?.description).toBeNull();
-  });
-
-  it('spec-table-model keeps title and description when they differ, and shows the description as the model gives it', () => {
-    const row = described('Keeps the manifest in step', 'The manifest never drifts from the folder.');
-    expect(row).toMatchObject({ title: 'Keeps the manifest in step', description: 'The manifest never drifts from the folder.' });
-    expect(described('Keeps the manifest', 'Keeps the manifest in step.')?.description).toBe('Keeps the manifest in step.');
-  });
-});
-
 describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, phase chips and order)', () => {
   /** An archive row as `readArchiveRows` gives it, only the fields that matter overridden. */
   const archive = (id: string, over: Partial<ArchiveRow> = {}): ArchiveRow => ({
@@ -342,7 +320,6 @@ describe('applyArchivedQuery (spec 050, ISC-288: design.md § Across viewports, 
     type: 'feature',
     closed: 0,
     total: 0,
-    goal: '',
     archived: '2026-09-01',
     ...over,
   });

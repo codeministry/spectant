@@ -9,9 +9,9 @@
  *   counters and its first `SPEC_ROW_CAP` rows; "show all N" opens the rest, writes `open=specs` into the address, a
  *   reload keeps it open, and closing it removes the key.
  * - names (T51 · ISC-248, `bun run e2e -- density -g names`): against the dense stub, whose long titles and goals give
- *   the Next-up entries, the spec rows and the spec head of `STUB_DENSE.goalSpec` a "More…" through overflow, the
- *   dashboard, the Specs page and that spec page at 1440, 600 and 390 px carry no two visible interactive targets with
- *   the same accessible name, and every "More…" / "Less" / "Show all" / "Show whole" toggle names its object beyond its
+ *   the Next-up entries and the spec head of `STUB_DENSE.goalSpec` a "More…" through overflow (a spec row's title is
+ *   cut by an ellipsis and has none), the dashboard, the Specs page and that spec page at 1440, 600 and 390 px carry no
+ *   two visible interactive targets with the same accessible name, and every "More…" / "Less" / "Show all" / "Show whole" toggle names its object beyond its
  *   word. Since spec 058 the dashboard is one column without the list and the rail, so at 1440 its Next-up titles fit
  *   their line and only the narrower widths give them a "More…".
  *   The names are Chromium's own (the CDP accessibility tree), not a re-implementation of the name computation.
@@ -164,17 +164,9 @@ const TARGET_ROLES = new Set([
 /** A toggle's visible word: "More…", "Less", "Show all …", "Show whole …". Its name must name more than the word. */
 const TOGGLE_WORD = /^(?:more…|less|show (?:all|whole))(?=\s|,|$)/iu;
 
-/**
- * Spec 064 (T46, ISC-489): the spec list's row toggle shows only the glyph "…"; its word ("More…" / "Less") stands
- * in its accessible name alone, which still names the row after it (`specs.moreName` / `specs.lessName`).
- */
-const TOGGLE_GLYPH = '…';
-
-/** A toggle's word: the visible one, or for a glyph-only toggle the one its name starts with; null for no toggle. */
+/** A toggle's visible word; null for no toggle. */
 function toggleWord(target: Target): string | null {
-  const shown = TOGGLE_WORD.exec(target.text)?.[0];
-  if (shown !== undefined) return shown;
-  return target.text === TOGGLE_GLYPH ? (TOGGLE_WORD.exec(target.name)?.[0] ?? TOGGLE_GLYPH) : null;
+  return TOGGLE_WORD.exec(target.text)?.[0] ?? null;
 }
 
 /** One visible interactive target: Chromium's role and accessible name, and what it shows. */
@@ -274,8 +266,8 @@ async function scrollThrough(page: Page): Promise<void> {
   });
 }
 
-/** The overflow toggles of the view: Next up on the dashboard, the spec rows on the Specs page, the goal in the spec head. */
-const overflowToggles = (page: Page): Locator => page.locator('[data-next-more], app-spec-table [data-more], app-spec-head [data-more]');
+/** The overflow toggles of the view: Next up on the dashboard, the goal in the spec head (a spec row has none). */
+const overflowToggles = (page: Page): Locator => page.locator('[data-next-more], app-spec-head [data-more]');
 
 /** Wait until the clamp measured: the view's overflow toggles are there and their count holds still. */
 async function togglesSettled(page: Page, ready: Locator): Promise<void> {
@@ -303,7 +295,7 @@ const NAME_VIEWS = [
   {
     view: 'specs page',
     path: `/w/${STUB_DENSE.workspace.slug}/specs`,
-    // The list's "Show all N" fold stands once its rows rendered; the rows' "More…" follow from the clamp.
+    // The list's "Show all N" fold stands once its rows rendered; the rows have no "More…" (their titles end in "…").
     ready: (page: Page): Locator => page.locator('app-spec-table [data-fold="specs"] button.summary'),
   },
   {
@@ -340,8 +332,7 @@ for (const width of WIDTHS) {
           .filter((t) => {
             const word = toggleWord(t) ?? t.text;
             const object = squash(t.name.slice(word.length).replace(/^[\s,]+/u, ''));
-            // Label in name (WCAG 2.5.3): the name starts with the toggle's word (the visible one, or the glyph's
-            // "More…" / "Less", which holds the visible "…") and names an object after it.
+            // Label in name (WCAG 2.5.3): the name starts with the toggle's visible word and names an object after it.
             return !t.name.toLowerCase().startsWith(word.toLowerCase()) || object === '';
           })
           .map((t) => `${t.hook}: "${t.text}" named "${t.name}"`);

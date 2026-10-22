@@ -4,7 +4,7 @@
  * - The settings page sets the density through its `ui-segmented[data-setting="density"]`: one `PUT /api/settings`
  *   goes out, and a reload of the settings page shows the stored value.
  * - With the setting at `compact`, the board's cards (Lanes and Flow view) and the Specs page's spec rows render
- *   compact by default; the spec rows show no description line.
+ *   compact by default (a spec row carries it as `data-density`; it shows no description line at either density).
  * - `?density=comfortable` on the board overrides the setting for that view only: the cards render comfortable while
  *   `GET /api/settings` still answers `compact`, and no `PUT /api/settings` goes out. The board head's density switch
  *   rewrites `?density=` alone and sends no PUT either.
@@ -110,12 +110,11 @@ test.describe('density setting', () => {
     await expect(specRows(page).first()).toBeVisible();
     expect(await specRows(page).count()).toBeGreaterThan(0);
     await expect(specRows(page, 'compact')).toHaveCount(0);
-    await expect(page.locator('app-spec-row .d[id^="desc-"]')).toHaveCount(0);
 
-    // The same rows carry a description line at comfortable, so its absence above is the density's doing.
+    // `?density=comfortable` reaches the rows for this view; neither density shows a description line.
     await page.goto(`${SPECS}?density=comfortable`);
     await expect(specRows(page).first()).toHaveAttribute('data-density', 'comfortable');
-    expect(await page.locator('app-spec-row .d[id^="desc-"]').count()).toBeGreaterThan(0);
+    await expect(page.locator('app-spec-row .d, app-spec-row [id^="desc-"]')).toHaveCount(0);
 
     expect(puts.map((p) => p.url())).toEqual([]);
     expect(await storedDensity(page, session)).toBe('compact');

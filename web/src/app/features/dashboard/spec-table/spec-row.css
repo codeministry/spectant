@@ -2,9 +2,9 @@
 
 /*
  * The spec row (spec 021, design § P3 heights). The grid, shared with the idea row (spec 064), comes from
- * `_row-grid.css`: every cell sits in its own named column (T45). From 880 px the description stands inline behind
- * the title; below it the description drops unless the row is opened. Compact density (ISC-254) renders no
- * description. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
+ * `_row-grid.css`: every cell sits in its own named column (T45). The title cell holds the title alone, one line cut
+ * by an ellipsis, then the waits chip; no description, in any tier or density. `--row-id-ink` is set by the list on
+ * the selected row, whose cyan tint takes the ink.
  */
 
 /* The id cell: the 16 px type glyph slot (empty for an unknown type, so ids align), 4 px, then the number. */
@@ -28,17 +28,16 @@
   color: var(--muted-ink);
 }
 
-/* Title, then the description inline on the same line (ISC-249 keeps it to a differing sentence). */
+/* The title cell holds only the title line. */
 .rtitle {
   display: flex;
-  gap: 8px;
-  align-items: baseline;
+  align-items: center;
   min-inline-size: 0;
 }
 
-/* The title line (spec 025, T24): the list's projected row link, the title cut at a whole word by `uiClamp` (its type
+/* The title line (spec 025, T24): the list's projected row link, the title on one line cut by an ellipsis (its type
    lives in spec-table.css, which owns the link), then the waits chip, lifted above the link stretched over the row.
-   The title takes the whole cell before it is cut, as an idea row's does; the description gets what is left. */
+   The title shrinks first; the chip keeps its width. */
 .tline {
   display: flex;
   flex: 0 1 auto;
@@ -53,32 +52,7 @@
   flex: none;
 }
 
-/* The description, one line cut at a whole word by `uiClamp` (ISC-111); the list's "…" in the `more` cell opens title
-   and description. It keeps 64 px beside a long title, so its cut still fits one line. */
-.d {
-  flex: 1 1 0;
-  min-inline-size: 64px;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-/* Opened, title and description each take their whole width again. */
-:host([data-expanded]) .rtitle {
-  flex-direction: column;
-  gap: 0;
-}
-
-/* In the column an opened row turns `.rtitle` into, the inline form's zero flex basis would collapse the description
-   to no height; it takes its content's height instead. */
-:host([data-expanded]) .d {
-  flex: none;
-}
-
 /* The cells right of the title: each holds one thing at its column's start, cut rather than pushing a neighbour. */
-.rmore,
 .rmark,
 .ragent,
 .rprio,
@@ -99,13 +73,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* The "…" toggle (spec 064, T46) sits above the row link's stretch, at the top of an opened row. */
-.rmore {
-  position: relative;
-  z-index: 1;
-  align-self: start;
 }
 
 .ragent {
@@ -176,8 +143,7 @@
    leaves. */
 @container specs (width < 880px) {
   .rdate,
-  .meter,
-  :host(:not([data-expanded])) .d {
+  .meter {
     display: none;
   }
 }
@@ -199,14 +165,6 @@
   background: var(--color-base-100);
   content: '';
   pointer-events: none;
-}
-
-/* Below 640 px of list: two lines (69 px with the hairline), the grid's from `_row-grid.css`; the meter bar is gone
-   from 880 px down, the a/b stays (and in the meter cell's name). */
-@container specs (width < 640px) {
-  :host([data-expanded]) {
-    grid-template-rows: auto auto;
-  }
 }
 
 @media (forced-colors: active) {

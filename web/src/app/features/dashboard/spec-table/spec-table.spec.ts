@@ -235,12 +235,12 @@ describe('SpecTable (T89)', () => {
     expect(strip?.querySelectorAll('i')).toHaveLength(2);
   });
 
-  // Spec 064 (T68, ISC-509): one column header row over the rows, on the rows' own grid; `more`, `agent` and `star`
-  // stay without text. Where it sticks and how its edges line up is the browser probe's (spec-list-columns).
+  // Spec 064 (T68, ISC-509): one column header row over the rows, on the rows' own grid; `agent` and `star` stay
+  // without text. Where it sticks and how its edges line up is the browser probe's (spec-list-columns).
   describe('column header (ISC-509)', () => {
     const cols = (host: HTMLElement) => host.querySelector('.row-lists > [data-cols] [role="row"]');
     const heads = (host: HTMLElement) => [...(cols(host)?.querySelectorAll('[role="columnheader"]') ?? [])];
-    const ten = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+    const ten = ['id', 'title', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
 
     it('stands before the first row list with one columnheader per data-cell, texts in English', async () => {
       const { host } = await render();
@@ -248,14 +248,14 @@ describe('SpecTable (T89)', () => {
       expect(row).not.toBeNull();
       expect(host.querySelector('.row-lists > [data-cols] + ol.rows')).not.toBeNull();
       expect(heads(host).map((cell) => cell.getAttribute('data-cell'))).toEqual(ten);
-      expect(heads(host).map(text)).toEqual(['ID', 'Title', '', 'Feature', 'Waits', '', 'Priority', 'Track', 'Stage', 'Progress', '']);
+      expect(heads(host).map(text)).toEqual(['ID', 'Title', 'Feature', 'Waits', '', 'Priority', 'Track', 'Stage', 'Progress', '']);
     });
 
     it('reads the German column names', async () => {
       const { fixture, host } = await render();
       TestBed.inject(TranslocoService).setActiveLang('de');
       await fixture.whenStable();
-      expect(heads(host).map(text)).toEqual(['ID', 'Titel', '', 'Feature', 'Wartet', '', 'Priorität', 'Track', 'Stage', 'Fortschritt', '']);
+      expect(heads(host).map(text)).toEqual(['ID', 'Titel', 'Feature', 'Wartet', '', 'Priorität', 'Track', 'Stage', 'Fortschritt', '']);
       TestBed.inject(TranslocoService).setActiveLang('en');
     });
 
@@ -263,9 +263,16 @@ describe('SpecTable (T89)', () => {
       const head = gridOf(SpecTableHead);
       for (const line of gridOf(SpecRow)) expect(head).toContain(line);
     });
+
+    it('centres every heading but the title, which stays at the start', () => {
+      const css = (SpecTableHead as unknown as { ɵcmp: { styles: string[] } }).ɵcmp.styles.join('').replace(/\s+/g, '');
+      expect(css).toMatch(/\.col\[_ngcontent-%COMP%\]\{[^}]*text-align:center/);
+      expect(css).toMatch(/\.col\[data-cell=["']?title["']?\]\[_ngcontent-%COMP%\]\{text-align:start/);
+      expect(css).toMatch(/\.col\[data-cell=["']?prio["']?\]\[_ngcontent-%COMP%\]\{[^}]*justify-content:center/);
+    });
   });
 
-  it('renders a row as id | title + description | agent dot, mini track, stage chip | meter + a/b', async () => {
+  it('renders a row as id | title | agent dot, mini track, stage chip | meter + a/b', async () => {
     const { host } = await render();
     const [first, second] = [...host.querySelectorAll<HTMLAnchorElement>('[data-spec-row]')];
     // T69, spec 026 T27: a row's first activation selects it for the detail sidebar (`?sel=spec:<id>`); only the
@@ -276,32 +283,31 @@ describe('SpecTable (T89)', () => {
     expect(first.getAttribute('data-ref')).toBe('spec:002');
     expect(text(rowA.querySelector('.rid'))).toBe('002');
     expect(text(first)).toBe('Spec 002');
-    expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
+    // The title alone: no goal line beside it, although 002 carries one.
+    expect(rowA.querySelector('.rtitle .d, [id^="desc-"]')).toBeNull();
     expect(rowA.querySelector('.ragent .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
     expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
     expect(text(rowA.querySelector('.rphase ui-chip.phase'))).toBe('Build');
     expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
     expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
-    expect(rowB.querySelector('.rtitle .d')).toBeNull();
     expect(rowB.querySelector('.agent-dot')).toBeNull();
   });
 
-  // Spec 021 · T73 · ISC-246.1 (design § P3 heights): at wide the row is one line, the description inline behind the
-  // title in the same cell, then mark, agent dot, priority, mini track, phase, then meter + a/b; nothing under the row.
-  it('lays the wide row out as one line: id | title · description | mark, agent, priority, track, phase | meter (T73)', async () => {
+  // Spec 021 · T73 · ISC-246.1 (design § P3 heights): at wide the row is one line, the title alone in its cell, then
+  // feature, mark, agent dot, priority, mini track, phase, then meter + a/b; nothing under the row.
+  it('lays the wide row out as one line: id | title | feature, mark, agent, priority, track, phase | meter (T73)', async () => {
     const { host } = await render();
     const [rowA, rowB] = [...host.querySelectorAll<HTMLElement>('[data-spec-row]')].map((link) => link.closest('li') as HTMLElement);
     const cells = (el: Element | null) => [...(el?.children ?? [])].map((c) => (c.classList.length > 0 ? c.classList[0] : c.tagName.toLowerCase()));
     // Spec 052 (T17): the favorite star's cell closes the row.
-    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rmore', 'rfeat', 'rmark', 'ragent', 'rprio', 'rtrack', 'rphase', 'rmeter', 'rstar']);
-    expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline', 'd']);
+    expect(cells(rowA.querySelector('app-spec-row'))).toEqual(['rid', 'rtitle', 'rfeat', 'rmark', 'ragent', 'rprio', 'rtrack', 'rphase', 'rmeter', 'rstar']);
+    expect(cells(rowA.querySelector('.rtitle'))).toEqual(['tline']);
     expect(rowA.querySelector('.tline [data-spec-row]')).not.toBeNull();
     expect(cells(rowA.querySelector('.rtrack'))).toEqual(['ui-stage-track']);
-    expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(true);
-    expect(rowB.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(false);
     expect(rowA.querySelector('app-spec-row')?.hasAttribute('data-mark')).toBe(false);
     for (const row of [rowA, rowB]) {
-      expect([...row.children].filter((c) => !c.classList.contains('row-more')).map((c) => c.tagName.toLowerCase())).toEqual(['app-spec-row']);
+      expect(row.querySelector('app-spec-row')?.hasAttribute('data-desc')).toBe(false);
+      expect([...row.children].map((c) => c.tagName.toLowerCase())).toEqual(['app-spec-row']);
     }
   });
 
@@ -527,9 +533,9 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
   });
 
   // Spec 021 · T74 (design § P3 heights): below 640 px of list the row's two lines are `id | title | a/b` over the mark
-  // (or, without guidance, the description) · phase · priority. The host attributes the 640 px query reads: a marked
-  // row hides its description there, so line 2 starts with the mark; the meter bar and the track are the query's to hide.
-  it('gives the compact row its two lines: the a/b in the meter cell, mark or description, phase and priority below (T74)', async () => {
+  // · phase · priority. The host attribute the 640 px query reads marks the row; the meter bar and the track are the
+  // query's to hide.
+  it('gives the compact row its two lines: the a/b in the meter cell, mark, phase and priority below (T74)', async () => {
     const guidance = (harbor as unknown as { guidance: Guidance }).guidance;
     await TestBed.inject(Router).navigateByUrl('/?open=specs');
     const fixture = TestBed.createComponent(SpecTable);
@@ -791,31 +797,19 @@ describe('SpecTable names (spec 021, T32, ISC-248)', () => {
     expect(allChip(host, 'type')?.getAttribute('aria-label')).toBe('Alle 3 Typen');
   });
 
-  it('names a row\'s "More…" by its spec once the description overflows, visible text first (label in name)', async () => {
-    const { fixture, host } = await renderTyped();
-    expect(host.querySelector('[data-more]')).toBeNull();
-    (fixture.componentInstance as unknown as { setOverflow(id: string, overflows: boolean): void }).setOverflow('002', true);
-    await fixture.whenStable();
-    const more = host.querySelector<HTMLButtonElement>('[data-more="002"]');
-    // Spec 064 (T46, ISC-489): visibly only "…", in the row's own `more` cell; the accessible name stays the long one.
-    expect(text(more)).toBe('…');
-    expect(more?.getAttribute('aria-label')).toBe('More… 002 Spec 002');
-    expect(more?.parentElement?.getAttribute('data-cell')).toBe('more');
-    expect(more?.hasAttribute('style')).toBe(false);
-    more?.click();
-    await fixture.whenStable();
-    expect(text(more)).toBe('…');
-    expect(more?.getAttribute('aria-label')).toBe('Less 002 Spec 002');
-    TestBed.inject(TranslocoService).setActiveLang('de');
-    await fixture.whenStable();
-    expect(text(more)).toBe('…');
-    expect(more?.getAttribute('aria-label')).toBe('Weniger 002 Spec 002');
+  it('offers no "More…" toggle on any row: the title is cut by an ellipsis and its full text is the link\'s tooltip', async () => {
+    const { host } = await renderTyped();
+    expect(host.querySelector('[data-more], .row-more, [data-cell="more"]')).toBeNull();
+    const link = host.querySelector<HTMLAnchorElement>('a.row-link[data-spec-row="002"]');
+    expect(text(link)).toBe('Spec 002');
+    expect(link?.getAttribute('title')).toBe('Spec 002');
+    expect(link?.hasAttribute('data-clamp')).toBe(false);
   });
 });
 
 // Spec 021 (T48, ISC-254): the row density comes from the stored setting; `?density=` overrides it for this view only
-// and never writes the setting. Compact drops the description: the title stands alone at wide, and line 2 of the
-// compact tier carries only mark, phase and priority.
+// and never writes the setting. The row carries it as `data-density`; since a spec row shows no description, both
+// densities render the same cells.
 describe('SpecTable density (spec 021, T48, ISC-254)', () => {
   async function renderWith(url: string, stored: Density) {
     TestBed.configureTestingModule({
@@ -848,25 +842,22 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
     return { row, writes, settings };
   }
 
-  it('a comfortable setting shows the description where it differs from the title', async () => {
-    const { row, writes } = await renderWith('/', 'comfortable');
-    expect(row('002')?.getAttribute('data-density')).toBe('comfortable');
-    expect(text(row('002')?.querySelector('.d'))).toBe('Serves the dashboard.');
-    expect(row('002')?.hasAttribute('data-desc')).toBe(true);
-    expect(row('002')?.querySelector('a.row-link')?.getAttribute('aria-describedby')).toContain('desc-002');
-    expect(row('003')?.querySelector('.d')).toBeNull();
-    expect(writes()).toEqual([]);
+  it('both settings show the title alone: no description, and the link names none', async () => {
+    for (const stored of ['comfortable', 'compact'] as const) {
+      TestBed.resetTestingModule();
+      const { row, writes } = await renderWith('/', stored);
+      expect(row('002')?.getAttribute('data-density')).toBe(stored);
+      expect(row('002')?.querySelector('.d, [id^="desc-"]'), stored).toBeNull();
+      expect(row('002')?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '', stored).not.toContain('desc-');
+      expect(text(row('002')?.querySelector('a.row-link'))).toBe('Spec 002');
+      expect(writes()).toEqual([]);
+    }
   });
 
-  it('a compact setting drops the description: the title stands alone and the link names no description', async () => {
+  it('a compact setting keeps every cell: agent dot, stage chip, priority, track and a/b', async () => {
     const { row, writes } = await renderWith('/', 'compact');
     const compact = row('002');
     expect(compact?.getAttribute('data-density')).toBe('compact');
-    expect(compact?.querySelector('.d')).toBeNull();
-    expect(compact?.hasAttribute('data-desc')).toBe(false);
-    expect(compact?.querySelector('a.row-link')?.getAttribute('aria-describedby') ?? '').not.toContain('desc-002');
-    expect(text(compact?.querySelector('a.row-link'))).toBe('Spec 002');
-    // Only the description leaves: agent dot, stage chip, priority, track and a/b stay.
     expect(compact?.querySelector('.ragent .agent-dot')).not.toBeNull();
     expect(text(compact?.querySelector('.rphase ui-chip.phase'))).toBe('Build');
     expect(compact?.querySelector('.rprio ui-priority')).not.toBeNull();
@@ -877,7 +868,6 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
   it('?density=compact overrides a comfortable setting for this view and writes no setting', async () => {
     const { row, writes, settings } = await renderWith('/?density=compact', 'comfortable');
     expect(row('002')?.getAttribute('data-density')).toBe('compact');
-    expect(row('002')?.querySelector('.d')).toBeNull();
     expect(settings.settings().density).toBe('comfortable');
     expect(writes()).toEqual([]);
   });
@@ -885,7 +875,6 @@ describe('SpecTable density (spec 021, T48, ISC-254)', () => {
   it('?density=comfortable overrides a compact setting; an unknown value falls back to the setting', async () => {
     const first = await renderWith('/?density=comfortable', 'compact');
     expect(first.row('002')?.getAttribute('data-density')).toBe('comfortable');
-    expect(text(first.row('002')?.querySelector('.d'))).toBe('Serves the dashboard.');
     TestBed.resetTestingModule();
     const second = await renderWith('/?density=dense', 'compact');
     expect(second.row('002')?.getAttribute('data-density')).toBe('compact');
@@ -1420,10 +1409,10 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
   // Spec 064 (T47, T48, ISC-488, ISC-490): spec and idea rows are one grid. Each cell of either row names its column,
   // and both components carry the same compiled grid: the wide template, the narrowing below 880 px, the fixed compact
   // form below 640 px and every cell's area. The layout itself is measured by the browser probe (spec-list-columns).
-  it('lays spec and idea rows on the same grid: the same eleven cells, templates and areas in every tier (T47, T48)', async () => {
+  it('lays spec and idea rows on the same grid: the same ten cells, templates and areas in every tier (T47, T48)', async () => {
     const { host } = await renderIdeas();
     const cells = (row: Element | null) => [...(row?.children ?? [])].map((cell) => cell.getAttribute('data-cell'));
-    const ten = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
+    const ten = ['id', 'title', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'];
     expect(cells(host.querySelector('app-spec-row'))).toEqual(ten);
     const ideas = [...host.querySelectorAll('app-idea-row')];
     expect(ideas.length).toBe(3);
@@ -1435,9 +1424,9 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
     expect(grid.some((line) => line.includes('grid-template') && / auto\b/.test(line))).toBe(false);
     expect(grid).toEqual(
       expect.arrayContaining([
-        ':host | grid-template-columns: 72px minmax(0, 1fr) 24px 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
-        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 24px 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
-        '@container specs (width < 640px) | :host | grid-template: "id title title title title more star" 24px ". mark prio phase meter meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 24px 32px',
+        ':host | grid-template-columns: 72px minmax(0, 1fr) 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
+        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
+        '@container specs (width < 640px) | :host | grid-template: "id title title title title star" 24px ". mark prio phase meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 32px',
       ]),
     );
   });

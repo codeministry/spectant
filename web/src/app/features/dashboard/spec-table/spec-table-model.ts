@@ -41,11 +41,6 @@ export interface SpecTableRow extends Partial<FeatureFields> {
   readonly warnings: number;
   readonly fog: number;
   /**
-   * The one-line description under the title: the `## Goal` line the model carries; null when it is empty or does not
-   * differ from the title after normalizing whitespace and trailing punctuation (ISC-249), so the sentence stands once.
-   */
-  readonly description: string | null;
-  /**
    * The session holding a lock on one of the spec's claims (the first in claim order); null without locks. Read through
    * `holderOf`, the source the "In Arbeit" list (`workingOf`) reads too (spec 064, T2, ISC-466).
    */
@@ -70,8 +65,6 @@ export interface ArchiveRow {
   readonly closed: number;
   /** Spec 050 (T1, ISC-287): the live claims in total, from the wire's `claims`. */
   readonly total: number;
-  /** Spec 050 (T1, ISC-287): the `## Goal` line as core gives it, trimmed; empty when there is none. */
-  readonly goal: string;
   /** Spec 050 (T1, ISC-287): frontmatter `archived:` (`YYYY-MM-DD`); null when the folder carries none. */
   readonly archived: string | null;
 }
@@ -146,20 +139,6 @@ const listOf = (body: unknown, key: string): Loose[] => {
   return Array.isArray(list) ? list.filter(isLoose) : [];
 };
 
-/** A line as the title comparison sees it: whitespace runs collapsed, the ends trimmed, trailing punctuation dropped. */
-const compared = (line: string): string =>
-  line
-    .replace(/\s+/gu, ' ')
-    .trim()
-    .replace(/[\s\p{P}]+$/u, '');
-
-/**
- * The description the row shows (ISC-249): the goal line as core gives it, or null when it is empty or says nothing
- * the title does not, compared after normalizing whitespace and trailing punctuation; the shown text is never changed.
- */
-const descriptionOf = (goal: string, title: string): string | null =>
-  goal === '' || compared(goal) === compared(title) ? null : goal;
-
 /** The row's `waits` as core sends it (`SpecWait`), passed through; null unless it names at least one blocker. */
 const waitsOf = (value: unknown): SpecWait | null =>
   isLoose(value) && Array.isArray(value['blockers']) && value['blockers'].length > 0 ? (value as unknown as SpecWait) : null;
@@ -170,7 +149,6 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
     if (id === null) return [];
     const progress = isLoose(row['progress']) ? row['progress'] : {};
     const takeable = Array.isArray(row['takeable']) ? row['takeable'].flatMap((claim) => text(claim) ?? []) : [];
-    const goal = text(row['goal'])?.trim() ?? '';
     const title = text(row['title']) ?? id;
     const slug = text(row['slug']);
     return [
@@ -191,7 +169,6 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         takeable,
         warnings: Array.isArray(row['warnings']) ? row['warnings'].length : 0,
         fog: count(row['fog']),
-        description: descriptionOf(goal, title),
         agent: holderOf(row)?.session ?? null,
         waits: waitsOf(row['waits']),
       },
@@ -199,7 +176,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
   });
 }
 
-/** The archive rows in model order, with their claims, goal and archive date (spec 050, T1, ISC-287). */
+/** The archive rows in model order, with their claims and archive date (spec 050, T1, ISC-287). */
 export function readArchiveRows(body: unknown): ArchiveRow[] {
   return listOf(body, 'archive').flatMap((row): ArchiveRow[] => {
     const id = text(row['id']);
@@ -213,7 +190,6 @@ export function readArchiveRows(body: unknown): ArchiveRow[] {
         type: text(row['type']),
         closed: count(claims['closed']),
         total: count(claims['total']),
-        goal: text(row['goal'])?.trim() ?? '',
         archived: text(row['archived']),
       },
     ];
@@ -222,8 +198,8 @@ export function readArchiveRows(body: unknown): ArchiveRow[] {
 
 /**
  * Spec 050 (T1, ISC-287): an archived spec as a row of the list. It is done and carries no priority, stage group,
- * phase, next step, lock or wait; its meter reads the live claims and its description the goal (ISC-249), and the
- * archive mark sets it apart from every active row.
+ * phase, next step, lock or wait; its meter reads the live claims, and the archive mark sets it apart from every active
+ * row.
  */
 export function archivedTableRow(row: ArchiveRow): SpecTableRow {
   return {
@@ -241,7 +217,6 @@ export function archivedTableRow(row: ArchiveRow): SpecTableRow {
     takeable: [],
     warnings: 0,
     fog: 0,
-    description: descriptionOf(row.goal, row.title),
     agent: null,
     waits: null,
     archived: { on: row.archived },

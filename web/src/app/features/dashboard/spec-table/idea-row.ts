@@ -21,7 +21,7 @@ import type { DashboardIdea } from './idea-rows';
  * `feature` the feature over the milestone, as a spec row's; in `prio` `ui-priority`; in `phase`, when the model serves
  * one, the state as the spec row's stage chip (`ui-chip` with a dot in the state's item-glyph tone, "Idea · open";
  * T69, ISC-510), without command or actor; in `star` the idea favourite's `ui-star-toggle` (T53, ISC-497),
- * its own target above the link. `more`, `mark`, `agent`, `track` and `meter` stay empty:
+ * its own target above the link. `mark`, `agent`, `track` and `meter` stay empty:
  * an idea has no stage track, claim progress, Next command or agent dot. Below 640 px it takes the spec row's two lines.
  *
  * The link activates like a spec row's (spec 026, ISC-171): a plain click (or Enter) selects the story for the detail

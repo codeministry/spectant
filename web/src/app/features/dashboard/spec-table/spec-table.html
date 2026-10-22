@@ -140,8 +140,6 @@
             [mark]="guide ? (guide.waits ? 'waits' : 'next') : null"
             [stageLabels]="stageLabels()"
             [density]="density()"
-            [descriptionExpanded]="moreOpen().has(row.id)"
-            (descriptionOverflow)="setOverflow(row.id, $event)"
           >
             <a
               uiRovingItem
@@ -161,12 +159,10 @@
               [attr.data-archived-row]="row.archived ? row.id : null"
               [attr.data-changed]="!row.archived && dots().has(row.id) ? '' : null"
               [title]="linkTitle(row.title, why)"
-              [uiClamp]="row.title"
-              [uiClampLines]="1"
-              [uiClampExpanded]="moreOpen().has(row.id)"
               (pointerenter)="clearDot(row.id)"
               (focusin)="clearDot(row.id)"
-            ></a>
+              >{{ row.title }}</a
+            >
             <!-- Spec 052 (T18, ISC-300): the favorite star, projected into the row's own cell beside the link. It is
                  declared here, in the template under `uiRovingList`, so the list's content query sees it as the link's
                  companion: one tab stop per row, → and ← between the two. An archived row gets none, and the guard
@@ -179,19 +175,6 @@
                 [label]="'favorites.toggle' | transloco: { id: row.id, title: row.title }"
                 (toggled)="toggleFavorite(row)"
               ></button>
-            }
-            <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). Spec 064 (T46,
-                 ISC-489): projected into the row's own `more` column, visibly only "…", named by its spec. -->
-            @if (overflowing().has(row.id)) {
-              <button
-                type="button"
-                class="row-more"
-                [attr.data-more]="row.id"
-                [attr.aria-expanded]="moreOpen().has(row.id)"
-                [attr.aria-controls]="(descShown(row) ? 'desc-' : 'rl-') + row.id"
-                [attr.aria-label]="(moreOpen().has(row.id) ? 'specs.lessName' : 'specs.moreName') | transloco: { id: row.id, title: row.title }"
-                (click)="toggleMore(row.id)"
-              >{{ 'specs.moreGlyph' | transloco }}</button>
             }
           </app-spec-row>
           <!-- The reason (ISC-122.3, ISC-240 refined by spec 021 R1): read as the row link's description, never shown as a

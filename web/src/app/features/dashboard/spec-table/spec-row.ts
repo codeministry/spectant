@@ -1,8 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, contentChildren, effect, inject, input, output, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { UiAgentDot } from '../../../shared/ui/agent-dot/agent-dot';
-import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiGlyph } from '../../../shared/ui/glyph/glyph';
 import { UiMeter } from '../../../shared/ui/meter/meter';
@@ -23,24 +22,24 @@ const AGENT_KEY = 'specs.agentWorking';
 
 /**
  * One spec as a row of the Specs panel (`spec-row`, T89):
- * `type glyph + id | title + one-line description | agent dot + priority + mini five-segment stage track + phase chip |
- * meter + a/b` (spec 008: the type glyph before the number, `ui-priority` before the stage track, ISC-118). It
+ * `type glyph + id | title | agent dot + priority + mini five-segment stage track + phase chip | meter + a/b` (spec 008: the type glyph before the number, `ui-priority` before the stage track, ISC-118). It
  * renders the cells only; the link and the roving tab stop are the list's (`spec-table`).
  *
- * Spec 025 (T24, ISC-163): the row is no longer wrapped in one `<a>`. The list projects its row link, the clamped
- * title stretched over the whole row, into the title line; a waiting spec's `ui-waits-chip` follows it there as its own
+ * Spec 025 (T24, ISC-163): the row is no longer wrapped in one `<a>`. The list projects its row link, the title
+ * stretched over the whole row, into the title line; a waiting spec's `ui-waits-chip` follows it there as its own
  * link to the blocker, lifted above the stretched link. The title cuts first, the chip never; the partial scope lives
  * only in the chip's accessible name (no `.meta` in the list).
  *
  * Forms (spec 021, design § P3 heights): the row reads the `specs` container the list declares. Since spec 064 (T45,
  * ISC-487) every cell names its fixed column of `_row-grid.css` with `data-cell` and renders even when empty: from
- * 640 px one 48 px line, `id | title · description | more | mark | agent | prio | track | phase | meter | star`; below
- * 640 px two lines, `id title more star` over `· mark prio phase meter`, without agent dot, meter bar and track. The
- * list's "…" toggle (T46, ISC-489) is projected into the `more` cell (`.row-more`).
+ * 640 px one 48 px line, `id | title | feature | mark | agent | prio | track | phase | meter | star`; below 640 px two
+ * lines, `id title star` over `· mark prio phase meter`, without agent dot, meter bar and track. The title stands
+ * alone, one line cut by an ellipsis like an idea row's: no goal line under or behind it and no "…" toggle (the
+ * former `more` column, T46, ISC-489, is gone); the full title is the row link's tooltip.
  *
- * Density (spec 021, ISC-254): the list resolves it, the stored setting or the view's `?density=`. `compact` drops the
- * description and nothing else: at wide the title stands alone on its line, below 640 px line 2 is `mark · phase ·
- * priority`. The guidance reason stays the row link's description either way (R1).
+ * Density (spec 021, ISC-254): the list resolves it, the stored setting or the view's `?density=`, and the row
+ * carries it as `data-density`. Since the row shows no description, both densities render the same row. The guidance
+ * reason stays the row link's description either way (R1).
  *
  * Spec 050 (T2, ISC-287): an archived row (`row().archived` present) keeps the grid, but its track cell holds only the
  * archive chip (icon `archive`, the word, a dashed border) where the phase chip stands, from 640 px behind the archive
@@ -53,7 +52,7 @@ const AGENT_KEY = 'specs.agentWorking';
  */
 @Component({
   selector: 'app-spec-row',
-  imports: [TranslocoPipe, UiAgentDot, UiChip, UiClamp, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTime, UiTypeGlyph, UiWaitsChip],
+  imports: [TranslocoPipe, UiAgentDot, UiChip, UiGlyph, UiMeter, UiPriority, UiStageTrack, UiTime, UiTypeGlyph, UiWaitsChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-row.html',
   styleUrl: './spec-row.css',
@@ -62,9 +61,6 @@ const AGENT_KEY = 'specs.agentWorking';
     '[attr.data-mark]': 'shownMark()',
     '[attr.data-archived]': "row().archived ? '' : null",
     '[attr.data-archived-first]': "archivedFirst() ? '' : null",
-    '[attr.data-desc]': "description() ? '' : null",
-    '[attr.data-overflow]': "overflowing() ? '' : null",
-    '[attr.data-expanded]': "descriptionExpanded() ? '' : null",
   },
 })
 export class SpecRow {
@@ -74,10 +70,8 @@ export class SpecRow {
   readonly row = input.required<SpecTableRow>();
   /** The five stage labels, translated once by the list. */
   readonly stageLabels = input.required<readonly string[]>();
-  /** The resolved density (ISC-254): `compact` shows no description. */
+  /** The resolved density (ISC-254), carried as `data-density`; the row looks the same at both. */
   readonly density = input<Density>('comfortable');
-  /** The description the row shows: the model's (ISC-249), none at `compact` density. */
-  protected readonly description = computed(() => (this.density() === 'compact' ? null : this.row().description));
   /**
    * The row's guidance mark (spec 021, R1): `waits` shows the visible "Waits on you" chip, `next` the open ring, null
    * neither. The list derives it from the spec's own guidance entry; the entry's reason is the row link's description.
@@ -87,30 +81,11 @@ export class SpecRow {
   protected readonly shownMark = computed(() => (this.row().archived ? null : this.mark()));
   /** Spec 050 (T2, ISC-287): the first archived row under the active ones; its top hairline is dashed. */
   readonly archivedFirst = input(false);
-  /** Title and description show in full (the list's "more…" toggle, ISC-111). */
-  readonly descriptionExpanded = input(false);
-  /** Whether the title needs more than its line or the description more than its two, so the list offers "more…" outside the row link. */
-  readonly descriptionOverflow = output<boolean>();
 
   /** The workspace slug the waits chip links in (T24). */
   readonly ws = input('');
   /** Blocker titles by `NNN` for the waits chip's accessible name (T24). */
   readonly titles = input<Readonly<Record<string, string>>>({});
-
-  private readonly clamps = viewChildren(UiClamp);
-  /** The title's clamp sits on the list's projected row link (T24). */
-  private readonly titleClamps = contentChildren(UiClamp, { descendants: true });
-
-  /** Title or description is cut; without a description the title line then keeps room for the list's "more…". */
-  protected readonly overflowing = computed(() => [...this.titleClamps(), ...this.clamps()].some((clamp) => clamp.overflows()));
-
-  constructor() {
-    let last = false;
-    effect(() => {
-      const overflows = this.overflowing();
-      if (overflows !== last) this.descriptionOverflow.emit((last = overflows));
-    });
-  }
 
   /** The row's `spec_type:` as a glyph kind; null for a missing or unknown type, which leaves the glyph slot empty. */
   protected readonly glyphType = computed<TypeGlyphKind | null>(() => {

@@ -1,11 +1,12 @@
 /**
- * Long text cut sensibly, with "more…" (ISC-111; the principal's cmux check, 2026-10-01).
+ * Long text cut sensibly (ISC-111; the principal's cmux check, 2026-10-01).
  *
- *   bun run e2e -- truncate -g table     ISC-111    Specs table descriptions
+ *   bun run e2e -- truncate -g table     ISC-111    Specs list titles
  *
- * A cut text stays within its lines, ends at a whole word of the full text with "…", and its "more…" / "less"
- * button sits outside the row link (a control inside a link is a nested interactive element). 390 px is the width
- * where the fixture goals need more than two lines.
+ * In the Specs list a spec row shows its title alone, one line cut by a CSS ellipsis like an idea row's, with no
+ * description and no "more…" toggle; 390 px is a width where harbor's longer titles are cut. Elsewhere a cut text stays
+ * within its lines, ends at a whole word of the full text with "…", and its "more…" / "less" button sits outside the
+ * link (a control inside a link is a nested interactive element).
  */
 import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
@@ -47,57 +48,34 @@ async function openDashboard(page: Page): Promise<void> {
 test.describe('truncate table', () => {
   test.use(atWidth(390));
 
-  test('table: a long description is cut after one line at a whole word, and more… / less toggle it in place', async ({ page }) => {
-    // Spec 064 (T48): below 880 px of list a closed row shows no description; from 880 it stands inline behind the
-    // title, one line, so this check runs at 1440. The open list (`?open=specs`) holds every row.
-    await page.setViewportSize(atWidth(1440).viewport);
-    await page.goto('/w/harbor/specs?open=specs');
-    await expect(page.locator('[data-spec-row]').first()).toBeVisible();
-    const cut = page.locator('[data-panel="specs"] app-spec-row .d[data-clamp="cut"]:visible');
-    await expect(cut.first()).toBeVisible();
-    const id = (await cut.first().getAttribute('id'))?.replace(/^desc-/u, '') ?? '';
-    // Pinned by id: the `data-clamp="cut"` locator would move on to the next cut row once this one opens.
-    const description = page.locator(`#desc-${id}`);
-    // spec 024: one line (principal 2026-10-13, ISC-111 refined)
-    expectCutAtWord(await measure(description), 1);
-
-    // Spec 064 (T46, ISC-489): the toggle shows only "…"; "More…" / "Less" and the row stand in its accessible name.
-    const more = page.locator(`[data-more="${id}"]`);
-    await expect(more).toBeVisible();
-    await expect(more).toHaveText(ELLIPSIS);
-    await expect(more).toHaveAccessibleName(new RegExp(`^More… ${id} \\S`, 'u'));
-    await expect(more).toHaveAttribute('aria-expanded', 'false');
-    await expect(more).toHaveAttribute('aria-controls', `desc-${id}`);
-    await expect(page.locator('.row-link [data-more]')).toHaveCount(0);
-
-    await more.click();
-    await expect(description).toHaveAttribute('data-clamp', 'open');
-    const open = await measure(description);
-    expect(open.shown).toBe(open.full);
-    // spec 024: one line (principal 2026-10-13, ISC-111 refined)
-    expect(open.height).toBeGreaterThan(open.line * 1 + 1);
-    await expect(more).toHaveAttribute('aria-expanded', 'true');
-    await expect(more).toHaveText(ELLIPSIS);
-    await expect(more).toHaveAccessibleName(new RegExp(`^Less ${id} \\S`, 'u'));
-
-    await more.click();
-    await expect(description).toHaveAttribute('data-clamp', 'cut');
-    await expect(more).toHaveAttribute('aria-expanded', 'false');
-    await expect(more).toHaveAccessibleName(new RegExp(`^More… ${id} \\S`, 'u'));
-  });
-
-  test('table: every cut description has its button, and a description that fits has none', async ({ page }) => {
+  test('table: a long spec title is one line cut by an ellipsis, with no description and no more… toggle in the list', async ({ page }) => {
     await openSpecs(page);
-    const descriptions = page.locator('[data-panel="specs"] app-spec-row .d');
-    await expect(descriptions.first()).toHaveAttribute('data-clamp', /cut|whole/u);
-    for (const d of await descriptions.all()) {
-      const id = (await d.getAttribute('id'))?.replace(/^desc-/u, '') ?? '';
-      const state = await d.getAttribute('data-clamp');
-      // Spec 021 (design § P3 heights): the title is one line too, and the row's one "more…" opens both, so a row
-      // offers it when its title or its description is cut.
-      const title = await page.locator(`#rl-${id}`).getAttribute('data-clamp');
-      await expect(page.locator(`[data-more="${id}"]`)).toHaveCount(state === 'cut' || title === 'cut' ? 1 : 0);
+    const links = page.locator('[data-panel="specs"] a.row-link[data-spec-row]');
+    // At 390 px the title column is about 230 px wide, so harbor's longer titles are cut.
+    const rows = await links.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node);
+        return {
+          id: node.getAttribute('data-spec-row') ?? '',
+          shown: node.textContent.trim(),
+          full: (node.getAttribute('title') ?? '').split('\n')[0] ?? '',
+          cut: node.scrollWidth > node.clientWidth,
+          height: node.getBoundingClientRect().height,
+          line: Number.parseFloat(style.lineHeight),
+          overflow: style.textOverflow,
+          wrap: style.whiteSpace,
+        };
+      }),
+    );
+    expect(rows.some((row) => row.cut), 'a cut title').toBe(true);
+    for (const row of rows) {
+      // The whole title is in the link (CSS cuts it, not the text), and its tooltip names it in full.
+      expect(row.shown, row.id).toBe(row.full);
+      expect(row.overflow, row.id).toBe('ellipsis');
+      expect(row.wrap, row.id).toBe('nowrap');
+      expect(row.height, `${row.id}: one line`).toBeLessThanOrEqual(row.line + 1);
     }
+    await expect(page.locator('[data-panel="specs"] :is([data-more], .row-more, app-spec-row .d, [id^="desc-"], [data-cell="more"])')).toHaveCount(0);
   });
 });
 

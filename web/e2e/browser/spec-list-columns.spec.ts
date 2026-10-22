@@ -3,12 +3,15 @@
  * `X-Spectant-Stub-Locks: working` (so harbor 002, 005, 006 and 009 carry the agent dot), with the "show all" fold
  * open so every active row, mark or none, and both ideas are on the page:
  *
- *   bun run test:browser -- spec-list-columns -g "spec columns"     ISC-487, T56: at 820 and 1440 px each of the eleven
+ *   bun run test:browser -- spec-list-columns -g "spec columns"     ISC-487, T56: at 820 and 1440 px each of the ten
  *                                                                   cells starts at the same x in every spec row
  *   bun run test:browser -- spec-list-columns -g "idea columns"     ISC-488, T56: an idea row's id, title, feature,
  *                                                                   prio, phase and star start where a spec row's do
- *   bun run test:browser -- spec-list-columns -g "more toggle"      ISC-489, T56: the toggle reads "…", keeps its long
- *                                                                   name, stands at one x and overlaps no other cell
+ *   bun run test:browser -- spec-list-columns -g "headings centred" at 820 and 1440 px every column heading but Title
+ *                                                                   stands in the middle of its box, Title at its start
+ *   bun run test:browser -- spec-list-columns -g "title cut"        at 390, 820 and 1440 px a spec row's title is one
+ *                                                                   line cut by an ellipsis, the waits chip after it
+ *                                                                   uncut; no row has a "…" toggle or a description
  *   bun run test:browser -- spec-list-columns -g "compact columns"  ISC-490, T56: at 390 px both lines of spec and
  *                                                                   idea rows share their columns
  *   bun run test:browser -- spec-list-columns -g "sticky head"      ISC-509, T68: the column header's cells start at
@@ -23,7 +26,7 @@ import { LOCKS_HEADER } from '../stub-api';
 
 const LIST = '/w/harbor/specs';
 const TOLERANCE = 1;
-const TEN = ['id', 'title', 'more', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'] as const;
+const TEN = ['id', 'title', 'feature', 'mark', 'agent', 'prio', 'track', 'phase', 'meter', 'star'] as const;
 const IDEA_CELLS = ['id', 'title', 'feature', 'prio', 'phase', 'star'] as const;
 
 interface Box {
@@ -43,8 +46,6 @@ interface Row extends Box {
   readonly marked: boolean;
   /** The rendered cells (a cell the tier hides with `display: none` is left out). */
   readonly cells: readonly Cell[];
-  /** The "…" toggle, when the row has one. */
-  readonly more: (Box & { readonly text: string; readonly name: string; readonly spec: string }) | null;
 }
 
 /** Opens the list with the fold open, so every active row and both ideas are rendered. */
@@ -69,30 +70,21 @@ async function rowsOf(page: Page): Promise<Row[]> {
     };
     const kindOf = (el: Element): 'spec' | 'idea' | 'head' =>
       el.tagName === 'APP-IDEA-ROW' ? 'idea' : el.tagName === 'APP-SPEC-TABLE-HEAD' ? 'head' : 'spec';
-    return [...document.querySelectorAll('app-spec-table-head, app-spec-row, app-idea-row')].filter(shown).map((row) => {
-      const toggle = row.querySelector<HTMLButtonElement>('button.row-more');
-      return {
-        ...box(row),
-        kind: kindOf(row),
-        key: row.getAttribute('data-idea') ?? row.querySelector('[data-cell="id"]')?.textContent.trim() ?? '',
-        marked: row.querySelector('[data-waits-mark], [data-next-mark]') !== null,
-        cells: [...row.children]
-          .filter((cell) => cell.hasAttribute('data-cell') && shown(cell))
-          .map((cell) => ({ name: cell.getAttribute('data-cell') ?? '', ...box(cell) })),
-        more:
-          toggle && shown(toggle)
-            ? { ...box(toggle), text: toggle.textContent.trim(), name: toggle.getAttribute('aria-label') ?? '', spec: toggle.dataset['more'] ?? '' }
-            : null,
-      };
-    });
+    return [...document.querySelectorAll('app-spec-table-head, app-spec-row, app-idea-row')].filter(shown).map((row) => ({
+      ...box(row),
+      kind: kindOf(row),
+      key: row.getAttribute('data-idea') ?? row.querySelector('[data-cell="id"]')?.textContent.trim() ?? '',
+      marked: row.querySelector('[data-waits-mark], [data-next-mark]') !== null,
+      cells: [...row.children]
+        .filter((cell) => cell.hasAttribute('data-cell') && shown(cell))
+        .map((cell) => ({ name: cell.getAttribute('data-cell') ?? '', ...box(cell) })),
+    }));
   });
 }
 
 const spread = (values: readonly number[]): number => Math.max(...values) - Math.min(...values);
 const cellOf = (row: Row, name: string): Cell | undefined => row.cells.find((cell) => cell.name === name);
 const leftsOf = (rows: readonly Row[], name: string): number[] => rows.flatMap((row) => cellOf(row, name)?.left ?? []);
-const overlap = (a: Box, b: Box): number =>
-  Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
 
 test.use({ extraHTTPHeaders: { [LOCKS_HEADER]: 'working' } });
 
@@ -154,28 +146,71 @@ for (const width of [WIDTHS.tablet, WIDTHS.desktop]) {
       expect(offsets.some((o) => o.row === 'APP-IDEA-ROW'), 'an idea pill').toBe(true);
       for (const o of offsets) expect(Math.abs(o.offset), `${o.row} off centre by ${String(o.offset)}`).toBeLessThanOrEqual(TOLERANCE);
     });
+
+    test(`headings centred: every column heading but Title stands in the middle of its box, Title at its start at ${String(width)} px`, async ({ page }) => {
+      await openList(page);
+      const heads = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('app-spec-table-head > [data-cell]')]
+          .filter((cell) => cell.getClientRects().length > 0 && cell.textContent.trim() !== '')
+          .map((cell) => {
+            const box = cell.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(cell);
+            const ink = range.getBoundingClientRect();
+            return {
+              name: cell.dataset['cell'] ?? '',
+              offset: (ink.left + ink.right) / 2 - (box.left + box.right) / 2,
+              start: ink.left - box.left,
+              // A block heading too long for its box ends in an ellipsis, start-aligned by CSS; the flex one (Priority)
+              // spills evenly on both sides instead.
+              cut: getComputedStyle(cell).display !== 'flex' && cell.scrollWidth > cell.clientWidth + 1,
+            };
+          }),
+      );
+      expect(heads.map((h) => h.name)).toEqual(expect.arrayContaining(['id', 'title', 'mark', 'prio', 'phase', 'meter']));
+      for (const h of heads) {
+        if (h.name === 'title') expect(Math.abs(h.start), 'Title at its start').toBeLessThanOrEqual(TOLERANCE);
+        else if (!h.cut) expect(Math.abs(h.offset), `${h.name} off centre by ${String(h.offset)}`).toBeLessThanOrEqual(TOLERANCE);
+      }
+    });
   });
 }
 
 for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
-  test.describe(`spec list toggles and head at ${String(width)}`, () => {
+  test.describe(`spec list titles at ${String(width)}`, () => {
     test.use(atWidth(width));
 
-    test(`more toggle (ISC-489): "…" with its long name, one x, clear of every other cell at ${String(width)} px`, async ({ page }) => {
+    test(`title cut: a spec row's title is one line ending in an ellipsis, the waits chip after it uncut at ${String(width)} px`, async ({ page }) => {
       await openList(page);
-      const rows = (await rowsOf(page)).filter((row) => row.more !== null);
-      expect(rows.length, 'rows with a toggle').toBeGreaterThan(0);
-      for (const row of rows) {
-        const more = row.more;
-        if (!more) continue;
-        expect(more.text, `${row.key}: visible text`).toBe('…');
-        expect(more.name, `${row.key}: accessible name`).toContain(more.spec);
-        expect(more.name.length, `${row.key}: the long name`).toBeGreaterThan(more.spec.length + 4);
-        for (const cell of row.cells.filter((c) => c.name !== 'more')) {
-          expect(overlap(more, cell), `${row.key}: toggle over ${cell.name}`).toBeLessThanOrEqual(0.5);
+      const titles = await page.evaluate(() =>
+        [...document.querySelectorAll('app-spec-row')].map((row) => {
+          const link = row.querySelector<HTMLElement>('a.row-link');
+          const chip = row.querySelector<HTMLElement>('ui-waits-chip.rwaits');
+          const style = link ? getComputedStyle(link) : null;
+          return {
+            id: link?.dataset['specRow'] ?? '',
+            cut: link ? link.scrollWidth > link.clientWidth : false,
+            height: link?.getBoundingClientRect().height ?? Number.NaN,
+            line: style ? Number.parseFloat(style.lineHeight) : Number.NaN,
+            ellipsis: style?.textOverflow === 'ellipsis' && style.whiteSpace === 'nowrap',
+            linkRight: link?.getBoundingClientRect().right ?? Number.NaN,
+            chip: chip ? { left: chip.getBoundingClientRect().left, cut: chip.scrollWidth > chip.clientWidth } : null,
+            titleRight: row.querySelector('[data-cell="title"]')?.getBoundingClientRect().right ?? Number.NaN,
+          };
+        }),
+      );
+      expect(titles.length).toBeGreaterThan(4);
+      if (width === WIDTHS.phone) expect(titles.some((t) => t.cut), 'a cut title at 390').toBe(true);
+      for (const t of titles) {
+        expect(t.ellipsis, `${t.id}: ellipsis, one line`).toBe(true);
+        expect(t.height, `${t.id}: one line`).toBeLessThanOrEqual(t.line + TOLERANCE);
+        if (t.chip) {
+          expect(t.chip.cut, `${t.id}: waits chip uncut`).toBe(false);
+          expect(t.chip.left, `${t.id}: waits chip after the title`).toBeGreaterThanOrEqual(t.linkRight);
+          expect(t.chip.left, `${t.id}: waits chip inside the title cell`).toBeLessThan(t.titleRight);
         }
       }
-      expect(spread(rows.map((row) => row.more?.left ?? Number.NaN)), 'toggle x').toBeLessThanOrEqual(TOLERANCE);
+      await expect(page.locator('app-spec-table :is([data-more], .row-more, [data-cell="more"], app-spec-row .d, [id^="desc-"])')).toHaveCount(0);
     });
   });
 }

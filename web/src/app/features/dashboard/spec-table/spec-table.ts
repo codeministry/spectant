@@ -10,7 +10,6 @@ import {
   input,
   linkedSignal,
   output,
-  signal,
   untracked,
   viewChild,
 } from '@angular/core';
@@ -23,7 +22,6 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { OpenState } from '../../../shared/open-state';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiChip } from '../../../shared/ui/chip/chip';
-import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { guidanceEntryOf } from '../../../core/model/guidance-entry';
@@ -91,7 +89,6 @@ const ROVING_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Home'
     TranslocoPipe,
     UiCard,
     UiChip,
-    UiClamp,
     UiDisclosure,
     UiFilterChips,
     UiIcon,
@@ -173,19 +170,6 @@ export class SpecTable {
     source: this.changed,
     computation: (changed, previous) => new Set([...(previous?.value ?? []), ...changed]),
   });
-
-  /** Rows whose description needs more than two lines, and those the reader opened with "more…" (ISC-111). */
-  protected readonly overflowing = signal<ReadonlySet<string>>(new Set());
-  protected readonly moreOpen = signal<ReadonlySet<string>>(new Set());
-
-  protected setOverflow(id: string, overflows: boolean): void {
-    if (this.overflowing().has(id) === overflows) return;
-    this.overflowing.update((ids) => (overflows ? new Set([...ids, id]) : new Set([...ids].filter((other) => other !== id))));
-  }
-
-  protected toggleMore(id: string): void {
-    this.moreOpen.update((ids) => (ids.has(id) ? new Set([...ids].filter((other) => other !== id)) : new Set([...ids, id])));
-  }
 
   /**
    * The favourites of the open workspace (spec 052, T18, ISC-300): `ShellData` holds the one set the spec head, this
@@ -292,17 +276,12 @@ export class SpecTable {
   }
 
   /**
-   * The row link's description (spec 021, R1): the visible "Waits on you" mark, the reason (`why-<id>`, hidden) and the
-   * description line, each when the row shows it (no description line at compact density); null when it has none.
+   * The row link's description (spec 021, R1): the visible "Waits on you" mark and the reason (`why-<id>`, hidden), each
+   * when the row has it; null when it has neither. The row shows no goal line, so none joins them.
    */
   protected describedBy(row: SpecTableRow, waits: boolean, why: boolean): string | null {
-    const ids = [waits ? `mark-${row.id}` : '', why ? `why-${row.id}` : '', this.descShown(row) ? `desc-${row.id}` : ''].filter(Boolean);
+    const ids = [waits ? `mark-${row.id}` : '', why ? `why-${row.id}` : ''].filter(Boolean);
     return ids.length > 0 ? ids.join(' ') : null;
-  }
-
-  /** The row renders its description line: it has one and the density is not `compact` (ISC-254). */
-  protected descShown(row: SpecTableRow): boolean {
-    return row.description !== null && this.density() !== 'compact';
   }
 
   /** The row link's tooltip: the title, and the reason on its own line when the row has one (R1). */
