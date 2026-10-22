@@ -2,7 +2,7 @@ import { computed, inject, Injectable, resource } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 import type { Priority } from '../../../../../core/src/files';
 import { specRefMatches } from '../../../../../core/src/spec-ref';
-import { type ActorMapping, type BoardQuery, isFavoriteSpec } from '../../../../../server/src/contracts/spec-routes.contract';
+import { type ActorMapping, type BoardQuery, type Favorites, isFavoriteIdea, isFavoriteSpec } from '../../../../../server/src/contracts/spec-routes.contract';
 import type { AddWorkspaceRequest, ImageKind } from '../../../../../server/src/contracts/workspace-admin.contract';
 import {
   ApiClient,
@@ -63,6 +63,24 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
     ];
   });
 }
+
+/** A story of the dashboard's `ideas.list` as the header's spec select names it (spec 064, T54). */
+export type IdeaFavoriteView = Readonly<{ slug: string; title: string }>;
+
+/** The dashboard body's `ideas.list`, slug and title only (the slug for a story without a title); rows without a slug drop. */
+function ideasOf(body: unknown): IdeaFavoriteView[] {
+  const ideas = isLoose(body) ? body['ideas'] : null;
+  const list = isLoose(ideas) ? ideas['list'] : null;
+  if (!Array.isArray(list)) return [];
+  return list.filter(isLoose).flatMap((row) => {
+    const slug = text(row['slug']);
+    const title = text(row['title']);
+    return slug === null ? [] : [{ slug, title: title === null || title === '' ? slug : title }];
+  });
+}
+
+/** Which set of the `Favorites` answer a star writes: the spec folders or the story slugs. */
+type FavoriteKind = keyof Favorites;
 
 /**
  * What the shell loads (T35): the workspace list, the open workspace's dashboard and planning tree (T22, spec 003) and
@@ -199,9 +217,14 @@ export class ShellData {
    * The favourite spec folders (`NNN-slug`) of the open workspace as stored, ids the dashboard no longer lists
    * included; empty without a workspace, while loading and for every answer but `ok` (a failed route included).
    */
-  readonly favoriteIds = computed<ReadonlySet<string>>(() => {
-    const result = this.favorites.hasValue() ? this.favorites.value() : undefined;
-    return new Set(result?.kind === 'ok' ? result.body.specs : []);
+  readonly favoriteIds = computed<ReadonlySet<string>>(() => new Set(this.favoriteBody()?.specs ?? []));
+  /** Spec 064 (T53, ISC-497): the favourite story slugs of the open workspace as stored, read like `favoriteIds`. */
+  readonly favoriteIdeaSlugs = computed<ReadonlySet<string>>(() => new Set(this.favoriteBody()?.ideas ?? []));
+  /** Spec 064 (T54, ISC-498): the favourite stories in `ideas.list` order; a slug the dashboard lists no story for drops. */
+  readonly favoriteIdeas = computed<readonly IdeaFavoriteView[]>(() => {
+    const slugs = this.favoriteIdeaSlugs();
+    const result = this.dashboard.value();
+    return result?.kind === 'ok' ? ideasOf(result.body).filter((idea) => slugs.has(idea.slug)) : [];
   });
 
   /**
@@ -228,35 +251,56 @@ export class ShellData {
    * server accepted the write.
    */
   async toggleFavorite(spec: string): Promise<boolean> {
+    if (!isFavoriteSpec(spec)) return false;
+    return this.toggleIn('specs', spec, (ws, on) => (on ? this.api.putFavorite(ws, spec) : this.api.deleteFavorite(ws, spec)));
+  }
+
+  /** Whether the story `slug` is a favourite of the open workspace (spec 064, T53); reactive like `isFavorite`. */
+  isIdeaFavorite(slug: string): boolean {
+    return this.favoriteIdeaSlugs().has(slug);
+  }
+
+  /** Stars or unstars the story `slug` as `toggleFavorite` does a spec (spec 064, T53, ISC-497); the spec set stays. */
+  async toggleIdeaFavorite(slug: string): Promise<boolean> {
+    if (!isFavoriteIdea(slug)) return false;
+    return this.toggleIn('ideas', slug, (ws, on) => (on ? this.api.putIdeaFavorite(ws, slug) : this.api.deleteIdeaFavorite(ws, slug)));
+  }
+
+  /** The optimistic flip, write and revert both toggles share; only the `kind` set changes, the other stays as it is. */
+  private async toggleIn(kind: FavoriteKind, id: string, write: (ws: string, on: boolean) => Promise<PutResult<Favorites>>): Promise<boolean> {
     const ws = this.state.ws();
-    if (ws === null || !isFavoriteSpec(spec)) return false;
-    const star = !this.favoriteIds().has(spec);
-    this.setFavorites(this.flipped(spec, star));
-    const result = star ? await this.api.putFavorite(ws, spec) : await this.api.deleteFavorite(ws, spec);
+    if (ws === null) return false;
+    const star = !this.favoriteBody()?.[kind].includes(id);
+    this.setFavorites(kind, this.flipped(kind, id, star));
+    const result = await write(ws, star);
     if (this.state.ws() !== ws) return result.kind === 'ok';
     if (result.kind === 'ok') {
-      this.setFavorites(result.body.specs);
+      this.setFavorites(kind, result.body[kind]);
       return true;
     }
-    this.setFavorites(this.flipped(spec, !star));
+    this.setFavorites(kind, this.flipped(kind, id, !star));
     this.toast.show(this.transloco.translate('favorites.failed'));
     return false;
   }
 
-  /** The current set with `spec` in it (`on`) or not, sorted as the server sorts it. */
-  private flipped(spec: string, on: boolean): string[] {
-    const ids = new Set(this.favoriteIds());
-    if (on) ids.add(spec);
-    else ids.delete(spec);
+  /** The `ok` favourites answer as last set or read; null without one. */
+  private favoriteBody(): Favorites | null {
+    const result = this.favorites.hasValue() ? this.favorites.value() : undefined;
+    return result?.kind === 'ok' ? result.body : null;
+  }
+
+  /** The current `kind` set with `id` in it (`on`) or not, sorted as the server sorts it. */
+  private flipped(kind: FavoriteKind, id: string, on: boolean): string[] {
+    const ids = new Set(this.favoriteBody()?.[kind] ?? []);
+    if (on) ids.add(id);
+    else ids.delete(id);
     return [...ids].sort();
   }
 
   /** A local value of the `favorites` resource; the client's ETag cache for the route stays as the last read left it. */
-  private setFavorites(specs: readonly string[]): void {
-    // The idea favourites (spec 064) stay as the last answer left them; only the spec set changes here.
-    const last = this.favorites.hasValue() ? this.favorites.value() : undefined;
-    const ideas = last?.kind === 'ok' ? last.body.ideas : [];
-    this.favorites.set({ kind: 'ok', body: { specs, ideas }, etag: null, notModified: false });
+  private setFavorites(kind: FavoriteKind, ids: readonly string[]): void {
+    const last = this.favoriteBody() ?? { specs: [], ideas: [] };
+    this.favorites.set({ kind: 'ok', body: { ...last, [kind]: ids }, etag: null, notModified: false });
   }
 
   /**

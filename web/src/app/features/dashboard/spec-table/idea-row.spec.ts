@@ -1,7 +1,12 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { ApiClient } from '../../../core/api.service';
+import { LockSourceService } from '../../../core/lock-source.service';
+import { ShellState } from '../../../layout/shell/shell-state.service';
+import { ToastService } from '../../../shared/ui/toast/toast';
 import type { DashboardIdea } from './idea-rows';
 import { IdeaRow } from './idea-row';
 
@@ -15,7 +20,30 @@ const IDEA: DashboardIdea = {
   state: { kind: 'idea', id: 'offline-sync', state: 'open', stage: 'idea', command: '/spec new offline-sync', reason: 'Shape it.' },
 };
 
+/** The idea favourite writes the real `ShellData` sends, each answering the set as the server stores it. */
+const writes: string[] = [];
+let stored: string[] = [];
+const favoriteWrites = {
+  favorites: () => Promise.resolve({ kind: 'ok', body: { specs: [], ideas: [...stored] }, etag: null, notModified: false }),
+  putIdeaFavorite: (ws: string, slug: string) => {
+    writes.push(`PUT ${ws} ${slug}`);
+    stored = [...stored, slug];
+    return Promise.resolve({ kind: 'ok', body: { specs: [], ideas: [...stored] } });
+  },
+  deleteIdeaFavorite: (ws: string, slug: string) => {
+    writes.push(`DELETE ${ws} ${slug}`);
+    stored = stored.filter((entry) => entry !== slug);
+    return Promise.resolve({ kind: 'ok', body: { specs: [], ideas: [...stored] } });
+  },
+};
+/** Every other read the shell's resources make is the catch-all 404. */
+const api = new Proxy(favoriteWrites, {
+  get: (target, key: string) => (target as Record<string, unknown>)[key] ?? (() => Promise.resolve({ kind: 'not-found', served: false })),
+});
+
 beforeEach(() => {
+  writes.length = 0;
+  stored = [];
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -24,7 +52,13 @@ beforeEach(() => {
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter([])],
+    providers: [
+      provideRouter([]),
+      { provide: ApiClient, useValue: api },
+      { provide: ShellState, useValue: { ws: signal('harbor'), wsPage: signal(null), specId: signal(null) } },
+      { provide: ToastService, useValue: { show: () => undefined } },
+      { provide: LockSourceService, useValue: { connect: () => undefined } },
+    ],
   });
 });
 
@@ -60,7 +94,8 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
     expect(cell('prio')?.querySelector('ui-priority')).not.toBeNull();
     expect(cell('phase')?.querySelector('ui-item-state')).not.toBeNull();
     expect(cell('phase')?.querySelector('ui-command-chip')).toBeNull();
-    for (const empty of ['more', 'mark', 'agent', 'track', 'meter', 'star']) expect(cell(empty)?.children.length).toBe(0);
+    for (const empty of ['more', 'mark', 'agent', 'track', 'meter']) expect(cell(empty)?.children.length).toBe(0);
+    expect(cell('star')?.querySelector('button[ui-star-toggle]')).not.toBeNull();
     expect(row.querySelector('.rtrack ui-priority, .rtrack ui-item-state')).toBeNull();
   });
 
@@ -101,5 +136,43 @@ describe('IdeaRow (spec 064, T40, ISC-479, ISC-482)', () => {
       expect(row.querySelector('ui-agent-dot, ui-actor-chip')).toBeNull();
       expect(row.querySelector('ui-item-state')).not.toBeNull();
     }
+  });
+});
+
+describe('IdeaRow star (spec 064, T53, ISC-497)', () => {
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('carries its own star beside the row link, named by the idea, unpressed without a favourite', async () => {
+    const row = await render(IDEA);
+    const star = row.querySelector<HTMLButtonElement>(':scope > [data-cell="star"] > button[ui-star-toggle]');
+    expect(star).not.toBeNull();
+    expect(star?.closest('a')).toBeNull();
+    expect(star?.getAttribute('aria-pressed')).toBe('false');
+    expect(star?.getAttribute('aria-label')).toBe('Favorite: idea Offline sync');
+    const de = await render(IDEA, 'de');
+    expect(de.querySelector('button[ui-star-toggle]')?.getAttribute('aria-label')).toBe('Favorit: Idee Offline sync');
+  });
+
+  it('sets, then unsets the idea favourite through the client, without selecting the row or navigating', async () => {
+    const router = TestBed.inject(Router);
+    const row = await render(IDEA);
+    const star = () => row.querySelector<HTMLButtonElement>('button[ui-star-toggle]') as HTMLButtonElement;
+    const url = router.url;
+
+    star().click();
+    await settle();
+    TestBed.tick();
+    expect(writes).toEqual(['PUT harbor offline-sync']);
+    expect(star().getAttribute('aria-pressed')).toBe('true');
+    expect(router.url).toBe(url);
+    expect(router.url).not.toContain('sel=');
+    expect(row.querySelector('a.link')?.getAttribute('data-selected')).toBeNull();
+
+    star().click();
+    await settle();
+    TestBed.tick();
+    expect(writes).toEqual(['PUT harbor offline-sync', 'DELETE harbor offline-sync']);
+    expect(star().getAttribute('aria-pressed')).toBe('false');
+    expect(router.url).toBe(url);
   });
 });

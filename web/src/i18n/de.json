@@ -2864,6 +2864,7 @@
   },
   "favorites": {
     "toggle": "Favorit: {{id}} {{title}}",
+    "toggleIdea": "Favorit: Idee {{title}}",
     "add": "Zu den Favoriten hinzufügen",
     "remove": "Aus den Favoriten entfernen",
     "added": "{{id}} zu den Favoriten hinzugefügt",

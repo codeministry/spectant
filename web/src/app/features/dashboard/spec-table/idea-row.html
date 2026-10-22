@@ -27,11 +27,20 @@
   <ui-priority [value]="priority()" />
 </span>
 <span data-cell="track"></span>
-<!-- The state where a spec row has its phase chip, without its command (ISC-482); meter and star stay empty. -->
+<!-- The state where a spec row has its phase chip, without its command (ISC-482); the meter stays empty. -->
 <span class="rphase" data-cell="phase">
   @if (state(); as state) {
     <ui-item-state class="rstate" [info]="state" [ws]="ws()" noActor />
   }
 </span>
 <span data-cell="meter"></span>
-<span data-cell="star"></span>
+<!-- Spec 064 (T53, ISC-497): the idea favourite star, the spec row's primitive in the spec row's column; a sibling of
+     the row link lifted above its stretch, so a click on it neither selects the row nor opens the idea. -->
+<span class="rstar" data-cell="star">
+  <button
+    ui-star-toggle
+    [pressed]="favorite()"
+    [label]="'favorites.toggleIdea' | transloco: { title: title() }"
+    (click)="toggleFavorite($event)"
+  ></button>
+</span>

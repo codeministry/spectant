@@ -5,9 +5,11 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import type { ItemStateInfo, Priority } from '../../../../../../core/src/files';
 import type { RelationRef } from '../../../../../../core/src/relations';
 import { DetailSelection, selectedLook } from '../../../layout/detail-sidebar/selection';
+import { ShellData } from '../../../layout/shell/shell-data.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiItemState } from '../../../shared/ui/item-state/item-state';
 import { PRIORITY_LOOK, UiPriority } from '../../../shared/ui/priority/priority';
+import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import type { DashboardIdea } from './idea-rows';
 
 /** The state line without a command: an idea's row carries no Next command (ISC-482); its page holds the chip. */
@@ -22,7 +24,8 @@ function withoutCommand(info: ItemStateInfo): ItemStateInfo {
  * `app-spec-row` (`_row-grid.css`: the same ten named columns and heights per tier, T47). In `id` the idea glyph; in
  * `title` the title as the row link, stretched over the whole row, its href the idea page `/w/<ws>/ideas/<slug>`, with
  * feature and milestone as the muted description behind it; in `prio` `ui-priority`; in `phase`, when the model serves
- * one, `ui-item-state` without its command and actor. `more`, `mark`, `agent`, `track`, `meter` and `star` stay empty:
+ * one, `ui-item-state` without its command and actor; in `star` the idea favourite's `ui-star-toggle` (T53, ISC-497),
+ * its own target above the link. `more`, `mark`, `agent`, `track` and `meter` stay empty:
  * an idea has no stage track, claim progress, Next command or agent dot. Below 640 px it takes the spec row's two lines.
  *
  * The link activates like a spec row's (spec 026, ISC-171): a plain click (or Enter) selects the story for the detail
@@ -31,7 +34,7 @@ function withoutCommand(info: ItemStateInfo): ItemStateInfo {
  */
 @Component({
   selector: 'app-idea-row',
-  imports: [TranslocoPipe, UiIcon, UiItemState, UiPriority],
+  imports: [TranslocoPipe, UiIcon, UiItemState, UiPriority, UiStarToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './idea-row.html',
   styleUrl: './idea-row.css',
@@ -45,6 +48,7 @@ export class IdeaRow {
   private readonly router = inject(Router);
   private readonly location = inject(LocationStrategy);
   private readonly selection = inject(DetailSelection);
+  private readonly shell = inject(ShellData);
 
   private readonly link = computed(() => ['/w', this.ws(), 'ideas', this.idea().slug]);
   /** The idea page as the link's href, as RouterLink writes it, so a modified click or "copy link" reaches it. */
@@ -68,6 +72,14 @@ export class IdeaRow {
     const state = this.idea().state;
     return state === undefined ? null : withoutCommand(state);
   });
+  /** Spec 064 (T53, ISC-497): whether the story is a favourite of the open workspace, as `ShellData` holds it. */
+  protected readonly favorite = computed(() => this.shell.isIdeaFavorite(this.idea().slug));
+
+  /** The star: sets or unsets the idea favourite; the click stays on the star, so the row is neither selected nor opened. */
+  protected toggleFavorite(event: MouseEvent): void {
+    event.stopPropagation();
+    void this.shell.toggleIdeaFavorite(this.idea().slug);
+  }
 
   /** A plain click or Enter: select the story, or on the selected row open its page; modified clicks stay native. */
   protected activate(event: MouseEvent): void {

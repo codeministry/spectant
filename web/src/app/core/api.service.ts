@@ -182,6 +182,14 @@ export class ApiClient {
     return this.planningApi.deleteFavorite(ws, spec);
   }
 
+  putIdeaFavorite(ws: string, slug: string): Promise<PutResult<Favorites>> {
+    return this.planningApi.putIdeaFavorite(ws, slug);
+  }
+
+  deleteIdeaFavorite(ws: string, slug: string): Promise<PutResult<Favorites>> {
+    return this.planningApi.deleteIdeaFavorite(ws, slug);
+  }
+
   timeline(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['timeline']>> {
     return this.specReadsApi.timeline(ws, id);
   }

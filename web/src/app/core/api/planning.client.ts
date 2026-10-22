@@ -90,4 +90,14 @@ export class PlanningClient {
   deleteFavorite(ws: string, spec: string): Promise<PutResult<Favorites>> {
     return this.core.put(workspaceRoutes.favorite(ws, spec), null, isFavorites, 'DELETE');
   }
+
+  /** Spec 064 (T53, ISC-497): `PUT …/favorites/idea/:slug` sets one story as a favourite; the answer is the whole set. */
+  putIdeaFavorite(ws: string, slug: string): Promise<PutResult<Favorites>> {
+    return this.core.put(workspaceRoutes.ideaFavorite(ws, slug), null, isFavorites);
+  }
+
+  /** Spec 064 (T53): `DELETE …/favorites/idea/:slug` unsets it, idempotent; the answer is the whole set as stored. */
+  deleteIdeaFavorite(ws: string, slug: string): Promise<PutResult<Favorites>> {
+    return this.core.put(workspaceRoutes.ideaFavorite(ws, slug), null, isFavorites, 'DELETE');
+  }
 }

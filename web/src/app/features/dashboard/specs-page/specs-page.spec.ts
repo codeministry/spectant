@@ -72,6 +72,9 @@ beforeEach(() => {
           dashboard: { value: () => ({ kind: 'ok', body: body() }) },
           isFavorite: () => false,
           toggleFavorite: () => Promise.resolve(false),
+          // Spec 064 (T53): each idea row reads and writes its own star through ShellData.
+          isIdeaFavorite: () => false,
+          toggleIdeaFavorite: () => Promise.resolve(false),
           planningModel: () => ({ relations: RELATIONS }),
           ideas: () => [],
         },

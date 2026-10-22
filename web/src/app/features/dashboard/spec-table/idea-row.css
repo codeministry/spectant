@@ -77,9 +77,19 @@
   min-inline-size: 0;
 }
 
-.rstate {
+/* The state chip and (spec 064, T53) the star's cell sit above the row link's `::after`, so each is its own target. */
+.rstate,
+.rstar {
   position: relative;
   z-index: 1;
   min-inline-size: 0;
+}
+
+.rstate {
   overflow: hidden;
+}
+
+/* The star's look is the primitive's, as in the spec row. */
+.rstar {
+  display: inline-flex;
 }

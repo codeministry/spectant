@@ -39,7 +39,7 @@ function setUp(
   planning: (ws: string) => Promise<ApiResult<PlanningBody>>,
   initialWs: string | null,
   extra: Partial<
-    Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech' | 'dashboard' | 'favorites' | 'putFavorite' | 'deleteFavorite', unknown>
+    Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech' | 'dashboard' | 'favorites' | 'putFavorite' | 'deleteFavorite' | 'putIdeaFavorite' | 'deleteIdeaFavorite', unknown>
   > = {},
 ) {
   const ws = signal<string | null>(initialWs);
@@ -438,5 +438,47 @@ describe('ShellData favourites (spec 052, T10, T11)', () => {
     expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['002']);
     await toggled;
     expect(data.favoriteRows().map((entry) => entry.id)).toEqual(['002']);
+  });
+});
+
+describe('ShellData idea favourites (spec 064, T53, ISC-497)', () => {
+  it('stars an idea at once through PUT, unstars it through DELETE and keeps the spec set', async () => {
+    const writes: string[] = [];
+    const answer = (ideas: string[]) => Promise.resolve({ kind: 'ok', body: { specs: ['002-web-console'], ideas } });
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      favorites: () => Promise.resolve(ok({ specs: ['002-web-console'], ideas: [] })),
+      putIdeaFavorite: (ws: string, slug: string) => (writes.push(`PUT ${ws} ${slug}`), answer([slug])),
+      deleteIdeaFavorite: (ws: string, slug: string) => (writes.push(`DELETE ${ws} ${slug}`), answer([])),
+    });
+    await settle();
+    const starred = data.toggleIdeaFavorite('offline-sync');
+    expect(data.isIdeaFavorite('offline-sync')).toBe(true);
+    expect(await starred).toBe(true);
+    expect([...data.favoriteIdeaSlugs()]).toEqual(['offline-sync']);
+    expect(await data.toggleIdeaFavorite('offline-sync')).toBe(true);
+    expect(data.isIdeaFavorite('offline-sync')).toBe(false);
+    expect(writes).toEqual(['PUT harbor offline-sync', 'DELETE harbor offline-sync']);
+    expect([...data.favoriteIds()]).toEqual(['002-web-console']);
+  });
+
+  it('sends nothing for a slug that is no story slug', async () => {
+    const writes: string[] = [];
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { putIdeaFavorite: () => writes.push('PUT') });
+    await settle();
+    expect(await data.toggleIdeaFavorite('../x')).toBe(false);
+    expect(writes).toEqual([]);
+  });
+
+  it('lists the favourite ideas with their dashboard titles, skipping slugs without a story', async () => {
+    const list = [{ slug: 'offline-sync', title: 'Offline sync' }, { slug: 'tide-alerts' }, { title: 'No slug' }];
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), 'harbor', {
+      dashboard: () => Promise.resolve(ok({ specs: [], archive: [], ideas: { list } })),
+      favorites: () => Promise.resolve(ok({ specs: [], ideas: ['gone', 'offline-sync', 'tide-alerts'] })),
+    });
+    await settle();
+    expect(data.favoriteIdeas()).toEqual([
+      { slug: 'offline-sync', title: 'Offline sync' },
+      { slug: 'tide-alerts', title: 'tide-alerts' },
+    ]);
   });
 });

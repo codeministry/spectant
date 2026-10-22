@@ -102,6 +102,13 @@ class FakeShellData {
     this.favoriteIds.set(ids);
     return Promise.resolve(true);
   }
+  // The idea row's star (spec 064, T53) reads and toggles idea favourites on the same service.
+  isIdeaFavorite(): boolean {
+    return false;
+  }
+  toggleIdeaFavorite(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
 }
 
 beforeEach(() => {

@@ -36,7 +36,7 @@ import { AreaMenu } from '../area-menu/area-menu';
 import { AssistantDot } from '../assistant/assistant.service';
 import { Mascot } from '../assistant/mascot';
 import { switchSpecLink } from './areas';
-import { ShellData, type SpecRowView } from './shell-data.service';
+import { type IdeaFavoriteView, ShellData, type SpecRowView } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 import { specCountOf } from './spec-count';
 
@@ -299,18 +299,28 @@ export class ShellMenus {
    * a double click is ignored: the next star slides under the pointer and would lose its favourite too.
    */
   protected unstar(spec: SpecRowView, event: MouseEvent): void {
+    this.unstarEntry(spec.id, spec.id, event, () => this.data.toggleFavorite(spec.slug ?? spec.id));
+  }
+
+  /** Spec 064 (T54, ISC-498): an idea row's star, as `unstar`; its star's key is `idea:<slug>`, its name the title. */
+  protected unstarIdea(idea: IdeaFavoriteView, event: MouseEvent): void {
+    this.unstarEntry(`idea:${idea.slug}`, idea.title, event, () => this.data.toggleIdeaFavorite(idea.slug));
+  }
+
+  /** Unsets the favourite whose star carries `data-star="<key>"`, over the spec rows and then the idea rows. */
+  private unstarEntry(key: string, name: string, event: MouseEvent, toggle: () => Promise<boolean>): void {
     if (event.detail > 1) return;
     const nav = this.specNav()?.nativeElement;
     if (this.compact() && !this.sheetHeight() && nav) this.sheetHeight.set(nav.getBoundingClientRect().height);
-    const rows = this.data.favoriteRows();
-    const index = rows.findIndex((row) => row.id === spec.id);
+    const keys = [...this.data.favoriteRows().map((row) => row.id), ...this.data.favoriteIdeas().map((idea) => `idea:${idea.slug}`)];
+    const index = keys.indexOf(key);
     // `at()` because index 0 must not wrap to the last row: the row above the first is "all specs".
-    const next = rows.at(index + 1) ?? (index > 0 ? rows.at(index - 1) : undefined);
-    void this.data.toggleFavorite(spec.slug ?? spec.id);
-    this.announcer()?.announce(this.transloco.translate('favorites.removed', { id: spec.id }));
+    const next = keys.at(index + 1) ?? (index > 0 ? keys.at(index - 1) : undefined);
+    void toggle();
+    this.announcer()?.announce(this.transloco.translate('favorites.removed', { id: name }));
     afterNextRender(
       () => {
-        const target = next ? nav?.querySelector(`[data-star="${next.id}"]`) : nav?.querySelector('.picker-all');
+        const target = next ? nav?.querySelector(`[data-star="${next}"]`) : nav?.querySelector('.picker-all');
         if (target instanceof HTMLElement) target.focus();
       },
       { injector: this.injector },
