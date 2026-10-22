@@ -33,6 +33,71 @@ export interface ColumnRow {
   readonly nextCommand: string | null;
 }
 
+/** How many rows the list area of a tile on `/` has room for (spec 066, ISC-518). */
+export const TILE_ROW_LIMIT = 3;
+
+/** A tile row of a spec in progress: agent dot, id, title and session. */
+export interface TileWorkingRow extends WorkingEntry {
+  readonly kind: 'working';
+}
+
+/** A tile row of what waits on the principal: glyph, spec id, ref, the spec's title, copy button and since. */
+export interface TileWaitingRow {
+  readonly kind: 'waiting';
+  /** The spec `NNN`. */
+  readonly id: string;
+  readonly item: GuidanceEntry['item'];
+  /** `ISC-N`, `T<n>` or the question's ref; null for a spec. */
+  readonly ref: string | null;
+  /** The spec's title (spec 064 shows spec titles, not the claim or task text). */
+  readonly title: string;
+  readonly command: string | null;
+  /** ISO 8601; null when the files give none. */
+  readonly since: string | null;
+}
+
+export type TileRow = TileWorkingRow | TileWaitingRow;
+
+/** The list area of a tile on `/`: at most three rows, in progress before waiting, both counters and the footer's n. */
+export interface TileList {
+  readonly rows: readonly TileRow[];
+  readonly workingCount: number;
+  readonly waitsCount: number;
+  /** In progress plus waiting, the n of "Show all n". */
+  readonly total: number;
+  /** True when more entries exist than rows: the footer links to `/w/<ws>`. */
+  readonly more: boolean;
+}
+
+/**
+ * The tile's list area (ISC-518): the specs in progress first, then what waits, cut to `TILE_ROW_LIMIT` rows. A waiting
+ * row's title is its spec's title: from `titles` (the column's rows), else a spec entry of the same spec in `waits`,
+ * else the entry's own title.
+ */
+export function tileOf(
+  working: readonly WorkingEntry[],
+  waits: readonly GuidanceEntry[],
+  titles: Readonly<Partial<Record<string, string>>>,
+): TileList {
+  const listed = new Map(waits.filter((e) => e.item === 'spec').map((e) => [e.spec, e.title]));
+  const all: TileRow[] = [
+    ...working.map((entry): TileWorkingRow => ({ kind: 'working', ...entry })),
+    ...waits.map(
+      (entry): TileWaitingRow => ({
+        kind: 'waiting',
+        id: entry.spec,
+        item: entry.item,
+        ref: entry.ref,
+        title: titles[entry.spec] ?? listed.get(entry.spec) ?? entry.title,
+        command: entry.command,
+        since: entry.since,
+      }),
+    ),
+  ];
+  const total = all.length;
+  return { rows: all.slice(0, TILE_ROW_LIMIT), workingCount: working.length, waitsCount: waits.length, total, more: total > TILE_ROW_LIMIT };
+}
+
 /** One readable workspace's column on `/`, read from its dashboard model. */
 export interface OverviewColumn {
   readonly slug: string;
@@ -47,6 +112,8 @@ export interface OverviewColumn {
   readonly waits: readonly GuidanceEntry[];
   /** The specs a session holds a claim of, read by core/model's `workingOf` (spec 064, ISC-461); empty without a lock. */
   readonly working: readonly WorkingEntry[];
+  /** The tile's list area over `working` and `waits` (`tileOf`, spec 066 ISC-518). */
+  readonly tile: TileList;
   /** Epoch ms the dashboard answered; the ws-head's "Updated n s ago". */
   readonly loadedAt: number;
   /** The stored logo and screenshot URLs from the workspace list (spec 016); null per kind without one. */
@@ -89,9 +156,11 @@ export function readColumn(
     .slice(0, NEXT_UP_LIMIT);
   const waits = guidanceOfBody(body)?.waits ?? [];
   const working = workingOf(body);
+  const tile = tileOf(working, waits, Object.fromEntries(list.map((row) => [row.id, row.title])));
   const logo = entry.images?.logo ?? null;
   const screenshot = entry.images?.screenshot ?? null;
-  return { slug: entry.slug, name: entry.name, pathTail: entry.pathTail, kpis, next, list, waits, working, loadedAt, logo, screenshot };
+  const { slug, name, pathTail } = entry;
+  return { slug, name, pathTail, kpis, next, list, waits, working, tile, loadedAt, logo, screenshot };
 }
 
 /** The workspace badge's monogram (`wsMonogram`): first letters of two words, else two letters. */

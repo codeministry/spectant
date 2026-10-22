@@ -77,16 +77,14 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const columns = [...root.querySelectorAll('.overview [data-ui="workspace-column"]')];
     expect(columns.map((c) => c.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
     expect([...asked].sort()).toEqual(['harbor', 'lantern']);
-    // T54 (spec 024): one identity cover per column, a mock with its chip in the ws-head; the fixture holds no image
-    // for harbor or lantern, so each shows the name pattern and no <img> appears.
-    const covers = [...root.querySelectorAll('[data-ws-cover]')];
-    expect(covers.map((cover) => cover.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
-    for (const cover of covers) {
-      const mock = cover.closest('[data-demo]');
-      expect(mock?.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
-      expect(cover.querySelector('svg path')).not.toBeNull();
+    // T54 (spec 024): one identity head per column, a mock with its chip in the ws-head; the fixture holds no image
+    // for harbor or lantern, so no <img> appears. Spec 066 T10: the cover left the head for the tile's preview track.
+    const heads = [...root.querySelectorAll('app-ws-identity[data-tile-block="head"]')];
+    expect(heads.map((head) => head.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
+    for (const head of heads) {
+      expect(head.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
     }
-    expect(root.querySelectorAll('[data-ws-badge]').length).toBe(covers.length);
+    expect(root.querySelectorAll('[data-ws-badge]').length).toBe(heads.length);
     expect(root.querySelector('img')).toBeNull();
   });
 
@@ -140,7 +138,7 @@ describe('OverviewPage (T65, ISC-16)', () => {
       expect(outside('ui-command-chip, a[href*="/s/"]')).toEqual([]);
       const links = outside('a[href]');
       expect(links.map((link) => link.getAttribute('href'))).toEqual([`/w/${ws}`, `/w/${ws}`]);
-      expect(column?.querySelector('a [data-ws-cover]')).not.toBeNull();
+      expect(column?.querySelector('.ws-head a [data-ws-badge]')).not.toBeNull();
       expect(column?.querySelector('.ws-head a h2')).not.toBeNull();
     }
     expect(root.querySelector('[data-footer-note]')).not.toBeNull();

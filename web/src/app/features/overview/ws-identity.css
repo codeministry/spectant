@@ -1,53 +1,83 @@
-/* The workspace identity; the path tail is _ws-path.css. */
+/* The tile head (spec 066 T10): 48 px, two lines beside the 30 px badge. Line 1 the name (16/20 600, ellipsis) and the
+   demo chip at its end; line 2 the path tail, `·` and the projected "Updated" time, the path shrinking first. Every
+   track may shrink to 0, so nothing scrolls sideways at 390 px. The path tail is _ws-path.css. */
 @import "./_ws-path.css";
 
-    :host {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-inline-size: 0;
-    }
+:host {
+  display: block;
+  box-sizing: border-box;
+  block-size: var(--tile-head, 48px);
+  min-inline-size: 0;
+  padding-inline: 16px;
+}
 
-    .ws-cover-link {
-      display: block;
-      border-radius: var(--radius-card);
-    }
+.ws-head {
+  display: grid;
+  grid-template:
+    "badge line1" 20px
+    "badge line2" 16px / auto minmax(0, 1fr);
+  column-gap: 12px;
+  align-content: center;
+  block-size: 100%;
+  min-inline-size: 0;
+}
 
-    .ws-head {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      min-block-size: 56px;
-      border-block-end: 1px solid var(--line);
-    }
+.badge {
+  display: flex;
+  grid-area: badge;
+  align-self: center;
+  border-radius: var(--radius-field);
+}
 
-    .ws-head a, .ident {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      min-inline-size: 0;
-      border-radius: var(--radius-field);
-      color: inherit;
-      text-decoration: none;
-    }
+.line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
 
-    h2 {
-      overflow: hidden;
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 24px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .ws-head a:hover h2 { color: var(--disp-text); }
+.line-1 { grid-area: line1; }
 
-    .end {
-      display: inline-flex;
-      flex: none;
-      gap: 8px;
-      align-items: center;
-      white-space: nowrap;
-    }
-  
+.line-2 {
+  grid-area: line2;
+  gap: 4px;
+}
+
+.name {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  border-radius: var(--radius-field);
+  color: inherit;
+  text-decoration: none;
+}
+
+.line-1 ui-chip {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+a.name:hover h2 { color: var(--disp-text); }
+
+/* The path gives way first: it shrinks, while separator and time keep their width. */
+.path { flex: 0 1 auto; }
+
+.sep::before { content: "·"; }
+
+.sep,
+.updated {
+  flex: none;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: nowrap;
+}

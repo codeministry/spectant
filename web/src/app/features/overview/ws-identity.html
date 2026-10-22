@@ -1,29 +1,26 @@
-
-    @let id = identity();
+@let id = identity();
+<div class="ws-head" data-demo-head>
+  @if (link()) {
+    <!-- The badge is a second, mouse-only way in; the name is the link the keyboard and the screen reader meet. -->
+    <a class="badge" [routerLink]="href()" tabindex="-1" aria-hidden="true">
+      <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
+    </a>
+  } @else {
+    <span class="badge">
+      <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
+    </span>
+  }
+  <div class="line line-1" data-head-line="1">
     @if (link()) {
-      <a class="ws-cover-link" [routerLink]="href()" [attr.aria-label]="'identity.open' | transloco: { workspace: name() }">
-        <ui-ws-cover data-ws-cover [name]="name()" [accent]="id?.accent ?? null" [image]="screenshot() ?? id?.image ?? null" [alt]="'identity.screenshot' | transloco: { workspace: name() }" />
-      </a>
+      <a class="name" [routerLink]="href()"><h2>{{ name() }}</h2></a>
     } @else {
-      <ui-ws-cover data-ws-cover [name]="name()" [accent]="id?.accent ?? null" [image]="screenshot() ?? id?.image ?? null" [alt]="'identity.screenshot' | transloco: { workspace: name() }" />
+      <span class="name"><h2>{{ name() }}</h2></span>
     }
-    <div class="ws-head" data-demo-head>
-      @if (link()) {
-        <a [routerLink]="href()">
-          <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
-          <h2>{{ name() }}</h2>
-          <span class="path">{{ pathTail() }}</span>
-        </a>
-      } @else {
-        <span class="ident">
-          <ui-ws-badge data-ws-badge size="lg" [name]="name()" [monogram]="id?.monogram ?? null" [accent]="id?.accent ?? null" [logo]="logo()" />
-          <h2>{{ name() }}</h2>
-          <span class="path">{{ pathTail() }}</span>
-        </span>
-      }
-      <span class="end">
-        <ui-chip variant="demo" />
-        <ng-content />
-      </span>
-    </div>
-  
+    <ui-chip variant="demo" />
+  </div>
+  <div class="line line-2" data-head-line="2">
+    <span class="path">{{ pathTail() }}</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="updated"><ng-content /></span>
+  </div>
+</div>

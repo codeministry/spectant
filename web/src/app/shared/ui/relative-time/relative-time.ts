@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
+import { LanguageService } from '../../../core/language.service';
 
 export type RelativeUnit = 's' | 'min' | 'h' | 'd';
 export type RelativeFormat = (value: number, unit: RelativeUnit) => string;
@@ -20,6 +22,12 @@ export function relativeParts(then: number, now: number): { value: number; unit:
 const ENGLISH: RelativeFormat = (value, unit) => `${value} ${unit} ago`;
 
 /**
+ * `format="short"` (spec 066, ISC-518): the bare duration, "25 d" / „25 T", without "ago" or "waiting", from the
+ * catalogue keys `relativeTime.short.<unit>` in the current language, for a row too narrow for the long form.
+ */
+export type RelativeFormatInput = RelativeFormat | 'short';
+
+/**
  * "12 s ago" / "3 min ago" in a `<time datetime>`, refreshed every 10 s from a signal. Hidden from assistive
  * technology (design.md § Header: "not announced"); the page's live region reports refreshes instead.
  */
@@ -31,14 +39,21 @@ const ENGLISH: RelativeFormat = (value, unit) => `${value} ${unit} ago`;
 })
 export class UiRelativeTime {
   readonly date = input.required<Date | string | number>();
-  readonly format = input<RelativeFormat>(ENGLISH);
+  /** A format function (the default reads "12 s ago"), or `short` for the catalogue's bare "25 d" / „25 T". */
+  readonly format = input<RelativeFormatInput>(ENGLISH);
+
+  private readonly transloco = inject(TranslocoService);
+  private readonly lang = inject(LanguageService).current;
 
   private readonly now = signal(Date.now());
   private readonly epoch = computed(() => new Date(this.date()).getTime());
   protected readonly iso = computed(() => new Date(this.epoch()).toISOString());
   protected readonly text = computed(() => {
     const { value, unit } = relativeParts(this.epoch(), this.now());
-    return this.format()(value, unit);
+    const format = this.format();
+    if (format !== 'short') return format(value, unit);
+    const short: string = this.transloco.translate(`relativeTime.short.${unit}`, { value }, this.lang());
+    return short;
   });
 
   constructor() {

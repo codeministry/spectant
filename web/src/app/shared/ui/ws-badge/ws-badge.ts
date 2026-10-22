@@ -1,12 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { WS_ACCENT_TOKENS, type WsAccent, wsAccent, wsLocalImage, wsMonogram } from './ws-identity';
 
-export type WsBadgeSize = 'sm' | 'md' | 'page' | 'lg';
+export type WsBadgeSize = 'sm' | 'md' | 'page' | 'lg' | 'xl';
+/** `accent`: the workspace's accent tint (the default); `neutral`: the monogram in `--muted-ink` on `--track`. */
+export type WsBadgeTone = 'accent' | 'neutral';
+
+const NEUTRAL_TOKENS = { mark: 'var(--track)', ink: 'var(--muted-ink)' } as const;
 
 /**
  * The workspace badge: the monogram, or a logo, on the
  * accent tint with a 45 % ring, Sora 700. Sizes: `sm` 18 px, `md` 22 px (the default), `page` 24 px beside an h1,
- * `lg` 30 px in a ws-head. With nothing but `name` it renders core's data: the initials of the workspace name on the
+ * `lg` 30 px in a ws-head, `xl` 32 px centred in a tile cover's placeholder (spec 066), there with `tone="neutral"`. With nothing but `name` it renders core's data: the initials of the workspace name on the
  * accent its hash picks, so it is no mock; a caller that passes a fixture's `logo` or `accent` owns the demo mark.
  * The logo is a same-origin path only (`wsLocalImage`): a bundled asset or the loopback image route with its
  * cache-bust (spec 016 T18); a remote URL falls back to the initials.
@@ -20,6 +24,7 @@ export type WsBadgeSize = 'sm' | 'md' | 'page' | 'lg';
     'aria-hidden': 'true',
     '[attr.data-size]': 'size()',
     '[attr.data-logo]': 'src() ? "" : null',
+    '[attr.data-tone]': 'tone()',
     '[style.--ws]': 'tokens().mark',
     '[style.--ws-ink]': 'tokens().ink',
   },
@@ -35,8 +40,11 @@ export class UiWsBadge {
   /** A bundled image path or the loopback image route; a remote URL is refused. */
   readonly logo = input<string | null>(null);
   readonly size = input<WsBadgeSize>('md');
+  readonly tone = input<WsBadgeTone>('accent');
 
   protected readonly src = computed(() => wsLocalImage(this.logo()));
   protected readonly initials = computed(() => this.monogram() ?? wsMonogram(this.name()));
-  protected readonly tokens = computed(() => WS_ACCENT_TOKENS[this.accent() ?? wsAccent(this.name())]);
+  protected readonly tokens = computed(() =>
+    this.tone() === 'neutral' ? NEUTRAL_TOKENS : WS_ACCENT_TOKENS[this.accent() ?? wsAccent(this.name())],
+  );
 }

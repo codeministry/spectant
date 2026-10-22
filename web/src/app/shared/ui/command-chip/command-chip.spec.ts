@@ -77,6 +77,63 @@ describe('UiCommandChip', () => {
     Reflect.deleteProperty(document, 'execCommand');
   });
 
+  // Spec 066, T3 · ISC-518: the tile's copy button shows only the copy icon; the full command is its accessible name
+  // and its tooltip, the manual hint goes to the toast, and `data-icon-only` marks the host. The default stays.
+  it('renders icon only: copy glyph, command in aria-label and title, hidden command text, data-icon-only', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec review 006');
+    fixture.componentRef.setInput('iconOnly', true);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const button = root.querySelector('button');
+
+    expect(root.hasAttribute('data-icon-only')).toBe(true);
+    expect(button?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('copy');
+    expect(button?.getAttribute('aria-label')).toBe('Copy /spec review 006');
+    expect(button?.getAttribute('title')).toBe('Copy /spec review 006');
+    const code = root.querySelector('code');
+    expect(code?.classList.contains('visually-hidden'), 'the command text is not shown').toBe(true);
+    expect(code?.getAttribute('aria-hidden')).toBe('true');
+    fixture.componentRef.setInput('context', 'waits on you: 006 ISC-1');
+    await fixture.whenStable();
+    expect(button?.getAttribute('title')).toBe('Copy /spec review 006 · waits on you: 006 ISC-1');
+    button?.click();
+    await fixture.whenStable();
+    expect(writeText).toHaveBeenCalledWith('/spec review 006');
+  });
+
+  it('raises the manual hint as the toast when icon only, even with the inline default', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: () => Promise.reject(new Error('denied')) },
+      configurable: true,
+    });
+    Object.defineProperty(document, 'execCommand', { value: () => false, configurable: true });
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec review 006');
+    fixture.componentRef.setInput('iconOnly', true);
+    await fixture.whenStable();
+
+    (fixture.nativeElement as HTMLElement).querySelector('button')?.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(ToastService).message()).toBe('Select and press ⌘C');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.hint')).toBeNull();
+    TestBed.inject(ToastService).dismiss();
+    Reflect.deleteProperty(document, 'execCommand');
+  });
+
+  it('keeps the text chip by default: visible command, no data-icon-only, copyLabel as the tooltip', async () => {
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec review 006');
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.hasAttribute('data-icon-only')).toBe(false);
+    expect(root.querySelector('code')?.classList.contains('visually-hidden')).toBe(false);
+    expect(root.querySelector('code')?.hasAttribute('aria-hidden')).toBe(false);
+    expect(root.querySelector('button')?.getAttribute('title')).toBe('Copy command');
+  });
+
   // Spec 040, T47 · ISC-225.1: locked while a run is running — lock glyph, aria-disabled but focusable, a name that
   // names the run, actor and duration; copying is refused and a press opens the hint line instead.
   it('locks while a run holds the item: lock glyph, focusable, named by the run, copy refused, a press shows the hint', async () => {

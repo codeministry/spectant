@@ -1,6 +1,6 @@
 
     <span class="chip" [attr.data-locked]="lockedBy() ? '' : null">
-      <code #code>{{ command() }}</code>
+      <code #code [class.visually-hidden]="iconOnly()" [attr.aria-hidden]="iconOnly() ? 'true' : null">{{ command() }}</code>
       @if (lockedBy()) {
         <button
           type="button"
@@ -18,8 +18,8 @@
           type="button"
           class="btn btn-ghost btn-xs btn-square copy"
           [attr.data-copied]="state() === 'copied' ? '' : null"
-          [attr.aria-label]="state() === 'copied' ? copiedLabel() : context() ? ('orientation.copyCommandFor' | transloco: { command: command(), context: context() }) : ('orientation.copyCommand' | transloco: { command: command() })"
-          [title]="copyLabel()"
+          [attr.aria-label]="state() === 'copied' ? copiedLabel() : copyName()"
+          [title]="iconOnly() ? copyName() : copyLabel()"
           (click)="copy()"
           (blur)="onBlur()"
         >

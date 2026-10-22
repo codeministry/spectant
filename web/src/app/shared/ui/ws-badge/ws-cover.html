@@ -1,6 +1,11 @@
 
     @if (src(); as src) {
       <img [src]="src" [alt]="alt()" loading="lazy" />
+    } @else if (shape() === 'tile') {
+      <!-- The neutral placeholder of a tile (spec 066, ISC-519): the badge centred, no arc, no dot, no accent tint. -->
+      <div data-cover-placeholder>
+        <ui-ws-badge [name]="name()" [monogram]="monogram()" [logo]="logo()" size="xl" tone="neutral" />
+      </div>
     } @else {
       @let p = pattern();
       <!-- The name pattern, drawn from the hash; not an icon (data-icon-exempt, ISC-18.2). -->
@@ -9,4 +14,3 @@
         <circle [attr.cx]="p.dot.cx" [attr.cy]="p.dot.cy" r="7" fill="var(--color-secondary)" />
       </svg>
     }
-  

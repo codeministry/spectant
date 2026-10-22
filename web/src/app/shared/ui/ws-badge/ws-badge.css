@@ -33,6 +33,13 @@
   font-size: 12px;
 }
 
+:host([data-size='xl']) {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
 :host([data-logo]) {
   background: none;
 }
