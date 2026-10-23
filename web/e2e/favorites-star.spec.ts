@@ -2,13 +2,15 @@
  * Spec 052 (T24, T25): the favourite star across its three places, on the e2e stub, one stub session per test.
  * `bun run e2e -- favorites -g toggle` (ISC-300) and `bun run e2e -- favorites -g unstar-in-select` (ISC-301).
  *
- * - toggle: the star in the spec head, in the workspace dashboard's spec row and in the header spec select show one
- *   state; a click in one place shows the new state in the other two, by in-app navigation only. The accessible name
- *   stays fixed and names the spec, `aria-pressed` carries the state. Zero reloads: one `load` event, and a marker set
- *   on `window` after the first load survives to the end.
+ * - toggle: the star in the spec head, in the Specs list's spec row and in the header favourites select (spec 069) show
+ *   one state; a click in one place shows the new state in the others, by in-app navigation only (the Specs list is
+ *   reached through the page select). A star set in the spec head lists the row in the favourites select, and a star
+ *   released in the select releases the head star (spec 069 T25, ISC-560, ISC-300 held). The accessible name stays
+ *   fixed and names the spec, `aria-pressed` carries the state. Zero reloads: one `load` event, no `document` request
+ *   after the first navigation, and a marker set on `window` after the first load survives to the end.
  * - unstar-in-select: the star of a select row is a target of its own beside the link; unstarring navigates nowhere,
  *   keeps the select open and drops the row, focus moves to the star of the row that moves up; the last one leaves
- *   the open select in its empty state.
+ *   the open select in its empty state, which takes the focus (the favourites select has no "Spec overview" link).
  * - bracket keys (T28, ISC-331; `bun run e2e -- favorites -g "bracket keys"`), at 1440 only: with two favourites that
  *   are no neighbours in harbor's row order, `]` / `[` from a favourite and from a spec without a star go to the
  *   nearest favourite that way, on the same tab; without favourites they step to the neighbouring row as
@@ -16,7 +18,7 @@
  *
  * Favourites are spec folder names (`003-config-loader`), the select and the dashboard key their rows by the id.
  */
-import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import type { APIRequestContext, Locator, Page, Request } from '@playwright/test';
 import { SPEC_API_ROOT, workspaceRoutes } from '../../server/src/contracts/spec-routes.contract.ts';
 import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
@@ -30,17 +32,34 @@ const NAME = 'Favorite: 003 Config loader rewrite';
 const ROW_NAME = 'Favorite: 003 Read the config through one loader in the CLI, the API and the console';
 const MARKER = '__favoritesStarNoReload';
 
-const picker = (page: Page): Locator => page.locator('[data-picker="spec"]');
+const picker = (page: Page): Locator => page.locator('nav[data-picker="favorites"]');
 const headStar = (page: Page): Locator => page.locator('[data-head-actions] button[ui-star-toggle]');
 const rowStar = (page: Page, id: string): Locator => page.locator(`app-spec-row:has([data-spec-row="${id}"]) button[ui-star-toggle]`);
 
 async function openSelect(page: Page): Promise<Locator> {
-  await (await headerControl(page, 'spec')).click();
+  await (await headerControl(page, 'favorites')).click();
   await expect(picker(page)).toBeVisible();
   return picker(page);
 }
 
-/** Counts the page's `load` events from the first navigation on and marks the window once it has loaded. */
+async function closeSelect(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await expect(picker(page)).toBeHidden();
+}
+
+/** In-app to the workspace's Specs list through the page select (spec 024), as a viewer goes there. */
+async function toSpecsList(page: Page): Promise<void> {
+  await (await headerControl(page, 'page')).click();
+  const pages = page.getByRole('navigation', { name: 'Pages' });
+  await expect(pages).toBeVisible();
+  await pages.locator('[data-page="specs"]').click();
+  await expect(page).toHaveURL(new RegExp(`/w/${WS}/specs$`));
+}
+
+/**
+ * Counts the page's `load` events from the first navigation on, marks the window once it has loaded and collects every
+ * `document` request after it.
+ */
 async function watchReloads(page: Page, path: string): Promise<() => Promise<void>> {
   let loads = 0;
   page.on('load', () => {
@@ -48,7 +67,12 @@ async function watchReloads(page: Page, path: string): Promise<() => Promise<voi
   });
   await page.goto(path);
   await page.evaluate((key) => Object.assign(window, { [key]: true }), MARKER);
+  const documents: string[] = [];
+  page.on('request', (req: Request) => {
+    if (req.resourceType() === 'document') documents.push(req.url());
+  });
   return async () => {
+    expect(documents).toEqual([]);
     expect(loads).toBe(1);
     expect(await page.evaluate((key) => (window as unknown as Record<string, unknown>)[key], MARKER)).toBe(true);
   };
@@ -68,7 +92,7 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
   test.describe(`favorites star: toggle at ${width}`, () => {
     test.use(atWidth(width));
 
-    test('the head, the dashboard row and the select show one state, a click in one place moves all three (T24, ISC-300)', async ({ page }) => {
+    test('the head, the dashboard row and the select show one state, a click in one place moves all three (T24, ISC-300; spec 069 T25, ISC-560)', async ({ page }) => {
       const noReload = await watchReloads(page, `/w/${WS}/s/003`);
 
       // Head: fixed name naming 003, not pressed in a fresh session.
@@ -80,18 +104,28 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
       await expect(head).toHaveAttribute('aria-pressed', 'true');
       await expect(head).toHaveAccessibleName(NAME);
 
-      // Select: the 003 row is listed, its star pressed and named like the head's.
+      // Favourites select (ISC-560): the 003 row is listed in harbor's group, its star pressed and named like the list row's.
       const select = await openSelect(page);
       await expect(select.locator('[data-spec]')).toHaveCount(1);
-      await expect(select.locator('[data-spec="003"]')).toBeVisible();
+      await expect(select.locator(`[data-favorites-group="${WS}"] [data-spec="003"]`)).toBeVisible();
       await expect(select.locator('.picker-empty')).toHaveCount(0);
       const selectStar = select.locator('[data-star="003"]');
       await expect(selectStar).toHaveAttribute('aria-pressed', 'true');
       await expect(selectStar).toHaveAccessibleName(ROW_NAME);
 
-      // In-app to the Specs page (spec 058) through the select's all-specs link: the 003 row's star is pressed.
-      await select.locator('.picker-all').click();
-      await expect(page).toHaveURL(new RegExp(`/w/${WS}/specs$`));
+      // Released in the select (ISC-560): the row leaves it, and the head star follows without a reload.
+      await selectStar.click();
+      await expect(select.locator('[data-spec]')).toHaveCount(0);
+      await expect(select.locator('.picker-empty')).toBeVisible();
+      await closeSelect(page);
+      await expect(page).toHaveURL(new RegExp(`/w/${WS}/s/003$`));
+      await expect(headStar(page)).toHaveAttribute('aria-pressed', 'false');
+      await expect(headStar(page)).toHaveAccessibleName(NAME);
+
+      // Set again in the head, then in-app to the Specs page (spec 058) through the page select: the 003 row's star is pressed.
+      await headStar(page).click();
+      await expect(headStar(page)).toHaveAttribute('aria-pressed', 'true');
+      await toSpecsList(page);
       const row = rowStar(page, '003');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
       await expect(row).toHaveAccessibleName(ROW_NAME);
@@ -140,7 +174,8 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
       await expect(select).toBeVisible();
       await expect(select.locator('[data-spec]')).toHaveCount(0);
       await expect(select.locator('.picker-empty')).toBeVisible();
-      await expect(select.locator('.picker-all')).toBeFocused();
+      await expect(select.locator('[data-favorites-group]')).toHaveCount(0);
+      await expect(select.locator('.picker-empty')).toBeFocused();
 
       await noReload();
     });

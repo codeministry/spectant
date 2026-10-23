@@ -1,8 +1,8 @@
 /**
  * Spec 067 · T26 · ISC-532 (`bun run e2e -- sidebar -g "favorite"`): the detail sidebar's head carries the favourite star
  * for a spec and an idea. Pressing it sets the favourite, pressing it again releases it, and the new state shows without
- * a reload in the sidebar, on the item's row star in the Specs list and in the header spec select: `aria-pressed` is the
- * same at all three places. The select lists favourites only, so a released favourite is absent there.
+ * a reload in the sidebar, on the item's row star in the Specs list and in the header favourites select (spec 069):
+ * `aria-pressed` is the same at all three places. The select lists favourites only, so a released favourite is absent there.
  *
  * At 1440 the sidebar docks beside the list, the list row and the select are read with the sidebar open. At 390 the
  * sidebar is the modal bottom sheet: the test closes it before it reads the list and the select, and reopens it from the
@@ -51,10 +51,10 @@ const ITEMS: readonly Item[] = [
 
 const sidebar = (page: Page): Locator => page.locator('app-detail-sidebar[data-presentation]');
 const sidebarStar = (page: Page): Locator => sidebar(page).locator('button[ui-star-toggle].star');
-const picker = (page: Page): Locator => page.locator('nav[data-picker="spec"]');
+const picker = (page: Page): Locator => page.locator('nav[data-picker="favorites"]');
 
 async function openSelect(page: Page): Promise<Locator> {
-  await (await headerControl(page, 'spec')).click();
+  await (await headerControl(page, 'favorites')).click();
   await expect(picker(page)).toBeVisible();
   return picker(page);
 }
