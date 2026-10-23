@@ -160,7 +160,7 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
     expect(listed.filter((s) => s.stage === "done" || s.archived)).toEqual([]);
     expect(listed.map((s) => s.id)).not.toContain("002");
     expect(listed.map((s) => s.id)).not.toContain("004");
-    expect(body.kpis).toEqual({ repos: 2, closed: 0, listed: 2, claimsClosed: 1, claimsTotal: 5 });
+    expect(body.kpis).toEqual({ repos: 2, listed: 2, claimsClosed: 1, claimsTotal: 5 });
 
     // ISC-3: no field names an absolute path, and the board starts no services probe.
     expect(strings(body).filter(hasAbsolutePath)).toEqual([]);

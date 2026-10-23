@@ -85,9 +85,7 @@ export interface StatusWorkspace {
 export interface StatusKpis {
   /** Workspaces with at least one listed spec. */
   readonly repos: number;
-  /** Listed specs at stage `done`: 0 since the board lists open specs only (ISC-613). */
-  readonly closed: number;
-  /** Listed specs. */
+  /** Listed specs, the widget head's "specs" (ISC-615); the board lists open specs only (ISC-613). */
   readonly listed: number;
   readonly claimsClosed: number;
   readonly claimsTotal: number;
@@ -127,7 +125,6 @@ export function statusBoard(workspaces: readonly StatusInput[]): StatusResponse 
   return {
     kpis: {
       repos: board.filter((w) => w.specs.length > 0).length,
-      closed: listed.filter((s) => s.stage === 'done').length,
       listed: listed.length,
       claimsClosed: listed.reduce((n, s) => n + s.claims.closed, 0),
       claimsTotal: listed.reduce((n, s) => n + s.claims.total, 0),

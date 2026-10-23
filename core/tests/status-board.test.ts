@@ -123,13 +123,13 @@ describe('statusBoard lists open specs only (ISC-613)', () => {
 });
 
 describe('the KPIs count exactly the listed specs (ISC-583)', () => {
-  test('repos with a listed spec, closed of listed, claims closed of total', () => {
-    // lantern lists 001 (2/5); harbor lists 010 (0/3); quiet and gone nothing. No listed spec is done, so closed is 0.
-    expect(board.kpis).toEqual({ repos: 2, closed: 0, listed: 2, claimsClosed: 2, claimsTotal: 8 });
+  test('repos with a listed spec, listed specs, claims closed of total', () => {
+    // lantern lists 001 (2/5); harbor lists 010 (0/3); quiet and gone nothing. Every listed spec is open (ISC-613); `listed` is the widget head's "specs" (ISC-615).
+    expect(board.kpis).toEqual({ repos: 2, listed: 2, claimsClosed: 2, claimsTotal: 8 });
   });
 
   test('no workspace at all: every KPI is zero', () => {
-    expect(statusBoard([])).toEqual({ kpis: { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 }, workspaces: [] });
+    expect(statusBoard([])).toEqual({ kpis: { repos: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 }, workspaces: [] });
   });
 });
 

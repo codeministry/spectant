@@ -2953,7 +2953,7 @@
     "title": "Spectant status",
     "kpi": {
       "repos": "repos",
-      "closed": "closed",
+      "specs": "specs",
       "claims": "claims"
     },
     "unreadable": "This workspace could not be read.",
