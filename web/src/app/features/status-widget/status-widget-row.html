@@ -1,4 +1,4 @@
-<a class="entry" [href]="href()" [attr.aria-label]="name()">
+<a class="entry" [href]="href()" [attr.aria-label]="name()" (click)="onClick($event)">
   <span class="entry-ring">
     <ui-ring [value]="percent()" [size]="24" [stroke]="3" [label]="ringLabel()" />
     @if (running()) {

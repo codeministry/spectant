@@ -1,5 +1,7 @@
 import {
+  isNavigateMessage,
   isTabMode,
+  WIDGET_NAVIGATE,
   openWidget,
   readWidgetBounds,
   saveWidgetBounds,
@@ -150,5 +152,26 @@ describe('isTabMode (spec 071)', () => {
     [480, 1440, false],
   ])('outerWidth %i against availWidth %i is tab mode: %s', (outer, avail, expected) => {
     expect(isTabMode(fakeWindow(fakeStorage(), { outer, avail }).win)).toBe(expected);
+  });
+});
+
+/** Spec 071 (T31, ISC-586): the widget's message to its opener names an in-app path under `/w/`, nothing else. */
+describe('isNavigateMessage (spec 071, ISC-586)', () => {
+  it('accepts a spectant:navigate message with a /w/ path', () => {
+    expect(isNavigateMessage({ type: WIDGET_NAVIGATE, url: '/w/harbor/s/003' })).toBe(true);
+    expect(WIDGET_NAVIGATE).toBe('spectant:navigate');
+  });
+
+  it.each([
+    ['another type', { type: 'other', url: '/w/harbor/s/003' }],
+    ['a path outside /w/', { type: WIDGET_NAVIGATE, url: '/settings' }],
+    ['an absolute url', { type: WIDGET_NAVIGATE, url: 'https://evil.example/w/x' }],
+    ['a protocol-relative url', { type: WIDGET_NAVIGATE, url: '//evil.example/w/x' }],
+    ['a number url', { type: WIDGET_NAVIGATE, url: 42 }],
+    ['no url', { type: WIDGET_NAVIGATE }],
+    ['a string', '/w/harbor'],
+    ['null', null],
+  ])('rejects %s', (_name, data) => {
+    expect(isNavigateMessage(data)).toBe(false);
   });
 });

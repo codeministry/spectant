@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DOCUMENT, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { StatusSpec } from '../../../../../server/src/contracts/status.contract';
+import { isTabMode, WIDGET_NAVIGATE, type WidgetNavigateMessage } from '../../layout/shell/widget-window';
 import { UiAgentDot } from '../../shared/ui/agent-dot/agent-dot';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiRing } from '../../shared/ui/ring/ring';
@@ -13,7 +15,12 @@ import { toneOfStage } from '../../shared/ui/stage-tone';
  * at 100 %), the spec number (mono, `--disp-text`), the title (one line with an ellipsis, the full text in `title`),
  * the counter `closed/total` and the stage chip in `toneOfStage()` with its dot and the word from `stages.*`, so a
  * closed spec differs in word and tone, never in colour alone. The link's name joins number, title, counter and stage.
- * One line from a 480 px `widget` container, two below. The click behaviour (opener or tab mode) is the page's.
+ * One line from a 480 px `widget` container, two below.
+ *
+ * A plain click (T31, ISC-586) in popup mode posts `spectant:navigate` with the row's path to the app window that
+ * opened the widget, at the own origin, and focuses that window; the widget stays open. As a tab, or once that window
+ * is gone (T32, ISC-586.1), the row navigates the widget's own tab through the router instead, never a new one. A
+ * modified or middle click keeps the native link.
  *
  * An open agent run (T29, ISC-594) adds the decorative `ui-agent-dot` at the ring's top end corner and "agent
  * running" to the link's name; the dot's ring stands still under reduced motion through the primitive.
@@ -27,6 +34,8 @@ import { toneOfStage } from '../../shared/ui/stage-tone';
 })
 export class StatusWidgetRow {
   private readonly transloco = inject(TranslocoService);
+  private readonly document = inject(DOCUMENT);
+  private readonly router = inject(Router);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   readonly spec = input.required<StatusSpec>();
@@ -54,4 +63,20 @@ export class StatusWidgetRow {
     const name = `${spec.id} ${spec.title}, ${this.ringLabel()}, ${stage}`;
     return this.running() ? `${name}, ${this.transloco.translate('statusWidget.agentRunning')}` : name;
   });
+
+  protected onClick(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const win = this.document.defaultView;
+    if (win === null) return;
+    event.preventDefault();
+    const url = this.href();
+    const opener = win.opener as Window | null;
+    if (opener && !opener.closed && !isTabMode(win)) {
+      const message: WidgetNavigateMessage = { type: WIDGET_NAVIGATE, url };
+      opener.postMessage(message, win.location.origin);
+      opener.focus();
+      return;
+    }
+    void this.router.navigateByUrl(url);
+  }
 }

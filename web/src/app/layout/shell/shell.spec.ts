@@ -1199,4 +1199,49 @@ describe('ShellComponent', () => {
     await press('Escape');
     expect(router.url).toBe('/w/harbor');
   });
+
+  // Spec 071 (T31, ISC-586): the status widget hands a row's target to the app window as a `spectant:navigate`
+  // message; the shell follows it through the router, without a reload, only from its own origin and only into `/w/`.
+  describe('widget navigate messages (spec 071, T31, ISC-586)', () => {
+    const post = async (harness: RouterTestingHarness, data: unknown, origin = window.location.origin) => {
+      window.dispatchEvent(new MessageEvent('message', { data, origin }));
+      await harness.fixture.whenStable();
+    };
+
+    it('navigates through the router to an own-origin /w/ url and focuses the window', async () => {
+      setUp();
+      const { harness } = await open('/');
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigateByUrl');
+      const focus = vi.spyOn(window, 'focus').mockImplementation(() => undefined);
+      await post(harness, { type: 'spectant:navigate', url: '/w/harbor/s/003' });
+      expect(navigate).toHaveBeenCalledWith('/w/harbor/s/003');
+      expect(router.url).toBe('/w/harbor/s/003');
+      expect(focus).toHaveBeenCalled();
+      vi.restoreAllMocks();
+    });
+
+    it('ignores a foreign origin, another type, a non-/w/ url and a malformed body', async () => {
+      setUp();
+      const { harness } = await open('/w/harbor');
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigateByUrl');
+      await post(harness, { type: 'spectant:navigate', url: '/w/harbor/s/003' }, 'http://evil.example');
+      for (const data of [
+        { type: 'other', url: '/w/harbor/s/003' },
+        { type: 'spectant:navigate', url: '/settings' },
+        { type: 'spectant:navigate', url: 'https://evil.example/w/harbor' },
+        { type: 'spectant:navigate', url: '//evil.example/w/harbor' },
+        { type: 'spectant:navigate', url: 42 },
+        { type: 'spectant:navigate' },
+        '/w/harbor/s/003',
+        null,
+      ]) {
+        await post(harness, data);
+      }
+      expect(navigate).not.toHaveBeenCalled();
+      expect(router.url).toBe('/w/harbor');
+      vi.restoreAllMocks();
+    });
+  });
 });

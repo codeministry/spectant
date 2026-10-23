@@ -65,6 +65,22 @@ export function widgetFeatures(bounds: WidgetBounds | null): string {
   return `popup,width=${bounds.width},height=${bounds.height},left=${bounds.left},top=${bounds.top}`;
 }
 
+/** The message type a widget row posts to the app window that opened it (spec 071, ISC-586). */
+export const WIDGET_NAVIGATE = 'spectant:navigate';
+
+/** The widget's message to its opener: open `url` in the app, through the router. */
+export interface WidgetNavigateMessage {
+  readonly type: typeof WIDGET_NAVIGATE;
+  readonly url: string;
+}
+
+/** True for a `spectant:navigate` message whose `url` is an in-app path under `/w/`; anything else is not one. */
+export function isNavigateMessage(data: unknown): data is WidgetNavigateMessage {
+  if (typeof data !== 'object' || data === null) return false;
+  const { type, url } = data as Partial<Record<keyof WidgetNavigateMessage, unknown>>;
+  return type === WIDGET_NAVIGATE && typeof url === 'string' && url.startsWith('/w/');
+}
+
 /** Opens (or re-targets) the widget window and brings it to the front; null when the browser blocked it. */
 export function openWidget(win: Window = window): Window | null {
   const handle = win.open(WIDGET_PATH, WIDGET_WINDOW_NAME, widgetFeatures(readWidgetBounds(win)));
