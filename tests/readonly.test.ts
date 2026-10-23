@@ -61,6 +61,7 @@ import {
   specRoutes,
   workspaceRoutes,
 } from "../server/src/contracts/spec-routes.contract.ts";
+import { STATUS_ALLOW, STATUS_PATH, type StatusResponse } from "../server/src/contracts/status.contract.ts";
 import { specRoutesApi } from "../server/src/spec/index.ts";
 import { tokensCommand } from "../server/src/tokens/index.ts";
 import { WRITE_PATHS, WRITE_TABLE, runReleaseEvent, writePathsOf } from "../server/src/contracts/writes.contract.ts";
@@ -2284,5 +2285,113 @@ describe("ISC-308 workspace admin: add, rename, re-scan, upload and remove chang
     expect(after.checksum).toBe(before.checksum);
     expect(underGit(after)).toEqual(underGit(before));
     expect(readdirSync(join(dataDir, "workspaces"))).toEqual([]);
+  });
+});
+
+// Spec 071 (T13, ISC-589): the status widget's reads under the same guard. Two copies of the planted repository
+// (`.git/` included, its index stat data stale, so a careless `git status` would rewrite it) are registered; the shell
+// whose popover opens the widget, the board `GET /api/status` with its revalidation and HEAD, its refusals
+// (405 for a write method, 403 for a foreign `Origin`) and the live stream the widget listens on change no byte or
+// mtime of either copy, `.git/` included, and every request names the loopback host only. The widget adds no write
+// path: `WRITE_PATHS` deep-equals its value on `main` at the spec's base, the eight paths of the root `CLAUDE.md`.
+describe("ISC-589 status widget: opening the widget and loading its board leave every registered repository byte-identical", () => {
+  test("readonly status: /widget, /api/status read, revalidated, HEAD and refused, and the live stream change no byte or mtime of two repositories, .git/ included; every request is loopback", async () => {
+    const parent = mkdtempSync(join(root, "status-"));
+    const copies = [join(parent, SLUG), join(parent, "dock")];
+    for (const copy of copies) cpSync(repo, copy, { recursive: true });
+    const before = copies.map((copy) => snapshot(copy));
+    const indexBefore = copies.map((copy) => readFileSync(join(copy, ".git", "index")));
+
+    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-status-")) };
+    const lines: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const hosts = new Set<string>();
+    const realFetch = globalThis.fetch;
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+      hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return realFetch(input, init);
+    }) as typeof fetch);
+    const stop = new AbortController();
+    const live = new AbortController();
+    const bodies: StatusResponse[] = [];
+    try {
+      for (const copy of copies) expect(await run(["add", copy], manifest(), { env })).toBe(0);
+      const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
+      const deadline = Date.now() + 5_000;
+      let url = "";
+      while (url === "") {
+        url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+        if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+        if (url === "") await Bun.sleep(5);
+      }
+
+      // The widget's own window loads `/widget`, which the server answers with the SPA index; the stream the widget
+      // listens on stays open while the board is read.
+      const page = await fetch(`${url}/widget`);
+      expect(page.status).toBe(200);
+      expect(await page.text()).toContain("<title>spectant</title>");
+      const stream = await fetch(`${url}${EVENTS_PATH}`, { signal: live.signal });
+      expect(stream.status).toBe(200);
+
+      // The board: GET with an ETag, its revalidation, HEAD, and the refusals.
+      const first = await fetch(`${url}${STATUS_PATH}`);
+      expect(first.status).toBe(200);
+      const etag = first.headers.get("etag") ?? "";
+      expect(etag).not.toBe("");
+      bodies.push((await first.json()) as StatusResponse);
+      expect((await fetch(`${url}${STATUS_PATH}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
+      expect((await fetch(`${url}${STATUS_PATH}`, { method: "HEAD" })).status).toBe(200);
+      for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+        const refused = await fetch(`${url}${STATUS_PATH}`, { method });
+        expect({ method, status: refused.status, allow: refused.headers.get("allow") }).toEqual({ method, status: 405, allow: STATUS_ALLOW });
+      }
+      expect((await fetch(`${url}${STATUS_PATH}`, { headers: { Origin: "http://evil.example" } })).status).toBe(403);
+      await Bun.sleep(250);
+      live.abort();
+
+      stop.abort();
+      expect(await done).toBe(0);
+    } finally {
+      live.abort();
+      stop.abort();
+      spy.mockRestore();
+      log.mockRestore();
+    }
+
+    // Both repositories are on the board, by slug, and no field names an absolute path.
+    expect(bodies.map((body) => body.workspaces.map((w) => w.slug))).toEqual([[SLUG, "dock"]]);
+    expect(JSON.stringify(bodies)).not.toContain(parent);
+
+    copies.forEach((copy, i) => {
+      const was = before[i] as Snapshot;
+      const after = snapshot(copy);
+      expect({ copy: basename(copy), changed: changed(was, after, { mtime: true }) }).toEqual({ copy: basename(copy), changed: [] });
+      expect(after.checksum).toBe(was.checksum);
+      expect(underGit(after)).toEqual(underGit(was));
+      expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore[i] as Buffer)).toBe(true);
+    });
+    expect([...hosts]).toEqual(["127.0.0.1"]);
+  }, 60_000);
+
+  test("write paths status: WRITE_PATHS deep-equals its value on main, eight paths, none added by the widget", () => {
+    expect(WRITE_PATHS).toStrictEqual({
+      gateReviewed: { writes: ["specs/NNN-slug/.gates/reviewed.json", "specs/NNN-slug/events.jsonl"], removes: [], creates: "specs/NNN-slug/.gates/" },
+      taskCheck: { writes: ["specs/NNN-slug/tasks.md"], removes: [], creates: null },
+      transition: { writes: ["specs/NNN-slug/spec.md", "specs/NNN-slug/events.jsonl"], removes: [], creates: null },
+      allocate: {
+        writes: ["specs/NNN-slug/context.md", "specs/NNN-slug/spec.md", "specs/NNN-slug/events.jsonl"],
+        removes: ["specs/ideas/<slug>.md"],
+        creates: "specs/NNN-slug/",
+      },
+      codeReviewFeature: { writes: ["specs/NNN-slug/.gates/code-reviewed.json", "specs/NNN-slug/events.jsonl"], removes: [], creates: "specs/NNN-slug/.gates/" },
+      tokens: { writes: ["specs/tokens.jsonl"], removes: [], creates: null },
+      backlog: { writes: ["specs/backlog.md", "specs/backlog.events.jsonl"], removes: [], creates: null },
+      runRelease: { writes: [".spectant/activity.jsonl"], removes: [], creates: null },
+    });
+    // The status slice reaches neither the write paths nor a write primitive.
+    const src = join(import.meta.dir, "..", "server", "src", "status");
+    const sources = [...new Bun.Glob("**/*.ts").scanSync(src)];
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.filter((file) => /\bwrites\/|in-place|writeFile|Bun\.write/.test(readFileSync(join(src, file), "utf8")))).toEqual([]);
   });
 });

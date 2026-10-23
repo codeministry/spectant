@@ -76,6 +76,7 @@ describe('the row', () => {
       type: null,
       archived: null,
       archivedReason: null,
+      closedAt: null,
       claims: { closed: 0, total: 0 },
       tasks: { landed: 0, total: 0 },
       goal: '',

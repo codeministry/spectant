@@ -779,14 +779,13 @@
       },
       "open": "{{source}}, Runden-Board öffnen",
       "status": "Live-Status und Dev-Dienste · {{source}} · {{services}}",
-      "updated": "Aktualisiert vor",
-      "ago": "{{value}} {{unit}}",
-      "heading": "Live",
+      "label": "Status",
       "reading": {
         "one": "Liest {{count}} Workspace",
         "other": "Liest {{count}} Workspaces"
       },
       "board": "Round-Board öffnen",
+      "widget": "Status-Widget öffnen",
       "services": "Dev-Dienste",
       "openService": "{{kind}} auf Port {{port}} in neuem Tab öffnen",
       "noServices": "In diesem Workspace läuft kein Dev-Dienst.",
@@ -2947,5 +2946,16 @@
     "actions": {
       "label": "Aktionen"
     }
+  },
+  "statusWidget": {
+    "title": "Spectant-Status",
+    "kpi": {
+      "repos": "Repos",
+      "closed": "Geschlossen",
+      "claims": "Claims"
+    },
+    "unreadable": "Dieser Workspace konnte nicht gelesen werden.",
+    "empty": "Keine offenen oder kürzlich geschlossenen Specs.",
+    "agentRunning": "Agent läuft"
   }
 }

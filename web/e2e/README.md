@@ -64,7 +64,9 @@ byte, so a server contract change fails there first.
 | `POST …/gate/reviewed`, `POST …/tasks/:tid/check` | the two writes, validated with the contract's `is…Request` (400), outcome scripted per request (below) |
 | `GET/HEAD /api/lifeos` | `{present}`: true only under the `frontier` lock fixture |
 | `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`, `false`), per session |
+| `GET/HEAD /api/status` | core's `statusBoard` over the stub's workspace list and each workspace's dashboard body for the request's session, at `STUB_NOW`; ETag, 304, 403, 405 with `STATUS_ALLOW` (spec 071) |
 | `POST /api/__stub/reset` | stub only: restores the settings and drops the writes of the request's session, 204 |
+| `POST /api/__stub/bump?ws=[&spec=]` | stub only (T68, spec 071): raises the workspace's `kpis.claims.closed` by one, with `&spec=<id>` also that row's `progress.closed` (capped at its total), and pushes one `update` frame (dashboard, planning, spec pages, last `/api/status`) to the session's open streams; 204; 404 for an unknown workspace or an unlisted spec; 405 with `Allow: POST` |
 | `POST /api/__stub/bump-run?ws=&spec=&task=` | stub only (spec 027, T33): moves that task's run one run event on for the request's session, none → `dispatched` → `building` → `patched` → `applied-open` (`applied` once tasks.md ticked it), the last stays; the live frame's body and ETag change. 204; 404 for an unknown workspace, spec or task or an `absent` card; 405 with `Allow: POST`; a reset drops it |
 | `POST /api/__stub/lock?ws=` | stub only (spec 064, T25): JSON body `{spec, claim, session, release?}`; that session's dashboard row of `spec` then carries / no longer carries the claim in `taken`, body and ETag change, one `update` frame goes to the session's open streams. 204; 400 `invalid-lock`; 404 for an unknown workspace or spec; 405 with `Allow: POST`; a reset drops it |
 

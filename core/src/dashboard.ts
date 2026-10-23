@@ -20,7 +20,7 @@ import { parseClaims } from './claims.ts';
 import type { ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import { diagramVerdict } from './diagrams.ts';
-import { parseEvents } from './events.ts';
+import { closedAtOf, parseEvents } from './events.ts';
 import type { DiagramVerdict } from './diagrams.ts';
 import { specFilePath } from './files.ts';
 import type {
@@ -106,6 +106,8 @@ export interface DashboardSpecRow {
   /** Frontmatter `task:`, falling back to the slug without its number. */
   readonly title: string;
   readonly type: SpecType | null;
+  /** ISO 8601 of the last transition to `done` in the spec's events.jsonl (`closedAtOf`); null otherwise (spec 071, ISC-592). */
+  readonly closedAt: string | null;
   /** Frontmatter `priority:`, `P3` when absent or invalid (T39); the spec head carries the same value (T67, ISC-118). */
   readonly priority: Priority;
   /** The main feature, the first word of frontmatter `isa_feature:` (`F<n>`); null when the spec names none. */
@@ -792,6 +794,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     fog,
     updated: fm.data.updated,
     lastRound: rounds.ts,
+    closedAt: closedAtOf(f.texts.events),
     goal: summary?.goal ?? '',
     worktree,
     source,

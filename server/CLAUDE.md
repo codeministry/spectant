@@ -14,7 +14,7 @@ Everything visual lives in `web/`, and all spec parsing lives in `core/`. Parsin
 
 ## Layout (spec 059)
 
-`server/src/` holds `main.ts`, twelve feature slices and two shared areas, nothing else. Reason: a change to one
+`server/src/` holds `main.ts`, thirteen feature slices and two shared areas, nothing else. Reason: a change to one
 feature touches one folder, and the guards below keep it that way.
 
 A slice is a folder directly under `server/src/` whose `index.ts` is its one public surface:
@@ -35,6 +35,8 @@ A slice is a folder directly under `server/src/` whose `index.ts` is its one pub
 - `workspace-admin/`: the writing workspace routes of the settings page and the workspace image store in the data
   folder.
 - `tokens/`: `spectant tokens`, its transcript discovery and its write path (spec 009).
+- `status/`: `GET /api/status`, every registered workspace read at the request clock into core's status board for the
+  status widget (spec 071).
 - `cli/`: the `spectant` command line and the composition root. `cli/routes.ts` lists the route families in the order
   they answer, and `cli/serve.ts` joins them with every slice's handlers into one router. Only `main.ts` imports it.
 
@@ -216,7 +218,8 @@ differ, `spectant tokens --yes` included (`-t tokens`).
   editor's write-and-rename still reports. Reason: these are the files the read routes read; a change only in git
   state (a commit, a merge) is left to the poll.
 - Changes are collected for `SETTLE_MS` per workspace. The read routes they touch (the workspace list, the dashboard,
-  the planning tree, each changed spec by the id `core/`'s `specIdOfPath` reads) are then answered once by the same
+  the planning tree, each changed spec by the id `core/`'s `specIdOfPath` reads, and last `/api/status`, the status
+  widget's view across all workspaces, spec 071) are then answered once by the same
   composed handlers a poll reaches and sent to every stream as one `update` frame (`LiveUpdate`). Reason: the bytes
   and ETags equal a GET's, so the client primes its cache and revalidates to 304s, and nothing is modelled twice.
 - One build per workspace at a time; a change during a build is folded into one follow-up.

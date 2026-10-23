@@ -24,6 +24,7 @@ import { notesHandlers, openNotes } from "../notes/index.ts";
 import { favoritesScan } from "../planning/index.ts";
 import { prototypeHandlers } from "../prototype/index.ts";
 import { specHandlers } from "../spec/index.ts";
+import { statusHandlers } from "../status/index.ts";
 import { openImageStore, workspaceAdminHandlers } from "../workspace-admin/index.ts";
 import { workspaceContext, workspaceSummaryReader } from "../workspace/index.ts";
 import type { Command } from "./args.ts";
@@ -76,6 +77,8 @@ export function serveUntilSignal(manifest: EmbeddedManifest, command: Command & 
       ...settingsHandlers(settings),
       ...actorsHandlers(db),
       ...lifeosHandlers(lifeos),
+      // The status board (spec 071, ISC-593) reads every workspace over the workspace family's context and clock.
+      ...statusHandlers(workspaces),
       ...dashboardHandlers(workspaces),
       ...notesHandlers({ store: notes, registry }),
       ...specHandlers({ registry, lifeos, commitCache: new CommitCache(), notes, abortAfterMs, staleAfterMs }),

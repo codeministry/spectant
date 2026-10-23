@@ -1,0 +1,85 @@
+@import "../../shared/ui/_visually-hidden.css";
+
+/*
+ * The widget window's frame (spec 071, ISC-582): its own size container `widget`, never the shell's, on the page
+ * ground with a 16 px edge and the safe areas; the content is a centred column up to 720 px.
+ */
+:host {
+  display: block;
+  min-block-size: 100dvh;
+  background: var(--color-base-200);
+}
+
+.widget {
+  container: widget / inline-size;
+  box-sizing: border-box;
+  min-block-size: 100dvh;
+  padding-block: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-bottom));
+  padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-inline-size: 720px;
+  margin-inline: auto;
+}
+
+/* The KPI band (T26, ISC-583): three small tiles side by side, 8 px apart, at every width. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Below 400 px the tile padding drops to 12 px, so "133/256" keeps one line. `ui-kpi-tile` sets its card's padding as
+   an inline style (`ui-card`'s `padding` input), which only `!important` outranks from here. */
+@container widget (width < 400px) {
+  /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+  .kpis ::ng-deep ui-card {
+    padding: 12px !important;
+  }
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+/* The group head (T27, ISC-584): the workspace's path tail, one line with an ellipsis, the whole tail in `title`. */
+.group-head {
+  overflow: hidden;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--muted-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The empty line (T30, ISC-588): one muted line instead of an empty list, no empty-state block. */
+.meta {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted-ink);
+}
+
+.rows {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

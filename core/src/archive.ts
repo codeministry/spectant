@@ -4,6 +4,7 @@
 //
 // Pure: the folders' texts in, rows out. No file system, no Bun API.
 import { parseClaims } from './claims.ts';
+import { closedAtOf } from './events.ts';
 import type { SpecFiles, SpecType } from './files.ts';
 import { parseFrontmatter, type Progress } from './frontmatter.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
@@ -16,6 +17,8 @@ export interface ArchivedSpec {
   /** Frontmatter `task:`, falling back to the slug without its number. */
   readonly title: string;
   readonly type: SpecType | null;
+  /** ISO 8601 of the last transition to `done` in the folder's events.jsonl (`closedAtOf`); null otherwise (spec 071, ISC-592). */
+  readonly closedAt: string | null;
   /** Frontmatter `archived:` (`YYYY-MM-DD`); null when the folder carries none. */
   readonly archived: string | null;
   readonly archivedReason: string | null;
@@ -87,6 +90,7 @@ export function listArchive(folders: readonly SpecFiles[]): ArchivedSpec[] {
           type: data.specType,
           archived: data.archived,
           archivedReason: data.archivedReason,
+          closedAt: closedAtOf(f.texts.events),
           claims: parseClaims(spec).counted,
           tasks: taskCounts(f.texts.tasks),
           goal: goalOf(spec),

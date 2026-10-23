@@ -2,7 +2,8 @@
 // types accept the golden snapshots the stub will serve, the error spelling is one convention across the API, and the
 // module stays importable by the browser bundle.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import type {
   CardState,
@@ -35,6 +36,10 @@ import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, TransitionPlan, Wo
 import { WORKSPACES_PATH, type WorkspaceSummary, type UnreadableCode as LoaderUnreadableCode } from "../server/src/workspace/index.ts";
 import { dashboardApi } from "../server/src/cli/index.ts";
 import type { ActorRow } from "../server/src/infra/db/db.ts";
+import { openRegistry } from "../server/src/infra/db/registry.ts";
+import { STATUS_ALLOW, STATUS_PATH, STATUS_STATUSES, type StatusResponse } from "../server/src/contracts/status.contract.ts";
+import { statusApi } from "../server/src/status/index.ts";
+import { STATE_HEADER, STUB_NOW, stubApi } from "../web/e2e/stub-api.ts";
 import {
   ACTORS_ALLOW,
   ACTORS_PATH,
@@ -1068,5 +1073,64 @@ describe("the contract is browser-safe", () => {
       return /\bBun\.|\bprocess\.|\brequire\(|(?:from|import)\s*\(?\s*['"](?:node:|bun|fs|path|os|child_process)/.test(source);
     });
     expect(offending).toEqual([]);
+  });
+});
+
+// ─── the status board (spec 071, T15, ISC-593) ──────────────────────────────────────────────────────────────────────
+
+/** Every key path of `value`, array elements folded into `[]`: `workspaces[].specs[].claims.closed`. */
+function keyPaths(value: unknown, prefix = "", out = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) for (const item of value) keyPaths(item, `${prefix}[]`, out);
+  else if (value !== null && typeof value === "object") {
+    for (const [key, child] of Object.entries(value)) {
+      const path = prefix === "" ? key : `${prefix}.${key}`;
+      out.add(path);
+      keyPaths(child, path, out);
+    }
+  }
+  return out;
+}
+
+describe("status board (spec 071 T15): one path beside the actors, GET and HEAD, the stub's body the server's shape", () => {
+  test("the pins: STATUS_PATH, STATUS_ALLOW and STATUS_STATUSES are the plan's", () => {
+    expect(STATUS_PATH).toBe("/api/status");
+    expect(STATUS_ALLOW).toBe("GET, HEAD");
+    expect([...STATUS_STATUSES]).toEqual([200, 304, 403, 405]);
+  });
+
+  test("the server's answer over the harbor and lantern fixtures and the stub's over their goldens carry the same keys at every level", async () => {
+    const data = mkdtempSync(join(tmpdir(), "spectant-status-contract-"));
+    const registry = openRegistry(join(data, "db"));
+    try {
+      // Server: the two fixture trees and a third, registered and then removed, so an unreadable entry is in the body.
+      const gone = join(data, "gone");
+      mkdirSync(join(gone, "specs"), { recursive: true });
+      for (const path of [join(FIXTURES, "harbor"), join(FIXTURES, "lantern"), gone]) registry.add(path);
+      rmSync(gone, { recursive: true, force: true });
+      const server = statusApi({ registry, now: () => new Date(STUB_NOW), services: () => Promise.resolve([]) });
+      const serverUrl = new URL(`http://127.0.0.1:7717${STATUS_PATH}`);
+      const serverRes = await server(new Request(serverUrl.href, { headers: HOST }), serverUrl);
+      expect(serverRes?.status).toBe(200);
+      const serverBody = (await serverRes?.json()) as StatusResponse;
+
+      // Stub: its golden list with the last workspace unreadable, so both bodies hold a readable and an unreadable entry.
+      const stubUrl = new URL(`http://127.0.0.1:4173${STATUS_PATH}`);
+      const stubRes = await stubApi()(new Request(stubUrl.href, { headers: { Host: "127.0.0.1:4173", [STATE_HEADER]: "unreadable" } }), stubUrl);
+      expect(stubRes.status).toBe(200);
+      const stubBody = (await stubRes.json()) as StatusResponse;
+
+      // Both sides list specs and an unreadable entry, so every level of the shape is present on each.
+      for (const body of [serverBody, stubBody]) {
+        expect(body.workspaces.some((w) => w.readable && w.specs.length > 0)).toBe(true);
+        expect(body.workspaces.some((w) => !w.readable)).toBe(true);
+      }
+      const serverKeys = [...keyPaths(serverBody)].sort();
+      expect(serverKeys).toEqual([...keyPaths(stubBody)].sort());
+      expect(serverKeys).toContain("workspaces[].specs[].claims");
+      expect(serverKeys.filter((path) => !path.includes("."))).toEqual(["kpis", "workspaces"]);
+    } finally {
+      registry.close();
+      rmSync(data, { recursive: true, force: true });
+    }
   });
 });

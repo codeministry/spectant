@@ -2,8 +2,8 @@
  * The live update stream (spec 030, ISC-28; plan 030 § Interfaces): `GET /api/events` answers `text/event-stream`
  * and stays open. When the `WatchHub` reports a workspace's change, the read routes it touched are answered once by
  * the same handlers a poll reaches (`reads`), and every open stream gets one `LIVE_EVENT` frame with those answers as a
- * `LiveUpdate`: the workspace list, the dashboard, the planning tree and each changed spec, every `etag` and `body`
- * byte for byte what a `GET` on the `path` gives, so the client's next conditional read is a 304.
+ * `LiveUpdate`: the workspace list, the dashboard, the planning tree, each changed spec and the status view, every
+ * `etag` and `body` byte for byte what a `GET` on the `path` gives, so the client's next conditional read is a 304.
  *
  * - One build per workspace at a time. A change that arrives during a build is folded into one follow-up build, so a
  *   checkout or an implement round's burst costs at most two.
@@ -28,6 +28,7 @@ import {
   specRoutes,
   workspaceRoutes,
 } from "../contracts/spec-routes.contract.ts";
+import { STATUS_PATH } from "../contracts/status.contract.ts";
 import type { LiveChange, WatchHub } from "./hub.ts";
 
 /** How often an idle stream gets a comment line; below Bun's default `idleTimeout` of 10 s. */
@@ -48,7 +49,11 @@ export interface EventsApiOptions {
   readonly heartbeatMs?: number;
 }
 
-/** The read paths of one change, built by the contract's own builders so they equal the client's request paths. */
+/**
+ * The read paths of one change, built by the contract's own builders so they equal the client's request paths. The
+ * status view (`STATUS_PATH`, spec 071, ISC-587) names no workspace and rides in every frame, last, as the e2e stub
+ * sends it, so an open status widget follows a change in any registered workspace.
+ */
 export function livePathsOf(change: LiveChange): string[] {
   const ws = encodeURIComponent(change.ws);
   return [
@@ -56,6 +61,7 @@ export function livePathsOf(change: LiveChange): string[] {
     `${SPEC_API_ROOT}/${ws}/dashboard`,
     workspaceRoutes.planning(change.ws),
     ...change.specIds.map((id) => specRoutes.spec(change.ws, id)),
+    STATUS_PATH,
   ];
 }
 

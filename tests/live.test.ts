@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WORKSPACES_PATH, type WorkspaceSummary } from "../server/src/workspace/index.ts";
 import { EVENTS_ALLOW, EVENTS_PATH, type LiveUpdate, SPEC_API_ROOT, specRoutes } from "../server/src/contracts/spec-routes.contract.ts";
+import { STATUS_PATH, type StatusResponse } from "../server/src/contracts/status.contract.ts";
 import { LIVE_MS, changeAndWait as changeAndWaitAt, openStream, serve } from "./fixtures/live-stream.ts";
 import { type PlantedWorktreeRepo, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
@@ -214,6 +215,34 @@ describe("ISC-28 live: a change to a watched file reaches an open page within 2 
     expect(post.status).toBe(405);
     expect(post.headers.get("allow")).toBe(EVENTS_ALLOW);
     await post.body?.cancel();
+  });
+
+  test("live status: a stage moved in spec.md arrives with the status view, equal to a GET and showing the new stage (spec 071, ISC-587)", async () => {
+    // The status widget reads `/api/status` and follows the same stream as the app: every frame carries that view,
+    // last, so a change in any registered workspace reaches the open widget without a reload.
+    const STAGE_SPEC = { folder: "006-partial-push", id: "006" } as const;
+    const stageOf = (body: unknown): string | undefined =>
+      (body as StatusResponse).workspaces.find((w) => w.slug === slug)?.specs.find((s) => s.id === STAGE_SPEC.id)?.stage;
+    const before = (await (await fetch(`${url}${STATUS_PATH}`)).json()) as StatusResponse;
+    expect(stageOf(before)).toBe("review");
+
+    const file = join(repo, "specs", STAGE_SPEC.folder, "spec.md");
+    const { stream, update, latency } = await changeAndWait(
+      (u) => u.ws === slug && paths(u).includes(specRoutes.spec(slug, STAGE_SPEC.id)),
+      () => writeFileSync(file, readFileSync(file, "utf8").replace(/^stage: review$/m, "stage: build")), // single-core: allow — simulates an outside agent editing raw file bytes
+    );
+    try {
+      expect(update).not.toBeNull();
+      expect(latency).toBeLessThanOrEqual(LIVE_MS);
+      expect(paths(update ?? { ws: "", views: [] }).at(-1)).toBe(STATUS_PATH);
+      const view = update?.views.find((v) => v.path === STATUS_PATH);
+      expect(stageOf(view?.body)).toBe("build");
+      const res = await fetch(`${url}${STATUS_PATH}`);
+      expect({ status: res.status, etag: res.headers.get("etag") }).toEqual({ status: 200, etag: view?.etag ?? null });
+      expect(await res.json()).toEqual(view?.body);
+    } finally {
+      await stream.close();
+    }
   });
 
   test("live paths: no frame carries an absolute path of a registered repository (ISC-3)", async () => {

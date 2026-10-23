@@ -193,6 +193,13 @@
     }
     <div class="gallery-anatomy" data-anatomy="kbd"><ui-kbd>K</ui-kbd></div>
     <div class="gallery-anatomy" data-anatomy="section-head"><ui-section-header heading="Ag" /></div>
+    <!-- The text-less row rings of the status widget (spec 071, ISC-585): open at 24 px, full at 20 px. -->
+    @for (part of ['ring', 'ring -track', 'ring -bar']; track part) {
+      <div class="gallery-anatomy" [attr.data-anatomy]="part"><ui-ring [value]="50" [size]="24" [stroke]="3" label="Ag" /></div>
+    }
+    @for (part of ['ring-full', 'ring-full -bar']; track part) {
+      <div class="gallery-anatomy" [attr.data-anatomy]="part"><ui-ring [value]="100" [size]="20" [stroke]="3" label="Ag" /></div>
+    }
   </section>
 
   <!-- Flat tiles and the agent dot (spec 064 T11). -->

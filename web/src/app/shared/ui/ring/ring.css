@@ -22,6 +22,9 @@
       fill: none;
       transition: stroke-dashoffset var(--motion-duration-slow) var(--motion-ease-standard);
     }
+
+    /* The full small ring (spec 071, ISC-585): solid lime like ui-meter[data-full]. */
+    :host([data-full]) .bar { stroke: var(--color-accent); }
     .from { stop-color: var(--color-accent); }
     .to { stop-color: var(--color-primary); }
 
@@ -43,7 +46,7 @@
     :host([data-size='40']) .unit { font-size: 0.75em; }
 
     @media (forced-colors: active) {
-      .bar { stroke: CanvasText; }
+      .bar, :host([data-full]) .bar { stroke: CanvasText; }
 
       .track {
         stroke: GrayText;

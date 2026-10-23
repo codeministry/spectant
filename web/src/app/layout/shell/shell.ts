@@ -1,5 +1,5 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, ElementRef, inject } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { KeyboardService } from './keyboard.service';
 import { DetailSidebar } from '../detail-sidebar/detail-sidebar';
@@ -11,6 +11,7 @@ import { RailSlot } from './rail-slot';
 import { ShellData } from './shell-data.service';
 import { ShellHeader } from './shell-header';
 import { ShellState } from './shell-state.service';
+import { isNavigateMessage } from './widget-window';
 
 /**
  * The one shell every route renders in (ISC-73, T35): the header, `main` with the router outlet, and the 352 px
@@ -120,6 +121,27 @@ export class ShellComponent {
       destroyRef.onDestroy(() => {
         observer.disconnect();
       });
+    });
+    this.followWidget(destroyRef);
+  }
+
+  /**
+   * Spec 071 (T31, ISC-586): a status widget row posts `spectant:navigate` to the app window that opened it. Only a
+   * message from the own origin with a `/w/` path is followed, through the router without a reload; the window then
+   * takes the focus the row asked for.
+   */
+  private followWidget(destroyRef: DestroyRef): void {
+    const win = inject(DOCUMENT).defaultView;
+    if (win === null) return;
+    const router = inject(Router);
+    const onMessage = (event: MessageEvent): void => {
+      if (event.origin !== win.location.origin || !isNavigateMessage(event.data)) return;
+      void router.navigateByUrl(event.data.url);
+      win.focus();
+    };
+    win.addEventListener('message', onMessage);
+    destroyRef.onDestroy(() => {
+      win.removeEventListener('message', onMessage);
     });
   }
 

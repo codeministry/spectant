@@ -29,6 +29,8 @@ import type {
   Worktree,
 } from '../../core/src/files';
 import type { PlanningModel } from '../../core/src/planning';
+import { type StatusInput, type StatusModel, type StatusResponse, statusBoard } from '../../core/src/status-board';
+import { STATUS_ALLOW, STATUS_PATH, STATUS_STATUSES } from '../../server/src/contracts/status.contract';
 import {
   ACTIVITY_HASH_HEADER,
   ACTORS_ALLOW,
@@ -1533,6 +1535,27 @@ describe('POST /api/__stub/bump (T68)', () => {
     expect((await ask('/api/__stub/bump?ws=nowhere', { method: 'POST' })).status).toBe(404);
     expect((await ask('/api/__stub/bump', { method: 'POST' })).status).toBe(404);
   });
+
+  test('with &spec= also closes one claim on that row, capped at its total, and reaches /api/status; 404 for an unlisted spec (spec 071, T38)', async () => {
+    const session = 'bump-row';
+    type Rows = { specs: Array<{ id: string; progress: { closed: number; total: number } }> };
+    const progressOf = async (id: string): Promise<{ closed: number; total: number } | undefined> =>
+      ((await (await ask(HARBOR, { session })).json()) as Rows).specs.find((r) => r.id === id)?.progress;
+    const statusClaims = async (): Promise<number> => ((await (await ask(STATUS_PATH, { session })).json()) as StatusResponse).kpis.claimsClosed;
+    const before = await statusClaims();
+    expect(await progressOf('003')).toEqual({ closed: 0, total: 13 });
+
+    expect((await ask('/api/__stub/bump?ws=harbor&spec=003', { method: 'POST', session })).status).toBe(204);
+    expect(await progressOf('003')).toEqual({ closed: 1, total: 13 });
+    expect(await progressOf('002')).toEqual({ closed: 25, total: 30 });
+    expect(await statusClaims()).toBe(before + 1);
+    expect((await ask('/api/__stub/bump?ws=harbor&spec=004', { method: 'POST', session })).status).toBe(204);
+    expect(await progressOf('004')).toEqual({ closed: 30, total: 30 });
+    expect((await ask('/api/__stub/bump?ws=harbor&spec=999', { method: 'POST', session })).status).toBe(404);
+
+    expect((await ask('/api/__stub/reset', { method: 'POST', session })).status).toBe(204);
+    expect(await progressOf('003')).toEqual({ closed: 0, total: 13 });
+  });
 });
 
 /** One SSE frame: its comment line, or its `event:` name and `data:` text. */
@@ -1636,7 +1659,9 @@ describe('GET /api/events (spec 030, T17)', () => {
       const paths = views.map((view) => view.path);
       expect(paths.slice(0, 2)).toEqual([HARBOR, workspaceRoutes.planning('harbor')]);
       expect(paths).toContain(specRoutes.spec('harbor', '002'));
-      expect(paths.slice(2).every((path) => /^\/api\/workspaces\/harbor\/specs\/\d{3}$/.test(path))).toBe(true);
+      // Then each spec page, and last the status widget's view across all workspaces (spec 071, ISC-587).
+      expect(paths.slice(2, -1).every((path) => /^\/api\/workspaces\/harbor\/specs\/\d{3}$/.test(path))).toBe(true);
+      expect(paths.at(-1)).toBe(STATUS_PATH);
       expect(new Set(paths).size).toBe(paths.length);
       for (const view of views) {
         const res = await ask(view.path, { session });
@@ -3608,5 +3633,107 @@ describe('stub API: the sidebar fixtures (spec 067, T7, ISC-528)', () => {
       const res = await ask('/api/workspaces', { headers: on(extra) });
       expect({ extra, status: res.status, error: ((await res.json()) as Json)['error'] }).toEqual({ extra, status: 400, error: 'stub-sidebar-with-overlay' });
     }
+  });
+});
+
+describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
+  type ListEntry = { slug: string; pathTail: string; readable: boolean; error?: string };
+  type Init = Parameters<typeof request>[1];
+  /** The expectation from core: `statusBoard` over the stub's own list and dashboard answers, at `STUB_NOW`. */
+  const expected = async (init: Init = {}): Promise<StatusResponse> => {
+    const list = (await (await ask('/api/workspaces', init)).json()) as ListEntry[];
+    const inputs: StatusInput[] = [];
+    for (const w of list) {
+      if (!w.readable) {
+        inputs.push({ slug: w.slug, pathTail: w.pathTail, readable: false, error: w.error ?? '' });
+        continue;
+      }
+      const model = (await (await ask(`/api/workspaces/${encodeURIComponent(w.slug)}/dashboard`, init)).json()) as StatusModel;
+      inputs.push({ slug: w.slug, pathTail: w.pathTail, readable: true, model });
+    }
+    return statusBoard(inputs, new Date(STUB_NOW));
+  };
+  /** Every string value of a JSON body that reads as an absolute path. */
+  const absolutePaths = (value: unknown): string[] => {
+    if (typeof value === 'string') return /^(\/|[A-Za-z]:[\\/]|~)/.test(value) ? [value] : [];
+    if (Array.isArray(value)) return value.flatMap(absolutePaths);
+    if (value !== null && typeof value === 'object') return Object.values(value).flatMap(absolutePaths);
+    return [];
+  };
+
+  test('answers every status of the contract row: 200, 304 on its ETag, 403 foreign, 405 with STATUS_ALLOW; HEAD has no body', async () => {
+    const ok = await ask(STATUS_PATH);
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get('Content-Type')).toContain('application/json');
+    const etag = ok.headers.get('ETag') ?? '';
+    expect(etag).toMatch(/^"[\w-]+"$/);
+    const head = await ask(STATUS_PATH, { method: 'HEAD' });
+    expect({ status: head.status, etag: head.headers.get('ETag'), body: await head.text() }).toEqual({ status: 200, etag, body: '' });
+    const cases: Array<[string, Init]> = [
+      ['get', {}],
+      ['match', { headers: { 'If-None-Match': etag } }],
+      ['host', { headers: { Host: 'evil.example' } }],
+      ['origin', { headers: { Origin: 'https://evil.example' } }],
+      ['post', { method: 'POST', body: '{}' }],
+      ['delete', { method: 'DELETE' }],
+    ];
+    const statuses = new Set<number>();
+    const allow = new Set<string>();
+    for (const [, init] of cases) {
+      const headers = new Headers(init?.headers);
+      const res = headers.get('Host') === 'evil.example' ? await call(api, new Request(`${ORIGIN}${STATUS_PATH}`, { headers })) : await ask(STATUS_PATH, init);
+      statuses.add(res.status);
+      if (res.status === 405) allow.add(res.headers.get('Allow') ?? '');
+    }
+    expect({ statuses: [...statuses].sort((a, b) => a - b), allow: [...allow] }).toEqual({ statuses: [...STATUS_STATUSES], allow: [STATUS_ALLOW] });
+  });
+
+  test('per state the body is core\'s statusBoard over the stub\'s list and dashboards at STUB_NOW, in list order, with no absolute path', async () => {
+    for (const state of STUB_STATES) {
+      const body = (await (await ask(STATUS_PATH, { state })).json()) as StatusResponse;
+      const want = await expected({ state });
+      expect({ state, body }).toEqual({ state, body: want });
+      const list = (await (await ask('/api/workspaces', { state })).json()) as ListEntry[];
+      expect(body.workspaces.map((w) => [w.slug, w.pathTail])).toEqual(list.map((w) => [w.slug, w.pathTail]));
+      expect({ state, absolute: absolutePaths(body) }).toEqual({ state, absolute: [] });
+    }
+    const two = (await (await ask(STATUS_PATH)).json()) as StatusResponse;
+    expect(two.workspaces.map((w) => w.slug)).toEqual(['harbor', 'lantern']);
+    expect(two.kpis.listed).toBeGreaterThan(0);
+    const unreadable = (await (await ask(STATUS_PATH, { state: 'unreadable' })).json()) as StatusResponse;
+    expect(unreadable.workspaces.at(-1)).toEqual({ slug: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', specs: [] });
+    expect((await (await ask(STATUS_PATH, { state: 'empty' })).json()) as StatusResponse).toEqual(statusBoard([], new Date(STUB_NOW)));
+  });
+
+  test('a session\'s moved dashboard reaches its body with a new ETag; another session and a reset keep the golden board', async () => {
+    const session = 't071-status-move';
+    const before = await ask(STATUS_PATH, { session });
+    const plain = await before.text();
+    const hash = holderIn(await boardTree(session), '003-config-loader')?.hash;
+    expect((await move('003', { to: 'review', hash }, { session })).status).toBe(200);
+    const after = await ask(STATUS_PATH, { session, headers: { 'If-None-Match': before.headers.get('ETag') ?? '' } });
+    expect(after.status).toBe(200);
+    const body = (await after.json()) as StatusResponse;
+    expect(body).toEqual(await expected({ session }));
+    expect(body.workspaces[0]?.specs.find((s) => s.id === '003')?.stage).toBe('review');
+    expect(await (await ask(STATUS_PATH, { session: 't071-status-other' })).text()).toBe(plain);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await (await ask(STATUS_PATH, { session })).text()).toBe(plain);
+  });
+
+  test('every live frame carries the STATUS_PATH view last, the stub GET answer byte for byte (ISC-587)', async () => {
+    const session = 't071-status-live';
+    const sse = sseReader(await ask(EVENTS_PATH, { session }));
+    expect(await sse.next()).toEqual({ comment: 'ping' });
+    expect((await ask('/api/__stub/bump?ws=lantern', { method: 'POST', session })).status).toBe(204);
+    const frame = await sse.update();
+    if (typeof frame === 'string' || 'comment' in frame) throw new Error(`no update frame: ${JSON.stringify(frame)}`);
+    const { views } = JSON.parse(frame.data) as LiveUpdate;
+    const view = views.at(-1);
+    expect(view?.path).toBe(STATUS_PATH);
+    const res = await ask(STATUS_PATH, { session });
+    expect({ etag: view?.etag, body: view?.body }).toEqual({ etag: res.headers.get('ETag') ?? '', body: (await res.json()) as unknown });
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await sse.update()).toBe('end');
   });
 });

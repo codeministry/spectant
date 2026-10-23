@@ -1,11 +1,11 @@
 /**
- * The visual smoke set: seven representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
- * since the dark theme changes colours, not layout. 28 baselines that catch an unintended visual change (a cascade
+ * The visual smoke set: ten representative views, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
+ * since the dark theme changes colours, not layout. 40 baselines that catch an unintended visual change (a cascade
  * side effect, a broken tier, a theme token) without pinning every view of every spec; behaviour and structure stay
  * with the e2e and browser tiers.
  *
- *   bun run test:visual                       light, 21 baselines
- *   bun run test:visual -- --theme dark       dark, 7 baselines
+ *   bun run test:visual                       light, 30 baselines
+ *   bun run test:visual -- --theme dark       dark, 10 baselines
  *   bun run test:visual -- board              one page (the group names below)
  *
  * Baselines live under `__screenshots__/chromium/{light,dark}/visual.spec.ts/` and are recorded only in the pinned
@@ -29,6 +29,8 @@ interface View {
   readonly state?: string;
   /** What must be drawn beyond the host before the capture (a late SVG, the first table row). */
   readonly drawn?: (page: Page) => Promise<void>;
+  /** Capture the viewport only: the full-page capture resizes the page, and an open overlay does not survive it. */
+  readonly viewportOnly?: boolean;
 }
 
 const VIEWS: readonly View[] = [
@@ -47,6 +49,31 @@ const VIEWS: readonly View[] = [
     },
   },
   { name: 'status', path: '/w/harbor/s/002/status', host: 'app-status-tab' },
+  // Spec 071 (ISC-591): the header's status popover, opened over a settled spec page; at 390 the shell is compact and it
+  // is the bottom sheet, at 820 and 1440 the popover. Its widget entry (`data-autofocus`) holds the focus.
+  {
+    name: 'popover',
+    path: '/w/harbor/s/002/status',
+    host: 'app-status-tab',
+    viewportOnly: true,
+    drawn: async (page) => {
+      await page.locator('header [data-control="live"]').click();
+      await expect(page.locator('header [data-control="live"]')).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('[data-live-widget]')).toBeFocused();
+      await expect(page.locator('[data-live-service], [data-live-services-empty]').first()).toBeVisible();
+    },
+  },
+  // Spec 071 (ISC-582, ISC-591): the status widget, its own window outside the shell, on the stub's default workspaces;
+  // the theme check in `settle` proves it follows the app's theme.
+  {
+    name: 'widget',
+    path: '/widget',
+    host: 'app-status-widget-page',
+    drawn: async (page) => {
+      await expect(page.locator('app-status-widget-page ui-kpi-tile')).toHaveCount(3);
+      await expect(page.locator('app-status-widget-page li.row[data-spec]').first()).toBeVisible();
+    },
+  },
   {
     name: 'help',
     path: '/help',
@@ -104,7 +131,7 @@ for (const view of VIEWS) {
           expect(reset.status()).toBe(204);
           await page.goto(view.path);
           await settle(page, view);
-          await expect(page).toHaveScreenshot(`${view.name}-${String(width)}.png`, SCREENSHOT);
+          await expect(page).toHaveScreenshot(`${view.name}-${String(width)}.png`, { ...SCREENSHOT, fullPage: view.viewportOnly !== true });
         });
       });
     }

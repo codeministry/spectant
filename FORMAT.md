@@ -609,6 +609,9 @@ row up to and including `review`; `review → build` stays the reviewed mark's o
 "A transition writes `stage:`").
 The last line's `from` and `to` decide whether an explicit `stage:` holds against files that have overtaken it: only a
 step back (`to` before `from` in the type's row) does (spec 040, ISC-221.2; § `spec`, the `stage` key).
+The closing time `closedAt` on every dashboard row and archive entry is the `ts` of the last valid line with `to: done`, as
+written; it is null without such a line and again null once a later line moves `from: done` (`closedAtOf` in
+`events.ts`, spec 071, ISC-592). Below, it is `2026-03-05T15:00:00Z`.
 
 From `core/fixtures/harbor/specs/archive/001-manifest-sync/events.jsonl`, the whole chain of a complete spec:
 

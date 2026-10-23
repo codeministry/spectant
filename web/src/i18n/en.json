@@ -779,14 +779,13 @@
       },
       "open": "{{source}}, open the round board",
       "status": "Live status and dev services · {{source}} · {{services}}",
-      "updated": "Updated",
-      "ago": "{{value}} {{unit}} ago",
-      "heading": "Live",
+      "label": "Status",
       "reading": {
         "one": "Reading {{count}} workspace",
         "other": "Reading {{count}} workspaces"
       },
       "board": "Open the round board",
+      "widget": "Open status widget",
       "services": "Dev services",
       "openService": "Open {{kind}} on port {{port}} in a new tab",
       "noServices": "No dev service is running in this workspace.",
@@ -2947,5 +2946,16 @@
     "actions": {
       "label": "Actions"
     }
+  },
+  "statusWidget": {
+    "title": "Spectant status",
+    "kpi": {
+      "repos": "repos",
+      "closed": "closed",
+      "claims": "claims"
+    },
+    "unreadable": "This workspace could not be read.",
+    "empty": "No open or recently closed specs.",
+    "agentRunning": "agent running"
   }
 }

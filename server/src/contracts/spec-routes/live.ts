@@ -22,8 +22,9 @@ export const LIVE_EVENT = 'update';
 
 /**
  * One read route's answer as a poll would get it: `path` is the request path (`/api/workspaces`,
- * `/api/workspaces/:ws/dashboard`, `…/planning`, `…/specs/:id`), `etag` and `body` are byte for byte the `ETag`
- * header and the parsed JSON body of a `GET` on it.
+ * `/api/workspaces/:ws/dashboard`, `…/planning`, `…/specs/:id`, and in every frame `/api/status`, the status widget's
+ * view across all workspaces, spec 071 ISC-587), `etag` and `body` are byte for byte the `ETag` header and the parsed
+ * JSON body of a `GET` on it.
  */
 export interface LiveView {
   readonly path: string;
