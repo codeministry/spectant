@@ -120,3 +120,31 @@ export function visibleGroups(body: StatusResponse, filter: WidgetFilter): reado
   }
   return groups;
 }
+
+/**
+ * The facet count of each readable workspace option (spec 072, T21, ISC-611): its listed specs that pass the stage
+ * selection, never the workspace selection, so pressing a workspace chip never changes a number in its own row. A 0
+ * is a real entry (the chip stays visible and selectable); an unreadable workspace has no entry and so no number.
+ */
+export function workspaceCounts(body: StatusResponse, filter: WidgetFilter): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const ws of body.workspaces) {
+    if (!ws.readable || !hasGroup(ws)) continue;
+    counts.set(ws.slug, ws.specs.filter((spec) => stageMatches(filter, spec)).length);
+  }
+  return counts;
+}
+
+/**
+ * The facet count of each stage option (ISC-611): the listed specs at that stage in the workspaces that pass the
+ * workspace selection, never the stage selection; an unreadable workspace lists nothing and adds nothing. Every
+ * option has an entry, a 0 included, in workflow order.
+ */
+export function stageCounts(body: StatusResponse, filter: WidgetFilter): ReadonlyMap<Stage, number> {
+  const counts = new Map<Stage, number>(stageOptions(body).map((stage) => [stage, 0]));
+  for (const ws of body.workspaces) {
+    if (!workspaceMatches(filter, ws.slug)) continue;
+    for (const spec of ws.specs) counts.set(spec.stage, (counts.get(spec.stage) ?? 0) + 1);
+  }
+  return counts;
+}

@@ -169,4 +169,73 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     expect(root.querySelector('section.filter')).toBeNull();
     expect(root.querySelectorAll('section.groups .meta')).toHaveLength(1);
   });
+
+  // Spec 072 (T24, ISC-604): the head counts exactly the visible rows; without a selection exactly the body's KPIs.
+  /** The head's three figures as rendered: repos, closed/listed, claims closed/total. */
+  const figures = (root: HTMLElement): string[] => [...root.querySelectorAll<HTMLElement>('header.head dl.kpis dd')].map((dd) => dd.textContent.trim());
+
+  it('counts the listed specs without a selection, exactly the body KPIs (ISC-583 held)', async () => {
+    const root = await land();
+    const { repos, closed, listed, claimsClosed, claimsTotal } = MIXED.kpis;
+    expect(figures(root)).toEqual([`${repos}`, `${closed}/${listed}`, `${claimsClosed}/${claimsTotal}`]);
+  });
+
+  it('counts only the rows a workspace, a stage or both selections leave visible', async () => {
+    const root = await land();
+    await press(root, 0, 'lantern');
+    expect(figures(root)).toEqual(['1', '0/2', '2/6']);
+    await press(root, 0, 'lantern');
+    await press(root, 1, 'Review');
+    expect(visible(root)).toEqual(['harbor: 005', 'beacon: !notice', 'reef: 020']);
+    expect(figures(root)).toEqual(['2', '0/2', '2/6']);
+    await press(root, 1, 'Review');
+    await press(root, 1, 'Done');
+    await press(root, 1, 'Build');
+    await press(root, 0, 'harbor-app');
+    expect(visible(root)).toEqual(['harbor: 002 001']);
+    expect(figures(root)).toEqual(['1', '1/2', '2/6']);
+  });
+
+  // Spec 072 (T26, ISC-605): a selection without a hit shows one line with a reset button, never an empty area.
+  it('shows one no-match line with a reset button and zero figures when nothing matches', async () => {
+    const root = await land();
+    await press(root, 1, 'Done');
+    await press(root, 0, 'lantern');
+    const groups = root.querySelector('section.groups');
+    expect(groups?.querySelectorAll('.group')).toHaveLength(0);
+    expect(groups?.children).toHaveLength(1);
+    const line = groups?.querySelector('div.no-match');
+    expect(line?.querySelector('p.meta')?.textContent.trim()).toBe('No spec matches this filter.');
+    const buttons = [...(line?.querySelectorAll<HTMLButtonElement>('button') ?? [])];
+    expect(buttons.map((b) => [b.textContent.trim(), b.hasAttribute('ui-button'), b.dataset['variant'], b.classList.contains('btn-sm')])).toEqual([
+      ['Reset filter', true, 'secondary', true],
+    ]);
+    expect(figures(root)).toEqual(['0', '0/0', '0/0']);
+    expect(root.querySelector('section.filter')).not.toBeNull();
+    expect(chips(root, 0).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+  });
+
+  it('resets the filter from the no-match line and moves the focus to the first workspace chip', async () => {
+    const root = await land();
+    await press(root, 1, 'Done');
+    await press(root, 0, 'reef');
+    const reset = root.querySelector<HTMLButtonElement>('div.no-match button');
+    if (!reset) throw new Error('no reset button');
+    reset.focus();
+    reset.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(visible(root)).toEqual(['harbor: 002 005 001', 'lantern: 010 011', 'beacon: !notice', 'reef: 020']);
+    expect([...chips(root, 0), ...chips(root, 1)].every((chip) => chip.getAttribute('aria-pressed') === 'false')).toBe(true);
+    expect(root.querySelector('div.no-match')).toBeNull();
+    expect(document.activeElement).toBe(chips(root, 0)[0]);
+    expect(figures(root)).toEqual(['3', '1/6', '6/18']);
+  });
+
+  it('keeps the plain empty line without a button for a body that lists nothing', async () => {
+    const root = await land(EMPTY);
+    expect(root.querySelector('div.no-match')).toBeNull();
+    expect(root.querySelectorAll('section.groups button')).toHaveLength(0);
+    expect(root.querySelector('section.groups p.meta')?.textContent.trim()).toBe('No open or recently closed specs.');
+  });
 });

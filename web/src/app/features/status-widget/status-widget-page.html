@@ -24,6 +24,7 @@
       <section class="filter">
         <span class="filter-label" aria-hidden="true">{{ 'statusWidget.filter.workspace' | transloco }}</span>
         <ui-filter-chips
+          #workspaceRow
           multiple
           wrap
           [label]="'statusWidget.filter.workspace' | transloco"
@@ -58,7 +59,14 @@
             }
           </div>
         } @empty {
-          <p class="meta">{{ 'statusWidget.empty' | transloco }}</p>
+          @if (noMatch()) {
+            <div class="no-match">
+              <p class="meta">{{ 'statusWidget.filter.none' | transloco }}</p>
+              <button ui-button variant="secondary" size="sm" (click)="resetFilter()">{{ 'statusWidget.filter.reset' | transloco }}</button>
+            </div>
+          } @else {
+            <p class="meta">{{ 'statusWidget.empty' | transloco }}</p>
+          }
         }
       }
     </section>

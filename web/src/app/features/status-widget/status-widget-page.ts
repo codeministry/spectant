@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { StatusKpis, StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
+import { statusKpis } from '../../../../../core/src/status-board';
 import { ApiClient } from '../../core/api.service';
 import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 import { isTabMode, saveWidgetBounds } from '../../layout/shell/widget-window';
 import { UiBrandMark } from '../../shared/ui/brand-mark/brand-mark';
+import { UiButton } from '../../shared/ui/button/button';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { isToneStage, toneOfStage } from '../../shared/ui/stage-tone';
@@ -41,7 +43,7 @@ export const BOUNDS_SETTLE_MS = 400;
  */
 @Component({
   selector: 'app-status-widget-page',
-  imports: [TranslocoPipe, UiBrandMark, UiFilterChips, UiNotice, StatusWidgetRow],
+  imports: [TranslocoPipe, UiBrandMark, UiButton, UiFilterChips, UiNotice, StatusWidgetRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-widget-page.html',
   styleUrl: './status-widget-page.css',
@@ -58,8 +60,12 @@ export class StatusWidgetPage {
     return result?.kind === 'ok' ? result.body : null;
   });
 
-  /** The head's three figures (ISC-602); null before the first `ok` body, when the head shows the mark alone. */
-  readonly kpis = computed<StatusKpis | null>(() => this.status()?.kpis ?? null);
+  /**
+   * The head's three figures (ISC-602) over exactly the visible groups (ISC-604), through core's own `statusKpis`, so
+   * without a selection they are the body's KPIs (ISC-583) and a selection without a hit counts 0 · 0/0 · 0/0 (ISC-605);
+   * null before the first `ok` body, when the head shows the mark alone.
+   */
+  readonly kpis = computed<StatusKpis | null>(() => (this.status() ? statusKpis(this.groups()) : null));
 
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -99,6 +105,18 @@ export class StatusWidgetPage {
     if (!body) return [];
     return stageOptions(body).map((stage) => ({ key: stage, label: this.transloco.translate(`stages.${stage}`), tone: toneOfStage(stage) }));
   });
+
+  /** Whether a selection leaves nothing to render: the no-match line with its reset button stands instead (ISC-605). */
+  readonly noMatch = computed(() => this.hasFilter() && this.groups().length === 0);
+
+  /** The workspace chip row, whose first chip takes the focus after a reset. */
+  private readonly workspaceRow = viewChild<string, ElementRef<HTMLElement>>('workspaceRow', { read: ElementRef });
+
+  /** Clears both selections from the no-match line and moves the focus to the first workspace chip (ISC-605). */
+  resetFilter(): void {
+    this.filter.set(EMPTY_FILTER);
+    this.workspaceRow()?.nativeElement.querySelector<HTMLButtonElement>('button')?.focus();
+  }
 
   /** Replaces the workspace selection. */
   selectWorkspaces(keys: readonly string[]): void {

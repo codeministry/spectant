@@ -13,13 +13,18 @@
  * - `bun run e2e -- status-widget-window -g header` (ISC-602): at 360, 480 and 820 px, in English and German, the head
  *   is one flat row at most 48 px high: the brand mark first, the three figures (`dl.kpis` > `div.kpi`) right of it on
  *   the same line, no `ui-kpi-tile` card, nothing wrapping or overflowing.
+ * - `bun run e2e -- status-widget-window -g layout` (ISC-607): the layout tests above, in light and dark theme, with
+ *   the head, the filter (`section.filter`, two `ui-filter-chips`) and the command lines (`div.entry-cmd` >
+ *   `ui-command-chip`): nothing scrolls sideways (page, filter, chip rows, rows), every row's title and copy chip stay
+ *   inside its `div.entry` (1 px), and the stub's long row `STUB_STATUS_LONG` keeps its command chip inside the row
+ *   and ends its title in an ellipsis at 360 px.
  */
 import { readFileSync } from 'node:fs';
 
 import type { Page } from '@playwright/test';
 
 import { atWidth, expect, headerControl, test } from './fixtures';
-import { RESET_PATH, SESSION_HEADER } from './stub-api';
+import { RESET_PATH, SESSION_HEADER, STUB_STATUS_LONG } from './stub-api';
 
 /** The widget's route (`WIDGET_PATH`). */
 const WIDGET = '/widget';
@@ -67,24 +72,111 @@ test.describe('status-widget open', () => {
   });
 });
 
-for (const width of [360, 480, 820] as const) {
-  test.describe(`status-widget layout at ${String(width)}`, () => {
-    test.use(atWidth(width));
+/** Tolerance in px for "inside the row" (ISC-607). */
+const INSIDE_SLACK = 1;
 
-    test(`layout: /widget at ${String(width)} without the shell and without horizontal scrolling`, async ({ page }) => {
-      await page.goto(WIDGET);
-      await expect(page.locator('app-status-widget-page header.head .kpi')).toHaveCount(3);
-      await expect(page.locator('app-status-widget-page .group-head').first()).toBeVisible();
-      await expect(page.locator('app-status-widget-page li.row[data-spec]').first()).toBeVisible();
+type Rect = { left: number; right: number; top: number; bottom: number };
+type Overflow = { name: string; scrollWidth: number; clientWidth: number };
+type RowGeometry = {
+  workspace: string;
+  spec: string;
+  entry: Rect;
+  parts: Array<{ name: string; rect: Rect }>;
+  command: string | null;
+  title: { scrollWidth: number; clientWidth: number; textOverflow: string };
+};
+type LayoutGeometry = { overflow: Overflow[]; rows: RowGeometry[] };
 
-      for (const selector of SHELL) await expect(page.locator(selector), selector).toHaveCount(0);
-      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
-      }));
-      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
-    });
+/** Measures the widget in one pass: the overflow of page, filter, chip rows and rows, and every row's parts. */
+async function measureLayout(page: Page): Promise<LayoutGeometry> {
+  return page.locator('app-status-widget-page').evaluate((host) => {
+    const rect = (el: Element): Rect => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    const overflowOf = (name: string, el: Element): Overflow => ({ name, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth });
+    const overflow: Overflow[] = [overflowOf('html', document.documentElement)];
+    for (const filter of host.querySelectorAll('section.filter')) overflow.push(overflowOf('section.filter', filter));
+    for (const [i, chips] of [...host.querySelectorAll('ui-filter-chips')].entries()) {
+      overflow.push(overflowOf(`ui-filter-chips ${String(i)}`, chips));
+      for (const row of chips.querySelectorAll('.row')) overflow.push(overflowOf(`ui-filter-chips ${String(i)} .row`, row));
+    }
+    const rows: RowGeometry[] = [];
+    for (const li of host.querySelectorAll('li.row[data-spec]')) {
+      const workspace = li.closest('[data-workspace]')?.getAttribute('data-workspace') ?? '';
+      const spec = li.getAttribute('data-spec') ?? '';
+      const at = `${workspace}/${spec}`;
+      overflow.push(overflowOf(`li.row ${at}`, li));
+      const entry = li.querySelector('div.entry');
+      const title = li.querySelector('.entry-title');
+      const link = li.querySelector('a.entry-link');
+      if (!entry || !title || !link) throw new Error(`row ${at} without div.entry, a.entry-link or .entry-title`);
+      overflow.push(overflowOf(`div.entry ${at}`, entry));
+      const parts = [
+        { name: 'a.entry-link', rect: rect(link) },
+        { name: '.entry-title', rect: rect(title) },
+      ];
+      const cmd = entry.querySelector('div.entry-cmd');
+      const chip = cmd?.querySelector('ui-command-chip');
+      if (cmd) parts.push({ name: 'div.entry-cmd', rect: rect(cmd) });
+      if (chip) parts.push({ name: 'ui-command-chip', rect: rect(chip) });
+      rows.push({
+        workspace,
+        spec,
+        entry: rect(entry),
+        parts,
+        command: chip?.querySelector('code')?.textContent.trim() ?? null,
+        title: { scrollWidth: title.scrollWidth, clientWidth: title.clientWidth, textOverflow: getComputedStyle(title).textOverflow },
+      });
+    }
+    return { overflow, rows };
   });
+}
+
+for (const width of [360, 480, 820] as const) {
+  for (const theme of ['light', 'dark'] as const) {
+    test.describe(`status-widget layout at ${String(width)}, ${theme}`, () => {
+      test.use({ ...atWidth(width), colorScheme: theme });
+
+      test(`layout: /widget at ${String(width)}, ${theme}: head, filter and command rows, no shell, no horizontal scrolling`, async ({ page }, info) => {
+        await page.goto(WIDGET);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+        const widget = page.locator('app-status-widget-page');
+        await expect(widget.locator('header.head .kpi')).toHaveCount(3);
+        await expect(widget.locator('section.filter')).toHaveCount(1);
+        await expect(widget.locator('section.filter ui-filter-chips')).toHaveCount(2);
+        await expect(widget.locator('.group-head').first()).toBeVisible();
+        await expect(widget.locator('li.row[data-spec]').first()).toBeVisible();
+        await expect(widget.locator('li.row div.entry-cmd > ui-command-chip').first()).toBeVisible();
+
+        for (const selector of SHELL) await expect(page.locator(selector), selector).toHaveCount(0);
+
+        const g = await measureLayout(page);
+        for (const o of g.overflow) expect(o.scrollWidth, `${o.name}: scrollWidth <= clientWidth`).toBeLessThanOrEqual(o.clientWidth);
+
+        expect(g.rows.length).toBeGreaterThan(0);
+        for (const row of g.rows) {
+          for (const { name, rect } of row.parts) {
+            const where = `${row.workspace}/${row.spec} ${name} inside div.entry`;
+            expect(rect.left, where).toBeGreaterThanOrEqual(row.entry.left - INSIDE_SLACK);
+            expect(rect.right, where).toBeLessThanOrEqual(row.entry.right + INSIDE_SLACK);
+            expect(rect.top, where).toBeGreaterThanOrEqual(row.entry.top - INSIDE_SLACK);
+            expect(rect.bottom, where).toBeLessThanOrEqual(row.entry.bottom + INSIDE_SLACK);
+          }
+        }
+
+        // The stub's long row: its command on the chip, inside the row (above); at 360 px its title ends in an ellipsis.
+        const long = g.rows.find((row) => row.workspace === STUB_STATUS_LONG.workspace && row.spec === STUB_STATUS_LONG.spec);
+        expect(long, 'the long row STUB_STATUS_LONG').toBeDefined();
+        if (!long) return;
+        expect(long.command).toBe(STUB_STATUS_LONG.command);
+        expect(long.parts.map((part) => part.name)).toContain('ui-command-chip');
+        expect(long.title.textOverflow).toBe('ellipsis');
+        info.annotations.push({ type: 'long-title', description: `${String(width)} ${theme}: ${String(long.title.scrollWidth)} / ${String(long.title.clientWidth)} px` });
+        if (width === 360) expect(long.title.scrollWidth, 'the long title is cut with an ellipsis').toBeGreaterThan(long.title.clientWidth);
+      });
+    });
+  }
 }
 
 type Language = 'en' | 'de';

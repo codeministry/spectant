@@ -183,6 +183,21 @@
   color: var(--muted-ink);
 }
 
+/*
+ * The no-match line (spec 072, T25, ISC-605): a selection without a hit shows this one field instead of an empty
+ * area, the text and the reset button side by side, wrapping below each other when narrow.
+ */
+.no-match {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  background: var(--color-base-100);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+}
+
 .rows {
   display: grid;
   gap: 4px;

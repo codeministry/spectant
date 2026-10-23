@@ -205,7 +205,7 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
 
 /** The body after a change: 002 gains a claim, 005 moves to done (T34, ISC-587). */
 const CHANGED: StatusResponse = {
-  kpis: { repos: 2, closed: 1, listed: 3, claimsClosed: 6, claimsTotal: 9 },
+  kpis: { repos: 2, closed: 1, listed: 3, claimsClosed: 7, claimsTotal: 10 },
   workspaces: [
     {
       slug: 'harbor',
@@ -296,7 +296,7 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     answerOthers();
     await settled(fixture);
 
-    expect(kpis(root)).toEqual(['2', '1/3', '6/9']);
+    expect(kpis(root)).toEqual(['2', '1/3', '7/10']);
     expect(row(root, '002')).toEqual({ count: '2/3', stage: 'Build' });
     expect(row(root, '005')).toEqual({ count: '4/4', stage: 'Done' });
     expect(root.querySelector('main.widget')).toBe(main);
@@ -312,7 +312,7 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     reread.flush(CHANGED, { headers: { ETag: '"s2"' } });
     answerOthers();
     await settled(fixture);
-    expect(kpis(root)).toEqual(['2', '1/3', '6/9']);
+    expect(kpis(root)).toEqual(['2', '1/3', '7/10']);
     expect(row(root, '005').stage).toBe('Done');
   });
 

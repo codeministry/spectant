@@ -5,9 +5,11 @@ import {
   loadWidgetFilter,
   pruneFilter,
   saveWidgetFilter,
+  stageCounts,
   stageOptions,
   visibleGroups,
   WIDGET_FILTER_KEY,
+  workspaceCounts,
   workspaceOptions,
   type WidgetFilter,
 } from './widget-filter';
@@ -223,5 +225,68 @@ describe('widget filter pruning on live updates (spec 072, T27, ISC-606)', () =>
     const selected = filter(['harbor', 'quarry'], ['plan', 'review']);
     expect(pruneFilter(selected, BODY)).toBe(selected);
     expect(pruneFilter(EMPTY_FILTER, BODY)).toBe(EMPTY_FILTER);
+  });
+});
+
+// Spec 072 (T21, ISC-611): each chip counts the listed specs its option would show under the other dimension's
+// selection, never its own; a 0 stays a real entry, and an unreadable workspace has no number.
+describe('widget filter facet counts (spec 072, T21, ISC-611)', () => {
+  /** A count map as a plain record. */
+  const record = (counts: ReadonlyMap<string, number>): Record<string, number> => Object.fromEntries(counts);
+
+  const ALL_WORKSPACES = { harbor: 3, atlas: 2, quarry: 2 };
+  const ALL_STAGES = { plan: 2, review: 2, build: 2, done: 1 };
+
+  it('counts every listed spec per option without a selection, the unreadable workspace without a number', () => {
+    expect(record(workspaceCounts(BODY, EMPTY_FILTER))).toEqual(ALL_WORKSPACES);
+    expect(record(stageCounts(BODY, EMPTY_FILTER))).toEqual(ALL_STAGES);
+    expect(workspaceCounts(BODY, EMPTY_FILTER).has('broken')).toBe(false);
+    expect(workspaceCounts(BODY, EMPTY_FILTER).has('empty')).toBe(false);
+  });
+
+  it('keeps the counts in option order', () => {
+    expect([...workspaceCounts(BODY, EMPTY_FILTER).keys()]).toEqual(['harbor', 'atlas', 'quarry']);
+    expect([...stageCounts(BODY, EMPTY_FILTER).keys()]).toEqual(stageOptions(BODY));
+  });
+
+  it('narrows the stage counts by a workspace selection and leaves the workspace counts as they are', () => {
+    const f = filter(['atlas'], []);
+    expect(record(stageCounts(BODY, f))).toEqual({ plan: 0, review: 1, build: 1, done: 0 });
+    expect(record(workspaceCounts(BODY, f))).toEqual(ALL_WORKSPACES);
+  });
+
+  it('narrows the workspace counts by a stage selection and leaves the stage counts as they are', () => {
+    const f = filter([], ['done']);
+    expect(record(workspaceCounts(BODY, f))).toEqual({ harbor: 1, atlas: 0, quarry: 0 });
+    expect(record(stageCounts(BODY, f))).toEqual(ALL_STAGES);
+  });
+
+  it('counts each dimension under the other one only when both are selected', () => {
+    const f = filter(['harbor', 'quarry'], ['plan']);
+    expect(record(workspaceCounts(BODY, f))).toEqual({ harbor: 1, atlas: 0, quarry: 1 });
+    expect(record(stageCounts(BODY, f))).toEqual({ plan: 2, review: 1, build: 1, done: 1 });
+  });
+
+  it('keeps a 0 as a real entry, so the option stays visible and selectable', () => {
+    const counts = stageCounts(BODY, filter(['atlas'], []));
+    expect(counts.get('plan')).toBe(0);
+    expect(counts.get('done')).toBe(0);
+    expect(counts.size).toBe(stageOptions(BODY).length);
+    expect(workspaceCounts(BODY, filter([], ['done'])).size).toBe(3);
+  });
+
+  it('gives an unreadable workspace no number, and a selected unreadable workspace contributes no stage hit', () => {
+    expect(workspaceCounts(BODY, filter(['broken'], ['plan'])).has('broken')).toBe(false);
+    expect(record(stageCounts(BODY, filter(['broken'], [])))).toEqual({ plan: 0, review: 0, build: 0, done: 0 });
+  });
+
+  it('never changes the counts of the dimension that is pressed', () => {
+    for (const workspaces of [[], ['harbor'], ['atlas', 'quarry'], ['broken']]) {
+      expect(record(workspaceCounts(BODY, filter(workspaces, ['review'])))).toEqual({ harbor: 0, atlas: 1, quarry: 1 });
+    }
+    const stageSelections: ReadonlyArray<readonly Stage[]> = [[], ['plan'], ['build', 'done']];
+    for (const stages of stageSelections) {
+      expect(record(stageCounts(BODY, filter(['harbor'], stages)))).toEqual({ plan: 1, review: 0, build: 1, done: 1 });
+    }
   });
 });
