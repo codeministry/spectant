@@ -16,7 +16,8 @@
  * - the planning page (spec 026, ISC-173): the tree, board and graph lenses each with `?sel=` (the detail sidebar open,
  *   the graph drawn by mermaid), the redirects of `/w/harbor/features#F2` and `/w/harbor/milestones#m-…` to the tree
  *   with the object selected, and the workspace board with a selected card;
- * - the chrome: the area menu, the workspace and spec pickers, the shortcut sheet (`?`) and the palette trigger;
+ * - the chrome: the area menu, the workspace picker and the favourites list (spec 069), the shortcut sheet (`?`) and
+ *   the palette trigger;
  * - every write: the gate confirm (on 003, the harbor spec whose gate is `ready`; 002's is already `done`), a task tick
  *   and untick, a note create, edit and delete, the notes import-notice dismissal, rail collapse and expand, the
  *   backlog writes (spec 037, ISC-199: a feature moved by Alt+↓ and a priority set at its chip in the planning tree, a
@@ -306,7 +307,8 @@ for (const theme of ['light', 'dark'] as const) {
         await page.keyboard.press('Escape');
         await expect(menu).toBeHidden();
 
-        for (const picker of ['workspace', 'spec'] as const) {
+        // Spec 069 (ISC-554): the favourites list behind the star replaced the spec picker.
+        for (const picker of ['workspace', 'favorites'] as const) {
           await control(picker).click();
           await expect(page.locator(`[data-picker="${picker}"]`)).toBeVisible();
           await page.keyboard.press('Escape');
