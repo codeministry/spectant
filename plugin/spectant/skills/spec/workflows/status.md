@@ -10,7 +10,8 @@ gate open, 4 lock lost.
 
 Help, status and drift are read-only and write no run lines, no event and no file. Sync writes: it starts with
 `spec-check run start <NNN> --session <actor> --command "/spec sync <NNN>"` and ends with `spec-check run end <run-id> --outcome ok`, or
-`--outcome error` on any stop.
+`--outcome error` on any stop. Every way out of sync writes the end line, an open question that ends the turn
+included.
 
 ## 1 · Help
 

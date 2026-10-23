@@ -1599,6 +1599,12 @@ everywhere in core), then since, oldest first, an undated entry after every date
 then item kind in the order `spec`, `claim`, `task`, `question`, then ref in natural order (`ISC-2` before `ISC-10`,
 `T2` before `T10`).
 
+Each spec stands in `waits` once (spec 070, ISC-568). After the sort, a spec's first entry is its front entry: it keeps
+its place, its command and its reason, and carries the spec's later entries, in their order, as `folded`; a spec with a
+single waiting entry has no `folded`. The specs keep their order among each other, so no spec and command appear
+twice. The spec page's slice (`guidanceOfSpec`) unfolds them: its `waits` are every waiting entry of its spec, the
+front one first, none carrying `folded`.
+
 The **reason** is a stable key with the values of its placeholders and the English phrase, so the web renders one
 sentence per key from its own catalogs. A spec entry's key points at a Reason template of § The stage table: the
 templates there stay as they are, and the key adds an index, never a second wording. `GUIDANCE_REASONS` lists every

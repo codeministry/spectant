@@ -34,10 +34,34 @@ import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { IdeaFacts } from './idea-facts';
 import { PlanningFacts } from './planning-facts';
-import { CHILD_CAP, DetailSelection, relationAt, SEL_PARAM, sidebarParents } from './selection';
+import { CHILD_CAP, DATA_REF, DetailSelection, relationAt, SEL_PARAM, sidebarParents } from './selection';
 import { SidebarActions } from './sidebar-actions';
 import { SidebarTasks } from './sidebar-tasks';
 import { SpecFacts, specFactsRowOf, type SpecFactsRow } from './spec-facts';
+
+/** What an outside click leaves open on (C10, ISC-576): a selectable object (rule 2), a control, an overlay's own surface. */
+const KEEPS_OPEN = [
+  `[${DATA_REF}]`,
+  'a[href]',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  '[contenteditable]',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="option"]',
+  '[role="tab"]',
+  '[role="checkbox"]',
+  '[role="switch"]',
+  'dialog',
+  '[popover]',
+].join(', ');
+/** A press that moves farther than this before its click is a drag, not a click. */
+const DRAG_PX = 4;
 
 /** Where an instance sits: `rail` inside `app-rail-slot` (the docked presentation), `float` mounted once by the shell. */
 export type SidebarSlot = 'rail' | 'float';
@@ -88,6 +112,8 @@ interface SidebarStar {
     'data-ui': 'detail-sidebar',
     '[attr.data-presentation]': 'shown() ? presentation() : null',
     '(document:keydown.escape)': 'escape($event)',
+    '(document:pointerdown)': 'pointerDown($event)',
+    '(document:click)': 'outsideClick($event)',
   },
 })
 export class DetailSidebar {
@@ -236,6 +262,38 @@ export class DetailSidebar {
     if (this.presentation() === 'sheet' || this.openPopover()) return;
     event.preventDefault();
     this.close();
+  }
+
+  /** Where the last primary press went down, and whether a dialog or popover was open then; null without a sidebar. */
+  private press: { readonly x: number; readonly y: number; readonly overlay: boolean } | null = null;
+
+  protected pointerDown(event: PointerEvent): void {
+    this.press = this.shown() && event.button === 0 ? { x: event.clientX, y: event.clientY, overlay: this.openOverlay() } : null;
+  }
+
+  /**
+   * Spec 070 (C10, ISC-576; C11, ISC-577): a plain mouse click outside the docked or floating panel on a spot that is
+   * no object and no control closes it. The listener runs after the target's own handlers, so a click on another row,
+   * card or node (`[data-ref]`, whose link or handler prevents the default) has already switched the selection, and a
+   * control (a link, a button, a field) keeps its own job without a second navigation racing it. A click inside the
+   * panel (the release dialog renders there), while or right after a dialog or popover is open (its light dismiss), a
+   * keyboard click, a modified click and a drag that selects text never close. The compact sheet closes itself.
+   */
+  protected outsideClick(event: MouseEvent): void {
+    const press = this.press;
+    this.press = null;
+    if (!press || press.overlay || !this.shown() || this.presentation() === 'sheet') return;
+    if (event.button !== 0 || event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > DRAG_PX || this.openOverlay()) return;
+    if (this.doc.getSelection()?.isCollapsed === false) return;
+    const target = event.target;
+    if (!(target instanceof Element) || !target.isConnected || this.host.nativeElement.contains(target)) return;
+    if (target.closest(KEEPS_OPEN)) return;
+    this.close();
+  }
+
+  private openOverlay(): boolean {
+    return this.doc.querySelector('dialog[open]') !== null || this.openPopover();
   }
 
   protected toggleStar(star: SidebarStar): void {

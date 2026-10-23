@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 import { buildSpecPage } from '../src/spec.ts';
 import type { GuidanceEntry, SpecFiles } from '../src/files.ts';
-import { GUIDANCE_REASON_KEYS, GUIDANCE_REASONS, guidanceOf, withGuidance } from '../src/guidance.ts';
+import { GUIDANCE_REASON_KEYS, GUIDANCE_REASONS, guidanceOf, guidanceOfSpec, withGuidance } from '../src/guidance.ts';
 import { itemStates } from '../src/item-state.ts';
 import { guidanceModel } from './helpers/guidance-model.ts';
 import { FIXTURES, fixtureTrees, folders } from './helpers/read-tree.ts';
@@ -58,17 +58,23 @@ describe('guidance', () => {
   const guidance = guidanceModel(ROOT);
 
   test('waits on you: every principal step of the guidance tree, in order', () => {
+    // Each spec once (spec 070, ISC-568): 005's task T3 and question T4 fold under its front entry, the claim ISC-14.
     expect(triples(guidance.waits)).toEqual([
       ['001', 'spec', null],
       ['003', 'spec', null],
       ['005', 'claim', 'ISC-14'],
-      ['005', 'task', 'T3'],
       ['002', 'spec', null],
-      ['005', 'question', 'T4'],
       ['004', 'spec', null],
       ['010', 'spec', null],
     ]);
-    expect(guidance.waits.map(shape)).toEqual(WAITS);
+    expect(triples(guidance.waits.find((e) => e.spec === '005')?.folded ?? [])).toEqual([
+      ['005', 'task', 'T3'],
+      ['005', 'question', 'T4'],
+    ]);
+    // Unfolded, the list is every principal step in the order of ISC-237, each spec's entries gathered at its first.
+    const specs = [...new Set(WAITS.map((w) => w.spec))];
+    const grouped = specs.flatMap((id) => WAITS.filter((w) => w.spec === id));
+    expect(guidance.waits.flatMap(({ folded, ...e }) => [e, ...(folded ?? [])]).map(shape)).toEqual(grouped);
   });
 
   test('next: every other open spec item, in order', () => {
@@ -93,7 +99,8 @@ describe('guidance', () => {
       const item = items.find((i) => i.kind === 'spec' && i.id === e.spec);
       expect(e.reason.phrase).toBe(item?.reason as string);
     }
-    const phrases = guidance.waits.filter((e) => e.item !== 'spec').map((e) => [e.reason.key, e.reason.phrase]);
+    const waiting = guidance.waits.flatMap((e) => [e, ...(e.folded ?? [])]);
+    const phrases = waiting.filter((e) => e.item !== 'spec').map((e) => [e.reason.key, e.reason.phrase]);
     expect(phrases).toEqual([
       ['waiting.manual', 'ISC-14 needs your confirmation'],
       ['waiting.operator', 'T3 is your step'],
@@ -135,7 +142,9 @@ describe('guidance', () => {
       ['005', 'question', 'T4'],
     ]);
     expect(triples(page.guidance?.next ?? [])).toEqual([['005', 'spec', null]]);
-    expect(page.guidance).toEqual({ waits: guidance.waits.filter((e) => e.spec === '005'), next: guidance.next.filter((e) => e.spec === '005') });
+    // The page's slice is unfolded: the front entry without `folded`, then the entries folded under it (spec 070).
+    const { folded, ...front } = guidance.waits.find((e) => e.spec === '005') as GuidanceEntry;
+    expect(page.guidance).toEqual({ waits: [front, ...(folded ?? [])], next: guidance.next.filter((e) => e.spec === '005') });
   });
 });
 
@@ -166,6 +175,49 @@ describe('guidance: reason keys', () => {
       '{ref} needs your confirmation',
       '{ref} is your step',
       'the newest round asks about {ref}',
+    ]);
+  });
+});
+
+// Spec 070 (ISC-567, ISC-568): "Waits on you" holds each spec once. Harbor's spec 002 has an open `manual` claim, an
+// open `operator` task and a question of its newest round, all with `/spec implement 002`; before 070 each was its own
+// entry, so the dashboard showed the same command three times.
+describe('guidance: each spec waits once (spec 070)', () => {
+  const harbor = guidanceModel(join(FIXTURES, 'harbor'));
+
+  test('ISC-567: no (spec, command) pair appears twice in harbor waits', () => {
+    const pairs = harbor.waits.map((e) => `${e.spec} ${e.command ?? ''}`);
+    expect(pairs.filter((p, i) => pairs.indexOf(p) !== i)).toEqual([]);
+  });
+
+  test('ISC-568: each spec once, with its front reason, the specs in their order of ISC-237', () => {
+    // Before 070 harbor's waits read 006 spec, 002 claim ISC-77, 002 task T31, 002 question T29, 005 spec, 005 claim
+    // ISC-94, 004 spec: each spec keeps the place and reason of its first entry, the rest fold under it.
+    expect(harbor.waits.map((e) => [e.spec, e.item, e.ref, e.reason.key])).toEqual([
+      ['006', 'spec', null, 'stage.review.0'],
+      ['002', 'claim', 'ISC-77', 'waiting.manual'],
+      ['005', 'spec', null, 'stage.review.0'],
+      ['004', 'spec', null, 'stage.code-review.0'],
+    ]);
+    expect(harbor.waits.map((e) => triples(e.folded ?? []))).toEqual([
+      [],
+      [['002', 'task', 'T31'], ['002', 'question', 'T29']],
+      [['005', 'claim', 'ISC-94']],
+      [],
+    ]);
+    expect(harbor.waits.flatMap((e) => e.folded ?? []).every((e) => e.folded === undefined)).toBe(true);
+  });
+
+  test('ISC-568: the spec page still holds every waiting entry of its spec (ISC-239)', () => {
+    expect(triples(guidanceOfSpec(harbor, '002').waits)).toEqual([
+      ['002', 'claim', 'ISC-77'],
+      ['002', 'task', 'T31'],
+      ['002', 'question', 'T29'],
+    ]);
+    expect(guidanceOfSpec(harbor, '002').waits.every((e) => e.folded === undefined)).toBe(true);
+    expect(triples(guidanceOfSpec(harbor, '005').waits)).toEqual([
+      ['005', 'spec', null],
+      ['005', 'claim', 'ISC-94'],
     ]);
   });
 });

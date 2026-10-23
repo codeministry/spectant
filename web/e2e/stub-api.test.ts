@@ -3005,7 +3005,9 @@ describe('stub API: waiting entries via X-Spectant-Stub-Waits (spec 020, T15, IS
       const slugs = await list(as(state));
       expect(slugs).toEqual(STUB_WAITS.workspaces[state].map((w) => w.slug));
       const first = slugs[0] as string;
-      expect({ state, waits: (await dashboard(first, as(state))).guidance?.waits.length }).toEqual({ state, waits: Number(state) });
+      // Since spec 070 (ISC-568) a spec stands in `waits` once, so harbor's seven waiting items read as four entries.
+      const expected = state === '7' ? 4 : Number(state);
+      expect({ state, waits: (await dashboard(first, as(state))).guidance?.waits.length }).toEqual({ state, waits: expected });
     }
   });
 
