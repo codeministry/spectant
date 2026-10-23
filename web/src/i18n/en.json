@@ -787,7 +787,7 @@
       },
       "open": "{{source}}, open the round board",
       "status": "Live status and dev services · {{source}} · {{services}}",
-      "heading": "Live",
+      "label": "Status",
       "reading": {
         "one": "Reading {{count}} workspace",
         "other": "Reading {{count}} workspaces"

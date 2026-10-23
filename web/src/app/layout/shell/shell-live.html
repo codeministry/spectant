@@ -35,7 +35,7 @@
     </div>
 
     @defer (on immediate) {
-      <ui-popover #livePop class="live-pop" placement="end" [label]="'shell.live.heading' | transloco">
+      <ui-popover #livePop class="live-pop" placement="end" [label]="'shell.live.label' | transloco">
         <div class="service" data-live-reading>
           <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
           <span class="grow">{{ (workspaceCount() === 1 ? 'shell.live.reading.one' : 'shell.live.reading.other') | transloco: { count: workspaceCount() } }}</span>

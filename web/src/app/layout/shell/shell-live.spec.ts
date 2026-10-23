@@ -90,3 +90,26 @@ describe('ShellLive popover (spec 071, ISC-579)', () => {
     expect(text).not.toMatch(/agent source|Agentenquelle/i);
   });
 });
+
+/** Spec 071 T20 (ISC-595): the status popover carries no visible heading; its accessible name is "Status" in en and de. */
+describe('ShellLive popover name (spec 071, ISC-595)', () => {
+  const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+  beforeEach(() => {
+    proto['showPopover'] = vi.fn();
+    proto['hidePopover'] = vi.fn();
+  });
+  afterEach(() => {
+    delete proto['showPopover'];
+    delete proto['hidePopover'];
+  });
+
+  it.each(['en', 'de'] as const)('in %s is named "Status" and opens on the reading line', async (lang) => {
+    const root = await openPopover(lang, 'activity');
+    const panel = root.querySelector('ui-popover.live-pop .panel');
+    expect(panel?.getAttribute('role')).toBe('dialog');
+    expect(panel?.getAttribute('aria-label')).toBe('Status');
+    // Nothing precedes the reading line: it is the panel's first element, and no heading sits anywhere in the panel.
+    expect(panel?.firstElementChild?.hasAttribute('data-live-reading')).toBe(true);
+    expect(panel?.querySelector('h1, h2, h3, h4, h5, h6, [role="heading"]')).toBeNull();
+  });
+});
