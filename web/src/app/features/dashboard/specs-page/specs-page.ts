@@ -55,7 +55,7 @@ export class SpecsPage {
   protected readonly query = computed(() => parseListQuery(this.params()));
 
   /**
-   * The open workspace, its path tail for the footnote and the body, `view` through the narrow view the spec list
+   * The open workspace and the body, `view` through the narrow view the spec list
    * reads (`kpis`, `guidance`; null while it lacks them).
    */
   protected readonly page = workspacePage(this.state, this.data, readView);

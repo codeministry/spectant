@@ -35,8 +35,4 @@
     <ui-skeleton class="skeleton-kpi" data-skeleton="kpi-band" height="96px" />
     <ui-skeleton class="skeleton-next-up" data-skeleton="next-up" height="160px" />
   }
-  <!-- The workspace page's footer note (spec 024): where the page is read from. -->
-  @if (page.pathTail()) {
-    <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: page.pathTail() } }}</p>
-  }
 }

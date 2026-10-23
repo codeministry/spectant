@@ -109,14 +109,14 @@ describe('SpecsPage (spec 058, T6, ISC-391)', () => {
     expect(root.querySelector('[data-waits-link]')).toBeNull();
   });
 
-  it('lists the specs filtered by ?stage=build, then the backlog and the footnote, and no dashboard block', async () => {
+  it('lists the specs filtered by ?stage=build, then the backlog, no footnote and no dashboard block', async () => {
     const { root } = await render('/w/harbor/specs?stage=build');
     const building = harbor.specs.filter((spec) => spec.stage === 'build').map((spec) => spec.id);
     expect(building.length).toBeGreaterThan(0);
     expect(building.length).toBeLessThan(harbor.specs.length);
     expect(rowIds(root)).toEqual(building.sort());
-    expect([...root.children].map((el) => el.tagName.toLowerCase())).toEqual(['ui-page-head', 'app-spec-table', 'p']);
-    expect(root.querySelector('p.footer-note')?.textContent).toContain('code/harbor');
+    expect([...root.children].map((el) => el.tagName.toLowerCase())).toEqual(['ui-page-head', 'app-spec-table']);
+    expect(root.querySelector('[data-footer-note]')).toBeNull();
     for (const block of DASHBOARD_BLOCKS) expect(root.querySelector(block), block).toBeNull();
   });
 

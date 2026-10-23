@@ -22,7 +22,7 @@ import { workspacePage } from './workspace-page';
 /**
  * The workspace dashboard `/w/:ws` (spec 058, design.md § Across viewports): the head, then the KPI band, the TL;DR,
  * the row `.lists` (spec 064: the section `#waiting`, "Waits on you", and the block "In progress"), Next up, the
- * warnings `#warnings` and the footnote, in the same DOM and visual order at every tier. The row sets its two lists
+ * warnings `#warnings`, in the same DOM and visual order at every tier. The row sets its two lists
  * side by side where both fit 480 px and stacks them below; without a held claim "In progress" renders nothing and
  * the waits take the row. The shell gives this page no rail; the spec list and the backlog are the Specs page's
  * (`/w/:ws/specs`).
@@ -51,7 +51,7 @@ export class DashboardPage {
   private readonly openState = inject(OpenState);
 
   /**
-   * The open workspace, its path tail for the page's footnote (spec 024) and the dashboard body read through the
+   * The open workspace and the dashboard body read through the
    * narrow structural views the components declare (`view`): core's model type is not importable under the web
    * tsconfig (see `DashboardBody`), so each component names only the fields it reads.
    */

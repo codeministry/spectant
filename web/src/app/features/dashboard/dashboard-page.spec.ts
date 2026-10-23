@@ -118,8 +118,8 @@ describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
       for (const tag of BLOCKS) expect(root.querySelectorAll(tag)).toHaveLength(1);
       const order = children(page);
       expect(order[0]).toBe('ui-page-head');
-      expect(order.at(-1)).toBe('p');
-      expect(page.lastElementChild?.hasAttribute('data-footer-note')).toBe(true);
+      expect(order.at(-1)).toBe('app-warnings-panel');
+      expect(page.querySelector('[data-footer-note]')).toBeNull();
       expect(root.querySelector('app-spec-table')).toBeNull();
       expect(root.querySelector('[data-ideas-group]')).toBeNull();
       expect(root.querySelector('app-context-rail')).toBeNull();
