@@ -20,37 +20,7 @@
   text-decoration: none;
 }
 
-.mark {
-  flex-shrink: 0;
-  inline-size: 27px;
-  block-size: 27px;
-  fill: none;
-  stroke-width: 3;
-}
-
-/* The ring has no track: the gap stays open around the dot. */
-.mark-track {
-  stroke: none;
-}
-
-.mark-arc {
-  stroke-linecap: round;
-}
-
-/* The logo's fixed brand colours on both themes (ring #a6e22e → #78dce8, dot #ab9df2). */
-.mark-arc-a {
-  stroke: oklch(84.1% 0.2044 127.3);
-  stroke-dasharray: 40 60;
-}
-
-.mark-arc-b {
-  stroke: oklch(83.8% 0.095 205.7);
-  stroke-dasharray: 0 40 40 20;
-}
-
-.mark-dot {
-  fill: oklch(74.1% 0.121 290.7);
-}
+/* The ring itself is `ui-brand-mark` at its default 27 px (spec 072); its look lives in the primitive. */
 
 .wordmark {
   font-family: var(--font-display);
@@ -73,7 +43,7 @@
 
 /* The ring turns once and "ant" sweeps to violet on hover or keyboard focus; never under reduced motion. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .brand:is(:hover, :focus-visible) .mark {
+  .brand:is(:hover, :focus-visible) ui-brand-mark {
     animation: mark-spin var(--motion-duration-highlight) var(--motion-ease-emphasized) both;
   }
 

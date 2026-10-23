@@ -18,6 +18,7 @@ const OPEN: StatusSpec = {
   closedAt: null,
   state: 'open',
   archived: false,
+  nextCommand: '/spec implement 012',
 };
 
 const CLOSED: StatusSpec = {
@@ -29,6 +30,7 @@ const CLOSED: StatusSpec = {
   closedAt: '2026-10-23T08:00:00.000Z',
   state: 'done',
   archived: true,
+  nextCommand: null,
 };
 
 const COPY = {
@@ -44,6 +46,7 @@ async function render(spec: StatusSpec, lang: 'en' | 'de'): Promise<HTMLElement>
   const fixture = TestBed.createComponent(StatusWidgetRow);
   fixture.componentRef.setInput('spec', spec);
   fixture.componentRef.setInput('ws', 'harbor');
+  fixture.componentRef.setInput('pathTail', 'harbor');
   await fixture.whenStable();
   return fixture.nativeElement as HTMLElement;
 }
@@ -54,7 +57,7 @@ describe('StatusWidgetRow (spec 071, T28, ISC-585)', () => {
   for (const lang of ['en', 'de'] as const) {
     it(`an open spec shows number, title, ring, counter and stage chip (${lang})`, async () => {
       const host = await render(OPEN, lang);
-      const link = host.querySelector('a.entry') as HTMLAnchorElement;
+      const link = host.querySelector('a.entry-link') as HTMLAnchorElement;
       expect(link.getAttribute('href')).toBe('/w/harbor/s/012');
       expect(host.querySelector('.entry-id')?.textContent.trim()).toBe('012');
       const title = host.querySelector('.entry-title') as HTMLElement;
@@ -73,6 +76,14 @@ describe('StatusWidgetRow (spec 071, T28, ISC-585)', () => {
       expect(chip.getAttribute('data-tone')).toBe('primary');
       expect(chip.querySelector('.dot')).not.toBeNull();
 
+      // Spec 072 (T11): ring, number, counter and stage are aria-hidden siblings of the title link, whose name still
+      // names them; the ring keeps its own progressbar attributes (the 071 pins above stay).
+      for (const sel of ['.entry-ring', '.entry-id', '.entry-count', 'ui-chip.entry-stage']) {
+        expect(host.querySelector(sel)?.getAttribute('aria-hidden')).toBe('true');
+        expect(link.contains(host.querySelector(sel))).toBe(false);
+      }
+      expect(link.contains(title)).toBe(true);
+
       const name = link.getAttribute('aria-label') ?? '';
       expect(name.startsWith(`012 ${OPEN.title}`)).toBe(true);
       expect(name).toContain(COPY[lang].closedOpen);
@@ -81,7 +92,7 @@ describe('StatusWidgetRow (spec 071, T28, ISC-585)', () => {
 
     it(`a closed spec shows the full lime ring and the done chip in its own tone (${lang})`, async () => {
       const host = await render(CLOSED, lang);
-      expect((host.querySelector('a.entry') as HTMLAnchorElement).getAttribute('href')).toBe('/w/harbor/s/007');
+      expect((host.querySelector('a.entry-link') as HTMLAnchorElement).getAttribute('href')).toBe('/w/harbor/s/007');
       expect(host.querySelector('.entry-id')?.textContent.trim()).toBe('007');
       expect(host.querySelector('.entry-title')?.getAttribute('title')).toBe('Audit trail');
 
@@ -119,14 +130,14 @@ describe('StatusWidgetRow agent run (spec 071, T29, ISC-594)', () => {
       const dot = host.querySelector('.entry-ring ui-agent-dot') as HTMLElement;
       expect(dot).not.toBeNull();
       expect(dot.getAttribute('aria-hidden')).toBe('true');
-      expect(host.querySelector('a.entry')?.getAttribute('aria-label')).toContain(RUNNING[lang]);
+      expect(host.querySelector('a.entry-link')?.getAttribute('aria-label')).toContain(RUNNING[lang]);
     });
 
     it(`a spec without a run shows no dot and no run in its name (${lang})`, async () => {
       for (const spec of [OPEN, CLOSED, { ...OPEN, state: null }]) {
         const host = await render(spec, lang);
         expect(host.querySelector('ui-agent-dot')).toBeNull();
-        expect(host.querySelector('a.entry')?.getAttribute('aria-label')).not.toContain(RUNNING[lang]);
+        expect(host.querySelector('a.entry-link')?.getAttribute('aria-label')).not.toContain(RUNNING[lang]);
         TestBed.resetTestingModule();
       }
     });
@@ -168,8 +179,9 @@ async function renderClickable(opener: FakeOpener | null, outerWidth: number) {
   const fixture = TestBed.createComponent(StatusWidgetRow);
   fixture.componentRef.setInput('spec', OPEN);
   fixture.componentRef.setInput('ws', 'fleet yard');
+  fixture.componentRef.setInput('pathTail', 'fleet-yard');
   await fixture.whenStable();
-  const link = (fixture.nativeElement as HTMLElement).querySelector('a.entry') as HTMLAnchorElement;
+  const link = (fixture.nativeElement as HTMLElement).querySelector('a.entry-link') as HTMLAnchorElement;
   return { link, navigate, open };
 }
 
@@ -240,6 +252,48 @@ describe('StatusWidgetRow click in tab mode or without an app window (spec 071, 
       expect(open).not.toHaveBeenCalled();
       expect(opener?.postMessage.mock.calls.length ?? 0).toBe(0);
       expect(opener?.focus.mock.calls.length ?? 0).toBe(0);
+    });
+  }
+});
+
+// Spec 072 (T11, T12, ISC-600): a row with a `nextCommand` shows it in a second line as a copy chip whose click writes
+// exactly the command to the clipboard and whose name says "copy" and the command in both catalogues, with the
+// workspace's path tail as context; a row without one has neither chip nor an empty second line.
+describe('StatusWidgetRow command chip (spec 072, T11, ISC-600)', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+    TestBed.resetTestingModule();
+  });
+
+  const NAME = { en: 'Copy /spec implement 012 · harbor', de: '/spec implement 012 kopieren · harbor' } as const;
+
+  for (const lang of ['en', 'de'] as const) {
+    it(`a row with a next command copies exactly that command from its chip (${lang})`, async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const host = await render(OPEN, lang);
+      const line = host.querySelector('.entry > .entry-cmd') as HTMLElement;
+      expect(line).not.toBeNull();
+      expect(host.querySelector('a.entry-link')?.contains(line)).toBe(false);
+      const chips = line.querySelectorAll('ui-command-chip');
+      expect(chips.length).toBe(1);
+      expect(chips[0].hasAttribute('data-icon-only')).toBe(false);
+      expect(chips[0].querySelector('code')?.textContent.trim()).toBe('/spec implement 012');
+
+      const button = chips[0].querySelector('button.copy') as HTMLButtonElement;
+      expect(button.querySelector('ui-icon')).not.toBeNull();
+      expect(button.getAttribute('aria-label')).toBe(NAME[lang]);
+      expect(button.getAttribute('title')).toBe(NAME[lang].split(' · ')[0]);
+
+      button.click();
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      expect(writeText).toHaveBeenCalledWith('/spec implement 012');
+    });
+
+    it(`a row without a next command has no chip and no second command line (${lang})`, async () => {
+      const host = await render(CLOSED, lang);
+      expect(host.querySelectorAll('ui-command-chip').length).toBe(0);
+      expect(host.querySelector('.entry-cmd')).toBeNull();
     });
   }
 });

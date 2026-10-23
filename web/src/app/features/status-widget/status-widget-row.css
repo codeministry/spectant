@@ -1,8 +1,10 @@
 /*
- * The status widget row (spec 071, ISC-585; design.md "Zeile"): a link card on `--color-base-100` with a 1 px `--line`.
- * Below a 480 px `widget` container it takes two lines, ring, number and title above, counter and stage chip below,
- * at least 56 px high; from 480 px one line on the grid `24px auto minmax(0, 1fr) auto auto`. Hover only where the
- * pointer hovers; `:active` colours touch; focus is the global ring.
+ * The status widget row (spec 071, ISC-585; spec 072, T11, ISC-600; design.md "Zeile", "Zeilenstruktur"): the card is
+ * `div.entry` on `--color-base-100` with a 1 px `--line`; the title link is stretched over it by `::after`, and the
+ * command line (`.entry-cmd`) is lifted above that stretch so its copy button is a target of its own. Below a 480 px
+ * `widget` container: 'ring id title count' over '. cmd cmd stage'; from 480 px: 'ring id title count stage' over
+ * '. cmd cmd cmd cmd', one line without a command. The counter closes line 1 on every width. Never `overflow: hidden`
+ * on the card: the copy button's focus halo needs the padding.
  */
 :host {
   display: block;
@@ -10,10 +12,11 @@
 
 .entry {
   display: grid;
+  position: relative;
   grid-template-areas:
-    'ring id title'
-    '. count stage';
-  grid-template-columns: 24px auto minmax(0, 1fr);
+    'ring id title count'
+    '. cmd cmd stage';
+  grid-template-columns: 24px auto minmax(0, 1fr) auto;
   gap: 4px 12px;
   align-items: center;
   box-sizing: border-box;
@@ -23,11 +26,10 @@
   border-radius: var(--radius-field);
   background: var(--color-base-100);
   color: inherit;
-  text-decoration: none;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-.entry:active {
+.entry:has(> .entry-link:active) {
   background: var(--color-base-300);
 }
 
@@ -51,8 +53,34 @@
   font-variant-numeric: tabular-nums;
 }
 
-.entry-title {
+/* The title link (the `_row-link.css` pattern of the dashboard, copied: no feature imports another). */
+.entry-link {
+  display: block;
   grid-area: title;
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.entry-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.entry-link:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.entry-link:focus-visible::after {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.entry-title {
+  display: block;
   min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -65,15 +93,27 @@
   color: var(--muted-ink);
   font: 12px / 16px var(--font-mono);
   font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .entry-stage {
   grid-area: stage;
+  justify-self: end;
+}
+
+/* Above the stretched link, so the copy button takes its own clicks and hover. */
+.entry-cmd {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  grid-area: cmd;
   justify-self: start;
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 @media (hover: hover) {
-  .entry:hover {
+  .entry:has(> .entry-link:hover) {
     background: var(--color-base-300);
   }
 }
@@ -85,12 +125,14 @@
     min-block-size: 40px;
   }
 
-  .entry-count {
-    text-align: end;
+  .entry:has(> .entry-cmd) {
+    grid-template-areas:
+      'ring id title count stage'
+      '. cmd cmd cmd cmd';
   }
 
   .entry-stage {
-    justify-self: end;
+    justify-self: start;
   }
 }
 

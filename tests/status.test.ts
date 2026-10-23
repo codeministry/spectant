@@ -32,15 +32,16 @@ let registry: Registry;
 let api: ApiHandler;
 const probed: string[] = [];
 
-type SpecFixture = { folder: string; title: string; stage: string; claims: readonly boolean[]; closedHoursAgo?: number };
+type SpecFixture = { folder: string; title: string; stage: string; claims: readonly boolean[]; closedHoursAgo?: number; phase?: string };
 
-/** One spec folder: front matter, a features list of claim checkboxes and an `events.jsonl` ending in `done` when closed. */
+/** One spec folder: front matter (with `phase:` when given), a features list of claim checkboxes and an `events.jsonl` ending in `done` when closed. */
 function plantSpec(dir: string, spec: SpecFixture): void {
   mkdirSync(dir, { recursive: true });
   const claims = spec.claims.map((closed, i) => `- [${closed ? "x" : " "}] ISC-${i + 1}: The fixture claim ${i + 1} holds.`).join("\n");
+  const phase = spec.phase === undefined ? "" : `phase: ${spec.phase}\n`;
   writeFileSync(
     join(dir, "spec.md"),
-    `---\ntask: "${spec.title}"\nslug: ${spec.folder}\nstage: ${spec.stage}\nstarted: ${hoursAgo(80)}\n---\n\n# ${spec.title}\n\n## Features\n\n${claims}\n`,
+    `---\ntask: "${spec.title}"\nslug: ${spec.folder}\nstage: ${spec.stage}\n${phase}started: ${hoursAgo(80)}\n---\n\n# ${spec.title}\n\n## Features\n\n${claims}\n`,
   );
   const opened = { ts: hoursAgo(72), from: null, to: "plan", command: "/spec new", actor: "u:3f9c0a7d" };
   const closed =
@@ -93,13 +94,18 @@ async function touched(body: () => Promise<unknown>): Promise<string[]> {
   }
 }
 
-const hasAbsolutePath = (s: string): boolean => /^\/[^\s/]+\//.test(s) || [homedir(), tmpdir(), root].some((dir) => s.includes(dir));
+/** A plugin command (`/spec review 001`, spec 072) starts with a slash but is no path: one slash, then the command words. */
+const isCommand = (s: string): boolean => /^\/spec [^/\\]+$/.test(s);
+
+/** Any other string that starts with a slash or a drive letter, or holds the home, temp or fixture root, names a path. */
+const hasAbsolutePath = (s: string): boolean =>
+  (s.startsWith("/") && !isCommand(s)) || /^[A-Za-z]:[\\/]/.test(s) || [homedir(), tmpdir(), root].some((dir) => s.includes(dir));
 
 beforeAll(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), "spectant-status-")));
   const lantern = plantRepo("lantern", [
     { folder: "001-open-lamp", title: "Open lamp", stage: "review", claims: [true, false, false] },
-    { folder: "002-recent-wick", title: "Recent wick", stage: "done", claims: [true, true], closedHoursAgo: 2 },
+    { folder: "002-recent-wick", title: "Recent wick", stage: "done", claims: [true, true], closedHoursAgo: 2, phase: "complete" },
     { folder: "003-old-glass", title: "Old glass", stage: "done", claims: [true], closedHoursAgo: 30 },
   ]);
   const gone = plantRepo("gone", [{ folder: "001-lost", title: "Lost", stage: "plan", claims: [false] }]);
@@ -164,7 +170,31 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
 
     // ISC-3: no field names an absolute path, and the board starts no services probe.
     expect(strings(body).filter(hasAbsolutePath)).toEqual([]);
+    expect(strings(body).filter(isCommand)).toEqual(["/spec review 001", "/spec review 006"]);
     expect(probed).toEqual([]);
+  });
+
+  test("spec 072 (ISC-599): each listed spec carries the dashboard row's next command in plugin form, open specs only (ISC-613)", async () => {
+    const body = (await (await call()).json()) as StatusResponse;
+    const commands = body.workspaces.map((w) => [w.slug, w.specs.map((s) => [s.id, s.nextCommand])]);
+    expect(commands).toEqual([
+      // Every listed spec is open (spec 073, ISC-613); each here has a next step.
+      ["lantern", [["001", "/spec review 001"]]],
+      ["gone", []],
+      ["harbor", [["006", "/spec review 006"]]],
+    ]);
+
+    // The same command the dashboard row of that workspace shows.
+    for (const ws of body.workspaces.filter((w) => w.readable)) {
+      const res = await call({ path: `/api/workspaces/${ws.slug}/dashboard` });
+      expect(res.status).toBe(200);
+      const rows = ((await res.json()) as { specs: Array<{ id: string; nextCommand: string | null }> }).specs;
+      for (const spec of ws.specs.filter((s) => !s.archived)) {
+        const row = rows.find((r) => r.id === spec.id);
+        expect(row).toBeDefined();
+        expect(spec.nextCommand).toBe(row === undefined ? "no dashboard row" : row.nextCommand);
+      }
+    }
   });
 
   test("ISC-614: the board reads no file under specs/archive/; the workspace stays readable with its open spec listed", async () => {

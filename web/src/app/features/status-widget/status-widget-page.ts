@@ -1,12 +1,42 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, inject, resource } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
-import type { StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  DOCUMENT,
+  effect,
+  ElementRef,
+  inject,
+  resource,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import type { StatusKpis, StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
+import { statusKpis } from '../../../../../core/src/status-board';
 import { ApiClient } from '../../core/api.service';
 import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 import { isTabMode, saveWidgetBounds } from '../../layout/shell/widget-window';
-import { UiKpiTile } from '../../shared/ui/kpi-tile/kpi-tile';
+import { UiBrandMark } from '../../shared/ui/brand-mark/brand-mark';
+import { UiButton } from '../../shared/ui/button/button';
+import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
 import { UiNotice } from '../../shared/ui/notice/notice';
+import { isToneStage, toneOfStage } from '../../shared/ui/stage-tone';
 import { StatusWidgetRow } from './status-widget-row';
+import {
+  EMPTY_FILTER,
+  loadWidgetFilter,
+  pruneFilter,
+  saveWidgetFilter,
+  stageCounts,
+  stageOptions,
+  visibleGroups,
+  type WidgetFilter,
+  workspaceCounts,
+  workspaceOptions,
+} from './widget-filter';
 
 /** How long a resize must settle before the widget stores its bounds (T33, ISC-596). */
 export const BOUNDS_SETTLE_MS = 400;
@@ -16,11 +46,17 @@ export const BOUNDS_SETTLE_MS = 400;
  * like `/__ui`; theme and language come from the root providers that run for every route (the pre-paint script, the
  * settings initializer). The page is its own size container `widget`, a centred column up to 720 px on `--color-base-200`.
  *
- * It loads `GET /api/status` through `ApiClient`. Above the list stand three KPI tiles whose numbers the body
- * carries, computed by core over exactly the listed specs (T26, ISC-583), never recomputed here. Below, one group per
+ * It loads `GET /api/status` through `ApiClient`. Above the list stands the flat head (spec 072, T8, ISC-602): the
+ * brand mark, then one `dl` row of three KPIs whose numbers the body carries, computed by core over exactly the
+ * listed specs (T26, ISC-583), never recomputed here. Below, one group per
  * workspace that lists a spec, headed by its path tail (T27, ISC-584); an unreadable workspace keeps its head with a
  * warning notice, and with no group at all one empty line stands instead (T30, ISC-588). Each listed spec is one
  * `app-status-widget-row` (T28, ISC-585).
+ *
+ * Between head and list stands the filter (spec 072, T19, ISC-603): two multi-select chip rows, workspace and stage,
+ * over the options of the unfiltered body (`widget-filter.ts`), so a toggle never removes the chip under the focus.
+ * The list renders `visibleGroups` of the selection; an empty selection is the unfiltered list. Without a listed spec
+ * there is no filter, only the empty line. `filter` is the selection's single source.
  *
  * It stays current over the app's own live path (T34, ISC-587): injecting `RefreshService` starts the root
  * `LiveStreamService` (one `EventSource`, in this window without a shell too) and its fallback poll; each frame's
@@ -31,7 +67,7 @@ export const BOUNDS_SETTLE_MS = 400;
  */
 @Component({
   selector: 'app-status-widget-page',
-  imports: [TranslocoPipe, UiKpiTile, UiNotice, StatusWidgetRow],
+  imports: [TranslocoPipe, UiBrandMark, UiButton, UiFilterChips, UiNotice, StatusWidgetRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-widget-page.html',
   styleUrl: './status-widget-page.css',
@@ -49,16 +85,111 @@ export class StatusWidgetPage {
   });
 
   /**
-   * The workspaces that get a group, in the body's (the picker's) order: each that lists a spec (ISC-584) and each
-   * unreadable one, which shows its head and a notice instead of rows (ISC-588). None left is the empty line.
+   * The head's three figures (ISC-602) over exactly the visible groups (ISC-604), through core's own `statusKpis`, so
+   * without a selection they are the body's KPIs (ISC-583) and a selection without a hit counts 0 · 0/0 · 0/0 (ISC-605);
+   * null before the first `ok` body, when the head shows the mark alone.
    */
-  readonly groups = computed<readonly StatusWorkspace[]>(
-    () => this.status()?.workspaces.filter((ws) => !ws.readable || ws.specs.length > 0) ?? [],
-  );
+  readonly kpis = computed<StatusKpis | null>(() => (this.status() ? statusKpis(this.groups()) : null));
+
+  private readonly transloco = inject(TranslocoService);
+  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+  /**
+   * The filter selection (ISC-603); empty in both dimensions shows every group. It starts from the stored selection
+   * (ISC-606), and every change goes through `setFilter`, which stores it.
+   */
+  readonly filter = signal<WidgetFilter>(loadWidgetFilter());
+
+  /**
+   * The workspaces that get a group, in the body's (the picker's) order, narrowed by the filter: each with a matching
+   * row (ISC-584, ISC-603) and each unreadable one the workspace selection admits, which shows its head and a notice
+   * instead of rows (ISC-588). None left is the empty line.
+   */
+  readonly groups = computed<readonly StatusWorkspace[]>(() => {
+    const body = this.status();
+    return body ? visibleGroups(body, this.filter()) : [];
+  });
+
+  /** Whether the filter shows: only while the body lists a spec. */
+  readonly hasFilter = computed(() => this.status()?.workspaces.some((ws) => ws.specs.length > 0) ?? false);
+
+  /**
+   * The workspace chips: the path tail and its facet count under the stage selection (ISC-611), 0 included; an
+   * unreadable one carries a warning dot and a "not readable" name instead of a number.
+   */
+  readonly workspaceChips = computed<readonly FilterOption[]>(() => {
+    const body = this.status();
+    this.lang();
+    if (!body) return [];
+    const counts = workspaceCounts(body, this.filter());
+    return workspaceOptions(body).map(({ key, pathTail, readable }) =>
+      readable
+        ? { key, label: pathTail, count: counts.get(key) ?? 0 }
+        : { key, label: pathTail, tone: 'warning', name: this.transloco.translate('statusWidget.filter.unreadable', { name: pathTail }) },
+    );
+  });
+
+  /**
+   * The stage chips: the occurring stages in workflow order, with the rows' badge words and tones and each one's facet
+   * count under the workspace selection (ISC-611); a 0 chip stays and can be pressed.
+   */
+  readonly stageChips = computed<readonly FilterOption[]>(() => {
+    const body = this.status();
+    this.lang();
+    if (!body) return [];
+    const counts = stageCounts(body, this.filter());
+    return stageOptions(body).map((stage) => ({
+      key: stage,
+      label: this.transloco.translate(`stages.${stage}`),
+      tone: toneOfStage(stage),
+      count: counts.get(stage) ?? 0,
+    }));
+  });
+
+  /** Whether a selection leaves nothing to render: the no-match line with its reset button stands instead (ISC-605). */
+  readonly noMatch = computed(() => this.hasFilter() && this.groups().length === 0);
+
+  /** The workspace chip row, whose first chip takes the focus after a reset. */
+  private readonly workspaceRow = viewChild<string, ElementRef<HTMLElement>>('workspaceRow', { read: ElementRef });
+
+  /** Clears both selections from the no-match line and moves the focus to the first workspace chip (ISC-605). */
+  resetFilter(): void {
+    this.setFilter(EMPTY_FILTER);
+    this.workspaceRow()?.nativeElement.querySelector<HTMLButtonElement>('button')?.focus();
+  }
+
+  /** Replaces the workspace selection. */
+  selectWorkspaces(keys: readonly string[]): void {
+    this.setFilter({ ...this.filter(), workspaces: [...keys] });
+  }
+
+  /** Replaces the stage selection; a key that is no stage is ignored. */
+  selectStages(keys: readonly string[]): void {
+    this.setFilter({ ...this.filter(), stages: keys.filter(isToneStage) });
+  }
 
   constructor() {
     reloadOnRefresh(() => this.load.reload());
+    this.pruneOnEachBody();
     this.keepBounds();
+  }
+
+  /**
+   * Sets and stores the selection (ISC-606), in tab mode too: the filter belongs to the viewer, not to the window. The
+   * same object is no change, so a prune that drops nothing writes nothing.
+   */
+  private setFilter(next: WidgetFilter): void {
+    if (next === this.filter()) return;
+    this.filter.set(next);
+    saveWidgetFilter(next);
+  }
+
+  /** On every new status body, the first one and each live reload, drops a selected option it no longer offers (ISC-606). */
+  private pruneOnEachBody(): void {
+    effect(() => {
+      const body = this.status();
+      if (body) untracked(() => this.setFilter(pruneFilter(this.filter(), body)));
+    });
   }
 
   /** Stores the window's bounds after each settled resize and on `pagehide`, unless it runs as a tab (ISC-596). */

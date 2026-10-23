@@ -1,24 +1,48 @@
 <main class="widget">
   <div class="column">
     <h1 class="visually-hidden">{{ 'statusWidget.title' | transloco }}</h1>
-    <section class="kpis">
-      @if (status(); as body) {
-        <ui-kpi-tile variant="sm" [label]="'statusWidget.kpi.repos' | transloco" [value]="body.kpis.repos" />
-        <ui-kpi-tile
-          variant="sm"
-          accent="success"
-          [glow]="false"
-          [label]="'statusWidget.kpi.specs' | transloco"
-          [value]="body.kpis.listed"
-        />
-        <ui-kpi-tile
-          variant="sm"
-          [label]="'statusWidget.kpi.claims' | transloco"
-          [value]="body.kpis.claimsClosed"
-          [denominator]="body.kpis.claimsTotal"
-        />
+    <header class="head">
+      <ui-brand-mark [size]="28" />
+      @if (kpis(); as k) {
+        <dl class="kpis">
+          <div class="kpi">
+            <dt>{{ 'statusWidget.kpi.repos' | transloco }}</dt>
+            <dd>{{ k.repos }}</dd>
+          </div>
+          <div class="kpi">
+            <dt>{{ 'statusWidget.kpi.specs' | transloco }}</dt>
+            <dd>{{ k.listed }}</dd>
+          </div>
+          <div class="kpi">
+            <dt>{{ 'statusWidget.kpi.claims' | transloco }}</dt>
+            <dd>{{ k.claimsClosed }}<span class="den">/{{ k.claimsTotal }}</span></dd>
+          </div>
+        </dl>
       }
-    </section>
+    </header>
+    @if (hasFilter()) {
+      <section class="widget-filter">
+        <span class="filter-label" aria-hidden="true">{{ 'statusWidget.filter.workspace' | transloco }}</span>
+        <ui-filter-chips
+          #workspaceRow
+          multiple
+          wrap
+          [label]="'statusWidget.filter.workspace' | transloco"
+          [options]="workspaceChips()"
+          [selected]="filter().workspaces"
+          (selectedChange)="selectWorkspaces($event)"
+        />
+        <span class="filter-label" aria-hidden="true">{{ 'statusWidget.filter.stage' | transloco }}</span>
+        <ui-filter-chips
+          multiple
+          wrap
+          [label]="'statusWidget.filter.stage' | transloco"
+          [options]="stageChips()"
+          [selected]="filter().stages"
+          (selectedChange)="selectStages($event)"
+        />
+      </section>
+    }
     <section class="groups">
       @if (status()) {
         @for (ws of groups(); track ws.slug) {
@@ -27,7 +51,7 @@
             @if (ws.readable) {
               <ul class="rows">
                 @for (spec of ws.specs; track spec.slug) {
-                  <li class="row" [attr.data-spec]="spec.id"><app-status-widget-row [spec]="spec" [ws]="ws.slug" /></li>
+                  <li class="row" [attr.data-spec]="spec.id"><app-status-widget-row [spec]="spec" [ws]="ws.slug" [pathTail]="ws.pathTail" /></li>
                 }
               </ul>
             } @else {
@@ -35,7 +59,14 @@
             }
           </div>
         } @empty {
-          <p class="meta">{{ 'statusWidget.empty' | transloco }}</p>
+          @if (noMatch()) {
+            <div class="no-match">
+              <p class="meta">{{ 'statusWidget.filter.none' | transloco }}</p>
+              <button ui-button variant="secondary" size="sm" (click)="resetFilter()">{{ 'statusWidget.filter.reset' | transloco }}</button>
+            </div>
+          } @else {
+            <p class="meta">{{ 'statusWidget.empty' | transloco }}</p>
+          }
         }
       }
     </section>

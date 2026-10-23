@@ -2958,6 +2958,13 @@
     },
     "unreadable": "Dieser Workspace konnte nicht gelesen werden.",
     "empty": "Keine offenen Specs.",
-    "agentRunning": "Agent läuft"
+    "agentRunning": "Agent läuft",
+    "filter": {
+      "workspace": "Workspace",
+      "stage": "Stage",
+      "none": "Keine Spec passt zu diesem Filter.",
+      "reset": "Filter zurücksetzen",
+      "unreadable": "{{name}}, nicht lesbar"
+    }
   }
 }

@@ -10,8 +10,10 @@
  *
  * - `GET|HEAD /api/workspaces` → `[{slug, name, pathTail, readable, error?, counts}]` in list order, `counts` = the
  *   golden's `kpis`, `null` when unreadable.
- * - `GET|HEAD /api/status` (spec 071, ISC-593) → core's `statusBoard` at `STUB_NOW` over that list in its order, each
- *   readable workspace with the dashboard body its own `GET` gets in that session; 403, 405 with `STATUS_ALLOW`.
+ * - `GET|HEAD /api/status` (spec 071, ISC-593) → core's `statusBoard` (open specs only, spec 073) over that list in
+ *   its order, each readable workspace with the dashboard body its own `GET` gets in that session; each listed spec
+ *   carries that row's `nextCommand` (spec 072, ISC-599), harbor 004 the long row `STUB_STATUS_LONG`; 403, 405 with
+ *   `STATUS_ALLOW`.
  * - `GET|HEAD /api/workspaces/:slug/dashboard` → the golden model, serialized as the server does (`JSON.stringify`);
  *   404 `{error: "not-found"}` for an unknown slug; 409 with the list entry for the unreadable workspace.
  * - Every route of `WORKSPACE_ROUTE_TABLE` with a golden family (`GET|HEAD /api/workspaces/:ws/planning`, spec 003
@@ -1793,6 +1795,21 @@ export const STUB_SIDEBAR = {
   milestone: { name: 'Harbor 3.0', slug: 'harbor-3-0', target: '2026-09-30', description: 'Mirrors for a second team, scheduled from the console.' },
 } as const;
 
+// ---- the status board's long row (spec 072, T4) ----------------------------------------------------------------------
+
+/**
+ * The worst row of the status widget at 360 px (spec 072, ISC-599), on the default board and needing no switch: harbor
+ * 004 as the golden lists it, the longest title of the board and the longest command form the plugin has (`/spec
+ * review NNN code`). Its title and command are the golden's, never edited; `stub-api.test.ts` pins that `GET
+ * /api/status` lists it with these values and that no other listed row is longer.
+ */
+export const STUB_STATUS_LONG = {
+  workspace: 'harbor',
+  spec: '004',
+  title: 'Delete old manifests on a written schedule without touching referenced ones',
+  command: '/spec review 004 code',
+} as const;
+
 /** Harbor's master with `STUB_SIDEBAR.milestone` as the last line of its `## Milestones` list; loud without the section. */
 function sidebarMaster(master: string | null): string | null {
   if (master === null) return null;
@@ -3095,8 +3112,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   /**
    * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` over the
    * request's workspace list in its order, each readable entry with the dashboard body its own `GET …/dashboard` gets
-   * (so a session's move, bump or lock shows here too), each unreadable one with its list `error`. 403 the guard, 405
-   * with `STATUS_ALLOW`.
+   * (so a session's move, bump or lock shows here too), each unreadable one with its list `error`. The rows carry
+   * their `nextCommand` into the board as the dashboard serves it (spec 072, ISC-599), never recomputed. 403 the
+   * guard, 405 with `STATUS_ALLOW`.
    */
   const statusRoute = (req: Request, state: StubState): Response => {
     if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });

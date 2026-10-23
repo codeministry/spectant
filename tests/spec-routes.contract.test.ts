@@ -1128,6 +1128,16 @@ describe("status board (spec 071 T15): one path beside the actors, GET and HEAD,
       expect(serverKeys).toEqual([...keyPaths(stubBody)].sort());
       expect(serverKeys).toContain("workspaces[].specs[].claims");
       expect(serverKeys.filter((path) => !path.includes("."))).toEqual(["kpis", "workspaces"]);
+
+      // Spec 072 (ISC-599): both sides carry `nextCommand` on every listed spec, a plugin command or null, and null on
+      // every archived one; a command is no absolute path.
+      expect(serverKeys).toContain("workspaces[].specs[].nextCommand");
+      for (const body of [serverBody, stubBody]) {
+        const specs = body.workspaces.flatMap((w) => w.specs);
+        for (const spec of specs) expect(spec.nextCommand === null || /^\/spec [^/\\]+$/.test(spec.nextCommand)).toBe(true);
+        for (const spec of specs.filter((s) => s.archived)) expect(spec.nextCommand).toBeNull();
+        expect(specs.some((s) => s.nextCommand !== null)).toBe(true);
+      }
     } finally {
       registry.close();
       rmSync(data, { recursive: true, force: true });

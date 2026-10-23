@@ -2361,6 +2361,12 @@ describe("ISC-589 status widget: opening the widget and loading its board leave 
     // Both repositories are on the board, by slug, and no field names an absolute path.
     expect(bodies.map((body) => body.workspaces.map((w) => w.slug))).toEqual([[SLUG, "dock"]]);
     expect(JSON.stringify(bodies)).not.toContain(parent);
+    // Spec 072 (ISC-608): the board read here carries the copyable `nextCommand` on every listed spec, a plugin command
+    // or null, so the bytes checked below are those of the widget with the new field; copying happens in the browser.
+    const listed = bodies.flatMap((body) => body.workspaces.flatMap((w) => w.specs));
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.filter((s) => !(s.nextCommand === null || /^\/spec [^/\\]+$/.test(s.nextCommand)))).toEqual([]);
+    expect(listed.some((s) => s.nextCommand !== null)).toBe(true);
 
     copies.forEach((copy, i) => {
       const was = before[i] as Snapshot;

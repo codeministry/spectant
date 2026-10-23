@@ -57,7 +57,36 @@
       padding-inline: 0;
     }
 
+    /* Spec 072: the multiple mode caps a chip at its row and ends a long label in an ellipsis (full text in `title`);
+     * the single mode keeps its unbounded nowrap chip. */
+    :host([data-multiple]) .chip { max-inline-size: 100%; }
+
+    :host([data-multiple]) .dot,
+    :host([data-multiple]) .count { flex-shrink: 0; }
+
+    :host([data-multiple]) .text {
+      min-inline-size: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 36 px chips with the 8 px gap make a 44 px tap grid. */
+    @media (pointer: coarse) {
+      :host([data-multiple]) .chip {
+        block-size: 36px;
+        min-block-size: 36px;
+      }
+    }
+
     @media (forced-colors: active) {
       .dot { background: CanvasText; }
+
+      :host([data-multiple]) .chip[aria-pressed='true'] {
+        border-color: Highlight;
+        background: Highlight;
+        color: HighlightText;
+      }
+      :host([data-multiple]) .chip[aria-pressed='true'] .dot { background: HighlightText; }
+      :host([data-multiple]) .chip[aria-pressed='true'] .count { color: HighlightText; }
     }
   

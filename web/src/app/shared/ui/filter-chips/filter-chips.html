@@ -4,14 +4,20 @@
         <button
           type="button"
           class="btn btn-sm btn-ghost chip"
-          [attr.aria-pressed]="option.key === value()"
+          [attr.aria-pressed]="pressed(option.key)"
           [attr.aria-label]="option.name ?? null"
-          (click)="value.set(option.key)"
+          [attr.title]="multiple() ? option.label : null"
+          (click)="press(option.key)"
         >
           @if (option.tone; as tone) {
             <span class="dot" aria-hidden="true" [style.background]="color(tone)"></span>
           }
-          {{ option.label }}
+          <!-- The multiple mode wraps the label so it can end in an ellipsis; the single mode keeps its bare text. -->
+          @if (multiple()) {
+            <span class="text">{{ option.label }}</span>
+          } @else {
+            {{ option.label }}
+          }
           @if (option.count !== undefined) {
             <span class="count">{{ option.count }}</span>
           }

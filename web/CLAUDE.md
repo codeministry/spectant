@@ -77,10 +77,11 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   on the same screen.
 - Settings (theme mode, language, single-key shortcuts) come from `/api/settings`. Reason: they must
   survive a port change, which per-origin browser storage does not (ISC-18.3).
-- `localStorage` holds exactly two things, every access wrapped in try/catch: the "Recent" palette entries
-  (`spectant.palette.recent`) and the status widget window's last bounds (`spectant.statusWidget.bounds`,
-  `layout/shell/widget-window.ts`, spec 071). Reason: per-viewer conveniences that may be empty or throw in a private
-  window or a web view.
+- `localStorage` holds exactly three things, every access wrapped in try/catch: the "Recent" palette entries
+  (`spectant.palette.recent`), the status widget window's last bounds (`spectant.statusWidget.bounds`,
+  `layout/shell/widget-window.ts`, spec 071) and the status widget's filter selection (`spectant.statusWidget.filter`,
+  `features/status-widget/widget-filter.ts`, spec 072). Reason: per-viewer conveniences that may be empty or throw in
+  a private window or a web view.
 
 ## Design system
 

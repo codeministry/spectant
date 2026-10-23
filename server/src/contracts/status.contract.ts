@@ -10,8 +10,15 @@
  * 3. The web status widget reads it and replaces its answer when a live frame carries the view `STATUS_PATH`.
  *
  * Like `ACTORS_PATH` it names no workspace and is no workspace family's. 403 is a foreign `Host` or `Origin`, 405 any
- * method but `GET` and `HEAD` with `STATUS_ALLOW`. No field names an absolute path: a workspace carries its slug and
- * path tail only. Browser-safe: the imports are `assets.contract.ts` and core types.
+ * method but `GET` and `HEAD` with `STATUS_ALLOW`.
+ *
+ * Each listed spec carries `nextCommand` (spec 072, ISC-599): the next command in plugin form exactly as the
+ * dashboard row shows it (`/spec implement 072`), or null for an archived spec and for a row without a next command.
+ * Core's `statusBoard` takes it from the dashboard row; neither the route nor the stub derives it.
+ *
+ * No field names an absolute path: a workspace carries its slug and path tail only, and a `nextCommand` is a command
+ * (`/spec ` and its words, no further slash), not a path. Browser-safe: the imports are `assets.contract.ts` and core
+ * types.
  */
 import { API_PREFIX } from './assets.contract.ts';
 import type { StatusResponse } from '../../../core/src/status-board.ts';

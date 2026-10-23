@@ -1,6 +1,7 @@
 // The shared display primitives (design.md § Components). Badge switcher and live indicator arrive with the header
 // (spec 002's shell).
 export { UiActorChip } from './actor-chip/actor-chip';
+export { UiBrandMark } from './brand-mark/brand-mark';
 export { UiCard } from './card/card';
 export { type ChipVariant, UiChip } from './chip/chip';
 export { CHIP_ICON, chipIcon, RELATION_ICON } from './chip/chip-icons';

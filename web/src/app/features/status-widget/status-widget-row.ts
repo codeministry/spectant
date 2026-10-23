@@ -6,6 +6,7 @@ import type { StatusSpec } from '../../../../../server/src/contracts/status.cont
 import { isTabMode, WIDGET_NAVIGATE, type WidgetNavigateMessage } from '../../layout/shell/widget-window';
 import { UiAgentDot } from '../../shared/ui/agent-dot/agent-dot';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiRing } from '../../shared/ui/ring/ring';
 import { toneOfStage } from '../../shared/ui/stage-tone';
 
@@ -17,6 +18,11 @@ import { toneOfStage } from '../../shared/ui/stage-tone';
  * closed spec differs in word and tone, never in colour alone. The link's name joins number, title, counter and stage.
  * One line from a 480 px `widget` container, two below.
  *
+ * Spec 072 (T11, ISC-600; design.md "Zeilenstruktur"): the card is a `div`; only the title is the link, stretched
+ * over the card, and ring, number, counter and stage are `aria-hidden` siblings the link's name still names. A spec
+ * with a `nextCommand` adds a second line with its `ui-command-chip` (named "Copy {command} · {path tail}", the
+ * manual hint as a toast), lifted above the stretched link; a spec without one has no such line.
+ *
  * A plain click (T31, ISC-586) in popup mode posts `spectant:navigate` with the row's path to the app window that
  * opened the widget, at the own origin, and focuses that window; the widget stays open. As a tab, or once that window
  * is gone (T32, ISC-586.1), the row navigates the widget's own tab through the router instead, never a new one. A
@@ -27,7 +33,7 @@ import { toneOfStage } from '../../shared/ui/stage-tone';
  */
 @Component({
   selector: 'app-status-widget-row',
-  imports: [TranslocoPipe, UiAgentDot, UiChip, UiRing],
+  imports: [TranslocoPipe, UiAgentDot, UiChip, UiCommandChip, UiRing],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-widget-row.html',
   styleUrl: './status-widget-row.css',
@@ -41,6 +47,8 @@ export class StatusWidgetRow {
   readonly spec = input.required<StatusSpec>();
   /** The workspace slug the row links in. */
   readonly ws = input.required<string>();
+  /** The workspace path tail (spec 072, ISC-600): the copy chip's context, so two repos' same spec number differ. */
+  readonly pathTail = input.required<string>();
 
   protected readonly href = computed(() => `/w/${encodeURIComponent(this.ws())}/s/${encodeURIComponent(this.spec().id)}`);
   /** Closed over total claims in percent; null without claims, which leaves the ring without a value. */

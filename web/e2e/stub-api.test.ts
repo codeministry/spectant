@@ -72,6 +72,7 @@ import {
   SIDEBAR_HEADER,
   SIDEBAR_STATES,
   STUB_SIDEBAR,
+  STUB_STATUS_LONG,
   EDGES_HEADER,
   EDGE_STATES,
   EMPTY_CATALOG,
@@ -3653,9 +3654,14 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
     }
     return statusBoard(inputs);
   };
-  /** Every string value of a JSON body that reads as an absolute path. */
+  /**
+   * A plugin command (`/spec implement 072`, `/spec review 004 code`): it starts with a slash but is no path, one slash
+   * and then the command words, as core's status-board test reads it (spec 072, ISC-599).
+   */
+  const isCommand = (value: string): boolean => /^\/spec [^/\\]+$/.test(value);
+  /** Every string value of a JSON body that reads as an absolute path; a plugin command is none. */
   const absolutePaths = (value: unknown): string[] => {
-    if (typeof value === 'string') return /^(\/|[A-Za-z]:[\\/]|~)/.test(value) ? [value] : [];
+    if (typeof value === 'string') return /^(\/|[A-Za-z]:[\\/]|~)/.test(value) && !isCommand(value) ? [value] : [];
     if (Array.isArray(value)) return value.flatMap(absolutePaths);
     if (value !== null && typeof value === 'object') return Object.values(value).flatMap(absolutePaths);
     return [];
@@ -3703,6 +3709,47 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
     const unreadable = (await (await ask(STATUS_PATH, { state: 'unreadable' })).json()) as StatusResponse;
     expect(unreadable.workspaces.at(-1)).toEqual({ slug: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', specs: [] });
     expect((await (await ask(STATUS_PATH, { state: 'empty' })).json()) as StatusResponse).toEqual(statusBoard([]));
+  });
+
+  test('each listed spec carries its dashboard row\'s nextCommand in the plugin form, null without one (spec 072, T4, ISC-599); open specs only (spec 073, ISC-613)', async () => {
+    // The path guard stays strict: only `/spec <words>` passes; a path, a drive letter, a home path or a slash inside fails.
+    expect(absolutePaths(['/spec implement 072', '/spec review 004 code', '/spec 011'])).toEqual([]);
+    expect(absolutePaths(['/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec'])).toEqual([ // leak:allow synthetic test input
+      '/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec', // leak:allow synthetic test input
+    ]);
+    for (const state of STUB_STATES) {
+      const body = (await (await ask(STATUS_PATH, { state })).json()) as StatusResponse;
+      for (const w of body.workspaces.filter((x) => x.readable)) {
+        const rows = ((await (await ask(`/api/workspaces/${w.slug}/dashboard`, { state })).json()) as StatusModel).specs;
+        const commands = new Map(rows.map((r) => [r.id, r.nextCommand]));
+        for (const s of w.specs) {
+          expect({ ws: w.slug, id: s.id, nextCommand: s.nextCommand }).toEqual({ ws: w.slug, id: s.id, nextCommand: commands.get(s.id) ?? null });
+          if (s.nextCommand !== null) expect(isCommand(s.nextCommand)).toBe(true);
+        }
+      }
+    }
+    const harbor = ((await (await ask(STATUS_PATH)).json()) as StatusResponse).workspaces.find((w) => w.slug === 'harbor');
+    const command = (id: string): string | null | undefined => harbor?.specs.find((s) => s.id === id)?.nextCommand;
+    expect([command('003'), command('002'), command('008')]).toEqual(['/spec tasks 003', '/spec implement 002', null]);
+    // The board lists no archived spec at all (spec 073, ISC-613), even over a dashboard body whose archive holds some.
+    const model = (await (await ask('/api/workspaces/harbor/dashboard')).json()) as StatusModel;
+    expect(model.archive.length).toBeGreaterThan(0);
+    const board = statusBoard([{ slug: 'harbor', pathTail: 'harbor', readable: true, model }]);
+    expect(board.workspaces[0]?.specs.filter((s) => s.archived)).toEqual([]);
+  });
+
+  test('the long-row fixture: STUB_STATUS_LONG is listed on the default board with its long title and the longest command form (spec 072, T4)', async () => {
+    const body = (await (await ask(STATUS_PATH)).json()) as StatusResponse;
+    const row = body.workspaces.find((w) => w.slug === STUB_STATUS_LONG.workspace)?.specs.find((s) => s.id === STUB_STATUS_LONG.spec);
+    expect(row && { title: row.title, nextCommand: row.nextCommand, archived: row.archived }).toEqual({
+      title: STUB_STATUS_LONG.title,
+      nextCommand: STUB_STATUS_LONG.command,
+      archived: false,
+    });
+    // Longer than every other listed title and command, so a 360 px layout e2e meets its worst row here.
+    const all = body.workspaces.flatMap((w) => w.specs);
+    expect(Math.max(...all.map((s) => s.title.length))).toBe(STUB_STATUS_LONG.title.length);
+    expect(Math.max(...all.map((s) => (s.nextCommand ?? '').length))).toBe(STUB_STATUS_LONG.command.length);
   });
 
   test('a session\'s moved dashboard reaches its body with a new ETag; another session and a reset keep the golden board', async () => {
