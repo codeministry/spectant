@@ -114,7 +114,12 @@
 /*
  * The spec crumb (spec 069 T22, ISC-555): a plain link, no pill label, no chevron. The id in the mono id style of the
  * former spec pill (`.pick-id`), never shortened; the short name in the value style, ellipsized (former `.spec-title`).
+ * The cyan tint sets it off from the selects before it; its id in `--disp-ink` on that tint.
  */
+.crumb {
+  background: var(--disp-t);
+}
+
 .crumb-text {
   display: inline-flex;
   gap: 6px;
@@ -126,7 +131,7 @@
 
 .crumb-id {
   flex-shrink: 0;
-  color: var(--muted-ink);
+  color: var(--disp-ink);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
