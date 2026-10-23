@@ -7,12 +7,16 @@ import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import en from '../../../../i18n/en.json';
 import de from '../../../../i18n/de.json';
+import { waitingEntries } from '../../../core/model/guidance-entry';
 import { UiWaitsBlock } from './waits-block';
 
-// T14 · ISC-238: the block "Waits on you" over core's own `guidance.waits` (harbor's golden, seven entries): the top
-// entry highlighted with its chip, at most `limit` more as links with their reason, "+n more" with the right n, the
-// empty sentence without a card, and the chips on every row only under `chips`.
-const WAITS = (harbor as unknown as { guidance: { waits: GuidanceEntry[] } }).guidance.waits;
+// T14 · ISC-238: the block "Waits on you" over core's own `guidance.waits` (harbor's golden): the top entry highlighted
+// with its chip, at most `limit` more as links with their reason, "+n more" with the right n, the empty sentence
+// without a card, and the chips on every row only under `chips`. Since spec 070 (ISC-568) harbor serves four front
+// entries, one per spec, with the spec's later items folded under each; the `stack` form gets them unfolded, as the
+// spec page's slice (`guidanceOfSpec`) does, so the stack cases run over all seven waiting items.
+const FRONTS = (harbor as unknown as { guidance: { waits: GuidanceEntry[] } }).guidance.waits;
+const WAITS: GuidanceEntry[] = FRONTS.flatMap(({ folded, ...front }) => [front, ...(folded ?? [])]);
 
 async function render(entries: readonly GuidanceEntry[], inputs: Record<string, unknown> = {}, lang: 'en' | 'de' = 'en') {
   TestBed.configureTestingModule({
@@ -38,8 +42,11 @@ const text = (el: Element | null | undefined): string => (el?.textContent ?? '')
 const chips = (el: Element): string[] => [...el.querySelectorAll('ui-command-chip')].map((c) => text(c.querySelector('code') ?? c));
 
 describe('ui-waits-block (T14, ISC-238)', () => {
-  it('reads harbor golden: seven waiting entries, the top one a review', () => {
+  it('reads harbor golden: four specs wait, each once, seven items unfolded, the top one a review', () => {
+    expect(FRONTS.map((e) => e.spec)).toEqual(['006', '002', '005', '004']);
+    expect(waitingEntries(FRONTS)).toHaveLength(7);
     expect(WAITS).toHaveLength(7);
+    expect(WAITS.map((e) => e.ref)).toEqual([null, 'ISC-77', 'T31', 'T29', null, 'ISC-94', null]);
     expect(WAITS[0]?.command).toBe('/spec review 006');
   });
 
@@ -259,6 +266,23 @@ describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
     const three = await render(FOUR.slice(0, 3), { form: 'tiles', more: 'link', moreLink: '/w/harbor' });
     expect(tilesOf(three)).toHaveLength(3);
     expect(three.querySelector('a[data-more], ui-disclosure')).toBeNull();
+  });
+
+  it('harbor as served: one tile per spec, three standing and "Show all 4" (spec 070, ISC-568)', async () => {
+    const host = await render(FRONTS, { form: 'tiles', titles: TITLES });
+    expect(tilesOf(host).map((tile) => text(tile.querySelector('[data-tile-id]')))).toEqual(['006', '002', '005', '004']);
+    expect(text(host.querySelector('ui-disclosure[data-show-all] button [data-visible]'))).toBe('Show all 4');
+    expect(chips(host)).toEqual(['/spec review 006', '/spec implement 002', '/spec review 005', '/spec review 004 code']);
+  });
+
+  it('names a front item by its spec entry folded under it when the caller passes no title (spec 070)', async () => {
+    const spec005 = WAITS[4];
+    const claim = { ...WAITS[5], folded: [spec005] };
+    expect(spec005.item).toBe('spec');
+    expect(claim.item).toBe('claim');
+    const host = await render([claim], { form: 'tiles' });
+    expect(text(tilesOf(host)[0].querySelector('.main .title'))).toBe(spec005.title);
+    expect(text(host)).not.toContain(claim.title);
   });
 
   it('nothing waiting: the sentence with the done glyph, no list', async () => {

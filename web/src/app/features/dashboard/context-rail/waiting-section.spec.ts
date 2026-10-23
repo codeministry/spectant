@@ -86,31 +86,35 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     expect(section?.querySelector('ui-disclosure')).toBeNull();
   });
 
-  it('shows the header with the count, three equal tiles, then "Show all 7", closed, the rest folded as the same tiles', async () => {
-    expect(HARBOR.length).toBe(7);
+  it('shows the header with the count, three equal tiles, then "Show all 4", closed, the rest folded as the same tiles', async () => {
+    // Spec 070 (ISC-568): harbor's seven waiting items are four entries, one per spec, the later items folded under it.
+    expect(HARBOR.map((e) => e.spec)).toEqual(['006', '002', '005', '004']);
+    expect(HARBOR.reduce((n, e) => n + 1 + (e.folded?.length ?? 0), 0)).toBe(7);
     titles = { '002': 'Sync history that explains itself' };
     const root = await render(HARBOR);
     const section = root.querySelector('app-waiting-section');
-    expect(section?.getAttribute('data-count')).toBe('7');
+    expect(section?.getAttribute('data-count')).toBe('4');
     const block = section?.querySelector('ui-waits-block');
-    expect(text(block?.querySelector('ui-section-header ui-chip'))).toBe('7');
+    expect(text(block?.querySelector('ui-section-header ui-chip'))).toBe('4');
     expect(block?.querySelector('ui-card[data-top], [data-top], [data-waits-card], [data-reason], [data-more]')).toBeNull();
     const rows = standing(section);
     expect(rows).toHaveLength(TILE_LIMIT);
     expect(rows.map(idOf)).toEqual(HARBOR.slice(0, 3).map((e) => e.spec));
     expect(rows[0]?.querySelector('a.cover')?.getAttribute('href')).toBe(`/w/harbor/s/${HARBOR[0]?.spec ?? ''}`);
     // The spec's title is the main text, from the caller's titles where the entry is a claim or task.
-    expect(rows.map((tile) => text(tile.querySelector('.main')))).toEqual([HARBOR[0]?.title, titles['002'], titles['002']]);
+    expect(rows.map((tile) => text(tile.querySelector('.main')))).toEqual([HARBOR[0]?.title, titles['002'], HARBOR[2]?.title]);
     const fold = section?.querySelector('ui-disclosure[data-show-all]');
     const button = fold?.querySelector('button');
-    expect(visibleOf(button)).toBe('Show all 7');
+    expect(visibleOf(button)).toBe('Show all 4');
     expect(button?.querySelector('[data-visible]')?.getAttribute('aria-hidden')).toBe('true');
-    expect(nameOf(button)).toBe('Show all 7 · Waits on you');
+    expect(nameOf(button)).toBe('Show all 4 · Waits on you');
     expect(button?.getAttribute('aria-expanded')).toBe('false');
     const folded = [...(fold?.querySelectorAll('ol.tiles > li > ui-flat-tile') ?? [])];
     expect(folded.map(idOf)).toEqual(HARBOR.slice(3).map((e) => e.spec));
-    // Every harbor entry has a command: seven tiles, seven copy chips, each tile its own.
-    expect(section?.querySelectorAll('ui-flat-tile ui-command-chip').length).toBe(7);
+    // Every harbor entry has a command: four tiles, four copy chips, each tile its own, each command once.
+    const commands = [...(section?.querySelectorAll('ui-flat-tile ui-command-chip') ?? [])].map((chip) => text(chip.querySelector('code') ?? chip));
+    expect(commands).toHaveLength(4);
+    expect(new Set(commands).size).toBe(4);
     expect(document.activeElement).not.toBe(section);
   });
 
@@ -124,15 +128,15 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     await settle(harness);
     const button = root.querySelector('app-waiting-section ui-disclosure button');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(nameOf(button)).toBe('Show all 7 · Waits on you');
+    expect(nameOf(button)).toBe('Show all 4 · Waits on you');
   });
 
-  it('reads the German names: "Alle 7 anzeigen · Liegt bei Ihnen"', async () => {
+  it('reads the German names: "Alle 4 anzeigen · Liegt bei Ihnen"', async () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
     const root = await render(HARBOR);
     const button = root.querySelector('app-waiting-section ui-disclosure button');
-    expect(visibleOf(button)).toBe('Alle 7 anzeigen');
-    expect(nameOf(button)).toBe('Alle 7 anzeigen · Liegt bei Ihnen');
+    expect(visibleOf(button)).toBe('Alle 4 anzeigen');
+    expect(nameOf(button)).toBe('Alle 4 anzeigen · Liegt bei Ihnen');
   });
 
   it('opens the fold and focuses the section when the page is reached over #waiting', async () => {
