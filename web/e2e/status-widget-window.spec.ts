@@ -183,10 +183,10 @@ type Language = 'en' | 'de';
 /** The three figure labels of the head, in order, per language (`statusWidget.kpi`). */
 function kpiLabels(lang: Language): string[] {
   const catalogue = JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8')) as {
-    statusWidget: { kpi: { repos: string; closed: string; claims: string } };
+    statusWidget: { kpi: { repos: string; specs: string; claims: string } };
   };
-  const { repos, closed, claims } = catalogue.statusWidget.kpi;
-  return [repos, closed, claims];
+  const { repos, specs, claims } = catalogue.statusWidget.kpi;
+  return [repos, specs, claims];
 }
 /** The head may be at most this high (ISC-602). */
 const HEAD_MAX = 48;
