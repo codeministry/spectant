@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { ApplicationRef, signal } from '@angular/core';
 import { DeferBlockBehavior, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -208,5 +208,59 @@ describe('ShellLive popover order (spec 071, ISC-580)', () => {
     expect(icons.map((icon) => icon.classList.contains('go'))).toEqual([false, true]);
     // The one autofocus target is the widget button, the first row always present; the board link follows by Tab.
     expect([...(panel?.querySelectorAll('[data-autofocus]') ?? [])]).toEqual([widget]);
+  });
+});
+
+/**
+ * Spec 071 T23 (ISC-581): "Open status widget" opens `/widget` once, synchronously in the click, under the fixed window
+ * name and without `noopener`, focuses the window, then closes the popover (focus back on the trigger) or the sheet.
+ */
+describe('ShellLive widget button (spec 071, ISC-581)', () => {
+  const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+  const dialogProto = HTMLDialogElement.prototype as unknown as Record<string, unknown>;
+  const open = vi.fn<typeof window.open>();
+  const focus = vi.fn();
+  beforeEach(() => {
+    proto['showPopover'] = vi.fn();
+    proto['hidePopover'] = vi.fn();
+    dialogProto['showModal'] = vi.fn(function (this: HTMLDialogElement) {
+      this.setAttribute('open', '');
+    });
+    dialogProto['close'] = vi.fn(function (this: HTMLDialogElement) {
+      this.removeAttribute('open');
+    });
+    focus.mockClear();
+    open.mockReset().mockImplementation(() => ({ focus }) as unknown as Window);
+    vi.spyOn(window, 'open').mockImplementation(open);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete proto['showPopover'];
+    delete proto['hidePopover'];
+    delete dialogProto['showModal'];
+    delete dialogProto['close'];
+  });
+
+  it.each(['medium', 'compact'] as const)('at %s opens the widget window once and closes the status overlay', async (tier) => {
+    const root = await openPopover('en', 'activity', { ...SPEC_PAGE, tier });
+    const trigger = root.querySelector<HTMLElement>('[data-control="live"]');
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+    root.querySelector<HTMLButtonElement>('[data-live-widget]')?.click();
+    // Synchronous: the window opened inside the click, before anything settled.
+    expect(open).toHaveBeenCalledTimes(1);
+    const [url, name, features] = open.mock.calls[0] ?? [];
+    expect([url, name]).toEqual(['/widget', 'spectant-status']);
+    expect(features).toMatch(/^popup,width=\d+,height=\d+/);
+    expect(features).not.toMatch(/noopener|noreferrer/);
+    expect(focus).toHaveBeenCalledTimes(1);
+
+    await TestBed.inject(ApplicationRef).whenStable();
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+    if (tier === 'compact') {
+      expect(root.querySelector('ui-sheet dialog')?.hasAttribute('open')).toBe(false);
+    } else {
+      expect(document.activeElement).toBe(trigger);
+    }
+    expect(open).toHaveBeenCalledTimes(1);
   });
 });

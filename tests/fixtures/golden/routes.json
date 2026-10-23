@@ -337,6 +337,59 @@
     "body": "{\"error\":\"forbidden\"}"
   },
   {
+    "name": "status",
+    "method": "GET",
+    "path": "/api/status",
+    "status": 200,
+    "headers": {
+      "cache-control": "no-cache",
+      "content-type": "application/json; charset=utf-8",
+      "etag": "\"JQs59QMVwQAwSupxu3hIHcD2sSz4jrdP_BnVrD-MSwY\""
+    },
+    "encoding": "utf8",
+    "body": "{\"kpis\":{\"repos\":2,\"closed\":0,\"listed\":10,\"claimsClosed\":60,\"claimsTotal\":89},\"workspaces\":[{\"slug\":\"harbor\",\"pathTail\":\"harbor\",\"readable\":true,\"error\":null,\"specs\":[{\"id\":\"004\",\"slug\":\"004-retention-policies\",\"title\":\"Delete old manifests on a written schedule without touching referenced ones\",\"stage\":\"code-review\",\"claims\":{\"closed\":30,\"total\":30},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"005\",\"slug\":\"005-config-format-choice\",\"title\":\"Decide which config format version 2 uses\",\"stage\":\"review\",\"claims\":{\"closed\":0,\"total\":1},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"006\",\"slug\":\"006-partial-push\",\"title\":\"Stop a timed-out push from leaving a half-written manifest behind\",\"stage\":\"review\",\"claims\":{\"closed\":0,\"total\":4},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"002\",\"slug\":\"002-web-console\",\"title\":\"Show every sync run and its failures in a small web console\",\"stage\":\"build\",\"claims\":{\"closed\":25,\"total\":30},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"009\",\"slug\":\"009-chunked-upload-limits\",\"title\":\"Find the largest blob chunk each target registry accepts\",\"stage\":\"build\",\"claims\":{\"closed\":1,\"total\":2},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"003\",\"slug\":\"003-config-loader\",\"title\":\"Read the config through one loader in the CLI, the API and the console\",\"stage\":\"tasks\",\"claims\":{\"closed\":0,\"total\":13},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"008\",\"slug\":\"008-referrers-support\",\"title\":\"Find out which target registries answer the OCI referrers endpoint\",\"stage\":\"close-pending\",\"claims\":{\"closed\":2,\"total\":2},\"closedAt\":null,\"state\":\"waiting\",\"archived\":false}]},{\"slug\":\"library\",\"pathTail\":\"library\",\"readable\":true,\"error\":null,\"specs\":[{\"id\":\"001\",\"slug\":\"001-lighthouse-map\",\"title\":\"Show every lighthouse of the coast on one map\",\"stage\":\"review\",\"claims\":{\"closed\":2,\"total\":3},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"004\",\"slug\":\"004-fog-horn\",\"title\":\"The fog horn interval shows in minutes instead of seconds\",\"stage\":\"review\",\"claims\":{\"closed\":0,\"total\":1},\"closedAt\":null,\"state\":\"open\",\"archived\":false},{\"id\":\"002\",\"slug\":\"002-tide-board\",\"title\":\"Show the tides of the next day for each harbour\",\"stage\":\"plan\",\"claims\":{\"closed\":0,\"total\":3},\"closedAt\":null,\"state\":\"open\",\"archived\":false}]}]}"
+  },
+  {
+    "name": "status HEAD",
+    "method": "HEAD",
+    "path": "/api/status",
+    "status": 200,
+    "headers": {
+      "cache-control": "no-cache",
+      "content-type": "application/json; charset=utf-8",
+      "etag": "\"JQs59QMVwQAwSupxu3hIHcD2sSz4jrdP_BnVrD-MSwY\""
+    },
+    "encoding": "utf8",
+    "body": ""
+  },
+  {
+    "name": "status 405",
+    "method": "POST",
+    "path": "/api/status",
+    "status": 405,
+    "headers": {
+      "allow": "GET, HEAD",
+      "cache-control": "no-cache",
+      "content-type": "application/json; charset=utf-8",
+      "etag": "\"7JHslT929TPfLxNm2Qi07KO6XjC74-0VoD38nVc76DE\""
+    },
+    "encoding": "utf8",
+    "body": "{\"error\":\"method-not-allowed\"}"
+  },
+  {
+    "name": "status 403 origin",
+    "method": "GET",
+    "path": "/api/status",
+    "status": 403,
+    "headers": {
+      "cache-control": "no-cache",
+      "content-type": "application/json; charset=utf-8",
+      "etag": "\"KBX-5u3DcWvWyFAnOZ8G4DFocG5_yseG7PDGbmGQhD8\""
+    },
+    "encoding": "utf8",
+    "body": "{\"error\":\"forbidden\"}"
+  },
+  {
     "name": "workspaces",
     "method": "GET",
     "path": "/api/workspaces",

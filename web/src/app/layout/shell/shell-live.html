@@ -40,7 +40,7 @@
         <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
         <span class="grow">{{ (workspaceCount() === 1 ? 'shell.live.reading.one' : 'shell.live.reading.other') | transloco: { count: workspaceCount() } }}</span>
       </div>
-      <button type="button" class="pop-item" data-live-widget data-autofocus>
+      <button type="button" class="pop-item" data-live-widget data-autofocus (click)="openWidget()">
         <ui-icon name="app-window" [size]="16" />
         <span class="grow">{{ 'shell.live.widget' | transloco }}</span>
         <ui-icon class="go" name="external-link" [size]="14" />

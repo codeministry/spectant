@@ -18,7 +18,7 @@ const isEntry = (value: unknown): value is PaletteEntry => {
 
 /**
  * The palette's Recent group (design.md § Routes and state): the last entries opened from the palette, a per-viewer
- * convenience and the app's only `localStorage` use (web/CLAUDE.md § State). Every access is wrapped: in a private
+ * convenience and one of the app's two `localStorage` uses (web/CLAUDE.md § State). Every access is wrapped: in a private
  * window or a web view the store may be empty or throw, and the group is then simply absent.
  */
 @Injectable({ providedIn: 'root' })

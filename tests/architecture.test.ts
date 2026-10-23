@@ -312,7 +312,7 @@ describe("routes", () => {
   test("every route is named exactly once across the slices' families", () => {
     const names = families.flatMap((family) => family.routes);
     expect(names.filter((name, i) => names.indexOf(name) !== i)).toEqual([]);
-    expect(families.map((family) => family.name)).toEqual(["events", "workspace-admin", "settings", "actors", "lifeos", "workspace", "notes", "spec", "prototype"]);
+    expect(families.map((family) => family.name)).toEqual(["events", "workspace-admin", "settings", "actors", "lifeos", "status", "workspace", "notes", "spec", "prototype"]);
   });
 
   test("the set of method and route equals the golden master's, and every route is hit", () => {

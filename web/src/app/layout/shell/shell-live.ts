@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DOCUMENT, inject, input, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { DashboardBody } from '../../core/api.service';
@@ -11,6 +11,7 @@ import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { readWorkspace } from '../command-palette/palette-index';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
+import { openWidget } from './widget-window';
 
 /**
  * The header's status group (spec 024 T34, T40): one bordered 40 px group of
@@ -21,7 +22,7 @@ import { ShellState } from './shell-state.service';
  * 071 (ISC-579) it shows no "Live" heading, no "Updated … ago" line and no agent source text. Since ISC-580 its rows
  * run: the reading line, "Open status widget" (`[data-live-widget]`, the autofocus target), the round board only
  * while a spec is open, then Dev services; at the compact tier the same template opens in a bottom `ui-sheet` named
- * "Status". Refresh calls `RefreshService.refresh()` (as `r` and the palette do). Below 640 px only the indicator
+ * "Status". The widget button opens `/widget` in its own window (ISC-581, `widget-window.ts`). Refresh calls `RefreshService.refresh()` (as `r` and the palette do). Below 640 px only the indicator
  * stays. The overlay loads after first render (`@defer`), like the header's menus.
  */
 @Component({
@@ -38,6 +39,7 @@ export class ShellLive {
   protected readonly refresher = inject(RefreshService);
   private readonly data = inject(ShellData);
   private readonly state = inject(ShellState);
+  private readonly doc = inject(DOCUMENT);
 
   /** Workspaces read: the open one, or every registered one outside a workspace. */
   protected readonly workspaceCount = computed(() => (this.state.ws() === null ? this.data.workspaceList().length : 1));
@@ -83,5 +85,15 @@ export class ShellLive {
   protected close(): void {
     this.livePop()?.close();
     this.sheetOpen.set(false);
+  }
+
+  /**
+   * "Open status widget" (ISC-581): `window.open` runs first and synchronously, inside the click gesture, then the
+   * overlay closes; the popover and the sheet return focus to the trigger themselves.
+   */
+  protected openWidget(): void {
+    const win = this.doc.defaultView;
+    if (win !== null) openWidget(win);
+    this.close();
   }
 }

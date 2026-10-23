@@ -95,6 +95,10 @@ const REQUESTS: readonly GoldenRequest[] = [
   ...read("lifeos", "/api/lifeos"),
   other("lifeos 405", "POST", "/api/lifeos"),
   other("lifeos 403 host", "GET", "/api/lifeos", FOREIGN_HOST),
+  // the status board (spec 071, ISC-593), recorded after the slice refactor as an added route
+  ...read("status", "/api/status"),
+  other("status 405", "POST", "/api/status"),
+  other("status 403 origin", "GET", "/api/status", FOREIGN_ORIGIN),
   // workspaces, dashboard, images, admin paths
   ...read("workspaces", W),
   other("workspaces 405", "PUT", W),
