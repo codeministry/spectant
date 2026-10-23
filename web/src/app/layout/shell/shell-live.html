@@ -36,15 +36,10 @@
 
     @defer (on immediate) {
       <ui-popover #livePop class="live-pop" placement="end" [label]="'shell.live.heading' | transloco">
-        <div class="pop-head">{{ 'shell.live.heading' | transloco }}</div>
         <div class="service" data-live-reading>
           <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
           <span class="grow">{{ (workspaceCount() === 1 ? 'shell.live.reading.one' : 'shell.live.reading.other') | transloco: { count: workspaceCount() } }}</span>
         </div>
-        <div class="service meta updated" data-live-updated>
-          {{ 'shell.live.updated' | transloco }} {{ 'shell.live.ago' | transloco: ago() }}
-        </div>
-        <div class="service meta" data-live-source>{{ sourceText }}</div>
         @if (link(); as target) {
           <a class="pop-item" data-live-board data-autofocus [routerLink]="target" (click)="close()">
             <ui-icon name="workflow" [size]="16" />

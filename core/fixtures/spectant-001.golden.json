@@ -101,6 +101,7 @@
       "fog": 0,
       "updated": "2026-09-28T13:02:35Z",
       "lastRound": "2026-09-28T13:06:30.452Z",
+      "closedAt": null,
       "goal": "A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that inherits the old Spec dashboard's look in its light and its dark theme and works like a current developer tool (command palette, keyboard navigation, in-place refresh), with nothing leaving the machine and nothing written into either repository.",
       "worktree": null,
       "source": "main",

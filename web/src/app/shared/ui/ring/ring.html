@@ -14,16 +14,18 @@
         [attr.cy]="centre()"
         [attr.r]="radius()"
         [attr.stroke-width]="stroke()"
-        [attr.stroke]="gradientUrl"
+        [attr.stroke]="full() ? null : gradientUrl"
         [attr.stroke-dasharray]="circumference()"
         [style.stroke-dashoffset]="offset()"
       />
     </svg>
-    <span class="text">
-      @if (percent() === null) {
-        —
-      } @else {
-        {{ percent() }}<span class="unit">%</span>
-      }
-    </span>
+    @if (!small()) {
+      <span class="text">
+        @if (percent() === null) {
+          —
+        } @else {
+          {{ percent() }}<span class="unit">%</span>
+        }
+      </span>
+    }
   

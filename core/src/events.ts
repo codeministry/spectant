@@ -169,6 +169,21 @@ export function parseEvents(text: string): { events: EventLine[]; diagnostics: D
   return { events, diagnostics };
 }
 
+/**
+ * When the spec closed (spec 071, ISC-592): the `ts` of the last transition to `done` among the valid events of an
+ * events.jsonl text, as written; null without the file, without such a transition, and once a later transition leaves
+ * `done` again (a reopened spec is open). Rejected lines count for nothing; old words read through their aliases.
+ */
+export function closedAtOf(eventsText: string | undefined): string | null {
+  if (eventsText === undefined) return null;
+  let closedAt: string | null = null;
+  for (const e of parseEvents(eventsText).events) {
+    if (e.to === 'done') closedAt = e.ts;
+    else if (e.from === 'done') closedAt = null;
+  }
+  return closedAt;
+}
+
 function names(keys: readonly string[]): string {
   return keys.map((k) => `\`${k}\``).join(', ');
 }

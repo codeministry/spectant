@@ -1321,11 +1321,137 @@ function parseClaims(text) {
   };
 }
 
+// core/src/events.ts
+var EVENT_STAGES = ["idea", "plan", "tasks", "review", "build", "blocked", "code-review", "close-pending", "close", "done"];
+var EVENT_VOCABULARY_ALIASES = {
+  specified: "plan",
+  planned: "tasks",
+  tasked: "review",
+  reviewed: "build",
+  implementing: "build",
+  "code-reviewed": "close"
+};
+var KEYS = ["ts", "from", "to", "command", "actor"];
+var ISO_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+function validateEventLine(line, lineNo) {
+  const at = lineNo === undefined ? {} : { line: lineNo };
+  const reject = (code, message, severity = "error") => ({
+    ok: false,
+    diagnostic: { severity, code, message, ...at }
+  });
+  let json;
+  try {
+    json = JSON.parse(typeof line === "string" ? line : "");
+  } catch {
+    return reject("event-json", "The line is not valid JSON.");
+  }
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    return reject("event-not-object", "The line is JSON but not an object {ts, from, to, command, actor}.");
+  }
+  const record = json;
+  const missing = KEYS.filter((k) => !Object.hasOwn(record, k));
+  if (missing.length > 0)
+    return reject("event-missing-key", `The event lacks ${names(missing)}.`);
+  const extra = Object.keys(record).filter((k) => !KEYS.includes(k));
+  if (extra.length > 0)
+    return reject("event-extra-key", `The event carries ${names(extra)}, which the schema does not have.`);
+  const wrong = KEYS.filter((k) => typeof record[k] !== "string" && !(k === "from" && record[k] === null));
+  if (wrong.length > 0)
+    return reject("event-type", `${names(wrong)} must be a string${wrong.includes("from") ? " (`from` may be null)" : ""}.`);
+  const { ts, to, command, actor } = record;
+  const { from: fromWord } = record;
+  if (!isIsoDateTime(ts))
+    return reject("event-ts", `\`ts\` "${ts}" is not an ISO 8601 date-time with a zone.`);
+  const blank = ["command", "actor"].filter((k) => (k === "command" ? command : actor).trim() === "");
+  if (blank.length > 0)
+    return reject("event-empty", `${names(blank)} must not be empty.`);
+  const warnings = [];
+  const read = (key, word) => {
+    if (EVENT_STAGES.includes(word))
+      return word;
+    const stage = Object.hasOwn(EVENT_VOCABULARY_ALIASES, word) ? EVENT_VOCABULARY_ALIASES[word] : undefined;
+    if (stage === undefined)
+      return;
+    warnings.push({
+      severity: "warning",
+      code: "event-alias",
+      message: `\`${key}\` "${word}" is an older lifecycle word, read as the stage "${stage}".`,
+      ...at
+    });
+    return stage;
+  };
+  const fromStage = fromWord === null ? null : read("from", fromWord);
+  const toStage = read("to", to);
+  if (fromStage === undefined)
+    return reject("event-stage", `\`from\` "${fromWord ?? ""}" is not a stage name (${EVENT_STAGES.join(", ")}).`);
+  if (toStage === undefined)
+    return reject("event-stage", `\`to\` "${to}" is not a stage name (${EVENT_STAGES.join(", ")}).`);
+  if (fromStage === toStage) {
+    return fromWord === to ? reject("event-same-stage", `\`from\` and \`to\` are both "${to}": no transition.`) : reject("event-same-stage", `"${fromWord ?? ""} \u2192 ${to}" is "${toStage} \u2192 ${toStage}" in the stage table: no transition, skipped.`, "warning");
+  }
+  return { ok: true, event: { ts, from: fromStage, to: toStage, command, actor, actorRef: parseActor(actor) }, warnings };
+}
+function parseEvents(text) {
+  const events = [];
+  const diagnostics = [];
+  const actors = [];
+  text.split(/\r?\n/).forEach((raw, i) => {
+    if (raw.trim() === "")
+      return;
+    const v = validateEventLine(raw, i + 1);
+    if (!v.ok) {
+      diagnostics.push(v.diagnostic);
+      return;
+    }
+    if (v.event.from === null && events.length > 0) {
+      diagnostics.push({
+        severity: "error",
+        code: "event-null-from",
+        message: `A null \`from\` marks the creation and stands only on the first event; this line enters "${v.event.to}" after ${events.length} event${events.length === 1 ? "" : "s"}.`,
+        line: i + 1
+      });
+      return;
+    }
+    diagnostics.push(...v.warnings);
+    events.push(v.event);
+    actors.push({ ref: v.event.actorRef ?? parseActor(v.event.actor), line: i + 1 });
+  });
+  const legacy = legacyActorWarning(actors);
+  if (legacy !== null)
+    diagnostics.push(legacy);
+  return { events, diagnostics };
+}
+function closedAtOf(eventsText) {
+  if (eventsText === undefined)
+    return null;
+  let closedAt = null;
+  for (const e of parseEvents(eventsText).events) {
+    if (e.to === "done")
+      closedAt = e.ts;
+    else if (e.from === "done")
+      closedAt = null;
+  }
+  return closedAt;
+}
+function names(keys) {
+  return keys.map((k) => `\`${k}\``).join(", ");
+}
+function isIsoDateTime(value) {
+  const m = ISO_DATE_TIME.exec(value);
+  if (!m)
+    return false;
+  const [year, month, day, hour, minute, second, , offH, offM] = m.slice(1).map((v) => Number(v ?? 0));
+  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1));
+  const realDay = date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+  const inRange = (hour ?? 0) <= 23 && (minute ?? 0) <= 59 && (second ?? 0) <= 59 && (offH ?? 0) <= 23 && (offM ?? 0) <= 59;
+  return realDay && inRange && Number.isFinite(Date.parse(value));
+}
+
 // core/src/frontmatter.ts
 var SPEC_TYPES = ["feature", "bug", "refactor", "spike", "infra", "project", "chore"];
 var PRIORITIES = ["P1", "P2", "P3", "P4"];
 var DEFAULT_PRIORITY = "P3";
-var KEYS = {
+var KEYS2 = {
   task: ["task", "string"],
   slug: ["slug", "string"],
   spec_type: ["specType", "specType"],
@@ -1446,7 +1572,7 @@ function parseFrontmatter(text) {
       warn("frontmatter-quote", `The quoted value of ${key} is never closed.`, lineNo);
     values[key] = value;
     keyLines[key] = lineNo;
-    const known = KEYS[key];
+    const known = KEYS2[key];
     if (!known) {
       rest[key] = value;
       continue;
@@ -1509,8 +1635,8 @@ var GOAL_HEADINGS = ["Goal", "Ziel"];
 var TASK_BOX = /^\s*- \[([ xX])\]\s*T\d+\b/gm;
 var escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function levelTwoSection(text, headings) {
-  const names = headings.map(escapeRegExp).join("|");
-  const section2 = new RegExp(String.raw`^##\s+(?:${names})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, "m");
+  const names2 = headings.map(escapeRegExp).join("|");
+  const section2 = new RegExp(String.raw`^##\s+(?:${names2})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, "m");
   return section2.exec(text.replace(/\r\n?/g, `
 `))?.[1] ?? null;
 }
@@ -1541,6 +1667,7 @@ function listArchive(folders) {
         type: data.specType,
         archived: data.archived,
         archivedReason: data.archivedReason,
+        closedAt: closedAtOf(f.texts.events),
         claims: parseClaims(spec).counted,
         tasks: taskCounts(f.texts.tasks),
         goal: goalOf(spec)
@@ -1588,120 +1715,6 @@ function diagramVerdict(input) {
   if (missing.length === 0)
     return { level: "ok", missing };
   return { level: required ? "fail" : "warn", missing };
-}
-
-// core/src/events.ts
-var EVENT_STAGES = ["idea", "plan", "tasks", "review", "build", "blocked", "code-review", "close-pending", "close", "done"];
-var EVENT_VOCABULARY_ALIASES = {
-  specified: "plan",
-  planned: "tasks",
-  tasked: "review",
-  reviewed: "build",
-  implementing: "build",
-  "code-reviewed": "close"
-};
-var KEYS2 = ["ts", "from", "to", "command", "actor"];
-var ISO_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
-function validateEventLine(line, lineNo) {
-  const at = lineNo === undefined ? {} : { line: lineNo };
-  const reject = (code, message, severity = "error") => ({
-    ok: false,
-    diagnostic: { severity, code, message, ...at }
-  });
-  let json;
-  try {
-    json = JSON.parse(typeof line === "string" ? line : "");
-  } catch {
-    return reject("event-json", "The line is not valid JSON.");
-  }
-  if (typeof json !== "object" || json === null || Array.isArray(json)) {
-    return reject("event-not-object", "The line is JSON but not an object {ts, from, to, command, actor}.");
-  }
-  const record = json;
-  const missing = KEYS2.filter((k) => !Object.hasOwn(record, k));
-  if (missing.length > 0)
-    return reject("event-missing-key", `The event lacks ${names(missing)}.`);
-  const extra = Object.keys(record).filter((k) => !KEYS2.includes(k));
-  if (extra.length > 0)
-    return reject("event-extra-key", `The event carries ${names(extra)}, which the schema does not have.`);
-  const wrong = KEYS2.filter((k) => typeof record[k] !== "string" && !(k === "from" && record[k] === null));
-  if (wrong.length > 0)
-    return reject("event-type", `${names(wrong)} must be a string${wrong.includes("from") ? " (`from` may be null)" : ""}.`);
-  const { ts, to, command, actor } = record;
-  const { from: fromWord } = record;
-  if (!isIsoDateTime(ts))
-    return reject("event-ts", `\`ts\` "${ts}" is not an ISO 8601 date-time with a zone.`);
-  const blank = ["command", "actor"].filter((k) => (k === "command" ? command : actor).trim() === "");
-  if (blank.length > 0)
-    return reject("event-empty", `${names(blank)} must not be empty.`);
-  const warnings = [];
-  const read = (key, word) => {
-    if (EVENT_STAGES.includes(word))
-      return word;
-    const stage = Object.hasOwn(EVENT_VOCABULARY_ALIASES, word) ? EVENT_VOCABULARY_ALIASES[word] : undefined;
-    if (stage === undefined)
-      return;
-    warnings.push({
-      severity: "warning",
-      code: "event-alias",
-      message: `\`${key}\` "${word}" is an older lifecycle word, read as the stage "${stage}".`,
-      ...at
-    });
-    return stage;
-  };
-  const fromStage = fromWord === null ? null : read("from", fromWord);
-  const toStage = read("to", to);
-  if (fromStage === undefined)
-    return reject("event-stage", `\`from\` "${fromWord ?? ""}" is not a stage name (${EVENT_STAGES.join(", ")}).`);
-  if (toStage === undefined)
-    return reject("event-stage", `\`to\` "${to}" is not a stage name (${EVENT_STAGES.join(", ")}).`);
-  if (fromStage === toStage) {
-    return fromWord === to ? reject("event-same-stage", `\`from\` and \`to\` are both "${to}": no transition.`) : reject("event-same-stage", `"${fromWord ?? ""} \u2192 ${to}" is "${toStage} \u2192 ${toStage}" in the stage table: no transition, skipped.`, "warning");
-  }
-  return { ok: true, event: { ts, from: fromStage, to: toStage, command, actor, actorRef: parseActor(actor) }, warnings };
-}
-function parseEvents(text) {
-  const events = [];
-  const diagnostics = [];
-  const actors = [];
-  text.split(/\r?\n/).forEach((raw, i) => {
-    if (raw.trim() === "")
-      return;
-    const v = validateEventLine(raw, i + 1);
-    if (!v.ok) {
-      diagnostics.push(v.diagnostic);
-      return;
-    }
-    if (v.event.from === null && events.length > 0) {
-      diagnostics.push({
-        severity: "error",
-        code: "event-null-from",
-        message: `A null \`from\` marks the creation and stands only on the first event; this line enters "${v.event.to}" after ${events.length} event${events.length === 1 ? "" : "s"}.`,
-        line: i + 1
-      });
-      return;
-    }
-    diagnostics.push(...v.warnings);
-    events.push(v.event);
-    actors.push({ ref: v.event.actorRef ?? parseActor(v.event.actor), line: i + 1 });
-  });
-  const legacy = legacyActorWarning(actors);
-  if (legacy !== null)
-    diagnostics.push(legacy);
-  return { events, diagnostics };
-}
-function names(keys) {
-  return keys.map((k) => `\`${k}\``).join(", ");
-}
-function isIsoDateTime(value) {
-  const m = ISO_DATE_TIME.exec(value);
-  if (!m)
-    return false;
-  const [year, month, day, hour, minute, second, , offH, offM] = m.slice(1).map((v) => Number(v ?? 0));
-  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1));
-  const realDay = date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
-  const inRange = (hour ?? 0) <= 23 && (minute ?? 0) <= 59 && (second ?? 0) <= 59 && (offH ?? 0) <= 23 && (offM ?? 0) <= 59;
-  return realDay && inRange && Number.isFinite(Date.parse(value));
 }
 
 // core/src/files.ts
@@ -4086,6 +4099,7 @@ function specRow(f, ctx, diagnostics) {
     fog,
     updated: fm.data.updated,
     lastRound: rounds.ts,
+    closedAt: closedAtOf(f.texts.events),
     goal: summary?.goal ?? "",
     worktree,
     source,

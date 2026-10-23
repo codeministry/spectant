@@ -583,9 +583,9 @@ describe('ShellComponent', () => {
       expect(indicator.getAttribute('data-source')).toBe('none');
       expect(workspace.querySelector('[data-live-board]')).toBeNull();
       expect(workspace.querySelector('[data-live-reading]')).not.toBeNull();
-      // The header stays narrow: icon and dot only; "Updated n s ago" is a line of the popover.
+      // The header stays narrow: icon and dot only; spec 071 (ISC-579) dropped the popover's "Updated n s ago" line.
       expect(indicator.textContent.trim()).toBe('');
-      expect(workspace.querySelector('[data-live-updated]')?.textContent.trim()).toMatch(/^Updated \d+ \S+ ago$/);
+      expect(workspace.querySelector('[data-live-updated]')).toBeNull();
 
       const { root: spec } = await open('/w/harbor/s/002/status');
       const live = control(spec, 'live');

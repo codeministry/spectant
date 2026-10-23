@@ -787,8 +787,6 @@
       },
       "open": "{{source}}, Runden-Board öffnen",
       "status": "Live-Status und Dev-Dienste · {{source}} · {{services}}",
-      "updated": "Aktualisiert vor",
-      "ago": "{{value}} {{unit}}",
       "heading": "Live",
       "reading": {
         "one": "Liest {{count}} Workspace",

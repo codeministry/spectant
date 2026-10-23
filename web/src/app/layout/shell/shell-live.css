@@ -154,10 +154,6 @@
   font-family: var(--font-mono);
 }
 
-.updated {
-  font-variant-numeric: tabular-nums;
-}
-
 .pop-sep {
   block-size: 1px;
   margin: var(--space-2) 0;
