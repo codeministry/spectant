@@ -64,13 +64,14 @@ const VIEWS: readonly View[] = [
     },
   },
   // Spec 071 (ISC-582, ISC-591): the status widget, its own window outside the shell, on the stub's default workspaces;
-  // the theme check in `settle` proves it follows the app's theme.
+  // the theme check in `settle` proves it follows the app's theme. Spec 072: the flat head (`header.head .kpi`), the
+  // filter rows and the command lines.
   {
     name: 'widget',
     path: '/widget',
     host: 'app-status-widget-page',
     drawn: async (page) => {
-      await expect(page.locator('app-status-widget-page ui-kpi-tile')).toHaveCount(3);
+      await expect(page.locator('app-status-widget-page header.head .kpi')).toHaveCount(3);
       await expect(page.locator('app-status-widget-page li.row[data-spec]').first()).toBeVisible();
     },
   },
