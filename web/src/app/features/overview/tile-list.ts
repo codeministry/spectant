@@ -39,7 +39,9 @@ export class TileList {
   protected readonly label = computed(() => this.name() ?? this.workspace());
   protected readonly wsLink = computed(() => ['/w', this.workspace()]);
 
+  /** A row in progress opens the spec's live view, as the in-progress tiles of `/w/<ws>` do (ISC-508); a waiting row its spec. */
   protected specLink(row: TileRow): readonly string[] {
-    return ['/w', this.workspace(), 's', row.id];
+    const spec = ['/w', this.workspace(), 's', row.id];
+    return row.kind === 'working' ? [...spec, 'board'] : spec;
   }
 }

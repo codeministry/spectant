@@ -90,7 +90,7 @@ describe('app-tile-list (spec 066 T5, ISC-518)', () => {
     expect(host.querySelector('ui-command-chip')).toBeNull();
   });
 
-  it('3 entries: in progress before waiting, every row a link to its spec without fragment, no "Show all"', async () => {
+  it('3 entries: in progress before waiting, an in-progress row links to its spec live view, a waiting row to its spec, no "Show all"', async () => {
     const host = await render(tileOf([working('005'), working('006', 'a:codex:session-with-a-long-name')], [waiting('002')], {}));
     expect(rows(host).map((r) => [r.dataset['kind'], r.dataset['id']])).toEqual([
       ['working', '005'],
@@ -98,8 +98,8 @@ describe('app-tile-list (spec 066 T5, ISC-518)', () => {
       ['waiting', '002'],
     ]);
     expect(rows(host).map((r) => r.querySelector('a[data-tile-link]')?.getAttribute('href'))).toEqual([
-      '/w/harbor/s/005',
-      '/w/harbor/s/006',
+      '/w/harbor/s/005/board',
+      '/w/harbor/s/006/board',
       '/w/harbor/s/002',
     ]);
     const second = rows(host)[1];
