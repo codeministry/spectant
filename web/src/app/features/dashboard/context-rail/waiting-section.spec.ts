@@ -104,7 +104,7 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     // The spec's title is the main text, from the caller's titles where the entry is a claim or task.
     expect(rows.map((tile) => text(tile.querySelector('.main')))).toEqual([HARBOR[0]?.title, titles['002'], HARBOR[2]?.title]);
     const fold = section?.querySelector('ui-disclosure[data-show-all]');
-    const button = fold?.querySelector('button');
+    const button = fold?.querySelector('button[aria-controls]');
     expect(visibleOf(button)).toBe('Show all 4');
     expect(button?.querySelector('[data-visible]')?.getAttribute('aria-hidden')).toBe('true');
     expect(nameOf(button)).toBe('Show all 4 · Waits on you');
@@ -118,23 +118,24 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     expect(document.activeElement).not.toBe(section);
   });
 
-  it('opens the fold on a click, its name unchanged', async () => {
+  it('opens the fold on a click; the toggle under the last tile then reads "Show fewer"', async () => {
     entries = HARBOR;
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/w/harbor');
     await settle(harness);
     const root = harness.routeNativeElement as HTMLElement;
-    root.querySelector<HTMLButtonElement>('app-waiting-section ui-disclosure button')?.click();
+    root.querySelector<HTMLButtonElement>('app-waiting-section ui-disclosure button[aria-controls]')?.click();
     await settle(harness);
-    const button = root.querySelector('app-waiting-section ui-disclosure button');
+    const button = root.querySelector('app-waiting-section ui-disclosure button[aria-controls]');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(nameOf(button)).toBe('Show all 4 · Waits on you');
+    expect(visibleOf(button)).toBe('Show fewer');
+    expect(nameOf(button)).toBe('Show fewer · Waits on you');
   });
 
   it('reads the German names: "Alle 4 anzeigen · Liegt bei Ihnen"', async () => {
     TestBed.inject(TranslocoService).setActiveLang('de');
     const root = await render(HARBOR);
-    const button = root.querySelector('app-waiting-section ui-disclosure button');
+    const button = root.querySelector('app-waiting-section ui-disclosure button[aria-controls]');
     expect(visibleOf(button)).toBe('Alle 4 anzeigen');
     expect(nameOf(button)).toBe('Alle 4 anzeigen · Liegt bei Ihnen');
   });
@@ -142,7 +143,7 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
   it('opens the fold and focuses the section when the page is reached over #waiting', async () => {
     const root = await render(HARBOR, '/w/harbor#waiting');
     const section = root.querySelector('app-waiting-section');
-    const button = section?.querySelector('ui-disclosure button');
+    const button = section?.querySelector('ui-disclosure button[aria-controls]');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(section);
   });

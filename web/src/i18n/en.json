@@ -2824,6 +2824,8 @@
       "showAll": "Show all {{count}}",
       "waiting": "+{{n}} waiting",
       "showAllName": "Show all {{count}} · Waits on you",
+      "showFewer": "Show fewer",
+      "showFewerName": "Show fewer · Waits on you",
       "tileName": "{{id}} {{title}} · {{ref}} · waiting {{time}}"
     },
     "working": {

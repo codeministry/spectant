@@ -35,7 +35,8 @@ export class UiDisclosureDescription {
  * Optional, for a document section: `headingLevel` (2 to 6) wraps the toggle button in a heading of that level, so
  * the section stays reachable through heading navigation and the heading text is the button's name; the
  * `[uiDisclosureDescription]` slot (import `UiDisclosureDescription`) sits under the head, outside the button and
- * outside the region. Without either, the markup is the one the disclosure always rendered.
+ * outside the region. Without either, the markup is the one the disclosure always rendered. `summaryAt` `end` moves
+ * the head (toggle, actions, description) under the region.
  */
 @Component({
   selector: 'ui-disclosure',
@@ -53,6 +54,12 @@ export class UiDisclosure {
   readonly count = input<number | null>(null);
   /** Optional heading level the toggle button sits in; `null` keeps the plain button head. */
   readonly headingLevel = input<UiDisclosureHeadingLevel | null>(null);
+  /**
+   * Where the head stands: `start` (the default) above the region, `end` under it, so a list that grows from the fold
+   * ("Show all n" under the standing tiles) keeps its toggle below the last row. The DOM order follows, and so does the
+   * tab order.
+   */
+  readonly summaryAt = input<'start' | 'end'>('start');
 
   protected readonly description = contentChild(UiDisclosureDescription);
   protected readonly regionId = nextId('ui-disclosure');

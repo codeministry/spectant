@@ -157,7 +157,7 @@ test.describe('guidance anti', () => {
         await expect(section, `${ws}: the #waiting section`).toBeVisible();
 
         // #waiting: open "Show all n", then the standing and the folded tiles list the API's waits exactly, in order.
-        const fold = section.locator('[data-show-all] button').first();
+        const fold = section.locator('[data-show-all] button[aria-expanded]');
         if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
         const listed = await blockEntries(section);
         expect(listed, `${ws}: #waiting lists the API's waits, in order`).toEqual(guidance.waits.map((e) => shownOf(e, 'workspace')));

@@ -17,9 +17,9 @@
           </ol>
           @if (folded().length > 0) {
             @if (more() === 'fold') {
-              <ui-disclosure class="fold" data-show-all [(open)]="open">
+              <ui-disclosure class="fold" data-show-all summaryAt="end" [(open)]="open">
                 <span uiDisclosureSummary data-fold-toggle>
-                  <ng-container [ngTemplateOutlet]="showAll" />
+                  <ng-container [ngTemplateOutlet]="open() ? showFewer : showAll" />
                 </span>
                 <ol class="tiles">
                   @for (entry of folded(); track key(entry)) {
@@ -109,6 +109,11 @@
     <ng-template #showAll>
       <span aria-hidden="true" data-visible>{{ 'guidance.waits.showAll' | transloco: { count: entries().length } }}</span>
       <span class="visually-hidden" data-name>{{ 'guidance.waits.showAllName' | transloco: { count: entries().length } }}</span>
+    </ng-template>
+    <!-- "Show fewer", the open fold's toggle under the last tile, and its name that also names the list. -->
+    <ng-template #showFewer>
+      <span aria-hidden="true" data-visible>{{ 'guidance.waits.showFewer' | transloco }}</span>
+      <span class="visually-hidden" data-name>{{ 'guidance.waits.showFewerName' | transloco }}</span>
     </ng-template>
     <!-- One flat tile (spec 064, ISC-478): the spec title as the main text, the reason only as the description. -->
     <ng-template #tile let-entry>

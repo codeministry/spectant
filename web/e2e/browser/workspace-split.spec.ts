@@ -198,6 +198,22 @@ test.describe('dashboard card rows (ISC-399)', () => {
         expect(waits.gap).toBe('8px');
         expect(waits.foldAfter).toBe(true);
 
+        // Opened, the folded tiles continue the list 8 px after the last standing tile and "Show all n" moves under
+        // the last of them.
+        const toggle = page.locator('#waiting [data-show-all] button[aria-expanded]');
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await expect
+          .poll(() =>
+            page.locator('#waiting').evaluate((section) => {
+              const tiles = [...section.querySelectorAll('ol.tiles > li')].map((li) => li.getBoundingClientRect());
+              const button = section.querySelector('[data-show-all] button[aria-expanded]')?.getBoundingClientRect();
+              const gaps = tiles.slice(1).map((r, i) => Math.round(r.top - (tiles[i]?.bottom ?? r.top)));
+              return { gaps, below: button !== undefined && button.top >= (tiles.at(-1)?.bottom ?? Infinity) };
+            }),
+          )
+          .toEqual({ gaps: [8, 8, 8], below: true });
+
         // Warnings: equal columns from 640 px of shell (two, three from 1120 px) under one grid of hairlines that also
         // runs through the empty cells of a short last row; one column below.
         const groups = await page.locator('app-warnings-panel li.group').evaluateAll((items) =>

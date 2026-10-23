@@ -130,13 +130,18 @@
     /* Form tiles (spec 064): the kind or ref chip stands in the tile's ID link, 8 px after the ID. */
     .kind { margin-inline-start: 8px; }
 
-    /* The fold "Show all n" under the standing tiles; its tiles open below the toggle, 8 px apart as in the list. */
+    /*
+     * The fold "Show all n" under the standing tiles: its tiles open above the toggle and continue the list, 8 px after
+     * the last standing tile as the list's own gap, so the toggle stays under the last row.
+     */
     .fold {
       display: block;
       color: var(--disp-ink);
       font-size: 13px;
       line-height: 20px;
     }
+
+    .fold .tiles { padding-block-start: 8px; }
 
     .more {
       display: inline-flex;

@@ -1,31 +1,39 @@
-
-    <div class="head">
-      @switch (headingLevel()) {
-        @case (2) {
-          <h2 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h2>
-        }
-        @case (3) {
-          <h3 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h3>
-        }
-        @case (4) {
-          <h4 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h4>
-        }
-        @case (5) {
-          <h5 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h5>
-        }
-        @case (6) {
-          <h6 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h6>
-        }
-        @default {
-          <ng-container [ngTemplateOutlet]="toggle" />
-        }
-      }
-      <ng-content select="[uiDisclosureActions]" />
-    </div>
-    <ng-content select="[uiDisclosureDescription]" />
+    @if (summaryAt() === 'start') {
+      <ng-container [ngTemplateOutlet]="head" />
+    }
     <div class="region" [id]="regionId" [attr.inert]="open() ? null : ''">
       <div class="content"><ng-content /></div>
     </div>
+    @if (summaryAt() === 'end') {
+      <ng-container [ngTemplateOutlet]="head" />
+    }
+    <!-- The head with the toggle and the description: before the region, or after it under `summaryAt` `end`. -->
+    <ng-template #head>
+      <div class="head">
+        @switch (headingLevel()) {
+          @case (2) {
+            <h2 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h2>
+          }
+          @case (3) {
+            <h3 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h3>
+          }
+          @case (4) {
+            <h4 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h4>
+          }
+          @case (5) {
+            <h5 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h5>
+          }
+          @case (6) {
+            <h6 class="heading"><ng-container [ngTemplateOutlet]="toggle" /></h6>
+          }
+          @default {
+            <ng-container [ngTemplateOutlet]="toggle" />
+          }
+        }
+        <ng-content select="[uiDisclosureActions]" />
+      </div>
+      <ng-content select="[uiDisclosureDescription]" />
+    </ng-template>
     <ng-template #toggle>
       <button
         type="button"
@@ -42,4 +50,3 @@
         }
       </button>
     </ng-template>
-  

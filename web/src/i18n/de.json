@@ -2824,6 +2824,8 @@
       "showAll": "Alle {{count}} anzeigen",
       "waiting": "+{{n}} bei Ihnen",
       "showAllName": "Alle {{count}} anzeigen · Liegt bei Ihnen",
+      "showFewer": "Weniger anzeigen",
+      "showFewerName": "Weniger anzeigen · Liegt bei Ihnen",
       "tileName": "{{id}} {{title}} · {{ref}} · wartet seit {{time}}"
     },
     "working": {
