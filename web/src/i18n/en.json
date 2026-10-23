@@ -711,17 +711,6 @@
         "other": "Show all {{count}} workspaces"
       }
     },
-    "spec": {
-      "label": "Spec: {{id}} {{title}}",
-      "countLabel": "Specs: {{count}}",
-      "all": "All specs in {{workspace}}",
-      "menu": "Specs",
-      "none": "Open a workspace to pick a spec",
-      "head": "Specs · {{workspace}}",
-      "headFavorites": "Favorites · {{workspace}}",
-      "favoritesEmpty": "No favorites yet. Star a spec on its page or in the spec list to see it here.",
-      "overview": "Spec overview"
-    },
     "area": {
       "label": "Area: {{area}}",
       "pageLabel": "Page: {{page}}",
@@ -747,8 +736,6 @@
     "pills": {
       "workspace": "Workspace",
       "page": "Page",
-      "specs": "Specs",
-      "spec": "Spec",
       "area": "Area",
       "all": "All"
     },

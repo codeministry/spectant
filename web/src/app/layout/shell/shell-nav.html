@@ -64,7 +64,7 @@
       </button>
     }
   }
-  <!-- Only a spec page has an Area select: the six spec areas (spec 024 T80, ISC-150.2), before the Spec select (spec 048, ISC-280). -->
+  <!-- Only a spec page has an Area select: the six spec areas (spec 024 T80, ISC-150.2); the Spec select left the nav in spec 069 (ISC-554). -->
   <!-- Below 1120 px the area switch is an entry of the overflow menu `⋯` instead (spec 024 T76). -->
   @if (specRoute() && wide()) {
     <span class="pill-divider" aria-hidden="true"></span>
@@ -102,40 +102,6 @@
         <ui-icon class="chevron" name="chevron-down" [size]="14" />
       </button>
     }
-  }
-  <!-- Outside a workspace (`/`, `/help`, `/settings`) there is no spec pill rather than a `0` (ISC-140.2). -->
-  @if (specHref(); as href) {
-    <span class="pill-divider" aria-hidden="true"></span>
-    <a
-      class="pick"
-      data-control="spec"
-      aria-haspopup="dialog"
-      [attr.href]="href"
-      [attr.aria-expanded]="expanded().spec"
-      [attr.title]="specOpen() ? row()?.title : null"
-      [attr.aria-label]="
-        specOpen()
-          ? ('shell.spec.label' | transloco: { id: state.specId(), title: specName() ?? '' })
-          : ('shell.spec.countLabel' | transloco: { count: specCount() })
-      "
-      (pointerdown)="press('spec')"
-      (click)="toggle($event, 'spec')"
-    >
-      <span class="pill">
-        <span class="pill-label" data-pill-label>{{ (specOpen() ? 'shell.pills.spec' : 'shell.pills.specs') | transloco }}</span>
-        @if (specOpen()) {
-          <span class="pill-value" data-pill-value>
-            <span class="pick-id">{{ state.specId() }}</span>
-            @if (specName(); as name) {
-              &ngsp;<span class="pick-text spec-title">{{ name }}</span>
-            }
-          </span>
-        } @else {
-          <span class="pill-value pill-num pick-text" data-pill-value>{{ specCount() }}</span>
-        }
-      </span>
-      <ui-icon class="chevron" name="chevron-down" [size]="14" />
-    </a>
   }
 </div>
 

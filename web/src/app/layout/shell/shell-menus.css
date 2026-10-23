@@ -12,63 +12,7 @@
   --ui-popover-width: 320px;
 }
 
-/* Spec 052 T19: the spec select only, so a German title keeps room beside its chip and star. */
-.spec-popover {
-  --ui-popover-width: 360px;
-}
-
-/* Spec 052 T19: a favourite row is its link and its star side by side; hover and the current mark tint the whole row. */
-.fav-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 32px;
-  column-gap: 4px;
-  align-items: center;
-  border-radius: var(--radius-field);
-}
-
-.picker-sheet .fav-row {
-  grid-template-columns: minmax(0, 1fr) 44px;
-}
-
-.fav-row:has(> a.entry[aria-current]) {
-  background: var(--color-base-300);
-}
-
-.fav-row > a.entry[aria-current] {
-  background: transparent;
-}
-
-@media (hover: hover) {
-  .fav-row:has(> a.entry:hover) {
-    background: var(--color-base-300);
-  }
-
-  .fav-row > a.entry:hover {
-    background: transparent;
-  }
-}
-
-/* The bottom sheet (Mobile): the star is a 44 × 44 target of its own, as tall as the row under a coarse pointer. */
-.picker-sheet .fav-row > [ui-star-toggle] {
-  inline-size: 44px;
-  block-size: 44px;
-}
-
-/* Spec 052 T20: the empty state, how to star a spec. */
-.picker-empty {
-  margin: 0;
-  padding: 8px 12px;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.picker-empty ui-icon {
-  margin-inline-end: 4px;
-  vertical-align: -2px;
-}
-
-/* The pickers' separator (workspace and spec picker); their eyebrow head is in menu-rows.css. */
+/* The workspace picker's separator; its eyebrow head is in menu-rows.css. */
 .picker-sep {
   block-size: 1px;
   margin-block: 4px;
@@ -119,13 +63,6 @@
   font-variant-numeric: tabular-nums;
   line-height: 16px;
   white-space: nowrap;
-}
-
-.entry-id {
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
 }
 
 .picker-footer {

@@ -1,4 +1,4 @@
-import { NgTemplateOutlet } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -11,12 +11,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { SettingsService } from '../../../core/settings.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiIconButton } from '../../../shared/ui/button/icon-button';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { chipIcon } from '../../../shared/ui/chip/chip-icons';
+import { UiLiveRegion } from '../../../shared/ui/live-region/live-region';
 import { UiPopover } from '../../../shared/ui/overlay/popover';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingCompanion, UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
@@ -24,6 +25,7 @@ import { toneOfStage } from '../../../shared/ui/stage-tone';
 import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import type { Tone } from '../../../shared/ui/tone';
 import { UiWsBadge } from '../../../shared/ui/ws-badge/ws-badge';
+import type { IdeaFavoriteView, SpecRowView } from '../shell-data.service';
 import { ShellState } from '../shell-state.service';
 import { type FavoriteGroup, favoriteIdeaLink, FavoritesIndex, favoriteSpecLink } from './favorites-index.service';
 
@@ -45,6 +47,7 @@ import { type FavoriteGroup, favoriteIdeaLink, FavoritesIndex, favoriteSpecLink 
     UiChip,
     UiIcon,
     UiIconButton,
+    UiLiveRegion,
     UiPopover,
     UiRovingCompanion,
     UiRovingItem,
@@ -62,6 +65,8 @@ export class FavoritesSelect {
   protected readonly state = inject(ShellState);
   private readonly settings = inject(SettingsService);
   private readonly injector = inject(Injector);
+  private readonly doc = inject(DOCUMENT);
+  private readonly transloco = inject(TranslocoService);
 
   /** The list is open; the trigger's `aria-expanded` reads it. */
   readonly open = signal(false);
@@ -99,7 +104,10 @@ export class FavoritesSelect {
   private readonly trigger = viewChild.required<string, ElementRef<HTMLButtonElement>>('trigger', { read: ElementRef });
   private readonly popover = viewChild(UiPopover);
   private readonly nav = viewChild<ElementRef<HTMLElement>>('favoritesNav');
+  private readonly announcer = viewChild(UiLiveRegion);
   private openAtPress: boolean | null = null;
+  /** The element the popover or the sheet focused on open: focus follows the mark only while it rests there. */
+  private placed: Element | null = null;
 
   /** The trigger element: the anchor of the list's popover and where focus returns when the list closes. */
   anchor(): HTMLButtonElement {
@@ -127,24 +135,80 @@ export class FavoritesSelect {
     if (!open) this.close();
   }
 
-  /** Spec 069 T14 wires the star; until then a press only stays on the row without following its link. */
-  protected unstar(_group: FavoriteGroup, _kind: 'spec' | 'idea', _id: string, event: MouseEvent): void {
+  /** A spec row's star (T14, ISC-559): unsets the favourite in the row's own workspace, by the spec's folder. */
+  protected unstarSpec(group: FavoriteGroup, spec: SpecRowView, event: MouseEvent): void {
+    this.unstarRow(group.ws, spec.id, spec.id, event, () => this.index.unstar(group.ws, 'specs', spec.slug ?? spec.id));
+  }
+
+  /** An idea row's star, as `unstarSpec`; its star's key is `idea:<slug>`, its name the title. */
+  protected unstarIdea(group: FavoriteGroup, idea: IdeaFavoriteView, event: MouseEvent): void {
+    this.unstarRow(group.ws, `idea:${idea.slug}`, idea.title, event, () => this.index.unstar(group.ws, 'ideas', idea.slug));
+  }
+
+  /**
+   * Unsets the favourite whose star carries `data-star="<star>"` in the group of `ws`, as the spec select's star does
+   * (spec 052 T21, ISC-301): no navigation, the list stays open and the row leaves it, a group without a row drops its
+   * head, and the last row overall leaves the empty state. Focus moves to the star of the row that moves up, else the
+   * row above, else the empty state; the removal is announced. The second click of a double click is ignored.
+   */
+  private unstarRow(ws: string, star: string, name: string, event: MouseEvent, write: () => Promise<boolean>): void {
     event.stopPropagation();
     event.preventDefault();
+    if (event.detail > 1) return;
+    const nav = this.nav()?.nativeElement;
+    if (this.compact() && !this.sheetHeight() && nav) this.sheetHeight.set(nav.getBoundingClientRect().height || null);
+    const stars = this.index
+      .groups()
+      .flatMap((group) => [...group.specs.map((spec) => spec.id), ...group.ideas.map((idea) => `idea:${idea.slug}`)].map((key) => ({ ws: group.ws, key })));
+    const at = stars.findIndex((entry) => entry.ws === ws && entry.key === star);
+    // `at()` because index 0 must not wrap to the last row.
+    const next = at < 0 ? undefined : (stars.at(at + 1) ?? (at > 0 ? stars.at(at - 1) : undefined));
+    void write();
+    this.announcer()?.announce(this.transloco.translate('favorites.removed', { id: name }));
+    afterNextRender(
+      () => {
+        const target = next
+          ? nav?.querySelector(`[data-favorites-group="${next.ws}"] [data-star="${next.key}"]`)
+          : (nav?.querySelector('.picker-empty') ?? this.anchor());
+        if (target instanceof HTMLElement) target.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   private show(): void {
     const trigger = this.anchor();
     // WebKit does not focus a clicked button; the popover and the sheet return focus to whatever had it on open.
     trigger.focus();
-    void this.index.load();
+    const loaded = this.index.load();
     if (this.compact()) {
       this.open.set(true);
       this.freezeSheet();
-      return;
+    } else {
+      this.popover()?.show(trigger);
+      this.open.set(true);
     }
-    this.popover()?.show(trigger);
-    this.open.set(true);
+    // Read after the overlay focused its mark (its own after-render step), then follow once the answers are in.
+    this.placed = null;
+    afterNextRender({ read: () => (this.placed = this.doc.activeElement) }, { injector: this.injector });
+    void loaded.then(() => this.followMark());
+  }
+
+  /**
+   * The other workspaces answer after the list opened (T12, ISC-562): a group that lands above moves the mark
+   * (`data-autofocus`, the open spec or else the first row) to another row; focus follows it while it still rests
+   * where the open put it, so a row the viewer moved to keeps the focus.
+   */
+  private followMark(): void {
+    afterNextRender(
+      {
+        read: () => {
+          const mark = this.nav()?.nativeElement.querySelector<HTMLElement>('[data-autofocus]');
+          if (this.open() && mark && this.placed !== null && this.placed !== mark && this.doc.activeElement === this.placed) mark.focus();
+        },
+      },
+      { injector: this.injector },
+    );
   }
 
   /** Measures the sheet once it has opened; each open starts from its own height. */

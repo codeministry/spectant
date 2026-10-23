@@ -28,18 +28,6 @@ export const web: LaneEntry = {
     minTokens: 50,
     allow: [
       {
-        files: ["layout/shell/favorites-select/favorites-select.css", "layout/shell/shell-menus.css"],
-        why:
-          "transitional (spec 069): the header favourites select takes over the spec select's favourite rows; " +
-          "the old list in shell-menus is removed by a later task of the same spec, and this entry with it",
-      },
-      {
-        files: ["layout/shell/favorites-select/favorites-select.html", "layout/shell/shell-menus.html"],
-        why:
-          "transitional (spec 069): the favourite spec row moves from the spec select to the favourites select; " +
-          "the old list in shell-menus is removed by a later task of the same spec, and this entry with it",
-      },
-      {
         files: ["layout/assistant/assistant-panel.css", "layout/detail-sidebar/detail-sidebar.css"],
         why:
           "four surface declarations on two different selectors (.as-panel, .panel); " +

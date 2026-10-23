@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, viewChild
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
-import { specLink, workspaceLink, workspacePageById } from './areas';
+import { workspacePageById } from './areas';
 import { type AreaEntry, type MenuKind, ShellMenus } from './shell-menus';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
@@ -14,7 +14,7 @@ interface PickTarget {
   readonly fragment?: string;
 }
 
-const CLOSED: Record<MenuKind, boolean> = { workspace: false, page: false, spec: false, area: false, more: false, settings: false };
+const CLOSED: Record<MenuKind, boolean> = { workspace: false, page: false, area: false, more: false, settings: false };
 
 /**
  * A click the anchor itself should handle (new tab, new window, download, a non-primary button): the picker stays
@@ -24,27 +24,26 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
   event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
 /**
- * The header's navigation group (ISC-73): Workspace · Page · Area · Spec (spec 024 T80, ISC-150.2, principal
- * 2026-10-13; Area before Spec since spec 048, ISC-280). The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
+ * The header's navigation group (ISC-73): Workspace · Page · Area (spec 024 T80, ISC-150.2, principal 2026-10-13);
+ * the Spec select left it in spec 069 (ISC-554), the header's favourites select lists the favourites instead. The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
  * select names the open workspace page (Specs on a spec page) and opens the workspace's pages; it stays in the row on
  * every width. The Area select is there only on a spec page and lists the six spec areas; below 1120 px it is an entry
  * of the overflow menu `⋯` (`areaEntry`, rendered by `ShellMenus`). The header's `⋯` and settings buttons open their
  * menus through `toggle` / `press` here, the one owner of the deferred menus.
  *
- * **Pickers.** Real anchors (`href` to the workspace, the open spec, or the workspace's spec list), so middle-click,
+ * **Pickers.** The workspace picker is a real anchor (`href` to the workspace, or `/` without one), so middle-click,
  * cmd/ctrl-click and "copy link" keep working; a plain click or Enter opens the picker instead (`ShellMenus`). They carry
  * `href` rather than `routerLink`, because `RouterLink` navigates on every plain click and ignores `preventDefault`.
  * Until the deferred menus have loaded, a plain click navigates too. For a workspace the server does not know the PAGE
  * select, and for a spec it does not list the Area select, is `aria-disabled` with its reason.
  *
- * **Pills (ISC-140.2).** Every segment carries a label (`[data-pill-label]`: Workspace, Page, Specs or Spec, Area) and its
+ * **Pills (ISC-140.2).** Every segment carries a label (`[data-pill-label]`: Workspace, Page, Area) and its
  * value (`[data-pill-value]`), so no segment is a bare number; the picker segments have no leading icon, the label
- * carries their meaning. Outside a workspace (`/`, `/help`, `/settings`) the spec and area pills are not rendered
+ * carries their meaning. Outside a workspace (`/`, `/help`, `/settings`) the page and area pills are not rendered
  * rather than showing `0`, and the workspace pill reads "All · n"; the page pill is absent there too.
  *
  * Collapse order (design.md § Across viewports): below 1120 px the visible labels go (ISC-140.2 refined: the label
- * stays in the accessible name), then the wordmark (`ShellBrand`, below 640 px); the spec shows its id and short name,
- * the name ellipsizing; numbers and ids never shorten.
+ * stays in the accessible name), then the wordmark (`ShellBrand`, below 640 px); the workspace name ellipsizes, numbers never shorten.
  */
 @Component({
   selector: 'app-shell-nav',
@@ -84,13 +83,13 @@ export class ShellNav {
     return ws === null ? null : this.data.workspaceName(ws);
   });
   protected readonly workspaceCount = computed(() => this.data.workspaceList().length);
-  protected readonly specCount = computed(() => this.data.specRows().length);
-  /** A workspace in the route: the spec and area pills render only then (ISC-140.2). */
+  /** A workspace in the route: the page and area pills render only then (ISC-140.2). */
   protected readonly inWorkspace = computed(() => this.state.ws() !== null);
+  /** The open spec's dashboard row; kept for the spec crumb (spec 069 T22). */
   protected readonly row = this.data.currentRow;
   /**
-   * The open spec's short name (`002` + `web-console`, spec 024 T74): the folder slug without
-   * its `NNN-` prefix, else the title for a row without a slug. The full title stays the pill's tooltip.
+   * The open spec's short name (`002` + `web-console`, spec 024 T74): the folder slug without its `NNN-` prefix, else
+   * the title for a row without a slug; kept for the spec crumb (spec 069 T22).
    */
   protected readonly specName = computed(() => {
     const row = this.row();
@@ -130,14 +129,6 @@ export class ShellNav {
   protected readonly workspaceHref = computed(() => {
     const ws = this.state.ws();
     return this.href({ link: ws === null ? ['/'] : ['/w', ws] });
-  });
-
-  /** The open spec's dashboard, else the workspace's Specs page `/w/:ws/specs` (spec 058, ISC-395); null without a workspace. */
-  protected readonly specHref = computed(() => {
-    const ws = this.state.ws();
-    const id = this.state.specId();
-    if (ws === null) return null;
-    return this.href({ link: id !== null && this.specOpen() ? specLink(ws, id) : workspaceLink(ws, 'specs') });
   });
 
   press(kind: MenuKind): void {

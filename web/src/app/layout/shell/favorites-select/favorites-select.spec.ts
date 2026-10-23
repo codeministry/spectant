@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { Favorites } from '../../../../../../server/src/contracts/spec-routes.contract';
 import de from '../../../../i18n/de.json';
@@ -38,17 +38,32 @@ interface Options {
   readonly tier?: Tier;
   /** No favourite anywhere: the open workspace's sets empty and every other answer empty. */
   readonly none?: boolean;
+  /** The open spec (`/w/harbor/s/<id>`); none by default. */
+  readonly specId?: string;
+  /** The other workspaces answer after a timer, as over the network: after the list has opened. */
+  readonly slow?: boolean;
 }
 
 /** The select with the real `FavoritesIndex` over stubbed answers: lantern, harbor (open) and beacon, in picker order. */
 async function mount(options: Options = {}) {
   const calls: string[] = [];
+  const later = <T>(value: T): Promise<T> =>
+    options.slow ? new Promise((resolve) => setTimeout(() => resolve(value), 20)) : Promise.resolve(value);
+  const written = () => Promise.resolve({ kind: 'ok' as const, body: { specs: [], ideas: [] } });
   const api = {
     favorites: (slug: string): Promise<ApiResult<Favorites>> => {
       calls.push(`favorites ${slug}`);
-      return Promise.resolve(ok(options.none ? { specs: [], ideas: [] } : (FAVORITES[slug] ?? { specs: [], ideas: [] })));
+      return later(ok(options.none ? { specs: [], ideas: [] } : (FAVORITES[slug] ?? { specs: [], ideas: [] })));
     },
-    dashboard: (slug: string): Promise<ApiResult<DashboardBody>> => Promise.resolve(ok(DASHBOARDS[slug] ?? {})),
+    dashboard: (slug: string): Promise<ApiResult<DashboardBody>> => later(ok(DASHBOARDS[slug] ?? {})),
+    deleteFavorite: (slug: string, spec: string) => {
+      calls.push(`DELETE ${slug} spec ${spec}`);
+      return written();
+    },
+    deleteIdeaFavorite: (slug: string, idea: string) => {
+      calls.push(`DELETE ${slug} idea ${idea}`);
+      return written();
+    },
   };
   const ws = signal<string | null>('harbor');
   const openRows = signal(options.none ? [] : [row('002-web-console', 'Web console'), row('009-audit', 'Audit', 'done')]);
@@ -63,6 +78,18 @@ async function mount(options: Options = {}) {
     ),
     favoriteRows: computed(() => (ws() === 'harbor' ? openRows() : [])),
     favoriteIdeas: computed(() => (ws() === 'harbor' ? openIdeas() : [])),
+    isFavorite: (folder: string) => openRows().some((entry) => entry.slug === folder),
+    isIdeaFavorite: (slug: string) => openIdeas().some((idea) => idea.slug === slug),
+    toggleFavorite: (folder: string) => {
+      calls.push(`toggle harbor spec ${folder}`);
+      openRows.update((rows) => rows.filter((entry) => entry.slug !== folder));
+      return Promise.resolve(true);
+    },
+    toggleIdeaFavorite: (slug: string) => {
+      calls.push(`toggle harbor idea ${slug}`);
+      openIdeas.update((ideas) => ideas.filter((idea) => idea.slug !== slug));
+      return Promise.resolve(true);
+    },
   };
   const lang = options.lang ?? 'en';
   TestBed.configureTestingModule({
@@ -77,7 +104,7 @@ async function mount(options: Options = {}) {
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiClient, useValue: api },
       { provide: ShellData, useValue: data },
-      { provide: ShellState, useValue: { ws, specId: signal<string | null>(null), tier: signal<Tier>(options.tier ?? 'wide') } },
+      { provide: ShellState, useValue: { ws, specId: signal<string | null>(options.specId ?? null), tier: signal<Tier>(options.tier ?? 'wide') } },
       { provide: SettingsService, useValue: { settings: signal({ singleKeyShortcuts: true }) } },
     ],
   });
@@ -88,7 +115,7 @@ async function mount(options: Options = {}) {
     for (let i = 0; i < 10; i++) await Promise.resolve();
     await fixture.whenStable();
   };
-  return { root: fixture.nativeElement as HTMLElement, select: fixture.componentInstance, stable, calls };
+  return { root: fixture.nativeElement as HTMLElement, select: fixture.componentInstance, stable, calls, router: TestBed.inject(Router) };
 }
 
 const trigger = (root: Element): HTMLButtonElement => {
@@ -212,7 +239,7 @@ describe('FavoritesSelect list (spec 069, ISC-557)', () => {
     expect(nav.querySelectorAll('[data-favorites-group="lantern"] [data-star][aria-pressed="true"]')).toHaveLength(3);
     expect(nav.querySelectorAll('[data-favorites-group] .picker-sep')).toHaveLength(2);
     // No "Spec overview" link, and no empty state while favourites are listed.
-    expect(nav.textContent).not.toContain(en.shell.spec.overview);
+    expect(nav.querySelector('a[href$="/specs"]')).toBeNull();
     expect(nav.querySelector('.picker-all')).toBeNull();
     expect(nav.querySelector('.picker-empty')).toBeNull();
     expect(calls.filter((call) => call === 'favorites lantern')).toHaveLength(1);
@@ -251,7 +278,116 @@ describe('FavoritesSelect list (spec 069, ISC-557)', () => {
       const nav = root.querySelector('nav[data-picker="favorites"]');
       expect(nav?.querySelector('.picker-empty')?.textContent.trim()).toBe(catalogue.shell.favorites.empty);
       expect(nav?.querySelectorAll('[data-favorites-group]')).toHaveLength(0);
-      expect(nav?.textContent).not.toContain(catalogue.shell.spec.overview);
+      expect(nav?.querySelector('a[href$="/specs"]')).toBeNull();
     });
   }
+});
+
+/** The answers of a `slow` mount are in: past their timer, and rendered. */
+const answered = async (stable: () => Promise<void>): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  await stable();
+};
+
+const rowOf = (root: Element, ws: string, id: string) =>
+  root.querySelector<HTMLAnchorElement>(`[data-favorites-group="${ws}"] a[data-spec="${id}"]`);
+
+describe('FavoritesSelect open spec (spec 069, ISC-562)', () => {
+  for (const slow of [false, true]) {
+    const when = slow ? 'answers after the open' : 'answers at once';
+    it(`${when}: on /w/harbor/s/002, starred, 002 carries aria-current, the check and the focus`, async () => {
+      const { root, stable } = await mount({ specId: '002', slow });
+      trigger(root).click();
+      await stable();
+      if (slow) await answered(stable);
+      const open = rowOf(root, 'harbor', '002');
+      expect(open?.getAttribute('aria-current')).toBe('true');
+      expect(open?.querySelector('.entry-check')).not.toBeNull();
+      expect(open?.hasAttribute('data-autofocus')).toBe(true);
+      expect(document.activeElement).toBe(open);
+      expect(root.querySelectorAll('[aria-current]')).toHaveLength(1);
+      expect(root.querySelectorAll('.entry-check')).toHaveLength(1);
+      expect(root.querySelectorAll('[data-autofocus]')).toHaveLength(1);
+    });
+
+    for (const specId of ['005', '003']) {
+      it(`${when}: on /w/harbor/s/${specId}, no favourite there, no row is current and the first row has the focus`, async () => {
+        const { root, stable } = await mount({ specId, slow });
+        trigger(root).click();
+        await stable();
+        if (slow) await answered(stable);
+        // 003 is a favourite of lantern, not of the open harbor: the same id in another workspace is not current.
+        expect(rowOf(root, 'lantern', '003')).not.toBeNull();
+        expect(root.querySelectorAll('[aria-current]')).toHaveLength(0);
+        expect(root.querySelectorAll('.entry-check')).toHaveLength(0);
+        const first = root.querySelector<HTMLAnchorElement>('nav[data-picker="favorites"] a.picker-entry');
+        expect(first).toBe(rowOf(root, 'lantern', '004'));
+        expect(first?.hasAttribute('data-autofocus')).toBe(true);
+        expect(root.querySelectorAll('[data-autofocus]')).toHaveLength(1);
+        expect(document.activeElement).toBe(first);
+      });
+    }
+  }
+});
+
+const starOf = (root: Element, ws: string, key: string) =>
+  root.querySelector<HTMLButtonElement>(`[data-favorites-group="${ws}"] button[data-star="${key}"]`);
+
+const writes = (calls: readonly string[]) => calls.filter((call) => call.startsWith('DELETE') || call.startsWith('toggle'));
+
+describe('FavoritesSelect row star (spec 069, ISC-559)', () => {
+  it('unsets a favourite of a non-open workspace in place: one DELETE, no navigation, the select stays open', async () => {
+    const { root, select, stable, calls, router } = await mount({ specId: '002' });
+    trigger(root).click();
+    await stable();
+    const url = router.url;
+
+    starOf(root, 'lantern', '004')?.click();
+    await stable();
+    expect(writes(calls)).toEqual(['DELETE lantern spec 004-search']);
+    expect(select.open()).toBe(true);
+    expect(rowOf(root, 'lantern', '004')).toBeNull();
+    expect(rowOf(root, 'harbor', '002')).not.toBeNull();
+    // Focus moves to the star of the row that moved up, and the removal is announced.
+    expect(document.activeElement).toBe(starOf(root, 'lantern', '003'));
+    expect(root.querySelector('[data-favorites-announcer]')?.textContent.trim()).toBe(en.favorites.removed.replace('{{id}}', '004'));
+
+    starOf(root, 'lantern', '003')?.click();
+    await stable();
+    starOf(root, 'lantern', 'idea:fuzzy')?.click();
+    await stable();
+    expect(writes(calls)).toEqual(['DELETE lantern spec 004-search', 'DELETE lantern spec 003-index', 'DELETE lantern idea fuzzy']);
+    // The last favourite of lantern gone: its head goes with it, and focus moves on to harbor's first star.
+    expect(root.querySelector('[data-favorites-group="lantern"]')).toBeNull();
+    expect(root.querySelector('nav[data-picker="favorites"]')?.textContent).not.toContain('Lantern');
+    expect(document.activeElement).toBe(starOf(root, 'harbor', '002'));
+    expect(select.open()).toBe(true);
+    expect(router.url).toBe(url);
+  });
+
+  it('the last favourite overall leaves the empty state while the select stays open', async () => {
+    const { root, select, stable, calls, router } = await mount();
+    trigger(root).click();
+    await stable();
+    const url = router.url;
+    for (let i = 0; i < 6; i++) {
+      root.querySelector<HTMLButtonElement>('nav[data-picker="favorites"] button[data-star]')?.click();
+      await stable();
+    }
+    expect(writes(calls)).toEqual([
+      'DELETE lantern spec 004-search',
+      'DELETE lantern spec 003-index',
+      'DELETE lantern idea fuzzy',
+      'toggle harbor spec 002-web-console',
+      'toggle harbor spec 009-audit',
+      'toggle harbor idea dark-mode',
+    ]);
+    const nav = root.querySelector('nav[data-picker="favorites"]');
+    expect(nav?.querySelectorAll('[data-favorites-group]')).toHaveLength(0);
+    const empty = nav?.querySelector<HTMLElement>('.picker-empty');
+    expect(empty?.textContent.trim()).toBe(en.shell.favorites.empty);
+    expect(document.activeElement).toBe(empty);
+    expect(select.open()).toBe(true);
+    expect(router.url).toBe(url);
+  });
 });

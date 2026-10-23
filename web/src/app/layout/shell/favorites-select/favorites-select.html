@@ -27,7 +27,7 @@
   >
     @let groups = index.groups();
     @if (groups.length === 0) {
-      <p class="picker-empty">
+      <p class="picker-empty" tabindex="-1">
         <ui-icon name="star" aria-hidden="true" [size]="14" />
         {{ 'shell.favorites.empty' | transloco }}
       </p>
@@ -67,7 +67,7 @@
                   [pressed]="true"
                   [label]="'favorites.toggle' | transloco: { id: spec.id, title: spec.title }"
                   [attr.data-star]="spec.id"
-                  (click)="unstar(group, 'spec', spec.id, $event)"
+                  (click)="unstarSpec(group, spec, $event)"
                 ></button>
               </li>
             }
@@ -94,7 +94,7 @@
                   [pressed]="true"
                   [label]="'favorites.toggleIdea' | transloco: { title: idea.title }"
                   [attr.data-star]="'idea:' + idea.slug"
-                  (click)="unstar(group, 'idea', idea.slug, $event)"
+                  (click)="unstarIdea(group, idea, $event)"
                 ></button>
               </li>
             }
@@ -104,6 +104,8 @@
     </ul>
   </nav>
 </ng-template>
+
+<ui-live-region data-favorites-announcer />
 
 @if (compact()) {
   <ui-sheet tier="compact" [label]="'shell.favorites.menu' | transloco" [open]="open()" (openChange)="openChange($event)">
