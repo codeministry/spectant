@@ -2,6 +2,7 @@
 // registered workspace into the status widget's answer: the open specs and those closed at most 24 hours before `now`,
 // archived ones included, grouped by workspace in the caller's order, with the KPIs over exactly the listed specs.
 // Spec 072 (ISC-599): each listed spec carries the dashboard row's next command, null for an archived spec.
+// Spec 072 (ISC-604): `statusKpis` counts exactly the workspaces and rows it is given, so a filtered view counts its rows.
 // The fixture is synthetic: three workspaces, one unreadable, with specs closed 2 h and 30 h before a fixed clock.
 import { describe, expect, test } from 'bun:test';
 
@@ -10,8 +11,8 @@ import type { DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
 import type { ItemState } from '../src/files.ts';
 import * as barrel from '../src/index.ts';
 import type { Stage } from '../src/stage.ts';
-import { STATUS_CLOSED_WINDOW_MS, statusBoard } from '../src/status-board.ts';
-import type { StatusInput, StatusResponse, StatusSpec } from '../src/status-board.ts';
+import { STATUS_CLOSED_WINDOW_MS, statusBoard, statusKpis } from '../src/status-board.ts';
+import type { StatusInput, StatusKpis, StatusResponse, StatusSpec, StatusWorkspace } from '../src/status-board.ts';
 
 const NOW = new Date('2026-03-10T12:00:00Z');
 const H2 = '2026-03-10T10:00:00Z';
@@ -158,5 +159,48 @@ describe('the next command of a listed spec (ISC-599)', () => {
   test('the command comes from the row as it stands, never recomputed', () => {
     const own = statusBoard([{ slug: 'c', pathTail: 'c', readable: true, model: model([row('050', 'plan', null, 0, 2, undefined, '/spec review 050 code')]) }], NOW);
     expect(own.workspaces[0]?.specs[0]?.nextCommand).toBe('/spec review 050 code');
+  });
+});
+
+describe('statusKpis counts exactly the rows it is given (ISC-604)', () => {
+  /** The KPIs summed by hand over the given workspaces, independent of the implementation. */
+  const sums = (ws: readonly StatusWorkspace[]): StatusKpis => {
+    const rows = ws.flatMap((w) => w.specs);
+    return {
+      repos: ws.filter((w) => w.specs.length > 0).length,
+      closed: rows.filter((s) => s.stage === 'done').length,
+      listed: rows.length,
+      claimsClosed: rows.reduce((n, s) => n + s.claims.closed, 0),
+      claimsTotal: rows.reduce((n, s) => n + s.claims.total, 0),
+    };
+  };
+  const ZERO: StatusKpis = { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 };
+
+  test('the barrel exports it; over every workspace it is the board KPIs, unchanged (ISC-583)', () => {
+    expect(barrel.statusKpis).toBe(statusKpis);
+    expect(statusKpis(board.workspaces)).toEqual(board.kpis);
+    expect(board.kpis).toEqual({ repos: 2, closed: 2, listed: 4, claimsClosed: 12, claimsTotal: 18 });
+  });
+
+  test('over a subset of the workspaces it equals the sums over exactly those rows', () => {
+    const harbor = board.workspaces.filter((w) => w.slug === 'harbor');
+    expect(statusKpis(harbor)).toEqual({ repos: 1, closed: 0, listed: 1, claimsClosed: 0, claimsTotal: 3 });
+    const lanternAndGone = board.workspaces.filter((w) => w.slug === 'lantern' || w.slug === 'gone');
+    expect(statusKpis(lanternAndGone)).toEqual({ repos: 1, closed: 2, listed: 3, claimsClosed: 12, claimsTotal: 15 });
+    expect(statusKpis(lanternAndGone)).toEqual(sums(lanternAndGone));
+  });
+
+  test('over workspaces whose specs were narrowed it counts only the remaining rows', () => {
+    const open = board.workspaces.map((w) => ({ ...w, specs: w.specs.filter((s) => s.stage !== 'done') }));
+    expect(statusKpis(open)).toEqual({ repos: 2, closed: 0, listed: 2, claimsClosed: 2, claimsTotal: 8 });
+    expect(statusKpis(open)).toEqual(sums(open));
+    const done = board.workspaces.map((w) => ({ ...w, specs: w.specs.filter((s) => s.stage === 'done') }));
+    expect(statusKpis(done)).toEqual({ repos: 1, closed: 2, listed: 2, claimsClosed: 10, claimsTotal: 10 });
+    expect(statusKpis(done)).toEqual(sums(done));
+  });
+
+  test('an unreadable workspace or an empty selection counts for nothing', () => {
+    expect(statusKpis(board.workspaces.filter((w) => !w.readable))).toEqual(ZERO);
+    expect(statusKpis([])).toEqual(ZERO);
   });
 });

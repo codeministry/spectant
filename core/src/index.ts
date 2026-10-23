@@ -33,8 +33,9 @@
 // actor.ts, spec-ref.ts and types, writes nothing and rides it whole; the plugin CLI appends what it returns.
 // Spec 010's pack.ts (`buildPack`, `capPack`, `PACK_LIMIT`, `PackError`) takes the spec folder's and the constitution's
 // texts from the caller, imports only archive.ts, claims.ts and tasks.ts, reads no file and rides it whole.
-// Spec 071's status-board.ts (`statusBoard`, `STATUS_CLOSED_WINDOW_MS`) takes one dashboard model per workspace and the
-// clock from the caller, imports types only and rides it whole; the server route and the web e2e stub both build on it.
+// Spec 071's status-board.ts (`statusBoard`, `statusKpis`, `STATUS_CLOSED_WINDOW_MS`) takes one dashboard model per
+// workspace and the clock from the caller, imports types only and rides it whole; the server route and the web e2e
+// stub both build on it, and the widget counts its filtered rows with `statusKpis` (spec 072).
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';

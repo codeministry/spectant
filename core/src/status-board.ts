@@ -151,15 +151,21 @@ export function statusBoard(workspaces: readonly StatusInput[], now: Date): Stat
       ? { slug: w.slug, pathTail: w.pathTail, readable: true, error: null, specs: listedSpecs(w.model, at) }
       : { slug: w.slug, pathTail: w.pathTail, readable: false, error: w.error, specs: [] },
   );
-  const listed = board.flatMap((w) => w.specs);
+  return { kpis: statusKpis(board), workspaces: board };
+}
+
+/**
+ * The KPIs over exactly the given workspaces and the specs they carry (ISC-583, ISC-604): the board passes all of its
+ * workspaces, the widget the ones its filter leaves with the rows it shows, so the figures always match the visible
+ * rows. An unreadable workspace carries no specs and counts for nothing.
+ */
+export function statusKpis(workspaces: readonly StatusWorkspace[]): StatusKpis {
+  const listed = workspaces.flatMap((w) => w.specs);
   return {
-    kpis: {
-      repos: board.filter((w) => w.specs.length > 0).length,
-      closed: listed.filter((s) => s.stage === 'done').length,
-      listed: listed.length,
-      claimsClosed: listed.reduce((n, s) => n + s.claims.closed, 0),
-      claimsTotal: listed.reduce((n, s) => n + s.claims.total, 0),
-    },
-    workspaces: board,
+    repos: workspaces.filter((w) => w.specs.length > 0).length,
+    closed: listed.filter((s) => s.stage === 'done').length,
+    listed: listed.length,
+    claimsClosed: listed.reduce((n, s) => n + s.claims.closed, 0),
+    claimsTotal: listed.reduce((n, s) => n + s.claims.total, 0),
   };
 }

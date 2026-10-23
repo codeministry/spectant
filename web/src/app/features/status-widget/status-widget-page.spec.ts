@@ -31,11 +31,12 @@ const spec = (id: string, title: string, over: Partial<Spec> = {}): Spec => ({
   closedAt: null,
   state: 'open',
   archived: false,
+  nextCommand: `/spec implement ${id}`,
   ...over,
 });
 
 const done = (id: string, title: string): Spec =>
-  spec(id, title, { stage: 'done', claims: { closed: 4, total: 4 }, closedAt: '2026-10-23T08:00:00.000Z', state: 'done', archived: true });
+  spec(id, title, { stage: 'done', claims: { closed: 4, total: 4 }, closedAt: '2026-10-23T08:00:00.000Z', state: 'done', archived: true, nextCommand: null });
 
 /** Three workspaces: harbor lists open and closed specs, lantern lists none, beacon cannot be read (T26, T27, T30). */
 const MIXED: StatusResponse = {

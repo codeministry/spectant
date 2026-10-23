@@ -28,7 +28,7 @@
             @if (ws.readable) {
               <ul class="rows">
                 @for (spec of ws.specs; track spec.slug) {
-                  <li class="row" [attr.data-spec]="spec.id"><app-status-widget-row [spec]="spec" [ws]="ws.slug" /></li>
+                  <li class="row" [attr.data-spec]="spec.id"><app-status-widget-row [spec]="spec" [ws]="ws.slug" [pathTail]="ws.pathTail" /></li>
                 }
               </ul>
             } @else {

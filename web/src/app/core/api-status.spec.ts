@@ -34,6 +34,7 @@ describe('ApiClient status (spec 071, T16, ISC-593)', () => {
             closedAt: null,
             state: 'running',
             archived: false,
+            nextCommand: '/spec implement 001',
           },
         ],
       },
