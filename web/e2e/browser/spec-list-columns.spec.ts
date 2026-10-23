@@ -18,8 +18,20 @@
  *                                                                   the rows' columns; one viewport height further
  *                                                                   down it stands right under the app header
  *
+ * Spec 068 · Next up on the dashboard `/w/harbor`, its rows the list's (`app-spec-row`, variant `next`):
+ *
+ *   bun run test:browser -- spec-list-columns -g "next up columns"  ISC-546, T5: at 390, 820 and 1440 px every cell of
+ *                                                                   every row starts at its heading's x (at 390 px,
+ *                                                                   with headings for the first line only, at the
+ *                                                                   first row's cell)
+ *   bun run test:browser -- spec-list-columns -g "next up entry"    ISC-546, T5: no `next-up-entry.*` file is left
+ *   bun run test:browser -- spec-list-columns -g "next up fit"      ISC-547, T14: at 390, 700, 820 and 1440 px in
+ *                                                                   spec-light and spec-dark no page overflow, every
+ *                                                                   title and copy chip inside the Next up card
+ *
  * Threshold: 1 px everywhere.
  */
+import { readdirSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from '../fixtures';
 import { LOCKS_HEADER } from '../stub-api';
@@ -277,3 +289,125 @@ test.describe('spec list at 390', () => {
     }
   });
 });
+
+/*
+ * Spec 068 · Next up on the dashboard `/w/harbor`: the spec list's rows (`app-spec-row`, variant `next`) under its
+ * column headings, the copy chip in a `command` cell of its own. A "show all" fold, if any, is opened.
+ */
+const DASHBOARD = '/w/harbor';
+const NEXT_UP_DIR = new URL('../../src/app/features/dashboard/next-up-list/', import.meta.url);
+const THEMES = ['light', 'dark'] as const;
+
+/** Opens the dashboard with every Next up entry on the page. */
+async function openNextUp(page: Page): Promise<void> {
+  await page.goto(DASHBOARD);
+  await expect(page.locator('app-spec-row[data-next-row]').first()).toBeVisible();
+  const fold = page.locator('app-next-up-list [data-show-all] button').first();
+  if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+}
+
+/** Next up's column head (if shown) and its rows, each with its cells' boxes, in page order. */
+async function nextRowsOf(page: Page): Promise<{ head: Row | undefined; rows: Row[] }> {
+  const all = await page.evaluate(() => {
+    const shown = (el: Element): boolean => el.getClientRects().length > 0;
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    return [...document.querySelectorAll('[data-next-cols] app-spec-table-head, app-spec-row[data-next-row]')].filter(shown).map((row) => ({
+      ...box(row),
+      kind: row.tagName === 'APP-SPEC-TABLE-HEAD' ? ('head' as const) : ('spec' as const),
+      key: row.getAttribute('data-next-entry') ?? '',
+      marked: row.querySelector('[data-next-mark]') !== null,
+      cells: [...row.children]
+        .filter((cell) => cell.hasAttribute('data-cell') && shown(cell))
+        .map((cell) => ({ name: cell.getAttribute('data-cell') ?? '', ...box(cell) })),
+    }));
+  });
+  return { head: all.find((row) => row.kind === 'head'), rows: all.filter((row) => row.kind === 'spec') };
+}
+
+for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+  test.describe(`next up at ${String(width)}`, () => {
+    test.use(atWidth(width));
+
+    test(`next up columns (ISC-546): every cell of every Next up row starts at its heading's x at ${String(width)} px`, async ({ page }) => {
+      await openNextUp(page);
+      const { head, rows } = await nextRowsOf(page);
+      expect(rows.length, 'Next up rows').toBeGreaterThan(1);
+      const [first] = rows;
+      if (!first) return;
+      const names = first.cells.map((cell) => cell.name);
+      expect(names).toEqual(expect.arrayContaining(['id', 'title', 'command']));
+      // From 640 px of list the head shows a heading over every cell of the row's first line; below 848 px the command
+      // chip has a line of its own and no heading, and below 640 px only the first compact line has headings. A cell
+      // without a shown heading is held against the same cell of the first row.
+      const lineEnd = cellOf(first, 'title')?.bottom ?? Number.NaN;
+      const lineOne = first.cells.filter((cell) => cell.top < lineEnd - TOLERANCE).map((cell) => cell.name);
+      if (width !== WIDTHS.phone) expect(head?.cells.map((cell) => cell.name), 'a heading per cell of the first line').toEqual(lineOne);
+      for (const row of rows) {
+        expect(row.cells.map((cell) => cell.name), `${row.key}: the first row's cells`).toEqual(names);
+        for (const cell of row.cells) {
+          const at = (head && cellOf(head, cell.name)) ?? cellOf(first, cell.name);
+          expect(Math.abs(cell.left - (at?.left ?? Number.NaN)), `${row.key} ${cell.name} at ${String(cell.left)} vs ${String(at?.left)}`).toBeLessThanOrEqual(TOLERANCE);
+        }
+      }
+      await expect(page.locator('app-next-up-entry')).toHaveCount(0);
+    });
+  });
+}
+
+test('next up entry gone (ISC-546): no `next-up-entry.*` file is left beside the Next up list', () => {
+  expect(readdirSync(NEXT_UP_DIR).filter((name) => name.startsWith('next-up-entry.'))).toEqual([]);
+});
+
+/** The narrowest window whose Next up list is already in the one-line tier (650 px of list, 640 at least). */
+const NARROWEST_ONE_LINE = 700;
+
+for (const theme of THEMES) {
+  for (const width of [WIDTHS.phone, NARROWEST_ONE_LINE, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`next up fit at ${String(width)} in spec-${theme}`, () => {
+      test.use({ ...atWidth(width), colorScheme: theme });
+
+      test(`next up fit (ISC-547): no page overflow, every Next up title and copy chip inside the card at ${String(width)} px in spec-${theme}`, async ({ page }) => {
+        await openNextUp(page);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+        const fit = await page.evaluate(() => {
+          const box = (el: Element | null) => {
+            const r = el?.getBoundingClientRect();
+            return r ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null;
+          };
+          return {
+            scrollWidth: document.documentElement.scrollWidth,
+            clientWidth: document.documentElement.clientWidth,
+            card: box(document.querySelector('[data-next-card]')),
+            rows: [...document.querySelectorAll('app-spec-row[data-next-row]')].map((row) => ({
+              key: row.getAttribute('data-next-entry') ?? '',
+              title: box(row.querySelector(':scope > [data-cell="title"]')),
+              chip: box(row.querySelector('ui-command-chip')),
+            })),
+          };
+        });
+        expect(fit.scrollWidth, 'page scroll width').toBeLessThanOrEqual(fit.clientWidth);
+        expect(fit.rows.length, 'Next up rows').toBeGreaterThan(1);
+        expect(fit.rows.some((row) => row.chip !== null), 'a row with a copy chip').toBe(true);
+        const card = fit.card;
+        expect(card, 'the Next up card').not.toBeNull();
+        if (!card) return;
+        for (const row of fit.rows) {
+          expect(row.title, `${row.key}: its title cell`).not.toBeNull();
+          // The chip never starves the title (spec 068, T13): the title cell keeps at least 120 px in every tier.
+          expect((row.title?.right ?? 0) - (row.title?.left ?? 0), `${row.key}: title width`).toBeGreaterThanOrEqual(120);
+          for (const [part, b] of [['title', row.title], ['chip', row.chip]] as const) {
+            if (!b) continue;
+            const where = `${row.key} ${part} ${JSON.stringify(b)} in card ${JSON.stringify(card)}`;
+            expect(b.left, where).toBeGreaterThanOrEqual(card.left - TOLERANCE);
+            expect(b.right, where).toBeLessThanOrEqual(card.right + TOLERANCE);
+            expect(b.top, where).toBeGreaterThanOrEqual(card.top - TOLERANCE);
+            expect(b.bottom, where).toBeLessThanOrEqual(card.bottom + TOLERANCE);
+          }
+        }
+      });
+    });
+  }
+}

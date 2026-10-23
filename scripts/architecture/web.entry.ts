@@ -40,21 +40,11 @@ export const web: LaneEntry = {
           "would add a wrapper element around the page content, and the Specs page root takes none (spec 061)",
       },
       {
-        files: ["features/dashboard/next-up-list/next-up-entry.ts", "features/dashboard/next-up-list/next-up-list.ts"],
-        why:
-          "the import prologue of the list and its entry component: the same dependencies, no shared code (spec 061)",
-      },
-      {
-        files: ["features/dashboard/next-up-list/next-up-entry.css", "shared/brief/brief.css"],
-        why:
-          "the mono 'more' toggle's declarations on .more and on app-brief .brief-more; the Brief's styles are " +
-          "unencapsulated, so a partial both import would turn .more into a global rule (spec 061)",
-      },
-      {
-        files: ["features/dashboard/spec-table/idea-row.css", "features/dashboard/spec-table/spec-table.css"],
+        files: ["features/dashboard/spec-table/idea-row.css", "features/dashboard/spec-table/_row-link.css"],
         why:
           "the one-line title link cut by an ellipsis on two different selectors (.link of the idea row, .row-link of " +
-          "the spec row, styled by the list that projects it); no shared rule without a common class, a DOM change",
+          "the spec row, styled by the list that projects it, the spec list's and Next up's since spec 068); no " +
+          "shared rule without a common class, a DOM change",
       },
       {
         files: ["features/dashboard/spec-table/spec-row.css", "features/spec/status/timeline/timeline-tab.css"],

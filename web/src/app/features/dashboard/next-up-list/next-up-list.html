@@ -1,29 +1,23 @@
 <!--
-  A section head over a card of `.next-row`s: the section header, then one unpadded card
-  of next-rows flush with its edges, under hairlines.
+  A section head over one unpadded card: the column headings, then the rows of the spec list (spec 068), flush with
+  the card's edges, under hairlines.
 -->
 <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
-  @if (total() > 0) {
-    <span meta class="count" data-next-count>{{ total() }}</span>
+  @if (entries().length > 0) {
+    <span meta class="count" data-next-count>{{ entries().length }}</span>
   }
 </ui-section-header>
 <ui-card data-next-card [padding]="0">
   @if (entries().length > 0) {
+    <!-- Spec 068 (T2, ISC-546): the spec list's column headings on Next up's grid. They only label the columns for the
+         eye; each row's link names its row, so the box stays out of the accessibility tree, as in the spec list. -->
+    <div class="cols" data-next-cols aria-hidden="true"><app-spec-table-head variant="next" /></div>
+    <!-- Spec 068 (T6, ISC-543): every entry stands in this one list; no "Show all n" fold, no cap. -->
     <ol class="entries" data-next-primary>
       @for (item of entries(); track item.row.id) {
-        <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [guidance]="guidance()" /></li>
+        <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: item }" />
       }
     </ol>
-    @if (more().length > 0) {
-      <ui-disclosure class="fold" data-show-all [(open)]="showAll">
-        <span uiDisclosureSummary>{{ 'nextUp.showAll' | transloco: { count: total() } }}</span>
-        <ol class="entries">
-          @for (item of more(); track item.row.id) {
-            <li><app-next-up-entry [row]="item.row" [entry]="item.entry" [guidance]="guidance()" /></li>
-          }
-        </ol>
-      </ui-disclosure>
-    }
   } @else {
     <!-- The small empty state "Nothing ready to build" with the `clock` icon: icon, 15/24 title and the muted hint in a card. -->
     <div class="empty" data-next-empty>
@@ -41,3 +35,52 @@
     </div>
   }
 </ui-card>
+
+<ng-template #rowTpl let-item>
+  <!-- Spec 068 (T10, ISC-545): the guidance entry's sentence and command, else the row's phrase and next command. -->
+  @let why = item.entry ? (item.entry.reason | guidanceReason) : item.row.nextReason;
+  @let command = item.entry ? item.entry.command : item.row.nextCommand;
+  <li>
+    <!-- Spec 068 (T2, ISC-546): the spec list's row with the Next ring; the title is the row link, stretched over the
+         whole row as in the spec list. No favorite star: its cell stays, empty. -->
+    <app-spec-row
+      variant="next"
+      data-next-row
+      [attr.data-next-entry]="item.row.id"
+      [row]="item.row"
+      [mark]="'next'"
+      [ws]="ws()"
+      [titles]="titles()"
+      [stageLabels]="stageLabels()"
+    >
+      <a
+        class="row-link"
+        data-next-link
+        [id]="'next-rl-' + item.row.id"
+        [routerLink]="[]"
+        [queryParams]="{ sel: 'spec:' + item.row.id }"
+        queryParamsHandling="merge"
+        [attr.aria-labelledby]="'rid-' + item.row.id + ' next-rl-' + item.row.id"
+        [attr.aria-describedby]="why ? 'next-why-' + item.row.id : null"
+        [title]="linkTitle(item.row.title, why)"
+        >{{ item.row.title }}</a
+      >
+      <!-- Spec 068 (T10, ISC-545): the copy chip in the row's last cell, with the name it had in the entry (ISC-354). -->
+      @if (command) {
+        <ui-command-chip
+          cell-command
+          [command]="command"
+          [context]="'orientation.chipContext.nextUp' | transloco: { spec: item.row.id }"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      }
+    </app-spec-row>
+    <!-- The reason, read as the row link's description and never shown as a line; `next-why-` keeps its id apart from
+         the spec list's `why-`. -->
+    @if (why) {
+      <span hidden data-next-reason [id]="'next-why-' + item.row.id" [attr.data-next-guide]="item.entry ? '' : null">{{ why }}</span>
+    }
+  </li>
+</ng-template>

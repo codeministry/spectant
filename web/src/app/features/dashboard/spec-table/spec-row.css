@@ -102,6 +102,16 @@
   z-index: 1;
 }
 
+/* Spec 068 (T1, ISC-546): Next up's command cell, the copy chip at its column's start, above the row link's `::after`;
+   a command longer than the column ends in the chip's ellipsis. */
+.rcmd {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  align-items: center;
+  min-inline-size: 0;
+}
+
 .frac {
   min-inline-size: 5ch;
   color: var(--muted-ink);

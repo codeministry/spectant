@@ -474,12 +474,32 @@ async function readAll(page: Page, steps: StepCounter, targets: readonly Block[]
  * and 10.8 s at 600 px. The annotations carry the Ist: steps, KLM seconds, the trail, the bottom of Next up against the
  * viewport height, and each block's height and top before any scroll.
  */
-const P3_BUDGET: Readonly<Record<number, { steps: number; seconds: number }>> = {
+interface P3Budget {
+  readonly steps: number;
+  readonly seconds: number;
+  /** Screens of scrolling allowed; one when absent. */
+  readonly scrolls?: number;
+}
+
+const P3_BUDGET: Readonly<Record<number, P3Budget>> = {
   // Spec 058 review (2026-10-21): three Waits rows push Next up below the fold at 1440 too; one screen of scrolling is
   // allowed there as at 600 (ISC-401 as refined).
   1440: { steps: 2, seconds: 4.5 },
   600: { steps: 2, seconds: 4.5 },
 };
+
+/**
+ * The working variant's budget where it differs (ISC-472 as refined by spec 068): Next up lists every entry directly,
+ * and at 600 px each row takes three lines, so the dense harbor with four specs in work needs a second screen there.
+ */
+const P3_WORKING_BUDGET: Readonly<Record<number, P3Budget>> = {
+  600: { steps: 3, seconds: 6, scrolls: 2 },
+};
+
+/** The budget of a P3 variant at a width. */
+function p3Budget(variant: P3Variant, width: number): P3Budget {
+  return (variant === 'working' ? P3_WORKING_BUDGET[width] : undefined) ?? P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
+}
 
 test.describe('P3 · step counter', () => {
   test('P3 counter: one click is M + P + B = 2.65 s; a click and one screen make M + P + B + M + K = 4.28 s', () => {
@@ -501,7 +521,7 @@ type P3Variant = 'dense' | 'working';
  * In progress three tiles and "Show all 4", and P3 reads In progress as a block of its own before Next up.
  */
 async function walkP3(page: Page, lang: 'en' | 'de', width: number, variant: P3Variant): Promise<void> {
-  const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
+  const budget = p3Budget(variant, width);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('lang', lang);
   const column = page.locator(`app-workspace-column[data-ws="${DENSE.ws}"] .ws-head a.name[href="/w/${DENSE.ws}"]`);
@@ -547,13 +567,14 @@ async function walkP3(page: Page, lang: 'en' | 'de', width: number, variant: P3V
   );
   expect.soft(steps.count, 'P3 steps').toBeLessThanOrEqual(budget.steps);
   expect.soft(seconds, 'P3 KLM seconds').toBeLessThanOrEqual(budget.seconds);
-  expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(1);
+  expect.soft(steps.sequence.filter((s) => s.kind === 'scroll').length, 'P3 scrolls').toBeLessThanOrEqual(budget.scrolls ?? 1);
   expect(unreadNames, 'every block read').toEqual([]);
 }
 
 for (const lang of ['en', 'de'] as const) {
   for (const width of [1440, 600] as const) {
-    const budget = P3_BUDGET[width] ?? { steps: 0, seconds: 0 };
+    const budget = p3Budget('dense', width);
+    const working = p3Budget('working', width);
     test.describe(`P3 · state of a workspace @${width} in ${lang}`, () => {
       test.use(atWidth(width));
       useDenseSession('p3', lang, width);
@@ -564,12 +585,13 @@ for (const lang of ['en', 'de'] as const) {
     });
 
     // P3 with both lists populated (spec 064, ISC-472): the dense harbor under `X-Spectant-Stub-Locks: working`, so
-    // Waits on you and In progress stand in their row before Next up, and the budget of ISC-401 still holds.
+    // Waits on you and In progress stand in their row before Next up; the budget of ISC-401 holds at 1440, and at
+    // 600 px one more screen is allowed since Next up shows every entry (spec 068, ISC-472 refined).
     test.describe(`P3 · state of a workspace with specs in work @${width} in ${lang}`, () => {
       test.use(atWidth(width));
       useDenseSession('p3w', lang, width, { [LOCKS_HEADER]: 'working' });
 
-      test(`P3 working @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you, In progress and Next up read in ≤ ${budget.steps} steps and ≤ ${budget.seconds} s`, async ({ page }) => {
+      test(`P3 working @${width} in ${lang}: the column, then KPI band, TL;DR, Waits on you, In progress and Next up read in ≤ ${working.steps} steps and ≤ ${working.seconds} s`, async ({ page }) => {
         await walkP3(page, lang, width, 'working');
       });
     });

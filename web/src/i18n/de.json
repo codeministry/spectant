@@ -181,7 +181,8 @@
       "featureLabel": "Feature {{id}}: {{name}}",
       "prio": "Priorität",
       "track": "Track",
-      "meter": "Fortschritt"
+      "meter": "Fortschritt",
+      "command": "Befehl"
     },
     "archived": {
       "one": "{{count}} archivierte Spec",
@@ -231,9 +232,6 @@
   },
   "nextUp": {
     "title": "Als Nächstes",
-    "showAll": "Alle {{count}} anzeigen",
-    "moreName": "Mehr… {{entry}}, Next up",
-    "lessName": "Weniger {{entry}}, Next up",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
     "waitOnFog": {
@@ -2936,9 +2934,7 @@
       }
     },
     "actions": {
-      "label": "Aktionen",
-      "stage": "Stage ändern",
-      "list": "Stages für {{id}}"
+      "label": "Aktionen"
     }
   }
 }

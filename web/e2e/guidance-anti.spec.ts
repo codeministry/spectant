@@ -7,7 +7,8 @@
  * the UI shows is collected with its spec, its reference, its sentence and its place, and compared with the API body
  * the page renders: the dashboard's `guidance` per workspace, the spec page's own slice. Zero entries the API does not
  * deliver, zero sentences other than the catalogue sentence of the API's reason (`guidance-sentence.ts`), and the order
- * exactly the API's (`waits` on the start and in `#waiting`, `next` in Next up). Each surface runs under the default
+ * exactly the API's (`waits` on the start and in `#waiting`, `next` in Next up, whose rows carry their sentence as the
+ * row link's description since spec 068). Each surface runs under the default
  * stub and under `X-Spectant-Stub-Waits: 1` and `7`. The repository half of ISC-243 (loading the guidance and copying a
  * command change no byte, `.git/` included) is `bun run test:readonly -- -t guidance`.
  */
@@ -132,7 +133,7 @@ test.describe('guidance anti', () => {
       await expect(page.locator('app-tile-list'), 'one list area per workspace, none elsewhere').toHaveCount(slugs.length);
       await expect(page.locator('[data-ui="workspace-column"] [data-tile-block="list"] app-tile-list')).toHaveCount(slugs.length);
       // Next up stays off the start: no Next entry the start could show.
-      await expect(page.locator('[data-next-up], app-next-up-entry, [data-guide]')).toHaveCount(0);
+      await expect(page.locator('[data-next-up], app-next-up-list, [data-next-row], [data-guide]')).toHaveCount(0);
       // The rows carry no sentence at all, so none can differ from the catalogue's.
       await expect(page.locator('app-overview-page [data-reason], app-overview-page ui-flat-tile'), 'no guidance sentence on the start').toHaveCount(0);
 
@@ -166,15 +167,24 @@ test.describe('guidance anti', () => {
         const ids = new Set(body.specs.map((s) => s.id));
         const seen = new Set<string>();
         const next = guidance.next.filter((e) => ids.has(e.spec) && !seen.has(e.spec) && (seen.add(e.spec), true));
-        if (next.length > 0) await expect(page.locator('app-next-up-entry').first(), `${ws}: Next up renders`).toBeVisible();
+        // Spec 068 (T11, ISC-545): each entry is a spec-list row; its sentence is the hidden `next-why-<id>` that
+        // describes the row link, never a visible line.
+        const nextRows = page.locator('app-next-up-list app-spec-row[data-next-row]');
+        if (next.length > 0) await expect(nextRows.first(), `${ws}: Next up renders`).toBeVisible();
         const nextFold = page.locator('app-next-up-list [data-show-all] button').first();
         if ((await nextFold.count()) > 0 && (await nextFold.getAttribute('aria-expanded')) !== 'true') await nextFold.click();
-        const shownNext = await page.locator('app-next-up-entry').evaluateAll((els) =>
-          els.map((el) => ({
-            label: el.getAttribute('data-next-entry') ?? '',
-            sentence: (el.querySelector('[data-next-guide] [data-next-sentence]')?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
-            marked: el.querySelector('[data-waits-mark], [data-card-marker]') !== null,
-          })),
+        const shownNext = await nextRows.evaluateAll((els) =>
+          els.map((el) => {
+            const label = el.getAttribute('data-next-entry') ?? '';
+            const why = document.getElementById(`next-why-${label}`);
+            const describedBy = (el.querySelector('a[data-next-link]')?.getAttribute('aria-describedby') ?? '').split(' ');
+            const guided = why !== null && why.hasAttribute('data-next-guide') && why.hasAttribute('hidden') && describedBy.includes(why.id);
+            return {
+              label,
+              sentence: guided ? why.textContent.replace(/\s+/gu, ' ').trim() : '',
+              marked: (el.closest('li') ?? el).querySelector('[data-waits-mark], [data-card-marker]') !== null,
+            };
+          }),
         );
         expect(shownNext, `${ws}: Next up lists the API's next, in order`).toEqual(next.map((e) => ({ ...shownOf(e, 'workspace'), marked: false })));
 

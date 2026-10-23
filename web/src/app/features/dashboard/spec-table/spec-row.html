@@ -84,3 +84,10 @@
     <ng-content select="[ui-star-toggle]" />
   }
 </span>
+<!-- Spec 068 (T1, ISC-546): Next up's last cell, its copy chip (`[cell-command]`), lifted above the link's stretch; the
+     list's rows have no such column, so they render no cell. -->
+@if (variant() === 'next') {
+  <span class="rcmd" data-cell="command">
+    <ng-content select="[cell-command]" />
+  </span>
+}

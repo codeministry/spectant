@@ -63,9 +63,12 @@ const toggleIdeaFavorite = vi.fn<(slug: string) => Promise<boolean>>(() => Promi
 /** What `GET …/specs/:id/tasks` answers (spec 067, T33): none open unless a test serves the golden's open tasks. */
 const EMPTY_TASKS = { ...GOLDEN_TASKS, tasks: [] };
 let tasksBody: unknown = EMPTY_TASKS;
+/** The transition write (path 3); spec 068 (ISC-548) holds the sidebar to never calling it. */
+const transition = vi.fn();
 
 function setup(): void {
   tasksBody = EMPTY_TASKS;
+  transition.mockReset();
   width.set(820);
   dashboard.set(undefined);
   ideas.set([]);
@@ -105,7 +108,7 @@ function setup(): void {
         useValue: {
           activityHash: () => null,
           releaseRun: vi.fn(),
-          transition: vi.fn(),
+          transition,
           taskCheck: vi.fn(),
           tasks: () => Promise.resolve({ kind: 'ok', body: tasksBody, etag: null, notModified: false, hash: 'h0' }),
         },
@@ -297,6 +300,36 @@ describe('DetailSidebar', () => {
     }
   });
 
+  // Spec 068 (T16, ISC-548): stage changes live on the board only; a spec's sidebar offers none and sends none.
+  it('offers a spec no stage change and sends no transition, on the board and the dashboard, with and without an open run (ISC-548)', async () => {
+    const run: ItemStateInfo = {
+      kind: 'spec',
+      id: '025',
+      state: 'running',
+      stage: 'build',
+      run: { run: 'r-1', command: '/spec implement 025', session: 'a:claude:s1', actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false }, since: '2026-10-17T14:02:00Z', elapsedMs: 180_000, openRuns: 1, source: 'run' },
+    };
+    for (const url of ['/w/harbor/board?sel=spec:025', '/w/harbor?sel=spec:025']) {
+      for (const open of [false, true]) {
+        const where = `${url}, ${open ? 'open run' : 'no run'}`;
+        dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', type: 'feature', stage: 'build', ...(open ? { state: run } : {}) }] } });
+        await go(url);
+        const fixture = await render();
+        const host = hostOf(fixture);
+        expect(q(host, 'h2[data-part="title"]')?.textContent, where).toBe('Spec edges');
+        expect(q(host, '[data-release]') !== null, where).toBe(open);
+        // Every action button that is not the release's own (whose dialog sends the release, never a transition).
+        for (const button of qa(host, 'app-sidebar-actions button')) if (button.closest('app-run-release') === null) button.click();
+        await fixture.whenStable();
+        for (const sel of ['[data-stage-change]', '[data-stage-list]', 'ul[ui-stage-targets]']) {
+          expect(host.querySelectorAll(sel), `${where}: ${sel}`).toHaveLength(0);
+        }
+        fixture.destroy();
+      }
+    }
+    expect(transition).not.toHaveBeenCalled();
+  });
+
   describe('keyboard (spec 067, T36, ISC-537)', () => {
     const escape = (target: Element | null) => target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     const settle = async (fixture: { whenStable: () => Promise<unknown> }) => {
@@ -304,48 +337,16 @@ describe('DetailSidebar', () => {
       await new Promise((resolve) => setTimeout(resolve));
     };
 
-    it('closes an open stage list before the sidebar, wherever the focus sits in the panel, and returns focus to its button', async () => {
+    it('closes the sidebar on Escape wherever the focus sits in the panel', async () => {
       await go('/w/harbor?sel=spec:025');
       const fixture = await render();
       const host = hostOf(fixture);
-      q(host, '[data-stage-change]')?.click();
-      await settle(fixture);
-      expect(q(host, '[data-stage-list]')).not.toBeNull();
-      escape(q(host, 'h2[data-part="title"]'));
-      await settle(fixture);
-      expect(q(host, '[data-stage-list]')).toBeNull();
-      expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:025');
-      expect(document.activeElement).toBe(q(host, '[data-stage-change]'));
-      escape(q(host, '[data-stage-change]'));
+      escape(q(host, '[data-close]'));
       await settle(fixture);
       expect(TestBed.inject(Router).url).toBe('/w/harbor');
     });
 
-    it('closes an open stage list before the compact sheet, whose dialog stays open until the next Escape', async () => {
-      width.set(390);
-      await go('/w/harbor?sel=spec:025');
-      const fixture = await render();
-      const host = hostOf(fixture);
-      expect(host.getAttribute('data-presentation')).toBe('sheet');
-      q(host, '[data-stage-change]')?.click();
-      await settle(fixture);
-      for (const target of ['[data-stage-list] [data-move-to]', 'h2[data-part="title"]']) {
-        if (target !== '[data-stage-list] [data-move-to]') {
-          q(host, '[data-stage-change]')?.click();
-          await settle(fixture);
-        }
-        escape(q(host, target));
-        await settle(fixture);
-        expect(q(host, '[data-stage-list]'), target).toBeNull();
-        expect(q(host, 'ui-sheet dialog'), target).not.toBeNull();
-        expect(TestBed.inject(Router).url, target).toBe('/w/harbor?sel=spec:025');
-      }
-      escape(q(host, '[data-stage-change]'));
-      await settle(fixture);
-      expect(TestBed.inject(Router).url).toBe('/w/harbor');
-    });
-
-    it('leaves the sidebar and the stage list open while a dialog (the release question) is open', async () => {
+    it('leaves the sidebar open while a dialog (the release question) is open', async () => {
       const dialog = document.createElement('dialog');
       dialog.setAttribute('open', '');
       document.body.append(dialog);
@@ -353,11 +354,9 @@ describe('DetailSidebar', () => {
         await go('/w/harbor?sel=spec:025');
         const fixture = await render();
         const host = hostOf(fixture);
-        q(host, '[data-stage-change]')?.click();
-        await settle(fixture);
         escape(dialog);
         await settle(fixture);
-        expect(q(host, '[data-stage-list]')).not.toBeNull();
+        expect(q(host, 'h2[data-part="title"]')).not.toBeNull();
         expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:025');
       } finally {
         dialog.remove();
@@ -370,13 +369,12 @@ describe('DetailSidebar', () => {
       const host = hostOf(fixture);
       const title = q(host, 'h2[data-part="title"]');
       expect(document.activeElement).toBe(title);
-      const toggle = q(host, '[data-stage-change]');
-      toggle?.focus();
+      q(host, '[data-close]')?.focus();
       // The refresh after a write: a new dashboard and new favourites, the same ref.
       dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', stage: 'build' }] } });
       favSpecs.set(new Set(['025-spec-edges']));
       await settle(fixture);
-      expect(document.activeElement).toBe(q(host, '[data-stage-change]'));
+      expect(document.activeElement).toBe(q(host, '[data-close]'));
       await go('/w/harbor?sel=spec:024');
       await settle(fixture);
       expect(document.activeElement).toBe(q(host, 'h2[data-part="title"]'));
@@ -575,7 +573,8 @@ describe('DetailSidebar', () => {
       // One progress, the facts' claims metric; the shell's ring is gone.
       expect(host.querySelectorAll('[data-part="progress"]')).toHaveLength(1);
       expect(q(host, 'app-spec-facts [data-part="progress"]')).not.toBeNull();
-      expect(order(host)).toEqual(['title', 'facts', 'parents', 'blockers', 'children', 'spec-facts', 'actions']);
+      // Spec 068 (T15): without an open run the actions hold nothing and stay hidden.
+      expect(order(host)).toEqual(['title', 'facts', 'parents', 'blockers', 'children', 'spec-facts']);
     });
 
     // Spec 067 (T16, T28, T33): the relations compact under the metrics, then the facts list, the actions and the open tasks.
@@ -598,7 +597,6 @@ describe('DetailSidebar', () => {
       const host = hostOf(fixture);
       expect([...(q(host, '.panel')?.children ?? [])].map((el) => el.className.split(' ')[0])).toEqual(['head', 'body', 'foot']);
       expect(order(host)).toEqual(['title', 'run', 'facts', 'parents', 'blockers', 'children', 'spec-facts', 'actions', 'tasks']);
-      expect(q(host, 'app-sidebar-actions [data-stage-change]')).not.toBeNull();
       expect(q(host, 'app-sidebar-actions [data-release]')).not.toBeNull();
       // T23 (ISC-531): the facts' next step is locked by the open run.
       expect(q(host, 'app-spec-facts [data-part="next"] ui-command-chip button')?.getAttribute('aria-disabled')).toBe('true');
