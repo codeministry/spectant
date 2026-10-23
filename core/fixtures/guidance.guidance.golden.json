@@ -46,23 +46,41 @@
           "ref": "ISC-14"
         },
         "phrase": "ISC-14 needs your confirmation"
-      }
-    },
-    {
-      "spec": "005",
-      "priority": "P2",
-      "item": "task",
-      "ref": "T3",
-      "title": "add the staging sdk key to the ci secrets",
-      "command": "/spec implement 005",
-      "since": "2026-03-04T12:00:00Z",
-      "reason": {
-        "key": "waiting.operator",
-        "values": {
-          "ref": "T3"
+      },
+      "folded": [
+        {
+          "spec": "005",
+          "priority": "P2",
+          "item": "task",
+          "ref": "T3",
+          "title": "add the staging sdk key to the ci secrets",
+          "command": "/spec implement 005",
+          "since": "2026-03-04T12:00:00Z",
+          "reason": {
+            "key": "waiting.operator",
+            "values": {
+              "ref": "T3"
+            },
+            "phrase": "T3 is your step"
+          }
         },
-        "phrase": "T3 is your step"
-      }
+        {
+          "spec": "005",
+          "priority": "P2",
+          "item": "question",
+          "ref": "T4",
+          "title": "roll out to every staging tenant or to the first one only?",
+          "command": "/spec implement 005",
+          "since": "2026-03-07T10:00:00Z",
+          "reason": {
+            "key": "waiting.question",
+            "values": {
+              "ref": "T4"
+            },
+            "phrase": "the newest round asks about T4"
+          }
+        }
+      ]
     },
     {
       "spec": "002",
@@ -78,22 +96,6 @@
           "state": "missing"
         },
         "phrase": "the reviewed mark is missing"
-      }
-    },
-    {
-      "spec": "005",
-      "priority": "P2",
-      "item": "question",
-      "ref": "T4",
-      "title": "roll out to every staging tenant or to the first one only?",
-      "command": "/spec implement 005",
-      "since": "2026-03-07T10:00:00Z",
-      "reason": {
-        "key": "waiting.question",
-        "values": {
-          "ref": "T4"
-        },
-        "phrase": "the newest round asks about T4"
       }
     },
     {

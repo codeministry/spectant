@@ -1,5 +1,5 @@
 import type { Priority, SpecWait } from '../../../../../../core/src/files';
-import { holderOf } from '../../../core/model/working';
+import { agentOf } from '../../../core/model/working';
 import { STAGE_ORDER } from '../../../shared/ui/stage-tone';
 import { ALL, FOG, stagesOf } from './stage-filter';
 import { featureOf, type FeatureFields } from './feature-fields';
@@ -41,8 +41,8 @@ export interface SpecTableRow extends Partial<FeatureFields> {
   readonly warnings: number;
   readonly fog: number;
   /**
-   * The session holding a lock on one of the spec's claims (the first in claim order); null without locks. Read through
-   * `holderOf`, the source the "In Arbeit" list (`workingOf`) reads too (spec 064, T2, ISC-466).
+   * The open run's session, else the session holding a lock on one of the spec's claims (the first in claim order); null
+   * without either. Read through `agentOf`, the source the "In Arbeit" list (`workingOf`) reads too (spec 064, T2, ISC-466; spec 070, C5).
    */
   readonly agent: string | null;
   /** What the spec waits on, the row's `waits` (spec 025, T24, ISC-163); null when no open spec edge holds its work. */
@@ -87,7 +87,7 @@ export interface ListQuery {
   readonly sort: SortKey;
   readonly takeable: boolean;
   /**
-   * Spec 064 (T3, ISC-465): only the specs with an agent, the rows `holderOf` gives a lock holder (`?working=1`), the
+   * Spec 064 (T3, ISC-465): only the specs with an agent, the rows `agentOf` gives an agent (`?working=1`), the
    * list "In Arbeit" links to; off by default.
    */
   readonly working: boolean;
@@ -169,7 +169,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         takeable,
         warnings: Array.isArray(row['warnings']) ? row['warnings'].length : 0,
         fog: count(row['fog']),
-        agent: holderOf(row)?.session ?? null,
+        agent: agentOf(row),
         waits: waitsOf(row['waits']),
       },
     ];

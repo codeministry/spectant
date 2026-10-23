@@ -1599,6 +1599,12 @@ everywhere in core), then since, oldest first, an undated entry after every date
 then item kind in the order `spec`, `claim`, `task`, `question`, then ref in natural order (`ISC-2` before `ISC-10`,
 `T2` before `T10`).
 
+Each spec stands in `waits` once (spec 070, ISC-568). After the sort, a spec's first entry is its front entry: it keeps
+its place, its command and its reason, and carries the spec's later entries, in their order, as `folded`; a spec with a
+single waiting entry has no `folded`. The specs keep their order among each other, so no spec and command appear
+twice. The spec page's slice (`guidanceOfSpec`) unfolds them: its `waits` are every waiting entry of its spec, the
+front one first, none carrying `folded`.
+
 The **reason** is a stable key with the values of its placeholders and the English phrase, so the web renders one
 sentence per key from its own catalogs. A spec entry's key points at a Reason template of § The stage table: the
 templates there stay as they are, and the key adds an index, never a second wording. `GUIDANCE_REASONS` lists every
@@ -2101,6 +2107,21 @@ becomes a row warning of kind `locks` while the spec is open: on the row of the 
 claim), else, for an unreadable source or a line that names no claim, on every open row (`ref` is
 `.spectant/activity.jsonl` when it came from there). The text leads with the source and line, e.g.
 `.spectant/activity.jsonl line 1: The line is not JSON; it is skipped.`
+
+**Derived: the dashboard row's open run** (spec 070, ISC-570, ISC-572, `dashboard.ts` `DashboardOpenRun`), from the
+same reading's `openRuns`, `runs` and `steps`. A row carries `run` while an open run names its spec, by number or
+folder name; with several, the newest start wins. `run` is `{run, phase, command, since, session, step?}`: the run id,
+the `/spec` subcommand of its command as `phase` (`plan`, `tasks`, `review`, `implement`, `done` …; an old skill name
+mapped as the item states map it, the code review read as `review`; `null` for a command the plugin has no subcommand
+for), the command in the plugin's form (`/spec review 006 code`), the start's `ts` as `since` and its `session` as
+written, for every subcommand alike. Its age does not matter here: whether the run still counts as running is the
+item state's (`state`). A run of `/spec init` names no spec and lands on no row. On an `implement` run only, `step` is
+the newest run event (`dispatch`, `build`, `patch`, `apply`) or `probe` on the spec at or after the run's start, as
+`{kind, at, task, claim?, session, result?}` (`result` on a probe); a `question` is no step. A line counts for the spec
+by its claim, one of the spec's own, or without a claim by its spec session or spec worktree (ISC-213), whatever its
+session: the hooks write the parent's own session id, not the run's. On a tie in time the probe wins. Without a step
+since the start the run has no `step`. A row without an open run has no `run` field, so a workspace without open runs
+reads byte for byte as before; the golden snapshots are built without lock sources and carry none.
 
 ## The archive rule
 

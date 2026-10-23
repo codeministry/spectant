@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, model } fr
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { GuidanceEntry } from '../../../../../../core/src/files';
+import { waitingEntries } from '../../../core/model/guidance-entry';
 import { UiIcon } from '../../icons/icon';
 import { UiCard } from '../card/card';
 import { UiChip } from '../chip/chip';
@@ -100,8 +101,8 @@ export class UiWaitsBlock {
   protected readonly folded = computed(() => this.entries().slice(TILE_LIMIT));
   /** The entries past the highlighted one and the listed rows of the `stack` form. */
   protected readonly moreCount = computed(() => Math.max(0, this.entries().length - 1 - this.rest().length));
-  /** The spec titles the list's own spec entries carry. */
-  private readonly listed = computed(() => new Map(this.entries().filter((e) => e.item === 'spec').map((e) => [e.spec, e.title])));
+  /** The spec titles the list's own spec entries carry, those folded under a front entry included (spec 070). */
+  private readonly listed = computed(() => new Map(waitingEntries(this.entries()).filter((e) => e.item === 'spec').map((e) => [e.spec, e.title])));
 
   protected readonly key = waitsKey;
   protected specLink(entry: GuidanceEntry): string[] {

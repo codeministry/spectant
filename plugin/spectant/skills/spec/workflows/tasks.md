@@ -27,8 +27,8 @@ Resolve the folder `specs/NNN-slug/` (`NNN` given, else ask). Then:
 CLI run start specs/NNN-slug --session <actor> --command "/spec tasks NNN"
 ```
 
-Keep the run ID it prints. Every exit from this workflow, a stop or an error included, ends with
-`CLI run end <run-id> --outcome ok` (or `--outcome error`).
+Keep the run ID it prints. Every exit from this workflow, a stop, an error or an open question that ends the
+turn included, ends with `CLI run end <run-id> --outcome ok` (or `--outcome error`).
 
 ## Step 1 — Read the frontier
 

@@ -505,7 +505,8 @@ describe('BoardPage "Waits on you" sheet bar (spec 020, T24, ISC-240)', () => {
     const bar = page.querySelector<HTMLElement>('[data-sheet-bar]');
     const link = bar?.querySelector<HTMLAnchorElement>('a[data-waits-link]');
     expect(text(link)).toBe(`Waits on you ${String(dashboard.guidance.waits.length)}`);
-    expect(dashboard.guidance.waits.length).toBe(7);
+    // Spec 070 (ISC-568): one entry per spec, the spec's later items folded under it; the link counts the entries.
+    expect(dashboard.guidance.waits.length).toBe(4);
     expect(link?.getAttribute('href')).toBe('/w/harbor#waiting');
     expect(bar?.querySelector('button.bar-open')?.getAttribute('aria-haspopup')).toBe('dialog');
     expect(bar?.querySelector('button a')).toBeNull();

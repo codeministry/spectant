@@ -2,7 +2,8 @@
  * Spec 020 (next-step guidance), the start `/` against the stub API (T18, ISC-238):
  * `bun run --cwd web e2e -- -g "guidance start"`.
  *
- * With `X-Spectant-Stub-Waits: 0 | 1 | 7` the first workspace column holds 0, 1 or 7 entries in `guidance.waits`. At
+ * With `X-Spectant-Stub-Waits: 0 | 1 | 7` the first workspace column holds 0, 1 or 4 entries in `guidance.waits` (`7`
+ * is harbor, whose seven waiting items core folds into one entry per spec since spec 070, ISC-568). At
  * 1440 × 900 every workspace tile's list area (`app-tile-list`, spec 066, ISC-518) counts what waits and shows at most
  * three rows, the specs in progress first, then the waiting entries in core's order, each linking to its spec with its
  * icon-only copy chip where it has a command, and, past them, "Show all n" with the right n linking to `/w/<ws>` (spec
@@ -121,7 +122,9 @@ async function expectBlock(page: Page, ws: string, waits: readonly Entry[]): Pro
 test.describe('guidance start', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  const COUNTS: Readonly<Record<StubWaitsState, number>> = { '0': 0, '1': 1, '7': 7 };
+  // `7` names harbor's seven waiting items; core folds them into one entry per spec (spec 070, ISC-568): 006, 002, 005
+  // and 004. Four entries still pass the tile's three rows and the dashboard's three tiles, so "Show all n" stays covered.
+  const COUNTS: Readonly<Record<StubWaitsState, number>> = { '0': 0, '1': 1, '7': 4 };
 
   for (const variant of WAITS_STATES) {
     test(`start: ${variant} waiting — the list area per tile, its rows and "Show all n", no Next up, above the fold`, async ({ page, request }) => {
@@ -155,7 +158,8 @@ test.describe('guidance start', () => {
     await page.context().setExtraHTTPHeaders(headers);
     const ws = (await workspacesOf(request, headers))[0]?.slug ?? '';
     const waits = await waitsOf(request, ws, headers);
-    expect(waits.length).toBe(7);
+    expect(waits.length, 'harbor: one entry per waiting spec (spec 070)').toBe(COUNTS['7']);
+    expect(waits.length, 'more entries than the tile has rows, so "Show all n" stands').toBeGreaterThan(ROWS);
 
     await page.goto('/');
     // Spec 066: the tile's "Show all n" leads to `/w/<ws>` without the `#waiting` fragment (a design decision), so the

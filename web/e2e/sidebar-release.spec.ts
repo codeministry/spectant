@@ -33,7 +33,8 @@ const gridRelease = (page: Page): Locator => sidebar(page).locator('[data-sectio
 
 /** Waits until every running transition and animation (the panel sliding in, the rail widening) has finished. */
 async function settle(page: Page): Promise<void> {
-  await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
+  // An endless animation (the pulsing agent dot of "In progress", spec 070) never finishes; only finite ones are waited on.
+  await page.evaluate(() => Promise.allSettled(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished)));
 }
 
 /** Opens `url`, marks the window and counts every document request, `load` event and release POST from then on. */

@@ -95,3 +95,39 @@ describe('ui-working-block (T15, ISC-508)', () => {
     );
   });
 });
+
+// Spec 070 (C5, ISC-571, ISC-572): an entry with an open run names its phase after the id, on an implement run its
+// latest step (a probe reads as testing), and its start as the bare duration in the end column.
+describe('ui-working-block runs (spec 070, ISC-571)', () => {
+  const run = (phase: string | null, step: string | null): WorkingEntry => ({
+    id: '005',
+    title: 'Probe agents',
+    session: 'a:claude:sess-52',
+    since: '2026-03-08T14:40:00Z',
+    run: {
+      phase,
+      command: '/spec implement 005',
+      since: '2026-03-08T14:40:00Z',
+      session: 'a:claude:sess-52',
+      step: step === null ? null : { kind: step, task: 'T5', at: '2026-03-08T14:56:00Z' },
+    },
+  });
+
+  it('shows the phase, the testing step and the start; a held claim alone shows no phase', async () => {
+    const host = await render([run('implement', 'probe'), run('review', null), entry('002', 'Gate reviewed mark', 'a:claude:spec-002/T3')]);
+    const tiles = host.querySelectorAll('ui-flat-tile');
+    expect(text(tiles.item(0).querySelector('[data-phase]'))).toBe('implement · testing');
+    expect(tiles.item(0).getAttribute('data-step')).toBe('probe');
+    expect(tiles.item(0).querySelector('[data-since] time')?.getAttribute('datetime')).toBe('2026-03-08T14:40:00.000Z');
+    expect(text(tiles.item(1).querySelector('[data-phase]'))).toBe('review');
+    expect(tiles.item(2).querySelector('[data-phase]')).toBeNull();
+    expect(tiles.item(2).querySelector('[data-since]')).toBeNull();
+  });
+
+  it('reads the phase and the step in German, and a phase without a word as its command', async () => {
+    const host = await render([run('implement', 'probe'), run(null, null)], 'de');
+    const tiles = host.querySelectorAll('ui-flat-tile');
+    expect(text(tiles.item(0).querySelector('[data-phase]'))).toBe('Umsetzung · Testen');
+    expect(text(tiles.item(1).querySelector('[data-phase]'))).toBe('/spec implement 005');
+  });
+});

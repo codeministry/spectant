@@ -232,10 +232,19 @@ from its files and its log (`runVariant` in `stub-api.ts`); every other workspac
 with `X-Spectant-Stub-Run`:
 
 - **none**: the run's `run-start` line is dropped; 003 reads `open` with the chip `/spec tasks 003`.
-- **running** (absent): the log as it is, every body beacon's golden; 003 reads `running` since 14:52 by
+- **running** (absent): the log as it is, every body but the dashboard (see below) beacon's golden; 003 reads `running` since 14:52 by
   `a:claude:sess-32`, and the story `uptime-badges` runs `/spec new uptime-badges`.
 - **ended**: the run's `run-end` with outcome `ok` is appended and 003 gets the `tasks.md` the run wrote (in memory);
   003 reads the stage its files then give, `review`, open with `/spec review 003`.
+- **phases** (spec 070, ISC-571): `running` plus the two lines of `STUB_PHASES`: a `/spec done 009` run by
+  `a:claude:sess-91` since 14:55 (009 leaves "Waits on you") and a red probe of 005's T5 after its `implement` run, so
+  005's latest step reads as testing.
+
+Under every one of these variants beacon's dashboard rows are built over the log's locks, as the server's
+`loadDashboard` builds them (`stub-api.test.ts` pins the `running` body to it): each row carries its held claims in
+`taken` and its open run in `run`, so "In progress" lists 006 (`review`), 005 (`implement`, which also holds ISC-15
+and ISC-16) and 003 (`tasks`), plus 009 (`done`) under `phases` (`web/e2e/run-state-progress.spec.ts`). The pulsing
+agent dot of those tiles is an endless animation: wait on finite animations only.
 
 Switch the header between two polls to step a card through a run within one refresh tick. The header is a 400 under
 any other lock fixture, and `runs` is a 400 beside the worktree, edge or midnight overlays. Reason: the state is core's
@@ -298,7 +307,9 @@ entries the first workspace column of the start holds with `X-Spectant-Stub-Wait
 
 - **0**: lantern alone, its golden as it is (no waiting entry; Next up still has two).
 - **1**: beacon, rebuilt by core without its folder `009-timezone-labels`, then lantern; only `/spec review 004` waits.
-- **7**: harbor, then lantern, the goldens as they are; the first column shows the top entry, four more and "+2 more".
+- **7**: harbor, then lantern, the goldens as they are. Harbor's seven waiting items are four entries, one per spec
+  (spec 070, ISC-568: 006, 002 with two folded, 005 with one folded, 004), so the first tile on `/` shows three rows
+  and "Show all 4", and harbor's `#waiting` three tiles and the fold "Show all 4" with one more.
 
 Absent, the workspaces are the default list. The header is a 400 for any other value and beside `X-Spectant-Stub-Locks:
 runs`, the worktree, edge or midnight overlays. Reason: every body is core's output over a real fixture tree, never
