@@ -33,7 +33,7 @@ const ROW_NAME = 'Favorite: 003 Read the config through one loader in the CLI, t
 const MARKER = '__favoritesStarNoReload';
 
 const picker = (page: Page): Locator => page.locator('nav[data-picker="favorites"]');
-const headStar = (page: Page): Locator => page.locator('[data-head-actions] button[ui-star-toggle]');
+const headStar = (page: Page): Locator => page.locator('[data-head-chips] button[ui-star-toggle]');
 const rowStar = (page: Page, id: string): Locator => page.locator(`app-spec-row:has([data-spec-row="${id}"]) button[ui-star-toggle]`);
 
 async function openSelect(page: Page): Promise<Locator> {
