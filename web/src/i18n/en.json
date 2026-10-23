@@ -776,6 +776,9 @@
       "notes": "Notes"
     },
     "tabBar": "{{area}} tabs",
+    "favorites": {
+      "trigger": "Favorites"
+    },
     "palette": {
       "pending": "The command palette comes with a later task",
       "trigger": "Jump to spec, workspace, command",

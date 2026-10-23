@@ -1,0 +1,11 @@
+<button
+  #trigger
+  ui-icon-button
+  class="trigger"
+  data-control="favorites"
+  icon="star"
+  aria-haspopup="dialog"
+  [label]="'shell.favorites.trigger' | transloco"
+  [attr.aria-expanded]="open()"
+  (click)="toggle()"
+></button>

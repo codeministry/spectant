@@ -776,6 +776,9 @@
       "notes": "Notizen"
     },
     "tabBar": "Tabs: {{area}}",
+    "favorites": {
+      "trigger": "Favoriten"
+    },
     "palette": {
       "pending": "Die Befehlspalette kommt mit einem späteren Task",
       "trigger": "Zu Spec, Workspace oder Befehl springen",
