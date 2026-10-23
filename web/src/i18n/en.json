@@ -2889,5 +2889,56 @@
     "added": "{{id}} added to favorites",
     "removed": "{{id}} removed from favorites",
     "failed": "Could not save the favorite."
+  },
+  "detailSidebar": {
+    "specFacts": {
+      "claims": "claims closed",
+      "tasks": "tasks done",
+      "warnings": {
+        "one": "warning",
+        "other": "warnings"
+      },
+      "nextFor": "next step for {{id}}",
+      "feature": "Feature",
+      "milestone": "Milestone",
+      "agent": "Agent",
+      "changed": "Changed"
+    },
+    "ideaFacts": {
+      "state": "State",
+      "priority": "Priority",
+      "type": "Type",
+      "feature": "Feature",
+      "milestone": "Milestone",
+      "nextFor": "next step for {{id}}"
+    },
+    "planningFacts": {
+      "why": "Why",
+      "milestone": "Milestone",
+      "specs": "Specs",
+      "specsPerStage": "Specs per stage",
+      "target": "Target date",
+      "description": "Description",
+      "features": "Features",
+      "kind": "Kind",
+      "state": "State",
+      "probe": "Probe",
+      "verification": "Verification",
+      "lockHolder": "Held by"
+    },
+    "tasks": {
+      "open": "Open tasks",
+      "anchored": "Anchored tasks",
+      "runLocked": "Ticks locked while a run is open · {{session}}",
+      "more": {
+        "one": "+{{count}} more",
+        "other": "+{{count}} more"
+      }
+    },
+    "actions": {
+      "label": "Actions",
+      "stage": "Change stage",
+      "list": "Stages for {{id}}"
+    }
   }
 }

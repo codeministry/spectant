@@ -84,13 +84,20 @@ function highlightMs(doc: Document): number {
  * goes to the toast; the host carries `data-icon-only`. The square is `--chip-icon-size`, 32 px by default
  * (medium and compact); a parent sets the token to 24px at the wide tier. Without it every user stays as it was.
  *
+ * `size="lg"` (spec 067, T22, ISC-531): the chip is 44 px high and its copy (or lock) button a real 44 × 44 box with a
+ * 16 px glyph, for the compact detail sheet's next-step row, where the target must be 44 px as measured, not only as the
+ * coarse-pointer `::before` of `_hit-area.css` (which leaves `getBoundingClientRect` alone). The host carries
+ * `data-size="lg"`. `size="md"` (spec 067, T36, ISC-537): the same real box at 32 px for the detail sidebar above compact,
+ * 44 px under a coarse pointer; the host carries `data-size="md"`. The default keeps the 28 px chip and its 26 px
+ * button everywhere else.
+ *
  * TODO(T23): `copyLabel`, `copiedLabel` and `manualHint` come from Transloco; the defaults are English fallbacks.
  * TODO(T24): swap the plain button to `ui-icon-button`; the focus ring and the coarse-pointer hit area come with it.
  */
 @Component({
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-icon-only]': 'iconOnly() ? "" : null' },
+  host: { '[attr.data-icon-only]': 'iconOnly() ? "" : null', '[attr.data-size]': 'size() === "default" ? null : size()' },
   imports: [UiIcon, UiLiveRegion],
   styleUrl: './command-chip.css',
   templateUrl: './command-chip.html',
@@ -113,6 +120,10 @@ export class UiCommandChip {
   readonly context = input<string | null>(null);
   /** Only the copy icon, the command in the name and the tooltip (spec 066, ISC-518); see the class comment. */
   readonly iconOnly = input(false, { transform: booleanAttribute });
+  /** `lg` (spec 067, T22): a 44 px chip whose copy button is a real 44 × 44 box; `md` (T36) 32 px; see the class comment. */
+  readonly size = input<'default' | 'md' | 'lg'>('default');
+  /** The copy, check and lock glyph: 16 px in the `lg` chip, 14 px otherwise. */
+  protected readonly iconSize = computed(() => (this.size() === 'lg' ? 16 : 14));
   readonly copied = output<string>();
   /** The run that holds the item (spec 040, ISC-225.1): the chip is locked while it is set. */
   readonly lockedBy = input<ItemRun | null>(null);

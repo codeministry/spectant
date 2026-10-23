@@ -1,0 +1,50 @@
+@if (facts(); as f) {
+  <dl class="facts" data-part="idea-facts">
+    <div class="fact" data-fact="state">
+      <dt>{{ 'detailSidebar.ideaFacts.state' | transloco }}</dt>
+      <dd><ui-state-chip [state]="f.state" family="item" /></dd>
+    </div>
+    <div class="fact" data-fact="priority">
+      <dt>{{ 'detailSidebar.ideaFacts.priority' | transloco }}</dt>
+      <dd><ui-priority [value]="f.priority" /></dd>
+    </div>
+    @if (f.type; as type) {
+      <div class="fact" data-fact="type">
+        <dt>{{ 'detailSidebar.ideaFacts.type' | transloco }}</dt>
+        <dd><ui-type-glyph [type]="type" [size]="14" [decorative]="true" />{{ 'types.' + type | transloco }}</dd>
+      </div>
+    }
+    @if (feature(); as feat) {
+      <div class="fact" data-fact="feature">
+        <dt>{{ 'detailSidebar.ideaFacts.feature' | transloco }}</dt>
+        <dd><span class="mono">{{ feat.id }}</span> · {{ feat.title }}</dd>
+      </div>
+    }
+    @if (milestone(); as ms) {
+      <div class="fact" data-fact="milestone">
+        <dt>{{ 'detailSidebar.ideaFacts.milestone' | transloco }}</dt>
+        <dd>{{ ms.title }}</dd>
+      </div>
+    }
+  </dl>
+  @if (f.excerpt; as excerpt) {
+    <p class="excerpt" data-part="excerpt" [title]="excerpt">{{ excerpt }}</p>
+  }
+  @if (next(); as step) {
+    <!-- ISC-531: the story's next step from its served item state, locked while a run is open on it. -->
+    <div class="next" data-part="next">
+      <ui-command-chip
+        [command]="step.command"
+        [size]="large() ? 'lg' : 'md'"
+        [lockedBy]="step.run"
+        [context]="'detailSidebar.ideaFacts.nextFor' | transloco: { id: relation().id }"
+        [copyLabel]="'common.copyCommand' | transloco"
+        [copiedLabel]="'common.copied' | transloco: { command: step.command }"
+        [manualHint]="'common.copyFallback' | transloco"
+      />
+      @if (step.reason) {
+        <p class="reason" data-part="reason">{{ step.reason }}</p>
+      }
+    </div>
+  }
+}

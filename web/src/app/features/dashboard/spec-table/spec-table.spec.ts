@@ -1407,7 +1407,7 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
   });
 
   // Spec 064 (T47, T48, ISC-488, ISC-490): spec and idea rows are one grid. Each cell of either row names its column,
-  // and both components carry the same compiled grid: the wide template, the narrowing below 880 px, the fixed compact
+  // and both components carry the same compiled grid: the wide template, the narrowing below 848 px, the fixed compact
   // form below 640 px and every cell's area. The layout itself is measured by the browser probe (spec-list-columns).
   it('lays spec and idea rows on the same grid: the same ten cells, templates and areas in every tier (T47, T48)', async () => {
     const { host } = await renderIdeas();
@@ -1425,7 +1425,7 @@ describe('idea rows in the spec list (spec 064, T41, T49; ISC-479, ISC-491)', ()
     expect(grid).toEqual(
       expect.arrayContaining([
         ':host | grid-template-columns: 72px minmax(0, 1fr) 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px',
-        '@container specs (width < 880px) | :host | grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
+        '@container specs (width < 848px) | :host | grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px',
         '@container specs (width < 640px) | :host | grid-template: "id title title title title star" 24px ". mark prio phase meter meter" 24px / 44px 24px 44px 104px minmax(0, 1fr) 32px',
       ]),
     );

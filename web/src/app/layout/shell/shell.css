@@ -72,6 +72,14 @@
   :host([data-rail-collapsed]) .shell-rail {
     inset-block-start: 96px;
   }
+
+  /*
+   * Spec 067 (ISC-524): while the rail holds the docked detail sidebar (from `DOCK_MIN`, 1280) its column is `--detail`
+   * wide; the spec rail keeps 352. The transition above eases the step, and `--dur-sheet` is 0 under reduced motion.
+   */
+  :host([data-detail-docked]) .shell-body {
+    grid-template-columns: minmax(0, 1fr) var(--detail);
+  }
 }
 
 /* No workspace open (the overview `/`, settings): no rail column, main takes the full width. */

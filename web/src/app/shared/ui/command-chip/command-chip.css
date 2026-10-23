@@ -87,3 +87,55 @@ code {
   block-size: calc(var(--chip-icon-size, 32px) - 2px);
   min-block-size: 0;
 }
+
+/*
+ * Size md (spec 067, T36, ISC-537): the detail sidebar's chip above compact, a 32 px chip whose copy button is a real
+ * 32 × 32 box over the chip's end border, as lg below does; under a coarse pointer it grows to lg's 44 px.
+ */
+:host([data-size='md']) .chip {
+  block-size: 32px;
+}
+
+:host([data-size='md']) .copy {
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  min-block-size: 32px;
+  margin-block: -1px;
+  margin-inline-end: -1px;
+}
+
+@media (pointer: coarse) {
+  :host([data-size='md']) .chip {
+    block-size: 44px;
+  }
+
+  :host([data-size='md']) .copy {
+    inline-size: 44px;
+    block-size: 44px;
+    min-block-size: 44px;
+  }
+}
+
+/*
+ * Size lg (spec 067, T22, ISC-531): a 44 px chip for the compact detail sheet, whose copy button is a real 44 × 44 box,
+ * since the coarse-pointer `::before` above does not change what `getBoundingClientRect` measures. The button runs
+ * over the chip's 1 px border at the end (negative margins), so the row stays 44 px and the button keeps its full box.
+ * Last in the file, so it also wins over the icon-only square when both are set.
+ */
+:host([data-size='lg']) .chip {
+  block-size: 44px;
+}
+
+:host([data-size='lg']) .copy {
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+  min-block-size: 44px;
+  margin-block: -1px;
+  margin-inline-end: -1px;
+}
+
+:host([data-size='lg'][data-icon-only]) .chip {
+  inline-size: 44px;
+}

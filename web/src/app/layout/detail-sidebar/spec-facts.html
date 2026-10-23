@@ -1,0 +1,94 @@
+@let r = row();
+<div class="sf-meta" data-part="meta">
+  <ui-chip data-part="stage" [tone]="stageTone()">{{ 'stages.' + r.stage | transloco }}</ui-chip>
+  <ui-priority data-part="priority" [value]="r.priority" />
+  @if (r.type; as type) {
+    <ui-chip data-part="spec-type" variant="plain">
+      <ui-type-glyph [type]="type" [size]="14" [decorative]="true" />{{ 'types.' + type | transloco }}
+    </ui-chip>
+  }
+</div>
+
+@if (goal(); as text) {
+  <p class="sf-goal" data-part="goal">{{ text }}</p>
+}
+
+@if (r.nextCommand; as command) {
+  <!-- ISC-531: the next step, its command to copy and the one phrase why; locked while a run is open on the spec. -->
+  <div class="sf-next" data-part="next">
+    <ui-command-chip
+      [command]="command"
+      [size]="large() ? 'lg' : 'md'"
+      [lockedBy]="lockedBy()"
+      [context]="'detailSidebar.specFacts.nextFor' | transloco: { id: r.id }"
+      [copyLabel]="'common.copyCommand' | transloco"
+      [copiedLabel]="'common.copied' | transloco: { command }"
+      [manualHint]="'common.copyFallback' | transloco"
+    />
+    @if (r.nextReason) {
+      <p class="sf-reason" data-part="reason">{{ r.nextReason }}</p>
+    }
+  </div>
+}
+
+@if (claims() || tasks() || warnings() > 0) {
+  <div class="sf-metrics" data-part="metrics">
+    @if (claims(); as c) {
+      <div class="sf-metric" data-metric="claims" data-part="progress">
+        <ui-ring [value]="c.percent" [size]="40" [stroke]="6" />
+        <span>
+          <b class="sf-num">{{ c.closed }}<small>/{{ c.total }}</small></b>
+          <span class="sf-label">{{ 'detailSidebar.specFacts.claims' | transloco }}</span>
+        </span>
+      </div>
+    }
+    @if (tasks(); as t) {
+      <div class="sf-metric" data-metric="tasks">
+        <span>
+          <b class="sf-num">{{ t.landed }}<small>/{{ t.total }}</small></b>
+          <span class="sf-label">{{ 'detailSidebar.specFacts.tasks' | transloco }}</span>
+        </span>
+      </div>
+    }
+    @if (warnings() > 0) {
+      <a class="sf-metric sf-warn" data-metric="warnings" [routerLink]="statusLink()">
+        <span>
+          <b class="sf-num">{{ warnings() }}</b>
+          <span class="sf-label">{{ (warnings() === 1 ? 'detailSidebar.specFacts.warnings.one' : 'detailSidebar.specFacts.warnings.other') | transloco }}</span>
+        </span>
+      </a>
+    }
+  </div>
+}
+
+<!-- Spec 067 (T16, ISC-528): the host projects the relations here, right after the overview block, before the facts. -->
+<ng-content />
+
+@if (anyFact()) {
+  <dl class="facts" data-part="spec-facts">
+    @if (feature(); as feat) {
+      <div class="fact" data-fact="feature">
+        <dt>{{ 'detailSidebar.specFacts.feature' | transloco }}</dt>
+        <dd>{{ feat }}</dd>
+      </div>
+    }
+    @if (r.milestone; as ms) {
+      <div class="fact" data-fact="milestone">
+        <dt>{{ 'detailSidebar.specFacts.milestone' | transloco }}</dt>
+        <dd>{{ ms }}</dd>
+      </div>
+    }
+    @if (holder(); as actor) {
+      <div class="fact" data-fact="agent">
+        <dt>{{ 'detailSidebar.specFacts.agent' | transloco }}</dt>
+        <dd><ui-actor-chip [actor]="actor" [active]="true" /></dd>
+      </div>
+    }
+    @if (changed(); as change) {
+      <div class="fact" data-fact="changed">
+        <dt>{{ 'detailSidebar.specFacts.changed' | transloco }}</dt>
+        <dd><ui-time class="mono" [form]="change.form" [value]="change.value" /></dd>
+      </div>
+    }
+  </dl>
+}

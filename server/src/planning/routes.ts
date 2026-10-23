@@ -16,6 +16,9 @@
  * Spec 040 (ISC-224): every story of it (`ideas`, and those under a feature or a milestone) carries its `idea` item as
  * `IdeaRef.state`, core's `ideaStateOf` over the reading's open runs at the request clock and the `runAbortMinutes`
  * abort age, attached by `withIdeaStates`: the dashboard model lists no stories, so the board reads them from here.
+ * Spec 067 (ISC-530): each relation entry carries its overview facts (`Relation.facts`), and an open claim's facts name
+ * the session holding its lock (`ClaimFacts.lockHolder`) from the reading's lock source, passed as `claimLocks` so the
+ * locks reach the claim facts alone and every holder's `assignee` stays the events'. Still no route of their own.
  *
  * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, with the same guard
  * order. It reads the story folder and the activity log alone, never the whole workspace: a story page needs no spec
@@ -96,6 +99,8 @@ export function planningRoutes(ctx: WorkspaceContext): {
       specEdges: resolveEdges({ specs, archived, constitution }, reading.mergeState).edges,
       backlog: backlogBytes === null ? null : backlogBytes.toString("utf8"),
       backlogHash: rawSha256(backlogBytes ?? ""),
+      // Spec 067 (ISC-530): the open claim locks for the claim facts' lock holder alone, never the board's assignee.
+      ...(reading.input.locks === undefined ? {} : { claimLocks: reading.input.locks.locks }),
     });
     // Each story's item from its open runs at this request's clock (spec 040, ISC-224).
     const at = stateClock();

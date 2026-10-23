@@ -5,7 +5,6 @@ import { TranslocoService } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../core/src/files';
 import type { PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { isWorkflowStage } from '../../../../../core/src/stage';
-import { FIXED_GATES } from '../../../../../core/src/workflow';
 import type { IdeaAllocated } from '../../../../../server/src/contracts/spec-routes.contract';
 import type { RunLocked } from '../../../../../server/src/contracts/writes.contract';
 import { ApiClient } from '../../core/api.service';
@@ -14,21 +13,10 @@ import type { BoardRefusal } from '../../shared/ui/refusal-notice/refusal';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { BOARD_DRAG_CONFIG } from '../../shared/ui/drag-config';
 import type { BoardCard } from '../../core/model/board-types';
+import { type DropHint, dropHint } from '../../core/model/drop-hint';
 
-/** What a column (stub, strip segment, tray slot) says while a card is dragged over the board. */
-export type DropHint = 'current' | 'allowed' | 'gate' | 'not-next';
-
-/**
- * The hint of one column for the dragged card. `allowed` is a column core's transition table admits (`card.targets`,
- * `dropTargetsOf`); any other column is `gate` when it is one of core's `FIXED_GATES` (the card has not passed it) and
- * `not-next` otherwise. Only hints: core decides every drop, so a drop on a `gate` or `not-next` column is still sent
- * and comes back refused.
- */
-export function dropHint(card: Pick<BoardCard, 'stage' | 'targets'>, stage: WorkflowStage): DropHint {
-  if (stage === card.stage) return 'current';
-  if (card.targets.includes(stage)) return 'allowed';
-  return FIXED_GATES.includes(stage) ? 'gate' : 'not-next';
-}
+/** `DropHint` and `dropHint` live in `core/model/drop-hint.ts` since spec 067 (T27); the board's specs read them here. */
+export { type DropHint, dropHint } from '../../core/model/drop-hint';
 
 /** An accepted move the planning tree has not caught up with yet: the slug, both stages and both spec.md hashes. */
 export interface BoardMove {

@@ -2889,5 +2889,56 @@
     "added": "{{id}} zu den Favoriten hinzugefügt",
     "removed": "{{id}} aus den Favoriten entfernt",
     "failed": "Der Favorit konnte nicht gespeichert werden."
+  },
+  "detailSidebar": {
+    "specFacts": {
+      "claims": "Claims geschlossen",
+      "tasks": "Tasks erledigt",
+      "warnings": {
+        "one": "Warnung",
+        "other": "Warnungen"
+      },
+      "nextFor": "nächster Schritt für {{id}}",
+      "feature": "Feature",
+      "milestone": "Meilenstein",
+      "agent": "Agent",
+      "changed": "Geändert"
+    },
+    "ideaFacts": {
+      "state": "Zustand",
+      "priority": "Priorität",
+      "type": "Typ",
+      "feature": "Feature",
+      "milestone": "Meilenstein",
+      "nextFor": "nächster Schritt für {{id}}"
+    },
+    "planningFacts": {
+      "why": "Warum",
+      "milestone": "Meilenstein",
+      "specs": "Specs",
+      "specsPerStage": "Specs je Stage",
+      "target": "Zieldatum",
+      "description": "Beschreibung",
+      "features": "Features",
+      "kind": "Art",
+      "state": "Zustand",
+      "probe": "Probe",
+      "verification": "Verifikation",
+      "lockHolder": "Gehalten von"
+    },
+    "tasks": {
+      "open": "Offene Tasks",
+      "anchored": "Verankerte Tasks",
+      "runLocked": "Haken gesperrt, solange ein Run offen ist · {{session}}",
+      "more": {
+        "one": "+{{count}} weitere",
+        "other": "+{{count}} weitere"
+      }
+    },
+    "actions": {
+      "label": "Aktionen",
+      "stage": "Stage ändern",
+      "list": "Stages für {{id}}"
+    }
   }
 }

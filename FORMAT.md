@@ -1024,6 +1024,9 @@ in the planning tree.
 - the title is the first prose line under the heading that starts with `## Goal` (the prompt writes
   `## Goal (one sentence)`): the first non-empty line before the next heading that is not an HTML comment; a story
   without one is titled by its slug;
+- the excerpt (spec 067) is the first paragraph under the heading that starts with `## Problem`, else `## Vision`:
+  its lines up to the next blank line or heading, HTML comments skipped, joined by one space; above 280 characters it
+  is cut at the last space that leaves room for `…` and ends with it; without prose under either heading it is null;
 - `type` other than the seven spec types reads as no type and is one `ideas-type` warning (spec 008, T54), keyed to
   the story file with the value as written as subject; a blank or absent `type` is no type without a warning;
   `feature` and `milestone` are taken as written, trimmed;

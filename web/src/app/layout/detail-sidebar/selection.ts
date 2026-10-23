@@ -4,7 +4,7 @@ import type { Relation, RelationIndex, RelationRef, RelationType } from '../../.
 import { queryParamSignal } from '../../shared/query-param';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
-import type { Tier } from '../shell/tier';
+import { DOCK_MIN, tierFor } from '../shell/tier';
 
 // The selection contract of the planning views (spec 026, T13/T14, ISC-171). Every view that lets the user pick an
 // object (tree, Gantt, graph, workspace board, the Specs page's list, the dashboard's Next up and warnings, the ideas)
@@ -21,7 +21,8 @@ import type { Tier } from '../shell/tier';
 //    (the app's `disp` family), a card a 2 px `--color-primary` outline at offset 1, a graph node a 2 px `--color-primary` stroke.
 // 4. Presentation. A page whose layout has a rail (the tree lens, the workspace's Specs page, the Gantt lens, whose
 //    rail the shell opens at wide only while something is selected, spec 038) calls `DetailSelection.dock(destroyRef)`
-//    for its lifetime: at wide the sidebar then replaces the rail blocks in `app-rail-slot`. Every other page (the
+//    for its lifetime: from `DOCK_MIN` on (spec 067) the sidebar then replaces the rail blocks in `app-rail-slot`, and
+//    the rail column grows to `--detail`; between the wide tier and `DOCK_MIN` it floats. Every other page (the
 //    workspace dashboard, which has no rail since spec 058, the graph, the workspace board) docks nothing: the sidebar
 //    floats there, a sheet at compact, an overlay at medium and the floating panel at wide (ISC-400). The shell mounts
 //    `<app-detail-sidebar slot="float" />` once for the non-docked presentations.
@@ -52,11 +53,15 @@ export type Presentation = 'docked' | 'floating' | 'overlay' | 'sheet';
 /** The entry of `ref`, or undefined when the index does not hold it (the index type itself claims every key). */
 export const relationAt = (index: RelationIndex, ref: RelationRef): Relation | undefined => index[ref];
 
-/** The presentation per container tier (design.md § Across viewports): docked only at wide on a docking page. */
-export function presentationFor(tier: Tier, docks: boolean): Presentation {
+/**
+ * The presentation for a shell container `width` px wide (design.md § Across viewports): a sheet at compact, an
+ * overlay at medium, and at wide docked only on a docking page from `DOCK_MIN` on (spec 067), else floating.
+ */
+export function presentationFor(width: number, docks: boolean): Presentation {
+  const tier = tierFor(width);
   if (tier === 'compact') return 'sheet';
   if (tier === 'medium') return 'overlay';
-  return docks ? 'docked' : 'floating';
+  return docks && width >= DOCK_MIN ? 'docked' : 'floating';
 }
 
 /**
@@ -110,10 +115,10 @@ export class DetailSelection {
   readonly docked = computed(() => this.docks() > 0);
   /** Where the open sidebar shows; null while nothing is shown. */
   readonly presentation = computed<Presentation | null>(() =>
-    this.entry() === null ? null : presentationFor(this.state.tier(), this.docked()),
+    this.entry() === null ? null : presentationFor(this.state.width(), this.docked()),
   );
 
-  /** A page with a rail docks the sidebar there at wide until `destroyRef` fires (rule 4). */
+  /** A page with a rail docks the sidebar there from `DOCK_MIN` on until `destroyRef` fires (rule 4). */
   dock(destroyRef: DestroyRef): void {
     this.docks.update((count) => count + 1);
     destroyRef.onDestroy(() => this.docks.update((count) => count - 1));

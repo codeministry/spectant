@@ -1,0 +1,18 @@
+/*
+ * The detail sidebar's reserve on the selected element of a docking lens (spec 067, ISC-538; design.md § Tablet
+ * "Koexistenz"): where the panel lies over the page (overlay at medium, floating from 1120 until it docks at 1280),
+ * scrolling the selected element into view stops short of it. The margin is the panel's width, its inset from the
+ * right edge (16 px overlay, 32 px floating; detail-sidebar.css) and 16 px of air, the reserve board and graph keep.
+ * Gantt and tree pull this file in with a relative `@import`, so Angular scopes it per component.
+ */
+@container shell (width >= 640px) and (width < 1120px) {
+  [data-selected] {
+    scroll-margin-inline-end: calc(var(--detail) + 16px + 16px);
+  }
+}
+
+@container shell (width >= 1120px) and (width < 1280px) {
+  [data-selected] {
+    scroll-margin-inline-end: calc(var(--detail) + 32px + 16px);
+  }
+}

@@ -1,4 +1,4 @@
-import { computed, effect, inject, Injectable, linkedSignal, resource, untracked } from '@angular/core';
+import { computed, effect, inject, Injectable, resource, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
@@ -15,7 +15,7 @@ import { runOf, specWaitOf } from '../../live/board/board-model';
 import { taskActorsOf } from '../../live/live-frame';
 import { activeLang, specParams } from '../../spec-view';
 import { routeFragment } from '../../route-signals';
-import { type CheckEvent, type CheckState, checkBlock, IDLE, landedDelta, nextCheckState, rowChecked, withCheck } from './checkbox';
+import { type CheckState, TaskChecks } from './checkbox';
 import { type CheckLine, probeText, REASONED, taskRanges, type TaskRowView, type TasksBody } from './tasks-model';
 
 /**
@@ -101,12 +101,15 @@ export class TasksStore {
     const result = this.result.value();
     return result?.kind === 'ok' ? result.hash : null;
   });
-  /** The hash the next tick sends: the read's, then each accepted write's, so a second tick is not stale. */
-  private readonly writeHash = linkedSignal(() => this.hash());
-  /** The write state per task id; a new read of the list drops them all. */
-  private readonly checks = linkedSignal<unknown, ReadonlyMap<string, CheckState>>({
-    source: () => this.result.value(),
-    computation: () => new Map(),
+  /**
+   * The write state of every box and the hash the next tick sends (spec 067, T32: the building block the detail sidebar
+   * shares); a new read of the list drops the states and takes its hash.
+   */
+  private readonly checks = new TaskChecks({
+    read: () => this.result.value(),
+    hash: () => this.hash(),
+    write: (ws, id, tid, hash, checked) => this.api.taskCheck(ws, id, tid, hash, checked),
+    lock: () => this.locks.lock(),
   });
   readonly failed = computed(() => {
     const result = this.result.value();
@@ -148,17 +151,15 @@ export class TasksStore {
 
   /** Every row as it stands after the writes this list has seen accepted. */
   private readonly written = computed<readonly TaskRowView[]>(() => {
-    const checks = this.checks();
-    return (this.body()?.tasks ?? []).map((row) => withCheck(row, checks.get(row.id) ?? IDLE));
+    return (this.body()?.tasks ?? []).map((row) => this.checks.row(row));
   });
   /**
    * The head line's done part (spec 021, ISC-252): core's `counts.done`, the rows whose status landed (`done` or
    * `closed`), moved only by the ticks this list has seen accepted; its whole is `counts.rows`, never the boxes.
    */
   readonly done = computed(() => {
-    const checks = this.checks();
     const tasks = this.body()?.tasks ?? [];
-    return tasks.reduce((sum, row) => sum + landedDelta(row, checks.get(row.id) ?? IDLE), this.body()?.counts.done ?? 0);
+    return tasks.reduce((sum, row) => sum + this.checks.delta(row), this.body()?.counts.done ?? 0);
   });
   /** The plural form of "x of N tasks done or closed", picked by the whole (`counts.rows`). */
   readonly doneKey = computed(() => (this.body()?.counts.rows === 1 ? 'tasks.doneOfTotal.one' : 'tasks.doneOfTotal.other'));
@@ -265,25 +266,21 @@ export class TasksStore {
   }
 
   checkOf(id: string): CheckState {
-    return this.checks().get(id) ?? IDLE;
+    return this.checks.stateOf(id);
   }
 
   isChecked(row: TaskRowView): boolean {
-    return rowChecked(row, this.checkOf(row.id));
+    return this.checks.checked(row);
   }
 
   /** Whether the box is disabled right now (in flight, under a lock on its claim, or without a hash). */
   blocked(row: TaskRowView): boolean {
-    return checkBlock(row, this.checkOf(row.id), this.locks.lock(), this.writeHash()) !== null;
+    return this.checks.block(row) !== null;
   }
 
   /** The row's check sub-line: the lock source's lock first, then what the last write answered, then a missing hash. */
   checkLine(row: TaskRowView): CheckLine | null {
-    const state = this.checkOf(row.id);
-    const block = checkBlock(row, state, this.locks.lock(), this.writeHash());
-    if (block?.kind === 'locked') return block;
-    if (state.kind === 'locked' || state.kind === 'conflict' || state.kind === 'failed') return state;
-    return block?.kind === 'no-hash' ? block : null;
+    return this.checks.line(row);
   }
 
   /**
@@ -310,25 +307,13 @@ export class TasksStore {
     return ids.filter((id) => id !== null).join(' ');
   }
 
-  /** Applies one event to a row's state; false when the state did not change (the list was read again meanwhile). */
-  private transition(id: string, event: CheckEvent): boolean {
-    const current = this.checkOf(id);
-    const next = nextCheckState(current, event);
-    if (next === current) return false;
-    this.checks.update((checks) => new Map(checks).set(id, next));
-    return true;
-  }
-
   /** A tick: post the state wanted with the hash this list shows, then apply the answer (ISC-25, ISC-26, ISC-86). */
   async tick(row: TaskRowView, checked: boolean): Promise<void> {
     const ws = this.state.ws();
     const id = this.state.specId();
-    const hash = this.writeHash();
-    if (ws === null || id === null || hash === null || this.blocked(row) || this.specRun() !== null) return;
-    this.transition(row.id, { type: 'tick', checked });
-    const result = await this.api.taskCheck(ws, id, row.id, hash, checked);
-    if (!this.transition(row.id, { type: 'answer', result }) || result.kind !== 'ok') return;
-    this.writeHash.set(result.body.hash);
+    if (ws === null || id === null || this.specRun() !== null) return;
+    const result = await this.checks.tick(ws, id, row, checked);
+    if (result?.kind !== 'ok') return;
     const state = this.checkOf(row.id);
     const key = state.kind === 'written' && state.checked ? 'tasks.check.ticked' : 'tasks.check.unticked';
     this.toasts.show(this.transloco.translate(key, { id: row.id, line: result.body.line.number }));
@@ -336,7 +321,7 @@ export class TasksStore {
 
   /** The 409's Reload: clear the alert and read the list again. */
   reloadTasks(row: TaskRowView): void {
-    this.transition(row.id, { type: 'reload' });
+    this.checks.reset(row.id);
     this.result.reload();
   }
 

@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { buildDashboard } from '../../src/dashboard.ts';
+import { activityReading } from '../../src/locks.ts';
 import { buildPlanning } from '../../src/planning.ts';
 import type { PlanningModel, PlanningSpecState } from '../../src/planning.ts';
 import { FIXTURES, ideaFilesAt, readTreeAt } from './read-tree.ts';
@@ -35,7 +36,21 @@ export function planningModel(root: string): PlanningModel {
   });
   const backlogPath = join(root, 'specs', 'backlog.md');
   const backlog = existsSync(backlogPath) ? readFileSync(backlogPath, 'utf8') : null;
-  return buildPlanning({ master, specs, archived, ideas: ideaFilesAt(root), now: PLANNING_NOW, ...(workflow === undefined ? {} : { workflow }), specStates, ...(backlog === null ? {} : { backlog }) });
+  // Spec 067 (ISC-530): the activity log's open claim locks name each claim's lock holder, as the planning route reads
+  // them; they reach the claim facts alone (`claimLocks`), so every holder's assignee stays the events'.
+  const activityPath = join(root, '.spectant', 'activity.jsonl');
+  const claimLocks = existsSync(activityPath) ? activityReading(readFileSync(activityPath, 'utf8')).locks : [];
+  return buildPlanning({
+    master,
+    specs,
+    archived,
+    ideas: ideaFilesAt(root),
+    now: PLANNING_NOW,
+    ...(workflow === undefined ? {} : { workflow }),
+    specStates,
+    ...(backlog === null ? {} : { backlog }),
+    ...(claimLocks.length === 0 ? {} : { claimLocks }),
+  });
 }
 
 /** The planning model of a fixture tree by name. */

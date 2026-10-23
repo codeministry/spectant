@@ -1,18 +1,23 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import tasksGolden from '../../../../../core/fixtures/harbor.tasks.golden.json';
 import type { ItemStateInfo } from '../../../../../core/src/files';
 import type { Relation, RelationIndex, RelationRef } from '../../../../../core/src/relations';
+import { DEFAULT_WORKFLOW, WORKFLOW_STAGES } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
 import { RefreshService } from '../shell/refresh.service';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { RailSlot } from '../shell/rail-slot';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
-import type { Tier } from '../shell/tier';
+import { DOCK_MIN, TIER_MEDIUM_MIN, TIER_WIDE_MIN, tierFor } from '../shell/tier';
 import { DetailSidebar } from './detail-sidebar';
 import { DetailSelection, parseSel, presentationFor, refSelector, selectedLook, sidebarParents } from './selection';
+
+/** harbor 002's tasks.md as the tasks route serves it: T27, T28, T29, T31 and T32 open. */
+const GOLDEN_TASKS = tasksGolden['specs/002-web-console'];
 
 const rel = (ref: RelationRef, title: string, extra: Partial<Relation> = {}): Relation => {
   const [type, ...rest] = ref.split(':');
@@ -29,7 +34,7 @@ const INDEX: RelationIndex = Object.fromEntries(
     rel('spec:024', 'Shell', { stage: 'review' }),
     rel('spec:003', 'Old pages', { archived: true }),
     ...CLAIMS.map((ref, i) => rel(ref, `Claim ${i + 1}`, { total: 1, closed: i < 2 ? 1 : 0, parents: ['spec:025', 'feature:F25'] })),
-    rel('idea:graph-zoom', 'Graph zoom'),
+    rel('idea:graph-zoom', 'Graph zoom', { facts: { state: 'open', priority: 'P2' } }),
   ].map((entry) => [entry.ref, entry]),
 );
 
@@ -43,16 +48,31 @@ class DockHost {
   }
 }
 
-const tier = signal<Tier>('medium');
+/** The shell container's width as `ShellState.width` holds it, and the tier it yields (820 is medium). */
+const width = signal(820);
+const tier = computed(() => tierFor(width()));
 
 /** The dashboard as `ShellData.dashboard.value()` serves it; a test sets a row's `state` (spec 040, T62). */
 const dashboard = signal<unknown>(undefined);
 const ideas = signal<ReadonlyArray<{ readonly slug: string; readonly state?: ItemStateInfo }>>([]);
+/** The favourite sets `ShellData` holds (spec 067, T25): the star reads them, a click only calls the toggles. */
+const favSpecs = signal<ReadonlySet<string>>(new Set());
+const favIdeas = signal<ReadonlySet<string>>(new Set());
+const toggleFavorite = vi.fn<(spec: string) => Promise<boolean>>(() => Promise.resolve(true));
+const toggleIdeaFavorite = vi.fn<(slug: string) => Promise<boolean>>(() => Promise.resolve(true));
+/** What `GET …/specs/:id/tasks` answers (spec 067, T33): none open unless a test serves the golden's open tasks. */
+const EMPTY_TASKS = { ...GOLDEN_TASKS, tasks: [] };
+let tasksBody: unknown = EMPTY_TASKS;
 
 function setup(): void {
-  tier.set('medium');
+  tasksBody = EMPTY_TASKS;
+  width.set(820);
   dashboard.set(undefined);
   ideas.set([]);
+  favSpecs.set(new Set());
+  favIdeas.set(new Set());
+  toggleFavorite.mockClear();
+  toggleIdeaFavorite.mockClear();
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -63,9 +83,33 @@ function setup(): void {
     ],
     providers: [
       provideRouter([{ path: '**', component: Blank }]),
-      { provide: ShellState, useValue: { tier, ws: signal('harbor') } },
-      { provide: ShellData, useValue: { planningModel: signal({ relations: INDEX }), dashboard: { value: dashboard }, ideas } },
-      { provide: ApiClient, useValue: { activityHash: () => null, releaseRun: vi.fn() } },
+      { provide: ShellState, useValue: { width, tier, ws: signal('harbor'), specId: signal(null) } },
+      {
+        provide: ShellData,
+        useValue: {
+          planningModel: signal({ relations: INDEX, features: [], milestones: [] }),
+          workflow: signal({ rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] }),
+          stages: signal(WORKFLOW_STAGES),
+          planning: { reload: vi.fn() },
+          dashboard: { value: dashboard, reload: vi.fn() },
+          ideas,
+          specRows: () => [{ id: '025', slug: '025-spec-edges', title: 'Spec edges', type: null, stage: 'build', priority: null }],
+          isFavorite: (spec: string) => favSpecs().has(spec),
+          isIdeaFavorite: (slug: string) => favIdeas().has(slug),
+          toggleFavorite,
+          toggleIdeaFavorite,
+        },
+      },
+      {
+        provide: ApiClient,
+        useValue: {
+          activityHash: () => null,
+          releaseRun: vi.fn(),
+          transition: vi.fn(),
+          taskCheck: vi.fn(),
+          tasks: () => Promise.resolve({ kind: 'ok', body: tasksBody, etag: null, notModified: false, hash: 'h0' }),
+        },
+      },
       { provide: RefreshService, useValue: { refresh: vi.fn() } },
     ],
   });
@@ -100,13 +144,21 @@ describe('detail sidebar · selection contract', () => {
     expect(parseSel('025')).toBeNull();
   });
 
-  it('picks the presentation from the container tier and whether the page docks', () => {
-    expect(presentationFor('wide', true)).toBe('docked');
-    expect(presentationFor('wide', false)).toBe('floating');
-    expect(presentationFor('medium', true)).toBe('overlay');
-    expect(presentationFor('medium', false)).toBe('overlay');
-    expect(presentationFor('compact', true)).toBe('sheet');
-    expect(presentationFor('compact', false)).toBe('sheet');
+  // Spec 067 (ISC-524): docked only from DOCK_MIN on, so the main column keeps 704 px beside the 480 px sidebar.
+  it('picks the presentation from the container width and whether the page docks', () => {
+    expect(DOCK_MIN).toBe(1280);
+    expect(DOCK_MIN).toBeGreaterThan(TIER_WIDE_MIN);
+    expect(presentationFor(1440, true)).toBe('docked');
+    expect(presentationFor(DOCK_MIN, true)).toBe('docked');
+    expect(presentationFor(DOCK_MIN - 1, true)).toBe('floating');
+    expect(presentationFor(TIER_WIDE_MIN, true)).toBe('floating');
+    expect(presentationFor(1440, false)).toBe('floating');
+    expect(presentationFor(TIER_WIDE_MIN, false)).toBe('floating');
+    expect(presentationFor(TIER_WIDE_MIN - 1, true)).toBe('overlay');
+    expect(presentationFor(820, false)).toBe('overlay');
+    expect(presentationFor(TIER_MEDIUM_MIN, true)).toBe('overlay');
+    expect(presentationFor(TIER_MEDIUM_MIN - 1, true)).toBe('sheet');
+    expect(presentationFor(390, false)).toBe('sheet');
   });
 
   it('adds the main feature’s milestone to a spec’s and a claim’s parents, once', () => {
@@ -245,8 +297,95 @@ describe('DetailSidebar', () => {
     }
   });
 
+  describe('keyboard (spec 067, T36, ISC-537)', () => {
+    const escape = (target: Element | null) => target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    const settle = async (fixture: { whenStable: () => Promise<unknown> }) => {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+
+    it('closes an open stage list before the sidebar, wherever the focus sits in the panel, and returns focus to its button', async () => {
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      q(host, '[data-stage-change]')?.click();
+      await settle(fixture);
+      expect(q(host, '[data-stage-list]')).not.toBeNull();
+      escape(q(host, 'h2[data-part="title"]'));
+      await settle(fixture);
+      expect(q(host, '[data-stage-list]')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:025');
+      expect(document.activeElement).toBe(q(host, '[data-stage-change]'));
+      escape(q(host, '[data-stage-change]'));
+      await settle(fixture);
+      expect(TestBed.inject(Router).url).toBe('/w/harbor');
+    });
+
+    it('closes an open stage list before the compact sheet, whose dialog stays open until the next Escape', async () => {
+      width.set(390);
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      expect(host.getAttribute('data-presentation')).toBe('sheet');
+      q(host, '[data-stage-change]')?.click();
+      await settle(fixture);
+      for (const target of ['[data-stage-list] [data-move-to]', 'h2[data-part="title"]']) {
+        if (target !== '[data-stage-list] [data-move-to]') {
+          q(host, '[data-stage-change]')?.click();
+          await settle(fixture);
+        }
+        escape(q(host, target));
+        await settle(fixture);
+        expect(q(host, '[data-stage-list]'), target).toBeNull();
+        expect(q(host, 'ui-sheet dialog'), target).not.toBeNull();
+        expect(TestBed.inject(Router).url, target).toBe('/w/harbor?sel=spec:025');
+      }
+      escape(q(host, '[data-stage-change]'));
+      await settle(fixture);
+      expect(TestBed.inject(Router).url).toBe('/w/harbor');
+    });
+
+    it('leaves the sidebar and the stage list open while a dialog (the release question) is open', async () => {
+      const dialog = document.createElement('dialog');
+      dialog.setAttribute('open', '');
+      document.body.append(dialog);
+      try {
+        await go('/w/harbor?sel=spec:025');
+        const fixture = await render();
+        const host = hostOf(fixture);
+        q(host, '[data-stage-change]')?.click();
+        await settle(fixture);
+        escape(dialog);
+        await settle(fixture);
+        expect(q(host, '[data-stage-list]')).not.toBeNull();
+        expect(TestBed.inject(Router).url).toBe('/w/harbor?sel=spec:025');
+      } finally {
+        dialog.remove();
+      }
+    });
+
+    it('keeps the focus where a write left it on a live refresh; only another object moves it to the title', async () => {
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      const title = q(host, 'h2[data-part="title"]');
+      expect(document.activeElement).toBe(title);
+      const toggle = q(host, '[data-stage-change]');
+      toggle?.focus();
+      // The refresh after a write: a new dashboard and new favourites, the same ref.
+      dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', stage: 'build' }] } });
+      favSpecs.set(new Set(['025-spec-edges']));
+      await settle(fixture);
+      expect(document.activeElement).toBe(q(host, '[data-stage-change]'));
+      await go('/w/harbor?sel=spec:024');
+      await settle(fixture);
+      expect(document.activeElement).toBe(q(host, 'h2[data-part="title"]'));
+      expect(q(host, 'h2[data-part="title"]')?.textContent).toBe('Shell');
+    });
+  });
+
   it('is one component in two slots: docked in the rail at wide when the page docks, floating otherwise', async () => {
-    tier.set('wide');
+    width.set(1440);
     await go('/w/harbor?sel=feature:F25');
     const float = await render('float');
     expect(hostOf(float).getAttribute('data-presentation')).toBe('floating');
@@ -269,6 +408,24 @@ describe('DetailSidebar', () => {
     expect(q(hostOf(float), 'h2[data-part="title"]')).not.toBeNull();
   });
 
+  // Spec 067 (ISC-524): between the wide tier and DOCK_MIN a docking page's selection floats, the rail keeps its blocks.
+  it('floats on a docking page below DOCK_MIN', async () => {
+    width.set(DOCK_MIN - 1);
+    await go('/w/harbor?sel=feature:F25');
+    const float = await render('float');
+    const dock = TestBed.createComponent(DockHost);
+    dock.detectChanges();
+    await float.whenStable();
+    expect(TestBed.inject(DetailSelection).docked()).toBe(true);
+    expect(hostOf(float).getAttribute('data-presentation')).toBe('floating');
+    expect(q(hostOf(float), 'h2[data-part="title"]')).not.toBeNull();
+
+    width.set(DOCK_MIN);
+    await float.whenStable();
+    expect(q(hostOf(float), 'h2[data-part="title"]')).toBeNull();
+    dock.destroy();
+  });
+
   // Spec 040, T62 · ISC-226: a spec or story whose run is open shows its state line with "Release run".
   it('shows a running spec’s state line with "Release run", and nothing for a spec without a run', async () => {
     const running: ItemStateInfo = {
@@ -283,7 +440,10 @@ describe('DetailSidebar', () => {
     const fixture = await render();
     const host = hostOf(fixture);
     expect(q(host, '[data-section="run"] ui-item-state')?.getAttribute('data-state')).toBe('running');
-    expect(q(host, '[data-section="run"] [data-release]')?.textContent).toContain('Release run');
+    // Spec 067 (ISC-534): "Release run" shows once, in the actions grid, no longer in the run line's action slot.
+    expect(q(host, '[data-section="actions"] [data-release]')?.textContent).toContain('Release run');
+    expect(host.querySelectorAll('[data-release]')).toHaveLength(1);
+    expect(q(host, '[data-section="run"] app-run-release')).toBeNull();
     dashboard.set({ kind: 'ok', body: { specs: [{ id: '025', slug: '025-spec-edges', state: { ...running, state: 'open', run: undefined } }] } });
     await fixture.whenStable();
     expect(q(host, '[data-section="run"]')).toBeNull();
@@ -291,7 +451,7 @@ describe('DetailSidebar', () => {
   });
 
   it('is a modal bottom sheet below 640', async () => {
-    tier.set('compact');
+    width.set(390);
     await go('/w/harbor?sel=milestone:v1-0');
     const fixture = await render();
     const host: HTMLElement = hostOf(fixture);
@@ -300,5 +460,178 @@ describe('DetailSidebar', () => {
     expect(sheet?.getAttribute('data-tier')).toBe('compact');
     expect(sheet?.hasAttribute('data-flush')).toBe(true);
     expect(q(host, 'dialog h2[data-part="title"]')?.textContent.trim()).toBe('Version 1.0');
+  });
+
+  // Spec 067, T14 · ISC-527: the title wraps in full; a link row's title stops at two lines and carries the full title.
+  it('shows the full title without a clamp and gives every link row its full title in `title`', async () => {
+    await go('/w/harbor?sel=spec:025');
+    const fixture = await render();
+    const host = hostOf(fixture);
+    const title = q(host, 'h2[data-part="title"]');
+    expect(title?.getAttribute('style')).toBeNull();
+    const style = title ? getComputedStyle(title) : null;
+    expect(style?.getPropertyValue('-webkit-line-clamp')).toBe('');
+    expect(style?.getPropertyValue('line-clamp')).toBe('');
+    expect(style?.getPropertyValue('text-overflow')).not.toBe('ellipsis');
+    expect(style?.getPropertyValue('overflow-wrap')).toBe('anywhere');
+    expect(style?.getPropertyValue('hyphens')).toBe('auto');
+
+    const rows = qa(host, 'a[data-sel]');
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const entry = INDEX[row.getAttribute('data-sel') as RelationRef];
+      expect(row.querySelector('.lt')?.getAttribute('title')).toBe(entry.title);
+    }
+    const lt = rows[0].querySelector<HTMLElement>('.lt');
+    expect(lt ? getComputedStyle(lt).getPropertyValue('white-space') : '').not.toBe('nowrap');
+  });
+
+  it('sets a claim’s text as the title, marked by its type', async () => {
+    await go('/w/harbor?sel=claim:ISC-1');
+    const fixture = await render();
+    expect(q(hostOf(fixture), 'h2[data-part="title"]')?.getAttribute('data-type')).toBe('claim');
+  });
+
+  // Spec 067, T25 · ISC-532: the star in the head of a spec and an idea, between the id and the close button.
+  it('carries the star for a spec and an idea, after the id and before close, following the favourites', async () => {
+    favSpecs.set(new Set(['025-spec-edges']));
+    await go('/w/harbor?sel=spec:025');
+    const fixture = await render();
+    const host = hostOf(fixture);
+    const star = () => q(host, '.head button[ui-star-toggle]');
+    const parts = [...(q(host, '.head')?.children ?? [])].map((el) => el.getAttribute('data-part') ?? el.className.split(' ')[0]);
+    expect(parts.slice(-3, -2)).toEqual(['grow']);
+    expect(q(host, '.head')?.children[3]).toBe(star());
+    expect(q(host, '.head')?.children[4]?.hasAttribute('data-close')).toBe(true);
+    expect(star()?.getAttribute('aria-pressed')).toBe('true');
+    expect(star()?.getAttribute('aria-label')).toBe('Favorite: 025 Spec edges');
+    favSpecs.set(new Set());
+    await fixture.whenStable();
+    expect(star()?.getAttribute('aria-pressed')).toBe('false');
+    star()?.click();
+    expect(toggleFavorite).toHaveBeenCalledWith('025-spec-edges');
+
+    await go('/w/harbor?sel=idea:graph-zoom');
+    await fixture.whenStable();
+    expect(star()?.getAttribute('aria-pressed')).toBe('false');
+    favIdeas.set(new Set(['graph-zoom']));
+    await fixture.whenStable();
+    expect(star()?.getAttribute('aria-pressed')).toBe('true');
+    star()?.click();
+    expect(toggleIdeaFavorite).toHaveBeenCalledWith('graph-zoom');
+
+    for (const ref of ['feature:F25', 'milestone:v1-0', 'claim:ISC-1', 'spec:003']) {
+      await go(`/w/harbor?sel=${ref}`);
+      await fixture.whenStable();
+      expect(q(host, '[data-part="title"]')?.textContent.trim()).toBe(INDEX[ref as RelationRef].title);
+      expect(star()).toBeNull();
+    }
+  });
+
+  // Spec 067 (T16, ISC-528): the facts component per type, in the one section order of every shell.
+  describe('facts', () => {
+    const ROW = {
+      id: '025',
+      slug: '025-spec-edges',
+      title: 'Spec edges',
+      type: 'feature',
+      priority: 'P2',
+      stage: 'build',
+      stageSource: 'derived',
+      nextCommand: '/spec implement 025',
+      nextReason: 'ISC-3 is takeable',
+      assignee: null,
+      goal: 'Specs name what they wait on.',
+      feature: 'F25',
+      featureName: 'Unified planning',
+      milestone: 'Version 1.0',
+      progress: { closed: 2, total: 7 },
+      tasks: { landed: 4, total: 9 },
+      taken: [],
+      warnings: [],
+      updated: '2026-10-01',
+      lastRound: null,
+    };
+    /**
+     * The body's parts in document order: the title, each section by `data-section` (a spec's relations sit inside its
+     * facts, ISC-171.1), the spec's facts list and the shell's progress; a hidden part (the actions without an action)
+     * is left out, and a section nested in its own host (the tasks part) counts once.
+     */
+    const order = (host: HTMLElement): string[] =>
+      [...host.querySelectorAll('.body [data-part="title"], .body [data-section], .body [data-part="spec-facts"], .body > [data-part="progress"]')]
+        .filter((el) => el.closest('[hidden]') === null)
+        .map((el) => el.getAttribute('data-section') ?? el.getAttribute('data-part') ?? '')
+        .filter((name, i, all) => name !== all[i - 1]);
+
+    it('mounts the spec facts from the dashboard row in place of the shell’s stage chip and progress', async () => {
+      dashboard.set({ kind: 'ok', body: { specs: [ROW] } });
+      await go('/w/harbor?sel=spec:025');
+      const host = hostOf(await render());
+      expect(q(host, 'app-spec-facts[data-facts="spec"]')).not.toBeNull();
+      expect(q(host, '[data-part="goal"]')?.textContent.trim()).toBe(ROW.goal);
+      expect(q(host, '[data-fact="feature"] dd')?.textContent.trim()).toBe('F25 · Unified planning');
+      expect(q(host, '[data-metric="claims"]')?.textContent).toMatch(/2\s*\/\s*7/);
+      expect(host.querySelectorAll('[data-part="stage"]')).toHaveLength(1);
+      // One progress, the facts' claims metric; the shell's ring is gone.
+      expect(host.querySelectorAll('[data-part="progress"]')).toHaveLength(1);
+      expect(q(host, 'app-spec-facts [data-part="progress"]')).not.toBeNull();
+      expect(order(host)).toEqual(['title', 'facts', 'parents', 'blockers', 'children', 'spec-facts', 'actions']);
+    });
+
+    // Spec 067 (T16, T28, T33): the relations compact under the metrics, then the facts list, the actions and the open tasks.
+    it('mounts the relations between the overview and the facts list, then the actions and the open tasks (T16, ISC-171.1)', async () => {
+      tasksBody = GOLDEN_TASKS;
+      const run: ItemStateInfo = {
+        kind: 'spec',
+        id: '025',
+        state: 'running',
+        stage: 'build',
+        run: { run: 'r-1', command: '/spec implement 025', session: 'a:claude:s1', actor: { raw: 'a:claude:s1', kind: 'agent', id: 'a:claude:s1', legacy: false }, since: '2026-10-17T14:02:00Z', elapsedMs: 180_000, openRuns: 1, source: 'run' },
+      };
+      dashboard.set({ kind: 'ok', body: { specs: [{ ...ROW, state: run }] } });
+      await go('/w/harbor?sel=spec:025');
+      const fixture = await render();
+      await vi.waitFor(async () => {
+        await fixture.whenStable();
+        expect(q(hostOf(fixture), '[data-section="tasks"]')).not.toBeNull();
+      });
+      const host = hostOf(fixture);
+      expect([...(q(host, '.panel')?.children ?? [])].map((el) => el.className.split(' ')[0])).toEqual(['head', 'body', 'foot']);
+      expect(order(host)).toEqual(['title', 'run', 'facts', 'parents', 'blockers', 'children', 'spec-facts', 'actions', 'tasks']);
+      expect(q(host, 'app-sidebar-actions [data-stage-change]')).not.toBeNull();
+      expect(q(host, 'app-sidebar-actions [data-release]')).not.toBeNull();
+      // T23 (ISC-531): the facts' next step is locked by the open run.
+      expect(q(host, 'app-spec-facts [data-part="next"] ui-command-chip button')?.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('gives an open story its next step, `/spec new <slug>`, from the item state the planning tree serves', async () => {
+      ideas.set([{ slug: 'graph-zoom', state: { kind: 'idea', id: 'graph-zoom', stage: 'idea', state: 'open', command: '/spec new graph-zoom', reason: 'shape it' } }]);
+      await go('/w/harbor?sel=idea:graph-zoom');
+      const host = hostOf(await render());
+      expect(q(host, 'app-idea-facts [data-part="next"] code')?.textContent.trim()).toBe('/spec new graph-zoom');
+      expect(q(host, 'app-idea-facts [data-part="next"] ui-command-chip button')?.getAttribute('aria-label')).toBe('Copy /spec new graph-zoom · next step for graph-zoom');
+    });
+
+    it('picks the idea facts for an idea and the planning facts for a feature, a milestone and a claim', async () => {
+      await go('/w/harbor?sel=idea:graph-zoom');
+      const fixture = await render();
+      const host = hostOf(fixture);
+      expect(q(host, '[data-section="facts"]')?.tagName.toLowerCase()).toBe('app-idea-facts');
+      for (const ref of ['feature:F25', 'milestone:v1-0', 'claim:ISC-1']) {
+        await go(`/w/harbor?sel=${ref}`);
+        await fixture.whenStable();
+        expect(q(host, '[data-section="facts"]')?.tagName.toLowerCase()).toBe('app-planning-facts');
+        expect(q(host, 'app-spec-facts, app-idea-facts')).toBeNull();
+      }
+      expect(order(host)).toEqual(['title', 'progress', 'facts', 'parents', 'blockers']);
+    });
+
+    it('keeps the shell’s chip and progress for a spec the dashboard lists no row for, and no facts', async () => {
+      await go('/w/harbor?sel=spec:025');
+      const host = hostOf(await render());
+      expect(q(host, '[data-section="facts"]')).toBeNull();
+      expect(q(host, '[data-part="stage"]')?.textContent).toContain('Build');
+      expect(q(host, '[data-part="progress"]')).not.toBeNull();
+    });
   });
 });

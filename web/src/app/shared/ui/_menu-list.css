@@ -1,6 +1,6 @@
 /*
- * The step list the reorder menu and the board's "Move to…" (features/board/move-to-menu.css) share, imported after
- * `_menu-entry.css` at the top of both: the grid of rows, the row's height, padding and spread, the hover of an
+ * The step list the reorder menu and the stage-target list of the board's "Move to…" (stage-targets/stage-targets.css)
+ * share, imported after `_menu-entry.css` at the top of both (here in shared/ui since spec 067, T27): the grid of rows, the row's height, padding and spread, the hover of an
  * enabled row and the truncated name. No rule of either stylesheet ahead of the place these rules held matches the
  * list, a row or its name; the compact row height outranks the row height by specificity as before; and the current
  * and disabled looks set no property moved here, while the hover (more specific than both) never meets a disabled

@@ -6,7 +6,7 @@
  * title's stays at the start, over the titles. Each heading box starts where its column starts. Where a column is too
  * narrow for its word, the heading runs on over the empty column behind it and centres over both: "Waits" over the
  * agent dot's column in every tier, "Priority" over the stage track's 0 px below 900 px, "Progress" over the star below
- * 880 px. A heading still too long ends in an ellipsis.
+ * 848 px. A heading still too long ends in an ellipsis.
  */
 :host {
   block-size: 32px;
@@ -51,7 +51,7 @@
   }
 }
 
-@container specs (width < 880px) {
+@container specs (width < 848px) {
   .col[data-cell='meter'] {
     grid-column: meter-start / star-end;
   }

@@ -53,6 +53,7 @@ export { UiSkeleton } from './skeleton/skeleton';
 export { type SortOption, UiSortMenu } from './sort-menu/sort-menu';
 export { UiSourceChip } from './source-chip/source-chip';
 export { type StageState, UiStageTrack } from './stage-track/stage-track';
+export { type StageTarget, UiStageTargets } from './stage-targets/stage-targets';
 export { type StarToggleSize, UiStarToggle } from './star-toggle/star-toggle';
 export { UiStateChip } from './state-chip/state-chip';
 export { UiTerm } from './term/term';

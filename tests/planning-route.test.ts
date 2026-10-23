@@ -94,6 +94,17 @@ describe("GET /api/workspaces/:ws/planning", () => {
     expect(body.milestones.map((m) => m.state)).toEqual(["late", "upcoming"]);
   });
 
+  test("harbor's claim facts name the holder of a claim's lock (spec 067, ISC-530); the board's assignees stay the golden's", async () => {
+    const body = (await (await call(workspaceRoutes.planning("harbor"))).json()) as PlanningModel;
+    // ISC-74 is claimed in harbor's activity log and never released: the session that holds it.
+    expect(body.relations?.["claim:ISC-74"]?.facts).toMatchObject({ state: "open", lockHolder: "a:claude:sess-2" });
+    // The locks reach the claim facts alone: every holder's assignee is still the events' (the golden's, built without
+    // a lock reading).
+    const golden = JSON.parse(goldenText("harbor")) as PlanningModel;
+    const assignees = (m: PlanningModel): unknown[] => m.features.flatMap((f) => f.holders.map((h) => [h.slug, h.assignee]));
+    expect(assignees(body)).toEqual(assignees(golden));
+  });
+
   test("harbor's two stories ride the planning answer (T79, ISC-124): the tree, its features and milestones list them", async () => {
     const body = (await (await call(workspaceRoutes.planning("harbor"))).json()) as PlanningModel;
     expect(body.ideas.map((i) => i.slug)).toEqual(["console-audit-log", "registry-webhooks"]);

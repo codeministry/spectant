@@ -171,7 +171,10 @@ what it sends, never by a hidden switch:
 
 - **200**: send the hash the page read (the planning holder's `hash`, or `X-Spectant-Spec-Hash` on `GET …/specs/:id`;
   for a story `IdeaPage.hash`) and a move the spec's workflow row lists, on a spec no lock holds. The session's tree
-  then shows the card moved (stage, `stageSource: explicit`, a new `hash`, `stageCounts`); an allocation removes the
+  then shows the card moved (stage, `stageSource: explicit`, a new `hash`, `stageCounts`), and after a transition its
+  `…/dashboard` (body and ETag) is core's rebuild over the moved spec.md and events.jsonl (`movedDashboard`, spec 067
+  T29): the row's stage, group, source and item state, the counts and the guidance, as the server re-reads them; a
+  variant overlay (dense, sidebar, waits, `runs`, edges, worktrees) keeps its own dashboard. An allocation removes the
   story and adds the new spec at `plan` (`010-console-audit-log` on harbor). Reason: the next poll must render the move.
 - **409**: send any other hash (`'0'.repeat(64)`), or the old hash after a move; or `X-Spectant-Stub-Write: stale`.
 - **423**: transition a spec the lock fixture holds: harbor 002 under the default `activity` locks (`a:claude:sess-2`
@@ -267,6 +270,26 @@ fill it (`stub-api.ts`, `stub-api.test.ts`, `-t "specs in work"`):
   release (a fixture's entry too). 204; the session's dashboard body and ETag change, and before the 204 one `update`
   frame goes to its open `/api/events` streams, as `bump` does: leave the stream connected and wait for its 200 before
   the POST. 400 `invalid-lock`, 404 for an unknown workspace or spec; `POST /api/__stub/reset` drops the session's locks.
+
+## Driving the detail sidebar from an e2e or browser spec
+
+The sidebar's overview (spec 067) reads the dashboard row of a spec and the planning tree's `relations`, whose
+`facts` (feature, milestone, claim, idea) the stub serves from core's planning golden as it is. Its fixtures
+(`stub-api.ts`, `stub-api.test.ts`, `-t "sidebar fixtures"`):
+
+- **Long title, childless milestone**: `X-Spectant-Stub-Sidebar: on` serves harbor rebuilt by core (`STUB_SIDEBAR`):
+  003's title is exactly 200 characters in its dashboard row, Next-up entry and planning relation (and so in F3's
+  link row), and the master gains `Harbor 3.0` (`milestone:harbor-3-0`), which nothing names: no children, target and
+  description as facts. Every other value stays the golden's; a 400 beside the dense, waits, `runs`, worktree, edge or
+  midnight overlays. Set it with `page.setExtraHTTPHeaders`.
+- **Open run**: `X-Spectant-Stub-Locks: runs` (see "Driving a run's state"): beacon 003 and its story `uptime-badges`
+  run; `POST …/beacon/runs/r-0308-1452/release` with the dashboard's `X-Spectant-Activity-Hash` answers 200 for the
+  test's session, and the next read shows the run ended.
+- **Open tasks**: harbor 002's T28 (ISC-75), T29 (ISC-76) and T32 (ISC-78) are open and no lock holds their claims;
+  `POST …/specs/002/tasks/:task/check` with the `X-Spectant-Tasks-Hash` of `GET …/specs/002/tasks` answers 200 (T27
+  on ISC-74 is held by `a:claude:sess-2`). Tick in the test's own `X-Spectant-Stub-Session` and reset it after.
+
+Reason: every body stays core's output over a fixture tree, never hand-written JSON.
 
 ## Driving what waits on you from an e2e spec
 

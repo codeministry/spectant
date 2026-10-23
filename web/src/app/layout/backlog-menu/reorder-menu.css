@@ -3,8 +3,8 @@
  * rows of the board's "Move to…". The host takes no box; the panels live in the top layer. Disabled rows (the group's
  * edge) in the muted ink with their reason, the enabled up and down rows with their key cap at the end.
  */
-@import "./_menu-entry.css";
-@import "./_menu-list.css";
+@import "../../shared/ui/_menu-entry.css";
+@import "../../shared/ui/_menu-list.css";
 
 :host {
   display: contents;

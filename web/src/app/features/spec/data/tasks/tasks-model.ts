@@ -5,12 +5,8 @@ import type { ItemState, TaskRun } from '../../../../../../../core/src/files';
 export type TasksBody = NonNullable<SpecRouteResponses['tasks']>;
 export type TaskRowView = TasksBody['tasks'][number];
 
-/** What a row's check sub-line says, as visible text (never a tooltip): a lock, a 409, a failed write, no hash. */
-export type CheckLine =
-  | { readonly kind: 'locked'; readonly session: string }
-  | { readonly kind: 'conflict' }
-  | { readonly kind: 'failed'; readonly status: number }
-  | { readonly kind: 'no-hash' };
+/** What a row's check sub-line says; it lives with the checkbox in `core/model/task-check.ts` (spec 067, T32). */
+export type { CheckLine } from '../../../../core/model/task-check';
 
 /** Spec 040 (T52): the status chip's tint per item state, the existing tones reused; aborted is the warning tint. */
 export const ITEM_TONE: Readonly<Record<ItemState, string>> = { open: 'open', waiting: 'held', running: 'dispatched', aborted: 'aborted', done: 'done' };

@@ -65,6 +65,8 @@ export class UiItemState {
    * the head and the copy chip, wrapping on whole words and never cut; the other states are unchanged.
    */
   readonly reasoned = input(false, { transform: booleanAttribute });
+  /** The copy chip's size (spec 067, T36, ISC-537): the detail sidebar's run line passes `md`, `lg` in its sheet. */
+  readonly chipSize = input<'default' | 'md' | 'lg'>('default');
 
   private readonly transloco = inject(TranslocoService);
   private readonly lang = inject(LanguageService).current;

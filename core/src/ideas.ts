@@ -26,23 +26,25 @@ function keyValue(value: string | null | undefined): string | null {
 }
 
 /**
- * The first prose line under the H2 that starts with `Goal` (`## Goal (one sentence)`): the first non-empty line before
- * the next heading that is not an HTML comment; null when there is none.
+ * The lines under the first H2 whose text starts with `heading` (`## Goal (one sentence)`), up to the next heading,
+ * trimmed: a blank line as `''`, a line that held only an HTML comment left out, a leading comment cut off.
  */
-function goalLine(body: string): string | null {
+function sectionLines(body: string, heading: string): string[] {
   const lines = body.split('\n');
-  const start = lines.findIndex((line) => /^##\s+Goal\b/.test(line));
-  if (start < 0) return null;
+  const start = lines.findIndex((line) => new RegExp(`^##\\s+${heading}\\b`).test(line));
+  if (start < 0) return [];
+  const out: string[] = [];
   let comment = false;
   for (const raw of lines.slice(start + 1)) {
     let line = raw.trim();
+    const blank = line === '';
     if (comment) {
       const end = line.indexOf('-->');
       if (end < 0) continue;
       comment = false;
       line = line.slice(end + 3).trim();
     }
-    if (/^#{1,6}\s/.test(line)) return null;
+    if (/^#{1,6}\s/.test(line)) break;
     while (line.startsWith('<!--')) {
       const end = line.indexOf('-->');
       if (end < 0) {
@@ -52,7 +54,37 @@ function goalLine(body: string): string | null {
       }
       line = line.slice(end + 3).trim();
     }
-    if (line !== '') return line;
+    if (line !== '' || blank) out.push(line);
+  }
+  return out;
+}
+
+/**
+ * The first prose line under the H2 that starts with `Goal` (`## Goal (one sentence)`): the first non-empty line before
+ * the next heading that is not an HTML comment; null when there is none.
+ */
+function goalLine(body: string): string | null {
+  return sectionLines(body, 'Goal').find((line) => line !== '') ?? null;
+}
+
+/** The longest excerpt (spec 067, ISC-529), the ellipsis included. */
+const EXCERPT_MAX = 280;
+
+/**
+ * `IdeaRef.excerpt`: the first paragraph under `## Problem`, else under `## Vision`, its lines joined by one space;
+ * longer than `EXCERPT_MAX`, cut at the last space that leaves room for `…` (a hard cut without one). Null without prose.
+ */
+function excerptOf(body: string): string | null {
+  for (const heading of ['Problem', 'Vision']) {
+    const lines = sectionLines(body, heading);
+    const from = lines.findIndex((line) => line !== '');
+    if (from < 0) continue;
+    const end = lines.indexOf('', from);
+    const text = lines.slice(from, end < 0 ? undefined : end).join(' ');
+    if (text.length <= EXCERPT_MAX) return text;
+    const room = text.slice(0, EXCERPT_MAX - 1);
+    const space = room.lastIndexOf(' ');
+    return `${(space > 0 ? room.slice(0, space) : room).trimEnd()}…`;
   }
   return null;
 }
@@ -160,6 +192,7 @@ export function readIdeas(files: IdeaFiles): IdeasReading {
       feature: keyValue(feature),
       milestone: keyValue(fm.data.milestone),
       priority: fm.data.priority,
+      excerpt: excerptOf(fm.body),
       path,
     });
   }

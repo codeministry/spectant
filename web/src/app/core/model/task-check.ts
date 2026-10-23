@@ -1,0 +1,208 @@
+import { linkedSignal, type WritableSignal } from '@angular/core';
+import type { SpecRouteResponses } from '../../../../../server/src/contracts/spec-routes.contract';
+import type { TaskCheckResult } from '../api.service';
+
+/** One row of core's `TasksTab` (the same type `tasks-tab.ts` exports; declared here so the two do not import each other). */
+type TaskRowView = NonNullable<SpecRouteResponses['tasks']>['tasks'][number];
+
+/**
+ * One task checkbox's write state (T80, ISC-25, ISC-26, ISC-86). The Tasks tab keeps one per row it wrote to and drops
+ * them all when the list is read again, so a state never outlives the tasks.md it was about.
+ *
+ * - `idle`: the box shows the file.
+ * - `saving`: the write is in flight; the box shows the state wanted, disabled, with an inline spinner.
+ * - `written`: 200; the box and the row's state follow the line the server wrote.
+ * - `locked`: 423; the session the answer names is shown as visible text. A new tick retries.
+ * - `conflict`: 409; tasks.md changed on disk, nothing was applied. Reload reads the list again.
+ * - `failed`: any other answer (status 0: none came). A new tick retries.
+ */
+export type CheckState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'saving'; readonly checked: boolean }
+  | { readonly kind: 'written'; readonly checked: boolean; readonly line: number }
+  | { readonly kind: 'locked'; readonly session: string }
+  | { readonly kind: 'conflict' }
+  | { readonly kind: 'failed'; readonly status: number };
+
+export type CheckEvent =
+  | { readonly type: 'tick'; readonly checked: boolean }
+  | { readonly type: 'answer'; readonly result: TaskCheckResult }
+  | { readonly type: 'reload' };
+
+export const IDLE: CheckState = { kind: 'idle' };
+
+/** The checkbox of a tasks.md task line as written (`- [x] T1 · …`); null when the text is no task line. */
+export function checkedFromLine(text: string): boolean | null {
+  const match = /^\s*[-*]\s+\[([ xX])\]/.exec(text);
+  return match ? match[1] !== ' ' : null;
+}
+
+/** The transition function; a state is returned unchanged (same reference) when the event does not apply to it. */
+export function nextCheckState(state: CheckState, event: CheckEvent): CheckState {
+  switch (event.type) {
+    case 'tick':
+      return state.kind === 'saving' ? state : { kind: 'saving', checked: event.checked };
+    case 'reload':
+      return IDLE;
+    case 'answer': {
+      // An answer that arrives after the list was read again belongs to a state that no longer exists.
+      if (state.kind !== 'saving') return state;
+      const result = event.result;
+      switch (result.kind) {
+        case 'ok':
+          return { kind: 'written', checked: checkedFromLine(result.body.line.text) ?? result.body.checked, line: result.body.line.number };
+        case 'conflict':
+          return { kind: 'conflict' };
+        case 'locked':
+          return { kind: 'locked', session: result.body.lock.session };
+        case 'error':
+          return { kind: 'failed', status: result.status };
+      }
+    }
+  }
+}
+
+/** What the box shows: the state wanted while saving, the written state after a 200, else the file. */
+export function rowChecked(row: TaskRowView, state: CheckState): boolean {
+  return state.kind === 'saving' || state.kind === 'written' ? state.checked : row.state === 'done';
+}
+
+/**
+ * The row as it stands after a 200: a tick is `done`, an untick `open` (a checked box outranks an unfinished round);
+ * a write that left the box as the file had it keeps the row as read. The row's `itemState` (spec 040) was read before
+ * the write, so a written row drops it and shows its status word until the next read brings the server's state; the
+ * web derives no state of its own.
+ */
+export function withCheck(row: TaskRowView, state: CheckState): TaskRowView {
+  if (state.kind !== 'written' || (row.state === 'done') === state.checked) return row;
+  const read = { ...row, itemState: undefined };
+  return state.checked ? { ...read, state: 'done', status: 'done' } : { ...read, state: 'open', status: 'open' };
+}
+
+/** How a written state moves the "boxes ticked" count: +1, -1 or 0. */
+export function landedDelta(row: TaskRowView, state: CheckState): number {
+  if (state.kind !== 'written' || (row.state === 'done') === state.checked) return 0;
+  return state.checked ? 1 : -1;
+}
+
+/** Why a box cannot be ticked right now, shown as visible text in the row, never as a tooltip. */
+export type CheckBlock =
+  | { readonly kind: 'saving' }
+  | { readonly kind: 'locked'; readonly session: string }
+  | { readonly kind: 'no-hash' };
+
+/** What a row's check sub-line says, as visible text (never a tooltip): a lock, a 409, a failed write, no hash. */
+export type CheckLine =
+  | { readonly kind: 'locked'; readonly session: string }
+  | { readonly kind: 'conflict' }
+  | { readonly kind: 'failed'; readonly status: number }
+  | { readonly kind: 'no-hash' };
+
+/** A lock on one claim of the spec, as the lock source names it; null when none is held. */
+export type CheckLock = { readonly claim: string; readonly session: string } | null;
+
+/**
+ * The box is disabled while its write is in flight, while the lock source names a session on the row's claim (the
+ * server would answer 423), and while the list came without tasks.md's hash (a write could not be checked against the
+ * file). Every lane, operator included, is tickable otherwise.
+ */
+export function checkBlock(row: TaskRowView, state: CheckState, lock: CheckLock, hash: string | null): CheckBlock | null {
+  if (state.kind === 'saving') return { kind: 'saving' };
+  if (lock !== null && lock.claim === row.claim) return { kind: 'locked', session: lock.session };
+  if (hash === null) return { kind: 'no-hash' };
+  return null;
+}
+
+/** The checkbox write, write path 2 (`POST …/tasks/:tid/check`), as `ApiClient.taskCheck` sends it. */
+export type TaskCheckWrite = (ws: string, id: string, tid: string, hash: string, checked: boolean) => Promise<TaskCheckResult>;
+
+/** What a host hands its `TaskChecks`: its read of the list, that read's tasks.md hash, the write, and the lock source. */
+export interface TaskChecksSource {
+  /** The read the boxes were rendered from; a new value drops every write state. */
+  readonly read: () => unknown;
+  /** tasks.md's hash from that read, null when it came without one. */
+  readonly hash: () => string | null;
+  readonly write: TaskCheckWrite;
+  /** The newest lock on a claim of the spec; absent, only the server's 423 names one. */
+  readonly lock?: () => CheckLock;
+}
+
+/**
+ * The task checkbox as a building block (spec 067, T32, ISC-535): the write state of every box of one tasks.md read
+ * and the hash the next tick sends, for any host, the Tasks tab and the detail sidebar alike. A tick needs the
+ * workspace, the spec, the row and the state wanted; it posts through write path 2 unchanged and keeps every answer
+ * (saving, written, locked, conflict, failed) inline as the row's state. Signals only, no injection: a host builds one
+ * beside its read.
+ */
+export class TaskChecks {
+  /** The hash the next tick sends: the read's, then each accepted write's, so a second tick is not stale. */
+  private readonly writeHash: WritableSignal<string | null>;
+  /** The write state per task id; a new read of the list drops them all. */
+  private readonly states: WritableSignal<ReadonlyMap<string, CheckState>>;
+
+  constructor(private readonly source: TaskChecksSource) {
+    this.writeHash = linkedSignal(() => source.hash());
+    this.states = linkedSignal<unknown, ReadonlyMap<string, CheckState>>({ source: () => source.read(), computation: () => new Map() });
+  }
+
+  stateOf(id: string): CheckState {
+    return this.states().get(id) ?? IDLE;
+  }
+
+  /** What the box shows. */
+  checked(row: TaskRowView): boolean {
+    return rowChecked(row, this.stateOf(row.id));
+  }
+
+  /** The row as it stands after the writes this read has seen accepted. */
+  row(row: TaskRowView): TaskRowView {
+    return withCheck(row, this.stateOf(row.id));
+  }
+
+  /** How this row's accepted write moves the "boxes ticked" count. */
+  delta(row: TaskRowView): number {
+    return landedDelta(row, this.stateOf(row.id));
+  }
+
+  /** Why the box is disabled right now (in flight, under a lock on its claim, or without a hash); null when it is not. */
+  block(row: TaskRowView): CheckBlock | null {
+    return checkBlock(row, this.stateOf(row.id), this.source.lock?.() ?? null, this.writeHash());
+  }
+
+  /** The row's check sub-line: the lock source's lock first, then what the last write answered, then a missing hash. */
+  line(row: TaskRowView): CheckLine | null {
+    const state = this.stateOf(row.id);
+    const block = this.block(row);
+    if (block?.kind === 'locked') return block;
+    if (state.kind === 'locked' || state.kind === 'conflict' || state.kind === 'failed') return state;
+    return block?.kind === 'no-hash' ? block : null;
+  }
+
+  /**
+   * A tick: post the state wanted with the hash this read shows, then apply the answer (ISC-25, ISC-26, ISC-86). The
+   * answer once applied; null when nothing was sent (a blocked box) or the list was read again meanwhile.
+   */
+  async tick(ws: string, id: string, row: TaskRowView, checked: boolean): Promise<TaskCheckResult | null> {
+    const hash = this.writeHash();
+    if (hash === null || this.block(row) !== null) return null;
+    this.transition(row.id, { type: 'tick', checked });
+    const result = await this.source.write(ws, id, row.id, hash, checked);
+    if (!this.transition(row.id, { type: 'answer', result })) return null;
+    if (result.kind === 'ok') this.writeHash.set(result.body.hash);
+    return result;
+  }
+
+  /** The 409's Reload: clear the row's state; the host reads the list again. */
+  reset(id: string): void {
+    this.transition(id, { type: 'reload' });
+  }
+
+  /** Applies one event to a row's state; false when the state did not change (the list was read again meanwhile). */
+  private transition(id: string, event: CheckEvent): boolean {
+    const current = this.stateOf(id);
+    const next = nextCheckState(current, event);
+    if (next === current) return false;
+    this.states.update((states) => new Map(states).set(id, next));
+    return true;
+  }
+}

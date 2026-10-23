@@ -49,7 +49,8 @@ export function modalDialog(open: ModelSignal<boolean>, dialog: Signal<ElementRe
 
   return {
     escape: (event) => {
-      if (!open()) return;
+      // An Escape something inside already handled (an inline list closing first, spec 067 ISC-537) keeps the modal open.
+      if (!open() || event.defaultPrevented) return;
       // Prevented so the browser's own close request does not race the model; the effect above closes.
       event.preventDefault();
       event.stopPropagation();

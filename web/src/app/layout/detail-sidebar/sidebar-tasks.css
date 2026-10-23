@@ -1,0 +1,114 @@
+@import './_sidebar-eyebrow.css';
+
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.sec {
+  display: grid;
+  gap: 4px;
+}
+
+.rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+/* The whole row is the box's label: 32 px tall, 44 px in the compact sheet (a touch target). */
+.hit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 32px;
+  min-inline-size: 0;
+  cursor: pointer;
+}
+
+/* Before the compact rule (lower specificity first); the two set different properties. */
+.hit:has(input:disabled, input[aria-disabled='true']) {
+  cursor: default;
+}
+
+:host([data-tier='compact']) .hit {
+  min-block-size: 44px;
+}
+
+.text {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.tid {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.row[data-check='written'] .text {
+  color: var(--muted-ink);
+}
+
+.note,
+.alert-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-ink);
+  overflow-wrap: anywhere;
+}
+
+.row .note {
+  padding-inline-start: 28px;
+}
+
+/* A 409 or a failed write, in the Tasks tab's alert tone. */
+.alert-line {
+  justify-self: start;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--hover-t);
+  color: var(--hover-text);
+}
+
+.more {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 32px;
+  padding-inline: 4px;
+  color: var(--disp-text);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Target sizes (spec 067, T36, ISC-537): row and "more" are real 44 px boxes in the sheet and under a coarse pointer. */
+:host([data-tier='compact']) .more {
+  min-block-size: 44px;
+}
+
+@media (pointer: coarse) {
+  .hit,
+  .more {
+    min-block-size: 44px;
+  }
+}

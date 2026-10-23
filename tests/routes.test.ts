@@ -563,6 +563,7 @@ describe("the story route (T88, ISC-124.2)", () => {
       feature: "F2",
       milestone: "Harbor 2.0",
       priority: "P3",
+      excerpt: "A setting changed in the console leaves no trace; when a mirror stops, nobody can say who changed what, or when.",
       path: "specs/ideas/console-audit-log.md",
       // Spec 040 (ISC-224): no run is open on the story, so its item offers `/spec new`.
       state: { kind: "idea", id: "console-audit-log", stage: "idea", state: "open", command: "/spec new console-audit-log", reason: "the story is shaped but has no spec" },

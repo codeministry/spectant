@@ -29,6 +29,7 @@ import type {
 import { REVIEWED_FILES, hashForGate } from "../core/src/gates.ts";
 import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/dashboard.ts";
 import type { PlanningModel } from "../core/src/planning.ts";
+import type { Relation, RelationFacts, RelationRef } from "../core/src/relations.ts";
 import type { TechSectionHead, TechSectionKey } from "../core/src/tech.ts";
 import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, type UnreadableCode as LoaderUnreadableCode } from "../server/src/workspace/index.ts";
@@ -269,6 +270,9 @@ describe("builders and matcher", () => {
 // IdeaRef and DocsPage, and every workspace route has a 200 type and the read error union. Every one but `idea` has a
 // golden family; the story family arrives with the e2e stub's story route (spec 008 T119).
 const planningIsCore: Equal<WorkspaceRouteResponses["planning"], PlanningModel> = true;
+// Spec 067 (ISC-530): each relation entry's overview facts are core's `RelationFacts`, served by the planning route
+// itself; no route of their own.
+const relationFactsAreCore: Equal<NonNullable<WorkspaceRouteResponses["planning"]["relations"]>[RelationRef]["facts"], RelationFacts | undefined> = true;
 const ideaIsCore: Equal<WorkspaceRouteResponses["idea"], IdeaPage> = true;
 const ideaPartsAreCore: Equal<[IdeaPage["idea"], IdeaPage["page"]], [IdeaRef, DocsPage]> = true;
 const workspaceResponsesCoverRoutes: Equal<keyof WorkspaceRouteResponses, WorkspaceRouteName> = true;
@@ -548,6 +552,26 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);
+  });
+
+  test("planning relations carry their facts (spec 067, ISC-530): every type but a spec, the open locked claim its lock holder", () => {
+    expect(relationFactsAreCore).toBe(true);
+    const relations = (golden(GOLDEN_FAMILY.planning) as unknown as WorkspaceRouteResponses["planning"]).relations ?? {};
+    const entry = keysOf<Relation>({
+      ref: "req", type: "req", id: "req", title: "req", closed: "req", total: "req", parents: "req", children: "req", blockers: "req",
+      archived: "opt", stage: "opt", facts: "opt",
+    });
+    const entries = Object.entries(relations);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.flatMap(([ref, r]) => shapeProblems(ref, r, entry))).toEqual([]);
+    // A spec's fields stand in its dashboard row; every other entry carries its facts, a claim at least kind and state.
+    expect(entries.filter(([, r]) => (r.type === "spec") === (r.facts !== undefined)).map(([ref]) => ref)).toEqual([]);
+    const claims = entries.flatMap(([, r]) => (r.type === "claim" ? [r.facts as Record<string, unknown>] : []));
+    expect(claims.every((f) => typeof f.kind === "string" && typeof f.state === "string")).toBe(true);
+    // Harbor's activity log holds ISC-74's lock (claimed, never released): its facts name the session holding it, and
+    // only an open claim's do.
+    expect(relations["claim:ISC-74"]?.facts).toMatchObject({ state: "open", lockHolder: "a:claude:sess-2" });
+    expect(claims.filter((f) => "lockHolder" in f).every((f) => f.state === "open")).toBe(true);
   });
 });
 

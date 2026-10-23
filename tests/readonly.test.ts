@@ -1334,6 +1334,81 @@ describe("ISC-226.1 run-release: a refused release changes nothing, an accepted 
   });
 });
 
+// The detail sidebar (spec 067, T35, ISC-536) under the same guard, through the served app on its own copy (`.git/`
+// included): the planning read with each relation's facts, a favourite set and unset (the app database alone), a run
+// release (path 8), a stage move (path 3) and a task tick (path 2), the sidebar's actions, in that order, each against
+// the snapshot before it. A read and the favourite change no byte or mtime; each accepted write changes exactly the
+// files its `WRITE_PATHS` entry names, never `.git/`. Every request names the loopback host only. The running run on
+// 004 and the viewer address are written before the first snapshot; the run is released before 003 moves, so no run
+// locks the move.
+describe("sidebar: the overview's reads and actions change only the files their write path names", () => {
+  test("readonly sidebar: planning with facts and a favourite change no byte; release, move and tick touch only their WRITE_PATHS", async () => {
+    const copy = join(mkdtempSync(join(root, "sidebar-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    git(copy, "config", "user.email", "viewer@example.test");
+    const run = { ts: new Date(Date.now() - 5 * 60_000).toISOString(), run: "r-004", command: "/spec-review 004", spec: MARKED_SPEC };
+    appendFileSync(join(copy, WRITE_PATHS.runRelease.writes[0]), `${JSON.stringify({ ...run, event: "run-start", session: "a:claude:sess-9" })}\n`);
+    const loader = "003-config-loader";
+    const gitChanges = (a: Snapshot, b: Snapshot): string[] => changed(a, b, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"));
+
+    const hosts = new Set<string>();
+    const realFetch = globalThis.fetch;
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+      hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return realFetch(input, init);
+    }) as typeof fetch);
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+    const app = await serve(copy, "sidebar");
+    const post = (path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> =>
+      fetch(`${app.url}${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+    try {
+      // The overview's read: the planning tree with each relation's facts, revalidated and HEAD.
+      const planning = await fetch(`${app.url}${workspaceRoutes.planning(SLUG)}`);
+      expect(planning.status).toBe(200);
+      const etag = planning.headers.get("etag") ?? "";
+      const model = (await planning.json()) as WorkspaceRouteResponses["planning"];
+      expect(model.relations?.["claim:ISC-74"]?.facts).toMatchObject({ state: "open", lockHolder: "a:claude:sess-2" });
+      expect(Object.values(model.relations ?? {}).filter((r) => r.type === "feature").every((r) => r.facts !== undefined)).toBe(true);
+      expect((await fetch(`${app.url}${workspaceRoutes.planning(SLUG)}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
+      expect((await fetch(`${app.url}${workspaceRoutes.planning(SLUG)}`, { method: "HEAD" })).status).toBe(200);
+      // The favourite set and unset: the database alone.
+      const favorite = `${app.url}${workspaceRoutes.favorite(SLUG, loader)}`;
+      expect((await fetch(favorite, { method: "PUT" })).status).toBe(200);
+      expect((await fetch(favorite, { method: "DELETE" })).status).toBe(200);
+      const afterReads = snapshot(copy);
+      expect(changed(before, afterReads, { mtime: true })).toEqual([]);
+      expect(afterReads.checksum).toBe(before.checksum);
+
+      // Path 8: the run release appends one line to the activity log, nothing else.
+      const activityHash = (await fetch(`${app.url}/api/workspaces/${SLUG}/dashboard`)).headers.get(ACTIVITY_HASH_HEADER) ?? "";
+      expect((await post(workspaceRoutes.runRelease(SLUG, "r-004"), {}, { [ACTIVITY_HASH_HEADER]: activityHash })).status).toBe(200);
+      const afterRelease = snapshot(copy);
+      expect(changed(afterReads, afterRelease)).toEqual([...WRITE_PATHS.runRelease.writes].sort());
+
+      // Path 3: the stage move of 003 (tasks → review) changes its spec.md and events.jsonl, nothing else.
+      const specHash = (await fetch(`${app.url}${specRoutes.spec(SLUG, "003")}`)).headers.get(SPEC_HASH_HEADER) ?? "";
+      expect((await post(specRoutes.transition(SLUG, "003"), { to: "review", hash: specHash })).status).toBe(200);
+      const afterMove = snapshot(copy);
+      expect(changed(afterRelease, afterMove)).toEqual([...writePathsOf("transition", loader).writes].sort());
+
+      // Path 2: unticking T1 of 004 changes its tasks.md, nothing else.
+      const tasksHash = (await fetch(`${app.url}${specRoutes.tasks(SLUG, "004")}`)).headers.get(TASKS_HASH_HEADER) ?? "";
+      expect((await post(specRoutes.taskCheck(SLUG, "004", "T1"), { checked: false, hash: tasksHash })).status).toBe(200);
+      const afterTick = snapshot(copy);
+      expect(changed(afterMove, afterTick)).toEqual([...writePathsOf("taskCheck", MARKED_SPEC).writes].sort());
+
+      expect(gitChanges(before, afterTick)).toEqual([]);
+      expect(underGit(afterTick)).toEqual(underGit(before));
+      expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+    } finally {
+      await app.stop();
+      spy.mockRestore();
+    }
+    expect([...hosts]).toEqual(["127.0.0.1"]);
+  });
+});
+
 // The sixth write path (spec 009, T21, ISC-137.1) under the same guard: `spectant tokens` runs on its own copy against
 // the harbor transcripts. Without `--yes` it only prints the plan, and the copy stays byte-identical with every mtime
 // kept; with `--yes` exactly the files of `WRITE_PATHS.tokens` differ, and `.git/` never changes. The transcript folder

@@ -77,6 +77,9 @@ beforeEach(() => {
           toggleIdeaFavorite: () => Promise.resolve(false),
           planningModel: () => ({ relations: RELATIONS }),
           ideas: () => [],
+          // Spec 067 (T28): the sidebar's actions read the workflow and the board's stages.
+          workflow: () => null,
+          stages: () => [],
         },
       },
       { provide: ApiClient, useValue: { activityHash: () => null } },

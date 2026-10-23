@@ -31,9 +31,14 @@
 }
 
 /* Spec 026 (T26): while the detail sidebar floats over the board, the scroller leaves room to scroll a card out from
-   under it, as the planning matrix does. */
-:host([data-has-selection]:not([data-tier='compact'])) .scroller {
-  padding-inline-end: calc(var(--rail) + 24px);
+   under it, as the planning matrix does. Spec 067 (ISC-538): the reserve is the panel's width, its inset from the
+   right edge (16 px overlay at medium, 32 px floating at wide; detail-sidebar.css) and 16 px of air. */
+:host([data-has-selection][data-tier='medium']) .scroller {
+  padding-inline-end: calc(var(--detail) + 16px + 16px);
+}
+
+:host([data-has-selection][data-tier='wide']) .scroller {
+  padding-inline-end: calc(var(--detail) + 32px + 16px);
 }
 
 /* Spec 040 (T48, ISC-224): a folded column with a running card says so under its count, the half glyph above the

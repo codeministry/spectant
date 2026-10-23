@@ -5,7 +5,7 @@ import {
   Component,
   computed,
   DOCUMENT,
-  type ElementRef,
+  ElementRef,
   inject,
   input,
   linkedSignal,
@@ -27,11 +27,17 @@ import { RELATION_ICON } from '../../shared/ui/chip/chip-icons';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRing } from '../../shared/ui/ring/ring';
-import { releasableRun, RunRelease } from '../run-release/run-release';
+import { UiStarToggle } from '../../shared/ui/star-toggle/star-toggle';
+import { releasableRun } from '../run-release/run-release';
 import { specLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
+import { IdeaFacts } from './idea-facts';
+import { PlanningFacts } from './planning-facts';
 import { CHILD_CAP, DetailSelection, relationAt, SEL_PARAM, sidebarParents } from './selection';
+import { SidebarActions } from './sidebar-actions';
+import { SidebarTasks } from './sidebar-tasks';
+import { SpecFacts, specFactsRowOf, type SpecFactsRow } from './spec-facts';
 
 /** Where an instance sits: `rail` inside `app-rail-slot` (the docked presentation), `float` mounted once by the shell. */
 export type SidebarSlot = 'rail' | 'float';
@@ -43,6 +49,14 @@ interface SidebarLink {
   /** The type icon, or `clock` for an open blocker. */
   readonly icon: IconName;
   readonly blocker: boolean;
+}
+
+/** The head's favourite star: which set it writes, the key it stars under there, and whether it is on. */
+interface SidebarStar {
+  readonly kind: 'spec' | 'idea';
+  /** The spec folder (`NNN-slug`) or the story slug. */
+  readonly key: string;
+  readonly pressed: boolean;
 }
 
 /**
@@ -58,14 +72,15 @@ interface SidebarLink {
  * compact. Escape closes in each and returns focus to the selected object's `[data-ref]` element; the selection
  * contract the views follow is in `selection.ts`.
  *
- * Spec 040 (T62, ISC-226): a spec or story whose run is open shows its state line under the header, with "Release
- * run" (`app-run-release`) in the line's action slot, in every presentation, the compact sheet included. The state is
+ * Spec 040 (T62, ISC-226): a spec or story whose run is open shows its state line under the header, in every
+ * presentation, the compact sheet included; its "Release run" (`app-run-release`) moved into the actions grid
+ * (`app-sidebar-actions`, spec 067), which follows the facts, then the open tasks (`app-sidebar-tasks`). The state is
  * the API's: the dashboard row's `state` for a spec, the planning tree's for a story. The API serves an item's newest
  * open run only, so the section holds one button, for that run.
  */
 @Component({
   selector: 'app-detail-sidebar',
-  imports: [NgTemplateOutlet, RouterLink, RunRelease, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet],
+  imports: [IdeaFacts, NgTemplateOutlet, PlanningFacts, RouterLink, SidebarActions, SidebarTasks, SpecFacts, TranslocoPipe, UiButton, UiChip, UiIcon, UiIconButton, UiItemState, UiRing, UiSheet, UiStarToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './detail-sidebar.html',
   styleUrl: './detail-sidebar.css',
@@ -121,6 +136,16 @@ export class DetailSidebar {
   /** Spec and claim carry edges; their empty Blockers section says so instead of disappearing. */
   protected readonly blockable = computed(() => this.shown()?.type === 'spec' || this.shown()?.type === 'claim');
 
+  /**
+   * Spec 067 (T16, ISC-528): the shown spec's active dashboard row, which its facts read; null for every other type,
+   * an archived spec and before the dashboard answers, and the shell then shows its own stage chip and progress.
+   */
+  protected readonly specRow = computed<SpecFactsRow | null>(() => {
+    const entry = this.shown();
+    const result = this.data.dashboard.value();
+    return entry?.type === 'spec' && !entry.archived && result?.kind === 'ok' ? specFactsRowOf(result.body, entry.id) : null;
+  });
+
   /** The shown spec's or story's item while a run line's run is open on it (T62); null otherwise. */
   protected readonly running = computed<ItemStateInfo | null>(() => {
     const entry = this.shown();
@@ -130,10 +155,15 @@ export class DetailSidebar {
       return releasableRun(row?.state) ? (row?.state ?? null) : null;
     }
     if (entry?.type === 'idea') {
-      const state = this.data.ideas().find((idea) => idea.slug === entry.id)?.state;
-      return releasableRun(state) ? (state ?? null) : null;
+      const state = this.ideaItem();
+      return releasableRun(state) ? state : null;
     }
     return null;
+  });
+  /** The shown story's item state as the planning tree serves it (its next step, its run); null for every other type. */
+  protected readonly ideaItem = computed<ItemStateInfo | null>(() => {
+    const entry = this.shown();
+    return entry?.type === 'idea' ? (this.data.ideas().find((idea) => idea.slug === entry.id)?.state ?? null) : null;
   });
   protected readonly ws = computed(() => this.state.ws() ?? '');
 
@@ -154,11 +184,30 @@ export class DetailSidebar {
     return entry?.type === 'idea' && ws !== null ? ['/w', ws, 'ideas', entry.id] : null;
   });
 
+  /**
+   * Spec 067 (T25, ISC-532): the head's star for a spec or an idea, null for every other type. It reads and writes the
+   * favourites `ShellData` holds, so the dashboard row, the idea row and the header select show the same state at
+   * once. A spec stars under its folder (`NNN-slug`) from the dashboard row; an archived spec carries no star, as its
+   * row does, nor does a spec whose folder no row names yet.
+   */
+  protected readonly star = computed<SidebarStar | null>(() => {
+    const entry = this.shown();
+    if (entry?.type === 'spec' && !entry.archived) {
+      const key = this.data.specRows().find((row) => row.id === entry.id)?.slug;
+      return key === undefined ? null : { kind: 'spec', key, pressed: this.data.isFavorite(key) };
+    }
+    return entry?.type === 'idea' ? { kind: 'idea', key: entry.id, pressed: this.data.isIdeaFavorite(entry.id) } : null;
+  });
+
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
+  private readonly actions = viewChild(SidebarActions);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
     // A new selection moves focus to the title in the non-modal presentations (the sheet's dialog focuses it itself),
-    // unless the view holds the focus on the object's own element (the tree's arrival row, ISC-167.1).
+    // unless the view holds the focus on the object's own element (the tree's arrival row, ISC-167.1). Only a ref
+    // change moves it: a live refresh after a write (a stage change, a ticked task, a release) re-renders the same
+    // ref and leaves the focus where the write left it (spec 067, T36, ISC-537).
     let focused: RelationRef | null = null;
     afterRenderEffect(() => {
       const entry = this.shown();
@@ -174,12 +223,28 @@ export class DetailSidebar {
     void this.selection.close();
   }
 
-  /** Escape closes the non-modal presentations; the sheet's dialog handles its own, and any open dialog or popover wins. */
+  /**
+   * Escape in one order (spec 067, T36, ISC-537): an open dialog first (the release question stacks over every shell
+   * and closes itself), then the open stage list, wherever the focus sits in the panel, then the sidebar. The sheet's
+   * own dialog closes the compact presentation; the others close here, and any open popover wins. The panel listens
+   * itself, so an Escape inside the sheet arrives here before the sheet's dialog, which skips a prevented one
+   * (`modalDialog`); the document listener takes an Escape pressed on the page.
+   */
   protected escape(event: Event): void {
-    if (!this.shown() || this.presentation() === 'sheet' || event.defaultPrevented) return;
-    if (this.doc.querySelector('dialog[open]') !== null || this.openPopover()) return;
+    if (!this.shown() || event.defaultPrevented) return;
+    const sheet = this.host.nativeElement.querySelector('ui-sheet dialog');
+    if ([...this.doc.querySelectorAll('dialog[open]')].some((dialog) => dialog !== sheet)) return;
+    if (this.actions()?.closeList()) {
+      event.preventDefault();
+      return;
+    }
+    if (this.presentation() === 'sheet' || this.openPopover()) return;
     event.preventDefault();
     this.close();
+  }
+
+  protected toggleStar(star: SidebarStar): void {
+    void (star.kind === 'spec' ? this.data.toggleFavorite(star.key) : this.data.toggleIdeaFavorite(star.key));
   }
 
   protected sheetChange(open: boolean): void {

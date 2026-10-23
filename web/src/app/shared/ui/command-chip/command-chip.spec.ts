@@ -196,4 +196,46 @@ describe('UiCommandChip', () => {
     await fixture.whenStable();
     expect(region?.textContent).toBe(`Copied /spec implement 012${String.fromCharCode(0xa0)}`);
   });
+
+  // Spec 067, T22 · ISC-531: the compact sheet's next-step row needs a copy button that is a real 44 × 44 box, because
+  // the coarse-pointer `::before` of `_hit-area.css` leaves `getBoundingClientRect` as it was; every other surface keeps
+  // the 28 px chip with its 26 px button.
+  it('grows the chip to 44 px and its copy button to a real 44 × 44 box with size "lg"', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec implement 002');
+    fixture.componentRef.setInput('size', 'lg');
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const chip = root.querySelector<HTMLElement>('.chip');
+    const button = root.querySelector<HTMLElement>('button.copy');
+    if (!chip || !button) throw new Error('no chip or copy button');
+
+    expect(root.getAttribute('data-size')).toBe('lg');
+    expect(getComputedStyle(chip).blockSize).toBe('44px');
+    expect(getComputedStyle(button).inlineSize).toBe('44px');
+    expect(getComputedStyle(button).blockSize).toBe('44px');
+    expect(button.querySelector('ui-icon svg')?.getAttribute('width')).toBe('16');
+    expect(button.getAttribute('aria-label'), 'the name still names the command').toBe('Copy /spec implement 002');
+    button.click();
+    await fixture.whenStable();
+    expect(writeText).toHaveBeenCalledWith('/spec implement 002');
+    expect(button.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('check');
+  });
+
+  it('keeps the 28 px chip and its 26 px copy button without a size', async () => {
+    const fixture = TestBed.createComponent(UiCommandChip);
+    fixture.componentRef.setInput('command', '/spec implement 002');
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const chip = root.querySelector<HTMLElement>('.chip');
+    const button = root.querySelector<HTMLElement>('button.copy');
+    if (!chip || !button) throw new Error('no chip or copy button');
+
+    expect(root.hasAttribute('data-size')).toBe(false);
+    expect(getComputedStyle(chip).blockSize).toBe('28px');
+    expect(getComputedStyle(button).inlineSize).toBe('26px');
+    expect(getComputedStyle(button).blockSize).toBe('26px');
+  });
 });

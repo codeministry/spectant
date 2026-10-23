@@ -233,6 +233,10 @@ export function matchWorkspacePath(pathname: string): WorkspaceRouteMatch | null
  * file is exactly the body (`idea` and `boardQuery` have no family yet).
  */
 export interface WorkspaceRouteResponses {
+  /**
+   * The planning tree, its relation index included; since spec 067 (ISC-530) each entry of `relations` carries its
+   * overview facts (`Relation.facts`, core's `RelationFacts`), an open claim's with the session holding its lock.
+   */
   planning: PlanningModel;
   idea: IdeaPage;
   /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */

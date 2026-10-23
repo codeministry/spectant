@@ -1,0 +1,37 @@
+/* The facts `dl` of a spec and a story (spec 067): one key and one value per row. */
+
+/* Label column as wide as the longest label, the value takes the rest (design.md: `max-content 1fr`). */
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.fact {
+  display: contents;
+}
+
+.fact dt {
+  align-self: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-ink);
+}
+
+.fact dd {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-block-size: 28px;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

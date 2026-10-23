@@ -1,0 +1,54 @@
+/*
+ * The sidebar's actions (spec 067, T28, T30): a grid of two equal columns (≈ 167 px each in the 390 px sheet), one
+ * action alone across both. The stage list opens inline under the grid, never as a popover in the fixed panel. Both
+ * buttons are 44 px tall in every tier, as `app-run-release`'s own button is, so a row of two never steps.
+ */
+
+:host {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.acts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+/* One action alone takes the full width (design § Mobile, Aktionen). */
+.acts[data-single] > * {
+  grid-column: 1 / -1;
+}
+
+/* The release's own host aligns its button to the start above compact; in the grid it fills its cell. */
+.release {
+  justify-items: stretch;
+}
+
+.stage-toggle {
+  inline-size: 100%;
+  min-block-size: 44px;
+  block-size: auto;
+  justify-content: flex-start;
+}
+
+.stage-word {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chev[data-open] {
+  transform: rotate(180deg);
+}
+
+.targets {
+  display: grid;
+  gap: 8px;
+  scroll-margin-block: 16px;
+}

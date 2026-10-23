@@ -1,0 +1,107 @@
+@if (any()) {
+  <dl class="pf-facts">
+    @if (feature(); as f) {
+      @if (f.why) {
+        <div class="pf-row" data-fact="why">
+          <dt>{{ 'detailSidebar.planningFacts.why' | transloco }}</dt>
+          <dd class="pf-prose">{{ f.why }}</dd>
+        </div>
+      }
+      @if (f.milestone) {
+        <div class="pf-row" data-fact="milestone">
+          <dt>{{ 'detailSidebar.planningFacts.milestone' | transloco }}</dt>
+          <dd>{{ f.milestone }}</dd>
+        </div>
+      }
+    }
+    @if (stages().length > 0) {
+      <div class="pf-row" data-fact="specs">
+        <dt>{{ 'detailSidebar.planningFacts.specs' | transloco }}</dt>
+        <dd>
+          <ul class="pf-chips" [attr.aria-label]="'detailSidebar.planningFacts.specsPerStage' | transloco">
+            @for (s of stages(); track s.stage) {
+              <li [attr.data-stage]="s.stage">
+                <ui-chip [tone]="s.tone">{{ s.word | transloco }} <span class="pf-num" data-count>{{ s.count }}</span></ui-chip>
+              </li>
+            }
+          </ul>
+        </dd>
+      </div>
+    }
+
+    @if (milestone(); as m) {
+      @if (m.target) {
+        <div class="pf-row" data-fact="target">
+          <dt>{{ 'detailSidebar.planningFacts.target' | transloco }}</dt>
+          <dd><ui-time class="pf-mono" form="day" [value]="m.target" /></dd>
+        </div>
+      }
+      @if (m.description) {
+        <div class="pf-row" data-fact="description">
+          <dt>{{ 'detailSidebar.planningFacts.description' | transloco }}</dt>
+          <dd class="pf-prose">{{ m.description }}</dd>
+        </div>
+      }
+    }
+    @if (features().length > 0) {
+      <div class="pf-row" data-fact="features">
+        <dt>{{ 'detailSidebar.planningFacts.features' | transloco }}</dt>
+        <dd>
+          <ul class="pf-links">
+            @for (link of features(); track link.entry.ref) {
+              <li>
+                <a
+                  class="pf-link"
+                  [attr.data-sel]="link.entry.ref"
+                  [routerLink]="[]"
+                  [queryParams]="link.params"
+                  queryParamsHandling="merge"
+                  [replaceUrl]="true"
+                >
+                  <span class="pf-top">
+                    <span class="pf-mono pf-id">{{ link.entry.id }}</span>
+                    @if (link.entry.total > 0) {
+                      <span class="pf-mono pf-progress" data-progress>{{ link.entry.closed }}/{{ link.entry.total }}</span>
+                    }
+                  </span>
+                  <span class="pf-title" [attr.title]="link.entry.title">{{ link.entry.title }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </dd>
+      </div>
+    }
+
+    @if (claim(); as c) {
+      @if (c.kind !== 'normal') {
+        <div class="pf-row" data-fact="kind">
+          <dt>{{ 'detailSidebar.planningFacts.kind' | transloco }}</dt>
+          <dd><ui-chip variant="plain" [tone]="c.kind === 'anti' ? 'error' : 'secondary'">{{ 'claims.kinds.' + c.kind | transloco }}</ui-chip></dd>
+        </div>
+      }
+      <div class="pf-row" data-fact="state">
+        <dt>{{ 'detailSidebar.planningFacts.state' | transloco }}</dt>
+        <dd><ui-state-chip family="claim" [state]="c.state" /></dd>
+      </div>
+      @if (c.probe) {
+        <div class="pf-row" data-fact="probe">
+          <dt>{{ 'detailSidebar.planningFacts.probe' | transloco }}</dt>
+          <dd><pre class="pf-probe">{{ c.probe }}</pre></dd>
+        </div>
+      }
+      @if (c.state === 'closed' && c.verification) {
+        <div class="pf-row" data-fact="verification">
+          <dt>{{ 'detailSidebar.planningFacts.verification' | transloco }}</dt>
+          <dd class="pf-prose">{{ c.verification }}</dd>
+        </div>
+      }
+      @if (holder(); as actor) {
+        <div class="pf-row" data-fact="lock">
+          <dt>{{ 'detailSidebar.planningFacts.lockHolder' | transloco }}</dt>
+          <dd><ui-actor-chip [actor]="actor" [active]="true" /></dd>
+        </div>
+      }
+    }
+  </dl>
+}

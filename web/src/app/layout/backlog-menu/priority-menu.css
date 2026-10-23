@@ -4,7 +4,7 @@
  * right-aligned under the chip at medium and wide, a `ui-sheet` bottom sheet at compact, with 36 px rows (56 at
  * compact): the level's chip, its short word, a check on the current one.
  */
-@import "./_menu-entry.css";
+@import "../../shared/ui/_menu-entry.css";
 
 :host {
   display: inline-flex;

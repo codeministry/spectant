@@ -1,0 +1,73 @@
+@if (visible().length > 0) {
+  <section class="sec" data-section="tasks" [attr.aria-labelledby]="ids + '-head'">
+    <h3 class="eyebrow" [id]="ids + '-head'">
+      <span data-heading>{{ (claim() ? 'detailSidebar.tasks.anchored' : 'detailSidebar.tasks.open') | transloco }}</span>
+      <span class="count" data-count>{{ listed().length }}</span>
+    </h3>
+    @if (run(); as r) {
+      <p class="note" data-tasks-run [id]="ids + '-run'">
+        <ui-icon name="lock" [size]="13" />{{ 'detailSidebar.tasks.runLocked' | transloco: { session: r.session } }}
+      </p>
+    }
+    <ul class="rows">
+      @for (row of visible(); track row.id) {
+        @let state = tasks.checks.stateOf(row.id);
+        <li class="row" [attr.data-task]="row.id" [attr.data-check]="state.kind" [attr.aria-busy]="state.kind === 'saving' ? 'true' : null">
+          <label class="hit">
+            <input
+              #box
+              type="checkbox"
+              class="checkbox checkbox-sm"
+              data-task-check
+              [checked]="tasks.checks.checked(row)"
+              [disabled]="tasks.checks.block(row) !== null"
+              [attr.aria-disabled]="run() ? 'true' : null"
+              [attr.aria-describedby]="describedBy(row)"
+              (click)="guardRun($event)"
+              (change)="tick(row, box.checked)"
+            />
+            <span class="text"><span class="tid">{{ row.id }}</span> · {{ row.text }}</span>
+            @if (state.kind === 'saving') {
+              <span
+                class="spinner loading loading-spinner loading-xs"
+                role="status"
+                data-check-saving
+                [attr.aria-label]="'tasks.check.saving' | transloco: { id: row.id }"
+              ></span>
+            }
+          </label>
+          @if (tasks.checks.line(row); as line) {
+            @switch (line.kind) {
+              @case ('locked') {
+                <span class="note" data-check-locked [id]="ids + '-' + row.id + '-check'">
+                  <ui-icon name="lock" [size]="13" />{{ 'tasks.check.locked' | transloco: { session: line.session } }}
+                </span>
+              }
+              @case ('conflict') {
+                <span class="alert-line" role="alert" data-check-conflict [id]="ids + '-' + row.id + '-check'">
+                  <span>{{ 'tasks.check.conflict' | transloco }}</span>
+                  <button type="button" class="btn btn-xs" data-check-reload (click)="tasks.reload(row)">
+                    {{ 'tasks.check.reload' | transloco }}
+                  </button>
+                </span>
+              }
+              @case ('failed') {
+                <span class="alert-line" role="alert" data-check-failed [id]="ids + '-' + row.id + '-check'">
+                  {{ 'tasks.check.failed' | transloco: { id: row.id, status: line.status } }}
+                </span>
+              }
+              @case ('no-hash') {
+                <span class="note" data-check-no-hash [id]="ids + '-' + row.id + '-check'">{{ 'tasks.check.noHash' | transloco }}</span>
+              }
+            }
+          }
+        </li>
+      }
+    </ul>
+    @if (hidden() > 0 && moreLink(); as link) {
+      <a class="more" data-tasks-more [routerLink]="link">
+        {{ (hidden() === 1 ? 'detailSidebar.tasks.more.one' : 'detailSidebar.tasks.more.other') | transloco: { count: hidden() } }}
+      </a>
+    }
+  </section>
+}

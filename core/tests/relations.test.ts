@@ -12,6 +12,7 @@ import type { PlanningModel } from '../src/planning.ts';
 import type { Relation, RelationIndex, RelationRef } from '../src/relations.ts';
 import { specIdOf } from '../src/spec-ref.ts';
 import { goldenPath } from './helpers/golden.ts';
+import { planningGoldenOf } from './helpers/planning-golden.ts';
 import { planningOf } from './helpers/planning-model.ts';
 import { fixtureTrees, readTree } from './helpers/read-tree.ts';
 
@@ -31,7 +32,8 @@ describe('relations', () => {
     expect(existsSync(path)).toBe(true);
     const golden = (JSON.parse(readFileSync(path, 'utf8')) as PlanningModel).relations;
     expect(golden).toBeDefined();
-    const built = indexOf(planningOf(tree));
+    // The golden carries each story's state from the fixture's runs (`withIdeaStates`), and its facts with it (spec 067).
+    const built = indexOf(planningGoldenOf(tree));
     expect(Object.keys(built)).toEqual(Object.keys(golden ?? {}));
     for (const [ref, relation] of Object.entries(built)) expect({ ref, relation: golden?.[ref as RelationRef] }).toEqual({ ref, relation });
   });

@@ -1,12 +1,9 @@
 /*
  * "Move to…" (T127): a `ui-popover` at medium and wide, a `ui-sheet` bottom sheet at compact. The host takes no box;
- * the panels live in the top layer. One row per board stage: the current one in the selected surface, disabled ones in
- * the muted ink with the drag's hint, a fixed gate's hint in the question ink as on the board.
+ * the panels live in the top layer. The rows (one per board stage, the current one in the selected surface, disabled
+ * ones in the muted ink with the drag's hint, a fixed gate's hint in the question ink) are the shared stage-target
+ * list's own (shared/ui/stage-targets, spec 067, T27), with 56 px rows in the sheet.
  */
-
-/* The row box and the step list the reorder menu shares come from layout/backlog-menu. */
-@import '../../layout/backlog-menu/_menu-entry.css';
-@import '../../layout/backlog-menu/_menu-list.css';
 
 :host {
   display: contents;
@@ -28,42 +25,4 @@
 /* Spec 040 (T58): the run's refusal above the disabled entries of a running card. */
 .run-notice {
   margin-block: 0 8px;
-}
-
-.entry[aria-current] {
-  background: var(--color-base-300);
-  color: var(--disp-ink);
-  font-weight: 600;
-}
-
-.entry[aria-disabled='true'] {
-  color: var(--muted-ink);
-  cursor: default;
-}
-
-.hint {
-  display: inline-flex;
-  flex: none;
-  gap: 4px;
-  align-items: center;
-  max-inline-size: 60%;
-  color: var(--muted-ink);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
-}
-
-.hint > span {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hint[data-gate] {
-  color: var(--ques-ink);
-}
-
-app-refusal-notice {
-  margin-block-end: 4px;
 }

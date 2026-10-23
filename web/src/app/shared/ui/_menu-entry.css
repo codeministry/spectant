@@ -1,7 +1,8 @@
 /*
- * The entry box the priority menu, the reorder menu and the board's "Move to…" (features/board/move-to-menu.css)
- * share, imported at the top of all three; each adds its own row height and padding (the reorder menu and "Move to…"
- * through `_menu-list.css`, with their `justify-content`) after the import. No rule of either
+ * The entry box the priority menu, the reorder menu and the stage-target list of the board's "Move to…"
+ * (stage-targets/stage-targets.css) share, imported at the top of all three; each adds its own row height and padding
+ * (the reorder menu and the stage targets through `_menu-list.css`, with their `justify-content`) after the import.
+ * Here in shared/ui since spec 067 (T27), so the shared stage-target list imports no layout file. No rule of either
  * stylesheet ahead of the place these rules held matches an `.entry`, every later rule that sets one of these
  * properties on an `.entry` is more specific (the current, disabled and hover looks), and the compact row height
  * outranks each menu's own `.entry` height by specificity as before, so moving them first leaves the cascade unchanged.

@@ -1,0 +1,29 @@
+/*
+ * A detail-sidebar section heading (spec 067): the uppercase eyebrow and its count pill, shared by the sidebar and
+ * its section components (`app-sidebar-tasks`), each pulling it in with a relative `@import`.
+ */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 4px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: var(--color-base-200);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  letter-spacing: normal;
+}

@@ -9,7 +9,7 @@
 // imports, so the browser bundle may import it and the barrel exports it whole. `buildPlanning` calls it on every read
 // with every spec folder and the master's `(after: …)` edges; nothing of it is stored.
 
-import type { IdeaRef } from './files.ts';
+import type { ClaimKind, IdeaRef, ItemState, Priority, SpecType } from './files.ts';
 import type { PlanningFeature, PlanningHolder, PlanningMilestone, PlanningModel } from './planning.ts';
 import type { Stage } from './stage.ts';
 
@@ -63,6 +63,68 @@ export interface Relation {
   readonly archived?: boolean;
   /** An active spec's board stage, the planning holder's `stage`; absent for every other type, null without state. */
   readonly stage?: Stage | null;
+  /**
+   * What the sidebar's overview shows of the object beyond its relations (spec 067, ISC-529, ISC-530): the variant of
+   * `RelationFactsByType` for the entry's `type` (read it through `factsOf`). Set on every feature, milestone, claim
+   * and story; absent on a spec, whose fields stand in `DashboardSpec`. Inside, a value the files do not carry is a
+   * missing key, never null or an empty string.
+   */
+  readonly facts?: RelationFacts;
+}
+
+/** A feature's facts: the block's `Why:` line without the prefix, and the milestone its `Milestone:` line names. */
+export interface FeatureFacts {
+  readonly why?: string;
+  /** The name of the valid `## Milestones` entry the block's line names; absent without a line or for an unknown name. */
+  readonly milestone?: string;
+}
+
+/** A milestone's facts: its target date (ISO `YYYY-MM-DD`) and description, from its `## Milestones` line. */
+export interface MilestoneFacts {
+  readonly target?: string;
+  readonly description?: string;
+}
+
+/** A claim's state in the master: ticked, struck as `[DROPPED …]`, else open. */
+export type ClaimFactState = 'open' | 'closed' | 'dropped';
+
+/** A claim's facts, read from the master and from the spec folder that holds it. */
+export interface ClaimFacts {
+  /** The master line's kind prefix, `Claim.kind`: `anti`, `antecedent`, else `normal`. */
+  readonly kind: ClaimKind;
+  readonly state: ClaimFactState;
+  /** The claim's first Test Strategy row, the holder's spec.md before the master: its `tool`, else its `check`. */
+  readonly probe?: string;
+  /** A closed claim's first `## Verification` line, the holder's spec.md before the master; never on an open one. */
+  readonly verification?: string;
+  /** The session of the lock holding an open claim (the later lock wins), as written; only when the caller passed locks. */
+  readonly lockHolder?: string;
+}
+
+/** A story's facts. */
+export interface IdeaFacts {
+  /** The story's item state (spec 040): `open` until `withIdeaStates` sets the one its open runs give. */
+  readonly state: ItemState;
+  readonly priority: Priority;
+  readonly type?: SpecType;
+  /** `IdeaRef.excerpt`: the first paragraph of the story's `## Problem`, else of its `## Vision`. */
+  readonly excerpt?: string;
+}
+
+/** The facts variant per relation type; a spec has none. */
+export interface RelationFactsByType {
+  readonly feature: FeatureFacts;
+  readonly milestone: MilestoneFacts;
+  readonly claim: ClaimFacts;
+  readonly idea: IdeaFacts;
+}
+
+/** `Relation.facts`: one variant of `RelationFactsByType`, chosen by the entry's `type`. */
+export type RelationFacts = RelationFactsByType[keyof RelationFactsByType];
+
+/** The facts of `relation` as the variant of `type`; undefined when the entry is of another type or carries none. */
+export function factsOf<T extends keyof RelationFactsByType>(relation: Relation, type: T): RelationFactsByType[T] | undefined {
+  return relation.type === type ? (relation.facts as RelationFactsByType[T] | undefined) : undefined;
 }
 
 /** The whole index, keyed by ref; every ref in a `parents`, `children` or `blockers` list is a key of it. */
@@ -84,6 +146,11 @@ export interface RelationsInput {
   readonly specs?: readonly RelationSpec[];
   /** The master's `(after: …)` edges by claim id, as `Claim.after` holds them; absent, no claim has a blocker. */
   readonly after?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Each claim's facts by claim id, as `buildPlanning` reads them from the master, the holding spec and the locks
+   * (spec 067). A claim absent here gets `kind: normal` and the state the tree gives it, nothing more.
+   */
+  readonly claimFacts?: Readonly<Record<string, ClaimFacts>>;
 }
 
 /** An entry while the index is built: the lists grow, the counts of a spec are summed at the end. */
@@ -99,9 +166,20 @@ interface Draft {
   blockers: RelationRef[];
   archived?: true;
   stage?: Stage | null;
+  facts?: RelationFacts;
 }
 
 const refOf = (type: RelationType, id: string): RelationRef => `${type}:${id}`;
+
+/** The fields of `facts` that carry a value: a null, undefined or blank one is left out, a missing key. */
+function present<K extends string>(facts: Readonly<Record<K, string | null | undefined>>): Partial<Record<K, string>> {
+  return Object.fromEntries(Object.entries<string | null | undefined>(facts).filter((e): e is [string, string] => typeof e[1] === 'string' && e[1].trim() !== '')) as Partial<Record<K, string>>;
+}
+
+/** A story's facts (spec 067, ISC-529): its item state (`open` until `withIdeaStates` sets one), priority, type, excerpt. */
+export function ideaFacts(idea: IdeaRef): IdeaFacts {
+  return { state: idea.state?.state ?? 'open', priority: idea.priority, ...(idea.type === null ? {} : { type: idea.type }), ...present({ excerpt: idea.excerpt }) };
+}
 
 /**
  * The relation index of one planning tree (spec 026, T10, ISC-171). The cascade it records, each link once, parents and
@@ -125,7 +203,7 @@ const refOf = (type: RelationType, id: string): RelationRef => `${type}:${id}`;
  */
 export function buildRelations(input: RelationsInput): RelationIndex {
   const index = new Map<RelationRef, Draft>();
-  const add = (type: RelationType, id: string, title: string, closed: number, total: number, extra: Pick<Draft, 'archived' | 'stage'> = {}): void => {
+  const add = (type: RelationType, id: string, title: string, closed: number, total: number, extra: Pick<Draft, 'archived' | 'stage' | 'facts'> = {}): void => {
     const ref = refOf(type, id);
     if (!index.has(ref)) index.set(ref, { ref, type, id, title, closed, total, parents: [], children: [], blockers: [], ...extra });
   };
@@ -137,17 +215,20 @@ export function buildRelations(input: RelationsInput): RelationIndex {
     if (!c.parents.includes(parent)) c.parents.push(parent);
   };
 
-  for (const m of input.milestones) add('milestone', m.slug, m.name, m.closed, m.total);
-  for (const f of input.features) add('feature', f.id, f.name, f.closed, f.total);
+  // A feature's milestone is the entry whose `featureIds` (its `Milestone:` line) lists it, never one its specs name.
+  const lineOf = new Map(input.milestones.flatMap((m) => (m.featureIds ?? []).map((id) => [id, m.name] as const)));
+  for (const m of input.milestones) add('milestone', m.slug, m.name, m.closed, m.total, { facts: present({ target: m.target, description: m.description }) });
+  for (const f of input.features) add('feature', f.id, f.name, f.closed, f.total, { facts: present({ why: f.why, milestone: lineOf.get(f.id) }) });
   const specs = [...(input.specs ?? []), ...input.features.flatMap((f) => f.holders), ...input.milestones.flatMap((m) => m.specs)];
   for (const s of specs) add('spec', s.id, s.title, 0, 0, s.archived ? { archived: true } : { stage: s.stage });
   for (const f of input.features) {
     for (const c of f.claims) {
       const archived = c.holder !== null && index.get(refOf('spec', c.holder))?.archived === true;
-      add('claim', c.id, c.text, !c.dropped && c.closed ? 1 : 0, c.dropped ? 0 : 1, archived ? { archived: true } : {});
+      const facts: ClaimFacts = input.claimFacts?.[c.id] ?? { kind: 'normal', state: c.dropped ? 'dropped' : c.closed ? 'closed' : 'open' };
+      add('claim', c.id, c.text, !c.dropped && c.closed ? 1 : 0, c.dropped ? 0 : 1, archived ? { archived: true, facts } : { facts });
     }
   }
-  for (const idea of input.ideas) add('idea', idea.slug, idea.title, 0, 0);
+  for (const idea of input.ideas) add('idea', idea.slug, idea.title, 0, 0, { facts: ideaFacts(idea) });
 
   // Spec › claim before feature › claim, so a claim's parents read spec first.
   for (const f of input.features) for (const c of f.claims) if (c.holder !== null) link(refOf('spec', c.holder), refOf('claim', c.id));

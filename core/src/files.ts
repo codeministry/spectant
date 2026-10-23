@@ -1967,6 +1967,12 @@ export interface IdeaRef {
   readonly milestone: string | null;
   /** Frontmatter `priority:`, `P3` when absent. */
   readonly priority: Priority;
+  /**
+   * A short excerpt of the story (spec 067, ISC-529): the first paragraph under `## Problem`, else under `## Vision`,
+   * joined to one line, HTML comments skipped; above 280 characters cut at a word boundary to at most 280 with `…`.
+   * Null when neither section holds prose. `readIdeas` always sets it; optional only for payloads built by hand.
+   */
+  readonly excerpt?: string | null;
   /** Repository-relative, POSIX separators: `specs/ideas/<slug>.md`. */
   readonly path: string;
   /**
