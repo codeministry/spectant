@@ -2108,6 +2108,21 @@ claim), else, for an unreadable source or a line that names no claim, on every o
 `.spectant/activity.jsonl` when it came from there). The text leads with the source and line, e.g.
 `.spectant/activity.jsonl line 1: The line is not JSON; it is skipped.`
 
+**Derived: the dashboard row's open run** (spec 070, ISC-570, ISC-572, `dashboard.ts` `DashboardOpenRun`), from the
+same reading's `openRuns`, `runs` and `steps`. A row carries `run` while an open run names its spec, by number or
+folder name; with several, the newest start wins. `run` is `{run, phase, command, since, session, step?}`: the run id,
+the `/spec` subcommand of its command as `phase` (`plan`, `tasks`, `review`, `implement`, `done` …; an old skill name
+mapped as the item states map it, the code review read as `review`; `null` for a command the plugin has no subcommand
+for), the command in the plugin's form (`/spec review 006 code`), the start's `ts` as `since` and its `session` as
+written, for every subcommand alike. Its age does not matter here: whether the run still counts as running is the
+item state's (`state`). A run of `/spec init` names no spec and lands on no row. On an `implement` run only, `step` is
+the newest run event (`dispatch`, `build`, `patch`, `apply`) or `probe` on the spec at or after the run's start, as
+`{kind, at, task, claim?, session, result?}` (`result` on a probe); a `question` is no step. A line counts for the spec
+by its claim, one of the spec's own, or without a claim by its spec session or spec worktree (ISC-213), whatever its
+session: the hooks write the parent's own session id, not the run's. On a tie in time the probe wins. Without a step
+since the start the run has no `step`. A row without an open run has no `run` field, so a workspace without open runs
+reads byte for byte as before; the golden snapshots are built without lock sources and carry none.
+
 ## The archive rule
 
 A closed spec moves to `specs/archive/NNN-slug/` and carries `archived: YYYY-MM-DD`. Its folder location is the fact:
