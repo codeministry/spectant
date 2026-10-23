@@ -1,6 +1,6 @@
 import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, viewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
 import { workspacePageById } from './areas';
@@ -25,7 +25,8 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
 
 /**
  * The header's navigation group (ISC-73): Workspace · Page · Area (spec 024 T80, ISC-150.2, principal 2026-10-13);
- * the Spec select left it in spec 069 (ISC-554), the header's favourites select lists the favourites instead. The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
+ * the Spec select left it in spec 069 (ISC-554), the header's favourites select lists the favourites instead, and on a
+ * spec page a plain crumb after them names the open spec (id and short name, no menu; T22, ISC-555). The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
  * select names the open workspace page (Specs on a spec page) and opens the workspace's pages; it stays in the row on
  * every width. The Area select is there only on a spec page and lists the six spec areas; below 1120 px it is an entry
  * of the overflow menu `⋯` (`areaEntry`, rendered by `ShellMenus`). The header's `⋯` and settings buttons open their
@@ -47,7 +48,7 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
  */
 @Component({
   selector: 'app-shell-nav',
-  imports: [TranslocoPipe, UiIcon, ShellMenus],
+  imports: [TranslocoPipe, UiIcon, ShellMenus, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-nav.html',
   styleUrl: './shell-nav.css',
@@ -85,11 +86,11 @@ export class ShellNav {
   protected readonly workspaceCount = computed(() => this.data.workspaceList().length);
   /** A workspace in the route: the page and area pills render only then (ISC-140.2). */
   protected readonly inWorkspace = computed(() => this.state.ws() !== null);
-  /** The open spec's dashboard row; kept for the spec crumb (spec 069 T22). */
+  /** The open spec's dashboard row: the spec crumb's tooltip is its full title (spec 069 T22, ISC-555). */
   protected readonly row = this.data.currentRow;
   /**
    * The open spec's short name (`002` + `web-console`, spec 024 T74): the folder slug without its `NNN-` prefix, else
-   * the title for a row without a slug; kept for the spec crumb (spec 069 T22).
+   * the title for a row without a slug; the spec crumb's visible title.
    */
   protected readonly specName = computed(() => {
     const row = this.row();
@@ -100,6 +101,10 @@ export class ShellNav {
   protected readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
   /** A spec route (`/w/:ws/s/:id/…`): only there is an Area select, enabled while the spec is listed. */
   protected readonly specRoute = computed(() => this.state.specId() !== null);
+  /** The spec crumb's target: the open spec's dashboard `/w/:ws/s/:id` (spec 069 T22). */
+  protected readonly specLink = computed(() => ['/w', this.state.ws() ?? '', 's', this.state.specId() ?? '']);
+  /** The spec's dashboard itself is open (its area, no tab): the crumb is then the current page. */
+  protected readonly specDashboard = computed(() => this.state.area() === 'dashboard' && this.state.route().tab === null);
   /**
    * The workspace page the PAGE select names: Specs on a spec page, the board on a story page (`idea`, spec 008, no
    * menu page), else the route's page, the Dashboard where the route names none (spec 058: the root `/w/:ws` is the

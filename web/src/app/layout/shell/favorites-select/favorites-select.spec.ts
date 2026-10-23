@@ -9,6 +9,7 @@ import { ApiClient, type ApiResult, type DashboardBody } from '../../../core/api
 import { SettingsService } from '../../../core/settings.service';
 import { ShellData } from '../shell-data.service';
 import { ShellState } from '../shell-state.service';
+import { isTabId, type TabId } from '../areas';
 import type { Tier } from '../tier';
 import { FavoritesSelect } from './favorites-select';
 
@@ -26,12 +27,25 @@ const DASHBOARDS: Readonly<Record<string, DashboardBody>> = {
     ideas: { list: [{ slug: 'fuzzy', title: 'Fuzzy match' }] },
   },
   beacon: { specs: [row('003-uptime', 'Uptime')], archive: [], ideas: { list: [{ slug: 'uptime-badges', title: 'Badges' }] } },
+  // Read only off harbor (on `/`): while harbor is open its sets come from ShellData.
+  harbor: {
+    specs: [row('002-web-console', 'Web console'), row('009-audit', 'Audit', 'done')],
+    archive: [],
+    ideas: { list: [{ slug: 'dark-mode', title: 'Dark mode' }] },
+  },
 };
 
 const FAVORITES: Readonly<Record<string, Favorites>> = {
   lantern: { specs: ['003-index', '004-search'], ideas: ['fuzzy'] },
   beacon: { specs: [], ideas: [] },
+  harbor: { specs: ['002-web-console', '009-audit'], ideas: ['dark-mode'] },
 };
+
+/** The route `ShellState` reads off `url`, as its `readRoute` does: `/w/<ws>/s/<id>/<tab>…`; `/` names nothing. */
+function routeOf(url: string): { ws: string | null; specId: string | null; tab: TabId | null } {
+  const [ws = null, , specId = null, tab = null] = new URL(url, 'http://x').pathname.split('/').slice(2);
+  return { ws, specId, tab: isTabId(tab) ? tab : null };
+}
 
 interface Options {
   readonly lang?: Lang;
@@ -42,6 +56,8 @@ interface Options {
   readonly specId?: string;
   /** The other workspaces answer after a timer, as over the network: after the list has opened. */
   readonly slow?: boolean;
+  /** The page the select sits on: the router starts there and `ShellState` reads its workspace, spec and tab. */
+  readonly url?: string;
 }
 
 /** The select with the real `FavoritesIndex` over stubbed answers: lantern, harbor (open) and beacon, in picker order. */
@@ -65,7 +81,8 @@ async function mount(options: Options = {}) {
       return written();
     },
   };
-  const ws = signal<string | null>('harbor');
+  const route = options.url === undefined ? { ws: 'harbor', specId: options.specId ?? null, tab: null } : routeOf(options.url);
+  const ws = signal<string | null>(route.ws);
   const openRows = signal(options.none ? [] : [row('002-web-console', 'Web console'), row('009-audit', 'Audit', 'done')]);
   const openIdeas = signal(options.none ? [] : [{ slug: 'dark-mode', title: 'Dark mode' }]);
   const data = {
@@ -104,10 +121,14 @@ async function mount(options: Options = {}) {
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiClient, useValue: api },
       { provide: ShellData, useValue: data },
-      { provide: ShellState, useValue: { ws, specId: signal<string | null>(options.specId ?? null), tier: signal<Tier>(options.tier ?? 'wide') } },
+      {
+        provide: ShellState,
+        useValue: { ws, specId: signal(route.specId), tab: signal(route.tab), tier: signal<Tier>(options.tier ?? 'wide') },
+      },
       { provide: SettingsService, useValue: { settings: signal({ singleKeyShortcuts: true }) } },
     ],
   });
+  if (options.url !== undefined) await TestBed.inject(Router).navigateByUrl(options.url);
   const fixture = TestBed.createComponent(FavoritesSelect);
   document.body.appendChild(fixture.nativeElement as HTMLElement);
   await fixture.whenStable();
@@ -389,5 +410,47 @@ describe('FavoritesSelect row star (spec 069, ISC-559)', () => {
     expect(document.activeElement).toBe(empty);
     expect(select.open()).toBe(true);
     expect(router.url).toBe(url);
+  });
+});
+
+describe('FavoritesSelect keeps the open tab (spec 069, ISC-566; spec 051, ISC-291 to ISC-295)', () => {
+  /** The page the select is opened on, and the tab its spec rows lead to ('' is the new spec's dashboard). */
+  const PAGES = [
+    ['/w/harbor/s/002/timeline', 'timeline'],
+    // The note editor gives the new spec's note list; the old spec's query and fragment never go along (ISC-293).
+    ['/w/harbor/s/002/notes/n-7f3a?doc=plan#claim-ISC-74', 'notes'],
+    // The spec dashboard and a page without an open spec lead to the chosen spec's dashboard (ISC-292).
+    ['/w/harbor/s/002', ''],
+    ['/', ''],
+  ] as const;
+  /** A row of the open workspace and two of another one. */
+  const ROWS = [
+    ['harbor', '009'],
+    ['lantern', '004'],
+    ['lantern', '003'],
+  ] as const;
+  const CASES = PAGES.flatMap(([url, tab]) => ROWS.map(([ws, id]) => [url, ws, id, tab] as const));
+  /** The path, query and fragment an href names, resolved against the base href as the browser would. */
+  const resolved = (href: string | null): string => {
+    const url = new URL(href ?? '', document.baseURI);
+    return url.pathname + url.search + url.hash;
+  };
+
+  it.each(CASES)('on %s the row %s/%s leads to its tab %j, href and click alike', async (url, ws, id, tab) => {
+    const target = tab === '' ? `/w/${ws}/s/${id}` : `/w/${ws}/s/${id}/${tab}`;
+    const { root, select, stable, router } = await mount({ url });
+    expect(router.url).toBe(url);
+    trigger(root).click();
+    await stable();
+    const entry = rowOf(root, ws, id);
+    if (entry === null) throw new Error(`row ${ws}/${id} missing on ${url}`);
+    expect(entry.getAttribute('href')).toBe(target);
+
+    entry.click();
+    await stable();
+    // ISC-295: the click lands where the href points, with no query and no fragment of the old page.
+    expect(router.url).toBe(target);
+    expect(router.url).toBe(resolved(entry.getAttribute('href')));
+    expect(select.open()).toBe(false);
   });
 });

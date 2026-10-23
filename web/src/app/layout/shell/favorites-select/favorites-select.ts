@@ -25,9 +25,10 @@ import { toneOfStage } from '../../../shared/ui/stage-tone';
 import { UiStarToggle } from '../../../shared/ui/star-toggle/star-toggle';
 import type { Tone } from '../../../shared/ui/tone';
 import { UiWsBadge } from '../../../shared/ui/ws-badge/ws-badge';
+import { switchSpecLink } from '../areas';
 import type { IdeaFavoriteView, SpecRowView } from '../shell-data.service';
 import { ShellState } from '../shell-state.service';
-import { type FavoriteGroup, favoriteIdeaLink, FavoritesIndex, favoriteSpecLink } from './favorites-index.service';
+import { type FavoriteGroup, favoriteIdeaLink, FavoritesIndex } from './favorites-index.service';
 
 /**
  * The favourites select (spec 069): a 40 px icon button that shows only the star, named `shell.favorites.trigger`,
@@ -73,8 +74,17 @@ export class FavoritesSelect {
 
   protected readonly compact = computed(() => this.state.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
-  protected readonly specLink = favoriteSpecLink;
   protected readonly ideaLink = favoriteIdeaLink;
+
+  /**
+   * A spec row's target (ISC-566, as the spec select's entries did, spec 051 ISC-291 to ISC-295): the open tab of the
+   * route in the row's own workspace, the note editor's tab being the note list; no query and no fragment go along.
+   * Without an open tab (the spec dashboard, a page without a spec, a former Docs or Evidence tab) the chosen spec's
+   * dashboard. `href` and click both read it.
+   */
+  protected specLink(ws: string, id: string): string[] {
+    return switchSpecLink(ws, id, this.state.tab());
+  }
   /** The stage chip of a spec row, its tone and icon, as in the spec select (spec 064, ISC-501). */
   protected readonly stageTone = (stage: string): Tone => toneOfStage(stage);
   protected readonly stageIcon = chipIcon;

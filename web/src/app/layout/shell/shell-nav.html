@@ -103,6 +103,22 @@
       </button>
     }
   }
+  <!--
+    The spec crumb (spec 069 T22, ISC-555): the open spec's id and short name, after the area, on every width; no menu,
+    no chevron, no `data-control`. A link to the spec's dashboard rather than plain text, so a tab keeps a way back to it;
+    `aria-current="page"` on the dashboard itself. The full title is its tooltip.
+  -->
+  @if (specOpen() && row(); as open) {
+    <span class="pill-divider" aria-hidden="true"></span>
+    <a class="pick crumb" data-crumb="spec" [routerLink]="specLink()" [attr.title]="open.title" [attr.aria-current]="specDashboard() ? 'page' : null">
+      <span class="crumb-text">
+        <span class="crumb-id" data-crumb-id>{{ state.specId() }}</span>
+        @if (specName(); as name) {
+          <span class="crumb-title" data-crumb-title>{{ name }}</span>
+        }
+      </span>
+    </a>
+  }
 </div>
 
 <!-- The lists, sheets and popovers load after first render; their overlay primitives stay out of the initial bundle. -->
