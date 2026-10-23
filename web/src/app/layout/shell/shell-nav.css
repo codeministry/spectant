@@ -1,6 +1,6 @@
 /*
  * The rail-selects (spec 024 T34): Workspace · Page · Area (T80; the Spec select left in spec 069, the spec crumb
- * after them names the open spec, T22). They
+ * between Page and Area names the open spec, T22). They
  * sit on the header's brand rail after the logo, on every width (spec 024 T76); below 1120 px without the Area select.
  *
  * Labelled selects (ISC-140.2): every segment is its 9 px mono label (`[data-pill-label]`) and its 13/650 value
@@ -125,7 +125,7 @@
 /*
  * The spec crumb (spec 069 T22, ISC-555): a plain link, no pill label, no chevron. The id in the mono id style of the
  * former spec pill (`.pick-id`), never shortened; the short name in the value style, ellipsized (former `.spec-title`).
- * The cyan tint sets it off from the selects before it; its id in `--disp-ink` on that tint.
+ * The cyan tint sets it off from the selects around it; its id in `--disp-ink` on that tint.
  */
 .crumb {
   background: var(--disp-t);
